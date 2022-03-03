@@ -16,3 +16,12 @@ Most OCR output formats either compromise on faithfully representing the origina
 
 ![Non Optimized Sample](docs/img/optimization_comp1a.png)
 ![Optimized Sample](docs/img/optimization_comp1b.png)
+
+# Getting Started
+
+Scribe OCR is not an OCR engine, so you will first need OCR data from the engine of your choice.  Both .hocr files from Tesseract (free) and .xml files from Abbyy (paid) are supported.  Be sure to enable character-level output (click here to learn more). 
+
+Alternatively, if you just want to try out Scribe OCR, sample files can be found here.  You can also download scans and OCR data for out-of-copyright books from Archive.org. 
+Once you have both a scanned document (either a collection of .png or .jpeg files or a single .pdf) and OCR data (.hocr or Abbyy .xml), click “Choose files” and select all relevant files. 
+
+Once your files have loaded, you can get started editing.  An explanation of the interface and walk-through of the editing process can be found here in written form, and here in video form. 
