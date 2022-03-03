@@ -1,7 +1,7 @@
 # FAQ/Support
 
 ## Table of Contents
-
+It may be possible to use data from other OCR engines that export to .hocr.  However, doing so has not been tested.  If you use Scribe OCR with another engine, feel free to open an issue and report how it goes. 
 
 ## Is character-level OCR data required?  Why?
 For Tesseract .hocr, character-level data is highly recommended but not required.  If no character-level data is found, words will still be overlayed, however font optimization will be disabled (as not enough information exists to create an optimized font).
@@ -11,7 +11,10 @@ For Abbyy .xml, character-level data is required.  While Tesseract will still re
 ## How can I create character-level data in my OCR program? 
 For Tesseract, set the config variable `hocr_char_boxes=1`.  For example, the entire command might be ` tesseract [input file] [output file] -c hocr_char_boxes=1 hocr`.
 
-## Why aren’t the words in my document lining up as well as in the examples? 
+## Are other OCR engines supported?
+It may be possible to use data from other OCR engines that export to .hocr.  However, doing so has not been tested.  If you use Scribe OCR with another engine, feel free to open an issue and report how it went. 
+
+## Why isn't the overlay text in my document lining up as well as in the examples? 
 If your results are significantly worse than the above example, check the following possible explanations.  
 1.	Is font optimization enabled?
 1.	Is the appropriate default font being used?
@@ -34,6 +37,9 @@ If performance is poor, check the following possible explanations.
     -	Consider converting your .pdf to .jpeg or .png images and trying again.
         - This can be accomplished using GhostScript on Linux with the following command:
         -	`gs -dNOPAUSE -dBATCH -sDEVICE=pnggray -dUseCropBox -r300 -sOutputFile="Pic-%03d.png" [pdf file]`
+
+## Why is text being printed on the wrong image?
+When multiple image (.png or .jpeg) and/or OCR (.hocr or .xml) files are uploaded, all files of the same type are ordered alphabetically.  Check that your files are named in alphabetical order.  A common mistake is forgetting to pad numbers with leading 0s (remember that “pic_10” comes before “pic_2” in alphabetic order). 
 
 ## Is character formatting information (e.g. italics) in OCR data used? 
 Character formatting data (specifically the identification of italics, small caps, and superscripts) is used for Abbyy but not Tesseract.  Testing found this data to be generally reliable for Abbyy.  However, for Tesseract formatting data was found to be so unreliable that including it caused more work than it alleviated.  
