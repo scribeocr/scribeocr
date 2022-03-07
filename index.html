@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="stylesheet" href="./css/bootstrap.min.css">
+  <style type="text/css">
+    .btn-info:focus:not(:focus-visible):not(:active) {
+      outline: none !important;
+      box-shadow: none !important;
+      background-color: #369;
+    }
+
+    .btn-info:active {
+      box-shadow: 0 0 0 0.1rem rgb(82 125 168 / 50%) !important
+    }
+
+    .btn {
+      transition: none !important;
+    }
+
+    .help-icon {
+      vertical-align: middle;
+      margin-left: 0.2rem;
+      margin-bottom: 0.1rem;
+    }
+
+    div[class*="ttWide"] .tooltip-inner {
+      max-width: 400px !important;
+      white-space: pre-line !important;
+    }
+
+    .form-check-input:focus:not(:focus-visible):not(:active) {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    .form-check-input:active {
+      box-shadow: 0 0 0 0.1rem rgb(82 125 168 / 50%) !important
+    }
+
+    .form-switch.form-switch-lg {
+      margin-bottom: 1.5rem;
+      /* JUST FOR STYLING PURPOSE */
+    }
+
+    .form-switch.form-switch-lg .form-check-input {
+      height: 2rem;
+      width: calc(3rem + 0.75rem);
+      border-radius: 4rem;
+    }
+
+    .form-check-input:checked {
+      background-color: var(--bs-info);
+    }
+
+    .form-check-input:checked {
+      background-color: var(--bs-info);
+    }
+  </style>
+  <meta charset="utf-8" />
+  <script src="lib/bootstrap.bundle.min.js"></script>
+  <script src="lib/pdf.js"></script>
+  <script src="lib/pdf.worker.js"></script>
+
+  <script src="lib/filer.min.js"></script>
+  <script src="lib/UPNG.js"></script>
+  <script src="lib/pako.js"></script>
+
+  <script src="./lib/fabric.js"></script>
+
+  <script src="./lib/blob-stream.js"></script>
+
+  <!-- Contains modified version of pdfkit.  Do not update without porting over changes. -->
+  <script src="./lib/pdfkit.standalone.js"></script>
+  <!-- Contains modified version of opentype.  Do not update without porting over changes. -->
+  <script src="./lib/opentype.js"></script>
+
+  <script src="./lib/FileSaver.js"></script>
+  <script type="module" src="main.js"></script>
+
+
+</head>
+<style>
+
+</style>
+
+<body>
+
+  <div class="navbar sticky-top navbar-light bg-light" style="padding-bottom:0px">
+    <div class="container">
+      <div class="container-fluid" id="user-controls">
+        <div class="row nav-row">
+          <div class="col col-4">
+            <div class="nav nav-tabs" id="nav-tab" role="tablist">
+
+              <button class="nav-link" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import" type="button" role="tab" aria-controls="nav-import">Import</button>
+              <button class="nav-link" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view" type="button" role="tab" aria-controls="nav-view">View</button>
+              <button class="nav-link" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit" type="button" role="tab" aria-controls="nav-edit">Edit</button>
+
+              <button class="nav-link" id="nav-settings-tab" data-bs-toggle="collapse" data-bs-target="#nav-settings" type="button" role="tab" aria-controls="nav-settings">Layout</button>
+              <button class="nav-link" id="nav-download-tab" data-bs-toggle="collapse" data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</button>
+            </div>
+          </div>
+          <div class="col col-1">
+          </div>
+
+          <div class="col col-4 my-auto">
+
+            <button class="btn btn-info btn-sm" id="prev">Previous</button>
+            <button class="btn btn-info btn-sm" id="next">Next</button>
+            <span>Page: <input type="text" id="pageNum" name="pageNum" size="3"> / <span id="pageCount"></span></span>
+          </div>
+        </div>
+
+
+        <div class="tab-content" id="nav-tabContent">
+          <div class="collapse" id="nav-edit" role="tabpanel" aria-labelledby="nav-edit-tab" data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+              <div class="mb-1 row">
+                <label for="wordFont">Font (Word)</label>
+              </div>
+
+              <div class="col col-2">
+                <select id="wordFont" class="form-select form-select-sm" size="1" onchange="changeWordFont(this.value)">
+                  <option selected value="Default">Default</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Libre Baskerville">Libre Baskerville</option>
+                </select>
+                <div class="input-group" style="padding-top:0.4rem;">
+                  <button class="btn btn-secondary btn-sm" id="fontMinus">-</button>
+                  <input type="text" id="fontSize" size="1">
+                  <button class="btn btn-secondary btn-sm" id="fontPlus">+</button>
+                </div>
+
+              </div>
+              <div class="col col-1" style="padding-right:0.25rem;">
+                <div class="mb-2 row">
+                  <div class="form-group">
+                    <button type="button" id="styleItalic" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-type-italic" viewBox="0 0 16 16">
+                        <path d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z" />
+                      </svg> Italic</button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="form-group">
+                    <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
+
+                      <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type" fill="currentColor">
+
+                        <g>
+                          <path id="svg_1" d="m2.244,13.081l0.943,-2.803l3.473,0l0.944,2.803l1.256,0l-3.32,-9.331l-1.218,0l-3.322,9.331l1.244,0zm2.7,-7.923l1.396,4.156l-2.83,0l1.4,-4.156l0.034,0z" />
+                          <path id="svg_2" d="m2.244,13.081l0.943,-2.803l3.473,0l0.944,2.803l1.256,0l-3.32,-9.331l-1.218,0l-3.322,9.331l1.244,0zm2.7,-7.923l1.396,4.156l-2.83,0l1.4,-4.156l0.034,0z" />
+                          <path stroke="null" id="svg_3"
+                            d="m10.10862,13.081l0.77225,-2.29546l2.84414,0l0.77307,2.29546l1.02857,0l-2.71884,-7.64143l-0.99746,0l-2.72048,7.64143l1.01875,0zm2.21111,-6.48837l1.14322,3.40347l-2.31757,0l1.1465,-3.40347l0.02784,0z" />
+                        </g>
+                      </svg> Caps</button>
+
+                  </div>
+                </div>
+
+
+
+              </div>
+              <div class="col col-1" style="padding-left:0.25rem;">
+                <div class="mb-2 row">
+                  <div class="form-group">
+                    <button type="button" id="styleSuper" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
+
+                      <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type" fill="currentColor">
+
+                        <g>
+                          <path stroke="null" id="svg_3"
+                            d="m-0.55033,3.9216zm4.15639,2.67132l0,-0.0815c0,-0.79945 0.56919,-1.51224 1.54717,-1.51224c0.87448,0 1.51871,0.56919 1.51871,1.43074c0,0.80722 -0.54332,1.42427 -1.04395,1.97406l-3.43973,3.81099l0,0.96245l6.18349,0l0,-1.28068l-4.04514,0l0,-0.08926l2.28582,-2.56912c0.84085,-0.93658 1.6002,-1.7231 1.6002,-2.93651c-0.00129,-1.46567 -1.1953,-2.56395 -3.02577,-2.56395c-2.03486,0 -3.05293,1.37641 -3.05293,2.78128l0,0.07374l1.47214,0z" />
+                          <path stroke="null" id="svg_5"
+                            d="m7.45353,2.52791zm2.89854,1.8629l0,-0.05684c0,-0.55752 0.39693,-1.05459 1.07894,-1.05459c0.60984,0 1.0591,0.39694 1.0591,0.99776c0,0.56292 -0.3789,0.99324 -0.72802,1.37664l-2.39875,2.65767l0,0.67118l4.31217,0l0,-0.89311l-2.82095,0l0,-0.06224l1.59406,-1.79162c0.58638,-0.65314 1.11593,-1.20164 1.11593,-2.04783c-0.0009,-1.02211 -0.83356,-1.78802 -2.11008,-1.78802c-1.41905,0 -2.12902,0.95987 -2.12902,1.93957l0,0.05143l1.02662,0z" />
+                        </g>
+                      </svg> Super</button>
+
+                  </div>
+                </div>
+
+
+              </div>
+              <div class="col col-2">
+                <div class="mb-2 row">
+                  <div class="form-group">
+                    <button type="button" id="editBoundingBox" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bounding-box-circles" viewBox="0 0 16 16">
+                        <path
+                          d="M2 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM0 2a2 2 0 0 1 3.937-.5h8.126A2 2 0 1 1 14.5 3.937v8.126a2 2 0 1 1-2.437 2.437H3.937A2 2 0 1 1 1.5 12.063V3.937A2 2 0 0 1 0 2zm2.5 1.937v8.126c.703.18 1.256.734 1.437 1.437h8.126a2.004 2.004 0 0 1 1.437-1.437V3.937A2.004 2.004 0 0 1 12.063 2.5H3.937A2.004 2.004 0 0 1 2.5 3.937zM14 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM2 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm12 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />
+                      </svg> Edit Left/Right Bounds</button>
+
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="form-group">
+                    <button type="button" id="editBaseline" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-align-middle" viewBox="0 0 16 16">
+                        <path d="M6 13a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v10zM1 8a.5.5 0 0 0 .5.5H6v-1H1.5A.5.5 0 0 0 1 8zm14 0a.5.5 0 0 1-.5.5H10v-1h4.5a.5.5 0 0 1 .5.5z" />
+                      </svg> Adjust Baseline</button>
+
+                  </div>
+                </div>
+                <div class="collapse" id="collapseRange">
+
+                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                    <input type="range" class="form-range" id="rangeBaseline">
+                  </div>
+                </div>
+
+              </div>
+
+
+              <div class="col col-2">
+                <div class="row mb-2">
+
+                  <div class="form-group">
+                    <button type="button" id="delete" class="btn btn-secondary btn-sm" style="min-width:70%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                        <path
+                          d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z" />
+                      </svg> Delete Word</button>
+                  </div>
+                </div>
+                <div class="row">
+
+                  <div class="form-group">
+                    <button type="button" id="addWord" class="btn btn-secondary btn-sm" style="min-width:70%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-square" viewBox="0 0 16 16">
+                        <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                      </svg> Add Word</button>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+
+          <div class="collapse" id="nav-import" role="tabpanel" aria-labelledby="nav-import-tab" data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+
+              <div class="col col-4">
+                <div class="form-group">
+                  <label for="uploader">Import Files</label>
+                  <a href="#" id="my_tooltip" data-bs-custom-class="ttWide" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Accepts a combination of OCR files (.hocr or Abbyy .xml) and image files (.png, .jpeg, or .pdf).
+For both OCR and image files, individual files for each page or a single file with all pages are both acceptable. All files are sorted in alphabetic order." data-bs-placement="right">
+                    <object class="help-icon" data="/assets/img/question-circle-fill.svg" width="18" height="18"></object>
+                  </a>
+
+                  <input type="file" id="uploader" class="form-control" label="Import Files" multiple>
+                </div>
+
+              </div>
+              <div class="col col-4">
+                <label for="reset">Reset All (Files + Edits)</label><br>
+                <button type="button" id="reset" class="btn btn-secondary">Reset</button>
+              </div>
+
+            </div>
+            <div class="collapse" id="progress-collapse">
+              <div class="row">
+                <div class="col col-8">
+                  <div class="progress" style="margin-bottom: 0.2rem;">
+                    <div class="progress-bar bg-info" id="importProgress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="charInfoAlert" class="alert alert-dismissible alert-warning d-flex align-items-center show fade" style="display:none !important">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2"" viewBox=" 0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
+              </svg>
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              <p class="mb-0"> No character-level OCR data detected. Font optimization features will be disabled. <a href="#" class="alert-link">Learn more.</a></p>
+            </div>
+            <div id="charInfoError" class="alert alert-dismissible alert-danger d-flex align-items-center show fade" style="display:none !important">
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2"" viewBox=" 0 0 16 16">
+                <path
+                  d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z" />
+                <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z" />
+              </svg>
+              <div class="mb-0"> No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="#" class="alert-link">Learn more.</a></div>
+            </div>
+
+          </div>
+          <div class="collapse" id="nav-view" role="tabpanel" aria-labelledby="nav-view-tab" data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+              <div class="col col-4">
+
+
+                <label for="displayMode">Display Mode</label>
+
+                <select id="displayMode" class="form-control" size="1">
+                  <option selected value="proof" selected>Proofreading Mode (Image + Colored Text)</option>
+                  <option value="invis">OCR Mode (Image + Invisible Text)</option>
+                  <option value="ebook">Ebook Mode (No Image + Black Text)</option>
+                </select>
+                <label for="zoomInput">Max Width</label>
+                <div class="input-group">
+                  <button class="btn btn-secondary" id="zoomMinus">-</button>
+                  <input type="text" id="zoomInput" size="1" value="1000">
+                  <button class="btn btn-secondary" id="zoomPlus">+</button>
+                </div>
+
+
+
+              </div>
+              <div class="col col-3">
+                <label for="displayFont">Font (Default)</label>
+                <select id="displayFont" class="form-select" size="1">
+                  <option value="Open Sans">Open Sans</option>
+                  <option selected value="Libre Baskerville">Libre Baskerville</option>
+
+                </select>
+              </div>
+
+              <div class="col col-2">
+
+
+                <label for="optimizeFont">Optimize Font</label>
+                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Automatically adjusts font metrics to better match the scanned text." data-bs-placement="right">
+                  <object class="help-icon" data="/assets/img/question-circle-fill.svg" width="18" height="18"></object>
+                </a>
+
+                <div class="form-check form-switch form-switch-lg">
+                  <input type="checkbox" id="optimizeFont" class="form-check-input" disabled>
+                </div>
+
+              </div>
+              <div class="col col-3">
+                <label for="displayFont">Confidence Thresholds</label> <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
+                  data-bs-original-title="Determines which words are printed as green/yellow/red in proofreading mode.  Only used for Tesseract HOCR data." data-bs-placement="right">
+                  <object class="help-icon" data="/assets/img/question-circle-fill.svg" width="18" height="18"></object>
+                </a>
+
+                <div class="mb-2 row">
+                  <label for="staticEmail" class="col-sm-2 col-form-label">High</label>
+                  <div class="col col-4">
+                    <input class="form-control" type="text" id="confThreshHigh" name="pageNum" size="3" disabled>
+                  </div>
+                </div>
+                <div class="mb-2 row">
+                  <label for="inputPassword" class="col-sm-2 col-form-label">Med</label>
+                  <div class="col col-4">
+                    <input class="form-control" type="text" id="confThreshMed" name="pageNum" size="3" disabled>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="collapse" id="nav-settings" role="tabpanel" aria-labelledby="nav-settings-tab" data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+              <div class="col col-3">
+                <div class="form-check form-switch">
+                  <label><input class="form-check-input" type="checkbox" id="autoRotateCheckbox" checked> Auto-Rotate Image</label><br>
+                  <label><input class="form-check-input" type="checkbox" id="autoMarginCheckbox"> Auto-Standardize Left Margin</label><br>
+                  <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show Margin</label>
+
+                </div>
+
+              </div>
+              <div class="col col-3">
+                <div class="form-group">
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#adjustMargin" style="min-width:100%;text-align:left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-align-center" viewBox="0 0 16 16">
+                      <path d="M8 1a.5.5 0 0 1 .5.5V6h-1V1.5A.5.5 0 0 1 8 1zm0 14a.5.5 0 0 1-.5-.5V10h1v4.5a.5.5 0 0 1-.5.5zM2 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7z" />
+                    </svg> Adjust Margin</button>
+
+                </div>
+                <div class="collapse" id="adjustMargin">
+
+                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                    <input type="range" class="form-range" id="rangeLeftMargin" max="400" value="200">
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="collapse" id="nav-download" role="tabpanel" aria-labelledby="nav-download-tab" data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+              <div class="col col-3">
+                <label for="downloadFormat">Download Format:</label><a href="#" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Only HOCR files can be re-imported later for additional edits."
+                  data-bs-placement="right">
+                  <object class="help-icon" data="/assets/img/question-circle-fill.svg" width="18" height="18"></object>
+                </a>
+                <select id="downloadFormat" class="form-control" size="1">
+                  <option selected value="pdf">PDF</option>
+                  <option value="hocr">HOCR</option>
+                  <option value="text">Text</option>
+
+                </select>
+                <div style="padding-top:0.4rem;">
+
+                  <button type="button" id="save2" class="btn btn-info" disabled>Download</button>
+                </div>
+              </div>
+              <div class="col col-3">
+                <label>PDF Options:</label>
+                <div class="form-check form-switch">
+                  <label><input class="form-check-input" type="checkbox" id="binarizeCheckbox" checked> Binarize Images</label><br>
+                  <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page Size</label>
+                </div>
+
+                <div class="row">
+                  <div class="form-group">
+                    <button data-bs-toggle="collapse" id="pdfPagesLabel" data-bs-target="#collapsePages" type="button" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-journal-plus" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M8 5.5a.5.5 0 0 1 .5.5v1.5H10a.5.5 0 0 1 0 1H8.5V10a.5.5 0 0 1-1 0V8.5H6a.5.5 0 0 1 0-1h1.5V6a.5.5 0 0 1 .5-.5z" />
+                        <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z" />
+                        <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z" />
+                      </svg>
+                      <div id="pdfPagesLabel" style="display:inline"> Pages: All</div>
+                    </button>
+
+                  </div>
+                </div>
+                <div class="collapse" id="collapsePages">
+                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                    <div class="row" style="--bs-gutter-x:0">
+                      <div class="col-3">
+                        <input type="text" id="pdfPageMin" name="pageNum" size="2">
+                      </div>
+                      <div class="col-1"> to </div>
+
+                      <div class="col-3">
+                        <input type="text" id="pdfPageMax" name="pageNum" size="2">
+                      </div>
+
+                    </div>
+
+
+
+                  </div>
+                </div>
+
+
+              </div>
+            </div>
+            <div class="collapse" id="download-progress-collapse">
+              <div class="row">
+                <div class="col col-8">
+                  <div class="progress" style="margin-bottom: 0.2rem;">
+                    <div class="progress-bar bg-info" id="downloadProgress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+  </div>
+
+
+  <div class="container" style="padding-top:40px">
+
+    <div class="row">
+
+      <div class="col col-lg-8 text-center">
+        <div id="preview" class="row">
+
+          <div class="container">
+            <div class="col col-md-9">
+              <canvas id="c" style="border-style:solid;" width="450" height="600"></canvas>
+              <canvas id="d" style="display:none;"></canvas>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Do not delete -->
+        <div id="exTest" style="display:none;width:1ex;font-family:'Times New Roman';font-size:100px"></div>
+
+        <div class="row">
+        </div>
+        <br>
+      </div>
+
+
+    </div>
+  </div>
+
+
+
+</body>
+
+</html>
