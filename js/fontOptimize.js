@@ -14,6 +14,8 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
     let workingFont = opentype.parse(fontData, {lowMemory:false});
     let workingFontAux = opentype.parse(fontDataAux, {lowMemory:false});
 
+    workingFont.tables.gsub = null;
+
     let oGlyph = workingFont.charToGlyph("o").getMetrics();
     let xHeight = oGlyph.yMax - oGlyph.yMin;
 

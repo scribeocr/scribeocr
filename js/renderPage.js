@@ -1,7 +1,6 @@
 
-//import { pdfToImage } from './pdfUtils.js';
-import { getFontSize } from "./textUtils.js"
-
+import { getFontSize, calcWordWidth, calcWordMetrics } from "./textUtils.js"
+import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
 
 export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFont, lineMode = false, imgDims, canvasDims, angle, pdfMode, fontObj, leftAdjX){
 
@@ -389,7 +388,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
                     opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
                     opt.target.scaleX = 1;
 
-                    //this.boxWidth = this.boxWidth + widthDelta + wordMetrics[1];
                   }
 
                 }

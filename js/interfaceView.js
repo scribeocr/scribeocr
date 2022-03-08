@@ -4,6 +4,7 @@
 // (used for changing how page is displayed on canvas).
 
 import { loadFont } from "./fontUtils.js";
+import { renderPageQueue } from "../main.js"
 
 export async function changeDisplayFont(font){
   window.hocrAll[window.currentPage] = window.xmlDoc.documentElement.outerHTML;

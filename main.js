@@ -19,14 +19,14 @@ import { loadFontBrowser, loadFont, loadFontFamily } from "./js/fontUtils.js";
 import { getRandomInt, getRandomAlphanum, mean50, quantile, sleep, readBlob, readTextFile } from "./js/miscUtil.js";
 
 import { deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, toggleBoundingBoxesSelectedWords, changeWordFont, toggleSuperSelectedWords,
-  updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange } from "./js/interfaceEdit.js";
+  updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord } from "./js/interfaceEdit.js";
 import { changeDisplayFont, changeZoom, adjustMarginRange, adjustMarginRangeChange } from "./js/interfaceView.js";
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
 
 window.canvas = new fabric.Canvas('c');
-var ctx = canvas.getContext('2d');
+window.ctx = canvas.getContext('2d');
 
 // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
 canvas.overlayVpt = false;
@@ -56,11 +56,10 @@ var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 })
 
 
-//document.getElementById("displayMode").selectedIndex = 0;
-//document.getElementById('zoomInput').value = 1000;
-
 window.globalFont = "Libre Baskerville";
 window.currentPage = 0;
+
+
 
 var parser = new DOMParser();
 
@@ -114,7 +113,7 @@ document.getElementById('addWord').addEventListener('click', addWordClick);
 document.getElementById('reset').addEventListener('click', clearFiles);
 
 document.getElementById('zoomMinus').addEventListener('click', () => {changeZoom('minus')});
-document.getElementById('zoomInput').addEventListener('click', () => {changeZoom(event.target.value)});
+document.getElementById('zoomInput').addEventListener('change', () => {changeZoom(event.target.value)});
 document.getElementById('zoomPlus').addEventListener('click', () => {changeZoom('plus')});
 
 document.getElementById('displayFont').addEventListener('click', () => {changeDisplayFont(event.target.value)});
@@ -235,18 +234,18 @@ function addWordClick(){
     canvas.__eventListeners = {}
     isDown = false;
 
-    fillColorHex = "#00ff7b";
+    let fillColorHex = "#00ff7b";
 
     let opacity_arg, fill_arg;
     if(document.getElementById('displayMode').value == "invis"){
-      opacity_arg = 0
-      fill_arg = "black"
+      opacity_arg = 0;
+      fill_arg = "black";
     } else if(document.getElementById('displayMode').value == "ebook") {
-      opacity_arg = 1
-      fill_arg = "black"
+      opacity_arg = 1;
+      fill_arg = "black";
     } else {
-      opacity_arg = 1
-      fill_arg = fillColorHex
+      opacity_arg = 1;
+      fill_arg = fillColorHex;
     }
 
     let lines = xmlDoc.getElementsByClassName("ocr_line");
@@ -331,6 +330,7 @@ function addWordClick(){
   if(lineChosen >= 0){
     let wordChosen = -1;
     let wordChosenID;
+    let wordChosenXml;
     let words = lines[lineChosen].getElementsByClassName("ocrx_word");
 
     for (let i = 0; i < words.length; i++) {
@@ -418,8 +418,8 @@ function addWordClick(){
       sizeStr = [letterHeight,ascHeight,descHeight].join(';');
 
       // Check if these stats are significantly different from the box the user specified
-      letterHeightFloat = letterHeight.match(/[\d\.\-]+/);
-      descHeightFloat = descHeight.match(/[\d\.\-]+/);
+      let letterHeightFloat = letterHeight.match(/[\d\.\-]+/);
+      let descHeightFloat = descHeight.match(/[\d\.\-]+/);
       letterHeightFloat = letterHeightFloat != null ? parseFloat(letterHeightFloat[0]) : 0;
       descHeightFloat = descHeightFloat != null ? parseFloat(descHeightFloat[0]) : 0;
 
@@ -460,6 +460,7 @@ function addWordClick(){
   }
 
     // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
+    let angleAdjX = 0;
     let angleAdjY = 0;
     if(autoRotateCheckbox.checked && Math.abs(window.pageMetricsObj["angleAll"][window.currentPage] ?? 0) > 0.05){
       angleAdjX = Math.sin(window.pageMetricsObj["angleAll"][window.currentPage] * (Math.PI / 180)) * (lineBoxChosen[3] + baselineChosen[1]);
@@ -474,18 +475,18 @@ function addWordClick(){
        letterHeight = parseFloat(letterHeight[0]);
        ascHeight =  parseFloat(ascHeight[0]);
        descHeight = parseFloat(descHeight[0]);
-       xHeight = letterHeight - ascHeight - descHeight;
-       fontSize = getFontSize(window.globalFont, xHeight, "o");
+       let xHeight = letterHeight - ascHeight - descHeight;
+       fontSize = getFontSize(window.globalFont, xHeight, "o", ctx);
      } else if(letterHeight != null){
        letterHeight = parseFloat(letterHeight[0]);
        descHeight = descHeight != null ? parseFloat(descHeight[0]) : 0;
-       fontSize = getFontSize(window.globalFont, letterHeight - descHeight, "A");
+       fontSize = getFontSize(window.globalFont, letterHeight - descHeight, "A", ctx);
      }
 
-    ctx.font = 1000 + 'px ' + font;
+    ctx.font = 1000 + 'px ' + window.globalFont;
     const oMetrics = ctx.measureText("o");
     const jMetrics = ctx.measureText("gjpqy");
-    ctx.font = fontSize + 'px ' + font;
+    ctx.font = fontSize + 'px ' + window.globalFont;
 
     // The function fontBoundingBoxDescent currently is not enabled by default in Firefox.
     // Can return to this simpler code if that changes.
@@ -523,7 +524,7 @@ function addWordClick(){
     textbox.on('editing:exited', function() {
       if(this.hasStateChanged){
 
-        const wordWidth = calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle, ctx);
+        const wordWidth = calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
         if(this.text.length > 1){
           const kerning = (this.boxWidth - wordWidth) / (this.text.length - 1);
           this.charSpacing = kerning * 1000 / this.fontSize;
@@ -549,7 +550,7 @@ function addWordClick(){
     // inspect action and check if the value is what you are looking for
       if(opt.action == "scaleX"){
         const textboxWidth = opt.target.calcTextWidth()
-        const wordMetrics = calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle, ctx);
+        const wordMetrics = calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
         const widthCalc = (textboxWidth - wordMetrics[1]) * opt.target.scaleX;
 
         let rightNow = opt.target.left + widthCalc;
@@ -838,7 +839,7 @@ async function recognize(){
 }
 
 // Function that handles page-level info for rendering to canvas and pdf
-async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null){
+export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null){
 
   if(window.hocrAll.length == 0 || typeof(window.hocrAll[n]) != "string" || imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || pdfMode && (typeof(pdfDoc) == "undefined")){
     return;
@@ -907,7 +908,7 @@ async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = fa
 
   }
 
-  let leftAdjX = 0;
+  leftAdjX = 0;
   if(autoMarginCheckbox.checked  && leftGlobal != null){
 
     // Adjust page to match global margin unless it would require large transformation (likely error)
