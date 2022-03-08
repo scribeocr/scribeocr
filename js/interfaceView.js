@@ -3,8 +3,8 @@
 // Functions called by the buttons in the "View" and "Layout" tabs
 // (used for changing how page is displayed on canvas).
 
-import { loadFont } from "./fontUtils.js";
-import { renderPageQueue } from "../main.js"
+import { loadFont, loadFontFamily } from "./fontUtils.js";
+import { renderPageQueue, optimizeFont2 } from "../main.js"
 
 export async function changeDisplayFont(font){
   window.hocrAll[window.currentPage] = window.xmlDoc.documentElement.outerHTML;
@@ -14,7 +14,7 @@ export async function changeDisplayFont(font){
     renderPageQueue(window.currentPage, 'screen', false);
   } else {
     console.log("Loading new font");
-    await loadFontFamily(font, fontMetricsObj);
+    await loadFontFamily(font, window.fontMetricsObj);
     globalFont = font;
     if(optimizeMode){
       await optimizeFont2();

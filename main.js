@@ -71,8 +71,8 @@ var pdfDoc;
 var imageAll = [];
 var imageMode, pdfMode;
 
-loadFontFamily("Open Sans", fontMetricsObj);
-loadFontFamily("Libre Baskerville", fontMetricsObj);
+loadFontFamily("Open Sans", window.fontMetricsObj);
+loadFontFamily("Libre Baskerville", window.fontMetricsObj);
 
 var fs = new Filer.FileSystem()
 fs.readFileSync = fs.readFile
@@ -720,7 +720,7 @@ async function recognize(){
        if(resumeMode){
           let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
           let contentStr = fontMetricsStr.match(/(?<=content\=[\"\'])[\s\S]+?(?=[\"\']\/?\>)/i)[0].replace(/&quot;/g, '"');
-          fontMetricsObj = JSON.parse(contentStr);
+          window.fontMetricsObj = JSON.parse(contentStr);
 
        }
 
@@ -798,7 +798,7 @@ async function recognize(){
           if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
             importProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
             if(loadCountHOCR == valueMax){
-              fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+              window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
               calculateOverallPageMetrics();
             }
           }
@@ -1066,7 +1066,7 @@ async function optimizeFontClick(value){
   if(value){
     await optimizeFont2();
   } else {
-    await loadFontFamily(window.globalFont, fontMetricsObj);
+    await loadFontFamily(window.globalFont, window.fontMetricsObj);
 
   }
   renderPageQueue(window.currentPage);
@@ -1171,7 +1171,7 @@ async function renderPDF(){
 // TODO: Rework storage of optimized vs. non-optimized fonts to be more organized
 var fontDataOptimized, fontDataOptimizedItalic;
 
-async function optimizeFont2(){
+export async function optimizeFont2(){
 
 
   fontObj[window.globalFont]["normal"].tables.gsub = null;
@@ -1179,7 +1179,7 @@ async function optimizeFont2(){
   // Quick fix due to bug in pdfkit (see note in renderPDF function)
   fontObj[window.globalFont]["normal"].tables.name.postScriptName["en"] = fontObj[window.globalFont]["normal"].tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
-  let fontArr = await optimizeFont(fontObj[window.globalFont]["normal"], fontObj[window.globalFont]["italic"], fontMetricsObj);
+  let fontArr = await optimizeFont(fontObj[window.globalFont]["normal"], fontObj[window.globalFont]["italic"], window.fontMetricsObj);
 
   fontDataOptimized = fontArr[0].toArrayBuffer();
   await loadFont(window.globalFont, fontDataOptimized, true,true,true);
@@ -1213,7 +1213,7 @@ async function optimizeFont2(){
 
 var myWorker = new Worker('js/convertPage.js');
 
-var fontMetricsObj = new Object;
+window.fontMetricsObj = new Object;
 window.pageMetricsObj = new Object;
 var fontMetricObjsMessage = new Object;
 
@@ -1243,7 +1243,7 @@ myWorker.onmessage = function(e) {
   if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
     importProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
     if(loadCountHOCR == valueMax){
-      fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+      window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
       calculateOverallPageMetrics();
     }
   }
@@ -1315,7 +1315,7 @@ async function handleDownload(){
   if(download_type == "pdf"){
     await renderPDF();
   } else if(download_type == "hocr"){
-    renderHOCR(window.hocrAll, fontMetricsObj)
+    renderHOCR(window.hocrAll, window.fontMetricsObj)
   } else if(download_type == "text"){
     renderText(window.hocrAll)
   }
