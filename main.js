@@ -11,7 +11,7 @@ import { renderHOCR } from './js/exportRenderHOCR.js';
 
 import { renderPage } from './js/renderPage.js';
 
-import { getFontSize, calcWordWidth, calcWordMetrics } from "/js/textUtils.js"
+import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 
 import { optimizeFont, calculateOverallFontMetrics, createSmallCapsFont } from "./js/fontOptimize.js";
 import { loadFontBrowser, loadFont, loadFontFamily } from "./js/fontUtils.js";
