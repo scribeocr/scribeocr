@@ -90,7 +90,7 @@
     <div class="container">
       <div class="container-fluid" id="user-controls">
         <div class="row nav-row">
-          <div class="col col-4">
+          <div class="col col-5">
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
 
               <button class="nav-link" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import" type="button" role="tab" aria-controls="nav-import">Import</button>
@@ -99,6 +99,8 @@
 
               <button class="nav-link" id="nav-settings-tab" data-bs-toggle="collapse" data-bs-target="#nav-settings" type="button" role="tab" aria-controls="nav-settings">Layout</button>
               <button class="nav-link" id="nav-download-tab" data-bs-toggle="collapse" data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</button>
+              <button class="nav-link" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about" type="button" role="tab" aria-controls="nav-about">About</button>
+
             </div>
           </div>
           <div class="col col-1">
@@ -458,6 +460,17 @@ For both OCR and image files, individual files for each page or a single file wi
               </div>
             </div>
 
+          </div>
+          <div class="collapse" id="nav-about" role="tabpanel" aria-labelledby="nav-about-tab" data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+              <div class="col col-3">
+                <a href="https://github.com/Balearica/scribeocr" target="_blank" class="text-decoration-none" style="color:#287bb5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-git" viewBox="0 0 16 16">
+                    <path d="M15.698 7.287 8.712.302a1.03 1.03 0 0 0-1.457 0l-1.45 1.45 1.84 1.84a1.223 1.223 0 0 1 1.55 1.56l1.773 1.774a1.224 1.224 0 0 1 1.267 2.025 1.226 1.226 0 0 1-2.002-1.334L8.58 5.963v4.353a1.226 1.226 0 1 1-1.008-.036V5.887a1.226 1.226 0 0 1-.666-1.608L5.093 2.465l-4.79 4.79a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.031 1.031 0 0 0 0-1.457"/>
+                  </svg> View Code
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
