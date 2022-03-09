@@ -132,7 +132,7 @@ document.getElementById('rangeLeftMargin').addEventListener('mouseup', () => {ad
 document.getElementById('save2').addEventListener('click', handleDownload);
 document.getElementById('pdfPagesLabel').addEventListener('click', updatePdfPagesLabel);
 
-document.getElementById('displayMode').addEventListener('change', () => {selectDisplayMode(event.target.value)});
+document.getElementById('displayMode').addEventListener('change', () => {selectDisplayMode(event.target.value, backgroundOpts)});
 
 
 document.getElementById('pdfPageMin').addEventListener('keyup', function(event){
@@ -591,6 +591,7 @@ function clearFiles(){
   document.getElementById('pageNum').value = "";
   window.currentPage = 0;
   upload.value = "";
+  document.getElementById('optimizeFont').checked = false;
   document.getElementById('optimizeFont').disabled = true;
   document.getElementById('save2').disabled = true;
   document.getElementById('confThreshHigh').disabled = true;
@@ -838,6 +839,7 @@ async function recognize(){
 
 }
 
+var backgroundOpts = new Object;
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null){
 
@@ -883,8 +885,6 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     window.doc.addPage({size:[canvasDims[1],canvasDims[0]],
     margins: 0});
   }
-
-  let backgroundOpts = new Object;
 
   if(autoRotateCheckbox.checked){
     backgroundOpts.angle = window.pageMetricsObj["angleAll"][n] * -1 ?? 0;

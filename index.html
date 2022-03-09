@@ -86,7 +86,7 @@
 
 <body>
 
-  <div class="navbar sticky-top navbar-light bg-light" style="padding-bottom:0px">
+  <div id="navBar" class="navbar sticky-top navbar-light bg-light" style="padding-bottom:0px;width:100%">
     <div class="container">
       <div class="container-fluid" id="user-controls">
         <div class="row nav-row">
@@ -123,8 +123,8 @@
               <div class="col col-2">
                 <select id="wordFont" class="form-select form-select-sm" size="1" onchange="changeWordFont(this.value)">
                   <option selected value="Default">Default</option>
-                  <option value="Open Sans">Open Sans</option>
-                  <option value="Libre Baskerville">Libre Baskerville</option>
+                  <option value="Open Sans">Sans (Open Sans)</option>
+                  <option value="Libre Baskerville">Serif (Libre Baskerville)</option>
                 </select>
                 <div class="input-group" style="padding-top:0.4rem;">
                   <button class="btn btn-secondary btn-sm" id="fontMinus">-</button>
@@ -316,8 +316,8 @@ For both OCR and image files, individual files for each page or a single file wi
               <div class="col col-3">
                 <label for="displayFont">Font (Default)</label>
                 <select id="displayFont" class="form-select" size="1">
-                  <option value="Open Sans">Open Sans</option>
-                  <option selected value="Libre Baskerville">Libre Baskerville</option>
+                  <option value="Open Sans">Sans (Open Sans)</option>
+                  <option selected value="Libre Baskerville">Serif (Libre Baskerville)</option>
 
                 </select>
               </div>
@@ -477,7 +477,7 @@ For both OCR and image files, individual files for each page or a single file wi
 
           <div class="container">
             <div class="col col-md-9">
-              <canvas id="c" style="border-style:solid;" width="450" height="600"></canvas>
+              <canvas id="c" style="border-style:solid" width="450" height="600"></canvas>
               <canvas id="d" style="display:none;"></canvas>
             </div>
 

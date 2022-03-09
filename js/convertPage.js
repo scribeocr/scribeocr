@@ -47,9 +47,13 @@ function convertPage(hocrString){
   var lineLeft = new Array;
   var lineTop = new Array;
 
-  let pageElement = hocrString.match(/<div class=[\"\']ocr_page[\"\'][^\>]+/i)[0];
-  let pageDims = pageElement.match(/(?<=bbox \d+ \d+ )(\d+) (\d+)/i);
-  pageDims = [parseInt(pageDims[2]),parseInt(pageDims[1])];
+  let pageDims = [null,null];
+  let pageElement = hocrString.match(/<div class=[\"\']ocr_page[\"\'][^\>]+/i);
+  if(pageElement != null){
+    pageElement = pageElement[0];
+    pageDims = pageElement.match(/(?<=bbox \d+ \d+ )(\d+) (\d+)/i);
+    pageDims = [parseInt(pageDims[2]),parseInt(pageDims[1])];
+  }
 
   // Test whether character-level data (class="ocrx_cinfo" in Tesseract) is present.
   const charMode = /ocrx_cinfo/.test(hocrString) ? true : false;
@@ -91,12 +95,19 @@ function convertPage(hocrString){
   function convertLine(match){
     let titleStrLine = match.match(/(?<=title\=[\'\"])[^\'\"]+/)
     if(titleStrLine == null){
-      return("")
+      return("");
     } else {
       titleStrLine = titleStrLine[0];
     }
     let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x)})
-    let baseline = [...titleStrLine.matchAll(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/g)][0].slice(1,5).map(function (x) {return parseFloat(x)})
+
+    // The baseline can be missing in the case of vertical text (textangle present instead)
+    let baseline = [...titleStrLine.matchAll(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/g)][0];
+    if(baseline == null){
+      return("");
+    } else {
+      baseline = baseline.slice(1,5).map(function (x) {return parseFloat(x)});
+    }
     // Only calculate baselines from lines 200px+.
     // This avoids short "lines" (e.g. page numbers) that often report wild values.
     if((linebox[2] - linebox[0]) >= 200){
@@ -192,13 +203,13 @@ function convertPage(hocrString){
       text = text.trim()
 
       if(text == ""){
-        return("")
+        return("");
       } else {
         //let wordStr = match.match(/<span class\=[\"\']ocrx_word[^\>]+\>/i)[0];
         let wordStr = match.match(wordElementRegex)[0];
         //wordStr = wordStr.replace(/(?<=title\=[\"\'])[^\"\']+/, "$&" + ";cuts " + cuts.join(' '));
         //wordStr = wordStr.replace(wordTitleRegex, "$&" + ";cuts " + cuts.join(' '));
-        return(wordStr + text + "</span>")
+        return(wordStr + text + "</span>");
       }
     }
 

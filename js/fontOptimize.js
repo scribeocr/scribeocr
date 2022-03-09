@@ -14,8 +14,6 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
     let workingFont = opentype.parse(fontData, {lowMemory:false});
     let workingFontAux = opentype.parse(fontDataAux, {lowMemory:false});
 
-    workingFont.tables.gsub = null;
-
     let oGlyph = workingFont.charToGlyph("o").getMetrics();
     let xHeight = oGlyph.yMax - oGlyph.yMin;
 
@@ -26,6 +24,8 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
     const singleStemClassA = ["f","i","l","t","I"];
     const singleStemClassB = ["f","i","j","l","t","I","J","T"];
 
+    //const workingFontRightBearingMedian = quantile(lower.map(x => workingFont.charToGlyph(x).getMetrics().rightSideBearing), 0.5);
+    //console.log("workingFontRightBearingMedian: " + workingFontRightBearingMedian);
 
     // Adjust character width and advance
     for (const [key, value] of Object.entries(fontMetricsObj["charWidth"])) {
@@ -58,6 +58,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
         }
       }
+      //shiftX = shiftX + workingFontRightBearingMedian;
 
       // TODO: For simplicitly this assumes the visual center of the glyph is in the center of the bounding box.
       // This is not always true (for example, for "f" and "t" in Libre Baskerville).
@@ -216,7 +217,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
     let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
     let minKern = maxKern * -1;
 
-    for (const [key, value] of Object.entries(fontMetricsObj["pairKerning"])) {
+    for (const [key, value] of Object.entries(fontMetricsObj["pairKerningRaw"])) {
       let nameFirst = key.match(/\w+/)[0];
       let nameSecond = key.match(/\w+$/)[0];
 
@@ -285,6 +286,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
     fontMetricsObj["charWidth"] = new Object;
     fontMetricsObj["charHeight"] = new Object;
     fontMetricsObj["pairKerning"] = new Object;
+    fontMetricsObj["pairKerningRaw"] = new Object;
     fontMetricsObj["cutMedian"] = new Object;
 
     const pageN = fontMetricObjsMessage["widthObjAll"].length;
@@ -369,6 +371,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
 
    let kerningNorm;
    for (const [key, value] of Object.entries(kerningObj)) {
+     fontMetricsObj["pairKerningRaw"][key] = quantile(value, 0.5);
      //kerningNorm = Math.round((quantile(value, 0.5) - cutMedian[key.match(/\w+$/)]) * 1e5) / 1e5;
      kerningNorm = quantile(value, 0.5) - fontMetricsObj["cutMedian"][key.match(/\w+$/)];
      if(Math.abs(kerningNorm) > 0.02){
