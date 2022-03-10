@@ -76,14 +76,21 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           let box_width = box[2] - box[0];
           let box_height = box[3] - box[1];
 
-          let wordText, wordSup;
+          let wordText, wordSup, wordDropCap;
           if(/\<sup\>/i.test(word.innerHTML)){
             wordText = word.innerHTML.replace(/^\s*\<sup\>/i, "");
             wordText = wordText.replace(/\<\/sup\>\s*$/i, "");
             wordSup = true;
+            wordDropCap = false;
+          } else if(/\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word.innerHTML)){
+            wordText = word.innerHTML.replace(/^\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "");
+            wordText = wordText.replace(/\<\/span\>\s*$/i, "");
+            wordSup = false;
+            wordDropCap = true;
           } else {
             wordText = word.childNodes[0].nodeValue;
             wordSup = false;
+            wordDropCap = false;
           }
 
           let wordFontSize;
@@ -91,7 +98,10 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           if(fontSizeStr != null){
             wordFontSize = parseFloat(fontSizeStr[0]);
           } else if(wordSup){
-            wordFontSize = getFontSize(defaultFont, box_height, "A", ctx);
+            // All superscripts are assumed to be numbers for now
+            wordFontSize = getFontSize(defaultFont, box_height, "1", ctx);
+          } else if(wordDropCap){
+            wordFontSize = getFontSize(defaultFont, box_height, wordText.slice(0,1), ctx);
           } else {
             wordFontSize = fontSize;
           }
@@ -222,14 +232,30 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
             // TODO: Rotation is currently not applied to the background of the PDF, so a different left/top argument
             // is used temporarily for any mode with a backgound image included.
-            let left,top;
-            if(document.getElementById('displayMode').value == "ebook"){
-              left = box[0] - wordLeftBearing + angleAdjX + leftAdjX;
-              top = linebox[3] + baseline[1] + angleAdjY;
+            //let left,top;
+            // if(document.getElementById('displayMode').value == "ebook"){
+            //   left = box[0] - wordLeftBearing + angleAdjX + leftAdjX;
+            //   top = linebox[3] + baseline[1] + angleAdjY;
+            // } else {
+            //   left = box[0] - wordLeftBearing + leftAdjX;
+            //   top = linebox[3] + baseline[1];
+            // }
+
+            let top;
+            if(wordSup || wordDropCap){
+
+              let angleAdjYSup = Math.sin(angle * (Math.PI / 180)) * (box[0] - linebox[0]) * -1;
+
+              if(wordSup){
+                top = linebox[3] + baseline[1] + angleAdjY + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
+              } else {
+                top = box[3] + angleAdjY + angleAdjYSup;
+              }
             } else {
-              left = box[0] - wordLeftBearing + leftAdjX;
-              top = linebox[3] + baseline[1];
+               top = linebox[3] + baseline[1] + angleAdjY;
             }
+            let left = box[0] - wordLeftBearing + angleAdjX + leftAdjX;
+
 
             // Characters that go off the edge will cause an additional case to be made.
             // To avoid this, such characters are skipped.
@@ -304,11 +330,18 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
             let left = box[0] - wordLeftBearing + angleAdjX + leftAdjX;
             let top;
-            if(wordSup){
+            if(wordSup || wordDropCap){
 
               let angleAdjYSup = Math.sin(angle * (Math.PI / 180)) * (box[0] - linebox[0]) * -1;
 
-              top = linebox[3] + baseline[1] + fontDesc + angleAdjY + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
+              if(wordSup){
+                top = linebox[3] + baseline[1] + fontDesc + angleAdjY + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
+              } else {
+                fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
+                top = box[3] + fontDesc + angleAdjY + angleAdjYSup;
+              }
+
+
               //top = linebox[3] + baseline[1] + fontDesc + angleAdjY;
             } else {
               top = linebox[3] + baseline[1] + fontDesc + angleAdjY;
@@ -318,13 +351,15 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;
 
 
+
+
             let textbox = new fabric.IText(wordText, { left: left,
             //top: y,
             top: top,
             leftOrig:left,
             topOrig:top,
+            baselineAdj:0,
             wordSup:wordSup,
-
             originY: "bottom",
             fill: fill_arg,
             fill_proof: fillColorHex,
@@ -338,11 +373,37 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             //fontFamily: 'times',
             opacity: opacity_arg,
             charSpacing: kerning * 1000 / wordFontSize,
-            fontSize: wordFontSize});
+            fontSize: wordFontSize,
+            showTextBoxBorder: document.getElementById("showBoundingBoxes").checked});
+
+            let renderWordBoxes = false;
+            if(renderWordBoxes){
+              let rect = new fabric.Rect({ left: left,
+                top: top,
+                originY: "bottom",
+                width: box_width,
+                height: box_height,
+                stroke: '#287bb5',
+                fill: false,
+                opacity: 0.7 });
+              rect.hasControls = false;
+              rect.hoverCursor = false;
+              canvas.add(rect);
+            }
+
 
             textbox.on('editing:exited', function() {
               console.log("Event: editing:exited");
               if(this.hasStateChanged){
+                if(document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)){
+                  let textInt = this.text;
+                  textInt = textInt.replace(/(?<=^|[-–—])\'/, "‘");
+                  textInt = textInt.replace(/(?<=^|[-–—])\"/, "“");
+                  textInt = textInt.replace(/\'(?=$|[-–—])/, "’");
+                  textInt = textInt.replace(/\"(?=$|[-–—])/, "”");
+                  textInt = textInt.replace(/(?<=[a-z])\'(?=[a-z]$)/i, "’");
+                  this.text = textInt;
+                }
 
                 const wordWidth = calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
                 if(this.text.length > 1){
@@ -365,7 +426,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
               document.getElementById("wordFont").value = "Default";
               //document.getElementById("collapseRange").setAttribute("class", "collapse");
               bsCollapse.hide();
-              document.getElementById("rangeBaseline").value = 50;
+              document.getElementById("rangeBaseline").value = 100;
             });
             textbox.on('modified', (opt) => {
             // inspect action and check if the value is what you are looking for

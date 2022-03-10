@@ -50,6 +50,34 @@ fabric.IText.prototype.toObject = (function(toObject) {
   };
 })(fabric.IText.prototype.toObject);
 
+// Displaying bounding boxes is useful for cases where text is correct but word segmentation is wrong
+// https://stackoverflow.com/questions/51233082/draw-border-on-fabric-textbox-when-its-not-selected
+var originalRender = fabric.Textbox.prototype._render;
+fabric.IText.prototype._render = function(ctx) {
+  originalRender.call(this, ctx);
+  //Don't draw border if it is active(selected/ editing mode)
+  //if (this.selected) return;
+  if(this.showTextBoxBorder){
+    var w = this.width,
+      h = this.height,
+      x = -this.width / 2,
+      y = -this.height / 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y);
+    ctx.closePath();
+    var stroke = ctx.strokeStyle;
+    ctx.strokeStyle = this.textboxBorderColor;
+    ctx.stroke();
+    ctx.strokeStyle = stroke;
+  }
+}
+//fabric.IText.prototype.cacheProperties = fabric.IText.prototype.cacheProperties.concat('selected');
+
+
 var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
 var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -95,7 +123,7 @@ document.getElementById('uploader').addEventListener('change', recognize);
 
 document.getElementById('fontMinus').addEventListener('click', () => {changeWordFontSize('minus')});
 document.getElementById('fontPlus').addEventListener('click', () => {changeWordFontSize('plus')});
-document.getElementById('fontSize').addEventListener('click', () => {changeWordFontSize(event.target.value)});
+document.getElementById('fontSize').addEventListener('change', () => {changeWordFontSize(event.target.value)});
 
 document.getElementById('styleItalic').addEventListener('click', () => {toggleStyleSelectedWords('italic')});
 document.getElementById('styleSmallCaps').addEventListener('click', () => {toggleStyleSelectedWords('small-caps')});
@@ -125,6 +153,7 @@ document.getElementById('confThreshMed').addEventListener('change', () => {rende
 document.getElementById('autoRotateCheckbox').addEventListener('click', () => {renderPageQueue(window.currentPage, 'screen', false)});
 document.getElementById('autoMarginCheckbox').addEventListener('click', () => {renderPageQueue(window.currentPage, 'screen', false)});
 document.getElementById('showMarginCheckbox').addEventListener('click', () => {renderPageQueue(window.currentPage, 'screen', false)});
+document.getElementById('showBoundingBoxes').addEventListener('click', () => {renderPageQueue(window.currentPage, 'screen', false)});
 
 document.getElementById('rangeLeftMargin').addEventListener('input', () => {adjustMarginRange(event.target.value)});
 document.getElementById('rangeLeftMargin').addEventListener('mouseup', () => {adjustMarginRangeChange(event.target.value)});
@@ -503,6 +532,7 @@ function addWordClick(){
     top: top,
     leftOrig:rect.left,
     topOrig:top,
+    baselineAdj:0,
     wordSup:false,
 
     originY: "bottom",
@@ -523,7 +553,15 @@ function addWordClick(){
 
     textbox.on('editing:exited', function() {
       if(this.hasStateChanged){
-
+        if(document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)){
+          let textInt = this.text;
+          textInt = textInt.replace(/(?<=^|[-–—])\'/, "‘");
+          textInt = textInt.replace(/(?<=^|[-–—])\"/, "“");
+          textInt = textInt.replace(/\'(?=$|[-–—])/, "’");
+          textInt = textInt.replace(/\"(?=$|[-–—])/, "”");
+          textInt = textInt.replace(/(?<=[a-z])\'(?=[a-z]$)/i, "’");
+          this.text = textInt;
+        }
         const wordWidth = calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
         if(this.text.length > 1){
           const kerning = (this.boxWidth - wordWidth) / (this.text.length - 1);
@@ -543,7 +581,7 @@ function addWordClick(){
       document.getElementById("wordFont").value = "Default";
       //document.getElementById("collapseRange").setAttribute("class", "collapse");
       bsCollapse.hide();
-      document.getElementById("rangeBaseline").value = 50;
+      document.getElementById("rangeBaseline").value = 100;
     });
 
     textbox.on('modified', (opt) => {

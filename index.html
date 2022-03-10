@@ -39,7 +39,7 @@
     }
 
     .form-switch.form-switch-lg {
-      margin-bottom: 1.5rem;
+      margin-bottom: 0.85rem;
       /* JUST FOR STYLING PURPOSE */
     }
 
@@ -118,11 +118,12 @@
         <div class="tab-content" id="nav-tabContent">
           <div class="collapse" id="nav-edit" role="tabpanel" aria-labelledby="nav-edit-tab" data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
-              <div class="mb-1 row">
+              <!-- <div class="mb-1 row">
                 <label for="wordFont">Font (Word)</label>
-              </div>
+              </div> -->
 
               <div class="col col-2">
+                <label for="wordFont">Font (Word)</label>
                 <select id="wordFont" class="form-select form-select-sm" size="1" onchange="changeWordFont(this.value)">
                   <option selected value="Default">Default</option>
                   <option value="Open Sans">Sans (Open Sans)</option>
@@ -136,6 +137,7 @@
 
               </div>
               <div class="col col-1" style="padding-right:0.25rem;">
+                <label></label>
                 <div class="mb-2 row">
                   <div class="form-group">
                     <button type="button" id="styleItalic" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
@@ -165,7 +167,9 @@
 
               </div>
               <div class="col col-1" style="padding-left:0.25rem;">
+                  <label></label>
                 <div class="mb-2 row">
+
                   <div class="form-group">
                     <button type="button" id="styleSuper" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
 
@@ -185,7 +189,9 @@
 
               </div>
               <div class="col col-2">
+                  <label></label>
                 <div class="mb-2 row">
+
                   <div class="form-group">
                     <button type="button" id="editBoundingBox" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bounding-box-circles" viewBox="0 0 16 16">
@@ -207,7 +213,7 @@
                 <div class="collapse" id="collapseRange">
 
                   <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                    <input type="range" class="form-range" id="rangeBaseline">
+                    <input type="range" class="form-range" id="rangeBaseline" max="200" >
                   </div>
                 </div>
 
@@ -215,6 +221,7 @@
 
 
               <div class="col col-2">
+                  <label></label>
                 <div class="row mb-2">
 
                   <div class="form-group">
@@ -237,8 +244,19 @@
 
                 </div>
               </div>
+              <div class="col col-2">
+                <label for="smartQuotes" style="padding-left=0"></label>
+                <div class="row">
 
+
+                <div class="form-check form-switch">
+                  <label><input class="form-check-input" type="checkbox" id="smartQuotes" checked> Smart Quotes</label><br>
+
+                </div>
+              </div>
             </div>
+            </div>
+
           </div>
 
 
@@ -305,35 +323,34 @@ For both OCR and image files, individual files for each page or a single file wi
                   <option value="invis">OCR Mode (Image + Invisible Text)</option>
                   <option value="ebook">Ebook Mode (No Image + Black Text)</option>
                 </select>
-                <label for="zoomInput">Max Width</label>
-                <div class="input-group">
-                  <button class="btn btn-secondary" id="zoomMinus">-</button>
-                  <input type="text" id="zoomInput" size="1" value="1000">
-                  <button class="btn btn-secondary" id="zoomPlus">+</button>
-                </div>
-
-
-
-              </div>
-              <div class="col col-3">
                 <label for="displayFont">Font (Default)</label>
                 <select id="displayFont" class="form-select" size="1">
                   <option value="Open Sans">Sans (Open Sans)</option>
                   <option selected value="Libre Baskerville">Serif (Libre Baskerville)</option>
 
                 </select>
+
+
               </div>
-
               <div class="col col-2">
-
-
                 <label for="optimizeFont">Optimize Font</label>
                 <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Automatically adjusts font metrics to better match the scanned text." data-bs-placement="right">
                   <object class="help-icon" data="/assets/img/question-circle-fill.svg" width="18" height="18"></object>
                 </a>
-
                 <div class="form-check form-switch form-switch-lg">
                   <input type="checkbox" id="optimizeFont" class="form-check-input" disabled>
+                </div>
+
+
+
+              </div>
+
+              <div class="col col-2">
+                <label for="zoomInput">Max Width</label>
+                <div class="input-group">
+                  <button class="btn btn-secondary" id="zoomMinus">-</button>
+                  <input type="text" id="zoomInput" size="1" value="1000">
+                  <button class="btn btn-secondary" id="zoomPlus">+</button>
                 </div>
 
               </div>
@@ -364,12 +381,8 @@ For both OCR and image files, individual files for each page or a single file wi
                 <div class="form-check form-switch">
                   <label><input class="form-check-input" type="checkbox" id="autoRotateCheckbox" checked> Auto-Rotate Image</label><br>
                   <label><input class="form-check-input" type="checkbox" id="autoMarginCheckbox"> Auto-Standardize Left Margin</label><br>
-                  <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show Margin</label>
 
                 </div>
-
-              </div>
-              <div class="col col-3">
                 <div class="form-group">
                   <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#adjustMargin" style="min-width:100%;text-align:left">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-align-center" viewBox="0 0 16 16">
@@ -384,6 +397,13 @@ For both OCR and image files, individual files for each page or a single file wi
                   </div>
                 </div>
 
+              </div>
+              <div class="col col-2">
+                <!-- <label for="zoomInput">Max Width</label> -->
+                <div class="form-check form-switch">
+                  <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show Margin</label><br>
+                  <label><input class="form-check-input" type="checkbox" id="showBoundingBoxes"> Show Bounding Boxes</label>
+                </div>
               </div>
 
             </div>
@@ -464,11 +484,21 @@ For both OCR and image files, individual files for each page or a single file wi
           <div class="collapse" id="nav-about" role="tabpanel" aria-labelledby="nav-about-tab" data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
               <div class="col col-3">
-                <a href="https://github.com/Balearica/scribeocr" target="_blank" class="text-decoration-none" style="color:#287bb5">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-git" viewBox="0 0 16 16">
-                    <path d="M15.698 7.287 8.712.302a1.03 1.03 0 0 0-1.457 0l-1.45 1.45 1.84 1.84a1.223 1.223 0 0 1 1.55 1.56l1.773 1.774a1.224 1.224 0 0 1 1.267 2.025 1.226 1.226 0 0 1-2.002-1.334L8.58 5.963v4.353a1.226 1.226 0 1 1-1.008-.036V5.887a1.226 1.226 0 0 1-.666-1.608L5.093 2.465l-4.79 4.79a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.031 1.031 0 0 0 0-1.457"/>
-                  </svg> View Code
-                </a>
+                <div class="row">
+                  <a href="https://github.com/Balearica/scribeocr" target="_blank" class="text-decoration-none" style="color:#287bb5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-git" viewBox="0 0 16 16">
+                      <path d="M15.698 7.287 8.712.302a1.03 1.03 0 0 0-1.457 0l-1.45 1.45 1.84 1.84a1.223 1.223 0 0 1 1.55 1.56l1.773 1.774a1.224 1.224 0 0 1 1.267 2.025 1.226 1.226 0 0 1-2.002-1.334L8.58 5.963v4.353a1.226 1.226 0 1 1-1.008-.036V5.887a1.226 1.226 0 0 1-.666-1.608L5.093 2.465l-4.79 4.79a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.031 1.031 0 0 0 0-1.457"/>
+                    </svg> View Code
+                  </a>
+                </div>
+                <div class="row">
+                  <a href="https://docs.scribeocr.com" target="_blank" class="text-decoration-none" style="color:#287bb5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-book-fill" viewBox="0 0 16 16">
+                      <path d="M8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                    </svg> View Documentation
+                  </a>
+                </div>
+
               </div>
             </div>
           </div>

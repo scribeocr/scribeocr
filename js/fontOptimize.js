@@ -70,6 +70,9 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       // This is because the bounding box for these letters is almost entirely established by the stylistic flourish.
       if(singleStemClassA.includes(charLit)){
         scaleXFactor = Math.max(Math.min(scaleXFactor, 1.1), 0.9);
+      // Some fonts have significantly wider double quotes compared to the default style, so more variation is allowed
+      } else if(["“", "”"].includes(charLit)){
+        scaleXFactor = Math.max(Math.min(scaleXFactor, 1.5), 0.7);
       } else {
         scaleXFactor = Math.max(Math.min(scaleXFactor, 1.3), 0.7);
       }
@@ -213,7 +216,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
     let fontKerningObj = new Object;
 
-    // Kerning is limited to +/-10% of the em size.  Anything beyond this is likely not correct.
+    // Kerning is limited to +/-10% of the em size for most pairs.  Anything beyond this is likely not correct.
     let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
     let minKern = maxKern * -1;
 
@@ -227,7 +230,15 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
       let fontKern = Math.round(value * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
 
-      fontKern = Math.min(Math.max(fontKern, minKern), maxKern);
+      // For smart quotes, the maximum amount of kerning space allowed is doubled.
+      // Unlike letters, some text will legitimately have a large space before/after curly quotes.
+      // TODO: Handle quotes in a more systematic way (setting advance for quotes, or kerning for all letters,
+      // rather than relying on each individual pairing.)
+      if(["8220","8216"].includes(nameFirst) || ["8221","8217"].includes(nameSecond)){
+        fontKern = Math.min(Math.max(fontKern, minKern), maxKern * 2);
+      } else {
+        fontKern = Math.min(Math.max(fontKern, minKern), maxKern);
+      }
 
       fontKerningObj[indexFirst+","+indexSecond] = fontKern;
     }

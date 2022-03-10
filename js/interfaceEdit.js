@@ -261,6 +261,7 @@ export function adjustBaseline(){
   // For some reason the text jumps around the page when >1 word is selected
   window.canvas.setActiveObject(selectedObjects[0]);
 
+  document.getElementById("rangeBaseline").value = 100 + selectedObjects[0].baselineAdj;
   window.bsCollapse.show();
 
   const lineI = selectedObjects[0].line;
@@ -277,7 +278,7 @@ export function adjustBaseline(){
 export function adjustBaselineRange(value){
   for(let i=0;i<objectsLine.length;i++){
     const objectI = objectsLine[i];
-    objectI.set('top', objectI.topOrig + (parseInt(value) - 50));
+    objectI.set('top', objectI.topOrig + (parseInt(value) - 100));
   }
 
   window.canvas.requestRenderAll();
@@ -286,19 +287,23 @@ export function adjustBaselineRange(value){
 
 export function adjustBaselineRangeChange(value){
   console.log("Mouseup");
-  value = parseInt(value) - 50;
+
+  value = parseInt(value) - 100;
+  let valueChange = value - objectsLine[0].baselineAdj;
 
   for(let i=0;i<objectsLine.length;i++){
     const wordI = objectsLine[i];
     const wordIDI = wordI.wordID;
+
+    wordI.set('baselineAdj', value);
     let it = xmlDoc.evaluate("//span[@id='" + wordIDI + "']", xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
     if(it.singleNodeValue != null){
       let titleStr = it.singleNodeValue.getAttribute("title");
       let wordBox = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
       titleStr = titleStr.replace(/bbox[^;]+/, "");
 
-      wordBox[1] = wordBox[1] + value;
-      wordBox[3] = wordBox[3] + value;
+      wordBox[1] = wordBox[1] + valueChange;
+      wordBox[3] = wordBox[3] + valueChange;
 
       titleStr = "bbox " + wordBox.join(" ") + ";" + titleStr;
 
@@ -312,8 +317,8 @@ export function adjustBaselineRangeChange(value){
 
   let lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
 
-  lineBox[1] = lineBox[1] + value;
-  lineBox[3] = lineBox[3] + value;
+  lineBox[1] = lineBox[1] + valueChange;
+  lineBox[3] = lineBox[3] + valueChange;
 
   titleStrLine = "bbox " + lineBox.join(" ") + ";" + titleStrLine;
 

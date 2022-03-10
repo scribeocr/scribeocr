@@ -278,6 +278,7 @@ function convertPage(hocrString){
 }
 
 
+const abbyyDropCapRegex = new RegExp(/\<par dropCapCharsCount\=[\'\"](\d*)/, "i");
 const abbyyLineBoxRegex = new RegExp(/\<line baseline\=[\'\"](\d*)[\'\"] l\=[\'\"](\d*)[\'\"] t\=[\'\"](\d*)[\'\"] r\=[\'\"](\d*)[\'\"] b\=[\'\"](\d*)[\'\"]\>/, "i");
 const abbyySplitRegex = new RegExp(/(?:\<charParams[^\>]*\>\s*\<\/charParams\>)|(?:\<\/formatting\>\s*(?=\<formatting))/, "ig");
 
@@ -321,6 +322,12 @@ function convertPageAbbyy(xmlPage, pageNum){
     let baselineHeightArr = new Array();
     let baselineSlopeArr = new Array();
     let baselineFirst = new Array();
+
+    let dropCap = false;
+    let dropCapMatch = xmlLine.match(abbyyDropCapRegex);
+    if(dropCapMatch != null && parseInt(dropCapMatch[1]) > 0){
+      dropCap = true;
+    }
 
     let lineBoxArr = xmlLine.match(abbyyLineBoxRegex);
     if(lineBoxArr == null) {return("")};
@@ -385,7 +392,9 @@ function convertPageAbbyy(xmlPage, pageNum){
 
 
       if(typeof(letterArr[0][1]) != "undefined"){
-        if(/superscript\=[\'\"](1|true)/i.test(letterArr[0][1])){
+        if(dropCap && i==0){
+          styleArr[i] = "dropcap";
+        } else if(/superscript\=[\'\"](1|true)/i.test(letterArr[0][1])){
           styleArr[i] = "sup";
         } else if(/italic\=[\'\"](1|true)/i.test(letterArr[0][1])){
           styleArr[i] = "italic";
@@ -396,8 +405,20 @@ function convertPageAbbyy(xmlPage, pageNum){
         }
       } else {
         if(i > 0){
-          styleArr[i] = styleArr[i-1];
+          if(styleArr[i-1] == "dropcap"){
+            styleArr[i] = "normal";
+          } else {
+            styleArr[i] = styleArr[i-1];
+          }
         }
+      }
+
+      // Abbyy will sometimes misidentify capital letters immediately following drop caps as small caps,
+      // when they are only small in relation to the drop cap (rather than the main text).
+      let dropCapFix = false;
+      if(dropCap && i==1 && styleArr[i] == "small-caps"){
+        styleArr[i] = "normal";
+        dropCapFix = true;
       }
 
 
@@ -419,6 +440,10 @@ function convertPageAbbyy(xmlPage, pageNum){
           wordSusp[i] = true;
         }
 
+        if(dropCapFix){
+          letterArr[j][7] = letterArr[j][7].toUpperCase();
+        }
+
          let contentStrLetter = letterArr[j][7];
          text[i] = text[i] + contentStrLetter;
 
@@ -430,7 +455,7 @@ function convertPageAbbyy(xmlPage, pageNum){
          }
 
 
-         if((ascCharArr.includes(contentStrLetter) || xCharArr.includes(contentStrLetter)) && !letterSusp){
+         if((ascCharArr.includes(contentStrLetter) || xCharArr.includes(contentStrLetter)) && !letterSusp && !dropCapFix && !(dropCap && i==0)){
            //baselineHeightArr.push(bboxes[i][j][3]);
            // To calculate the slope of the baseline (and therefore image angle) the position of each glyph that starts (approximately) on the
            // baseline is compared to the first such glyph.  This is less precise than a true "best fit" approach, but hopefully with enough data
@@ -577,13 +602,13 @@ function convertPageAbbyy(xmlPage, pageNum){
        }
       xmlOut = xmlOut + "\'"
       if(styleArr[i] == "italic"){
-        xmlOut = xmlOut + " style='font-style:italic'";
+        xmlOut = xmlOut + " style='font-style:italic'" + ">" + text[i] + "</span>";;
       } else if(styleArr[i] == "small-caps"){
-        xmlOut = xmlOut + " style='font-variant:small-caps'";
-      }
-
-      if(styleArr[i] == "sup"){
+        xmlOut = xmlOut + " style='font-variant:small-caps'" + ">" + text[i] + "</span>";
+      } else if(styleArr[i] == "sup"){
         xmlOut = xmlOut + ">" + "<sup>" + text[i] + "</sup>" + "</span>";
+      } else if(styleArr[i] == "dropcap"){
+        xmlOut = xmlOut + ">" + "<span class='ocr_dropcap'>" + text[i] + "</span>" + "</span>";
       } else {
         xmlOut = xmlOut + ">" + text[i] + "</span>";
       }

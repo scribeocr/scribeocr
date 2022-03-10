@@ -7,6 +7,7 @@ import { loadFont, loadFontFamily } from "./fontUtils.js";
 import { renderPageQueue, optimizeFont2 } from "../main.js"
 
 export async function changeDisplayFont(font){
+  if(!window.xmlDoc) return;
   window.hocrAll[window.currentPage] = window.xmlDoc.documentElement.outerHTML;
   const optimizeMode = document.getElementById("optimizeFont").checked;
   if(typeof(fontObj[font]) != "undefined" && typeof(fontObj[font]["normal"]) != "undefined" && fontObj[font]["normal"].optimized == optimizeMode){
@@ -26,6 +27,7 @@ export async function changeDisplayFont(font){
 
 
 export function changeZoom(value){
+  if(!window.xmlDoc) return;
   window.hocrAll[window.currentPage] = window.xmlDoc.documentElement.outerHTML;
   let currentValue = parseFloat(document.getElementById('zoomInput').value);
 
