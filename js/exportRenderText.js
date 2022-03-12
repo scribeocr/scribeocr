@@ -4,7 +4,10 @@ export function renderText(hocrAll){
   let textStr = "";
   const exportParser = new DOMParser();
 
-  for(let g = 0; g < hocrAll.length; g++){
+  let minValue = parseInt(document.getElementById('pdfPageMin').value);
+  let maxValue = parseInt(document.getElementById('pdfPageMax').value);
+
+  for(let g = (minValue-1); g < maxValue; g++){
     if(g > 0){
       textStr = textStr + "\n\n";
     }

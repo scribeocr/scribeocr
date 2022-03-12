@@ -117,9 +117,19 @@ function convertPage(hocrString){
     }
 
     let letterHeight = parseFloat(titleStrLine.match(/(?<=x_size\s+)[\d\.\-]+/)[0]);
-    let ascHeight = parseFloat(titleStrLine.match(/(?<=x_ascenders\s+)[\d\.\-]+/)[0]);
-    let descHeight = parseFloat(titleStrLine.match(/(?<=x_descenders\s+)[\d\.\-]+/)[0]);
-    let xHeight = letterHeight - ascHeight - descHeight;
+    let ascHeight = titleStrLine.match(/(?<=x_ascenders\s+)[\d\.\-]+/);
+    ascHeight = ascHeight == null ? null : parseFloat(ascHeight[0]);
+    let descHeight = titleStrLine.match(/(?<=x_descenders\s+)[\d\.\-]+/);
+    descHeight = descHeight == null ? null : parseFloat(descHeight[0]);
+
+    // The only known scenario where letterHeight, ascHeight, and descHeight are not all defined
+    // is when Abbyy data is loaded, HOCR is exported, and then that HOCR is re-imported.
+    // As this HOCR is always at the word-level, convertWord is never run, so it does not matter
+    // that xHeight is left undefined.
+    let xHeight;
+    if(letterHeight != null && ascHeight != null && descHeight != null){
+       xHeight = letterHeight - ascHeight - descHeight;
+    }
 
     function convertWord(match){
        let text = "";
@@ -562,14 +572,23 @@ function convertPageAbbyy(xmlPage, pageNum){
 
      }
 
-     const baselineSlope = baselineSlopeArr.length == 0 ? 0 : quantile(baselineSlopeArr, 0.5);
-
-     const baselinePoint = baselineFirst[1] - parseInt(lineBoxArr[5]) - baselineSlope * (baselineFirst[0] - parseInt(lineBoxArr[2]));
 
      //console.log(baselineSlopeArr);
 
+     // While Abbyy XML already provides line bounding boxes, these have been observed to be (at times)
+     // completely different than a bounding box calculated from a union of all letters in the line.
+     // Therefore, the line bounding boxes are recaclculated here.
+     let lineBoxArrCalc = new Array(4);
+     lineBoxArrCalc[0] = Math.min(...bboxes.flat().map(x => x[0]).filter(x => x > 0));
+     lineBoxArrCalc[1] = Math.min(...bboxes.flat().map(x => x[1]).filter(x => x > 0));
+     lineBoxArrCalc[2] = Math.max(...bboxes.flat().map(x => x[2]).filter(x => x > 0));
+     lineBoxArrCalc[3] = Math.max(...bboxes.flat().map(x => x[3]).filter(x => x > 0));
 
-     let xmlOut = "<span class='ocr_line' title=\"bbox " + lineBoxArr[2] + " " + lineBoxArr[3] + " " + lineBoxArr[4] + " " + lineBoxArr[5];
+     const baselineSlope = baselineSlopeArr.length == 0 ? 0 : quantile(baselineSlopeArr, 0.5);
+
+     const baselinePoint = baselineFirst[1] - lineBoxArrCalc[3] - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]);
+
+     let xmlOut = "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
      if(baselineSlopeArr.length > 0){
        xmlOut = xmlOut + ";baseline " + baselineSlope + " " + baselinePoint;
      }
@@ -582,6 +601,8 @@ function convertPageAbbyy(xmlPage, pageNum){
 
 
      xmlOut = xmlOut + "\">";
+
+
      for(let i=0;i<text.length;i++){
        if(text[i].trim() == "") {continue};
         bboxesI = bboxes[i];
@@ -620,14 +641,30 @@ function convertPageAbbyy(xmlPage, pageNum){
 
 
   let lineStrArr = xmlPage.split(/\<\/line\>/);
-  let xmlOut = "<div class='ocr_page'>";
+
+  let xmlOut = String.raw`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+<title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<meta name='ocr-system' content='tesseract 5.0.0-beta-20210916-12-g19cc9' />
+<meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
+</head>
+<body>
+<div class='ocr_page'`;
+
+  xmlOut = xmlOut + " title='bbox 0 0 " + pageDims[1] + " " + pageDims[0] + "'>";
+
+  // let xmlOut = "<div class='ocr_page'>";
   let angleRisePage = new Array();
   for(let i=0;i<lineStrArr.length;i++){
     const lineInt = convertLineAbbyy(lineStrArr[i], i, pageNum);
     angleRisePage.push(lineInt[1]);
     xmlOut = xmlOut + lineInt[0];
   }
-  xmlOut = xmlOut + "</div>";
+  xmlOut = xmlOut + "</div></body></html>";
 
   let angleRiseMedian = mean50(angleRisePage);
 

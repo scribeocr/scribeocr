@@ -97,7 +97,7 @@ var backgroundImage;
 var renderStatus;
 var pdfDoc;
 var imageAll = [];
-var imageMode, pdfMode;
+var imageMode, pdfMode, resumeMode;
 
 loadFontFamily("Open Sans", window.fontMetricsObj);
 loadFontFamily("Libre Baskerville", window.fontMetricsObj);
@@ -124,6 +124,8 @@ document.getElementById('uploader').addEventListener('change', recognize);
 document.getElementById('fontMinus').addEventListener('click', () => {changeWordFontSize('minus')});
 document.getElementById('fontPlus').addEventListener('click', () => {changeWordFontSize('plus')});
 document.getElementById('fontSize').addEventListener('change', () => {changeWordFontSize(event.target.value)});
+document.getElementById('wordFont').addEventListener('change', () => {changeWordFont(event.target.value)});
+
 
 document.getElementById('styleItalic').addEventListener('click', () => {toggleStyleSelectedWords('italic')});
 document.getElementById('styleSmallCaps').addEventListener('click', () => {toggleStyleSelectedWords('small-caps')});
@@ -195,15 +197,20 @@ function updatePdfPagesLabel(){
   let maxValue = parseInt(document.getElementById('pdfPageMax').value);
   let pageCount = parseInt(document.getElementById('pageCount').textContent);
 
+  minValue = Math.max(minValue, 1);
+  maxValue = Math.min(maxValue, pageCount);
+
   let pagesStr;
   if(minValue > 0 && maxValue > 0 && (minValue > 1 || maxValue < pageCount)){
     pagesStr = " Pages: " + minValue + "–" + maxValue;
   } else {
     pagesStr = " Pages: All";
-    document.getElementById('pdfPageMin').value = 1;
-    document.getElementById('pdfPageMax').value = isFinite(pageCount) ? pageCount : "";
+    minValue = 1;
+    maxValue = pageCount;
   }
 
+  document.getElementById('pdfPageMin').value = isFinite(minValue) ? minValue : 1;
+  document.getElementById('pdfPageMax').value = isFinite(maxValue) ? maxValue : "";
   document.getElementById('pdfPagesLabel').innerText = pagesStr;
 
 }
@@ -728,20 +735,20 @@ async function recognize(){
      abbyyMode = /abbyy/i.test(node2) ? true : false;
 
      if(abbyyMode){
-       hocrStrStart = String.raw`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
- <head>
-  <title></title>
-  <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
-  <meta name='ocr-system' content='tesseract 5.0.0-beta-20210916-12-g19cc9' />
-  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
- </head>
- <body>`;
-
-        hocrStrEnd = String.raw`</body>
-</html>`;
+//        hocrStrStart = String.raw`<?xml version="1.0" encoding="UTF-8"?>
+// <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+//     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+// <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+//  <head>
+//   <title></title>
+//   <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+//   <meta name='ocr-system' content='tesseract 5.0.0-beta-20210916-12-g19cc9' />
+//   <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
+//  </head>
+//  <body>`;
+//
+//         hocrStrEnd = String.raw`</body>
+// </html>`;
 
        hocrStrPages = hocrStrAll.replace(/[\s\S]*?(?=\<page)/i, "");
        hocrArrPages = hocrStrPages.split(/(?=\<page)/);
@@ -754,7 +761,7 @@ async function recognize(){
        document.getElementById('confThreshMed').value = 75;
 
        // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-       const resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
+       resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
 
        if(resumeMode){
           let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
@@ -1281,7 +1288,13 @@ myWorker.onmessage = function(e) {
   if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
     importProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
     if(loadCountHOCR == valueMax){
-      window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+      // If resuming from a previous editing session font stats are already calculated
+      if(!resumeMode){
+          window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+      } else {
+        document.getElementById('optimizeFont').disabled = false;
+        document.getElementById('save2').disabled = false;
+      }
       calculateOverallPageMetrics();
     }
   }

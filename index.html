@@ -124,7 +124,7 @@
 
               <div class="col col-2">
                 <label for="wordFont">Font (Word)</label>
-                <select id="wordFont" class="form-select form-select-sm" size="1" onchange="changeWordFont(this.value)">
+                <select id="wordFont" class="form-select form-select-sm" size="1">
                   <option selected value="Default">Default</option>
                   <option value="Open Sans">Sans (Open Sans)</option>
                   <option value="Libre Baskerville">Serif (Libre Baskerville)</option>
@@ -428,13 +428,8 @@ For both OCR and image files, individual files for each page or a single file wi
                   <button type="button" id="save2" class="btn btn-info" disabled>Download</button>
                 </div>
               </div>
-              <div class="col col-3">
-                <label>PDF Options:</label>
-                <div class="form-check form-switch">
-                  <label><input class="form-check-input" type="checkbox" id="binarizeCheckbox" checked> Binarize Images</label><br>
-                  <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page Size</label>
-                </div>
-
+              <div class="col col-2">
+                <label>Options:</label>
                 <div class="row">
                   <div class="form-group">
                     <button data-bs-toggle="collapse" id="pdfPagesLabel" data-bs-target="#collapsePages" type="button" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
@@ -451,13 +446,13 @@ For both OCR and image files, individual files for each page or a single file wi
                 <div class="collapse" id="collapsePages">
                   <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
                     <div class="row" style="--bs-gutter-x:0">
-                      <div class="col-3">
-                        <input type="text" id="pdfPageMin" name="pageNum" size="2">
+                      <div class="col-5">
+                        <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%">
                       </div>
-                      <div class="col-1"> to </div>
+                      <div class="col-2" style="text-align:center"> to </div>
 
-                      <div class="col-3">
-                        <input type="text" id="pdfPageMax" name="pageNum" size="2">
+                      <div class="col-5">
+                        <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%">
                       </div>
 
                     </div>
@@ -469,6 +464,14 @@ For both OCR and image files, individual files for each page or a single file wi
 
 
               </div>
+              <div class="col col-2">
+                <label>PDF Options:</label>
+                <div class="form-check form-switch">
+                  <label><input class="form-check-input" type="checkbox" id="binarizeCheckbox" checked> Binarize Images</label><br>
+                  <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page Size</label>
+                </div>
+              </div>
+
             </div>
             <div class="collapse" id="download-progress-collapse">
               <div class="row">
