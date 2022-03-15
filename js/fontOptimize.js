@@ -452,6 +452,9 @@ export async function createSmallCapsFont(font, fontFamily, heightSmallCaps){
 
   }
 
+  // Remove ligatures, as these are especially problematic for small caps fonts (as small caps may be replaced by lower case ligatures)
+  font.tables.gsub = null;
+
   let fontDataSmallCaps = font.toArrayBuffer();
   await loadFont(fontFamily + " Small Caps", fontDataSmallCaps, true,false);
   return;
