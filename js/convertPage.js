@@ -1,4 +1,7 @@
 
+function round6(x){
+    return(Math.round(x*1e6)/1e6);
+}
 
 onmessage = function(e) {
   let workerResult;
@@ -590,7 +593,7 @@ function convertPageAbbyy(xmlPage, pageNum){
 
      let xmlOut = "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
      if(baselineSlopeArr.length > 0){
-       xmlOut = xmlOut + ";baseline " + baselineSlope + " " + baselinePoint;
+       xmlOut = xmlOut + ";baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
      }
      xmlOut = xmlOut + ";x_size " + lineAllHeight;
      if(lineAscHeight != null && lineXHeight != null){

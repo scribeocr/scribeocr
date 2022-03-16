@@ -4,6 +4,21 @@
 <head>
   <link rel="stylesheet" href="./css/bootstrap.min.css">
   <style type="text/css">
+
+
+    .nav a {
+      border-bottom: 3px solid transparent !important;
+    }
+
+    /* Subtract height of border from padding */
+    .nav-tabs .nav-link{
+      padding-bottom: calc(1rem - 3px) !important;
+    }
+
+    .nav a:not(.collapsed) {
+      border-bottom: 3px solid !important;
+    }
+
     .btn-info:focus:not(:focus-visible):not(:active) {
       outline: none !important;
       box-shadow: none !important;
@@ -86,20 +101,20 @@
 
 <body>
 
-  <div id="navBar" class="navbar sticky-top navbar-light bg-light" style="padding-bottom:0px;width:100%">
+  <div id="navBar" class="navbar fixed-top navbar-light bg-light" style="padding-bottom:0px;padding-top:0px;width:100%">
     <div class="container">
       <div class="container-fluid" id="user-controls">
         <div class="row nav-row">
           <div class="col col-5">
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
 
-              <button class="nav-link" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import" type="button" role="tab" aria-controls="nav-import">Import</button>
-              <button class="nav-link" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view" type="button" role="tab" aria-controls="nav-view">View</button>
-              <button class="nav-link" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit" type="button" role="tab" aria-controls="nav-edit">Edit</button>
+              <a class="nav-link collapsed" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import" type="button" role="tab" aria-controls="nav-import">Import</a>
+              <a class="nav-link collapsed" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view" type="button" role="tab" aria-controls="nav-view">View</a>
+              <a class="nav-link collapsed" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit" type="button" role="tab" aria-controls="nav-edit">Edit</a>
 
-              <button class="nav-link" id="nav-settings-tab" data-bs-toggle="collapse" data-bs-target="#nav-settings" type="button" role="tab" aria-controls="nav-settings">Layout</button>
-              <button class="nav-link" id="nav-download-tab" data-bs-toggle="collapse" data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</button>
-              <button class="nav-link" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about" type="button" role="tab" aria-controls="nav-about">About</button>
+              <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout" type="button" role="tab" aria-controls="nav-layout">Layout</a>
+              <a class="nav-link collapsed" id="nav-download-tab" data-bs-toggle="collapse" data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</a>
+              <a class="nav-link collapsed" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about" type="button" role="tab" aria-controls="nav-about">About</a>
 
             </div>
           </div>
@@ -375,7 +390,7 @@ For both OCR and image files, individual files for each page or a single file wi
               </div>
             </div>
           </div>
-          <div class="collapse" id="nav-settings" role="tabpanel" aria-labelledby="nav-settings-tab" data-bs-parent="#user-controls">
+          <div class="collapse" id="nav-layout" role="tabpanel" aria-labelledby="nav-layout-tab" data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
               <div class="col col-3">
                 <div class="form-check form-switch">
@@ -533,8 +548,9 @@ For both OCR and image files, individual files for each page or a single file wi
   </div>
 
 
-  <div class="container" style="padding-top:40px">
-
+  <div class="container" style="padding-top:4rem;">
+    <div class="row" id="paddingRow" style="height:0px;transition:height .35s ease">
+    </div>
     <div class="row">
 
       <div class="col col-lg-8 text-center">

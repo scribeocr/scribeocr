@@ -1,6 +1,7 @@
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./textUtils.js"
 import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
+import { round3 } from "./miscUtils.js"
 
 export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFont, lineMode = false, imgDims, canvasDims, angle, pdfMode, fontObj, leftAdjX){
 
@@ -199,7 +200,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         //wordWidth = textbox.width
         // If kerning is off, change the kerning value for both the canvas textbox and HOCR
         if(wordText.length > 1 && Math.abs(box_width - wordWidth) > 1){
-          kerning = kerning + (box_width - wordWidth) / (wordText.length - 1);
+          kerning = round3(kerning + (box_width - wordWidth) / (wordText.length - 1));
           if(missingKerning){
             if(styleStr.length > 0){
               styleStr = styleStr + ";";

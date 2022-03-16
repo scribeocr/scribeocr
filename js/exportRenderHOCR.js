@@ -22,6 +22,8 @@ export function renderHOCR(hocrAll, fontMetricsObj){
 
 
   let hocrBlob = new Blob([hocrInt]);
-  //url = hocrBlob.toBlobURL('text/html');
-  saveAs(hocrBlob, "mydocument.hocr.html");
+
+  let fileName = document.getElementById("downloadFileName").value.replace(/\.\w{1,4}$/, "") + ".hocr";
+
+  saveAs(hocrBlob, fileName);
 }

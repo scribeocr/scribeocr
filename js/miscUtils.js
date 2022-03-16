@@ -75,3 +75,11 @@ export function readTextFile(file) {
     reader.readAsText(file);
   });
 }
+
+export function round3(x){
+    return(Math.round(x*1e3)/1e3);
+}
+
+export function round6(x){
+    return(Math.round(x*1e6)/1e6);
+}

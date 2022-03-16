@@ -33,6 +33,8 @@ export function renderText(hocrAll){
   }
 
   const textBlob = new Blob([textStr]);
-  saveAs(textBlob, "mydocument.txt");
+  let fileName = document.getElementById("downloadFileName").value.replace(/\.\w{1,4}$/, "") + ".txt";
+
+  saveAs(textBlob, fileName);
 
 }

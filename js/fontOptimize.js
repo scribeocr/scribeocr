@@ -2,7 +2,7 @@
 // File summary:
 // Functions to calculate font metrics and generate new fonts.
 
-import { quantile } from "./miscUtil.js";
+import { quantile, round6 } from "./miscUtils.js";
 import { loadFont } from "./fontUtils.js";
 
 // Creates optimized version of `font` based on metrics in `fontMetricsObj`
@@ -350,7 +350,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
         }
       }
     }
-    fontMetricsObj["heightCaps"] = Math.round(quantile(heightCapsObj, 0.5) * 1e5) / 1e5;
+    fontMetricsObj["heightCaps"] = round6(quantile(heightCapsObj, 0.5));
 
     let heightSmallCapsObj = new Array();
     for(let i=0; i<pageN; i++){
@@ -360,7 +360,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
         }
       }
     }
-    let heightSmallCaps = Math.round(quantile(heightSmallCapsObj, 0.5) * 1e5) / 1e5 ?? 1;
+    let heightSmallCaps = round6(quantile(heightSmallCapsObj, 0.5)) ?? 1;
 
     // In the case of crazy values, revert to default of 1
     heightSmallCaps = heightSmallCaps < 0.7  || heightSmallCaps > 1.3 ? 1 : heightSmallCaps;
@@ -368,25 +368,25 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
     fontMetricsObj["heightSmallCaps"] = heightSmallCaps;
 
    for (const [key, value] of Object.entries(widthObj)) {
-     fontMetricsObj["charWidth"][key] = Math.round(quantile(value, 0.5) * 1e5) / 1e5;
+     fontMetricsObj["charWidth"][key] = round6(quantile(value, 0.5));
    }
 
    for (const [key, value] of Object.entries(heightObj)) {
-     fontMetricsObj["charHeight"][key] = quantile(value, 0.5);
+     fontMetricsObj["charHeight"][key] = round6(quantile(value, 0.5));
    }
 
 
    for (const [key, value] of Object.entries(cutObj)) {
-    fontMetricsObj["cutMedian"][key] = quantile(value, 0.5);
+    fontMetricsObj["cutMedian"][key] = round6(quantile(value, 0.5));
    }
 
    let kerningNorm;
    for (const [key, value] of Object.entries(kerningObj)) {
-     fontMetricsObj["pairKerningRaw"][key] = quantile(value, 0.5);
+     fontMetricsObj["pairKerningRaw"][key] = round6(quantile(value, 0.5));
      //kerningNorm = Math.round((quantile(value, 0.5) - cutMedian[key.match(/\w+$/)]) * 1e5) / 1e5;
      kerningNorm = quantile(value, 0.5) - fontMetricsObj["cutMedian"][key.match(/\w+$/)];
      if(Math.abs(kerningNorm) > 0.02){
-       fontMetricsObj["pairKerning"][key] = kerningNorm;
+       fontMetricsObj["pairKerning"][key] = round6(kerningNorm);
      }
    }
   }
