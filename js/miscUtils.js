@@ -54,15 +54,34 @@ export function sleep(ms) { return new Promise((r) =>
     setTimeout(r, ms)); }
 
 
+// PDF files must be read before they can be passed to pdf.js
+// https://github.com/mozilla/pdf.js/issues/12078
+export async function readPdf(file) {
+  // const reader = new FileReader();
+  // const fileData = await reader.readAsDataURL(file);
 
-export function readBlob(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.addEventListener('load', () => resolve(reader.result));
-        reader.addEventListener('error', reject)
-        reader.readAsDataURL(blob);
-    });
+  let fileData = await file.arrayBuffer();
+  const pdfDoc = await pdfjsLib.getDocument(fileData);
+  return(pdfDoc.promise);
 }
+
+// Reads OCR files, which may be compressed as .gz or uncompressed
+export function readOcrFile(file){
+  if(/\.gz$/i.test(file.name)){
+    return(readTextFileGz(file));
+  } else {
+    return(readTextFile(file))
+  }
+}
+
+async function readTextFileGz(file) {
+    return new Promise(async (resolve, reject) => {
+        let zip1 = await file.arrayBuffer();
+        let zip2 = await pako.inflate(zip1, {"to": "string"});
+        resolve(zip2);
+      });
+}
+
 
 
 export function readTextFile(file) {

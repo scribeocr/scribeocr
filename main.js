@@ -16,7 +16,7 @@ import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 import { optimizeFont, calculateOverallFontMetrics, createSmallCapsFont } from "./js/fontOptimize.js";
 import { loadFontBrowser, loadFont, loadFontFamily } from "./js/fontUtils.js";
 
-import { getRandomInt, getRandomAlphanum, mean50, quantile, sleep, readBlob, readTextFile, round3 } from "./js/miscUtils.js";
+import { getRandomInt, getRandomAlphanum, mean50, quantile, sleep, readOcrFile, readPdf, round3 } from "./js/miscUtils.js";
 
 import { deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, toggleBoundingBoxesSelectedWords, changeWordFont, toggleSuperSelectedWords,
   updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord } from "./js/interfaceEdit.js";
@@ -96,7 +96,7 @@ var doc;
 var backgroundImage;
 var renderStatus;
 var pdfDoc;
-var imageAll = [];
+//window.imageAll = [];
 var imageMode, pdfMode, resumeMode;
 
 loadFontFamily("Open Sans", window.fontMetricsObj);
@@ -770,11 +770,12 @@ async function recognize(){
   for(let i=0; i<curFiles.length; i++){
     const file = curFiles[i];
     let fileExt = file.name.match(/(?<=\.)[^\.]+$/);
-    fileExt = fileExt == null ? "" : fileExt[0];
+    fileExt = fileExt == null ? "" : fileExt[0].toLowerCase();
 
     if(["png","jpeg", "jpg"].includes(fileExt)){
       imageFilesAll.push(file);
-    } else if(["hocr","xml","html"].includes(fileExt)){
+      // All .gz files are assumed to be OCR data (xml) since all other file types can be compressed already
+    } else if(["hocr","xml","html","gz"].includes(fileExt)){
       hocrFilesAll.push(file);
     } else if(["pdf"].includes(fileExt)){
       pdfFilesAll.push(file);
@@ -789,10 +790,12 @@ async function recognize(){
 
 
   if(pdfMode){
-    let pdfData = await readBlob(pdfFilesAll[0]);
-    pdfjsLib.getDocument(pdfData).promise.then(async function(pdfDoc_) {
-    pdfDoc = pdfDoc_;
-    });
+
+    readPdf(pdfFilesAll[0]).then((x) => pdfDoc = x);
+    //let pdfData = await readBlob(pdfFilesAll[0]);
+    // pdfjsLib.getDocument(pdfData).promise.then(async function(pdfDoc_) {
+    // pdfDoc = pdfDoc_;
+    // });
   }
 
 
@@ -824,7 +827,7 @@ async function recognize(){
   let abbyyMode, hocrStrStart, hocrStrEnd, hocrStrPages, hocrArrPages, pageCount, hocrAllRaw;
   if(singleHOCRMode){
     const singleHOCRMode = true;
-     let hocrStrAll = await readTextFile(hocrFilesAll[0]);
+     let hocrStrAll = await readOcrFile(hocrFilesAll[0]);
 
      // Check whether input is Abbyy XML
      const node2 = hocrStrAll.match(/(?<=\>)[^\>]+/)[0];
@@ -890,6 +893,7 @@ async function recognize(){
   }
 
   window.hocrAll = Array(pageCount);
+  window.imageAll = Array(pageCount);
   let imageN = -1;
   let hocrN = -1;
   let firstImg = true;
@@ -961,14 +965,16 @@ async function recognize(){
       const hocrNi = hocrN + 1;
       hocrN = hocrN + 1;
 
-      const reader = new FileReader();
-      reader.addEventListener("load", () => {
+      readOcrFile(hocrFile).then((x) => myWorker.postMessage([x, hocrNi]));
 
-      myWorker.postMessage([reader.result, hocrNi]);
-
-      }, false);
-
-      reader.readAsText(hocrFile);
+      // const reader = new FileReader();
+      // reader.addEventListener("load", () => {
+      //
+      // myWorker.postMessage([reader.result, hocrNi]);
+      //
+      // }, false);
+      //
+      // reader.readAsText(hocrFile);
 
     }
 
@@ -979,6 +985,9 @@ async function recognize(){
   document.getElementById('pageCount').textContent = pageCount;
 
 }
+
+
+
 
 var backgroundOpts = new Object;
 // Function that handles page-level info for rendering to canvas and pdf
@@ -1074,36 +1083,44 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
   if(mode == "screen"){
     if(pdfMode){
-      pdfDoc.getPage(n + 1).then((page) => {
-              let pdfPage = page;
+      if(typeof(imageAll[n]) == "undefined"){
+        pdfDoc.getPage(n + 1).then((page) => {
+                let pdfPage = page;
 
-              const viewport1 = page.getViewport({ scale: 1 });
+                const viewport1 = page.getViewport({ scale: 1 });
 
-              const viewport = page.getViewport({ scale: imgDims[1] / viewport1.width });
-              // Prepare canvas using PDF page dimensions
-              const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
-              //context.rotate(45 * Math.PI / 180);
-              canvas.height = viewport.height
-              canvas.width = viewport.width;
-              // Render PDF page into canvas context
-              const renderContext = {
-                  canvasContext: context,
-                  viewport: viewport
-              };
-              const renderTask = page.render(renderContext);
-              return renderTask.promise.then(() => canvas);
-          }).then((x) => {
-            // If a user rapidly changes pages, it is possible that the background image for
-            // page n finishes loading after page n+1 is already loaded.
-            if(window.currentPage != n) return;
-            backgroundImage = new fabric.Image(x, {objectCaching:false});
-            console.log("window.currentPage: " + window.currentPage + "; n: " + n + "; renderStatus: " + renderStatus);
-            renderStatus = renderStatus + 1;
+                const viewport = page.getViewport({ scale: imgDims[1] / viewport1.width });
+                // Prepare canvas using PDF page dimensions
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                //context.rotate(45 * Math.PI / 180);
+                canvas.height = viewport.height
+                canvas.width = viewport.width;
+                // Render PDF page into canvas context
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                const renderTask = page.render(renderContext);
+                return renderTask.promise.then(() => canvas);
+            }).then((x) => {
+              // If a user rapidly changes pages, it is possible that the background image for
+              // page n finishes loading after page n+1 is already loaded.
+              if(window.currentPage != n) return;
+              imageAll[n] = new fabric.Image(x, {objectCaching:false});
+              backgroundImage = imageAll[n];
+              console.log("window.currentPage: " + window.currentPage + "; n: " + n + "; renderStatus: " + renderStatus);
+              renderStatus = renderStatus + 1;
 
-            selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+              selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
 
-            });
+              });
+      } else {
+        backgroundImage = imageAll[n];
+        renderStatus = renderStatus + 1;
+        selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+      }
+
 
 
     } else if(imageMode){

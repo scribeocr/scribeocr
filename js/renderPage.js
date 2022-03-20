@@ -102,6 +102,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             // All superscripts are assumed to be numbers for now
             wordFontSize = getFontSize(defaultFont, box_height, "1", ctx);
           } else if(wordDropCap){
+            // Note: In addition to being taller, drop caps are often narrower than other glyphs.
+            // Unfortunately, while Fabric JS (canvas library) currently supports horizontally scaling glyphs,
+            // pdfkit (pdf library) does not.  This feature should be added to Scribe if pdfkit supports it
+            // in the future.
+            // https://github.com/foliojs/pdfkit/issues/1032
             wordFontSize = getFontSize(defaultFont, box_height, wordText.slice(0,1), ctx);
           } else {
             wordFontSize = fontSize;
