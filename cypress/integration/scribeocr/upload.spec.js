@@ -13,7 +13,7 @@ describe('Does it upload', () => {
     // Then, we use `should` to assert that there are two matched items,
     // which are the two default items.
     cy.get('#nav-import-tab').click()
-    cy.get('#uploader').click()
+    cy.get('#uploader').selectFile(['cypress/fixtures/jpeg_hocr/snow_drops.hocr', 'cypress/fixtures/jpeg_hocr/snow_drops.jpg'])
 
     // We can go even further and check that the default todos each contain
     // the correct text. We use the `first` and `last` functions
