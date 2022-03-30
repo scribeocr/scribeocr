@@ -13,23 +13,22 @@ describe('Upload', () => {
     cy.get('#uploader').selectFile(['cypress/fixtures/jpeg_hocr/snow_drops.hocr', 'cypress/fixtures/jpeg_hocr/snow_drops.jpg'])
     cy.get('#nav-view-tab').click()
     cy.get('#importProgress').should('be.visible')
+    cy.get('#pageCount').should('have.text', '1')
     
   })
   it('a png with hOCR', () => {
     cy.get('#nav-import-tab').click()
     cy.get('#uploader').selectFile(['cypress/fixtures/png_hocr/pretty_faces.hocr', 'cypress/fixtures/png_hocr/pretty_faces.png'])
-    cy.get('#nav-view-tab').click()
     cy.get('#importProgress').should('be.visible')
+    cy.get('#pageCount').should('have.text', '1')
   })
   it('a pdf with xml', () => {
     cy.get('#nav-import-tab').click()
     cy.get('#uploader').selectFile(
-      ['cypress/fixtures/pdf_xml/poeticalworksofm02priouoft_abbyy.xml', 
-      'cypress/fixtures/pdf_xml/poeticalworksofm02priouoft_bw.pdf']
+      ['cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_abbyy.xml', 
+      'cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_bw.pdf']
     )
-    cy.get('#nav-view-tab').click()
-    cy.get('#nav-import-tab').click()
     cy.get('#importProgress').should('be.visible')
+    cy.get('#pageCount').should('have.text', '118')
   })
-  
 })
