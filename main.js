@@ -432,10 +432,10 @@ async function recognizeAll(){
     let workerOptions;
     if(window.simdSupport){
       console.log("Using Tesseract with SIMD support (fast LSTM performance).")
-      workerOptions = {corePath: './tesseract-core-sse.wasm.js',workerPath:'./worker.min.js'};
+      workerOptions = {corePath: './tess/tesseract-core-sse.wasm.js',workerPath:'./tess/worker.min.js'};
     } else {
       console.log("Using Tesseract without SIMD support (slow LSTM performance).")
-      workerOptions = {corePath: './tesseract-core.wasm.js',workerPath:'./worker.min.js'};
+      workerOptions = {corePath: './tess/tesseract-core.wasm.js',workerPath:'./tess/worker.min.js'};
     }
 
     for (let i = 0; i < workerN; i++) {
@@ -1110,10 +1110,10 @@ async function importFiles(){
           imageAll[imageNi] = image;
 
           loadCountHOCR = loadCountHOCR + 1;
-          const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
-          activeProgress.setAttribute("aria-valuenow",loadCountHOCR);
+          const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
+          convertPageWorker["activeProgress"].setAttribute("aria-valuenow",loadCountHOCR);
           if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
-            activeProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
+            convertPageWorker["activeProgress"].setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
             if(loadCountHOCR == valueMax){
               window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
               calculateOverallPageMetrics();
