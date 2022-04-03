@@ -16,12 +16,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/andrewdelamare/scribeocr.git"
+    "url": "git+https://github.com/Balearica/scribeocr.git"
   },
-  "author": "",
+  "author": "Balearica",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/andrewdelamare/scribeocr/issues"
+    "url": "https://github.com/Balearica/scribeocr/issues"
   },
-  "homepage": "https://github.com/andrewdelamare/scribeocr#readme"
+  "homepage": "https://github.com/Balearica/scribeocr#readme"
 }
