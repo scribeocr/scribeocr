@@ -11,9 +11,8 @@ describe('Upload', () => {
   it('a jpeg with hOCR', () => {
     cy.get('#nav-import-tab').click()
     cy.get('#uploader').selectFile(['cypress/fixtures/jpeg_hocr/snow_drops.hocr', 'cypress/fixtures/jpeg_hocr/snow_drops.jpg'])
-    cy.get('#nav-view-tab').click()
-    cy.get('#importProgress').should('be.visible')
     cy.get('#pageCount').should('have.text', '1')
+    cy.get('#importProgress').should('be.visible')
     
   })
   it('a png with hOCR', () => {
@@ -28,7 +27,8 @@ describe('Upload', () => {
       ['cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_abbyy.xml', 
       'cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_bw.pdf']
     )
-    cy.get('#importProgress').should('be.visible')
+    cy.wait(3000)
     cy.get('#pageCount').should('have.text', '118')
+    cy.get('#importProgress').should('be.visible')
   })
 })

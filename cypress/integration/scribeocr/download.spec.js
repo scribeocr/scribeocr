@@ -9,8 +9,8 @@ describe('Download', () => {
   it('text file from jpg with hOCR', () => {
     cy.get('#nav-import-tab').click()
     cy.get('#uploader').selectFile(['cypress/fixtures/jpeg_hocr/snow_drops.hocr', 'cypress/fixtures/jpeg_hocr/snow_drops.jpg'])
-    cy.get('#importProgress').should('be.visible')
     cy.get('#pageCount').should('have.text', '1')
+    cy.wait(500)
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
@@ -56,12 +56,16 @@ describe('Download', () => {
   */
   it('text file from a pdf with xml', () => {
     cy.get('#uploader').selectFile(
-      ['cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_bw.pdf'])
-    cy.get('#importProgress').should('be.visible')
+      ['cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_abbyy.xml', 
+        'cypress/fixtures/pdf_xml/siegeofcorinthpo00byrorich_bw.pdf'
+    ])
     cy.get('#pageCount').should('have.text', '118')
+    cy.wait(5000)
+    cy.get('#importProgress').should('be.visible')
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
+    cy.wait(5000)
     cy.get('#save2').click()
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.txt')
   })
