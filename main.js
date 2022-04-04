@@ -1079,8 +1079,12 @@ async function importFiles(){
 
   loadCountHOCR = 0;
 
-  const progressMax = imageMode && xmlMode ? pageCount * 2 : pageCount;
-  convertPageWorker["activeProgress"] = initializeProgress("import-progress-collapse",progressMax);
+  // Both OCR data and individual images (.png or .jpeg) contribute to the import loading bar
+  // PDF files do not, as PDF files are not processed page-by-page at the import step.
+  if(imageMode || xmlMode){
+    const progressMax = imageMode && xmlMode ? pageCount * 2 : pageCount;
+    convertPageWorker["activeProgress"] = initializeProgress("import-progress-collapse",progressMax);
+  }
 
   for(let i = 0; i < pageCount; i++) {
 
@@ -1101,31 +1105,26 @@ async function importFiles(){
         firstImg = false;
       }
 
-      if(pdfMode){
-        readPDF(pdfFilesAll[0], imageNi, image);
-      } else {
-        const reader = new FileReader();
-        reader.addEventListener("load", () => {
-          image.src = reader.result;
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        image.src = reader.result;
 
-          imageAll[imageNi] = image;
+        imageAll[imageNi] = image;
 
-          loadCountHOCR = loadCountHOCR + 1;
-          const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
-          convertPageWorker["activeProgress"].setAttribute("aria-valuenow",loadCountHOCR);
-          if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
-            convertPageWorker["activeProgress"].setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
-            if(loadCountHOCR == valueMax){
-              window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-              calculateOverallPageMetrics();
-            }
+        loadCountHOCR = loadCountHOCR + 1;
+        const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
+        convertPageWorker["activeProgress"].setAttribute("aria-valuenow",loadCountHOCR);
+        if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
+          convertPageWorker["activeProgress"].setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
+          if(loadCountHOCR == valueMax){
+            window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+            calculateOverallPageMetrics();
           }
+        }
 
-        }, false);
+      }, false);
 
-        reader.readAsDataURL(imageFilesAll[i]);
-
-      }
+      reader.readAsDataURL(imageFilesAll[i]);
 
     }
 
