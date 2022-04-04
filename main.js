@@ -477,9 +477,10 @@ wasmFeatureDetect.simd().then(async function(x){
   window.simdSupport = x;
   // Show error message if SIMD support is not present
   if(x){
-
+    document.getElementById("debugEngineVersion").innerText = "Enabled";
   } else {
-    document.getElementById("simdError").setAttribute("style", "");
+    document.getElementById("simdWarning").setAttribute("style", "");
+    document.getElementById("debugEngineVersion").innerText = "Disabled";
   }
 });
 
