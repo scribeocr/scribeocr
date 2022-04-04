@@ -1,11 +1,13 @@
 # Scribe OCR
-Web interface for proofreading OCR and creating fully-digitized documents. Live site at [scribeocr.com](https://scribeocr.com).
+Scribe OCR is a free and open-source web application for recognizing text, proofreading OCR data, and creating fully-digitized documents.  Live site at [scribeocr.com](https://scribeocr.com).  
 
-# Overview
+Scribe OCR includes the [Tesseract](https://github.com/tesseract-ocr/tesseract) OCR engine for recognizing text.  It can also be used for proofreading existing OCR data from Tesseract or Abbyy. 
 
-Scribe OCR is a free and open-source interface for visualizing and editing OCR results.  By precisely overlaying editable OCR text over source images, it allows for easy proofreading and the creation of fully digitized versions of print documents. 
+# Proofreading Overview
 
-To replicate the document as closely as possible, Scribe OCR generates a custom overlay font for each document, optimized using the provided OCR data.  This improves the alignment between the original scan and overlay text, and by making errors more obvious, can significantly decrease the time spent proofreading.  For example, the images below show the same text, with and without Font Optimization enabled. 
+Efficient proofreading is a major focus of Scribe OCR.  Using the proofreading interface, users can easily spot and correct errors, bringing their OCR data from 98% accuracy to 100% accuracy.
+
+To allow for efficient proofreading, Scribe OCR precisely prints editable OCR text over source images.  To replicate the document as closely as possible, Scribe OCR generates a custom font for each document, optimized using the provided OCR data.  This improves the alignment between the original scan and overlay text, and by making errors more obvious, can significantly decrease the time spent proofreading.  For example, the images below show the same text, with and without Font Optimization enabled.
 
 <img src="https://raw.githubusercontent.com/Balearica/scribeocr-docs/gh-pages/img/optimization_comp1a1.png" width="700"><img src="https://raw.githubusercontent.com/Balearica/scribeocr-docs/gh-pages/img/optimization_comp1b1.png" width="700">
 
@@ -15,12 +17,3 @@ To show how Scribe OCR can be used to digitize documents, three versions of a sc
 
 Most OCR output formats either compromise on faithfully representing the original document (e.g. text or markdown that omits formatting) or produce enormous files by printing invisible text over the original scanned images.  In contrast, the third panel above (Ebook Mode) faithfully represents the original scan while maintaining a small file size.  (Exporting .pdfs with the traditional invisible text-over-image approach is also supported for users only interested in proofreading.)  
 
-
-# Getting Started
-
-Scribe OCR is not an OCR engine, so you will first need OCR data from the engine of your choice.  Both .hocr files from Tesseract (free) and .xml files from Abbyy (paid) are supported.  Be sure to enable character-level output (click here to learn more). 
-
-Alternatively, if you just want to try out Scribe OCR, sample files can be found here.  You can also download scans and OCR data for out-of-copyright books from Archive.org. 
-Once you have both a scanned document (either a collection of .png or .jpeg files or a single .pdf) and OCR data (.hocr or Abbyy .xml), click “Choose files” and select all relevant files. 
-
-Once your files have loaded, you can get started editing.  An explanation of the interface and walk-through of the editing process can be found here in written form, and here in video form. 
