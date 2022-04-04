@@ -1,5 +1,5 @@
 # Scribe OCR
-Web interface for proofreading OCR and creating fully-digitized documents. 
+Web interface for proofreading OCR and creating fully-digitized documents. Live site at [scribeocr.com](https://scribeocr.com).
 
 # Overview
 
