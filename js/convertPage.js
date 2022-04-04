@@ -54,7 +54,7 @@ function convertPage(hocrString){
   let pageElement = hocrString.match(/<div class=[\"\']ocr_page[\"\'][^\>]+/i);
   if(pageElement != null){
     pageElement = pageElement[0];
-    pageDims = pageElement.match(/(?<=bbox \d+ \d+ )(\d+) (\d+)/i);
+    pageDims = pageElement.match(/bbox \d+ \d+ (\d+) (\d+)/i);
     pageDims = [parseInt(pageDims[2]),parseInt(pageDims[1])];
   }
 
@@ -80,7 +80,7 @@ function convertPage(hocrString){
   const charRegex = new RegExp(/<span class\=[\"\']ocrx_cinfo[\"\'] title=\'([^\'\"]+)[\"\']\>([^\<]*)\<\/span\>/, "ig");
   const charBboxRegex = new RegExp(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/, "g");
   const wordElementRegex = new RegExp(/<span class\=[\"\']ocrx_word[^\>]+\>/, "i");
-  const wordTitleRegex = new RegExp(/(?<=title\=[\"\'])[^\"\']+/);
+  //const wordTitleRegex = new RegExp(/(?<=title\=[\"\'])[^\"\']+/);
 
   // Remove all bold/italics tags.  These complicate the syntax and are unfortunately virtually always wrong anyway (coming from Tesseract).
   hocrString = hocrString.replaceAll(/<\/?strong>/ig, "");
@@ -91,16 +91,16 @@ function convertPage(hocrString){
 
   // Replace various classes with "ocr_line" class for simplicity
   // At least in Tesseract, these elements are not identified accurately or consistently enough to warrent different treatment.
-  hocrString = hocrString.replace(/(?<=class=\')ocr_caption/ig, "ocr_line");
-  hocrString = hocrString.replace(/(?<=class=\')ocr_textfloat/ig, "ocr_line");
-  hocrString = hocrString.replace(/(?<=class=\')ocr_header/ig, "ocr_line");
+  hocrString = hocrString.replace(/(class=\')ocr_caption/ig, "$1ocr_line");
+  hocrString = hocrString.replace(/(class=\')ocr_textfloat/ig, "$1ocr_line");
+  hocrString = hocrString.replace(/(class=\')ocr_header/ig, "$1ocr_line");
 
   function convertLine(match){
-    let titleStrLine = match.match(/(?<=title\=[\'\"])[^\'\"]+/)
+    let titleStrLine = match.match(/title\=[\'\"]([^\'\"]+)/)
     if(titleStrLine == null){
       return("");
     } else {
-      titleStrLine = titleStrLine[0];
+      titleStrLine = titleStrLine[1];
     }
     let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x)})
 
@@ -119,11 +119,11 @@ function convertPage(hocrString){
       lineTop.push(linebox[1]);
     }
 
-    let letterHeight = parseFloat(titleStrLine.match(/(?<=x_size\s+)[\d\.\-]+/)[0]);
-    let ascHeight = titleStrLine.match(/(?<=x_ascenders\s+)[\d\.\-]+/);
-    ascHeight = ascHeight == null ? null : parseFloat(ascHeight[0]);
-    let descHeight = titleStrLine.match(/(?<=x_descenders\s+)[\d\.\-]+/);
-    descHeight = descHeight == null ? null : parseFloat(descHeight[0]);
+    let letterHeight = parseFloat(titleStrLine.match(/x_size\s+([\d\.\-]+)/)[1]);
+    let ascHeight = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/);
+    ascHeight = ascHeight == null ? null : parseFloat(ascHeight[1]);
+    let descHeight = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/);
+    descHeight = descHeight == null ? null : parseFloat(descHeight[1]);
 
     // The only known scenario where letterHeight, ascHeight, and descHeight are not all defined
     // is when Abbyy data is loaded, HOCR is exported, and then that HOCR is re-imported.
@@ -147,9 +147,9 @@ function convertPage(hocrString){
        let wordStr = letterArr.map(x => x[2]).join("");
        let smallCaps = false;
        if(!/[a-z]/.test(wordStr) && /[A-Z].?[A-Z]/.test(wordStr)){
-         let wordBboxesTop = letterArr.map(x => x[1].match(/(?<=\d+ )\d+/)[0]);
-         let wordBboxesBottom = letterArr.map(x => x[1].match(/(?<=\d+ \d+ \d+ )\d+/)[0]);
-         if(Math.min(...letterArr.map(x => x[1].match(/(?<=\d+ )\d+/)[0]).map(x => Math.sign((x - wordBboxesBottom[0]) + ((wordBboxesBottom[0] - wordBboxesTop[0]) * 0.8))).slice(1)) == 1){
+         let wordBboxesTop = letterArr.map(x => x[1].match(/\d+ (\d+)/)[1]);
+         let wordBboxesBottom = letterArr.map(x => x[1].match(/\d+ \d+ \d+ (\d+)/)[1]);
+         if(Math.min(...letterArr.map(x => x[1].match(/\d+ (\d+)/)[1]).map(x => Math.sign((x - wordBboxesBottom[0]) + ((wordBboxesBottom[0] - wordBboxesTop[0]) * 0.8))).slice(1)) == 1){
            smallCaps = true;
          }
        }

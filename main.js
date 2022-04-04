@@ -693,13 +693,13 @@ function addWordClick(){
       let line = lines[maxBelow];
       let word = line.getElementsByClassName("ocrx_word")[0];
       let wordID = word.getAttribute('id');
-      wordIDNew = wordID.replace(/(?<=_\w{1,5}_)\w+/, "$&" + getRandomAlphanum(3).join(''));
+      wordIDNew = wordID.replace(/\w{1,5}_\w+/, "$&" + getRandomAlphanum(3).join(''));
       titleStrLineChosen = line.getAttribute('title');
     } else {
       let line = lines[0];
       let word = line.getElementsByClassName("ocrx_word")[0];
       let wordID = word.getAttribute('id');
-      wordIDNew = wordID.replace(/(?<=_\w{1,5}_)\w+/, "$&" + getRandomAlphanum(3).join(''));
+      wordIDNew = wordID.replace(/\w{1,5}_\w+/, "$&" + getRandomAlphanum(3).join(''));
       titleStrLineChosen = line.getAttribute('title');
     }
 
@@ -713,13 +713,13 @@ function addWordClick(){
       baselineChosen = [0,0];
 
     } else {
-      let letterHeight = titleStrLineChosen.match(/x_size\s+[\d\.\-]+/);
+      let letterHeight = titleStrLineChosen.match(/x_size\s+([\d\.\-]+)/);
 
-      let ascHeight = titleStrLineChosen.match(/x_ascenders\s+[\d\.\-]+/);
-      let descHeight = titleStrLineChosen.match(/x_descenders\s+[\d\.\-]+/);
-      letterHeight = letterHeight != null ? letterHeight[0] : "";
-      ascHeight = ascHeight != null ? ascHeight[0] : "";
-      descHeight = descHeight != null ? descHeight[0] : "";
+      let ascHeight = titleStrLineChosen.match(/x_ascenders\s+([\d\.\-]+)/);
+      let descHeight = titleStrLineChosen.match(/x_descenders\s+([\d\.\-]+)/);
+      letterHeight = letterHeight != null ? letterHeight[1] : "";
+      ascHeight = ascHeight != null ? ascHeight[1] : "";
+      descHeight = descHeight != null ? descHeight[1] : "";
       sizeStr = [letterHeight,ascHeight,descHeight].join(';');
 
       // Check if these stats are significantly different from the box the user specified
@@ -772,19 +772,19 @@ function addWordClick(){
       angleAdjY = Math.sin(window.pageMetricsObj["angleAll"][window.currentPage] * (Math.PI / 180)) * (lineBoxChosen[0] + angleAdjX /2) * -1;
     }
 
-    let letterHeight = titleStrLineChosen.match(/(?<=x_size\s+)[\d\.\-]+/);
-    let ascHeight = titleStrLineChosen.match(/(?<=x_ascenders\s+)[\d\.\-]+/);
-    let descHeight = titleStrLineChosen.match(/(?<=x_descenders\s+)[\d\.\-]+/);
+    let letterHeight = titleStrLineChosen.match(/x_size\s+([\d\.\-]+)/);
+    let ascHeight = titleStrLineChosen.match(/x_ascenders\s+([\d\.\-]+)/);
+    let descHeight = titleStrLineChosen.match(/x_descenders\s+([\d\.\-]+)/);
 
     if(letterHeight != null && ascHeight != null && descHeight != null){
-       letterHeight = parseFloat(letterHeight[0]);
-       ascHeight =  parseFloat(ascHeight[0]);
-       descHeight = parseFloat(descHeight[0]);
+       letterHeight = parseFloat(letterHeight[1]);
+       ascHeight =  parseFloat(ascHeight[1]);
+       descHeight = parseFloat(descHeight[1]);
        let xHeight = letterHeight - ascHeight - descHeight;
        fontSize = getFontSize(window.globalFont, xHeight, "o", ctx);
      } else if(letterHeight != null){
-       letterHeight = parseFloat(letterHeight[0]);
-       descHeight = descHeight != null ? parseFloat(descHeight[0]) : 0;
+       letterHeight = parseFloat(letterHeight[1]);
+       descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
        fontSize = getFontSize(window.globalFont, letterHeight - descHeight, "A", ctx);
      }
 
@@ -831,11 +831,11 @@ function addWordClick(){
       if(this.hasStateChanged){
         if(document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)){
           let textInt = this.text;
-          textInt = textInt.replace(/(?<=^|[-–—])\'/, "‘");
-          textInt = textInt.replace(/(?<=^|[-–—])\"/, "“");
+          textInt = textInt.replace(/(^|[-–—])\'/, "$1‘");
+          textInt = textInt.replace(/(^|[-–—])\"/, "$1“");
           textInt = textInt.replace(/\'(?=$|[-–—])/, "’");
           textInt = textInt.replace(/\"(?=$|[-–—])/, "”");
-          textInt = textInt.replace(/(?<=[a-z])\'(?=[a-z]$)/i, "’");
+          textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
           this.text = textInt;
         }
         const wordWidth = calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
@@ -952,8 +952,8 @@ async function importFiles(){
   let unsupportedExt = new Object;
   for(let i=0; i<curFiles.length; i++){
     const file = curFiles[i];
-    let fileExt = file.name.match(/(?<=\.)[^\.]+$/);
-    fileExt = fileExt == null ? "" : fileExt[0].toLowerCase();
+    let fileExt = file.name.match(/\.([^\.]+)$/);
+    fileExt = fileExt == null ? "" : fileExt[1].toLowerCase();
 
     if(["png","jpeg", "jpg"].includes(fileExt)){
       imageFilesAll.push(file);
@@ -1023,7 +1023,7 @@ async function importFiles(){
        let hocrStrAll = await readOcrFile(hocrFilesAll[0]);
 
        // Check whether input is Abbyy XML
-       const node2 = hocrStrAll.match(/(?<=\>)[^\>]+/)[0];
+       const node2 = hocrStrAll.match(/\>([^\>]+)/)[1];
        abbyyMode = /abbyy/i.test(node2) ? true : false;
 
        if(abbyyMode){
@@ -1037,7 +1037,7 @@ async function importFiles(){
 
          if(resumeMode){
             let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-            let contentStr = fontMetricsStr.match(/(?<=content\=[\"\'])[\s\S]+?(?=[\"\']\/?\>)/i)[0].replace(/&quot;/g, '"');
+            let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\/?\>)/i)[1].replace(/&quot;/g, '"');
             window.fontMetricsObj = JSON.parse(contentStr);
 
          }

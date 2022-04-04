@@ -35,18 +35,18 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
         // If possible (native Tesseract HOCR) get font size using x-height.
         // If not possible (Abbyy XML) get font size using ascender height.
-         let letterHeight = titleStrLine.match(/(?<=x_size\s+)[\d\.\-]+/);
-         let ascHeight = titleStrLine.match(/(?<=x_ascenders\s+)[\d\.\-]+/);
-         let descHeight = titleStrLine.match(/(?<=x_descenders\s+)[\d\.\-]+/);
+         let letterHeight = titleStrLine.match(/x_size\s+([\d\.\-]+)/);
+         let ascHeight = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/);
+         let descHeight = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/);
          if(letterHeight != null && ascHeight != null && descHeight != null){
-            letterHeight = parseFloat(letterHeight[0]);
-            ascHeight =  parseFloat(ascHeight[0]);
-            descHeight = parseFloat(descHeight[0]);
+            letterHeight = parseFloat(letterHeight[1]);
+            ascHeight =  parseFloat(ascHeight[1]);
+            descHeight = parseFloat(descHeight[1]);
             let xHeight = letterHeight - ascHeight - descHeight;
             fontSize = getFontSize(defaultFont, xHeight, "o", ctx);
          } else if(letterHeight != null){
-           letterHeight = parseFloat(letterHeight[0]);
-           descHeight = descHeight != null ? parseFloat(descHeight[0]) : 0;
+           letterHeight = parseFloat(letterHeight[1]);
+           descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
            fontSize = getFontSize(defaultFont, letterHeight - descHeight, "A", ctx);
          }
          // If none of the above conditions are met (not enough info to calculate font size), the font size from the previous line is reused.
@@ -95,9 +95,9 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           }
 
           let wordFontSize;
-          let fontSizeStr = styleStr.match(/(?<=font\-size\:\s*)\d+/i);
+          let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i);
           if(fontSizeStr != null){
-            wordFontSize = parseFloat(fontSizeStr[0]);
+            wordFontSize = parseFloat(fontSizeStr[1]);
           } else if(wordSup){
             // All superscripts are assumed to be numbers for now
             wordFontSize = getFontSize(defaultFont, box_height, "1", ctx);
@@ -122,22 +122,22 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           }
 
 
-          let fontFamilyWord = styleStr.match(/(?<=font\-family\s{0,3}\:\s{0,3}[\'\"]?)[^\'\";]+/);
+          let fontFamilyWord = styleStr.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/);
           let defaultFontFamily;
           if(fontFamilyWord == null){
             fontFamilyWord = defaultFont
             defaultFontFamily = true;
           } else {
-            fontFamilyWord = fontFamilyWord[0].trim();
+            fontFamilyWord = fontFamilyWord[1].trim();
             defaultFontFamily = false;
           }
 
 
           let x_wconf;
-          let confMatch = titleStr.match(/(?<=(?:;|\s)x_wconf\s+)\d+/);
+          let confMatch = titleStr.match(/(?:;|\s)x_wconf\s+(\d+)/);
           let wordConf = 0;
           if(confMatch != null){
-            wordConf = parseInt(confMatch[0]);
+            wordConf = parseInt(confMatch[1]);
           }
 
           let word_id = word.getAttribute('id');
@@ -160,12 +160,12 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
           let  missingKerning, kerning;
           //let kerning;
-          let kerningMatch = styleStr.match(/(?<=letter-spacing\:)([\d\.\-]+)/);
+          let kerningMatch = styleStr.match(/letter-spacing\:([\d\.\-]+)/);
           if(kerningMatch == null){
             kerning = 0;
             missingKerning = true;
           } else {
-            kerning = parseFloat(kerningMatch[0]);
+            kerning = parseFloat(kerningMatch[1]);
             missingKerning = false;
           }
 
@@ -212,7 +212,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             }
             styleStr = styleStr + "letter-spacing:" + kerning + "px";
           } else {
-            styleStr = styleStr.replace(/(?<=letter-spacing\:)([\d\.\-]+)/, kerning);
+            styleStr = styleStr.replace(/(letter-spacing\:)([\d\.\-]+)/, "$1" + kerning);
           }
           word.setAttribute("style", styleStr);
         }
@@ -403,11 +403,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
               if(this.hasStateChanged){
                 if(document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)){
                   let textInt = this.text;
-                  textInt = textInt.replace(/(?<=^|[-–—])\'/, "‘");
-                  textInt = textInt.replace(/(?<=^|[-–—])\"/, "“");
+                  textInt = textInt.replace(/(^|[-–—])\'/, "$1‘");
+                  textInt = textInt.replace(/(^|[-–—])\"/, "$1“");
                   textInt = textInt.replace(/\'(?=$|[-–—])/, "’");
                   textInt = textInt.replace(/\"(?=$|[-–—])/, "”");
-                  textInt = textInt.replace(/(?<=[a-z])\'(?=[a-z]$)/i, "’");
+                  textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
                   this.text = textInt;
                 }
 
