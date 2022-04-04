@@ -5,6 +5,27 @@
   <link rel="stylesheet" href="./css/bootstrap.min.css">
   <style type="text/css">
 
+    :root {
+      --bs-primary: #287bb5;
+      --bs-blue: #287bb5;
+    }
+
+    .dropdown-item:active {
+      background-color: #287bb5;
+    }
+
+    .dropdown-item:focus {
+      background-color: #287bb5;
+    }
+
+    .dropdown-item:hover {
+      background-color: #287bb5;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      background: #287bb5;
+    }
+
 
     .nav a {
       border-bottom: 3px solid transparent !important;
@@ -75,11 +96,12 @@
   <meta charset="utf-8" />
   <script src="lib/bootstrap.bundle.min.js"></script>
   <script src="lib/pdf.js"></script>
-  <script src="lib/pdf.worker.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.js";</script>
+  <!-- <script src="lib/pdf.worker.js"></script> -->
 
   <script src="lib/filer.min.js"></script>
-  <script src="lib/UPNG.js"></script>
-  <script src="lib/pako.js"></script>
+  <!-- <script src="lib/UPNG.js"></script> -->
+  <!-- <script src="lib/pako.js"></script> -->
 
   <script src="./lib/fabric.js"></script>
 
@@ -93,6 +115,10 @@
   <script src="./lib/FileSaver.js"></script>
   <script type="module" src="main.js"></script>
 
+  <!-- Used for detecting whether SIMD is supported (needed for fast version of Tesseract to run) -->
+  <!-- https://github.com/GoogleChromeLabs/wasm-feature-detect -->
+  <script src="./lib/wasm-feature-detect.js"></script>
+  <script src="./tess/tesseract.min.js"></script>
 
 </head>
 <style>
@@ -105,10 +131,12 @@
     <div class="container">
       <div class="container-fluid" id="user-controls">
         <div class="row nav-row">
-          <div class="col col-5">
+          <div class="col col-6">
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
 
               <a class="nav-link collapsed" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import" type="button" role="tab" aria-controls="nav-import">Import</a>
+              <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse" data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
+
               <a class="nav-link collapsed" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view" type="button" role="tab" aria-controls="nav-view">View</a>
               <a class="nav-link collapsed" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit" type="button" role="tab" aria-controls="nav-edit">Edit</a>
 
@@ -118,9 +146,6 @@
 
             </div>
           </div>
-          <div class="col col-1">
-          </div>
-
           <div class="col col-4 my-auto">
 
             <button class="btn btn-info btn-sm" id="prev">Previous</button>
@@ -296,10 +321,13 @@ For both OCR and image files, individual files for each page or a single file wi
               </div>
 
             </div>
-            <div class="collapse" id="progress-collapse">
-              <div class="row">
-                <div class="col col-8">
-                  <div class="progress" style="margin-bottom: 0.2rem;">
+            <div class="collapse" id="import-progress-collapse">
+              <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
+                <div class="col col-2" style="padding-left:0">
+                  <div>Loading Files</div>
+                </div>
+                <div class="col col-7">
+                  <div class="progress" style="margin: 0.25rem;">
                     <div class="progress-bar bg-info" id="importProgress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                   </div>
                 </div>
@@ -307,23 +335,125 @@ For both OCR and image files, individual files for each page or a single file wi
             </div>
 
             <div id="charInfoAlert" class="alert alert-dismissible alert-warning d-flex align-items-center show fade" style="display:none !important">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2"" viewBox=" 0 0 16 16">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
                 <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
                 <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
               </svg>
               <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              <p class="mb-0"> No character-level OCR data detected. Font optimization features will be disabled. <a href="#" class="alert-link">Learn more.</a></p>
+              <p class="mb-0"> No character-level OCR data detected. Font optimization features will be disabled. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a></p>
             </div>
             <div id="charInfoError" class="alert alert-dismissible alert-danger d-flex align-items-center show fade" style="display:none !important">
               <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2"" viewBox=" 0 0 16 16">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
                 <path
                   d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z" />
                 <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z" />
               </svg>
-              <div class="mb-0"> No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="#" class="alert-link">Learn more.</a></div>
+              <div class="mb-0"> No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a></div>
             </div>
+
+          </div>
+          <div class="collapse" id="nav-recognize" role="tabpanel" aria-labelledby="nav-recognize-tab" data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+              <div class="col col-2" style="padding-right:0.25rem;">
+                <label>Recognize Text</label>
+                <button type="button" id="recognizeAll" class="btn btn-info btn-sm" style="min-width:75%;text-align:left" disabled>Recognize All</button>
+                <!-- <div style="padding-top:0.4rem;">
+                  <button type="button" id="recognizeArea" class="btn btn-info btn-sm" style="min-width:75%;text-align:left" disabled>Recognize Area</button>
+                </div> -->
+              </div>
+              <div class="col col-2">
+                <label>Options:</label>
+                <div class="row">
+                  <div class="form-group">
+                    <div class="dropdown">
+                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="oem" data-bs-toggle="dropdown" style="width:100%;text-align:left">
+                        <div style="display:inline"> Engine: </div>
+                        <div id="oemLabelText" style="display:inline">LSTM</div>
+                      </button>
+                      <ul class="dropdown-menu">
+                        <li><a id="oemLabelOptionLstm" class="dropdown-item" href="#">Tesseract LSTM</a></li>
+                        <li><a id="oemLabelOptionLegacy" class="dropdown-item" href="#">Tesseract Legacy</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="row" style="padding-top:0.4rem;">
+                  <div class="form-group">
+                    <div class="form-group">
+                      <div class="dropdown">
+                        <button class="btn btn-secondary dropdown btn-sm" type="button" id="psm" data-bs-toggle="dropdown" style="width:100%;text-align:left">
+                          <div style="display:inline"> Segment: </div>
+                          <div id="psmLabelText" style="display:inline">Automatic</div>
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a id="psmLabelOption3" class="dropdown-item" href="#">Automatic</a></li>
+                          <li><a id="psmLabelOption4" class="dropdown-item" href="#">Single Column</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="collapse" id="collapsePages">
+                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                    <div class="row" style="--bs-gutter-x:0">
+                      <div class="col-5">
+                        <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%">
+                      </div>
+                      <div class="col-2" style="text-align:center"> to </div>
+                      <div class="col-5">
+                        <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="simdWarning" class="alert alert-dismissible alert-warning d-flex align-items-center show fade" style="display:none !important">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
+                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
+                </svg>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <p class="mb-0"> Fast (SIMD-enabled) version of Tesseract not supported on your device. Tesseract LSTM recognition may be slow. <a href="http://docs.scribeocr.com/faq.html#what-devices-support-the-built-in-ocr-engine" target="_blank" class="alert-link">Learn more.</a></p>
+              </div>
+
+              <div id="simdWarning" class="alert alert-dismissible alert-danger d-flex align-items-center show fade" style="display:none !important">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
+                  <path
+                    d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z" />
+                  <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z" />
+                </svg>
+                <p class="mb-0"> Tesseract OCR is not supported on your platform. <a href="#" class="alert-link">Learn more.</a></p>
+              </div>
+            </div>
+            <div class="collapse" id="render-progress-collapse">
+              <div class="row" style="padding-top:0.4rem;margin:0.4rem 0.4rem 0 0.4rem;border-top:1px solid #dadada;">
+                <div class="col col-2" style="padding-left:0">
+                  <div>Rendering PDF</div>
+                </div>
+                <div class="col col-7">
+                  <div class="progress" style="margin: 0.25rem;">
+                    <div class="progress-bar bg-info" id="renderProgress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="collapse" id="recognize-progress-collapse">
+              <div class="row" style="padding-top:0.4rem;margin:0.4rem 0.4rem 0.4rem 0.4rem;border-top:1px solid #dadada;">
+                <div class="col col-2" style="padding-left:0">
+                  <div>Recognizing Text</div>
+                </div>
+                <div class="col col-7">
+                  <div class="progress" style="margin: 0.25rem;">
+                    <div class="progress-bar bg-info" id="recognizeProgress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
 
           </div>
           <div class="collapse" id="nav-view" role="tabpanel" aria-labelledby="nav-view-tab" data-bs-parent="#user-controls">
@@ -444,11 +574,6 @@ For both OCR and image files, individual files for each page or a single file wi
                 <label>Options:</label>
                 <div class="row">
                   <div class="form-group">
-                    <!-- <select id="downloadFormat" class="form-control btn-sm" size="1">
-                      <option selected value="pdf">PDF</option>
-                      <option value="hocr">HOCR</option>
-                      <option value="text">Text</option>
-                    </select> -->
                     <div class="dropdown">
                       <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadFormat" data-bs-toggle="dropdown" style="width:100%;text-align:left">
                         <svg id="formatLabelSVG" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-pdf" viewBox="0 0 16 16">
@@ -484,19 +609,12 @@ For both OCR and image files, individual files for each page or a single file wi
                         <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%">
                       </div>
                       <div class="col-2" style="text-align:center"> to </div>
-
                       <div class="col-5">
                         <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%">
                       </div>
-
                     </div>
-
-
-
                   </div>
                 </div>
-
-
               </div>
               <div class="col col-2">
                 <label>PDF Options:</label>
@@ -508,15 +626,17 @@ For both OCR and image files, individual files for each page or a single file wi
 
             </div>
             <div class="collapse" id="download-progress-collapse">
-              <div class="row">
-                <div class="col col-8">
-                  <div class="progress" style="margin-bottom: 0.2rem;">
+              <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
+                <div class="col col-2" style="padding-left:0">
+                  <div>Generating PDF</div>
+                </div>
+                <div class="col col-7">
+                  <div class="progress" style="margin: 0.25rem;">
                     <div class="progress-bar bg-info" id="downloadProgress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                   </div>
                 </div>
               </div>
             </div>
-
           </div>
           <div class="collapse" id="nav-about" role="tabpanel" aria-labelledby="nav-about-tab" data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
@@ -534,6 +654,21 @@ For both OCR and image files, individual files for each page or a single file wi
                       <path d="M8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
                     </svg> View Documentation
                   </a>
+                </div>
+
+              </div>
+              <div class="col col-3">
+                <div class="form-group">
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugInfo" style="min-width:100%;text-align:left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16">
+                    <path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+                  </svg> Debug Info</button>
+
+                </div>
+                <div class="collapse" id="debugInfo">
+                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                    <div>SIMD Support: <div id="debugEngineVersion" style="display:inline"></div></div>
+                  </div>
                 </div>
 
               </div>
@@ -560,6 +695,7 @@ For both OCR and image files, individual files for each page or a single file wi
             <div class="col col-md-9">
               <canvas id="c" style="border-style:solid" width="450" height="600"></canvas>
               <canvas id="d" style="display:none;"></canvas>
+              <img id="imgInvis" style="display:none;"></img>
             </div>
 
           </div>

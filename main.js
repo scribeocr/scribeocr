@@ -31,6 +31,9 @@ window.ctx = canvas.getContext('2d');
 // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
 canvas.overlayVpt = false;
 
+
+
+
 // Disable objectCaching (significant improvement to render time)
 fabric.Object.prototype.objectCaching = false;
 // Disable movement for all fabric objects
@@ -95,9 +98,8 @@ var leftAdjX;
 var doc;
 var backgroundImage;
 var renderStatus;
-var pdfDoc;
 //window.imageAll = [];
-var imageMode, pdfMode, resumeMode;
+var imageMode, pdfMode, xmlMode, resumeMode;
 
 loadFontFamily("Open Sans", window.fontMetricsObj);
 loadFontFamily("Libre Baskerville", window.fontMetricsObj);
@@ -115,13 +117,10 @@ const ctx2 = canvas2.getContext("2d");
 
 window.bsCollapse = new bootstrap.Collapse(document.getElementById("collapseRange"), {toggle: false});
 
-
-
-
 // Add various event listners to HTML elements
 document.getElementById('next').addEventListener('click', onNextPage);
 document.getElementById('prev').addEventListener('click', onPrevPage);
-document.getElementById('uploader').addEventListener('change', recognize);
+document.getElementById('uploader').addEventListener('change', importFiles);
 
 document.getElementById('fontMinus').addEventListener('click', () => {changeWordFontSize('minus')});
 document.getElementById('fontPlus').addEventListener('click', () => {changeWordFontSize('plus')});
@@ -168,6 +167,15 @@ document.getElementById('pdfPagesLabel').addEventListener('click', updatePdfPage
 document.getElementById('formatLabelOptionPDF').addEventListener('click', () => {setFormatLabel("pdf")});
 document.getElementById('formatLabelOptionHOCR').addEventListener('click', () => {setFormatLabel("hocr")});
 document.getElementById('formatLabelOptionText').addEventListener('click', () => {setFormatLabel("text")});
+
+document.getElementById('oemLabelOptionLstm').addEventListener('click', () => {setOemLabel("lstm")});
+document.getElementById('oemLabelOptionLegacy').addEventListener('click', () => {setOemLabel("legacy")});
+
+document.getElementById('psmLabelOption3').addEventListener('click', () => {setPsmLabel("3")});
+document.getElementById('psmLabelOption4').addEventListener('click', () => {setPsmLabel("4")});
+
+document.getElementById('recognizeAll').addEventListener('click', recognizeAll);
+
 
 document.getElementById('displayMode').addEventListener('change', () => {selectDisplayMode(event.target.value, backgroundOpts)});
 
@@ -244,64 +252,237 @@ function setFormatLabel(x){
   }
 }
 
+function setOemLabel(x){
+  if(x.toLowerCase() == "lstm"){
+    document.getElementById("oemLabelText").innerHTML = "LSTM";
+  } else if(x.toLowerCase() == "legacy"){
+    document.getElementById("oemLabelText").innerHTML = "Legacy";
+  }
+}
+
+function setPsmLabel(x){
+  if(x == "3"){
+    document.getElementById("psmLabelText").innerHTML = "Automatic";
+  } else if(x == "4"){
+    document.getElementById("psmLabelText").innerHTML = "Single Column";
+  }
+}
+
+
+
+// Various operations display loading bars, which are removed from the screen when both:
+// (1) the user closes the tab and (2) the loading bar is full.
+document.getElementById('nav-import').addEventListener('hidden.bs.collapse', function () {
+  if(document.getElementById("import-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("importProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("import-progress-collapse").setAttribute("class", "collapse");
+  }
+})
+
+document.getElementById('nav-recognize').addEventListener('hidden.bs.collapse', function () {
+  if(document.getElementById("render-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("renderProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("render-progress-collapse").setAttribute("class", "collapse");
+  }
+  if(document.getElementById("recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("recognizeProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("recognize-progress-collapse").setAttribute("class", "collapse");
+  }
+})
+
+document.getElementById('nav-download').addEventListener('hidden.bs.collapse', function () {
+  if(document.getElementById("download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("download-progress-collapse").setAttribute("class", "collapse");
+  }
+})
+
+
 // When the navbar is "sticky", it does not automatically widen for large canvases (when the canvas size is larger than the viewport).
 // However, when the navbar is fixed, the canvas does not move out of the way of the navbar.
 // Therefore, the navbar is set to fixed, and the canvas is manually moved up/down when tabs are shown/collapsed.
-var tabHeightObj = {"import":66,"view":117,"edit":104,"layout":88,"download":104,"about":55}
+var tabHeightObj = {"import":66,"recognize":102,"view":117,"recognize":102,"edit":104,"layout":88,"download":104,"about":55}
 
-document.getElementById('nav-import').addEventListener('hide.bs.collapse', function () {
+document.getElementById('nav-import').addEventListener('hide.bs.collapse', function (e) {
+  if(e.target.id != 'nav-import') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight - tabHeightObj["import"] + "px";
 })
-document.getElementById('nav-import').addEventListener('show.bs.collapse', function () {
+document.getElementById('nav-import').addEventListener('show.bs.collapse', function (e) {
+  if(e.target.id != 'nav-import') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["import"] + "px";
 })
-
-document.getElementById('nav-view').addEventListener('hide.bs.collapse', function () {
+document.getElementById('nav-recognize').addEventListener('hide.bs.collapse', function (e) {
+  if(e.target.id != 'nav-recognize') return;
+  let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
+  document.getElementById('paddingRow').style.height = currentHeight - tabHeightObj["recognize"] + "px";
+})
+document.getElementById('nav-recognize').addEventListener('show.bs.collapse', function (e) {
+  if(e.target.id != 'nav-recognize') return;
+  let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
+  document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["recognize"] + "px";
+})
+document.getElementById('nav-view').addEventListener('hide.bs.collapse', function (e) {
+  if(e.target.id != 'nav-view') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight - tabHeightObj["view"] + "px";
 })
-document.getElementById('nav-view').addEventListener('show.bs.collapse', function () {
+document.getElementById('nav-view').addEventListener('show.bs.collapse', function (e) {
+  if(e.target.id != 'nav-view') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["view"] + "px";
 })
 
-document.getElementById('nav-edit').addEventListener('hide.bs.collapse', function () {
+document.getElementById('nav-edit').addEventListener('hide.bs.collapse', function (e) {
+  if(e.target.id != 'nav-edit') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight - tabHeightObj["edit"] + "px";
 })
-document.getElementById('nav-edit').addEventListener('show.bs.collapse', function () {
+document.getElementById('nav-edit').addEventListener('show.bs.collapse', function (e) {
+  if(e.target.id != 'nav-edit') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["edit"] + "px";
 })
 
-document.getElementById('nav-layout').addEventListener('hide.bs.collapse', function () {
+document.getElementById('nav-layout').addEventListener('hide.bs.collapse', function (e) {
+  if(e.target.id != 'nav-layout') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight - tabHeightObj["layout"] + "px";
 })
-document.getElementById('nav-layout').addEventListener('show.bs.collapse', function () {
+document.getElementById('nav-layout').addEventListener('show.bs.collapse', function (e) {
+  if(e.target.id != 'nav-layout') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["layout"] + "px";
 })
 
-document.getElementById('nav-download').addEventListener('hide.bs.collapse', function () {
+document.getElementById('nav-download').addEventListener('hide.bs.collapse', function (e) {
+  if(e.target.id != 'nav-download') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight - tabHeightObj["download"] + "px";
 })
-document.getElementById('nav-download').addEventListener('show.bs.collapse', function () {
+document.getElementById('nav-download').addEventListener('show.bs.collapse', function (e) {
+  if(e.target.id != 'nav-download') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["download"] + "px";
 })
 
-document.getElementById('nav-about').addEventListener('hide.bs.collapse', function () {
+document.getElementById('nav-about').addEventListener('hide.bs.collapse', function (e) {
+  if(e.target.id != 'nav-about') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight - tabHeightObj["about"] + "px";
 })
-document.getElementById('nav-about').addEventListener('show.bs.collapse', function () {
+document.getElementById('nav-about').addEventListener('show.bs.collapse', function (e) {
+  if(e.target.id != 'nav-about') return;
   let currentHeight = parseInt(document.getElementById('paddingRow').style.height.slice(0,-2));
   document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["about"] + "px";
 })
+
+
+function initializeProgress(id,maxValue){
+  const progressCollapse = document.getElementById(id);
+
+  const progressCollapseObj = new bootstrap.Collapse(progressCollapse, {toggle: false});
+
+
+  const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
+
+  progressBar.setAttribute("aria-valuenow",0);
+  progressBar.setAttribute("style","width: " + 0 + "%");
+  progressBar.setAttribute("aria-valuemax", maxValue);
+  //progressCollapse.setAttribute("class", "collapse show");
+  progressCollapseObj.show()
+
+  return(progressBar);
+
+}
+
+
+async function recognizeAll(){
+  //if(!window.simdSupport) return;
+
+  loadCountHOCR = 0;
+
+  convertPageWorker["activeProgress"] = initializeProgress("recognize-progress-collapse",imageAll.length);
+
+  // Render all pages to PNG
+  if(pdfMode){
+      pngScheduler["activeProgress"] = initializeProgress("render-progress-collapse",imageAll.length);
+      let time1 = Date.now();
+      await renderPDFImageCache([...Array(imageAll.length).keys()]);
+      let time2 = Date.now();
+      console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
+  }
+
+
+  const oemConfig = document.getElementById("oemLabelText").innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
+  const psmConfig = document.getElementById("psmLabelText").innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
+
+  const allConfig = {
+    tessedit_ocr_engine_mode: oemConfig,
+    tessedit_pageseg_mode: psmConfig,
+    hocr_char_boxes: '1',
+    // The Tesseract LSTM engine frequently identifies a bar character "|"
+    // This is virtually always a false positive (usually "I").
+    tessedit_char_blacklist: "|"
+  };
+
+  console.log(allConfig);
+
+  let recognizeImages = async (workerN) => {
+    let time1 = Date.now();
+    const scheduler = Tesseract.createScheduler();
+
+    let workerOptions;
+    if(window.simdSupport){
+      console.log("Using Tesseract with SIMD support (fast LSTM performance).")
+      workerOptions = {corePath: './tess/tesseract-core-sse.wasm.js',workerPath:'./tess/worker.min.js'};
+    } else {
+      console.log("Using Tesseract without SIMD support (slow LSTM performance).")
+      workerOptions = {corePath: './tess/tesseract-core.wasm.js',workerPath:'./tess/worker.min.js'};
+    }
+
+    for (let i = 0; i < workerN; i++) {
+      const w = Tesseract.createWorker(workerOptions);
+      await w.load();
+      await w.loadLanguage('eng');
+      await w.initialize('eng',oemConfig);
+      await w.setParameters(allConfig);
+
+      scheduler.addWorker(w);
+    }
+
+    xmlMode = true;
+    const rets = await Promise.allSettled([...Array(window.imageAll.length).keys()].map((x) => (
+      //scheduler.addJob('recognize', window.imageAll[x].src)
+      //scheduler.addJob('recognize', window.imageAll[x].src).then((y) => window.hocrAll[x] = y.data.hocr)
+      scheduler.addJob('recognize', window.imageAll[x].src, allConfig).then((y) => {
+        convertPageWorker.postMessage([y.data.hocr, x, false]);
+      })
+    )));
+
+    console.log(rets.map(r => r.data));
+    await scheduler.terminate();
+
+    let time2 = Date.now();
+    console.log("Runtime: " + (time2 - time1) / 1e3 + "s");
+
+  }
+
+  let workerN = Math.round((window.navigator.hardwareConcurrency || 8) / 2);
+  workerN = Math.min(workerN, Math.ceil(window.imageAll.length / 2));
+
+  console.log("Using " + workerN + " workers for OCR.")
+  recognizeImages(workerN);
+
+}
+
+wasmFeatureDetect.simd().then(async function(x){
+  window.simdSupport = x;
+  // Show error message if SIMD support is not present
+  if(x){
+    document.getElementById("debugEngineVersion").innerText = "Enabled";
+  } else {
+    document.getElementById("simdWarning").setAttribute("style", "");
+    document.getElementById("debugEngineVersion").innerText = "Disabled";
+  }
+});
 
 
 var newWordInit = true;
@@ -347,7 +528,6 @@ function addWordClick(){
 
       rect.set({ width: Math.abs(origX - pointer.x) });
       rect.set({ height: Math.abs(origY - pointer.y) });
-
 
       canvas.renderAll();
   });
@@ -731,6 +911,8 @@ function clearFiles(){
   document.getElementById('save2').disabled = true;
   document.getElementById('confThreshHigh').disabled = true;
   document.getElementById('confThreshMed').disabled = true;
+  document.getElementById('recognizeAll').disabled = true;
+  document.getElementById('recognizeArea').disabled = true;
 
 }
 
@@ -741,9 +923,10 @@ function getXHeight(font, size){
 }
 
 
-async function recognize(){
+async function importFiles(){
 
   const curFiles = upload.files;
+  console.log(curFiles);
 
   if(curFiles.length == 0) return;
 
@@ -787,19 +970,12 @@ async function recognize(){
 
   pdfMode = pdfFilesAll.length == 1 ? true : false;
   imageMode = imageFilesAll.length > 0 && !pdfMode ? true : false;
+  xmlMode = hocrFilesAll.length > 0 ? true : false;
 
 
-  if(pdfMode){
-
-    readPdf(pdfFilesAll[0]).then((x) => pdfDoc = x);
-    //let pdfData = await readBlob(pdfFilesAll[0]);
-    // pdfjsLib.getDocument(pdfData).promise.then(async function(pdfDoc_) {
-    // pdfDoc = pdfDoc_;
-    // });
+  if(imageMode || pdfMode){
+    document.getElementById('recognizeAll').disabled = false;
   }
-
-
-
 
   imageFilesAll.sort();
   hocrFilesAll.sort();
@@ -808,9 +984,7 @@ async function recognize(){
   // (1) N HOCR files and 0 image files
   // (1) N HOCR files and N image files
   // (1) 1 HOCR file and N image files
-  if(hocrFilesAll.length == 0){
-    throw new Error('No files with ".hocr" extension detected.')
-  } else if(hocrFilesAll.length > 1 && imageMode && hocrFilesAll.length != imageFilesAll.length){
+  if(hocrFilesAll.length > 1 && imageMode && hocrFilesAll.length != imageFilesAll.length){
     throw new Error('Detected ' + hocrFilesAll.length + ' hocr files but ' + imageFilesAll.length + " image files.")
   }
 
@@ -825,90 +999,88 @@ async function recognize(){
 
   //let pageCount, hocrAllRaw, abbyyMode;
   let abbyyMode, hocrStrStart, hocrStrEnd, hocrStrPages, hocrArrPages, pageCount, hocrAllRaw;
-  if(singleHOCRMode){
-    const singleHOCRMode = true;
-     let hocrStrAll = await readOcrFile(hocrFilesAll[0]);
 
-     // Check whether input is Abbyy XML
-     const node2 = hocrStrAll.match(/(?<=\>)[^\>]+/)[0];
-     abbyyMode = /abbyy/i.test(node2) ? true : false;
+  if(pdfMode){
+    // Load pdf synchronously if there is no HOCR and render first page
+    window.pdfDoc = await readPdf(pdfFilesAll[0]);
+    pageCount = window.pdfDoc.numPages;
 
-     if(abbyyMode){
-//        hocrStrStart = String.raw`<?xml version="1.0" encoding="UTF-8"?>
-// <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-//     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-// <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-//  <head>
-//   <title></title>
-//   <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
-//   <meta name='ocr-system' content='tesseract 5.0.0-beta-20210916-12-g19cc9' />
-//   <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
-//  </head>
-//  <body>`;
-//
-//         hocrStrEnd = String.raw`</body>
-// </html>`;
+  } else if(imageMode){
+    pageCount = imageFilesAll.length;
+  }
 
-       hocrStrPages = hocrStrAll.replace(/[\s\S]*?(?=\<page)/i, "");
-       hocrArrPages = hocrStrPages.split(/(?=\<page)/);
-     } else {
+  if(xmlMode) {
+    if(!abbyyMode){
+      // Enable confidence threshold input boxes (only used for Tesseract)
+      document.getElementById('confThreshHigh').disabled = false;
+      document.getElementById('confThreshMed').disabled = false;
+      document.getElementById('confThreshHigh').value = 85;
+      document.getElementById('confThreshMed').value = 75;
+    }
 
-       // Enable confidence threshold input boxes (only used for Tesseract)
-       document.getElementById('confThreshHigh').disabled = false;
-       document.getElementById('confThreshMed').disabled = false;
-       document.getElementById('confThreshHigh').value = 85;
-       document.getElementById('confThreshMed').value = 75;
+    if(singleHOCRMode){
+      const singleHOCRMode = true;
+       let hocrStrAll = await readOcrFile(hocrFilesAll[0]);
 
-       // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-       resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
+       // Check whether input is Abbyy XML
+       const node2 = hocrStrAll.match(/(?<=\>)[^\>]+/)[0];
+       abbyyMode = /abbyy/i.test(node2) ? true : false;
 
-       if(resumeMode){
-          let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-          let contentStr = fontMetricsStr.match(/(?<=content\=[\"\'])[\s\S]+?(?=[\"\']\/?\>)/i)[0].replace(/&quot;/g, '"');
-          window.fontMetricsObj = JSON.parse(contentStr);
+       if(abbyyMode){
 
+         hocrStrPages = hocrStrAll.replace(/[\s\S]*?(?=\<page)/i, "");
+         hocrArrPages = hocrStrPages.split(/(?=\<page)/);
+       } else {
+
+         // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
+         resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
+
+         if(resumeMode){
+            let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
+            let contentStr = fontMetricsStr.match(/(?<=content\=[\"\'])[\s\S]+?(?=[\"\']\/?\>)/i)[0].replace(/&quot;/g, '"');
+            window.fontMetricsObj = JSON.parse(contentStr);
+
+         }
+
+         hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
+         hocrStrEnd = hocrStrAll.match(/\<\/body\>[\s\S]*$/)[0];
+         hocrStrPages = hocrStrAll.replace(/[\s\S]*?\<body\>/, "");
+         hocrStrPages = hocrStrPages.replace(/\<\/body\>[\s\S]*$/, "");
+         hocrStrPages = hocrStrPages.trim();
+
+         hocrArrPages = hocrStrPages.split(/(?=\<div class\=[\'\"]ocr_page[\'\"])/);
        }
 
-       hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
-       hocrStrEnd = hocrStrAll.match(/\<\/body\>[\s\S]*$/)[0];
-       hocrStrPages = hocrStrAll.replace(/[\s\S]*?\<body\>/, "");
-       hocrStrPages = hocrStrPages.replace(/\<\/body\>[\s\S]*$/, "");
-       hocrStrPages = hocrStrPages.trim();
+      pageCount = hocrArrPages.length;
+      if(imageMode && hocrArrPages.length != imageFilesAll.length){
+        throw new Error('Detected ' + hocrArrPages.length + ' pages in OCR but ' + imageFilesAll.length + " image files.")
+      }
+      hocrAllRaw = Array(pageCount);
+      for(let i=0;i<pageCount;i++){
+        hocrAllRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
+      }
 
-       hocrArrPages = hocrStrPages.split(/(?=\<div class\=[\'\"]ocr_page[\'\"])/);
-     }
-
-         pageCount = hocrArrPages.length;
-    if(imageMode && hocrArrPages.length != imageFilesAll.length){
-      throw new Error('Detected ' + hocrArrPages.length + ' pages in OCR but ' + imageFilesAll.length + " image files.")
+    } else {
+      const singleHOCRMode = false;
+      pageCount = hocrFilesAll.length;
     }
-    hocrAllRaw = Array(pageCount);
-    for(let i=0;i<pageCount;i++){
-      hocrAllRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
-    }
-
-  } else {
-    const singleHOCRMode = false;
-    pageCount = hocrFilesAll.length;
   }
 
   window.hocrAll = Array(pageCount);
   window.imageAll = Array(pageCount);
+
+  if(pdfMode && !xmlMode){
+    renderPageQueue(0);
+  }
+
   let imageN = -1;
   let hocrN = -1;
   let firstImg = true;
 
-  const importProgressCollapse = document.getElementById("progress-collapse");
-  importProgressCollapse.setAttribute("class", "collapse show");
-  const importProgress = document.getElementById("importProgress");
-  importProgress.setAttribute("aria-valuenow",0);
   loadCountHOCR = 0;
-  if(imageMode){
-    importProgress.setAttribute("aria-valuemax", pageCount * 2);
-  } else {
-    importProgress.setAttribute("aria-valuemax", pageCount);
-  }
 
+  const progressMax = imageMode && xmlMode ? pageCount * 2 : pageCount;
+  convertPageWorker["activeProgress"] = initializeProgress("import-progress-collapse",progressMax);
 
   for(let i = 0; i < pageCount; i++) {
 
@@ -939,10 +1111,10 @@ async function recognize(){
           imageAll[imageNi] = image;
 
           loadCountHOCR = loadCountHOCR + 1;
-          const valueMax = parseInt(importProgress.getAttribute("aria-valuemax"));
-          importProgress.setAttribute("aria-valuenow",loadCountHOCR);
+          const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
+          convertPageWorker["activeProgress"].setAttribute("aria-valuenow",loadCountHOCR);
           if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
-            importProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
+            convertPageWorker["activeProgress"].setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
             if(loadCountHOCR == valueMax){
               window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
               calculateOverallPageMetrics();
@@ -957,27 +1129,17 @@ async function recognize(){
 
     }
 
-    // Process HOCR using web worker, reading from file first if that has not been done already
-    if(singleHOCRMode){
-      myWorker.postMessage([hocrAllRaw[i], i, abbyyMode]);
-    } else {
-      const hocrFile = hocrFilesAll[i];
-      const hocrNi = hocrN + 1;
-      hocrN = hocrN + 1;
-
-      readOcrFile(hocrFile).then((x) => myWorker.postMessage([x, hocrNi]));
-
-      // const reader = new FileReader();
-      // reader.addEventListener("load", () => {
-      //
-      // myWorker.postMessage([reader.result, hocrNi]);
-      //
-      // }, false);
-      //
-      // reader.readAsText(hocrFile);
-
+    if(xmlMode){
+      // Process HOCR using web worker, reading from file first if that has not been done already
+      if(singleHOCRMode){
+        convertPageWorker.postMessage([hocrAllRaw[i], i, abbyyMode]);
+      } else {
+        const hocrFile = hocrFilesAll[i];
+        const hocrNi = hocrN + 1;
+        hocrN = hocrN + 1;
+        readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, hocrNi]));
+      }
     }
-
 
   }
 
@@ -987,207 +1149,286 @@ async function recognize(){
 }
 
 
+// If a user rapidly changes pages, it is possible that the background image for
+// page n finishes loading after page n+1 is already loaded.
+// When interrupt = true, the function will quit early if it detects that the page it is rendering
+// is not the current page.
+async function renderPDFImage(n,imgDims=null,interrupt=false){
+  let page = await pdfDoc.getPage(n + 1);
+
+  const viewport1 = page.getViewport({ scale: 1 });
+
+  // If imgDims is NULL then
+  let scaleArgRender, scaleArgDisplay, renderHeight, renderWidth;
+  if(imgDims == null){
+
+    // PDF units do not represent the actual resolution of the embedded images
+    // For now all images are assumed to be 300 dpi
+    scaleArgRender = 300/72;
+    scaleArgDisplay = Math.min(parseFloat(document.getElementById('zoomInput').value) / Math.round(viewport1.width), scaleArgRender);
+
+    window.canvas.setHeight(viewport1.height * scaleArgDisplay);
+    window.canvas.setWidth(viewport1.width * scaleArgDisplay);
+
+    window.canvas.setZoom(scaleArgDisplay / scaleArgRender);
+
+  } else {
+    scaleArgRender = imgDims[1] / viewport1.width;
+
+  }
+
+  const viewport = page.getViewport({ scale: scaleArgRender});
+
+  // Prepare canvas using PDF page dimensions
+  const renderCanvas = document.createElement('canvas');
+  const context = renderCanvas.getContext('2d');
+
+  renderCanvas.height = viewport.height
+  renderCanvas.width = viewport.width;
+
+  // Render PDF page into canvas context
+  const renderContext = {
+      canvasContext: context,
+      viewport: viewport
+  };
+  if(interrupt && window.currentPage != n) return;
+  await page.render(renderContext).promise;
+  return(renderCanvas);
+
+}
+
+// Render a canvas to a PDF and create compressed .png
+// Note: the built-in method HTMLCanvasElement.toDataURL() also creates a .png,
+// however it is not well compressed so 100 such images will not fit in memory.
+async function genCachePng(renderCanvas, interrupt=false, n = null){
+  if(interrupt && window.currentPage != n) return;
+
+
+  let time1 = Date.now();
+  let ctx2 = renderCanvas.getContext('2d');
+  let imgData = ctx2.getImageData(0,0,renderCanvas.width,renderCanvas.height).data;
+  let time2 = Date.now();
+  console.log("getImageData runtime: " + (time2 - time1) / 1e3 + "s");
+
+  //renderPngWorker.postMessage([imgData.buffer, renderCanvas.width, renderCanvas.height, n],[imgData.buffer]);
+
+  let res = await pngScheduler.addJob('send',[imgData.buffer, renderCanvas.width, renderCanvas.height, n]);
+
+}
+
+function arrayBufferToBase64( buffer ) {
+	var binary = '';
+	var bytes = new Uint8Array( buffer );
+	var len = bytes.byteLength;
+	for (var i = 0; i < len; i++) {
+		binary += String.fromCharCode( bytes[ i ] );
+	}
+	return window.btoa( binary );
+}
+
+// Scheduler for compressing PNG data
+var pngScheduler = Tesseract.createScheduler();
+for (let i = 0; i < 3; i++) {
+  const w = new Worker('js/renderPng.js');
+  w["send"] = async function(packet,res){
+    w.postMessage(packet,packet[0]);
+
+    return new Promise((resolve, reject) => {
+      w.onmessage = function(e) {
+        const png = e.data[0];
+        const n = e.data[1];
+        // const blob = new Blob( [png] );
+        // const url = URL.createObjectURL( blob );
+        const image = document.createElement('img');
+        // image.src = url;
+        image.src = "data:image/png;base64," + arrayBufferToBase64(png);
+        window.imageAll[n] = image;
+        if(typeof(pngScheduler["activeProgress"]) != "undefined"){
+          pngRenderCount = pngRenderCount + 1;
+          const valueMax = parseInt(pngScheduler["activeProgress"].getAttribute("aria-valuemax"));
+          pngScheduler["activeProgress"].setAttribute("style","width: " + (pngRenderCount / valueMax) * 100 + "%");
+        }
+        resolve();
+      }
+
+    })
+
+  }
+  w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
+  pngScheduler.addWorker(w);
+}
+
+var pngRenderCount = 0;
+async function renderPDFImageCache(pagesArr){
+  pngRenderCount = 0;
+
+  await Promise.allSettled(pagesArr.map(async (n) => {
+    const renderOutput = await renderPDFImage(n, null, false);
+    return(genCachePng(renderOutput,false,n));
+  }));
+
+}
+
 
 
 var backgroundOpts = new Object;
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null){
 
-  if(window.hocrAll.length == 0 || typeof(window.hocrAll[n]) != "string" || imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || pdfMode && (typeof(pdfDoc) == "undefined")){
-    return;
+  // Return if data is not loaded yet
+  const imageMissing = imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || pdfMode && (typeof(pdfDoc) == "undefined");
+  const xmlMissing = window.hocrAll.length == 0 || typeof(window.hocrAll[n]) != "string";
+  if(imageMissing && (imageMode || pdfMode) || xmlMissing && xmlMode){
+    console.log("Exiting renderPageQueue early");
+    return
   }
 
-  if(loadXML){
-    // Parse the relevant XML (relevant for both Canvas and PDF)
+  // Parse the relevant XML (relevant for both Canvas and PDF)
+  if(loadXML && xmlMode){
     window.xmlDoc = parser.parseFromString(window.hocrAll[n],"text/xml");
   }
 
-  let defaultFont = window.globalFont ?? "Libre Baskerville";
 
-  let imageN = imageAll[n];
+  // Determine image size and canvas size
+  let imgDims = null;
+  let canvasDims = null;
 
-  let imgDims = new Array(2);
-  imgDims[1] = window.pageMetricsObj["dimsAll"][n][1];
-  imgDims[0] = window.pageMetricsObj["dimsAll"][n][0];
+  // In the case of a pdf with no ocr data and no cached png, no page size data exists yet.
+  if(!(pdfMode && !xmlMode && typeof(imageAll[n]) == "undefined")){
+    imgDims = new Array(2);
+    canvasDims = new Array(2);
 
-
-  let canvasDims = new Array(2);
-  if(mode == "pdf" && dimsLimit[0] > 0 && dimsLimit[1] > 0){
-    canvasDims[1] = dimsLimit[1];
-    canvasDims[0] = dimsLimit[0];
-  } else {
-    canvasDims[1] = window.pageMetricsObj["dimsAll"][n][1];
-    canvasDims[0] = window.pageMetricsObj["dimsAll"][n][0];
-  }
-
-  // Clear canvas and set new backgound image (relevant for Canvas only)
-  if(mode == "screen"){
-    canvas.clear();
-    canvas.__eventListeners = {};
-
-    let zoomFactor = Math.min(parseFloat(document.getElementById('zoomInput').value) / canvasDims[1], 1);
-
-    canvas.setHeight(canvasDims[0] * zoomFactor);
-    canvas.setWidth(canvasDims[1] * zoomFactor);
-
-    canvas.setZoom(zoomFactor);
-  } else {
-    window.doc.addPage({size:[canvasDims[1],canvasDims[0]],
-    margins: 0});
-  }
-
-  if(autoRotateCheckbox.checked){
-    backgroundOpts.angle = window.pageMetricsObj["angleAll"][n] * -1 ?? 0;
-  } else {
-    backgroundOpts.angle = 0;
-  }
-
-  let marginPx = Math.round(canvasDims[1] * leftGlobal);
-  if(showMarginCheckbox.checked && mode == "screen"){
-    canvas.viewportTransform[4] = 0;
-
-    let marginLine = new fabric.Line([marginPx,0,marginPx,canvasDims[0]],{stroke:'blue',strokeWidth:1,selectable:false,hoverCursor:'default'});
-    canvas.add(marginLine);
-
-    let marginImage = canvas.toDataURL();
-    canvas.clear();
-    canvas.setOverlayImage(marginImage, canvas.renderAll.bind(canvas), {
-      overlayImageLeft: 100,
-      overlayImageTop: 100
-    });
-
-  }
-
-  leftAdjX = 0;
-  if(autoMarginCheckbox.checked  && leftGlobal != null){
-
-    // Adjust page to match global margin unless it would require large transformation (likely error)
-    if(window.pageMetricsObj["leftAll"][n] > 0 && Math.abs(marginPx - window.pageMetricsObj["leftAll"][n]) < (window.pageMetricsObj["dimsAll"][window.currentPage][1] / 3)){
-      leftAdjX = marginPx - window.pageMetricsObj["leftAll"][n];
+    // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
+    if(xmlMode){
+      imgDims[1] = window.pageMetricsObj["dimsAll"][n][1];
+      imgDims[0] = window.pageMetricsObj["dimsAll"][n][0];
+    } else {
+      imgDims[1] = window.imageAll[n].width;
+      imgDims[0] = window.imageAll[n].height;
     }
 
+    // The canvas size and image size are generally the same.
+    // The exception is when rendering a pdf with the "standardize page size" option on,
+    // which will scale the canvas size but not the image size.
+    if(mode == "pdf" && dimsLimit[0] > 0 && dimsLimit[1] > 0){
+      canvasDims[1] = dimsLimit[1];
+      canvasDims[0] = dimsLimit[0];
+    } else {
+      canvasDims[1] = imgDims[1];
+      canvasDims[0] = imgDims[0];
+    }
+
+    // let zoomFactor = Math.min(parseFloat(document.getElementById('zoomInput').value) / imgDims[1], 1);
+    // canvas.setHeight(imgDims[0] * zoomFactor);
+    // canvas.setWidth(imgDims[1] * zoomFactor);
+    // canvas.setZoom(zoomFactor);
+  }
+
+  // Calculate options for background image and overlay
+  if(xmlMode){
+
+
+    let marginPx = Math.round(canvasDims[1] * leftGlobal);
     if(autoRotateCheckbox.checked){
-      leftAdjX = leftAdjX - (window.pageMetricsObj["angleAdjAll"][n] ?? 0);
+      backgroundOpts.angle = window.pageMetricsObj["angleAll"][n] * -1 ?? 0;
+    } else {
+      backgroundOpts.angle = 0;
     }
 
-    backgroundOpts.left = leftAdjX;
-  } else {
-    backgroundOpts.left = 0;
-  }
+    if(showMarginCheckbox.checked && mode == "screen"){
+      canvas.viewportTransform[4] = 0;
 
-  if(mode == "screen"){
-    canvas.viewportTransform[4] = window.pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
-  }
+      let marginLine = new fabric.Line([marginPx,0,marginPx,canvasDims[0]],{stroke:'blue',strokeWidth:1,selectable:false,hoverCursor:'default'});
+      canvas.add(marginLine);
 
-  renderStatus = 0;
+      let marginImage = canvas.toDataURL();
+      canvas.clear();
+      canvas.setOverlayImage(marginImage, canvas.renderAll.bind(canvas), {
+        overlayImageLeft: 100,
+        overlayImageTop: 100
+      });
 
-  if(mode == "screen"){
-    if(pdfMode){
-      if(typeof(imageAll[n]) == "undefined"){
-        pdfDoc.getPage(n + 1).then((page) => {
-                let pdfPage = page;
+    }
 
-                const viewport1 = page.getViewport({ scale: 1 });
+    leftAdjX = 0;
+    if(autoMarginCheckbox.checked  && leftGlobal != null){
 
-                const viewport = page.getViewport({ scale: imgDims[1] / viewport1.width });
-                // Prepare canvas using PDF page dimensions
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                //context.rotate(45 * Math.PI / 180);
-                canvas.height = viewport.height
-                canvas.width = viewport.width;
-                // Render PDF page into canvas context
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
-                const renderTask = page.render(renderContext);
-                return renderTask.promise.then(() => canvas);
-            }).then((x) => {
-              // If a user rapidly changes pages, it is possible that the background image for
-              // page n finishes loading after page n+1 is already loaded.
-              if(window.currentPage != n) return;
-              imageAll[n] = new fabric.Image(x, {objectCaching:false});
-              backgroundImage = imageAll[n];
-              console.log("window.currentPage: " + window.currentPage + "; n: " + n + "; renderStatus: " + renderStatus);
-              renderStatus = renderStatus + 1;
-
-              selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
-
-              });
-      } else {
-        backgroundImage = imageAll[n];
-        renderStatus = renderStatus + 1;
-        selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+      // Adjust page to match global margin unless it would require large transformation (likely error)
+      if(window.pageMetricsObj["leftAll"][n] > 0 && Math.abs(marginPx - window.pageMetricsObj["leftAll"][n]) < (window.pageMetricsObj["dimsAll"][window.currentPage][1] / 3)){
+        leftAdjX = marginPx - window.pageMetricsObj["leftAll"][n];
       }
 
+      if(autoRotateCheckbox.checked){
+        leftAdjX = leftAdjX - (window.pageMetricsObj["angleAdjAll"][n] ?? 0);
+      }
 
-
-    } else if(imageMode){
-      backgroundImage = new fabric.Image(imageN,{objectCaching:false});
+      backgroundOpts.left = leftAdjX;
+    } else {
+      backgroundOpts.left = 0;
     }
+
+    if(mode == "screen"){
+      canvas.viewportTransform[4] = window.pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
+    }
+
+  }
+
+  if(mode == "screen"){
+    // Clear canvas if hocr data (and therefore possibly overlay text) exists
+    if(xmlMode){
+      canvas.clear()
+      canvas.__eventListeners = {};
+    }
+
+    if(imgDims != null){
+      let zoomFactor = Math.min(parseFloat(document.getElementById('zoomInput').value) / imgDims[1], 1);
+      canvas.setHeight(imgDims[0] * zoomFactor);
+      canvas.setWidth(imgDims[1] * zoomFactor);
+      canvas.setZoom(zoomFactor);
+    }
+
+    renderStatus = 0;
+
+    // If the input is a pdf, render the request page to png (if this has not been done already)
+    if(pdfMode && typeof(imageAll[n]) == "undefined"){
+      console.log("Rendering pdf");
+      renderPDFImage(n, imgDims, true).then((renderOutput) => {
+        if(typeof(renderOutput) != "undefined"){
+          renderStatus = renderStatus + 1;
+          backgroundImage = new fabric.Image(renderOutput, {objectCaching:false});
+          selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+          genCachePng(renderOutput,false,n);
+        }
+      });
+    } else {
+      backgroundImage = new fabric.Image(imageAll[n], {objectCaching:false});
+      renderStatus = renderStatus + 1;
+      selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+    }
+
+    // If there is no OCR data to render, we are done
+    if(!xmlMode){
+      return;
+    }
+
   } else {
+    window.doc.addPage({size:[canvasDims[1],canvasDims[0]],margins: 0});
+
     if(document.getElementById('displayMode').value != "ebook"){
-      if(pdfMode){
-        await pdfDoc.getPage(n + 1).then((page) => {
-                let pdfPage = page;
-
-                const viewport1 = page.getViewport({ scale: 1 });
-
-                //  retina scaling
-                const viewport = page.getViewport({ scale: imgDims[1] / viewport1.width });
-                // Prepare canvas using PDF page dimensions
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                //context.rotate(45 * Math.PI / 180);
-                canvas.height = viewport.height
-                canvas.width = viewport.width;
-                // Render PDF page into canvas context
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
-                const renderTask = page.render(renderContext);
-                return renderTask.promise.then(() => canvas);
-            }).then((x) => {
-              let ctx2 = x.getContext('2d');
-              let imgData = ctx2.getImageData(0,0,x.width,x.height).data;
-              let png;
-              if(document.getElementById("binarizeCheckbox").checked){
-                png = UPNG.encode([imgData.buffer], x.width,x.height, 2);
-              } else {
-                png = UPNG.encode([imgData.buffer], x.width,x.height, 0);
-              }
-              if(mode == "pdf"){
-                window.doc.image(png,leftAdjX,0,{align:'left',valign:'top'});
-              } else {
-                const image = document.createElement('img');
-                image.src = png;
-                imageAll[n] = image;
-              }
-              })
-
-      } else if(imageMode){
-        window.doc.image(imageN.src,leftAdjX,0,{align:'left',valign:'top'});
-      }
+      // TODO: Make everything render from pdf to png ahead of time
+      window.doc.image(imageAll[n].src,leftAdjX,0,{align:'left',valign:'top'});
     }
   }
 
   if(mode == "screen"){
-    await renderPage(canvas, null, xmlDoc, "screen", defaultFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], pdfMode, fontObj, leftAdjX);
-  } else {
-    await renderPage(canvas, doc, xmlDoc, "pdf", defaultFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], pdfMode, fontObj, leftAdjX);
-  }
-
-
-  if(mode == "screen"){
-    console.log("window.currentPage: " + window.currentPage + "; n: " + n + "; renderStatus: " + renderStatus);
+    await renderPage(canvas, null, xmlDoc, "screen", window.globalFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], pdfMode, fontObj, leftAdjX);
     if(window.currentPage == n){
       renderStatus = renderStatus + 1;
     }
     await selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+  } else {
+    await renderPage(canvas, doc, xmlDoc, "pdf", window.globalFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], pdfMode, fontObj, leftAdjX);
   }
-
 
 }
 
@@ -1197,7 +1438,10 @@ async function onPrevPage(marginAdj) {
     return;
   }
   working = true;
-  window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+  if(xmlMode){
+    window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+  }
+
   window.currentPage = window.currentPage - 1;
   document.getElementById('pageNum').value = window.currentPage + 1;
 
@@ -1214,7 +1458,9 @@ async function onNextPage() {
      return;
    }
    working = true;
-   window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+   if(xmlMode){
+     window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+   }
 
   window.currentPage = window.currentPage + 1;
   document.getElementById('pageNum').value = window.currentPage + 1;
@@ -1228,7 +1474,9 @@ async function onNextPage() {
 
 
 async function optimizeFontClick(value){
-  window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+  if(xmlMode){
+    window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+  }
   if(value){
     await optimizeFont2();
   } else {
@@ -1282,6 +1530,10 @@ async function renderPDF(){
   let minValue = parseInt(document.getElementById('pdfPageMin').value);
   let maxValue = parseInt(document.getElementById('pdfPageMax').value);
 
+  // Render all pages to PNG
+  if(pdfMode){
+    await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1));
+  }
 
   let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
   let dimsLimit = new Array(maxValue - minValue + 1);
@@ -1293,12 +1545,7 @@ async function renderPDF(){
     }
   }
 
-  const downloadProgress = document.getElementById("downloadProgress");
-  downloadProgress.setAttribute("aria-valuenow",0);
-  downloadProgress.setAttribute("style","width: " + 0 + "%");
-  downloadProgress.setAttribute("aria-valuemax", maxValue);
-  const downloadProgressCollapse = document.getElementById("download-progress-collapse");
-  downloadProgressCollapse.setAttribute("class", "collapse show");
+  const downloadProgress = initializeProgress("download-progress-collapse",maxValue);
 
 
   let display_mode = document.getElementById('displayMode').value;
@@ -1377,14 +1624,15 @@ export async function optimizeFont2(){
 //
 // }
 
-var myWorker = new Worker('js/convertPage.js');
+var convertPageWorker = new Worker('js/convertPage.js');
 
 window.fontMetricsObj = new Object;
 window.pageMetricsObj = new Object;
 var fontMetricObjsMessage = new Object;
 
 var loadCountHOCR = 0;
-myWorker.onmessage = function(e) {
+convertPageWorker.onmessage = function(e) {
+  console.log(e.data[1]);
   window.hocrAll[e.data[1]] = e.data[0][0];
   window.pageMetricsObj["dimsAll"][e.data[1]] = e.data[0][1];
   window.pageMetricsObj["angleAll"][e.data[1]] = e.data[0][2];
@@ -1397,24 +1645,32 @@ myWorker.onmessage = function(e) {
   fontMetricObjsMessage["kerningObjAll"].push(e.data[0][9]);
   fontMetricObjsMessage["messageAll"][e.data[1]] = e.data[0][10];
 
-  if(canvas.isEmpty()){
-    renderPageQueue(0);
+  // If this is the page the user has open, render it to the canvas
+  if(e.data[1] == window.currentPage){
+    renderPageQueue(window.currentPage);
   }
 
   loadCountHOCR = loadCountHOCR + 1;
-  importProgress.setAttribute("aria-valuenow",loadCountHOCR);
+  let activeProgress = convertPageWorker["activeProgress"];
+  activeProgress.setAttribute("aria-valuenow",loadCountHOCR);
 
-  const valueMax = parseInt(importProgress.getAttribute("aria-valuemax"));
+  const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
 
-  if(loadCountHOCR % 5 == 0 | loadCountHOCR == valueMax){
-    importProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
+  // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
+  // This can make the interface less jittery compared to updating after every loop.
+  // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
+  const updateInterval = Math.min(Math.ceil(valueMax/10),5);
+  if(loadCountHOCR % updateInterval == 0 | loadCountHOCR == valueMax){
+    activeProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
     if(loadCountHOCR == valueMax){
       // If resuming from a previous editing session font stats are already calculated
       if(!resumeMode){
+          // Buttons are enabled from calculateOverallFontMetrics function in this case
           window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
       } else {
         document.getElementById('optimizeFont').disabled = false;
         document.getElementById('save2').disabled = false;
+        document.getElementById('recognizeAll').disabled = true;
       }
       calculateOverallPageMetrics();
     }
@@ -1439,7 +1695,7 @@ function calculateOverallPageMetrics(){
 // Impacts text color and opacity, and backgound image opacity
 function selectDisplayMode(x, backgroundOpts = null){
 
-  if(pdfMode && renderStatus != 2) {return;}
+  if(xmlMode && pdfMode && renderStatus != 2) {return;}
 
   let opacity_arg, fill_arg;
   if(x == "invis"){
@@ -1482,7 +1738,9 @@ async function handleDownload(){
   updatePdfPagesLabel();
 
   // Save any edits that may exist on current page
-  window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+  if(xmlMode){
+    window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
+  }
   let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();
   if(download_type == "pdf"){
     await renderPDF();
