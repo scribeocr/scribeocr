@@ -1001,6 +1001,10 @@ async function importFiles(){
   let abbyyMode, hocrStrStart, hocrStrEnd, hocrStrPages, hocrArrPages, pageCount, hocrAllRaw;
 
   if(pdfMode){
+    // Initialize scheduler for compressing PNG images (rendered from PDF pages)
+    if(typeof(pngScheduler) == "undefined"){
+      initPngScheduler()
+    }
     // Load pdf synchronously if there is no HOCR and render first page
     window.pdfDoc = await readPdf(pdfFilesAll[0]);
     pageCount = window.pdfDoc.numPages;
@@ -1199,7 +1203,7 @@ async function renderPDFImage(n,imgDims=null,interrupt=false){
 // Render a canvas to a PDF and create compressed .png
 // Note: the built-in method HTMLCanvasElement.toDataURL() also creates a .png,
 // however it is not well compressed so 100 such images will not fit in memory.
-async function genCachePng(renderCanvas, interrupt=false, n = null){
+async function genCachePng(renderCanvas, interrupt=false, n = null, binarize=false){
   if(interrupt && window.currentPage != n) return;
 
 
@@ -1211,7 +1215,7 @@ async function genCachePng(renderCanvas, interrupt=false, n = null){
 
   //renderPngWorker.postMessage([imgData.buffer, renderCanvas.width, renderCanvas.height, n],[imgData.buffer]);
 
-  let res = await pngScheduler.addJob('send',[imgData.buffer, renderCanvas.width, renderCanvas.height, n]);
+  let res = await pngScheduler.addJob('send',[imgData.buffer, renderCanvas.width, renderCanvas.height, n, binarize]);
 
 }
 
@@ -1225,45 +1229,53 @@ function arrayBufferToBase64( buffer ) {
 	return window.btoa( binary );
 }
 
+var pngScheduler;
 // Scheduler for compressing PNG data
-var pngScheduler = Tesseract.createScheduler();
-for (let i = 0; i < 3; i++) {
-  const w = new Worker('js/renderPng.js');
-  w["send"] = async function(packet,res){
-    w.postMessage(packet,packet[0]);
+function initPngScheduler(){
+  pngScheduler = Tesseract.createScheduler();
+  for (let i = 0; i < 3; i++) {
+    const w = new Worker('js/renderPng.js');
+    w["send"] = async function(packet,res){
+      w.postMessage(packet,packet[0]);
 
-    return new Promise((resolve, reject) => {
-      w.onmessage = function(e) {
-        const png = e.data[0];
-        const n = e.data[1];
-        // const blob = new Blob( [png] );
-        // const url = URL.createObjectURL( blob );
-        const image = document.createElement('img');
-        // image.src = url;
-        image.src = "data:image/png;base64," + arrayBufferToBase64(png);
-        window.imageAll[n] = image;
-        if(typeof(pngScheduler["activeProgress"]) != "undefined"){
-          pngRenderCount = pngRenderCount + 1;
-          const valueMax = parseInt(pngScheduler["activeProgress"].getAttribute("aria-valuemax"));
-          pngScheduler["activeProgress"].setAttribute("style","width: " + (pngRenderCount / valueMax) * 100 + "%");
+      return new Promise((resolve, reject) => {
+        w.onmessage = function(e) {
+          const png = e.data[0];
+          const n = e.data[1];
+          // const blob = new Blob( [png] );
+          // const url = URL.createObjectURL( blob );
+          const image = document.createElement('img');
+          // image.src = url;
+          image.src = "data:image/png;base64," + arrayBufferToBase64(png);
+          window.imageAll[n] = image;
+          if(typeof(pngScheduler["activeProgress"]) != "undefined"){
+            pngRenderCount = pngRenderCount + 1;
+            const valueMax = parseInt(pngScheduler["activeProgress"].getAttribute("aria-valuemax"));
+            pngScheduler["activeProgress"].setAttribute("style","width: " + (pngRenderCount / valueMax) * 100 + "%");
+          }
+          resolve();
         }
-        resolve();
-      }
 
-    })
+      })
 
+    }
+    w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
+    pngScheduler.addWorker(w);
   }
-  w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-  pngScheduler.addWorker(w);
+
 }
 
+
+
+// Scheduler for compressing PNG data
+
 var pngRenderCount = 0;
-async function renderPDFImageCache(pagesArr){
+async function renderPDFImageCache(pagesArr, binarize=false){
   pngRenderCount = 0;
 
   await Promise.allSettled(pagesArr.map(async (n) => {
     const renderOutput = await renderPDFImage(n, null, false);
-    return(genCachePng(renderOutput,false,n));
+    return(genCachePng(renderOutput,false,n,binarize));
   }));
 
 }
@@ -1326,7 +1338,6 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   // Calculate options for background image and overlay
   if(xmlMode){
 
-
     let marginPx = Math.round(canvasDims[1] * leftGlobal);
     if(autoRotateCheckbox.checked){
       backgroundOpts.angle = window.pageMetricsObj["angleAll"][n] * -1 ?? 0;
@@ -1334,9 +1345,11 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       backgroundOpts.angle = 0;
     }
 
+    // TODO: Create a more efficient implementation of "show margin" feature
     if(showMarginCheckbox.checked && mode == "screen"){
       canvas.viewportTransform[4] = 0;
 
+      canvas.clear();
       let marginLine = new fabric.Line([marginPx,0,marginPx,canvasDims[0]],{stroke:'blue',strokeWidth:1,selectable:false,hoverCursor:'default'});
       canvas.add(marginLine);
 
@@ -1531,7 +1544,8 @@ async function renderPDF(){
 
   // Render all pages to PNG
   if(pdfMode){
-    await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1));
+    const binarizeMode = document.getElementById("binarizeCheckbox").checked;
+    await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1),binarizeMode);
   }
 
   let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
