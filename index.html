@@ -150,7 +150,9 @@
 
             <button class="btn btn-info btn-sm" id="prev">Previous</button>
             <button class="btn btn-info btn-sm" id="next">Next</button>
-            <span>Page: <input type="text" id="pageNum" name="pageNum" size="3"> / <span id="pageCount"></span></span>
+            <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
+            Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
+            <span>Page: <input type="text" id="pageNum" name="pageNum" style="width:3em"> / <span id="pageCount"></span></span>
           </div>
         </div>
 
@@ -494,7 +496,9 @@ For both OCR and image files, individual files for each page or a single file wi
                 <label for="zoomInput">Max Width</label>
                 <div class="input-group btn-group-sm">
                   <button class="btn btn-secondary" id="zoomMinus">-</button>
-                  <input type="text" id="zoomInput" size="1" value="1000">
+                  <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
+                  Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
+                  <input type="text" id="zoomInput" value="1000" style="width:4em">
                   <button class="btn btn-secondary" id="zoomPlus">+</button>
                 </div>
 
