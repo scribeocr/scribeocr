@@ -104,8 +104,8 @@ var imageMode, pdfMode, xmlMode, resumeMode;
 loadFontFamily("Open Sans", window.fontMetricsObj);
 loadFontFamily("Libre Baskerville", window.fontMetricsObj);
 
-var fs = new Filer.FileSystem()
-fs.readFileSync = fs.readFile
+// var fs = new Filer.FileSystem()
+// fs.readFileSync = fs.readFile
 
 const autoRotateCheckbox = document.getElementById('autoRotateCheckbox');
 const autoMarginCheckbox = document.getElementById('autoMarginCheckbox');
