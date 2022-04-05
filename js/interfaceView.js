@@ -27,8 +27,10 @@ export async function changeDisplayFont(font){
 
 
 export function changeZoom(value){
-  if(!window.xmlDoc) return;
-  window.hocrAll[window.currentPage] = window.xmlDoc.documentElement.outerHTML;
+  if(typeof(window.xmlDoc) != "undefined"){
+    window.hocrAll[window.currentPage] = window.xmlDoc.documentElement.outerHTML;
+  }
+
   let currentValue = parseFloat(document.getElementById('zoomInput').value);
 
   if(value == "minus"){
@@ -53,5 +55,6 @@ export function adjustMarginRange(value){
 
 
 export function adjustMarginRangeChange(value){
+  if(typeof(window.pageMetricsObj["manAdjAll"]) == "undefined") return;
   window.pageMetricsObj["manAdjAll"][window.currentPage] = (parseInt(value) - 200);
 }
