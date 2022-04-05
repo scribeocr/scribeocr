@@ -1,1 +1,9 @@
 ignore
+.DS_Store
+.env
+node_modules/
+cypress/downloads
+cypress/videos
+browserstack.json
+log
+results
