@@ -1,9 +1,8 @@
-<<<<<<< HEAD
 .DS_Store
 .env
 node_modules/
 cypress/downloads
 cypress/videos
-=======
-ignore
->>>>>>> d933708ef41e01745b2274db80a0c2ea6e97d8f5
+browserstack.json
+log
+results
