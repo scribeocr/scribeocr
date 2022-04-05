@@ -1,8 +1,15 @@
+<<<<<<< HEAD
 .DS_Store
 .env
 node_modules/
 cypress/downloads
 cypress/videos
+<<<<<<< HEAD
 browserstack.json
 log
 results
+=======
+=======
+ignore
+>>>>>>> 5d33dee8f2ff30e80532439f9be7cd376c9c507b
+>>>>>>> Balearica-master

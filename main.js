@@ -104,8 +104,8 @@ var imageMode, pdfMode, xmlMode, resumeMode;
 loadFontFamily("Open Sans", window.fontMetricsObj);
 loadFontFamily("Libre Baskerville", window.fontMetricsObj);
 
-var fs = new Filer.FileSystem()
-fs.readFileSync = fs.readFile
+// var fs = new Filer.FileSystem()
+// fs.readFileSync = fs.readFile
 
 const autoRotateCheckbox = document.getElementById('autoRotateCheckbox');
 const autoMarginCheckbox = document.getElementById('autoMarginCheckbox');
@@ -1001,6 +1001,10 @@ async function importFiles(){
   let abbyyMode, hocrStrStart, hocrStrEnd, hocrStrPages, hocrArrPages, pageCount, hocrAllRaw;
 
   if(pdfMode){
+    // Initialize scheduler for compressing PNG images (rendered from PDF pages)
+    if(typeof(pngScheduler) == "undefined"){
+      initPngScheduler()
+    }
     // Load pdf synchronously if there is no HOCR and render first page
     window.pdfDoc = await readPdf(pdfFilesAll[0]);
     pageCount = window.pdfDoc.numPages;
@@ -1141,6 +1145,7 @@ async function importFiles(){
     }
 
   }
+<<<<<<< HEAD
 
   document.getElementById('pageNum').value = 1;
   document.getElementById('pageCount').textContent = pageCount;
@@ -1171,12 +1176,63 @@ async function renderPDFImage(n,imgDims=null,interrupt=false){
 
     window.canvas.setZoom(scaleArgDisplay / scaleArgRender);
 
+=======
+
+  document.getElementById('pageNum').value = 1;
+  document.getElementById('pageCount').textContent = pageCount;
+
+}
+
+
+// If a user rapidly changes pages, it is possible that the background image for
+// page n finishes loading after page n+1 is already loaded.
+// When interrupt = true, the function will quit early if it detects that the page it is rendering
+// is not the current page.
+async function renderPDFImage(n,imgDims=null,interrupt=false){
+  let page = await pdfDoc.getPage(n + 1);
+
+  const viewport1 = page.getViewport({ scale: 1 });
+
+  // If imgDims is NULL then
+  let scaleArgRender, scaleArgDisplay, renderHeight, renderWidth;
+  if(imgDims == null){
+
+    // PDF units do not represent the actual resolution of the embedded images
+    // For now all images are assumed to be 300 dpi
+    scaleArgRender = 300/72;
+    scaleArgDisplay = Math.min(parseFloat(document.getElementById('zoomInput').value) / Math.round(viewport1.width), scaleArgRender);
+
+    window.canvas.setHeight(viewport1.height * scaleArgDisplay);
+    window.canvas.setWidth(viewport1.width * scaleArgDisplay);
+
+    window.canvas.setZoom(scaleArgDisplay / scaleArgRender);
+
+>>>>>>> Balearica-master
   } else {
     scaleArgRender = imgDims[1] / viewport1.width;
 
   }
 
   const viewport = page.getViewport({ scale: scaleArgRender});
+<<<<<<< HEAD
+=======
+
+  // Prepare canvas using PDF page dimensions
+  const renderCanvas = document.createElement('canvas');
+  const context = renderCanvas.getContext('2d');
+
+  renderCanvas.height = viewport.height
+  renderCanvas.width = viewport.width;
+
+  // Render PDF page into canvas context
+  const renderContext = {
+      canvasContext: context,
+      viewport: viewport
+  };
+  if(interrupt && window.currentPage != n) return;
+  await page.render(renderContext).promise;
+  return(renderCanvas);
+>>>>>>> Balearica-master
 
   // Prepare canvas using PDF page dimensions
   const renderCanvas = document.createElement('canvas');
@@ -1225,6 +1281,7 @@ function arrayBufferToBase64( buffer ) {
 	return window.btoa( binary );
 }
 
+<<<<<<< HEAD
 // Scheduler for compressing PNG data
 var pngScheduler = Tesseract.createScheduler();
 for (let i = 0; i < 3; i++) {
@@ -1259,11 +1316,88 @@ for (let i = 0; i < 3; i++) {
 
 var pngRenderCount = 0;
 async function renderPDFImageCache(pagesArr){
+=======
+// Render a canvas to a PDF and create compressed .png
+// Note: the built-in method HTMLCanvasElement.toDataURL() also creates a .png,
+// however it is not well compressed so 100 such images will not fit in memory.
+async function genCachePng(renderCanvas, interrupt=false, n = null, binarize=false){
+  if(interrupt && window.currentPage != n) return;
+
+
+  let time1 = Date.now();
+  let ctx2 = renderCanvas.getContext('2d');
+  let imgData = ctx2.getImageData(0,0,renderCanvas.width,renderCanvas.height).data;
+  let time2 = Date.now();
+  console.log("getImageData runtime: " + (time2 - time1) / 1e3 + "s");
+
+  //renderPngWorker.postMessage([imgData.buffer, renderCanvas.width, renderCanvas.height, n],[imgData.buffer]);
+
+  let res = await pngScheduler.addJob('send',[imgData.buffer, renderCanvas.width, renderCanvas.height, n, binarize]);
+
+}
+
+function arrayBufferToBase64( buffer ) {
+	var binary = '';
+	var bytes = new Uint8Array( buffer );
+	var len = bytes.byteLength;
+	for (var i = 0; i < len; i++) {
+		binary += String.fromCharCode( bytes[ i ] );
+	}
+	return window.btoa( binary );
+}
+
+var pngScheduler;
+// Scheduler for compressing PNG data
+function initPngScheduler(){
+  pngScheduler = Tesseract.createScheduler();
+  for (let i = 0; i < 3; i++) {
+    const w = new Worker('js/renderPng.js');
+    w["send"] = async function(packet,res){
+      w.postMessage(packet,packet[0]);
+
+      return new Promise((resolve, reject) => {
+        w.onmessage = function(e) {
+          const png = e.data[0];
+          const n = e.data[1];
+          // const blob = new Blob( [png] );
+          // const url = URL.createObjectURL( blob );
+          const image = document.createElement('img');
+          // image.src = url;
+          image.src = "data:image/png;base64," + arrayBufferToBase64(png);
+          window.imageAll[n] = image;
+          if(typeof(pngScheduler["activeProgress"]) != "undefined"){
+            pngRenderCount = pngRenderCount + 1;
+            const valueMax = parseInt(pngScheduler["activeProgress"].getAttribute("aria-valuemax"));
+            pngScheduler["activeProgress"].setAttribute("style","width: " + (pngRenderCount / valueMax) * 100 + "%");
+          }
+          resolve();
+        }
+
+      })
+
+    }
+    w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
+    pngScheduler.addWorker(w);
+  }
+
+}
+
+
+
+// Scheduler for compressing PNG data
+
+var pngRenderCount = 0;
+async function renderPDFImageCache(pagesArr, binarize=false){
+>>>>>>> Balearica-master
   pngRenderCount = 0;
 
   await Promise.allSettled(pagesArr.map(async (n) => {
     const renderOutput = await renderPDFImage(n, null, false);
+<<<<<<< HEAD
     return(genCachePng(renderOutput,false,n));
+=======
+    return(genCachePng(renderOutput,false,n,binarize));
+>>>>>>> Balearica-master
   }));
 
 }
@@ -1291,6 +1425,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   // Determine image size and canvas size
   let imgDims = null;
   let canvasDims = null;
+<<<<<<< HEAD
 
   // In the case of a pdf with no ocr data and no cached png, no page size data exists yet.
   if(!(pdfMode && !xmlMode && typeof(imageAll[n]) == "undefined")){
@@ -1326,6 +1461,42 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   // Calculate options for background image and overlay
   if(xmlMode){
 
+=======
+
+  // In the case of a pdf with no ocr data and no cached png, no page size data exists yet.
+  if(!(pdfMode && !xmlMode && typeof(imageAll[n]) == "undefined")){
+    imgDims = new Array(2);
+    canvasDims = new Array(2);
+
+    // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
+    if(xmlMode){
+      imgDims[1] = window.pageMetricsObj["dimsAll"][n][1];
+      imgDims[0] = window.pageMetricsObj["dimsAll"][n][0];
+    } else {
+      imgDims[1] = window.imageAll[n].width;
+      imgDims[0] = window.imageAll[n].height;
+    }
+
+    // The canvas size and image size are generally the same.
+    // The exception is when rendering a pdf with the "standardize page size" option on,
+    // which will scale the canvas size but not the image size.
+    if(mode == "pdf" && dimsLimit[0] > 0 && dimsLimit[1] > 0){
+      canvasDims[1] = dimsLimit[1];
+      canvasDims[0] = dimsLimit[0];
+    } else {
+      canvasDims[1] = imgDims[1];
+      canvasDims[0] = imgDims[0];
+    }
+
+    // let zoomFactor = Math.min(parseFloat(document.getElementById('zoomInput').value) / imgDims[1], 1);
+    // canvas.setHeight(imgDims[0] * zoomFactor);
+    // canvas.setWidth(imgDims[1] * zoomFactor);
+    // canvas.setZoom(zoomFactor);
+  }
+
+  // Calculate options for background image and overlay
+  if(xmlMode){
+>>>>>>> Balearica-master
 
     let marginPx = Math.round(canvasDims[1] * leftGlobal);
     if(autoRotateCheckbox.checked){
@@ -1334,9 +1505,17 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       backgroundOpts.angle = 0;
     }
 
+<<<<<<< HEAD
     if(showMarginCheckbox.checked && mode == "screen"){
       canvas.viewportTransform[4] = 0;
 
+=======
+    // TODO: Create a more efficient implementation of "show margin" feature
+    if(showMarginCheckbox.checked && mode == "screen"){
+      canvas.viewportTransform[4] = 0;
+
+      canvas.clear();
+>>>>>>> Balearica-master
       let marginLine = new fabric.Line([marginPx,0,marginPx,canvasDims[0]],{stroke:'blue',strokeWidth:1,selectable:false,hoverCursor:'default'});
       canvas.add(marginLine);
 
@@ -1531,7 +1710,12 @@ async function renderPDF(){
 
   // Render all pages to PNG
   if(pdfMode){
+<<<<<<< HEAD
     await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1));
+=======
+    const binarizeMode = document.getElementById("binarizeCheckbox").checked;
+    await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1),binarizeMode);
+>>>>>>> Balearica-master
   }
 
   let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
