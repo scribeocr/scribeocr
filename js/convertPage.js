@@ -645,18 +645,20 @@ function convertPageAbbyy(xmlPage, pageNum){
 
   let lineStrArr = xmlPage.split(/\<\/line\>/);
 
-  let xmlOut = String.raw`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html>
-<head>
-<title></title>
-<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
-<meta name='ocr-system' content='tesseract 5.0.0-beta-20210916-12-g19cc9' />
-<meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
-</head>
-<body>
-<div class='ocr_page'`;
+//   let xmlOut = String.raw`<?xml version="1.0" encoding="UTF-8"?>
+// <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+// "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+// <html>
+// <head>
+// <title></title>
+// <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+// <meta name='ocr-system' content='tesseract 5.0.0-beta-20210916-12-g19cc9' />
+// <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
+// </head>
+// <body>
+// <div class='ocr_page'`;
+
+  let xmlOut = "<div class='ocr_page'";
 
   xmlOut = xmlOut + " title='bbox 0 0 " + pageDims[1] + " " + pageDims[0] + "'>";
 
@@ -667,7 +669,8 @@ function convertPageAbbyy(xmlPage, pageNum){
     angleRisePage.push(lineInt[1]);
     xmlOut = xmlOut + lineInt[0];
   }
-  xmlOut = xmlOut + "</div></body></html>";
+  //xmlOut = xmlOut + "</div></body></html>";
+  xmlOut = xmlOut + "</div>";
 
   let angleRiseMedian = mean50(angleRisePage);
 
