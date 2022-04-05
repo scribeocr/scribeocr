@@ -112,10 +112,10 @@ export async function loadFont(font, src = null, overwrite = false, use = true, 
 
 // Object containing location of various font files
 var fontFiles = new Object;
-fontFiles["Libre Baskerville"] = "./fonts/LibreBaskerville-Regular.ttf";
-fontFiles["Libre Baskerville-italic"] = "./fonts/LibreBaskerville-Italic.ttf";
-fontFiles["Libre Baskerville-small-caps"] = "./fonts/LibreBaskerville-Regular.ttf";
+fontFiles["Libre Baskerville"] = "./fonts/LibreBaskerville-Regular.woff";
+fontFiles["Libre Baskerville-italic"] = "./fonts/LibreBaskerville-Italic.woff";
+fontFiles["Libre Baskerville-small-caps"] = "./fonts/LibreBaskerville-Regular.woff";
 
-fontFiles["Open Sans"] = "./fonts/OpenSans-VariableFont_wdth,wght.ttf";
-fontFiles["Open Sans-italic"] = "./fonts/OpenSans-Italic-VariableFont_wdth,wght.ttf";
-fontFiles["Open Sans-small-caps"] = "./fonts/OpenSans-VariableFont_wdth,wght.ttf";
+fontFiles["Open Sans"] = "./fonts/OpenSans-Regular.woff";
+fontFiles["Open Sans-italic"] = "./fonts/OpenSans-Italic.woff";
+fontFiles["Open Sans-small-caps"] = "./fonts/OpenSans-Regular.woff";
