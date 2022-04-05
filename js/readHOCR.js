@@ -69,9 +69,9 @@ function readHOCR(hocrString){
 
     var words = line.getElementsByClassName("ocrx_word")
 
-    letterHeight = parseFloat(titleStrLine.match(/(?<=x_size\s+)[\d\.\-]+/)[0]);
-    ascHeight = parseFloat(titleStrLine.match(/(?<=x_ascenders\s+)[\d\.\-]+/)[0]);
-    descHeight = parseFloat(titleStrLine.match(/(?<=x_descenders\s+)[\d\.\-]+/)[0]);
+    letterHeight = parseFloat(titleStrLine.match(/x_size\s+([\d\.\-]+)/)[1]);
+    ascHeight = parseFloat(titleStrLine.match(/(x_ascenders\s+([\d\.\-]+)/)[1]);
+    descHeight = parseFloat(titleStrLine.match(/x_descenders\s+([\d\.\-]+)/)[1]);
     xHeight = letterHeight - ascHeight - descHeight;
 
     xmlN = xmlM[h].getElementsByClassName("ocrx_word");

@@ -79,12 +79,12 @@ export async function loadFont(font, src = null, overwrite = false, use = true, 
     src = fontFiles[font];
   }
 
-  let styleStr = font.match(/(?<=[\-]).+/);
+  let styleStr = font.match(/[\-](.+)/);
   if(styleStr == null){
     styleStr = "normal";
   // Alternative names for "Normal"
   } else {
-    styleStr = styleStr[0].toLowerCase()
+    styleStr = styleStr[1].toLowerCase()
     if(["medium","roman"].includes(styleStr)){
         styleStr = "normal";
       }
