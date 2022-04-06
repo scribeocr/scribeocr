@@ -1291,7 +1291,10 @@ async function renderPDFImageCache(pagesArr, binarize=false){
   pngRenderCount = 0;
 
   await Promise.allSettled(pagesArr.map(async (n) => {
-    const renderOutput = await renderPDFImage(n, null, false);
+    // If OCR data is expecting certain dimensions, render to those.
+    // Otherwise, the image size is determined by renderPDFImage.
+    const imgDimsArg = xmlMode ? window.pageMetricsObj["dimsAll"][n] : null;
+    const renderOutput = await renderPDFImage(n, imgDimsArg, false);
     return(genCachePng(renderOutput,false,n,binarize));
   }));
 
