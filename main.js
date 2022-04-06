@@ -25,11 +25,6 @@ import { changeDisplayFont, changeZoom, adjustMarginRange, adjustMarginRangeChan
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
 
-window.canvas = new fabric.Canvas('c');
-window.ctx = canvas.getContext('2d');
-
-// Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
-canvas.overlayVpt = false;
 
 
 
@@ -101,8 +96,40 @@ var renderStatus;
 //window.imageAll = [];
 var imageMode, pdfMode, xmlMode, resumeMode;
 
-loadFontFamily("Open Sans", window.fontMetricsObj);
-loadFontFamily("Libre Baskerville", window.fontMetricsObj);
+// Define canvas
+window.canvas = new fabric.Canvas('c');
+window.ctx = canvas.getContext('2d');
+
+// Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
+canvas.overlayVpt = false;
+
+
+
+// Content that should be run once, after all dependencies are done loading are done loading
+window.runOnLoad = function(){
+
+  // Load fonts
+  loadFontFamily("Open Sans", window.fontMetricsObj);
+  loadFontFamily("Libre Baskerville", window.fontMetricsObj);
+
+  // Detect whether SIMD instructions are supported
+  wasmFeatureDetect.simd().then(async function(x){
+    window.simdSupport = x;
+    // Show error message if SIMD support is not present
+    if(x){
+      document.getElementById("debugEngineVersion").innerText = "Enabled";
+    } else {
+      document.getElementById("simdWarning").setAttribute("style", "");
+      document.getElementById("debugEngineVersion").innerText = "Disabled";
+    }
+  });
+
+  // Define path for pdf worker
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.min.js";
+
+
+}
+
 
 // var fs = new Filer.FileSystem()
 // fs.readFileSync = fs.readFile
@@ -473,16 +500,6 @@ async function recognizeAll(){
 
 }
 
-wasmFeatureDetect.simd().then(async function(x){
-  window.simdSupport = x;
-  // Show error message if SIMD support is not present
-  if(x){
-    document.getElementById("debugEngineVersion").innerText = "Enabled";
-  } else {
-    document.getElementById("simdWarning").setAttribute("style", "");
-    document.getElementById("debugEngineVersion").innerText = "Disabled";
-  }
-});
 
 
 var newWordInit = true;
