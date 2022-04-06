@@ -3,13 +3,10 @@
 const httpServer = 'https://scribeocr.com/';
 
 describe('Download', () => {
-  beforeEach(() => {
+  it('text file from jpg with hOCR', () => {
     cy.visit(httpServer);
     cy.get('#nav-import-tab').click();
-  })
-  it('text file from jpg with hOCR', () => {
-    cy.get('#nav-import-tab').click()
-    cy.get('#uploader').selectFile(['cypress/fixtures/snow_drops.hocr', 'cypress/fixtures/snow_drops.jpg'])
+    cy.get('#uploader').selectFile(['cypress/fixtures/snow_drops.xml', 'cypress/fixtures/snow_drops.jpg'])
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(500)
     cy.get('#nav-download-tab').click()
@@ -34,8 +31,9 @@ describe('Download', () => {
   }) 
   */
   it('text file from a png with hOCR', () => {
-    cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.hocr', 'cypress/fixtures/pretty_faces.png'])
-    cy.get('#importProgress').should('be.visible')
+    cy.visit(httpServer);
+    cy.get('#nav-import-tab').click();
+    cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'])
     cy.get('#pageCount').should('have.text', '1')
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
@@ -56,13 +54,14 @@ describe('Download', () => {
   })
   */
   it('text file from a pdf with xml', () => {
+    cy.visit(httpServer);
+    cy.get('#nav-import-tab').click();
     cy.get('#uploader').selectFile(
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 
         'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'
     ])
     cy.get('#pageCount').should('have.text', '118')
     cy.wait(5000)
-    cy.get('#importProgress').should('be.visible')
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()

@@ -11,15 +11,13 @@ describe('Upload', () => {
   })
   it('a jpeg with hOCR', () => {
     cy.get('#nav-import-tab').click()
-    cy.get('#uploader').selectFile(['cypress/fixtures/snow_drops.hocr', 'cypress/fixtures/snow_drops.jpg'])
+    cy.get('#uploader').selectFile(['cypress/fixtures/snow_drops.jpg', 'cypress/fixtures/snow_drops.xml'])
     cy.get('#pageCount').should('have.text', '1')
-    cy.get('#importProgress').should('be.visible')
     
   })
   it('a png with hOCR', () => {
     cy.get('#nav-import-tab').click()
-    cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.hocr', 'cypress/fixtures/pretty_faces.png'])
-    cy.get('#importProgress').should('be.visible')
+    cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'])
     cy.get('#pageCount').should('have.text', '1')
   })
   it('a pdf with xml', () => {
@@ -30,6 +28,5 @@ describe('Upload', () => {
     )
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '118')
-    cy.get('#importProgress').should('be.visible')
   })
 })
