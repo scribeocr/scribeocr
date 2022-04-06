@@ -95,30 +95,30 @@
   </style>
   <meta charset="utf-8" />
   <script src="lib/bootstrap.bundle.min.js"></script>
-  <script src="lib/pdf.js"></script>
-  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.js";</script>
+  <script src="lib/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.min.js";</script>
   <!-- <script src="lib/pdf.worker.js"></script> -->
 
-  <!-- <script src="lib/filer.min.js" async></script> -->
+  <script src="lib/filer.min.js" async></script>
   <!-- <script src="lib/UPNG.js"></script> -->
   <!-- <script src="lib/pako.js"></script> -->
 
-  <script src="./lib/fabric.js"></script>
+  <script src="./lib/fabric.min.js"></script>
 
-  <script src="./lib/blob-stream.js" async></script>
+  <script src="./lib/blob-stream.min.js" async></script>
 
   <!-- Contains modified version of pdfkit.  Do not update without porting over changes. -->
-  <script src="./lib/pdfkit.standalone.js" async></script>
+  <script src="./lib/pdfkit.standalone.min.js" async></script>
   <!-- Contains modified version of opentype.  Do not update without porting over changes. -->
-  <script src="./lib/opentype.js"></script>
+  <script src="./lib/opentype.min.js"></script>
 
-  <script src="./lib/FileSaver.js" async></script>
+  <script src="./lib/FileSaver.min.js" async></script>
   <script type="module" src="main.js"></script>
 
   <!-- Used for detecting whether SIMD is supported (needed for fast version of Tesseract to run) -->
   <!-- https://github.com/GoogleChromeLabs/wasm-feature-detect -->
   <script src="./lib/wasm-feature-detect.js"></script>
-  <script src="./tess/tesseract.min.js"></script>
+  <script src="./tess/tesseract.min.js" async></script>
 
 </head>
 <style>

@@ -1,5 +1,5 @@
 
-importScripts('../lib/UPNG.js', '../lib/pako.js');
+importScripts('../lib/UPNG.min.js', '../lib/pako.min.js');
 
 onmessage = function(e) {
 
