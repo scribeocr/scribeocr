@@ -226,6 +226,13 @@ document.getElementById('pageNum').addEventListener('keyup', function(event){
       canvas.viewportTransform[4] = window.pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
       renderPageQueue(window.currentPage);
 
+      // Render 1 page ahead and behind
+      if(pdfMode && cacheMode){
+        renderPDFImageCache([...Array(cachePages).keys()].map(i => i + window.currentPage + 1),false,window.currentPage);
+        renderPDFImageCache([...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1),false,window.currentPage);
+      }
+
+
     } else {
       document.getElementById('pageNum').value = window.currentPage + 1;
     }
@@ -1114,7 +1121,6 @@ async function importFiles(){
     // Note: As of Jan 22, exporting PDFs using BMP files is currently bugged in pdfKit (the colors channels can get switched)
     if(imageMode){
 
-
       const imageNi = imageN + 1;
       imageN = imageN + 1;
 
@@ -1163,6 +1169,11 @@ async function importFiles(){
       }
     }
 
+  }
+
+  // Render first handful of pages for pdfs so the interface starts off responsive
+  if(pdfMode && !xmlMode){
+    renderPDFImageCache([...Array(Math.min(pageCount,5)).keys()],false,0);
   }
 
   document.getElementById('pageNum').value = 1;
@@ -1234,7 +1245,7 @@ async function genCachePng(renderCanvas, interruptPage=null, n = null, binarize=
 
   //renderPngWorker.postMessage([imgData.buffer, renderCanvas.width, renderCanvas.height, n],[imgData.buffer]);
 
-  let res = await pngScheduler.addJob('send',[imgData.buffer, renderCanvas.width, renderCanvas.height, n, binarize]);
+  pngScheduler.addJob('send',[imgData.buffer, renderCanvas.width, renderCanvas.height, n, binarize]);
 
 }
 
@@ -1307,7 +1318,8 @@ async function renderPDFImageCache(pagesArr, binarize=false, interruptPage=null)
     const imgDimsArg = xmlMode ? window.pageMetricsObj["dimsAll"][n] : null;
     const renderOutput = await renderPDFImage(n, imgDimsArg, interruptPage);
     if(interruptPage != null && (interruptPage != currentPage)) return;
-    return(genCachePng(renderOutput,interruptPage,n,binarize));
+    await genCachePng(renderOutput,interruptPage,n,binarize);
+    return;
   }));
 
 }
@@ -1476,6 +1488,9 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
 }
 
+var cacheMode = true;
+var cachePages = 1;
+
 var working = false;
 async function onPrevPage(marginAdj) {
   if (window.currentPage + 1 <= 1 || working) {
@@ -1493,9 +1508,9 @@ async function onPrevPage(marginAdj) {
   canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
 
   await renderPageQueue(window.currentPage);
-  // Render 3 pages back;
-  if(pdfMode){
-    renderPDFImageCache([...Array(3).keys()].map(i => i * -1 + window.currentPage - 1),false,window.currentPage);
+  // Render 1 page back
+  if(pdfMode && cacheMode){
+    renderPDFImageCache([...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1),false,window.currentPage);
   }
 
   working = false;
@@ -1518,9 +1533,9 @@ async function onNextPage() {
   canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
 
   await renderPageQueue(window.currentPage);
-  // Render 3 pages ahead
-  if(pdfMode){
-    renderPDFImageCache([...Array(3).keys()].map(i => i + window.currentPage + 1),false,window.currentPage);
+  // Render 1 page ahead
+  if(pdfMode && cacheMode){
+    renderPDFImageCache([...Array(cachePages).keys()].map(i => i + window.currentPage + 1),false,window.currentPage);
   }
 
   working = false;
@@ -1728,6 +1743,11 @@ convertPageWorker.onmessage = function(e) {
         document.getElementById('recognizeAll').disabled = true;
       }
       calculateOverallPageMetrics();
+      // Render first handful of pages for pdfs so the interface starts off responsive
+      if(pdfMode){
+        renderPDFImageCache([...Array(Math.min(valueMax,5)).keys()],false,0);
+      }
+
     }
   }
 
