@@ -375,6 +375,8 @@ function convertPageAbbyy(xmlPage, pageNum){
     filterArr = wordStrArr.map(x => /charParams/i.test(x));
     wordStrArr = wordStrArr.filter((r, i) => filterArr[i]);
 
+    if(wordStrArr.length == 0) return(["", 0]);
+
     // for(let i=0;i<(wordStrArr.length-1);i++){
     //   let formatEnd = wordStrArr[i].match(/<formatting[^\>]+\>[^\<]*$/i);
     //   if(formatEnd != null){
@@ -666,6 +668,7 @@ function convertPageAbbyy(xmlPage, pageNum){
   let angleRisePage = new Array();
   for(let i=0;i<lineStrArr.length;i++){
     const lineInt = convertLineAbbyy(lineStrArr[i], i, pageNum);
+    if(lineInt[0] == "") continue;
     angleRisePage.push(lineInt[1]);
     xmlOut = xmlOut + lineInt[0];
   }

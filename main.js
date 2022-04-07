@@ -1015,7 +1015,9 @@ async function importFiles(){
   const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
 
   //let pageCount, hocrAllRaw, abbyyMode;
-  let abbyyMode, hocrStrStart, hocrStrEnd, hocrStrPages, hocrArrPages, pageCount, hocrAllRaw;
+  let hocrStrStart = "";
+  let hocrStrEnd = "";
+  let abbyyMode, hocrStrPages, hocrArrPages, pageCount, hocrAllRaw;
 
   if(pdfMode){
     // Initialize scheduler for compressing PNG images (rendered from PDF pages)
