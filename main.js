@@ -1173,7 +1173,7 @@ async function importFiles(){
 // page n finishes loading after page n+1 is already loaded.
 // When interrupt = true, the function will quit early if it detects that the page it is rendering
 // is not the current page.
-async function renderPDFImage(n,imgDims=null,interrupt=false){
+async function renderPDFImage(n,imgDims=null,interruptPage=null){
   let page = await pdfDoc.getPage(n + 1);
 
   const viewport1 = page.getViewport({ scale: 1 });
@@ -1211,7 +1211,7 @@ async function renderPDFImage(n,imgDims=null,interrupt=false){
       canvasContext: context,
       viewport: viewport
   };
-  if(interrupt && window.currentPage != n) return;
+  if(interruptPage != null && window.currentPage != interruptPage) return;
   await page.render(renderContext).promise;
   return(renderCanvas);
 
@@ -1220,8 +1220,8 @@ async function renderPDFImage(n,imgDims=null,interrupt=false){
 // Render a canvas to a PDF and create compressed .png
 // Note: the built-in method HTMLCanvasElement.toDataURL() also creates a .png,
 // however it is not well compressed so 100 such images will not fit in memory.
-async function genCachePng(renderCanvas, interrupt=false, n = null, binarize=false){
-  if(interrupt && window.currentPage != n) return;
+async function genCachePng(renderCanvas, interruptPage=null, n = null, binarize=false){
+  if(interruptPage != null && window.currentPage != interruptPage) return;
 
 
   let time1 = Date.now();
@@ -1250,6 +1250,7 @@ var pngScheduler;
 // Scheduler for compressing PNG data
 function initPngScheduler(){
   pngScheduler = Tesseract.createScheduler();
+  pngScheduler["pngRenderCount"] = 0;
   for (let i = 0; i < 3; i++) {
     const w = new Worker('js/renderPng.js');
     w["send"] = async function(packet,res){
@@ -1266,9 +1267,9 @@ function initPngScheduler(){
           image.src = "data:image/png;base64," + arrayBufferToBase64(png);
           window.imageAll[n] = image;
           if(typeof(pngScheduler["activeProgress"]) != "undefined"){
-            pngRenderCount = pngRenderCount + 1;
+            pngScheduler["pngRenderCount"] = pngScheduler["pngRenderCount"] + 1;
             const valueMax = parseInt(pngScheduler["activeProgress"].getAttribute("aria-valuemax"));
-            pngScheduler["activeProgress"].setAttribute("style","width: " + (pngRenderCount / valueMax) * 100 + "%");
+            pngScheduler["activeProgress"].setAttribute("style","width: " + (pngScheduler["pngRenderCount"] / valueMax) * 100 + "%");
           }
           resolve();
         }
@@ -1283,19 +1284,28 @@ function initPngScheduler(){
 }
 
 
+// When interruptPage is set, rendering will be interrupted when interruptPage != currentPage.
+// This is necessary for rendering pages ahead of time in the background,
+// as that should never be prioritized over rendering pages actively navigated to by the user.
+// Additionally, the condition interruptPage != null is also used to indicate that
+// this function is being used to render images in the background (as opposed to a distinct
+// task such as rendering for an export .pdf or before OCR recognition).
+async function renderPDFImageCache(pagesArr, binarize=false, interruptPage=null){
 
-// Scheduler for compressing PNG data
-
-var pngRenderCount = 0;
-async function renderPDFImageCache(pagesArr, binarize=false){
-  pngRenderCount = 0;
+  if(interruptPage == null){
+    pngScheduler["pngRenderCount"] = 0;
+  }
 
   await Promise.allSettled(pagesArr.map(async (n) => {
+    // For now it is assumed that when interruptPage is set this function being used to render pages for the canvas,
+    // so any image already rendered can be skipped.  This may change in the future.
+    if(interruptPage != null && (typeof(window.imageAll[n]) != "undefined" || interruptPage != currentPage)) return;
     // If OCR data is expecting certain dimensions, render to those.
     // Otherwise, the image size is determined by renderPDFImage.
     const imgDimsArg = xmlMode ? window.pageMetricsObj["dimsAll"][n] : null;
-    const renderOutput = await renderPDFImage(n, imgDimsArg, false);
-    return(genCachePng(renderOutput,false,n,binarize));
+    const renderOutput = await renderPDFImage(n, imgDimsArg, interruptPage);
+    if(interruptPage != null && (interruptPage != currentPage)) return;
+    return(genCachePng(renderOutput,interruptPage,n,binarize));
   }));
 
 }
@@ -1424,12 +1434,12 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     // If the input is a pdf, render the request page to png (if this has not been done already)
     if(pdfMode && typeof(imageAll[n]) == "undefined"){
       console.log("Rendering pdf");
-      renderPDFImage(n, imgDims, true).then((renderOutput) => {
-        if(typeof(renderOutput) != "undefined"){
+      renderPDFImage(n, imgDims, n).then((renderOutput) => {
+        if(typeof(renderOutput) != "undefined" && currentPage == n){
           renderStatus = renderStatus + 1;
           backgroundImage = new fabric.Image(renderOutput, {objectCaching:false});
           selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
-          genCachePng(renderOutput,false,n);
+          genCachePng(renderOutput,null,n);
         }
       });
     } else {
@@ -1481,6 +1491,11 @@ async function onPrevPage(marginAdj) {
   canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
 
   await renderPageQueue(window.currentPage);
+  // Render 3 pages back;
+  if(pdfMode){
+    renderPDFImageCache([...Array(3).keys()].map(i => i * -1 + window.currentPage - 1),false,window.currentPage);
+  }
+
   working = false;
 }
 
@@ -1501,6 +1516,11 @@ async function onNextPage() {
   canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
 
   await renderPageQueue(window.currentPage);
+  // Render 3 pages ahead
+  if(pdfMode){
+    renderPDFImageCache([...Array(3).keys()].map(i => i + window.currentPage + 1),false,window.currentPage);
+  }
+
   working = false;
 }
 
