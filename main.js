@@ -16,11 +16,14 @@ import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 import { optimizeFont, calculateOverallFontMetrics, createSmallCapsFont } from "./js/fontOptimize.js";
 import { loadFontBrowser, loadFont, loadFontFamily } from "./js/fontUtils.js";
 
-import { getRandomInt, getRandomAlphanum, mean50, quantile, sleep, readOcrFile, readPdf, round3 } from "./js/miscUtils.js";
+import { getRandomInt, getRandomAlphanum, mean50, quantile, sleep, readOcrFile, round3 } from "./js/miscUtils.js";
 
 import { deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, toggleBoundingBoxesSelectedWords, changeWordFont, toggleSuperSelectedWords,
   updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord } from "./js/interfaceEdit.js";
 import { changeDisplayFont, changeZoom, adjustMarginRange, adjustMarginRangeChange } from "./js/interfaceView.js";
+
+import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
+
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
@@ -91,10 +94,14 @@ var parser = new DOMParser();
 
 var leftAdjX;
 var doc;
-var backgroundImage;
-var renderStatus;
+window.backgroundImage = null;
+window.renderStatus = 0;
 //window.imageAll = [];
-var imageMode, pdfMode, xmlMode, resumeMode;
+
+window.xmlMode = false;
+window.pdfMode = false;
+window.imageMode = false;
+window.resumeMode = false;
 
 // Define canvas
 window.canvas = new fabric.Canvas('c');
@@ -103,7 +110,8 @@ window.ctx = canvas.getContext('2d');
 // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
 canvas.overlayVpt = false;
 
-
+// Turn off (some) automatic rendering of canvas
+canvas.renderOnAddRemove = false;
 
 // Content that should be run once, after all dependencies are done loading are done loading
 window.runOnLoad = function(){
@@ -125,11 +133,12 @@ window.runOnLoad = function(){
   });
 
   // Define path for pdf worker
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.min.js";
+  //pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.min.js";
 
 
 }
 
+// window.mupdf = initMuPDFWorker();
 
 // var fs = new Filer.FileSystem()
 // fs.readFileSync = fs.readFile
@@ -204,7 +213,7 @@ document.getElementById('psmLabelOption4').addEventListener('click', () => {setP
 document.getElementById('recognizeAll').addEventListener('click', recognizeAll);
 
 
-document.getElementById('displayMode').addEventListener('change', () => {selectDisplayMode(event.target.value, backgroundOpts)});
+document.getElementById('displayMode').addEventListener('change', () => {selectDisplayMode(event.target.value)});
 
 
 document.getElementById('pdfPageMin').addEventListener('keyup', function(event){
@@ -220,17 +229,26 @@ document.getElementById('pdfPageMax').addEventListener('keyup', function(event){
 
 document.getElementById('pageNum').addEventListener('keyup', function(event){
   if (event.keyCode === 13) {
-    if(document.getElementById('pageNum').value <= parseInt(document.getElementById('pageCount').textContent) && document.getElementById('pageNum').value > 0){
+    const nMax = parseInt(document.getElementById('pageCount').textContent);
+    if(document.getElementById('pageNum').value <= nMax && document.getElementById('pageNum').value > 0){
       window.currentPage = document.getElementById('pageNum').value - 1;
       document.getElementById("rangeLeftMargin").value = 200 + window.pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
       canvas.viewportTransform[4] = window.pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
       renderPageQueue(window.currentPage);
 
       // Render 1 page ahead and behind
-      if(pdfMode && cacheMode){
-        renderPDFImageCache([...Array(cachePages).keys()].map(i => i + window.currentPage + 1),false,window.currentPage);
-        renderPDFImageCache([...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1),false,window.currentPage);
+      if(window.pdfMode && cacheMode){
+        let cacheArr = [...Array(cachePages).keys()].map(i => i + window.currentPage + 1).filter(x => x < nMax & x >= 0);
+        if(cacheArr.length > 0){
+          renderPDFImageCache(cacheArr,false,window.currentPage);
+        }
+        cacheArr = [...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1).filter(x => x < nMax & x >= 0);
+        if(cacheArr.length > 0){
+          renderPDFImageCache(cacheArr,false,window.currentPage);
+        }
+
       }
+
 
 
     } else {
@@ -313,17 +331,20 @@ document.getElementById('nav-import').addEventListener('hidden.bs.collapse', fun
 })
 
 document.getElementById('nav-recognize').addEventListener('hidden.bs.collapse', function () {
-  if(document.getElementById("render-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("renderProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("render-progress-collapse").setAttribute("class", "collapse");
+  if(document.getElementById("render-recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("renderProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("render-recognize-progress-collapse").setAttribute("class", "collapse");
   }
-  if(document.getElementById("recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("recognizeProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("recognize-progress-collapse").setAttribute("class", "collapse");
+  if(document.getElementById("recognize-recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("recognizeProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("recognize-recognize-progress-collapse").setAttribute("class", "collapse");
   }
 })
 
 document.getElementById('nav-download').addEventListener('hidden.bs.collapse', function () {
-  if(document.getElementById("download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("download-progress-collapse").setAttribute("class", "collapse");
+  if(document.getElementById("render-download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("render-download-progress-collapse").setAttribute("class", "collapse");
+  }
+  if(document.getElementById("generate-download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
+    document.getElementById("generate-download-progress-collapse").setAttribute("class", "collapse");
   }
 })
 
@@ -409,7 +430,8 @@ document.getElementById('nav-about').addEventListener('show.bs.collapse', functi
 })
 
 
-function initializeProgress(id,maxValue){
+function initializeProgress(id,maxValue,initValue=0){
+  console.log("initValue " + initValue);
   const progressCollapse = document.getElementById(id);
 
   const progressCollapseObj = new bootstrap.Collapse(progressCollapse, {toggle: false});
@@ -417,8 +439,8 @@ function initializeProgress(id,maxValue){
 
   const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
 
-  progressBar.setAttribute("aria-valuenow",0);
-  progressBar.setAttribute("style","width: " + 0 + "%");
+  progressBar.setAttribute("aria-valuenow",initValue);
+  progressBar.setAttribute("style","width: " + ((initValue / maxValue) * 100) + "%");
   progressBar.setAttribute("aria-valuemax", maxValue);
   //progressCollapse.setAttribute("class", "collapse show");
   progressCollapseObj.show()
@@ -433,15 +455,16 @@ async function recognizeAll(){
 
   loadCountHOCR = 0;
 
-  convertPageWorker["activeProgress"] = initializeProgress("recognize-progress-collapse",imageAll.length);
+  convertPageWorker["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse",imageAll.length);
 
   // Render all pages to PNG
-  if(pdfMode){
-      pngScheduler["activeProgress"] = initializeProgress("render-progress-collapse",imageAll.length);
+  if(window.pdfMode){
+      window.muPDFScheduler["activeProgress"] = initializeProgress("render-recognize-progress-collapse",imageAll.length,window.muPDFScheduler["pngRenderCount"]);
       let time1 = Date.now();
       await renderPDFImageCache([...Array(imageAll.length).keys()]);
       let time2 = Date.now();
       console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
+      window.muPDFScheduler.terminate();
   }
 
 
@@ -482,16 +505,14 @@ async function recognizeAll(){
       scheduler.addWorker(w);
     }
 
-    xmlMode = true;
+    window.xmlMode = true;
     const rets = await Promise.allSettled([...Array(window.imageAll.length).keys()].map((x) => (
-      //scheduler.addJob('recognize', window.imageAll[x].src)
-      //scheduler.addJob('recognize', window.imageAll[x].src).then((y) => window.hocrAll[x] = y.data.hocr)
       scheduler.addJob('recognize', window.imageAll[x].src, allConfig).then((y) => {
         convertPageWorker.postMessage([y.data.hocr, x, false]);
       })
     )));
 
-    console.log(rets.map(r => r.data));
+    //console.log(rets.map(r => r.data));
     await scheduler.terminate();
 
     let time2 = Date.now();
@@ -500,10 +521,19 @@ async function recognizeAll(){
   }
 
   let workerN = Math.round((window.navigator.hardwareConcurrency || 8) / 2);
-  workerN = Math.min(workerN, Math.ceil(window.imageAll.length / 2));
+  // Use at most 6 workers.  While some systems could support many more workers in theory,
+  // browser-imposed memory limits make this problematic in reality.
+  workerN = Math.min(workerN, 6);
+  // Do not create more workers than there are pages
+  workerN = Math.min(workerN, Math.ceil(window.imageAll.length));
 
   console.log("Using " + workerN + " workers for OCR.")
   recognizeImages(workerN);
+
+  // Enable confidence threshold input boxes (only used for Tesseract)
+  document.getElementById('confThreshHigh').disabled = false;
+  document.getElementById('confThreshMed').disabled = false;
+
 
 }
 
@@ -950,7 +980,6 @@ function getXHeight(font, size){
 async function importFiles(){
 
   const curFiles = upload.files;
-  console.log(curFiles);
 
   if(curFiles.length == 0) return;
 
@@ -992,12 +1021,12 @@ async function importFiles(){
     }
   }
 
-  pdfMode = pdfFilesAll.length == 1 ? true : false;
-  imageMode = imageFilesAll.length > 0 && !pdfMode ? true : false;
-  xmlMode = hocrFilesAll.length > 0 ? true : false;
+  window.pdfMode = pdfFilesAll.length == 1 ? true : false;
+  window.imageMode = imageFilesAll.length > 0 && !window.pdfMode ? true : false;
+  window.xmlMode = hocrFilesAll.length > 0 ? true : false;
 
 
-  if(imageMode || pdfMode){
+  if(window.imageMode || window.pdfMode){
     document.getElementById('recognizeAll').disabled = false;
   }
 
@@ -1008,7 +1037,7 @@ async function importFiles(){
   // (1) N HOCR files and 0 image files
   // (1) N HOCR files and N image files
   // (1) 1 HOCR file and N image files
-  if(hocrFilesAll.length > 1 && imageMode && hocrFilesAll.length != imageFilesAll.length){
+  if(hocrFilesAll.length > 1 && window.imageMode && hocrFilesAll.length != imageFilesAll.length){
     throw new Error('Detected ' + hocrFilesAll.length + ' hocr files but ' + imageFilesAll.length + " image files.")
   }
 
@@ -1026,27 +1055,18 @@ async function importFiles(){
   let hocrStrEnd = "";
   let abbyyMode, hocrStrPages, hocrArrPages, pageCount, hocrAllRaw;
 
-  if(pdfMode){
-    // Initialize scheduler for compressing PNG images (rendered from PDF pages)
-    if(typeof(pngScheduler) == "undefined"){
-      initPngScheduler()
-    }
-    // Load pdf synchronously if there is no HOCR and render first page
-    window.pdfDoc = await readPdf(pdfFilesAll[0]);
-    pageCount = window.pdfDoc.numPages;
+  if(window.pdfMode){
 
-  } else if(imageMode){
+    // Initialize scheduler
+    await initMuPDFScheduler(pdfFilesAll[0], 3);
+
+    pageCount = await window.muPDFScheduler.addJob('countPages',[]);
+
+  } else if(window.imageMode){
     pageCount = imageFilesAll.length;
   }
 
-  if(xmlMode) {
-    if(!abbyyMode){
-      // Enable confidence threshold input boxes (only used for Tesseract)
-      document.getElementById('confThreshHigh').disabled = false;
-      document.getElementById('confThreshMed').disabled = false;
-      document.getElementById('confThreshHigh').value = 85;
-      document.getElementById('confThreshMed').value = 75;
-    }
+  if(window.xmlMode) {
 
     if(singleHOCRMode){
       const singleHOCRMode = true;
@@ -1063,9 +1083,9 @@ async function importFiles(){
        } else {
 
          // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-         resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
+         window.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
 
-         if(resumeMode){
+         if(window.resumeMode){
             let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
             let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\/?\>)/i)[1].replace(/&quot;/g, '"');
             window.fontMetricsObj = JSON.parse(contentStr);
@@ -1082,7 +1102,7 @@ async function importFiles(){
        }
 
       pageCount = hocrArrPages.length;
-      if(imageMode && hocrArrPages.length != imageFilesAll.length){
+      if(window.imageMode && hocrArrPages.length != imageFilesAll.length){
         throw new Error('Detected ' + hocrArrPages.length + ' pages in OCR but ' + imageFilesAll.length + " image files.")
       }
       hocrAllRaw = Array(pageCount);
@@ -1093,13 +1113,27 @@ async function importFiles(){
     } else {
       const singleHOCRMode = false;
       pageCount = hocrFilesAll.length;
+
+      // Check whether input is Abbyy XML using the first file
+      let hocrStrFirst = await readOcrFile(hocrFilesAll[0]);
+      const node2 = hocrStrFirst.match(/\>([^\>]+)/)[1];
+      abbyyMode = /abbyy/i.test(node2) ? true : false;
     }
+
+    // Enable confidence threshold input boxes (only used for Tesseract)
+    if(!abbyyMode){
+      document.getElementById('confThreshHigh').disabled = false;
+      document.getElementById('confThreshMed').disabled = false;
+      document.getElementById('confThreshHigh').value = 85;
+      document.getElementById('confThreshMed').value = 75;
+    }
+
   }
 
   window.hocrAll = Array(pageCount);
   window.imageAll = Array(pageCount);
 
-  if(pdfMode && !xmlMode){
+  if(window.pdfMode && !window.xmlMode){
     renderPageQueue(0);
   }
 
@@ -1111,15 +1145,15 @@ async function importFiles(){
 
   // Both OCR data and individual images (.png or .jpeg) contribute to the import loading bar
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
-  if(imageMode || xmlMode){
-    const progressMax = imageMode && xmlMode ? pageCount * 2 : pageCount;
+  if(window.imageMode || window.xmlMode){
+    const progressMax = window.imageMode && window.xmlMode ? pageCount * 2 : pageCount;
     convertPageWorker["activeProgress"] = initializeProgress("import-progress-collapse",progressMax);
   }
 
   for(let i = 0; i < pageCount; i++) {
 
     // Note: As of Jan 22, exporting PDFs using BMP files is currently bugged in pdfKit (the colors channels can get switched)
-    if(imageMode){
+    if(window.imageMode){
 
       const imageNi = imageN + 1;
       imageN = imageN + 1;
@@ -1157,7 +1191,7 @@ async function importFiles(){
 
     }
 
-    if(xmlMode){
+    if(window.xmlMode){
       // Process HOCR using web worker, reading from file first if that has not been done already
       if(singleHOCRMode){
         convertPageWorker.postMessage([hocrAllRaw[i], i, abbyyMode]);
@@ -1172,7 +1206,7 @@ async function importFiles(){
   }
 
   // Render first handful of pages for pdfs so the interface starts off responsive
-  if(pdfMode && !xmlMode){
+  if(window.pdfMode && !window.xmlMode){
     renderPDFImageCache([...Array(Math.min(pageCount,5)).keys()],false,0);
   }
 
@@ -1181,121 +1215,21 @@ async function importFiles(){
 
 }
 
-
-// If a user rapidly changes pages, it is possible that the background image for
-// page n finishes loading after page n+1 is already loaded.
-// When interrupt = true, the function will quit early if it detects that the page it is rendering
-// is not the current page.
-async function renderPDFImage(n,imgDims=null,interruptPage=null){
-  let page = await pdfDoc.getPage(n + 1);
-
-  const viewport1 = page.getViewport({ scale: 1 });
-
-  // If imgDims is NULL then
-  let scaleArgRender, scaleArgDisplay, renderHeight, renderWidth;
-  if(imgDims == null){
-
-    // PDF units do not represent the actual resolution of the embedded images
-    // For now all images are assumed to be 300 dpi
-    scaleArgRender = 300/72;
-    scaleArgDisplay = Math.min(parseFloat(document.getElementById('zoomInput').value) / Math.round(viewport1.width), scaleArgRender);
-
-    window.canvas.setHeight(viewport1.height * scaleArgDisplay);
-    window.canvas.setWidth(viewport1.width * scaleArgDisplay);
-
-    window.canvas.setZoom(scaleArgDisplay / scaleArgRender);
-
-  } else {
-    scaleArgRender = imgDims[1] / viewport1.width;
-
-  }
-
-  const viewport = page.getViewport({ scale: scaleArgRender});
-
-  // Prepare canvas using PDF page dimensions
-  const renderCanvas = document.createElement('canvas');
-  const context = renderCanvas.getContext('2d');
-
-  renderCanvas.height = viewport.height
-  renderCanvas.width = viewport.width;
-
-  // Render PDF page into canvas context
-  const renderContext = {
-      canvasContext: context,
-      viewport: viewport
-  };
-  if(interruptPage != null && window.currentPage != interruptPage) return;
-  await page.render(renderContext).promise;
-  return(renderCanvas);
-
-}
-
-// Render a canvas to a PDF and create compressed .png
-// Note: the built-in method HTMLCanvasElement.toDataURL() also creates a .png,
-// however it is not well compressed so 100 such images will not fit in memory.
-async function genCachePng(renderCanvas, interruptPage=null, n = null, binarize=false){
-  if(interruptPage != null && window.currentPage != interruptPage) return;
-
-
-  let time1 = Date.now();
-  let ctx2 = renderCanvas.getContext('2d');
-  let imgData = ctx2.getImageData(0,0,renderCanvas.width,renderCanvas.height).data;
-  let time2 = Date.now();
-  console.log("getImageData runtime: " + (time2 - time1) / 1e3 + "s");
-
-  //renderPngWorker.postMessage([imgData.buffer, renderCanvas.width, renderCanvas.height, n],[imgData.buffer]);
-
-  pngScheduler.addJob('send',[imgData.buffer, renderCanvas.width, renderCanvas.height, n, binarize]);
-
-}
-
-function arrayBufferToBase64( buffer ) {
-	var binary = '';
-	var bytes = new Uint8Array( buffer );
-	var len = bytes.byteLength;
-	for (var i = 0; i < len; i++) {
-		binary += String.fromCharCode( bytes[ i ] );
-	}
-	return window.btoa( binary );
-}
-
-var pngScheduler;
 // Scheduler for compressing PNG data
-function initPngScheduler(){
-  pngScheduler = Tesseract.createScheduler();
-  pngScheduler["pngRenderCount"] = 0;
-  for (let i = 0; i < 3; i++) {
-    const w = new Worker('js/renderPng.js');
-    w["send"] = async function(packet,res){
-      w.postMessage(packet,packet[0]);
+async function initMuPDFScheduler(file,workers=3){
+  window.muPDFScheduler = Tesseract.createScheduler();
+  window.muPDFScheduler["pngRenderCount"] = 0;
+  for (let i = 0; i < workers; i++) {
+    const w = await initMuPDFWorker();
+    const fileData = await file.arrayBuffer();
+    const pdfDoc = await w.openDocument(fileData,file.name);
+    console.log(pdfDoc);
+    w["pdfDoc"] = pdfDoc;
 
-      return new Promise((resolve, reject) => {
-        w.onmessage = function(e) {
-          const png = e.data[0];
-          const n = e.data[1];
-          // const blob = new Blob( [png] );
-          // const url = URL.createObjectURL( blob );
-          const image = document.createElement('img');
-          // image.src = url;
-          image.src = "data:image/png;base64," + arrayBufferToBase64(png);
-          window.imageAll[n] = image;
-          if(typeof(pngScheduler["activeProgress"]) != "undefined"){
-            pngScheduler["pngRenderCount"] = pngScheduler["pngRenderCount"] + 1;
-            const valueMax = parseInt(pngScheduler["activeProgress"].getAttribute("aria-valuemax"));
-            pngScheduler["activeProgress"].setAttribute("style","width: " + (pngScheduler["pngRenderCount"] / valueMax) * 100 + "%");
-          }
-          resolve();
-        }
-
-      })
-
-    }
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-    pngScheduler.addWorker(w);
+    window.muPDFScheduler.addWorker(w);
   }
-
 }
-
 
 // When interruptPage is set, rendering will be interrupted when interruptPage != currentPage.
 // This is necessary for rendering pages ahead of time in the background,
@@ -1305,21 +1239,30 @@ function initPngScheduler(){
 // task such as rendering for an export .pdf or before OCR recognition).
 async function renderPDFImageCache(pagesArr, binarize=false, interruptPage=null){
 
-  if(interruptPage == null){
-    pngScheduler["pngRenderCount"] = 0;
-  }
-
   await Promise.allSettled(pagesArr.map(async (n) => {
-    // For now it is assumed that when interruptPage is set this function being used to render pages for the canvas,
-    // so any image already rendered can be skipped.  This may change in the future.
-    if(interruptPage != null && (typeof(window.imageAll[n]) != "undefined" || interruptPage != currentPage)) return;
+    // Skip if image has already been rendered or is being rendered currently
+    if(typeof(window.imageAll[n]) != "undefined") return;
+
+    // Set to defined value to avoid the same page being rendered multiple times before this function call finishes
+    window.imageAll[n] = false;
+
     // If OCR data is expecting certain dimensions, render to those.
     // Otherwise, the image size is determined by renderPDFImage.
-    const imgDimsArg = xmlMode ? window.pageMetricsObj["dimsAll"][n] : null;
-    const renderOutput = await renderPDFImage(n, imgDimsArg, interruptPage);
-    if(interruptPage != null && (interruptPage != currentPage)) return;
-    await genCachePng(renderOutput,interruptPage,n,binarize);
-    return;
+    const imgDimsArg = window.xmlMode ? window.pageMetricsObj["dimsAll"][n] : null;
+
+    // Render to 300 dpi by default
+    let dpi = 300;
+
+    // When XML data exists, render to the size specified by that
+    if(xmlMode){
+      const imgWidthXml = window.pageMetricsObj["dimsAll"][n][1];
+      const imgWidthPdf = await window.muPDFScheduler.addJob('pageWidth',[n+1,300]);
+      if(imgWidthPdf != imgWidthXml){
+        dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
+      }
+    }
+
+    return window.muPDFScheduler.addJob('drawPageAsPNG',[n+1,dpi]);
   }));
 
 }
@@ -1331,15 +1274,15 @@ var backgroundOpts = new Object;
 export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null){
 
   // Return if data is not loaded yet
-  const imageMissing = imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || pdfMode && (typeof(pdfDoc) == "undefined");
+  const imageMissing = window.imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || window.pdfMode && (typeof(window.muPDFScheduler) == "undefined");
   const xmlMissing = window.hocrAll.length == 0 || typeof(window.hocrAll[n]) != "string";
-  if(imageMissing && (imageMode || pdfMode) || xmlMissing && xmlMode){
+  if(imageMissing && (window.imageMode || window.pdfMode) || xmlMissing && window.xmlMode){
     console.log("Exiting renderPageQueue early");
     return
   }
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
-  if(loadXML && xmlMode){
+  if(loadXML && window.xmlMode){
     window.xmlDoc = parser.parseFromString(window.hocrAll[n],"text/xml");
   }
 
@@ -1349,12 +1292,12 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   let canvasDims = null;
 
   // In the case of a pdf with no ocr data and no cached png, no page size data exists yet.
-  if(!(pdfMode && !xmlMode && typeof(imageAll[n]) == "undefined")){
+  if(!(window.pdfMode && !window.xmlMode && (typeof(imageAll[n]) == "undefined" || imageAll[n] == false))){
     imgDims = new Array(2);
     canvasDims = new Array(2);
 
     // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
-    if(xmlMode){
+    if(window.xmlMode){
       imgDims[1] = window.pageMetricsObj["dimsAll"][n][1];
       imgDims[0] = window.pageMetricsObj["dimsAll"][n][0];
     } else {
@@ -1380,7 +1323,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   }
 
   // Calculate options for background image and overlay
-  if(xmlMode){
+  if(window.xmlMode){
 
     let marginPx = Math.round(canvasDims[1] * leftGlobal);
     if(autoRotateCheckbox.checked){
@@ -1431,7 +1374,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
   if(mode == "screen"){
     // Clear canvas if hocr data (and therefore possibly overlay text) exists
-    if(xmlMode){
+    if(window.xmlMode){
       canvas.clear()
       canvas.__eventListeners = {};
     }
@@ -1443,32 +1386,33 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       canvas.setZoom(zoomFactor);
     }
 
-    renderStatus = 0;
+    window.renderStatus = 0;
 
     // If the input is a pdf, render the request page to png (if this has not been done already)
-    if(pdfMode && typeof(imageAll[n]) == "undefined"){
+    if(window.pdfMode && typeof(imageAll[n]) == "undefined"){
       console.log("Rendering pdf");
-      renderPDFImage(n, imgDims, n).then((renderOutput) => {
-        if(typeof(renderOutput) != "undefined" && currentPage == n){
-          renderStatus = renderStatus + 1;
-          backgroundImage = new fabric.Image(renderOutput, {objectCaching:false});
-          selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
-          genCachePng(renderOutput,null,n);
-        }
-      });
+      imageAll[n] = false;
+      window.muPDFScheduler.addJob('drawPageAsPNG',[n+1,300]);
+
+    // If imageAll[n] == false, then the image is already being rendered
+    // This happens when page n+1 is being automatically rendered,
+    // and then the user advances to the next page before it finishes.
+    } else if(imageAll[n] != false){
+      console.log("Using cached image");
+      window.backgroundImage = new fabric.Image(imageAll[n], {objectCaching:false});
+      window.renderStatus = window.renderStatus + 1;
+      selectDisplayMode(document.getElementById('displayMode').value);
     } else {
-      backgroundImage = new fabric.Image(imageAll[n], {objectCaching:false});
-      renderStatus = renderStatus + 1;
-      selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+      console.log("Image already rendering");
     }
 
     // If there is no OCR data to render, we are done
-    if(!xmlMode){
+    if(!window.xmlMode){
       return;
     }
 
   } else {
-    window.doc.addPage({size:[canvasDims[1],canvasDims[0]],margins: 0});
+    window.doc.addPage({size:[canvasDims[1],canvasDims[0]],margin: 0});
 
     if(document.getElementById('displayMode').value != "ebook"){
       // TODO: Make everything render from pdf to png ahead of time
@@ -1477,19 +1421,19 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   }
 
   if(mode == "screen"){
-    await renderPage(canvas, null, xmlDoc, "screen", window.globalFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], pdfMode, fontObj, leftAdjX);
+    await renderPage(canvas, null, xmlDoc, "screen", window.globalFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], window.pdfMode, fontObj, leftAdjX);
     if(window.currentPage == n){
-      renderStatus = renderStatus + 1;
+      window.renderStatus = window.renderStatus + 1;
     }
-    await selectDisplayMode(document.getElementById('displayMode').value, backgroundOpts);
+    await selectDisplayMode(document.getElementById('displayMode').value);
   } else {
-    await renderPage(canvas, doc, xmlDoc, "pdf", window.globalFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], pdfMode, fontObj, leftAdjX);
+    await renderPage(canvas, doc, xmlDoc, "pdf", window.globalFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], window.pdfMode, fontObj, leftAdjX);
   }
 
 }
 
 var cacheMode = true;
-var cachePages = 1;
+var cachePages = 3;
 
 var working = false;
 async function onPrevPage(marginAdj) {
@@ -1497,7 +1441,7 @@ async function onPrevPage(marginAdj) {
     return;
   }
   working = true;
-  if(xmlMode){
+  if(window.xmlMode){
     window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
   }
 
@@ -1508,10 +1452,16 @@ async function onPrevPage(marginAdj) {
   canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
 
   await renderPageQueue(window.currentPage);
+
   // Render 1 page back
-  if(pdfMode && cacheMode){
-    renderPDFImageCache([...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1),false,window.currentPage);
+  if(window.pdfMode && cacheMode){
+    const nMax = parseInt(document.getElementById('pageCount').textContent);
+    const cacheArr = [...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1).filter(x => x < nMax & x >= 0);
+    if(cacheArr.length > 0){
+      renderPDFImageCache(cacheArr,false,window.currentPage);
+    }
   }
+
 
   working = false;
 }
@@ -1522,7 +1472,7 @@ async function onNextPage() {
      return;
    }
    working = true;
-   if(xmlMode){
+   if(window.xmlMode){
      window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
    }
 
@@ -1533,9 +1483,14 @@ async function onNextPage() {
   canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][window.currentPage] ?? 0;
 
   await renderPageQueue(window.currentPage);
+
   // Render 1 page ahead
-  if(pdfMode && cacheMode){
-    renderPDFImageCache([...Array(cachePages).keys()].map(i => i + window.currentPage + 1),false,window.currentPage);
+  if(window.pdfMode && cacheMode){
+    const nMax = parseInt(document.getElementById('pageCount').textContent);
+    const cacheArr = [...Array(cachePages).keys()].map(i => i + window.currentPage + 1).filter(x => x < nMax & x >= 0);
+    if(cacheArr.length > 0){
+      renderPDFImageCache(cacheArr,false,window.currentPage);
+    }
   }
 
   working = false;
@@ -1543,7 +1498,7 @@ async function onNextPage() {
 
 
 async function optimizeFontClick(value){
-  if(xmlMode){
+  if(window.xmlMode){
     window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
   }
   if(value){
@@ -1600,9 +1555,13 @@ async function renderPDF(){
   let maxValue = parseInt(document.getElementById('pdfPageMax').value);
 
   // Render all pages to PNG
-  if(pdfMode){
+  if(window.pdfMode){
+    let time1 = Date.now();
+    window.muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse",imageAll.length,window.muPDFScheduler["pngRenderCount"]);
     const binarizeMode = document.getElementById("binarizeCheckbox").checked;
     await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1),binarizeMode);
+    let time2 = Date.now();
+    console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
   }
 
   let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
@@ -1615,7 +1574,7 @@ async function renderPDF(){
     }
   }
 
-  const downloadProgress = initializeProgress("download-progress-collapse",maxValue);
+  const downloadProgress = initializeProgress("generate-download-progress-collapse",maxValue);
 
 
   let display_mode = document.getElementById('displayMode').value;
@@ -1674,26 +1633,6 @@ export async function optimizeFont2(){
 }
 
 
-// No custom fonts currently supported--may be added back in future
-// async function uploadFont(){
-//   window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
-//
-//   const reader = new FileReader();
-//   reader.addEventListener("load", () => {
-//     // this will then display a text file
-//     //textDiv.value = reader.result;
-//     let fontData = reader.result;
-//     //fontBlob = new Blob([fontData], {type:'font/ttf'});
-//     //fontURL = URL.createObjectURL(fontBlob);
-//     //loadAndUseFontBrowser(document.getElementById('uploadFont').files[0].name, fontURL)
-//     //loadAndUseFontBrowser("uploadFont", fontData);
-//     loadAndUseFont("uploadFont", fontData);
-//   }, false);
-//
-//   reader.readAsArrayBuffer(document.getElementById('uploadFont').files[0]);
-//
-// }
-
 var convertPageWorker = new Worker('js/convertPage.js');
 
 window.fontMetricsObj = new Object;
@@ -1702,7 +1641,6 @@ var fontMetricObjsMessage = new Object;
 
 var loadCountHOCR = 0;
 convertPageWorker.onmessage = function(e) {
-  console.log(e.data[1]);
   window.hocrAll[e.data[1]] = e.data[0][0];
   window.pageMetricsObj["dimsAll"][e.data[1]] = e.data[0][1];
   window.pageMetricsObj["angleAll"][e.data[1]] = e.data[0][2];
@@ -1734,7 +1672,7 @@ convertPageWorker.onmessage = function(e) {
     activeProgress.setAttribute("style","width: " + (loadCountHOCR / valueMax) * 100 + "%");
     if(loadCountHOCR == valueMax){
       // If resuming from a previous editing session font stats are already calculated
-      if(!resumeMode){
+      if(!window.resumeMode){
           // Buttons are enabled from calculateOverallFontMetrics function in this case
           window.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
       } else {
@@ -1744,7 +1682,7 @@ convertPageWorker.onmessage = function(e) {
       }
       calculateOverallPageMetrics();
       // Render first handful of pages for pdfs so the interface starts off responsive
-      if(pdfMode){
+      if(window.pdfMode){
         renderPDFImageCache([...Array(Math.min(valueMax,5)).keys()],false,0);
       }
 
@@ -1768,9 +1706,9 @@ function calculateOverallPageMetrics(){
 
 // Function to change the display mode
 // Impacts text color and opacity, and backgound image opacity
-function selectDisplayMode(x, backgroundOpts = null){
+window.selectDisplayMode = function(x){
 
-  if(xmlMode && pdfMode && renderStatus != 2) {return;}
+  if(window.xmlMode && window.pdfMode && window.renderStatus != 2) {return;}
 
   let opacity_arg, fill_arg;
   if(x == "invis"){
@@ -1793,9 +1731,9 @@ function selectDisplayMode(x, backgroundOpts = null){
   });
 
   // Include a background image if appropriate
-  if(['invis','proof'].includes(x) && (imageMode || pdfMode)){
+  if(['invis','proof'].includes(x) && (window.imageMode || window.pdfMode)){
     canvas.setBackgroundColor("black");
-    canvas.setBackgroundImage(backgroundImage, canvas.renderAll.bind(canvas), backgroundOpts);
+    canvas.setBackgroundImage(window.backgroundImage, canvas.renderAll.bind(canvas), backgroundOpts);
   } else {
     canvas.setBackgroundColor(null);
     canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
@@ -1813,7 +1751,7 @@ async function handleDownload(){
   updatePdfPagesLabel();
 
   // Save any edits that may exist on current page
-  if(xmlMode){
+  if(window.xmlMode){
     window.hocrAll[window.currentPage] = xmlDoc.documentElement.outerHTML;
   }
   let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();

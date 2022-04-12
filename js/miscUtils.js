@@ -54,16 +54,6 @@ export function sleep(ms) { return new Promise((r) =>
     setTimeout(r, ms)); }
 
 
-// PDF files must be read before they can be passed to pdf.js
-// https://github.com/mozilla/pdf.js/issues/12078
-export async function readPdf(file) {
-  // const reader = new FileReader();
-  // const fileData = await reader.readAsDataURL(file);
-
-  let fileData = await file.arrayBuffer();
-  const pdfDoc = await pdfjsLib.getDocument(fileData);
-  return(pdfDoc.promise);
-}
 
 // Reads OCR files, which may be compressed as .gz or uncompressed
 export function readOcrFile(file){

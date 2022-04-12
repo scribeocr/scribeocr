@@ -15,6 +15,7 @@ export function deleteSelectedWords(){
     const wordIDI = selectedObjects[i].wordID;
     deleteHOCRWord(wordIDI);
     window.canvas.remove(selectedObjects[i]);
+    canvas.renderAll();
   }
 }
 
