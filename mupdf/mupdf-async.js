@@ -39,7 +39,7 @@ export async function initMuPDFWorker() {
 				let [ type, id, result ] = event.data;
 				if (type === "RESULT"){
 					//worker.promises[id].resolve(result);
-					if(worker.promises[id].func == "drawPageAsPNG"){
+					if(["drawPageAsPNG"].includes(worker.promises[id].func)){
 						const n = worker.promises[id].page - 1;
 						const png = result;
 						// Save the image to the cache no matter what
@@ -109,7 +109,7 @@ export async function initMuPDFWorker() {
 						args = [mupdf["pdfDoc"],...args[0]]
 					}
 					let id = worker.promiseId++;
-					let page = func == "drawPageAsPNG" ? args[1] : null;
+					let page = ["drawPageAsPNG"].includes(func) ? args[1] : null;
 					worker.promises[id] = { resolve: resolve, reject: reject, func: func, page: page};
 
 					if (args[0] instanceof ArrayBuffer){

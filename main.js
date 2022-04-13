@@ -158,6 +158,9 @@ document.getElementById('next').addEventListener('click', onNextPage);
 document.getElementById('prev').addEventListener('click', onPrevPage);
 document.getElementById('uploader').addEventListener('change', importFiles);
 
+document.getElementById('colorCheckbox').addEventListener('click', () => {renderPageQueue(window.currentPage, 'screen', false)});
+
+
 document.getElementById('fontMinus').addEventListener('click', () => {changeWordFontSize('minus')});
 document.getElementById('fontPlus').addEventListener('click', () => {changeWordFontSize('plus')});
 document.getElementById('fontSize').addEventListener('change', () => {changeWordFontSize(event.target.value)});
@@ -240,11 +243,11 @@ document.getElementById('pageNum').addEventListener('keyup', function(event){
       if(window.pdfMode && cacheMode){
         let cacheArr = [...Array(cachePages).keys()].map(i => i + window.currentPage + 1).filter(x => x < nMax & x >= 0);
         if(cacheArr.length > 0){
-          renderPDFImageCache(cacheArr,false,window.currentPage);
+          renderPDFImageCache(cacheArr);
         }
         cacheArr = [...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1).filter(x => x < nMax & x >= 0);
         if(cacheArr.length > 0){
-          renderPDFImageCache(cacheArr,false,window.currentPage);
+          renderPDFImageCache(cacheArr);
         }
 
       }
@@ -464,7 +467,7 @@ async function recognizeAll(){
       await renderPDFImageCache([...Array(imageAll.length).keys()]);
       let time2 = Date.now();
       console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
-      window.muPDFScheduler.terminate();
+      //window.muPDFScheduler.terminate();
   }
 
 
@@ -1133,6 +1136,11 @@ async function importFiles(){
   window.hocrAll = Array(pageCount);
   window.imageAll = Array(pageCount);
 
+  if(pdfMode){
+    window.imageAllColor = Array(pageCount);
+  }
+
+
   if(window.pdfMode && !window.xmlMode){
     renderPageQueue(0);
   }
@@ -1207,7 +1215,7 @@ async function importFiles(){
 
   // Render first handful of pages for pdfs so the interface starts off responsive
   if(window.pdfMode && !window.xmlMode){
-    renderPDFImageCache([...Array(Math.min(pageCount,5)).keys()],false,0);
+    renderPDFImageCache([...Array(Math.min(pageCount,5)).keys()]);
   }
 
   document.getElementById('pageNum').value = 1;
@@ -1231,20 +1239,17 @@ async function initMuPDFScheduler(file,workers=3){
   }
 }
 
-// When interruptPage is set, rendering will be interrupted when interruptPage != currentPage.
-// This is necessary for rendering pages ahead of time in the background,
-// as that should never be prioritized over rendering pages actively navigated to by the user.
-// Additionally, the condition interruptPage != null is also used to indicate that
-// this function is being used to render images in the background (as opposed to a distinct
-// task such as rendering for an export .pdf or before OCR recognition).
-async function renderPDFImageCache(pagesArr, binarize=false, interruptPage=null){
+async function renderPDFImageCache(pagesArr){
 
   await Promise.allSettled(pagesArr.map(async (n) => {
-    // Skip if image has already been rendered or is being rendered currently
-    if(typeof(window.imageAll[n]) != "undefined") return;
+    const colorCheckbox = document.getElementById("colorCheckbox").checked;
+
+    // Skip if image has already been rendered or is being rendered currently (with same colorspace currently specified)
+    if(typeof(window.imageAll[n]) != "undefined" && (window.imageAllColor[n] == colorCheckbox)) return;
 
     // Set to defined value to avoid the same page being rendered multiple times before this function call finishes
     window.imageAll[n] = false;
+    window.imageAllColor[n] = colorCheckbox;
 
     // If OCR data is expecting certain dimensions, render to those.
     // Otherwise, the image size is determined by renderPDFImage.
@@ -1261,8 +1266,9 @@ async function renderPDFImageCache(pagesArr, binarize=false, interruptPage=null)
         dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
       }
     }
-
-    return window.muPDFScheduler.addJob('drawPageAsPNG',[n+1,dpi]);
+    console.log("n+1ing job with parameters: ")
+    console.log([n+1,dpi,colorCheckbox])
+    return window.muPDFScheduler.addJob('drawPageAsPNG',[n+1,dpi,colorCheckbox]);
   }));
 
 }
@@ -1389,10 +1395,12 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     window.renderStatus = 0;
 
     // If the input is a pdf, render the request page to png (if this has not been done already)
-    if(window.pdfMode && typeof(imageAll[n]) == "undefined"){
+    const colorCheckbox = document.getElementById("colorCheckbox").checked;
+    if(window.pdfMode && (typeof(imageAll[n]) == "undefined" || window.imageAllColor[n] != colorCheckbox)){
       console.log("Rendering pdf");
       imageAll[n] = false;
-      window.muPDFScheduler.addJob('drawPageAsPNG',[n+1,300]);
+      window.imageAllColor[n] = colorCheckbox;
+      window.muPDFScheduler.addJob('drawPageAsPNG',[n+1,300,colorCheckbox]);
 
     // If imageAll[n] == false, then the image is already being rendered
     // This happens when page n+1 is being automatically rendered,
@@ -1458,7 +1466,7 @@ async function onPrevPage(marginAdj) {
     const nMax = parseInt(document.getElementById('pageCount').textContent);
     const cacheArr = [...Array(cachePages).keys()].map(i => i * -1 + window.currentPage - 1).filter(x => x < nMax & x >= 0);
     if(cacheArr.length > 0){
-      renderPDFImageCache(cacheArr,false,window.currentPage);
+      renderPDFImageCache(cacheArr);
     }
   }
 
@@ -1489,7 +1497,7 @@ async function onNextPage() {
     const nMax = parseInt(document.getElementById('pageCount').textContent);
     const cacheArr = [...Array(cachePages).keys()].map(i => i + window.currentPage + 1).filter(x => x < nMax & x >= 0);
     if(cacheArr.length > 0){
-      renderPDFImageCache(cacheArr,false,window.currentPage);
+      renderPDFImageCache(cacheArr);
     }
   }
 
@@ -1557,9 +1565,12 @@ async function renderPDF(){
   // Render all pages to PNG
   if(window.pdfMode){
     let time1 = Date.now();
+    // Set pngRenderCount to only include PNG images rendered with the current color setting
+    const colorCheckbox = document.getElementById("colorCheckbox").checked;
+    window.muPDFScheduler["pngRenderCount"] = [...Array(imageAll.length).keys()].filter((x) => typeof(imageAll[x]) == "object" && imageAllColor[x] == colorCheckbox).length;
+
     window.muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse",imageAll.length,window.muPDFScheduler["pngRenderCount"]);
-    const binarizeMode = document.getElementById("binarizeCheckbox").checked;
-    await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1),binarizeMode);
+    await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1));
     let time2 = Date.now();
     console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
   }
@@ -1683,7 +1694,7 @@ convertPageWorker.onmessage = function(e) {
       calculateOverallPageMetrics();
       // Render first handful of pages for pdfs so the interface starts off responsive
       if(window.pdfMode){
-        renderPDFImageCache([...Array(Math.min(valueMax,5)).keys()],false,0);
+        renderPDFImageCache([...Array(Math.min(valueMax,5)).keys()]);
       }
 
     }

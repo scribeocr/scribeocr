@@ -58,6 +58,11 @@ The default build of MuPDF is extremely large at 4.5MB (counting only the .wasm 
 
 Output-related build options (e.g. `-DFZ_ENABLE_DOCX_OUTPUT`) do not appear to have any impact--presumably these are disabled already through some other means.  The build size could likely be reduced significantly further by removing additional code and features (despite being unusable a lot of font/text-related code still exists in the build), however this would have to be done manually. 
 
+1. Additional changes to build
+   1. Comment out text-related parts of `pdf_new_run_processor` 
+      1. Since these functions now fail (due to build flags above removing all fonts), they will throw errors, and after a certain number of errors the page will stop rendering entirely
+      1. https://github.com/ArtifexSoftware/mupdf/blob/7ddb36d03481d5720a53f1adeda3892acaaa7298/source/pdf/pdf-op-run.c#L2126-L2153
+
 # Libraries Not Currently in Use
 The following libraries were previously used (or at least considered) but are not implemented in the current project. 
 

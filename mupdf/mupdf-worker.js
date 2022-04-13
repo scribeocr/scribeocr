@@ -90,6 +90,7 @@ Module.onRuntimeInitialized = function () {
 	mupdf.pageHeight = Module.cwrap('pageHeight', 'number', ['number', 'number', 'number']);
 	mupdf.pageLinksJSON = Module.cwrap('pageLinks', 'string', ['number', 'number', 'number']);
 	mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number']);
+  mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number']);
 	mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
 	mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
 	mupdf.pageTextJSON = Module.cwrap('pageText', 'string', ['number', 'number', 'number']);
@@ -112,8 +113,17 @@ mupdf.openDocument = function (data, magic) {
 	return mupdf.openDocumentFromBuffer(magic, ptr, n);
 }
 
-mupdf.drawPageAsPNG = function (doc, page, dpi) {
-	mupdf.doDrawPageAsPNG(doc, page, dpi);
+mupdf.drawPageAsPNG = function (doc, page, dpi, color=true) {
+  if(color){
+    console.log("Drawing in color")
+    mupdf.doDrawPageAsPNG(doc, page, dpi);
+    console.log("Done drawing in color")
+  } else {
+    console.log("Drawing in gray")
+    mupdf.doDrawPageAsPNGGray(doc, page, dpi);
+    console.log("Done drawing in gray")
+  }
+
 	let n = mupdf.getLastDrawSize();
 	let p = mupdf.getLastDrawData();
 	return "data:image/png;base64," + arrayBufferToBase64(Module.HEAPU8.buffer.slice(p, p+n));

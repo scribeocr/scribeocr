@@ -982,13 +982,26 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 364440: function($0) {
+ 351864: function() {
+  throw "trylater";
+ },
+ 351886: function($0) {
   throw new Error(UTF8ToString($0));
  },
- 364479: function() {
+ 351925: function() {
   throw new Error("Cannot create MuPDF context!");
+ },
+ 351978: function($0, $1) {
+  fetcher.postMessage([ "READ", $0, $1 ]);
+ },
+ 352021: function($0) {
+  fetcher.postMessage([ "CLOSE", $0 ]);
  }
 };
+
+function js_init_fetch(state, url, content_length, block_shift) {
+ fetcher.postMessage([ "OPEN", state, [ UTF8ToString(url), content_length, block_shift ] ]);
+}
 
 function callRuntimeCallbacks(callbacks) {
  while (callbacks.length > 0) {
@@ -3636,7 +3649,7 @@ var SYSCALLS = {
   HEAP32[buf + 24 >> 2] = stat.gid;
   HEAP32[buf + 28 >> 2] = stat.rdev;
   HEAP32[buf + 32 >> 2] = 0;
-  tempI64 = [ stat.size >>> 0, (tempDouble = stat.size, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
+  tempI64 = [ stat.size >>> 0, (tempDouble = stat.size, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ],
   HEAP32[buf + 40 >> 2] = tempI64[0], HEAP32[buf + 44 >> 2] = tempI64[1];
   HEAP32[buf + 48 >> 2] = 4096;
   HEAP32[buf + 52 >> 2] = stat.blocks;
@@ -3646,7 +3659,7 @@ var SYSCALLS = {
   HEAP32[buf + 68 >> 2] = 0;
   HEAP32[buf + 72 >> 2] = stat.ctime.getTime() / 1e3 | 0;
   HEAP32[buf + 76 >> 2] = 0;
-  tempI64 = [ stat.ino >>> 0, (tempDouble = stat.ino, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
+  tempI64 = [ stat.ino >>> 0, (tempDouble = stat.ino, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ],
   HEAP32[buf + 80 >> 2] = tempI64[0], HEAP32[buf + 84 >> 2] = tempI64[1];
   return 0;
  },
@@ -3893,16 +3906,6 @@ function ___sys_open(path, flags, varargs) {
  }
 }
 
-function ___sys_stat64(path, buf) {
- try {
-  path = SYSCALLS.getStr(path);
-  return SYSCALLS.doStat(FS.stat, path, buf);
- } catch (e) {
-  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
-  return -e.errno;
- }
-}
-
 function __emscripten_throw_longjmp() {
  throw "longjmp";
 }
@@ -4066,7 +4069,7 @@ function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
    return -61;
   }
   FS.llseek(stream, offset, whence);
-  tempI64 = [ stream.position >>> 0, (tempDouble = stream.position, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
+  tempI64 = [ stream.position >>> 0, (tempDouble = stream.position, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ],
   HEAP32[newOffset >> 2] = tempI64[0], HEAP32[newOffset + 4 >> 2] = tempI64[1];
   if (stream.getdents && offset === 0 && whence === 0) stream.getdents = null;
   return 0;
@@ -4505,7 +4508,6 @@ var asmLibraryArg = {
  "__sys_fcntl64": ___sys_fcntl64,
  "__sys_ioctl": ___sys_ioctl,
  "__sys_open": ___sys_open,
- "__sys_stat64": ___sys_stat64,
  "_emscripten_throw_longjmp": __emscripten_throw_longjmp,
  "emscripten_asm_const_int": _emscripten_asm_const_int,
  "emscripten_memcpy_big": _emscripten_memcpy_big,
@@ -4534,7 +4536,6 @@ var asmLibraryArg = {
  "invoke_iiiif": invoke_iiiif,
  "invoke_iiiifi": invoke_iiiifi,
  "invoke_iiiii": invoke_iiiii,
- "invoke_iiiiifffiiii": invoke_iiiiifffiiii,
  "invoke_iiiiiffi": invoke_iiiiiffi,
  "invoke_iiiiiffii": invoke_iiiiiffii,
  "invoke_iiiiiffiifiii": invoke_iiiiiffiifiii,
@@ -4568,7 +4569,6 @@ var asmLibraryArg = {
  "invoke_viifff": invoke_viifff,
  "invoke_viiffff": invoke_viiffff,
  "invoke_viiffffff": invoke_viiffffff,
- "invoke_viifffiiff": invoke_viifffiiff,
  "invoke_viiffii": invoke_viiffii,
  "invoke_viifi": invoke_viifi,
  "invoke_viii": invoke_viii,
@@ -4596,6 +4596,7 @@ var asmLibraryArg = {
  "invoke_viij": invoke_viij,
  "invoke_viiji": invoke_viiji,
  "invoke_vij": invoke_vij,
+ "js_init_fetch": js_init_fetch,
  "setTempRet0": _setTempRet0,
  "strftime": _strftime,
  "time": _time,
@@ -4616,6 +4617,8 @@ var _saveSetjmp = Module["_saveSetjmp"] = createExportWrapper("saveSetjmp");
 
 var _free = Module["_free"] = createExportWrapper("free");
 
+var _openDocumentFromStream = Module["_openDocumentFromStream"] = createExportWrapper("openDocumentFromStream");
+
 var _freeDocument = Module["_freeDocument"] = createExportWrapper("freeDocument");
 
 var _countPages = Module["_countPages"] = createExportWrapper("countPages");
@@ -4623,6 +4626,8 @@ var _countPages = Module["_countPages"] = createExportWrapper("countPages");
 var _pageText = Module["_pageText"] = createExportWrapper("pageText");
 
 var _doDrawPageAsPNG = Module["_doDrawPageAsPNG"] = createExportWrapper("doDrawPageAsPNG");
+
+var _doDrawPageAsPNGGray = Module["_doDrawPageAsPNGGray"] = createExportWrapper("doDrawPageAsPNGGray");
 
 var _getLastDrawData = Module["_getLastDrawData"] = createExportWrapper("getLastDrawData");
 
@@ -4649,6 +4654,10 @@ var _outlinePage = Module["_outlinePage"] = createExportWrapper("outlinePage");
 var _outlineDown = Module["_outlineDown"] = createExportWrapper("outlineDown");
 
 var _outlineNext = Module["_outlineNext"] = createExportWrapper("outlineNext");
+
+var _onFetchData = Module["_onFetchData"] = createExportWrapper("onFetchData");
+
+var _openURL = Module["_openURL"] = createExportWrapper("openURL");
 
 var ___errno_location = Module["___errno_location"] = createExportWrapper("__errno_location");
 
@@ -4680,6 +4689,8 @@ var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function()
 
 var _setThrew = Module["_setThrew"] = createExportWrapper("setThrew");
 
+var dynCall_viiji = Module["dynCall_viiji"] = createExportWrapper("dynCall_viiji");
+
 var dynCall_jji = Module["dynCall_jji"] = createExportWrapper("dynCall_jji");
 
 var dynCall_iji = Module["dynCall_iji"] = createExportWrapper("dynCall_iji");
@@ -4687,8 +4698,6 @@ var dynCall_iji = Module["dynCall_iji"] = createExportWrapper("dynCall_iji");
 var dynCall_vij = Module["dynCall_vij"] = createExportWrapper("dynCall_vij");
 
 var dynCall_jii = Module["dynCall_jii"] = createExportWrapper("dynCall_jii");
-
-var dynCall_viiji = Module["dynCall_viiji"] = createExportWrapper("dynCall_viiji");
 
 var dynCall_iiijj = Module["dynCall_iiijj"] = createExportWrapper("dynCall_iiijj");
 
@@ -5409,28 +5418,6 @@ function invoke_viiiiifii(index, a1, a2, a3, a4, a5, a6, a7, a8) {
  var sp = stackSave();
  try {
   wasmTable.get(index)(a1, a2, a3, a4, a5, a6, a7, a8);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_iiiiifffiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
- var sp = stackSave();
- try {
-  return wasmTable.get(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_viifffiiff(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
- var sp = stackSave();
- try {
-  wasmTable.get(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
