@@ -1214,8 +1214,14 @@ async function importFiles(){
   }
 
   // Render first handful of pages for pdfs so the interface starts off responsive
-  if(window.pdfMode && !window.xmlMode){
+  //if(window.pdfMode && !window.xmlMode){
+  if(window.pdfMode){
     renderPDFImageCache([...Array(Math.min(pageCount,5)).keys()]);
+  }
+
+  // Enable downloads now for pdf imports if no HOCR data exists
+  if(window.pdfMode && !window.xmlMode){
+    document.getElementById('save2').disabled = false;
   }
 
   document.getElementById('pageNum').value = 1;
@@ -1321,11 +1327,6 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       canvasDims[1] = imgDims[1];
       canvasDims[0] = imgDims[0];
     }
-
-    // let zoomFactor = Math.min(parseFloat(document.getElementById('zoomInput').value) / imgDims[1], 1);
-    // canvas.setHeight(imgDims[0] * zoomFactor);
-    // canvas.setWidth(imgDims[1] * zoomFactor);
-    // canvas.setZoom(zoomFactor);
   }
 
   // Calculate options for background image and overlay
@@ -1434,7 +1435,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       window.renderStatus = window.renderStatus + 1;
     }
     await selectDisplayMode(document.getElementById('displayMode').value);
-  } else {
+  } else if(window.xmlMode){
     await renderPage(canvas, doc, xmlDoc, "pdf", window.globalFont, lineMode, imgDims, canvasDims, window.pageMetricsObj["angleAll"][n], window.pdfMode, fontObj, leftAdjX);
   }
 
@@ -1595,7 +1596,6 @@ async function renderPDF(){
     await renderPageQueue(i,"pdf",true, false, dimsLimit);
 
     // Update progress bar
-
     if((i+1) % 5 == 0 | (i+1) == maxValue){
       downloadProgress.setAttribute("aria-valuenow",i+1);
       downloadProgress.setAttribute("style","width: " + ((i+1) / maxValue * 100) + "%");

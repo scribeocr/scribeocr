@@ -36,6 +36,8 @@ The pdfkit.standalone.js files used at present come from a forked version of the
   
 Even after these changes PDFKit is still an extremely large dependency, so file size could likely be reduced much further.
 
+Alternatively, given the minimal feature set needed, a PDF renderer could be written from scratch or taken from another project.  The [Tesseract PDF Renderer](https://github.com/tesseract-ocr/tesseract/blob/60fd2b4abaa9c5c5c42d32db57576bc95d28a78a/src/api/pdfrenderer.cpp) can be used for reference. 
+
 
 ## MuPDF
 1. Site: https://mupdf.com/
