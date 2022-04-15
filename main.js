@@ -542,6 +542,7 @@ async function recognizeAll(){
 
 
 
+
 var newWordInit = true;
 
 
@@ -610,8 +611,6 @@ function addWordClick(){
       fill_arg = fillColorHex;
     }
 
-    let lines = xmlDoc.getElementsByClassName("ocr_line");
-
   let lineBoxChosen, baselineChosen, titleStrLineChosen, wordIDNew;
   let wordText = "A";
   // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
@@ -633,150 +632,108 @@ function addWordClick(){
   let rectRightHOCR = rect.left + rect.width - angleAdjXRect - leftAdjX;
   let rectMidHOCR = rect.left + rect.width * 0.5 - angleAdjXRect - leftAdjX;
 
-  let lineChosen = -1;
-  let maxBelow = -1;
-  let minAbove = -1;
-  for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      let titleStrLine = line.getAttribute('title');
-      //titleStrLineArray[i] = titleStrLine;
-      let lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
-      let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-      //lineBoxArr[i] = lineBox;
+  let lines = xmlDoc.getElementsByClassName("ocr_line");
 
-      let boxOffsetY = 0;
+  // Identify the OCR line a bounding box is in (or closest line if no match exists)
+  let lineI=-1;
+  let match = false;
+  let newLastLine = false;
+  let line, lineBox, baseline, lineBottomHOCR, titleStrLine, fontSize;
+  do {
+    lineI = lineI + 1;
+    line = lines[lineI];
+    titleStrLine = line.getAttribute('title');
+    lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
+    baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
 
-      let lineBoxAdj = lineBox.slice();
-      if(baseline != null){
-        baseline = baseline.slice(1,5).map(function (x) {return parseFloat(x);});
+    let boxOffsetY = 0;
+    let lineBoxAdj = lineBox.slice();
+    if(baseline != null){
+      baseline = baseline.slice(1,5).map(function (x) {return parseFloat(x);});
 
-        // Adjust box such that top/bottom approximate those coordinates at the leftmost point.
-        if(baseline[0] < 0){
-
-          lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
-        } else {
-          lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
-
-        }
-
-        boxOffsetY = (rectMidHOCR - lineBoxAdj[0]) * baseline[0];
-
+      // Adjust box such that top/bottom approximate those coordinates at the leftmost point.
+      if(baseline[0] < 0){
+        lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
       } else {
-        baseline = [0,0];
+        lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
       }
-
-      let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
-      let lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
-
-      // If bottom of candidate line is above top of new word, move to next line
-      if(lineBottomHOCR < rectTopCoreHOCR){
-        maxBelow = i;
-        continue;
-      // If top of candidate line is above bottom of new word, this is the correct line
-    } else if(lineTopHOCR < rectBottomCoreHOCR){
-        lineChosen = i;
-        lineBoxChosen = lineBox;
-        baselineChosen = baseline;
-        titleStrLineChosen = titleStrLine;
-        break;
-      // Otherwise, a new line needs to be created
-      } else {
-        minAbove = i;
-        break;
-      }
-  }
-
-  let top;
-  let fontSize;
-
-  if(lineChosen >= 0){
-    let wordChosen = -1;
-    let wordChosenID;
-    let wordChosenXml;
-    let words = lines[lineChosen].getElementsByClassName("ocrx_word");
-
-    for (let i = 0; i < words.length; i++) {
-      let word = words[i]
-
-      let titleStr = word.getAttribute('title') ?? "";
-      let styleStr = word.getAttribute('style') ?? "";
-
-      if (word.childNodes[0].textContent.trim() == "") { continue; }
-
-      let box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);})
-
-      if(box[2] < rect.left){
-        if(i + 1 == words.length){
-          wordChosen = i;
-          wordChosenID = word.getAttribute('id');
-          wordChosenXml = word;
-          break;
-        } else {
-          continue;
-        }
-      } else {
-        wordChosen = i-1;
-        wordChosenID = word.getAttribute('id');
-        wordChosenXml = word;
-        break;
-      }
-
-      box_width = box[2] - box[0];
-      let box_height = box[3] - box[1];
+      boxOffsetY = (rectMidHOCR - lineBoxAdj[0]) * baseline[0];
+    } else {
+      baseline = [0,0];
     }
 
+    let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
+    lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
+    if(lineTopHOCR < rectBottomCoreHOCR && lineBottomHOCR >= rectTopCoreHOCR) match = true;
+    if(lineBottomHOCR < rectTopCoreHOCR && lineI + 1 == lines.length) newLastLine = true;
+
+  } while (lineBottomHOCR < rectTopCoreHOCR && lineI + 1 < lines.length);
+
+  // line is set to either the matched line or a nearby line
+  //let line = match ? lines[lineI] : lines[Math.min(i-1,0)];
+
+  let words = line.getElementsByClassName("ocrx_word");
+  // Case when a word is being added to an existing line
+  if(match){
+
+    lineBoxChosen = lineBox;
+    baselineChosen = baseline;
+    titleStrLineChosen = titleStrLine;
+
+    // Identify closest word on existing line
+    let word, box;
+    let i = 0;
+    do {
+      word = words[i];
+      if (word.childNodes[0].textContent.trim() == "") continue;
+      let titleStr = word.getAttribute('title') ?? "";
+      box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
+      i = i + 1;
+    } while (box[2] < rect.left && i < words.length);
+
+    let wordChosenID = word.getAttribute('id');
     let wordBox = [rectLeftHOCR, rectTopHOCR, rectRightHOCR, rectBottomHOCR].map(x => Math.round(x));
 
     // Append 3 random characters to avoid conflicts without having to keep track of all words
     wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
-    const wordXmlNewStr = '<span class="ocrx_word" id="' + wordIDNew + '" title="bbox ' + wordBox.join(' ') + ';x_wconf 100">' + wordText + '</span>'
+    const wordNewStr = '<span class="ocrx_word" id="' + wordIDNew + '" title="bbox ' + wordBox.join(' ') + ';x_wconf 100">' + wordText + '</span>'
 
-    const wordXmlNew = parser.parseFromString(wordXmlNewStr, "text/xml");
+    const wordNew = parser.parseFromString(wordNewStr, "text/xml");
 
-    if(wordChosen + 1 == words.length){
-      wordChosenXml.insertAdjacentElement("afterend", wordXmlNew.firstChild);
-
+    if(i == words.length){
+      word.insertAdjacentElement("afterend", wordNew.firstChild);
     } else {
-      wordChosenXml.insertAdjacentElement("beforebegin", wordXmlNew.firstChild);
+      word.insertAdjacentElement("beforebegin", wordNew.firstChild);
     }
 
     // TODO: Update metrics of lines if a first/last word is added
-    // if(wordChosen == 0 | wordChosen == words.length){
-    //
-    // }
 
+  // Case when new word requires a new line be created
   } else {
-    if(maxBelow >= 0){
-      let line = lines[maxBelow];
-      let word = line.getElementsByClassName("ocrx_word")[0];
-      let wordID = word.getAttribute('id');
-      wordIDNew = wordID.replace(/\w{1,5}_\w+/, "$&" + getRandomAlphanum(3).join(''));
-      titleStrLineChosen = line.getAttribute('title');
-    } else {
-      let line = lines[0];
-      let word = line.getElementsByClassName("ocrx_word")[0];
-      let wordID = word.getAttribute('id');
-      wordIDNew = wordID.replace(/\w{1,5}_\w+/, "$&" + getRandomAlphanum(3).join(''));
-      titleStrLineChosen = line.getAttribute('title');
-    }
+
+    let word = line.getElementsByClassName("ocrx_word")[0];
+    let wordID = word.getAttribute('id');
+    wordIDNew = wordID.replace(/\w{1,5}_\w+/, "$&" + getRandomAlphanum(3).join(''));
 
     lineBoxChosen = [rectLeftHOCR, rectTopHOCR, rectRightHOCR, rectBottomHOCR].map(x => Math.round(x));
 
-    // If new line is between two existing lines, use metrics from surrounding line if the textbox could plausibly be referring to the same font.
-    // Otherwise, assume the textbox height is the "A" height.
+    // If this is the first/last line on the page, assume the textbox height is the "A" height.
+    // This is done because when a first/last line is added manually, it is often page numbers,
+    // and is often not the same font size as other lines.
     let sizeStr;
-    if(maxBelow == -1 | maxBelow + 1 == lines.length){
+    if(lineI == 0 | lineI + 1 == lines.length){
       sizeStr = "x_size " + Math.round(rect.height) + ";";
       baselineChosen = [0,0];
 
+    // If the new line is between two existing lines, use metrics from nearby line to determine text size
     } else {
-      let letterHeight = titleStrLineChosen.match(/x_size\s+([\d\.\-]+)/);
+      let letterHeight = titleStrLine.match(/x_size\s+([\d\.\-]+)/);
 
-      let ascHeight = titleStrLineChosen.match(/x_ascenders\s+([\d\.\-]+)/);
-      let descHeight = titleStrLineChosen.match(/x_descenders\s+([\d\.\-]+)/);
-      letterHeight = letterHeight != null ? letterHeight[1] : "";
-      ascHeight = ascHeight != null ? ascHeight[1] : "";
-      descHeight = descHeight != null ? descHeight[1] : "";
+      let ascHeight = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/);
+      let descHeight = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/);
+      letterHeight = letterHeight != null ? "x_size " + letterHeight[1] : "";
+      ascHeight = ascHeight != null ? "x_ascenders " + ascHeight[1] : "";
+      descHeight = descHeight != null ? "x_descenders " + descHeight[1] : "";
       sizeStr = [letterHeight,ascHeight,descHeight].join(';');
 
       // Check if these stats are significantly different from the box the user specified
@@ -788,21 +745,16 @@ function addWordClick(){
       if((letterHeightFloat - descHeightFloat) > rect.height * 1.5){
         sizeStr = "x_size " + Math.round(rect.height) + ";";
         baselineChosen = [0,0];
-
       }
 
-      let baselineStr = titleStrLineChosen.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
+      let baselineStr = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
       if(baselineStr != null){
         baselineChosen = baselineStr.slice(1,5).map(function (x) {return parseInt(x);});
       } else {
         baselineChosen = [0,0];
       }
-
-
     }
-
     titleStrLineChosen = 'bbox '+ lineBoxChosen.join(' ') + ';baseline ' + baselineChosen.join(' ') + ';' + sizeStr;
-
 
     let lineXmlNewStr = '<span class="ocr_line" title="' + titleStrLineChosen + '">';
     lineXmlNewStr = lineXmlNewStr + '<span class="ocrx_word" id="' + wordIDNew + '" title="bbox ' + lineBoxChosen.join(' ') + ';x_wconf 100">' + wordText + '</span>'
@@ -810,40 +762,36 @@ function addWordClick(){
 
     const lineXmlNew = parser.parseFromString(lineXmlNewStr, "text/xml");
 
-    if(maxBelow >= 0){
-      let line = lines[maxBelow];
+    if(newLastLine){
       line.insertAdjacentElement("afterend", lineXmlNew.firstChild);
     } else {
-      let line = lines[0];
       line.insertAdjacentElement("beforebegin", lineXmlNew.firstChild);
     }
-
-
   }
 
-    // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
-    let angleAdjX = 0;
-    let angleAdjY = 0;
-    if(autoRotateCheckbox.checked && Math.abs(window.pageMetricsObj["angleAll"][window.currentPage] ?? 0) > 0.05){
-      angleAdjX = Math.sin(window.pageMetricsObj["angleAll"][window.currentPage] * (Math.PI / 180)) * (lineBoxChosen[3] + baselineChosen[1]);
-      angleAdjY = Math.sin(window.pageMetricsObj["angleAll"][window.currentPage] * (Math.PI / 180)) * (lineBoxChosen[0] + angleAdjX /2) * -1;
-    }
+  // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
+  let angleAdjX = 0;
+  let angleAdjY = 0;
+  if(autoRotateCheckbox.checked && Math.abs(window.pageMetricsObj["angleAll"][window.currentPage] ?? 0) > 0.05){
+    angleAdjX = Math.sin(window.pageMetricsObj["angleAll"][window.currentPage] * (Math.PI / 180)) * (lineBoxChosen[3] + baselineChosen[1]);
+    angleAdjY = Math.sin(window.pageMetricsObj["angleAll"][window.currentPage] * (Math.PI / 180)) * (lineBoxChosen[0] + angleAdjX /2) * -1;
+  }
 
-    let letterHeight = titleStrLineChosen.match(/x_size\s+([\d\.\-]+)/);
-    let ascHeight = titleStrLineChosen.match(/x_ascenders\s+([\d\.\-]+)/);
-    let descHeight = titleStrLineChosen.match(/x_descenders\s+([\d\.\-]+)/);
+  let letterHeight = titleStrLineChosen.match(/x_size\s+([\d\.\-]+)/);
+  let ascHeight = titleStrLineChosen.match(/x_ascenders\s+([\d\.\-]+)/);
+  let descHeight = titleStrLineChosen.match(/x_descenders\s+([\d\.\-]+)/);
 
-    if(letterHeight != null && ascHeight != null && descHeight != null){
-       letterHeight = parseFloat(letterHeight[1]);
-       ascHeight =  parseFloat(ascHeight[1]);
-       descHeight = parseFloat(descHeight[1]);
-       let xHeight = letterHeight - ascHeight - descHeight;
-       fontSize = getFontSize(window.globalFont, xHeight, "o", ctx);
-     } else if(letterHeight != null){
-       letterHeight = parseFloat(letterHeight[1]);
-       descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-       fontSize = getFontSize(window.globalFont, letterHeight - descHeight, "A", ctx);
-     }
+  if(letterHeight != null && ascHeight != null && descHeight != null){
+     letterHeight = parseFloat(letterHeight[1]);
+     ascHeight =  parseFloat(ascHeight[1]);
+     descHeight = parseFloat(descHeight[1]);
+     let xHeight = letterHeight - ascHeight - descHeight;
+     fontSize = getFontSize(window.globalFont, xHeight, "o", ctx);
+   } else if(letterHeight != null){
+     letterHeight = parseFloat(letterHeight[1]);
+     descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
+     fontSize = getFontSize(window.globalFont, letterHeight - descHeight, "A", ctx);
+   }
 
     ctx.font = 1000 + 'px ' + window.globalFont;
     const oMetrics = ctx.measureText("o");
@@ -859,7 +807,7 @@ function addWordClick(){
 
     let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
 
-    top = lineBoxChosen[3] + baselineChosen[1] + fontDesc + angleAdjY;
+    let top = lineBoxChosen[3] + baselineChosen[1] + fontDesc + angleAdjY;
 
     let textbox = new fabric.IText(wordText, { left: rect.left,
     top: top,
@@ -948,7 +896,7 @@ function addWordClick(){
 
     canvas.remove(rect);
     canvas.add(textbox);
-
+    canvas.requestRenderAll();
 
 });
 }
