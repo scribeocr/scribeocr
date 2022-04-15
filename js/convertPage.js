@@ -619,6 +619,10 @@ function convertPageAbbyy(xmlPage, pageNum){
 
        const bboxesITop = Math.min(...bboxesI.map(x => x[1]).filter(x => x > 0));
        const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]));
+         
+       if(!isFinite(bboxesITop) || !isFinite(bboxesIBottom)){
+         continue;
+       }
 
        xmlOut = xmlOut + "<span class='ocrx_word' id='word_" + (pageNum+1) + "_" + (lineNum+1) + "_" + (i+1) + "' title='bbox " + bboxesILeft + " " + bboxesITop + " " + bboxesIRight + " " + bboxesIBottom;
        if(wordSusp[i]){
