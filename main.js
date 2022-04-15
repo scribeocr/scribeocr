@@ -1162,8 +1162,8 @@ async function importFiles(){
   }
 
   // Render first handful of pages for pdfs so the interface starts off responsive
-  //if(window.pdfMode && !window.xmlMode){
-  if(window.pdfMode){
+  // In the case of OCR data, this step is triggered elsewhere after all the data loads
+  if(window.pdfMode && !window.xmlMode){
     renderPDFImageCache([...Array(Math.min(pageCount,5)).keys()]);
   }
 
