@@ -52,6 +52,7 @@ export async function initMuPDFWorker() {
 							console.log("Page " + n + " pngRenderCount: " + window.muPDFScheduler["pngRenderCount"]);
 							window.muPDFScheduler["pngRenderCount"] = window.muPDFScheduler["pngRenderCount"] + 1;
 							if(typeof(window.muPDFScheduler["activeProgress"]) != "undefined"){
+								window.muPDFScheduler["activeProgress"].setAttribute("aria-valuenow",window.muPDFScheduler["pngRenderCount"]);
 								const valueMax = parseInt(window.muPDFScheduler["activeProgress"].getAttribute("aria-valuemax"));
 								window.muPDFScheduler["activeProgress"].setAttribute("style","width: " + (window.muPDFScheduler["pngRenderCount"] / valueMax) * 100 + "%");
 							}

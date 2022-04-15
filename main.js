@@ -177,7 +177,7 @@ document.getElementById('editBaseline').addEventListener('click', adjustBaseline
 document.getElementById('rangeBaseline').addEventListener('input', () => {adjustBaselineRange(event.target.value)});
 document.getElementById('rangeBaseline').addEventListener('mouseup', () => {adjustBaselineRangeChange(event.target.value)});
 
-document.getElementById('delete').addEventListener('click', deleteSelectedWords);
+document.getElementById('deleteWord').addEventListener('click', deleteSelectedWords);
 
 document.getElementById('addWord').addEventListener('click', addWordClick);
 document.getElementById('reset').addEventListener('click', clearFiles);
@@ -251,9 +251,6 @@ document.getElementById('pageNum').addEventListener('keyup', function(event){
         }
 
       }
-
-
-
     } else {
       document.getElementById('pageNum').value = window.currentPage + 1;
     }
@@ -328,27 +325,36 @@ function setPsmLabel(x){
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
 document.getElementById('nav-import').addEventListener('hidden.bs.collapse', function () {
-  if(document.getElementById("import-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("importProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("import-progress-collapse").setAttribute("class", "collapse");
-  }
+  hideProgress("import-progress-collapse");
+  // const progressCollapse = document.getElementById("import-progress-collapse");
+  // if(progressCollapse.getAttribute("class") == "collapse show"){
+  //   const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
+  //   if(loadCountHOCR == parseInt(progressBar.getAttribute("aria-valuemax"))){
+  //     document.getElementById("import-progress-collapse").setAttribute("class", "collapse");
+  //   }
+  // }
 })
 
 document.getElementById('nav-recognize').addEventListener('hidden.bs.collapse', function () {
-  if(document.getElementById("render-recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("renderProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("render-recognize-progress-collapse").setAttribute("class", "collapse");
-  }
-  if(document.getElementById("recognize-recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("recognizeProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("recognize-recognize-progress-collapse").setAttribute("class", "collapse");
-  }
+  hideProgress("render-recognize-progress-collapse");
+  hideProgress("recognize-recognize-progress-collapse");
+  // if(document.getElementById("render-recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("renderProgress").getAttribute("aria-valuemax"))){
+  //   document.getElementById("render-recognize-progress-collapse").setAttribute("class", "collapse");
+  // }
+  // if(document.getElementById("recognize-recognize-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("recognizeProgress").getAttribute("aria-valuemax"))){
+  //   document.getElementById("recognize-recognize-progress-collapse").setAttribute("class", "collapse");
+  // }
 })
 
 document.getElementById('nav-download').addEventListener('hidden.bs.collapse', function () {
-  if(document.getElementById("render-download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("render-download-progress-collapse").setAttribute("class", "collapse");
-  }
-  if(document.getElementById("generate-download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
-    document.getElementById("generate-download-progress-collapse").setAttribute("class", "collapse");
-  }
+  hideProgress("render-download-progress-collapse");
+  hideProgress("generate-download-progress-collapse");
+  // if(document.getElementById("render-download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
+  //   document.getElementById("render-download-progress-collapse").setAttribute("class", "collapse");
+  // }
+  // if(document.getElementById("generate-download-progress-collapse").getAttribute("class") == "collapse show" && loadCountHOCR == parseInt(document.getElementById("downloadProgress").getAttribute("aria-valuemax"))){
+  //   document.getElementById("generate-download-progress-collapse").setAttribute("class", "collapse");
+  // }
 })
 
 
@@ -432,6 +438,12 @@ document.getElementById('nav-about').addEventListener('show.bs.collapse', functi
   document.getElementById('paddingRow').style.height = currentHeight + tabHeightObj["about"] + "px";
 })
 
+function toggleEditButtons(disable = true){
+  let editButtons = ["styleItalic", "styleSmallCaps", "styleSuper", "editBoundingBox", "editBaseline", "deleteWord", "addWord"];
+  for(let i=0;i<editButtons.length;i++){
+    document.getElementById(editButtons[i]).disabled = disable;
+  }
+}
 
 function initializeProgress(id,maxValue,initValue=0){
   console.log("initValue " + initValue);
@@ -450,6 +462,17 @@ function initializeProgress(id,maxValue,initValue=0){
 
   return(progressBar);
 
+}
+
+// Hides progress bar if completed
+function hideProgress(id){
+  const progressCollapse = document.getElementById(id);
+  if(progressCollapse.getAttribute("class") == "collapse show"){
+    const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
+    if(parseInt(progressBar.getAttribute("aria-valuenow")) == parseInt(progressBar.getAttribute("aria-valuemax"))){
+      progressCollapse.setAttribute("class", "collapse");
+    }
+  }
 }
 
 
@@ -536,6 +559,7 @@ async function recognizeAll(){
   // Enable confidence threshold input boxes (only used for Tesseract)
   document.getElementById('confThreshHigh').disabled = false;
   document.getElementById('confThreshMed').disabled = false;
+  toggleEditButtons(false);
 
 
 }
@@ -918,6 +942,7 @@ function clearFiles(){
   document.getElementById('confThreshMed').disabled = true;
   document.getElementById('recognizeAll').disabled = true;
   document.getElementById('recognizeArea').disabled = true;
+  toggleEditButtons(true);
 
 }
 
@@ -1148,6 +1173,7 @@ async function importFiles(){
     }
 
     if(window.xmlMode){
+      toggleEditButtons(false);
       // Process HOCR using web worker, reading from file first if that has not been done already
       if(singleHOCRMode){
         convertPageWorker.postMessage([hocrAllRaw[i], i, abbyyMode]);
