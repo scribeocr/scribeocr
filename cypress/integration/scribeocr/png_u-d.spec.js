@@ -23,11 +23,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/pretty_faces.xml', 
       'cypress/fixtures/pretty_faces.png', 
-      'cypress/fixtures/multi_png/aurelia_png.hocr', 
+      'cypress/fixtures/multi_png/aurelia_png.xml', 
       'cypress/fixtures/multi_png/aurelia.png', 
-      'cypress/fixtures/multi_png/henreys_grave_png.hocr', 
+      'cypress/fixtures/multi_png/henreys_grave_png.xml', 
       'cypress/fixtures/multi_png/henreys_grave.png', 
-      'cypress/fixtures/multi_png/the_past_png.hocr', 
+      'cypress/fixtures/multi_png/the_past_png.xml', 
       'cypress/fixtures/multi_png/the_past.png'])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
@@ -52,11 +52,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/pretty_faces.xml', 
       'cypress/fixtures/pretty_faces.png', 
-      'cypress/fixtures/multi_png/aurelia_png.hocr', 
+      'cypress/fixtures/multi_png/aurelia_png.xml', 
       'cypress/fixtures/multi_png/aurelia.png', 
-      'cypress/fixtures/multi_png/henreys_grave_png.hocr', 
+      'cypress/fixtures/multi_png/henreys_grave_png.xml', 
       'cypress/fixtures/multi_png/henreys_grave.png', 
-      'cypress/fixtures/multi_png/the_past_png.hocr', 
+      'cypress/fixtures/multi_png/the_past_png.xml', 
       'cypress/fixtures/multi_png/the_past.png'])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
@@ -82,11 +82,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/pretty_faces.xml', 
       'cypress/fixtures/pretty_faces.png', 
-      'cypress/fixtures/multi_png/aurelia_png.hocr', 
+      'cypress/fixtures/multi_png/aurelia_png.xml', 
       'cypress/fixtures/multi_png/aurelia.png', 
-      'cypress/fixtures/multi_png/henreys_grave_png.hocr', 
+      'cypress/fixtures/multi_png/henreys_grave_png.xml', 
       'cypress/fixtures/multi_png/henreys_grave.png', 
-      'cypress/fixtures/multi_png/the_past_png.hocr', 
+      'cypress/fixtures/multi_png/the_past_png.xml', 
       'cypress/fixtures/multi_png/the_past.png'
     ])
     cy.get('#pageCount').should('have.text', '4')

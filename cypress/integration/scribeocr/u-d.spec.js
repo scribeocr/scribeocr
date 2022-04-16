@@ -12,7 +12,7 @@ describe('It downloads a', () => {
 
   it('text file from jpg with hOCR', () => {
     cy.get('#uploader').selectFile([
-      'cypress/fixtures/multi_jpg/henreys_grave.hocr',
+      'cypress/fixtures/multi_jpg/henreys_grave.xml',
       'cypress/fixtures/multi_jpg/henreys_grave.jpg'
     ])
     cy.get('#pageCount').should('have.text', '1')
@@ -29,11 +29,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/snow_drops.xml', 
       'cypress/fixtures/snow_drops.jpg',
-      'cypress/fixtures/multi_jpg/aurelia_jpg.hocr',
+      'cypress/fixtures/multi_jpg/aurelia_jpg.xml',
       'cypress/fixtures/multi_jpg/aurelia.jpg',
-      'cypress/fixtures/multi_jpg/henreys_grave.hocr',
+      'cypress/fixtures/multi_jpg/henreys_grave.xml',
       'cypress/fixtures/multi_jpg/henreys_grave.jpg',
-      'cypress/fixtures/multi_jpg/the_past.hocr',
+      'cypress/fixtures/multi_jpg/the_past.xml',
       'cypress/fixtures/multi_jpg/the_past.jpg'
     ])
     cy.get('#pageCount').should('have.text', '4')
@@ -47,7 +47,7 @@ describe('It downloads a', () => {
 
   it('pdf file from jpg with hOCR', () => {
     cy.get('#uploader').selectFile([
-      'cypress/fixtures/multi_jpg/the_past.hocr',
+      'cypress/fixtures/multi_jpg/the_past.xml',
       'cypress/fixtures/multi_jpg/the_past.jpg'
     ])
     cy.get('#pageCount').should('have.text', '1')
@@ -64,11 +64,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/snow_drops.xml', 
       'cypress/fixtures/snow_drops.jpg',
-      'cypress/fixtures/multi_jpg/aurelia_jpg.hocr',
+      'cypress/fixtures/multi_jpg/aurelia_jpg.xml',
       'cypress/fixtures/multi_jpg/aurelia.jpg',
-      'cypress/fixtures/multi_jpg/henreys_grave.hocr',
+      'cypress/fixtures/multi_jpg/henreys_grave.xml',
       'cypress/fixtures/multi_jpg/henreys_grave.jpg',
-      'cypress/fixtures/multi_jpg/the_past.hocr',
+      'cypress/fixtures/multi_jpg/the_past.xml',
       'cypress/fixtures/multi_jpg/the_past.jpg'
     ])
     cy.get('#pageCount').should('have.text', '4')
@@ -83,7 +83,7 @@ describe('It downloads a', () => {
 
   it('hocr file from jpg)', () => {
     cy.get('#uploader').selectFile([
-      'cypress/fixtures/multi_jpg/aurelia_jpg.hocr',
+      'cypress/fixtures/multi_jpg/aurelia_jpg.xml',
       'cypress/fixtures/multi_jpg/aurelia.jpg',
     ])
     cy.get('#pageCount').should('have.text', '1')
@@ -100,11 +100,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/snow_drops.xml', 
       'cypress/fixtures/snow_drops.jpg',
-      'cypress/fixtures/multi_jpg/aurelia_jpg.hocr',
+      'cypress/fixtures/multi_jpg/aurelia_jpg.xml',
       'cypress/fixtures/multi_jpg/aurelia.jpg',
-      'cypress/fixtures/multi_jpg/henreys_grave.hocr',
+      'cypress/fixtures/multi_jpg/henreys_grave.xml',
       'cypress/fixtures/multi_jpg/henreys_grave.jpg',
-      'cypress/fixtures/multi_jpg/the_past.hocr',
+      'cypress/fixtures/multi_jpg/the_past.xml',
       'cypress/fixtures/multi_jpg/the_past.jpg'
     ])
     cy.get('#pageCount').should('have.text', '4')
@@ -174,11 +174,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/pretty_faces.xml', 
       'cypress/fixtures/pretty_faces.png', 
-      'cypress/fixtures/multi_png/aurelia_png.hocr', 
+      'cypress/fixtures/multi_png/aurelia_png.xml', 
       'cypress/fixtures/multi_png/aurelia.png', 
-      'cypress/fixtures/multi_png/henreys_grave_png.hocr', 
+      'cypress/fixtures/multi_png/henreys_grave_png.xml', 
       'cypress/fixtures/multi_png/henreys_grave.png', 
-      'cypress/fixtures/multi_png/the_past_png.hocr', 
+      'cypress/fixtures/multi_png/the_past_png.xml', 
       'cypress/fixtures/multi_png/the_past.png'])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
@@ -203,11 +203,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/pretty_faces.xml', 
       'cypress/fixtures/pretty_faces.png', 
-      'cypress/fixtures/multi_png/aurelia_png.hocr', 
+      'cypress/fixtures/multi_png/aurelia_png.xml', 
       'cypress/fixtures/multi_png/aurelia.png', 
-      'cypress/fixtures/multi_png/henreys_grave_png.hocr', 
+      'cypress/fixtures/multi_png/henreys_grave_png.xml', 
       'cypress/fixtures/multi_png/henreys_grave.png', 
-      'cypress/fixtures/multi_png/the_past_png.hocr', 
+      'cypress/fixtures/multi_png/the_past_png.xml', 
       'cypress/fixtures/multi_png/the_past.png'])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
@@ -233,11 +233,11 @@ describe('It downloads a', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/pretty_faces.xml', 
       'cypress/fixtures/pretty_faces.png', 
-      'cypress/fixtures/multi_png/aurelia_png.hocr', 
+      'cypress/fixtures/multi_png/aurelia_png.xml', 
       'cypress/fixtures/multi_png/aurelia.png', 
-      'cypress/fixtures/multi_png/henreys_grave_png.hocr', 
+      'cypress/fixtures/multi_png/henreys_grave_png.xml', 
       'cypress/fixtures/multi_png/henreys_grave.png', 
-      'cypress/fixtures/multi_png/the_past_png.hocr', 
+      'cypress/fixtures/multi_png/the_past_png.xml', 
       'cypress/fixtures/multi_png/the_past.png'
     ])
     cy.get('#pageCount').should('have.text', '4')
