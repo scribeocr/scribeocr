@@ -23,6 +23,7 @@
 "use strict";
 
 //import { arrayBufferToBase64 } from "./js/miscUtils.js";
+import { insertImageCache, displayImage } from "../main.js";
 
 
 export async function initMuPDFWorker() {
@@ -35,57 +36,16 @@ export async function initMuPDFWorker() {
 		worker.onmessage = function (event) {
 			worker.promises = {};
 			worker.promiseId = 0;
-			worker.onmessage = function (event) {
+			worker.onmessage = async function (event) {
 				let [ type, id, result ] = event.data;
 				if (type === "RESULT"){
 					//worker.promises[id].resolve(result);
-					if(["drawPageAsPNG"].includes(worker.promises[id].func)){
+					if (["drawPageAsPNG"].includes(worker.promises[id].func)) {
 						const n = worker.promises[id].page - 1;
-						const png = result;
-						// Save the image to the cache no matter what
-						const image = document.createElement('img');
-						//image.src = "data:image/png;base64," + arrayBufferToBase64(png);
-						image.src = png;
-						imageAll[n] = image;
-
-						image.onload = function(){
-							console.log("Page " + n + " pngRenderCount: " + window.muPDFScheduler["pngRenderCount"]);
-							window.muPDFScheduler["pngRenderCount"] = window.muPDFScheduler["pngRenderCount"] + 1;
-							if(typeof(window.muPDFScheduler["activeProgress"]) != "undefined"){
-								window.muPDFScheduler["activeProgress"].setAttribute("aria-valuenow",window.muPDFScheduler["pngRenderCount"]);
-								const valueMax = parseInt(window.muPDFScheduler["activeProgress"].getAttribute("aria-valuemax"));
-								window.muPDFScheduler["activeProgress"].setAttribute("style","width: " + (window.muPDFScheduler["pngRenderCount"] / valueMax) * 100 + "%");
-							}
-
-							worker.promises[id].resolve(result);
-							delete worker.promises[id];
-
-							// Display the image on the canvas if appropriate
-							if(currentPage == n){
-								window.renderStatus = window.renderStatus + 1;
-
-								if(!window.xmlMode){
-									let widthRender = image.width;
-									let heightRender = image.height;
-
-									let widthDisplay = Math.min(widthRender, parseFloat(document.getElementById('zoomInput').value));
-									let heightDisplay = Math.min(heightRender, heightRender * (widthDisplay / widthRender));
-
-									window.canvas.clear();
-									window.canvas.__eventListeners = {};
-
-									window.canvas.setHeight(heightDisplay);
-									window.canvas.setWidth(widthDisplay);
-
-									window.canvas.setZoom(widthDisplay / widthRender);
-
-								}
-
-								window.backgroundImage = new fabric.Image(image, {objectCaching:false});
-								selectDisplayMode(document.getElementById('displayMode').value);
-							}
-						}
-
+						await insertImageCache(n, result);
+						worker.promises[id].resolve(result);
+						delete worker.promises[id];
+						await displayImage(n, imageAll[n]);
 					} else {
 						worker.promises[id].resolve(result);
 						delete worker.promises[id];
@@ -121,9 +81,6 @@ export async function initMuPDFWorker() {
 				});
 			}
 		}
-
-		// worker.promises = {};
-		// worker.promiseId = 0;
 
 		mupdf.openDocument = wrap("openDocument");
 		mupdf.freeDocument = wrap("freeDocument");

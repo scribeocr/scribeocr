@@ -5,7 +5,15 @@ export function renderHOCR(hocrAll, fontMetricsObj){
   let maxValue = parseInt(document.getElementById('pdfPageMax').value);
 
   const exportParser = new DOMParser();
-  let firstPageStr = hocrAll[minValue-1].replace(/\<html\>/, "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">");
+  let firstPageStr;
+  // Normally the content from the first page is used, however when the first page is empty or encounters a parsing error another page is used
+  for (let i = (minValue - 1); i < maxValue; i++){
+    // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
+    if (hocrAll[i].length > 50) {
+      firstPageStr = hocrAll[i].replace(/\<html\>/, "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">");
+      break;
+    }
+  }
 
   // If HTML start/end nodes do not already exist, append them now
   // This is relevant for OCR data generated within this program,
@@ -34,9 +42,10 @@ export function renderHOCR(hocrAll, fontMetricsObj){
   let fontXML = exportParser.parseFromString("<meta name='font-metrics' content='" + JSON.stringify(fontMetricsObj) + "'></meta>","text/xml");
    exportXML.getElementsByTagName("head")[0].appendChild(fontXML.firstChild);
 
-  for(let i=minValue; i<maxValue; i++){
-    const pageXML = exportParser.parseFromString(hocrAll[i],"text/xml");
+  for (let i = minValue; i < maxValue; i++){
 
+    const pageXML = exportParser.parseFromString(hocrAll[i], "text/xml");
+    
     exportXML.body.appendChild(pageXML.getElementsByClassName("ocr_page")[0])
   }
 

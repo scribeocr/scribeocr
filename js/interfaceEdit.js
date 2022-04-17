@@ -20,7 +20,7 @@ export function deleteSelectedWords(){
 }
 
 function deleteHOCRWord(word_id){
-  let it = window.xmlDoc.evaluate("//span[@id='" + word_id + "']", window.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){
     let lineNode = it.singleNodeValue.parentNode;
     // If there are no other words on the line, remove the entire line.
@@ -37,7 +37,7 @@ export function toggleStyleSelectedWords(style){
   style = style.toLowerCase()
 
   const selectedObjects = window.canvas.getActiveObjects();
-  if (!selectedObjects) return;
+  if (!selectedObjects || selectedObjects.length == 0) return;
 
   // If first word style already matches target style, disable the style.
   const enable = selectedObjects[0].fontStyle.toLowerCase() == style || style == "small-caps" && /small caps$/i.test(selectedObjects[0].fontFamily) ? false : true;
@@ -71,7 +71,7 @@ export function toggleStyleSelectedWords(style){
 }
 
 function updateHOCRStyleWord(word_id, value){
-  let it = window.xmlDoc.evaluate("//span[@id='" + word_id + "']", window.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){
 
     value = value.toLowerCase();
@@ -91,7 +91,7 @@ function updateHOCRStyleWord(word_id, value){
 
 
 function updateHOCRFontWord(word_id, value){
-  let it = window.xmlDoc.evaluate("//span[@id='" + word_id + "']", window.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){
     // If set to "Default" the font-family style will be omitted (so the document default style is inherited)
     let styleStr = it.singleNodeValue.getAttribute("style");
@@ -140,7 +140,7 @@ export function changeWordFontSize(fontSize){
 
 function updateHOCRFontSizeWord(word_id, value){
   console.log(value);
-  let it = window.xmlDoc.evaluate("//span[@id='" + word_id + "']", window.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){
     // If set to "Default" the font-family style will be omitted (so the document default style is inherited)
     let styleStr = it.singleNodeValue.getAttribute("style");
@@ -166,7 +166,7 @@ export function toggleBoundingBoxesSelectedWords(){
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
     const wordI = selectedObjects[i];
-    const wordIDI = wordI.wordID;
+    //const wordIDI = wordI.wordID;
     wordI.hasControls = true;
     // Only allow left/right scaling
     // This is the only type of scaling that is currently reflected in HOCR, so any other edit would just disappear
@@ -176,7 +176,7 @@ export function toggleBoundingBoxesSelectedWords(){
 }
 
 export function updateHOCRBoundingBoxWord(word_id, leftDelta, rightDelta){
-  let it = window.xmlDoc.evaluate("//span[@id='" + word_id + "']", window.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){
 
     let titleStr = it.singleNodeValue.getAttribute("title");
@@ -195,7 +195,7 @@ export function updateHOCRBoundingBoxWord(word_id, leftDelta, rightDelta){
 export function changeWordFont(fontName){
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
-  const fontNameCanvas = fontName == "Default" ? globalFont : fontName;
+  const fontNameCanvas = fontName == "Default" ? globalSettings.defaultFont : fontName;
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
     const wordI = selectedObjects[i];
@@ -221,13 +221,13 @@ export function toggleSuperSelectedWords(){
   const wordI = selectedObjects[0];
   const wordIDI = wordI.wordID;
   updateHOCRSuperWord(wordIDI, !wordI.wordSup);
-  hocrAll[currentPage] = window.xmlDoc.documentElement.outerHTML;
+  hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
 
-  renderPageQueue(currentPage);
+  renderPageQueue(currentPage.n);
 }
 
 function updateHOCRSuperWord(word_id, value){
-  let it = window.xmlDoc.evaluate("//span[@id='" + word_id + "']", window.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){
     let inner = it.singleNodeValue.innerHTML;
     console.log(inner);
@@ -246,7 +246,7 @@ function updateHOCRSuperWord(word_id, value){
 // Function for updating the value of HOCR text for word with ID "word_id"
 // Assumes that IDs are unique.
 export function updateHOCRWord(word_id, new_text){
-  let it = window.xmlDoc.evaluate("//span[@id='" + word_id + "']", window.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){
     it.singleNodeValue.firstChild.textContent = new_text;
   }
@@ -297,7 +297,7 @@ export function adjustBaselineRangeChange(value){
     const wordIDI = wordI.wordID;
 
     wordI.set('baselineAdj', value);
-    let it = xmlDoc.evaluate("//span[@id='" + wordIDI + "']", xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+    let it = currentPage.xmlDoc.evaluate("//span[@id='" + wordIDI + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
     if(it.singleNodeValue != null){
       let titleStr = it.singleNodeValue.getAttribute("title");
       let wordBox = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
@@ -312,7 +312,7 @@ export function adjustBaselineRangeChange(value){
     }
   }
 
-  let it = xmlDoc.evaluate("//span[@id='" + objectsLine[0].wordID + "']", xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
+  let it = currentPage.xmlDoc.evaluate("//span[@id='" + objectsLine[0].wordID + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   let line = it.singleNodeValue.parentElement;
   let titleStrLine = line.getAttribute('title');
 

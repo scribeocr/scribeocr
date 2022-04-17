@@ -96,12 +96,9 @@ function convertPage(hocrString){
   hocrString = hocrString.replace(/(class=\')ocr_header/ig, "$1ocr_line");
 
   function convertLine(match){
-    let titleStrLine = match.match(/title\=[\'\"]([^\'\"]+)/)
-    if(titleStrLine == null){
-      return("");
-    } else {
-      titleStrLine = titleStrLine[1];
-    }
+    let titleStrLine = match.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+    if (!titleStrLine) return;
+    
     let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x)})
 
     // The baseline can be missing in the case of vertical text (textangle present instead)
@@ -158,7 +155,6 @@ function convertPage(hocrString){
        for (let j = 0; j < letterArr.length; j++) {
         let titleStrLetter = letterArr[j][1];
         let contentStrLetter = letterArr[j][2];
-        //bboxes[j] = [...titleStrLetter.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x)});
         bboxes[j] = [...titleStrLetter.matchAll(charBboxRegex)][0].slice(1,5).map(function (x) {return parseInt(x)});
 
         // Multiple characters within a single <ocrx_cinfo> tag have been observed from Tesseract (even when set to char-level output).
@@ -218,35 +214,10 @@ function convertPage(hocrString){
       if(text == ""){
         return("");
       } else {
-        //let wordStr = match.match(/<span class\=[\"\']ocrx_word[^\>]+\>/i)[0];
         let wordStr = match.match(wordElementRegex)[0];
-        //wordStr = wordStr.replace(/(?<=title\=[\"\'])[^\"\']+/, "$&" + ";cuts " + cuts.join(' '));
-        //wordStr = wordStr.replace(wordTitleRegex, "$&" + ";cuts " + cuts.join(' '));
         return(wordStr + text + "</span>");
       }
     }
-
-    // Reads "cuts" and inserts values into objects.
-    // Unlike "convertWord" this function is called entirely for its side effects and does not edit the HOCR.
-    // function parseCuts(match){
-    //   let titleStrLine = match.match(wordTitleRegex);
-    //   if(titleStrLine == null){
-    //     return(match)
-    //   } else {
-    //     titleStrLine = titleStrLine[0];
-    //   }
-    //
-    //   let contentStr = match.match(/(?<=\>)[^\<]*/)[0];
-    //   let contentArr = [...contentStr.match(/./g)];
-    //
-    //   let cutsStr = titleStrLine.match(/cuts[^\;]+/i)[0];
-    //   let cutsArr = [...cutsStr.match(/[\-\d]+/g)];
-    //
-    //   if(contentArr.length != cutsArr.length){
-    //     return(match);
-    //   }
-    // }
-
     if(charMode){
       match = match.replaceAll(wordRegex, convertWord);
     }
@@ -362,9 +333,6 @@ function convertPageAbbyy(xmlPage, pageNum){
     // Sometimes the <format> comes after the space between words, and sometimes it comes before the space between words.
     xmlLine = xmlLine.replaceAll(/(\<\/formatting\>\<formatting[^\>]*\>\s*)<charParams[^\>]*\>\s*\<\/charParams\>/ig, "$1")
     xmlLine = xmlLine.replaceAll(/\<charParams[^\>]*\>\s*\<\/charParams\>(\s*\<\/formatting\>\<formatting[^\>]*\>\s*)/ig, "$1")
-    //xmlLine = xmlLine.replaceAll(/\<formatting[^\>]*\>\s*\<\/formatting\>/ig, "")
-    //xmlLine = xmlLine.replaceAll(/\<\/formatting\>\s*$/ig, "")
-    //xmlLine = xmlLine.replaceAll(/\<charParams[^\>]*\>\s*\<\/charParams\>\s*$/ig, "")
 
     let wordStrArr = xmlLine.split(abbyySplitRegex);
 
@@ -372,25 +340,16 @@ function convertPageAbbyy(xmlPage, pageNum){
     // (This can happen ocassionally, for example when multiple spaces are next to eachother.)
     // TODO: This will drop formatting information in edge cases--e.g. if a formatting element is followed by multiple spaces.
     // However, hopefully these are uncommon enough that they should not be a big issue.
-    filterArr = wordStrArr.map(x => /charParams/i.test(x));
+    let filterArr = wordStrArr.map(x => /charParams/i.test(x));
     wordStrArr = wordStrArr.filter((r, i) => filterArr[i]);
 
     if(wordStrArr.length == 0) return(["", 0]);
 
-    // for(let i=0;i<(wordStrArr.length-1);i++){
-    //   let formatEnd = wordStrArr[i].match(/<formatting[^\>]+\>[^\<]*$/i);
-    //   if(formatEnd != null){
-    //     wordStrArr[i+1] = formatEnd[0] + wordStrArr[i+1];
-    //   }
-    // }
-
-
-
-    bboxes = Array(wordStrArr.length);
+    let bboxes = Array(wordStrArr.length);
     let cuts = Array(wordStrArr.length);
-     text = Array(wordStrArr.length);
-     text = text.fill("");
-    styleArr = Array(wordStrArr.length);
+    let text = Array(wordStrArr.length);
+    text = text.fill("");
+    let styleArr = Array(wordStrArr.length);
     styleArr = styleArr.fill("normal");
     let wordSusp = Array(wordStrArr.length);
     wordSusp.fill(false);
@@ -398,13 +357,7 @@ function convertPageAbbyy(xmlPage, pageNum){
 
     for(let i=0;i<wordStrArr.length;i++){
       let wordStr = wordStrArr[i];
-      letterArr = [...wordStr.matchAll(abbyyCharRegex)];
-      if(typeof(letterArr[0]) == "undefined"){
-        console.log(xmlLine);
-        console.log(wordStrArr);
-        console.log(letterArr);
-      }
-
+      let letterArr = [...wordStr.matchAll(abbyyCharRegex)];
 
       if(typeof(letterArr[0][1]) != "undefined"){
         if(dropCap && i==0){
@@ -478,14 +431,6 @@ function convertPageAbbyy(xmlPage, pageNum){
            if(baselineFirst.length == 0){
              baselineFirst.push(bboxes[i][j][0], bboxes[i][j][3]);
            } else {
-             // Sometimes random junk characters in the left margin will be the first character on a line.
-             // if(baselineSlopeArr.length < 3 && ((bboxes[i][j][0] - baselineFirst[0]) > (pageDims[1] / 20) || wordSusp[i]) && (wordStrArr.length - i) > 5){
-             //   baselineFirst[0] = bboxes[i][j][0];
-             //   baselineFirst[1] = bboxes[i][j][1];
-             //   baselineSlopeArr = [];
-             // } else {
-             //   baselineSlopeArr.push((bboxes[i][j][3] - baselineFirst[1]) / (bboxes[i][j][0] - baselineFirst[0]));
-             // }
 
              baselineSlopeArr.push((bboxes[i][j][3] - baselineFirst[1]) / (bboxes[i][j][0] - baselineFirst[0]));
 
@@ -527,8 +472,8 @@ function convertPageAbbyy(xmlPage, pageNum){
 
      const lineAllHeight = Math.max(...lineAllHeightArr);
      const lineAscHeight = quantile(lineAscHeightArr, 0.5);
-     const lineXHeight = quantile(lineXHeightArr, 0.5);
-     //const baseline = quantile(baselineHeightArr, 0.5);
+    const lineXHeight = quantile(lineXHeightArr, 0.5);
+    
      if(lineXHeight != null){
        for(const [key,value] of Object.entries(widthPxObjLine)){
          if(parseInt(key) < 33){continue};
@@ -577,9 +522,6 @@ function convertPageAbbyy(xmlPage, pageNum){
 
      }
 
-
-     //console.log(baselineSlopeArr);
-
      // While Abbyy XML already provides line bounding boxes, these have been observed to be (at times)
      // completely different than a bounding box calculated from a union of all letters in the line.
      // Therefore, the line bounding boxes are recaclculated here.
@@ -610,7 +552,7 @@ function convertPageAbbyy(xmlPage, pageNum){
 
      for(let i=0;i<text.length;i++){
        if(text[i].trim() == "") {continue};
-        bboxesI = bboxes[i];
+        let bboxesI = bboxes[i];
        const bboxesILeft = bboxesI[0][0];
        // Abbyy XML can strangely give coordinates of 0 (this has been observed for some but not all superscripts), so these must be filtered out,
        // and it cannot be assumed that the rightmost letter has the maximum x coordinate.
@@ -651,24 +593,10 @@ function convertPageAbbyy(xmlPage, pageNum){
 
   let lineStrArr = xmlPage.split(/\<\/line\>/);
 
-//   let xmlOut = String.raw`<?xml version="1.0" encoding="UTF-8"?>
-// <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-// "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-// <html>
-// <head>
-// <title></title>
-// <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
-// <meta name='ocr-system' content='tesseract 5.0.0-beta-20210916-12-g19cc9' />
-// <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
-// </head>
-// <body>
-// <div class='ocr_page'`;
-
   let xmlOut = "<div class='ocr_page'";
 
   xmlOut = xmlOut + " title='bbox 0 0 " + pageDims[1] + " " + pageDims[0] + "'>";
 
-  // let xmlOut = "<div class='ocr_page'>";
   let angleRisePage = new Array();
   for(let i=0;i<lineStrArr.length;i++){
     const lineInt = convertLineAbbyy(lineStrArr[i], i, pageNum);
@@ -676,7 +604,6 @@ function convertPageAbbyy(xmlPage, pageNum){
     angleRisePage.push(lineInt[1]);
     xmlOut = xmlOut + lineInt[0];
   }
-  //xmlOut = xmlOut + "</div></body></html>";
   xmlOut = xmlOut + "</div>";
 
   let angleRiseMedian = mean50(angleRisePage);
@@ -695,9 +622,6 @@ function convertPageAbbyy(xmlPage, pageNum){
     leftOut = null;
   }
 
-  //const angleOut = 0;
-  //const leftOut = 0;
-  //const leftAdjOut = 0;
   const dimsOut = pageDims;
   const widthOut = widthObjPage;
   const heightOut = heightObjPage;

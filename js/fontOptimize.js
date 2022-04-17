@@ -33,7 +33,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       // 33 is the first latin glyph (excluding space which is 32)
       if(parseInt(key) < 33) { continue; }
 
-      const charLit = String.fromCharCode(key);
+      const charLit = String.fromCharCode(parseInt(key));
 
 
       // Some glyphs do not benefit from recalculating statistics, as they are commonly misidentified
@@ -132,7 +132,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       // 33 is the first latin glyph (excluding space which is 32)
       if(parseInt(key) < 33) { continue; }
 
-      const charLit = String.fromCharCode(key);
+      const charLit = String.fromCharCode(parseInt(key));
 
       // Currently only capital letters that start (approximately) at the baseline have their height adjusted.
       //if(/[^A-Z]/.test(charLit) || ["J","Q"].includes(charLit)) { continue; }
@@ -225,8 +225,8 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       let nameSecond = key.match(/\w+$/)[0];
 
 
-      let indexFirst = workingFont.charToGlyphIndex(String.fromCharCode(nameFirst));
-      let indexSecond = workingFont.charToGlyphIndex(String.fromCharCode(nameSecond));
+      let indexFirst = workingFont.charToGlyphIndex(String.fromCharCode(parseInt(nameFirst)));
+      let indexSecond = workingFont.charToGlyphIndex(String.fromCharCode(parseInt(nameSecond)));
 
       let fontKern = Math.round(value * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
 
@@ -284,14 +284,14 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
   } else if(charGoodCt == 0 && charWarnCt > 0){
     if(Object.keys(fontMetricsObj).length > 0){
       document.getElementById('optimizeFont').disabled = false;
-      document.getElementById('save2').disabled = false;
+      document.getElementById('download').disabled = false;
     } else {
       document.getElementById("charInfoAlert").setAttribute("style", "");
-      document.getElementById('save2').disabled = false;
+      document.getElementById('download').disabled = false;
     }
   } else {
     document.getElementById('optimizeFont').disabled = false;
-    document.getElementById('save2').disabled = false;
+    document.getElementById('download').disabled = false;
 
 
     fontMetricsObj["charWidth"] = new Object;
@@ -345,7 +345,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
     let heightCapsObj = new Array();
     for(let i=0; i<pageN; i++){
       for (const [key, value] of Object.entries(fontMetricObjsMessage["heightObjAll"][i])) {
-        if(/[A-Z]/.test(String.fromCharCode(key))){
+        if(/[A-Z]/.test(String.fromCharCode(parseInt(key)))){
           Array.prototype.push.apply(heightCapsObj,value);
         }
       }
@@ -355,7 +355,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
     let heightSmallCapsObj = new Array();
     for(let i=0; i<pageN; i++){
       for (const [key, value] of Object.entries(fontMetricObjsMessage["heightSmallCapsObjAll"][i])) {
-        if(/[A-Z]/.test(String.fromCharCode(key))){
+        if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))){
           Array.prototype.push.apply(heightSmallCapsObj,value);
         }
       }

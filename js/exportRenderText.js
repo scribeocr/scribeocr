@@ -4,8 +4,10 @@ export function renderText(hocrAll){
   let textStr = "";
   const exportParser = new DOMParser();
 
-  let minValue = parseInt(document.getElementById('pdfPageMin').value);
-  let maxValue = parseInt(document.getElementById('pdfPageMax').value);
+  const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
+  const pdfPageMaxElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
+  let minValue = parseInt(pdfPageMinElem.value);
+  let maxValue = parseInt(pdfPageMaxElem.value);
 
   for(let g = (minValue-1); g < maxValue; g++){
     if(g > 0){
@@ -33,7 +35,8 @@ export function renderText(hocrAll){
   }
 
   const textBlob = new Blob([textStr]);
-  let fileName = document.getElementById("downloadFileName").value.replace(/\.\w{1,4}$/, "") + ".txt";
+  const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
+  let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
 
   saveAs(textBlob, fileName);
 

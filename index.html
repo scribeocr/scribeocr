@@ -94,16 +94,7 @@
     }
   </style>
   <meta charset="utf-8" />
-  <script src="lib/bootstrap.bundle.min.js"></script>
-  <!-- <script src="mupdf-async.js"></script> -->
-  <!-- <script src="lib/pdf.min.js" async></script> -->
-
-  <!-- <script>pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.min.js";</script> -->
-  <!-- <script src="lib/pdf.worker.js"></script> -->
-
-  <!-- <script src="lib/filer.min.js" async></script> -->
-  <!-- <script src="lib/UPNG.js"></script> -->
-  <!-- <script src="lib/pako.js"></script> -->
+  <script src="./lib/bootstrap.bundle.min.js"></script>
 
   <script src="./lib/fabric.min.js"></script>
 
@@ -116,11 +107,6 @@
 
   <script src="./lib/FileSaver.min.js" async></script>
   <script type="module" src="main.js"></script>
-
-  <!-- Used for detecting whether SIMD is supported (needed for fast version of Tesseract to run) -->
-  <!-- https://github.com/GoogleChromeLabs/wasm-feature-detect -->
-  <script src="./lib/wasm-feature-detect.js" async></script>
-  <script src="./tess/tesseract.min.js" async></script>
 
 </head>
 <style>
@@ -289,7 +275,7 @@
                 </div>
               </div>
               <div class="col col-2">
-                <label for="smartQuotes" style="padding-left=0"></label>
+                <label for="smartQuotes" style="padding-left:0"></label>
                 <div class="row">
 
 
@@ -300,13 +286,9 @@
               </div>
             </div>
             </div>
-
           </div>
-
-
           <div class="collapse" id="nav-import" role="tabpanel" aria-labelledby="nav-import-tab" data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
-
               <div class="col col-4">
                 <div class="form-group">
                   <label for="uploader">Import Files</label>
@@ -319,7 +301,6 @@ All files are sorted in alphabetic order." data-bs-placement="right">
 
                   <input type="file" id="uploader" class="form-control btn-sm" label="Import Files" multiple>
                 </div>
-
               </div>
               <div class="col col-2">
                 <label for="reset">Reset All (Files + Edits)</label><br>
@@ -336,8 +317,6 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                     </a>
                 </div>
               </div>
-
-
             </div>
             <div class="collapse" id="import-progress-collapse">
               <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
@@ -370,7 +349,14 @@ All files are sorted in alphabetic order." data-bs-placement="right">
               </svg>
               <div class="mb-0"> No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a></div>
             </div>
-
+            <div id="pageMismatchAlert" class="alert alert-dismissible alert-warning d-flex align-items-center show fade" style="display:none !important">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
+              </svg>
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              <p class="mb-0" id="pageMismatchAlertText"></p>
+            </div>
           </div>
           <div class="collapse" id="nav-recognize" role="tabpanel" aria-labelledby="nav-recognize-tab" data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
@@ -575,7 +561,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                 </div>
 
                 <div style="padding-top:0.4rem;">
-                  <button type="button" id="save2" class="btn btn-info btn-sm" disabled>Download</button>
+                  <button type="button" id="download" class="btn btn-info btn-sm" disabled>Download</button>
                 </div>
               </div>
               <div class="col col-2">

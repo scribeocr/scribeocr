@@ -7,3 +7,5 @@ cypress/videos
 browserstack.json
 log
 results
+jsconfig.json
+cypress/screenshots
