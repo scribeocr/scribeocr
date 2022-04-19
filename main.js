@@ -239,6 +239,10 @@ document.getElementById('psmLabelOption4').addEventListener('click', () => { set
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 recognizeAllElem.addEventListener('click', recognizeAll);
 
+const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
+recognizeAreaElem.addEventListener('click', recognizeAreaClick);
+
+
 const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
 displayModeElem.addEventListener('change', () => { selectDisplayMode(displayModeElem.value) });
 
@@ -372,7 +376,7 @@ async function changeDisplayFont(font) {
 
 
 function changeZoom(value) {
-  if (typeof (currentPage.xmlDoc) != "undefined") {
+  if (currentPage.xmlDoc) {
     window.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
@@ -483,6 +487,216 @@ function hideProgress(id) {
 }
 
 
+async function createTesseractScheduler(workerN, config = null) {
+
+  const allConfig = config || getTesseractConfigs();
+
+  let workerOptions;
+  if (globalSettings.simdSupport) {
+    console.log("Using Tesseract with SIMD support (fast LSTM performance).")
+    workerOptions = { corePath: './tess/tesseract-core-sse.wasm.js', workerPath: './tess/worker.min.js' };
+  } else {
+    console.log("Using Tesseract without SIMD support (slow LSTM performance).")
+    workerOptions = { corePath: './tess/tesseract-core.wasm.js', workerPath: './tess/worker.min.js' };
+  }
+
+  const scheduler = Tesseract.createScheduler();
+
+  for (let i = 0; i < workerN; i++) {
+    const w = Tesseract.createWorker(workerOptions);
+    await w.load();
+    await w.loadLanguage('eng');
+    await w.initialize('eng', allConfig.tessedit_ocr_engine_mode);
+    await w.setParameters(allConfig);
+
+    scheduler.addWorker(w);
+  }
+
+  // Add config object to scheduler.
+  // This does not do anything directly, but allows for easily checking what options were used at a later point.
+  scheduler["config"] = allConfig;
+
+  return (scheduler);
+
+}
+
+function getTesseractConfigs() {
+  // Get current settings as specified by user
+  const oemConfig = document.getElementById("oemLabelText").innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
+  const psmConfig = document.getElementById("psmLabelText").innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
+
+  const allConfig = {
+    tessedit_ocr_engine_mode: oemConfig,
+    tessedit_pageseg_mode: psmConfig,
+    hocr_char_boxes: '1',
+    // The Tesseract LSTM engine frequently identifies a bar character "|"
+    // This is virtually always a false positive (usually "I").
+    tessedit_char_blacklist: "|"
+  };
+
+  return (allConfig);
+}
+
+// Checks scheduler to see if user has changed settings since scheduler was created
+function checkTesseractScheduler(scheduler, config = null) {
+  if (!scheduler?.["config"]) return false;
+  const allConfig = config || getTesseractConfigs();
+
+  if (JSON.stringify(recognizeAreaScheduler.config) === JSON.stringify(allConfig)) return true;
+  return false;
+
+}
+
+var recognizeAreaScheduler;
+async function recognizeArea(left, top, width, height) {
+  
+  if (inputDataModes.xmlMode) {
+    globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+  }
+
+  const allConfig = getTesseractConfigs();
+
+  // Do not use character-level data.
+  // The character-level data is not used for font kerning metrics, as at present only 1 font is optimized,
+  // and the text Tesseract misses using "Recognize All" is generally not from the body text (usually page numbers).
+  allConfig.hocr_char_boxes = '0';
+
+  // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
+  if (!checkTesseractScheduler(recognizeAreaScheduler)) {
+    recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
+  }
+  allConfig.rectangle = { left, top, width, height };
+  const res = await recognizeAreaScheduler.addJob('recognize', globalThis.imageAll[currentPage.n].src, allConfig);
+  let hocrString = res.data.hocr;
+
+  console.log(hocrString);
+
+  // Perform various string cleaning functions.  These are largely copied from convertPage.js
+
+  // Remove all bold/italics tags.  These complicate the syntax and are unfortunately virtually always wrong anyway (coming from Tesseract).
+  hocrString = hocrString.replaceAll(/<\/?strong>/ig, "");
+  hocrString = hocrString.replaceAll(/<\/?em>/ig, "");
+
+  // Delete namespace to simplify xpath
+  hocrString = hocrString.replace(/<html[^>]*>/i, "<html>");
+
+  // Replace various classes with "ocr_line" class for simplicity
+  // At least in Tesseract, these elements are not identified accurately or consistently enough to warrent different treatment.
+  hocrString = hocrString.replace(/(class=\')ocr_caption/ig, "$1ocr_line");
+  hocrString = hocrString.replace(/(class=\')ocr_textfloat/ig, "$1ocr_line");
+  hocrString = hocrString.replace(/(class=\')ocr_header/ig, "$1ocr_line");
+
+  // Differs from convertPage.js by only requiring 2 consecutive closing span tags (as no character-level elements are present)
+  const lineRegex = new RegExp(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/, "ig");
+  const hocrLinesArr = hocrString.match(lineRegex);
+
+  if (!hocrLinesArr) return;
+
+  const lines = currentPage.xmlDoc.getElementsByClassName("ocr_line");
+
+  for (let i = 0; i < hocrLinesArr.length; i++){
+    const lineNewStr = hocrLinesArr[i];
+    const titleStrLine = lineNewStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+    const lineNew = parser.parseFromString(lineNewStr, "text/xml").firstChild;
+    const lineBoxNew = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+
+    // Identify the OCR line a bounding box is in (or closest line if no match exists)
+    let lineI = -1;
+    let match = false;
+    let newLastLine = false;
+    let lineBottomHOCR, line;
+    do {
+      lineI = lineI + 1;
+      line = lines[lineI];
+      const titleStrLine = line.getAttribute('title');
+      const lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+      let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
+
+      let boxOffsetY = 0;
+      let lineBoxAdj = lineBox.slice();
+      if (baseline != null) {
+        baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
+
+        // Adjust box such that top/bottom approximate those coordinates at the leftmost point.
+        if (baseline[0] < 0) {
+          lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+        } else {
+          lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+        }
+        boxOffsetY = (lineBoxNew[0] + (lineBoxNew[0] + lineBoxNew[2]) / 2 - lineBoxAdj[0]) * baseline[0];
+      } else {
+        baseline = [0, 0];
+      }
+
+      let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
+      lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
+      if (lineTopHOCR < lineBoxNew[3] && lineBottomHOCR >= lineBoxNew[1]) match = true;
+      if (lineBottomHOCR < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
+
+    } while (lineBottomHOCR < lineBoxNew[1] && lineI + 1 < lines.length);
+
+    let words = line.getElementsByClassName("ocrx_word");
+    let wordsNew = lineNew.getElementsByClassName("ocrx_word");
+
+    if (match) {
+      for (let i = 0; i < wordsNew.length; i++) {
+        let wordNew = wordsNew[i];
+
+        // Identify closest word on existing line
+        let word, box;
+        let j = 0;
+        do {
+          word = words[j];
+          if (word.childNodes[0].textContent.trim() == "") continue;
+          let titleStr = word.getAttribute('title') ?? "";
+          box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+          j = j + 1;
+        } while (box[2] < lineBoxNew[0] && j < words.length);
+
+        // Replace id (which is likely duplicative) with unique id
+        let wordChosenID = word.getAttribute('id');
+        let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+        wordNew.setAttribute("id", wordIDNew)
+
+        // Add to page XML
+        if (i == words.length) {
+          word.insertAdjacentElement("afterend", wordNew);
+        } else {
+          word.insertAdjacentElement("beforebegin", wordNew);
+        }
+      }
+    } else {
+      // Replace id (which is likely duplicative) with unique id
+      let lineChosenID = lineNew.getAttribute('id');
+      let lineIDNew = lineChosenID + getRandomAlphanum(3).join('');
+      lineNew.setAttribute("id", lineIDNew);
+
+      for (let i = 0; i < wordsNew.length; i++){
+        let wordNew = wordsNew[i];
+
+        // Replace id (which is likely duplicative) with unique id
+        let wordChosenID = wordNew.getAttribute('id');
+        let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+        wordNew.setAttribute("id", wordIDNew)
+      }
+
+      if (newLastLine) {
+        line.insertAdjacentElement("afterend", lineNew);
+      } else {
+        line.insertAdjacentElement("beforebegin", lineNew);
+      }
+    }
+  }
+
+  globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+
+  await renderPageQueue(currentPage.n);
+
+}
+
+
+
+
 async function recognizeAll() {
 
   loadCountHOCR = 0;
@@ -499,43 +713,11 @@ async function recognizeAll() {
     //muPDFScheduler.terminate();
   }
 
-
-  const oemConfig = document.getElementById("oemLabelText").innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
-  const psmConfig = document.getElementById("psmLabelText").innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
-
-  const allConfig = {
-    tessedit_ocr_engine_mode: oemConfig,
-    tessedit_pageseg_mode: psmConfig,
-    hocr_char_boxes: '1',
-    // The Tesseract LSTM engine frequently identifies a bar character "|"
-    // This is virtually always a false positive (usually "I").
-    tessedit_char_blacklist: "|"
-  };
-
-  console.log(allConfig);
+  const allConfig = getTesseractConfigs();
 
   let recognizeImages = async (workerN) => {
     let time1 = Date.now();
-    const scheduler = Tesseract.createScheduler();
-
-    let workerOptions;
-    if (globalSettings.simdSupport) {
-      console.log("Using Tesseract with SIMD support (fast LSTM performance).")
-      workerOptions = { corePath: './tess/tesseract-core-sse.wasm.js', workerPath: './tess/worker.min.js' };
-    } else {
-      console.log("Using Tesseract without SIMD support (slow LSTM performance).")
-      workerOptions = { corePath: './tess/tesseract-core.wasm.js', workerPath: './tess/worker.min.js' };
-    }
-
-    for (let i = 0; i < workerN; i++) {
-      const w = Tesseract.createWorker(workerOptions);
-      await w.load();
-      await w.loadLanguage('eng');
-      await w.initialize('eng', oemConfig);
-      await w.setParameters(allConfig);
-
-      scheduler.addWorker(w);
-    }
+    const scheduler = await createTesseractScheduler(workerN);
 
     inputDataModes.xmlMode = true;
     const rets = await Promise.allSettled([...Array(globalThis.imageAll.length).keys()].map((x) => (
@@ -544,7 +726,6 @@ async function recognizeAll() {
       })
     )));
 
-    //console.log(rets.map(r => r.data));
     await scheduler.terminate();
 
     let time2 = Date.now();
@@ -575,20 +756,9 @@ async function recognizeAll() {
 }
 
 
-
-
-var newWordInit = true;
-
-
-var rect, origX, origY;
-function addWordClick() {
-  newWordInit = false;
-
-  let isDown = false;
-  let isMoved = false;
+function recognizeAreaClick() {
 
   canvas.on('mouse:down', function (o) {
-    isDown = true;
     let pointer = canvas.getPointer(o.e);
     origX = pointer.x;
     origY = pointer.y;
@@ -604,32 +774,91 @@ function addWordClick() {
       transparentCorners: false
     });
     canvas.add(rect);
-  });
-
-  canvas.on('mouse:move', function (o) {
-    if (!isDown) return;
-    isMoved = true;
-    let pointer = canvas.getPointer(o.e);
-
-    if (origX > pointer.x) {
-      rect.set({ left: Math.abs(pointer.x) });
-    }
-    if (origY > pointer.y) {
-      rect.set({ top: Math.abs(pointer.y) });
-    }
-
-    rect.set({ width: Math.abs(origX - pointer.x) });
-    rect.set({ height: Math.abs(origY - pointer.y) });
-
     canvas.renderAll();
+    canvas.on('mouse:move', function (o) {
+      let pointer = canvas.getPointer(o.e);
+
+      if (origX > pointer.x) {
+        rect.set({ left: Math.abs(pointer.x) });
+      }
+      if (origY > pointer.y) {
+        rect.set({ top: Math.abs(pointer.y) });
+      }
+
+      rect.set({ width: Math.abs(origX - pointer.x) });
+      rect.set({ height: Math.abs(origY - pointer.y) });
+
+      canvas.renderAll();
+    });
   });
 
-  canvas.on('mouse:up:before', function (o) {
-    if (newWordInit) { return; }
-    if (!isMoved) return;
-    newWordInit = true;
+
+  canvas.on('mouse:up', async function (o) {
+
+    const left = rect.left;
+    const top = rect.top;
+    const width = rect.width;
+    const height = rect.height;
+
+    canvas.remove(rect);
+    await recognizeArea(left, top, width, height);
+    
+    canvas.renderAll();
     canvas.__eventListeners = {}
-    isDown = false;
+  });
+
+}
+
+
+var newWordInit = true;
+
+var rect, origX, origY;
+function addWordClick() {
+  newWordInit = false;
+
+  canvas.on('mouse:down', function (o) {
+    let pointer = canvas.getPointer(o.e);
+    origX = pointer.x;
+    origY = pointer.y;
+    rect = new fabric.Rect({
+      left: origX,
+      top: origY,
+      originX: 'left',
+      originY: 'top',
+      width: pointer.x - origX,
+      height: pointer.y - origY,
+      angle: 0,
+      fill: 'rgba(255,0,0,0.5)',
+      transparentCorners: false
+    });
+    canvas.add(rect);
+    canvas.renderAll();
+
+    canvas.on('mouse:move', function (o) {
+
+      let pointer = canvas.getPointer(o.e);
+
+      if (origX > pointer.x) {
+        rect.set({ left: Math.abs(pointer.x) });
+      }
+      if (origY > pointer.y) {
+        rect.set({ top: Math.abs(pointer.y) });
+      }
+
+      rect.set({ width: Math.abs(origX - pointer.x) });
+      rect.set({ height: Math.abs(origY - pointer.y) });
+
+      canvas.renderAll();
+    });
+
+  });
+
+  canvas.on('mouse:up', function (o) {
+
+    canvas.__eventListeners = {}
+    if (newWordInit) { return; }
+    newWordInit = true;
+
 
     let fillColorHex = "#00ff7b";
 
@@ -843,7 +1072,6 @@ function addWordClick() {
       topOrig: top,
       baselineAdj: 0,
       wordSup: false,
-
       originY: "bottom",
       fill: fill_arg,
       fill_proof: fillColorHex,
@@ -924,6 +1152,7 @@ function addWordClick() {
     canvas.remove(rect);
     canvas.add(textbox);
     canvas.renderAll();
+    canvas.__eventListeners = {}
 
   });
 }
@@ -944,7 +1173,7 @@ function clearFiles() {
   confThreshHighElem.disabled = true;
   confThreshMedElem.disabled = true;
   recognizeAllElem.disabled = true;
-  /** @type {HTMLInputElement} */(document.getElementById('recognizeArea')).disabled = true;
+  recognizeAreaElem.disabled = true;
   toggleEditButtons(true);
 
 }
@@ -1006,6 +1235,7 @@ async function importFiles() {
 
   if (inputDataModes.imageMode || inputDataModes.pdfMode) {
     recognizeAllElem.disabled = false;
+    recognizeAreaElem.disabled = false;
   }
 
   imageFilesAll.sort();

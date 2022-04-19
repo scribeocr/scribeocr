@@ -537,14 +537,18 @@ function convertPageAbbyy(xmlPage, pageNum){
 
      let xmlOut = "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
      if(baselineSlopeArr.length > 0){
-       xmlOut = xmlOut + ";baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
+       xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
      }
-     xmlOut = xmlOut + ";x_size " + lineAllHeight;
-     if(lineAscHeight != null && lineXHeight != null){
-       xmlOut = xmlOut + " x_ascenders " + (lineAscHeight - lineXHeight) + " x_descenders " + (lineAllHeight - lineAscHeight);
-     } else if(lineAscHeight != null){
-       xmlOut = xmlOut + " x_descenders " + (lineAllHeight - lineAscHeight);
-     }
+    
+    // Add character height (misleadingly called "x_size" in Tesseract hocr)
+    xmlOut = xmlOut + "; x_size " + lineAllHeight;
+    // If x-height exists and is a plausible value, calculate x_ascenders (in addition to x_descenders)
+    if (lineAscHeight && lineXHeight && (lineAscHeight > lineXHeight * 1.2) && (lineAscHeight < lineXHeight * 2)){
+      xmlOut = xmlOut + "; x_ascenders " + (lineAscHeight - lineXHeight) + "; x_descenders " + (lineAllHeight - lineAscHeight);
+    // Otherwise, add only x_descenders
+    } else if(lineAscHeight){
+      xmlOut = xmlOut + "; x_descenders " + (lineAllHeight - lineAscHeight);
+    }
 
 
      xmlOut = xmlOut + "\">";
