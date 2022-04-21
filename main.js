@@ -241,7 +241,8 @@ recognizeAllElem.addEventListener('click', recognizeAll);
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
 recognizeAreaElem.addEventListener('click', recognizeAreaClick);
-
+const recognizeAreaEditElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAreaEdit'));
+recognizeAreaEditElem.addEventListener('click', recognizeAreaClick);
 
 const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
 displayModeElem.addEventListener('change', () => { selectDisplayMode(displayModeElem.value) });
