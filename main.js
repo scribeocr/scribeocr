@@ -92,7 +92,7 @@ fabric.IText.prototype._render = function (ctx) {
 // Object that keeps track of what type of input data is present
 globalThis.inputDataModes = {
   // true if OCR data exists (whether from upload or built-in engine)
-  xmlMode: false,
+  xmlMode: undefined,
   // true if user uploaded pdf
   pdfMode: false,
   // true if user uploaded image files (.png, .jpeg)
@@ -541,8 +541,9 @@ function getTesseractConfigs() {
 function checkTesseractScheduler(scheduler, config = null) {
   if (!scheduler?.["config"]) return false;
   const allConfig = config || getTesseractConfigs();
+  delete scheduler?.["config"].rectangle;
 
-  if (JSON.stringify(recognizeAreaScheduler.config) === JSON.stringify(allConfig)) return true;
+  if (JSON.stringify(scheduler.config) === JSON.stringify(allConfig)) return true;
   return false;
 
 }
@@ -550,7 +551,7 @@ function checkTesseractScheduler(scheduler, config = null) {
 var recognizeAreaScheduler;
 async function recognizeArea(left, top, width, height) {
   
-  if (inputDataModes.xmlMode) {
+  if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
@@ -562,14 +563,25 @@ async function recognizeArea(left, top, width, height) {
   allConfig.hocr_char_boxes = '0';
 
   // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
-  if (!checkTesseractScheduler(recognizeAreaScheduler)) {
+  if (!checkTesseractScheduler(recognizeAreaScheduler, allConfig)) {
+    if (recognizeAreaScheduler) {
+      await recognizeAreaScheduler.terminate()
+    }
     recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
   }
   allConfig.rectangle = { left, top, width, height };
   const res = await recognizeAreaScheduler.addJob('recognize', globalThis.imageAll[currentPage.n].src, allConfig);
   let hocrString = res.data.hocr;
 
-  console.log(hocrString);
+  const lines = currentPage.xmlDoc?.getElementsByClassName("ocr_line");
+
+  // If no page exists already, simply use the new scan without editing
+  if (!lines) {
+    convertPageWorker.postMessage([hocrString, currentPage.n, false, true]);
+    return;
+    //currentPage.xmlDoc = currentPage.xmlDoc = parser.parseFromString(hocrString, "text/xml");
+
+  } 
 
   // Perform various string cleaning functions.  These are largely copied from convertPage.js
 
@@ -592,9 +604,8 @@ async function recognizeArea(left, top, width, height) {
 
   if (!hocrLinesArr) return;
 
-  const lines = currentPage.xmlDoc.getElementsByClassName("ocr_line");
-
-  for (let i = 0; i < hocrLinesArr.length; i++){
+  // Otherwise, integrate the new data into the existing data
+  for (let i = 0; i < hocrLinesArr.length; i++) {
     const lineNewStr = hocrLinesArr[i];
     const titleStrLine = lineNewStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
     const lineNew = parser.parseFromString(lineNewStr, "text/xml").firstChild;
@@ -671,7 +682,7 @@ async function recognizeArea(left, top, width, height) {
       let lineIDNew = lineChosenID + getRandomAlphanum(3).join('');
       lineNew.setAttribute("id", lineIDNew);
 
-      for (let i = 0; i < wordsNew.length; i++){
+      for (let i = 0; i < wordsNew.length; i++) {
         let wordNew = wordsNew[i];
 
         // Replace id (which is likely duplicative) with unique id
@@ -719,7 +730,6 @@ async function recognizeAll() {
     let time1 = Date.now();
     const scheduler = await createTesseractScheduler(workerN);
 
-    inputDataModes.xmlMode = true;
     const rets = await Promise.allSettled([...Array(globalThis.imageAll.length).keys()].map((x) => (
       scheduler.addJob('recognize', globalThis.imageAll[x].src, allConfig).then((y) => {
         convertPageWorker.postMessage([y.data.hocr, x, false]);
@@ -1230,8 +1240,8 @@ async function importFiles() {
 
   inputDataModes.pdfMode = pdfFilesAll.length == 1 ? true : false;
   inputDataModes.imageMode = imageFilesAll.length > 0 && !inputDataModes.pdfMode ? true : false;
-  inputDataModes.xmlMode = hocrFilesAll.length > 0 ? true : false;
 
+  const xmlModeImport = hocrFilesAll.length > 0 ? true : false;
 
   if (inputDataModes.imageMode || inputDataModes.pdfMode) {
     recognizeAllElem.disabled = false;
@@ -1274,7 +1284,7 @@ async function importFiles() {
     pageCountImage = imageFilesAll.length;
   }
 
-  if (inputDataModes.xmlMode) {
+  if (xmlModeImport) {
 
     if (singleHOCRMode) {
       const singleHOCRMode = true;
@@ -1339,7 +1349,7 @@ async function importFiles() {
   }
 
   // If both OCR data and image data are present, confirm they have the same number of pages
-  if (inputDataModes.xmlMode && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
+  if (xmlModeImport && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
     if (pageCountImage != pageCountHOCR) {
       document.getElementById("pageMismatchAlertText").textContent = " Page mismatch detected. Image data has " + pageCountImage + " pages while OCR data has " + pageCountHOCR + " pages."
       document.getElementById("pageMismatchAlert").setAttribute("style", "");
@@ -1350,13 +1360,19 @@ async function importFiles() {
 
   globalThis.hocrAll = Array(pageCount);
   globalThis.imageAll = Array(pageCount);
+  inputDataModes.xmlMode = new Array(pageCount);
+  if (xmlModeImport) {
+    inputDataModes.xmlMode.fill(true);
+  } else {
+    inputDataModes.xmlMode.fill(false);
+  }
 
   if (inputDataModes.pdfMode) {
     globalThis.imageAllColor = Array(pageCount);
   }
 
 
-  if (inputDataModes.pdfMode && !inputDataModes.xmlMode) {
+  if (inputDataModes.pdfMode && !xmlModeImport) {
     renderPageQueue(0);
   }
 
@@ -1368,8 +1384,8 @@ async function importFiles() {
 
   // Both OCR data and individual images (.png or .jpeg) contribute to the import loading bar
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
-  if (inputDataModes.imageMode || inputDataModes.xmlMode) {
-    const progressMax = inputDataModes.imageMode && inputDataModes.xmlMode ? pageCount * 2 : pageCount;
+  if (inputDataModes.imageMode || xmlModeImport) {
+    const progressMax = inputDataModes.imageMode && xmlModeImport ? pageCount * 2 : pageCount;
     convertPageWorker["activeProgress"] = initializeProgress("import-progress-collapse", progressMax);
   }
 
@@ -1414,7 +1430,7 @@ async function importFiles() {
 
     }
 
-    if (inputDataModes.xmlMode) {
+    if (xmlModeImport) {
       toggleEditButtons(false);
       // Process HOCR using web worker, reading from file first if that has not been done already
       if (singleHOCRMode) {
@@ -1431,12 +1447,12 @@ async function importFiles() {
 
   // Render first handful of pages for pdfs so the interface starts off responsive
   // In the case of OCR data, this step is triggered elsewhere after all the data loads
-  if (inputDataModes.pdfMode && !inputDataModes.xmlMode) {
+  if (inputDataModes.pdfMode && !xmlModeImport) {
     renderPDFImageCache([...Array(Math.min(pageCount, 5)).keys()]);
   }
 
   // Enable downloads now for pdf imports if no HOCR data exists
-  if (inputDataModes.pdfMode && !inputDataModes.xmlMode) {
+  if (inputDataModes.pdfMode && !xmlModeImport) {
     downloadElem.disabled = false;
   }
 
@@ -1495,7 +1511,7 @@ export async function displayImage(n, image) {
   if (currentPage.n == n) {
     currentPage.renderStatus = currentPage.renderStatus + 1;
 
-    if (!inputDataModes.xmlMode) {
+    if (!inputDataModes.xmlMode[n]) {
       let widthRender = image.width;
       let heightRender = image.height;
 
@@ -1533,13 +1549,13 @@ async function renderPDFImageCache(pagesArr) {
 
     // If OCR data is expecting certain dimensions, render to those.
     // Otherwise, the image size is determined by renderPDFImage.
-    const imgDimsArg = inputDataModes.xmlMode ? globalThis.pageMetricsObj["dimsAll"][n] : null;
+    const imgDimsArg = inputDataModes.xmlMode[n] ? globalThis.pageMetricsObj["dimsAll"][n] : null;
 
     // Render to 300 dpi by default
     let dpi = 300;
 
     // When XML data exists, render to the size specified by that
-    if (inputDataModes.xmlMode) {
+    if (inputDataModes.xmlMode[n]) {
       const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
       const imgWidthPdf = await muPDFScheduler.addJob('pageWidth', [n + 1, 300]);
       if (imgWidthPdf != imgWidthXml) {
@@ -1562,28 +1578,29 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   // Return if data is not loaded yet
   const imageMissing = inputDataModes.imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || inputDataModes.pdfMode && (typeof (muPDFScheduler) == "undefined");
   const xmlMissing = globalThis.hocrAll.length == 0 || typeof (globalThis.hocrAll[n]) != "string";
-  if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode) {
+  if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n]) {
     console.log("Exiting renderPageQueue early");
-    return
+    return;
   }
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
-  if (loadXML && inputDataModes.xmlMode && globalThis.hocrAll[n]) {
+  if (loadXML && inputDataModes.xmlMode[n] && globalThis.hocrAll[n]) {
     currentPage.xmlDoc = parser.parseFromString(globalThis.hocrAll[n], "text/xml");
+  } else if (!inputDataModes.xmlMode[n]) {
+    currentPage.xmlDoc = null;
   }
-
 
   // Determine image size and canvas size
   let imgDims = null;
   let canvasDims = null;
 
   // In the case of a pdf with no ocr data and no cached png, no page size data exists yet.
-  if (!(inputDataModes.pdfMode && !inputDataModes.xmlMode && (typeof (imageAll[n]) == "undefined" || imageAll[n] == false))) {
+  if (!(inputDataModes.pdfMode && !inputDataModes.xmlMode[n] && (typeof (imageAll[n]) == "undefined" || imageAll[n] == false))) {
     imgDims = new Array(2);
     canvasDims = new Array(2);
 
     // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
-    if (inputDataModes.xmlMode) {
+    if (inputDataModes.xmlMode[n]) {
       imgDims[1] = globalThis.pageMetricsObj["dimsAll"][n][1];
       imgDims[0] = globalThis.pageMetricsObj["dimsAll"][n][0];
     } else {
@@ -1604,7 +1621,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   }
 
   // Calculate options for background image and overlay
-  if (inputDataModes.xmlMode) {
+  if (inputDataModes.xmlMode[n]) {
 
     let marginPx = Math.round(canvasDims[1] * leftGlobal);
     if (autoRotateCheckboxElem.checked) {
@@ -1654,8 +1671,8 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   }
 
   if (mode == "screen") {
-    // Clear canvas if hocr data (and therefore possibly overlay text) exists
-    if (inputDataModes.xmlMode) {
+    // Clear canvas if objects (anything but the background) exists
+    if (canvas.getObjects().length) {
       canvas.clear()
       canvas.__eventListeners = {};
     }
@@ -1691,7 +1708,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     }
 
     // If there is no OCR data to render, we are done
-    if (!inputDataModes.xmlMode) {
+    if (!inputDataModes.xmlMode[n]) {
       return;
     }
 
@@ -1710,7 +1727,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       currentPage.renderStatus = currentPage.renderStatus + 1;
     }
     await selectDisplayMode(displayModeElem.value);
-  } else if (inputDataModes.xmlMode) {
+  } else if (inputDataModes.xmlMode[n]) {
     await renderPage(canvas, doc, currentPage.xmlDoc, "pdf", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, fontObj, currentPage.leftAdjX);
   }
 
@@ -1725,7 +1742,7 @@ async function onPrevPage(marginAdj) {
     return;
   }
   working = true;
-  if (inputDataModes.xmlMode) {
+  if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
@@ -1756,7 +1773,7 @@ async function onNextPage() {
     return;
   }
   working = true;
-  if (inputDataModes.xmlMode) {
+  if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
@@ -1782,7 +1799,7 @@ async function onNextPage() {
 
 
 async function optimizeFontClick(value) {
-  if (inputDataModes.xmlMode) {
+  if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
   if (value) {
@@ -1925,10 +1942,24 @@ globalThis.fontMetricsObj = new Object;
 globalThis.pageMetricsObj = new Object;
 var fontMetricObjsMessage = new Object;
 
+
 var loadCountHOCR = 0;
 convertPageWorker.onmessage = function (e) {
+
+  const recognizeAreaMode = e.data[2];
+
   globalThis.hocrAll[e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
-  globalThis.pageMetricsObj["dimsAll"][e.data[1]] = e.data[0][1];
+
+  // When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
+  if (recognizeAreaMode) {
+    globalThis.pageMetricsObj["dimsAll"][e.data[1]] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
+    globalThis.hocrAll[e.data[1]] = globalThis.hocrAll[e.data[1]].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
+  } else {
+    globalThis.pageMetricsObj["dimsAll"][e.data[1]] = e.data[0][1];
+  }
+
+  inputDataModes.xmlMode[e.data[1]] = true;
+  
   globalThis.pageMetricsObj["angleAll"][e.data[1]] = e.data[0][2];
   globalThis.pageMetricsObj["leftAll"][e.data[1]] = e.data[0][3];
   globalThis.pageMetricsObj["angleAdjAll"][e.data[1]] = e.data[0][4];
@@ -1943,37 +1974,40 @@ convertPageWorker.onmessage = function (e) {
   if (e.data[1] == currentPage.n) {
     renderPageQueue(currentPage.n);
   }
+  
+  if (!recognizeAreaMode) {
+    let activeProgress = convertPageWorker["activeProgress"];
 
-  loadCountHOCR = loadCountHOCR + 1;
-  let activeProgress = convertPageWorker["activeProgress"];
-  activeProgress.setAttribute("aria-valuenow", loadCountHOCR);
+    loadCountHOCR = loadCountHOCR + 1;
+    activeProgress.setAttribute("aria-valuenow", loadCountHOCR);
 
-  const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
+    const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
 
-  // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
-  // This can make the interface less jittery compared to updating after every loop.
-  // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
-  const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
-  if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
-    activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
-    if (loadCountHOCR == valueMax) {
-      // If resuming from a previous editing session font stats are already calculated
-      if (!inputDataModes.resumeMode) {
-        // Buttons are enabled from calculateOverallFontMetrics function in this case
-        globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-      } else {
-        optimizeFontElem.disabled = false;
-        downloadElem.disabled = false;
-        //recognizeAllElem.disabled = true;
+    // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
+    // This can make the interface less jittery compared to updating after every loop.
+    // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
+    const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
+    if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
+      activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
+      if (loadCountHOCR == valueMax) {
+        // If resuming from a previous editing session font stats are already calculated
+        if (!inputDataModes.resumeMode) {
+          // Buttons are enabled from calculateOverallFontMetrics function in this case
+          globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+        } else {
+          optimizeFontElem.disabled = false;
+          downloadElem.disabled = false;
+          //recognizeAllElem.disabled = true;
+        }
+        calculateOverallPageMetrics();
+        // Render first handful of pages for pdfs so the interface starts off responsive
+        if (inputDataModes.pdfMode) {
+          renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
+        }
+
       }
-      calculateOverallPageMetrics();
-      // Render first handful of pages for pdfs so the interface starts off responsive
-      if (inputDataModes.pdfMode) {
-        renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
-      }
-
     }
-  }
+  } 
 
 }
 
@@ -1994,7 +2028,7 @@ function calculateOverallPageMetrics() {
 // Impacts text color and opacity, and backgound image opacity
 globalThis.selectDisplayMode = function (x) {
 
-  if (inputDataModes.xmlMode && inputDataModes.pdfMode && currentPage.renderStatus != 2) { return; }
+  if (inputDataModes.xmlMode[currentPage.n] && inputDataModes.pdfMode && currentPage.renderStatus != 2) { return; }
 
   let opacity_arg, fill_arg;
   if (x == "invis") {
@@ -2037,7 +2071,7 @@ async function handleDownload() {
   updatePdfPagesLabel();
 
   // Save any edits that may exist on current page
-  if (inputDataModes.xmlMode) {
+  if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
   let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();
