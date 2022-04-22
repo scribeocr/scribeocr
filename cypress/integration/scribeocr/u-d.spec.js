@@ -1,6 +1,6 @@
 //Please replace httpServer with the correct address for your testing server or an environment variable
-const httpServer = 'http://192.168.50.10:8080';
-//const httpServer = 'https://scribeocr.com/';
+//const httpServer = 'http://192.168.50.10:8080';
+const httpServer = 'https://scribeocr.com/';
 
 describe('It downloads a', () => {
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('henreys_grave', {contains: true})
     
   })
@@ -40,7 +40,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('snow_drops.txt', {contains: true})
     
   }) 
@@ -55,8 +55,8 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('snow_drops.pdf', {contains: true})
+    cy.get('#download').click()
+    cy.verifyDownload('the_past.pdf', {contains: true})
     
   })
   
@@ -74,9 +74,10 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '4')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+    cy.wait(3000)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('snow_drops.pdf', {contains: true})
     
   }) 
@@ -91,7 +92,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('aurelia_jpg.hocr', {contains: true})
 
   })
@@ -111,7 +112,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('snow_drops.hocr', {contains: true})
     
   }) 
@@ -123,35 +124,35 @@ describe('It downloads a', () => {
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 
         'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'
     ])
-    cy.get('#pageCount').should('have.text', '118')
+    cy.get('#pageCount').should('have.text', '114')
     cy.wait(5000)
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.wait(5000)
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.txt')
   })
   /* 
   it('downloads a pdf file from a pdf with different page numbered xml', () => {
     cy.get('#uploader').selectFile(
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'])
-    cy.get('#pageCount').should('have.text', '118')
+    cy.get('#pageCount').should('have.text', '114')
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.wait(20000)
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.pdf', {contains: true})
   })
   it('downloads a hocr file from a pdf with different page numbered xml', () => {
     cy.get('#uploader').selectFile(
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'])
-    cy.get('#pageCount').should('have.text', '118')
+    cy.get('#pageCount').should('have.text', '114')
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.wait(20000)
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.hocr', {contains: true})
   })
@@ -166,7 +167,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.txt', {contains: true})
   })
 
@@ -184,7 +185,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.txt', {contains: true})
   })
 
@@ -195,7 +196,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.pdf', {contains: true})
   })
 
@@ -213,7 +214,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.pdf', {contains: true})
   })
 
@@ -224,7 +225,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.hocr', {contains: true})
 
   })
@@ -244,7 +245,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.hocr', {contains: true})
     
   }) 

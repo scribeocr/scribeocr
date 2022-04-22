@@ -1,6 +1,6 @@
 //Please replace httpServer with the correct address for your testing server or an environment variable
-const httpServer = 'http://192.168.50.10:8080';
-//const httpServer = 'https://scribeocr.com/';
+//const httpServer = 'http://192.168.50.10:8080';
+const httpServer = 'https://scribeocr.com/';
 
 describe('It recognises and downloads a', () => {
   beforeEach(() => {
@@ -21,8 +21,8 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('aurelia.txt')
+    cy.get('#download').click()
+    cy.verifyDownload('aurelia.txt', {contains: true})
   })
 
   it('text file from 4 jpgs with no imported ocr data', () => {
@@ -43,8 +43,8 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('henreys_grave.txt')
+    cy.get('#download').click()
+    cy.verifyDownload('henreys_grave.txt', {contains: true})
   })
 
   it('pdf file from a jpg with no imported ocr data', () => {
@@ -59,8 +59,8 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('the_past.pdf')
+    cy.get('#download').click()
+    cy.verifyDownload('the_past', {contains: true})
   })
 
   it('pdf file from 4 jpgs with no imported ocr data', () => {
@@ -81,8 +81,8 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('aurelia.pdf')
+    cy.get('#download').click()
+    cy.verifyDownload('aurelia.pdf', {contains: true})
   })
 
   it('hocr file from a jpg with no imported ocr data', () => {
@@ -92,16 +92,16 @@ describe('It recognises and downloads a', () => {
 
     cy.get('#nav-recognize-tab').click()
     cy.get('#recognizeAll').click()
-    cy.wait(10000)
+    cy.wait(15000)
 
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('snow_drops.hocr')
+    cy.get('#download').click()
+    cy.verifyDownload('snow_drops.hocr', {contains: true})
   })
 
-  it('text file from 4 jpgs with no imported ocr data', () => {
+  it('hocr file from 4 jpgs with no imported ocr data', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/multi_jpg/the_past.jpg', 
       'cypress/fixtures/multi_jpg/henreys_grave.jpg',
@@ -118,8 +118,8 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()  
-    cy.get('#save2').click()
-    cy.verifyDownload('the_past.hocr')
+    cy.get('#download').click()
+    cy.verifyDownload('the_past.hocr', {contains: true})
   })
 
 })

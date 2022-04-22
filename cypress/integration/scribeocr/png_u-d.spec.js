@@ -1,6 +1,6 @@
 //Please replace httpServer with the correct address for your testing server or an environment variable
-const httpServer = 'http://192.168.50.10:8080';
-//const httpServer = 'https://scribeocr.com/';
+//const httpServer = 'http://192.168.50.10:8080';
+const httpServer = 'https://scribeocr.com/';
 
 describe('It downloads a', () => {
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.txt', {contains: true})
   })
 
@@ -33,7 +33,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.txt', {contains: true})
   })
 
@@ -44,7 +44,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.pdf', {contains: true})
   })
 
@@ -62,7 +62,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.pdf', {contains: true})
   })
 
@@ -73,7 +73,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.hocr', {contains: true})
 
   })
@@ -93,7 +93,7 @@ describe('It downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.hocr', {contains: true})
     
   }) 

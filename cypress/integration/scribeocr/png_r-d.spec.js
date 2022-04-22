@@ -1,6 +1,6 @@
 //Please replace httpServer with the correct address for your testing server or an environment variable
-const httpServer = 'http://192.168.50.10:8080';
-//const httpServer = 'https://scribeocr.com/';
+//const httpServer = 'http://192.168.50.10:8080';
+const httpServer = 'https://scribeocr.com/';
 
 describe('It recognises and downloads a', () => {
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('aurelia.txt')
   })
 
@@ -43,7 +43,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('henreys_grave.txt')
   })
 
@@ -59,7 +59,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('the_past.pdf')
   })
 
@@ -81,7 +81,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('aurelia.pdf')
   })
 
@@ -97,7 +97,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('pretty_faces.hocr')
   })
 
@@ -118,7 +118,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()  
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('the_past.hocr')
   })
 

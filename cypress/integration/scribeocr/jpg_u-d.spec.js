@@ -1,6 +1,6 @@
 //Please replace httpServer with the correct address for your testing server or an environment variable
-const httpServer = 'http://192.168.50.10:8080';
-//const httpServer = 'https://scribeocr.com/';
+//const httpServer = 'http://192.168.50.10:8080';
+const httpServer = 'https://scribeocr.com/';
 
 describe('It', () => {
   beforeEach(() => {
@@ -18,8 +18,8 @@ describe('It', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('henreys_grave', {contains: true})
+    cy.get('#download').click()
+    cy.verifyDownload('henreys_grave.txt', {contains: true})
     
   })
   
@@ -38,7 +38,7 @@ describe('It', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('snow_drops.txt', {contains: true})
     
   }) 
@@ -53,8 +53,8 @@ describe('It', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
-    cy.verifyDownload('snow_drops.pdf', {contains: true})
+    cy.get('#download').click()
+    cy.verifyDownload('the_past.pdf', {contains: true})
     
   })
   
@@ -74,7 +74,7 @@ describe('It', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('snow_drops.pdf', {contains: true})
     
   }) 
@@ -89,7 +89,7 @@ describe('It', () => {
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('aurelia_jpg.hocr', {contains: true})
 
   })
@@ -106,10 +106,12 @@ describe('It', () => {
       'cypress/fixtures/multi_jpg/the_past.jpg'
     ])
     cy.get('#pageCount').should('have.text', '4')
+    cy.wait(3000)
     cy.get('#nav-download-tab').click()
+    cy.wait(3000)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#save2').click()
+    cy.get('#download').click()
     cy.verifyDownload('snow_drops.hocr', {contains: true})
     
   }) 
