@@ -1,5 +1,5 @@
 
-export function renderHOCR(hocrAll, fontMetricsObj){
+export function renderHOCR(hocrCurrent, fontMetricsObj){
 
   let minValue = parseInt(document.getElementById('pdfPageMin').value);
   let maxValue = parseInt(document.getElementById('pdfPageMax').value);
@@ -9,8 +9,8 @@ export function renderHOCR(hocrAll, fontMetricsObj){
   // Normally the content from the first page is used, however when the first page is empty or encounters a parsing error another page is used
   for (let i = (minValue - 1); i < maxValue; i++){
     // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
-    if (hocrAll[i].length > 50) {
-      firstPageStr = hocrAll[i].replace(/\<html\>/, "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">");
+    if (hocrCurrent[i].length > 50) {
+      firstPageStr = hocrCurrent[i].replace(/\<html\>/, "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">");
       break;
     }
   }
@@ -44,7 +44,7 @@ export function renderHOCR(hocrAll, fontMetricsObj){
 
   for (let i = minValue; i < maxValue; i++){
 
-    const pageXML = exportParser.parseFromString(hocrAll[i], "text/xml");
+    const pageXML = exportParser.parseFromString(hocrCurrent[i], "text/xml");
     
     exportXML.body.appendChild(pageXML.getElementsByClassName("ocr_page")[0])
   }

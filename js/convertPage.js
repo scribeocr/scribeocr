@@ -10,7 +10,7 @@ onmessage = function(e) {
   } else {
     workerResult = [convertPage(e.data[0]),e.data[1]];
   }
-  workerResult.push(e.data[3]);
+  workerResult.push(e.data[3], e.data[4]);
   postMessage(workerResult);
 }
 

@@ -1,5 +1,5 @@
 
-export function renderText(hocrAll){
+export function renderText(hocrCurrent){
 
   let textStr = "";
   const exportParser = new DOMParser();
@@ -13,7 +13,7 @@ export function renderText(hocrAll){
     if(g > 0){
       textStr = textStr + "\n\n";
     }
-    const pageXML = exportParser.parseFromString(hocrAll[g],"text/xml");
+    const pageXML = exportParser.parseFromString(hocrCurrent[g],"text/xml");
     const lines = pageXML.getElementsByClassName("ocr_line");
     for (let h = 0; h < lines.length; h++) {
       if(h > 0){

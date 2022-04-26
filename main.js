@@ -5,6 +5,10 @@
 // TODO: This file contains many miscellaneous functions and would benefit from being refactored.
 // Additionally, various data stored as global variables
 
+window.d = function () {
+  debugger;
+}
+
 import { renderText } from './js/exportRenderText.js';
 import { renderHOCR } from './js/exportRenderHOCR.js';
 
@@ -166,8 +170,12 @@ document.getElementById('prev').addEventListener('click', onPrevPage);
 const uploaderElem = /** @type {HTMLInputElement} */(document.getElementById('uploader'));
 uploaderElem.addEventListener('change', importFiles);
 
-const colorCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('colorCheckbox'));
-document.getElementById('colorCheckbox').addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
+const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
+colorModeElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
+
+
+// const colorCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('colorCheckbox'));
+// colorCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
 
 
 document.getElementById('fontMinus').addEventListener('click', () => { changeWordFontSize('minus') });
@@ -202,6 +210,9 @@ document.getElementById('zoomPlus').addEventListener('click', () => { changeZoom
 const displayFontElem = /** @type {HTMLInputElement} */(document.getElementById('displayFont'));
 displayFontElem.addEventListener('click', (event) => { changeDisplayFont(displayFontElem.value) });
 
+// const previewBinaryElem = /** @type {HTMLInputElement} */(document.getElementById('previewBinary'));
+// previewBinaryElem.addEventListener('click', previewBinaryImage);
+
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
 optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked) });
 
@@ -209,6 +220,9 @@ const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementBy
 const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
 confThreshHighElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
 confThreshMedElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
+
+
+// const binaryCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('binaryCheckbox'));
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
@@ -221,6 +235,12 @@ document.getElementById('showBoundingBoxes').addEventListener('click', () => { r
 const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
 rangeLeftMarginElem.addEventListener('input', () => { adjustMarginRange(rangeLeftMarginElem.value) });
 rangeLeftMarginElem.addEventListener('mouseup', () => { adjustMarginRangeChange(rangeLeftMarginElem.value) });
+
+const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions')); 
+const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText')); 
+displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className != "dropdown-item") return; setCurrentHOCR(e.target.innerHTML) });
+
+
 
 const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download')); 
 downloadElem.addEventListener('click', handleDownload);
@@ -238,11 +258,14 @@ document.getElementById('psmLabelOption4').addEventListener('click', () => { set
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 recognizeAllElem.addEventListener('click', recognizeAll);
+const recognizePageElem = /** @type {HTMLInputElement} */(document.getElementById('recognizePage'));
+recognizePageElem.addEventListener('click', recognizePage);
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
 recognizeAreaElem.addEventListener('click', recognizeAreaClick);
-const recognizeAreaEditElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAreaEdit'));
-recognizeAreaEditElem.addEventListener('click', recognizeAreaClick);
+const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
+recognizeWordElem.addEventListener('click', () => recognizeAreaClick(true));
+
 
 const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
 displayModeElem.addEventListener('change', () => { selectDisplayMode(displayModeElem.value) });
@@ -353,12 +376,49 @@ function setPsmLabel(x) {
     document.getElementById("psmLabelText").innerHTML = "Automatic";
   } else if (x == "4") {
     document.getElementById("psmLabelText").innerHTML = "Single Column";
+  } else if (x == "8") {
+    document.getElementById("psmLabelText").innerHTML = "Single Word";
   }
 }
 
+
+
+function addDisplayLabel(x) {
+  // Exit early if option already exists
+  const existingOptions = displayLabelOptionsElem.children;
+  for (let i = 0; i < existingOptions.length; i++){
+    if (existingOptions[i].innerHTML == x) return;
+  }
+  let option = document.createElement("a");
+  option.setAttribute("class", "dropdown-item");
+  option.text = x;
+  displayLabelOptionsElem.appendChild(option);
+}
+
+window.hocrAll = new Object;
+function setCurrentHOCR(x) {
+  const currentLabel = displayLabelText.innerHTML.trim();
+  if (!x.trim() || x == currentLabel) return;
+
+  if (currentLabel) {
+    window.hocrAll[currentLabel] = window.hocrCurrent;
+  } 
+  if (!window.hocrAll[x]) {
+    window.hocrAll[x] = Array(imageAll.length);
+  }
+  window.hocrCurrent = window.hocrAll[x];
+  displayLabelText.innerHTML = x;
+  currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[currentPage.n], "text/xml");
+  
+  renderPageQueue(currentPage.n, 'screen', false);
+}
+
+
+
+
 async function changeDisplayFont(font) {
   if (!currentPage.xmlDoc) return;
-  globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   const optimizeMode = optimizeFontElem.checked;
   if (typeof (fontObj[font]) != "undefined" && typeof (fontObj[font]["normal"]) != "undefined" && fontObj[font]["normal"].optimized == optimizeMode) {
     globalSettings.defaultFont = font;
@@ -378,7 +438,7 @@ async function changeDisplayFont(font) {
 
 function changeZoom(value) {
   if (currentPage.xmlDoc) {
-    window.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    window.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
   let currentValue = parseFloat(zoomInputElem.value);
@@ -423,8 +483,11 @@ document.getElementById('nav-recognize').addEventListener('hidden.bs.collapse', 
 
 document.getElementById('nav-download').addEventListener('hidden.bs.collapse', function () {
   hideProgress("render-download-progress-collapse");
+  hideProgress("binary-download-progress-collapse");
   hideProgress("generate-download-progress-collapse");
 })
+
+
 
 
 // When the navbar is "sticky", it does not automatically widen for large canvases (when the canvas size is larger than the viewport).
@@ -549,11 +612,84 @@ function checkTesseractScheduler(scheduler, config = null) {
 
 }
 
-var recognizeAreaScheduler;
-async function recognizeArea(left, top, width, height) {
+async function recognizePage() {
+
+  const allConfig = getTesseractConfigs();
+
+  // Do not use character-level data.
+  // The character-level data is not used for font kerning metrics, as at present only 1 font is optimized,
+  // and the text Tesseract misses using "Recognize All" is generally not from the body text (usually page numbers).
+  allConfig.hocr_char_boxes = '0';
+
+  // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
+  if (!checkTesseractScheduler(recognizeAreaScheduler, allConfig)) {
+    if (recognizeAreaScheduler) {
+      await recognizeAreaScheduler.terminate()
+    }
+    recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
+  }
+
+  recognizeAreaScheduler.addJob('recognize', globalThis.imageAll[currentPage.n].src, allConfig).then((y) => {
+    const image = document.createElement('img');
+    image.src = y.data.image;
+    window.imageAllBinary[currentPage.n] = image;
+    window.hocrCurrentRaw[currentPage.n] = y.data.hocr;
+    convertPageWorker.postMessage([y.data.hocr, currentPage.n, false, true]);
+  })
+
+  // Enable confidence threshold input boxes (only used for Tesseract)
+  confThreshHighElem.disabled = false;
+  confThreshMedElem.disabled = false;
+
+  // Set threshold values if not already set
+  confThreshHighElem.value = confThreshHighElem.value || "85";
+  confThreshMedElem.value = confThreshMedElem.value || "75";
+
+  toggleEditButtons(false);
+
+}
+
+
+// async function previewBinaryImage() {
+
+//   let image;
+//   let newBool = false;
+//   if (currentPage.backgroundImage["binaryPreview"]) {
+//     // currentPage.backgroundImage["binaryPreview"] = false;
+//     image = globalThis.imageAll[currentPage.n];
+//   } else {
+//     // currentPage.backgroundImage["binaryPreview"] = true;
+//     if (window.imageAllBinary[currentPage.n]) {
+//       image = window.imageAllBinary[currentPage.n];
+//     } else {
+//       image = document.createElement('img');
+//       if (!window.recognizeAreaScheduler) {
+//         const allConfig = getTesseractConfigs();
+//         allConfig.hocr_char_boxes = '0';
+//         recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
+//       }
+//       const res = await recognizeAreaScheduler.addJob("threshold", globalThis.imageAll[currentPage.n].src);
+//       await loadImage(res.data, image);
+//       window.imageAllBinary[currentPage.n] = image;
+
+//     }
+//     newBool = true;
+//   }
+
+//   currentPage.backgroundImage = new fabric.Image(image, { objectCaching: false });
+//   currentPage.backgroundImage["binaryPreview"] = newBool;
+  
+//   selectDisplayMode(displayModeElem.value);
+
+//   return;
+// }
+
+// var recognizeAreaScheduler;
+window.recognizeAreaScheduler = null;
+async function recognizeArea(left, top, width, height, wordMode = false) {
   
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
   const allConfig = getTesseractConfigs();
@@ -562,6 +698,10 @@ async function recognizeArea(left, top, width, height) {
   // The character-level data is not used for font kerning metrics, as at present only 1 font is optimized,
   // and the text Tesseract misses using "Recognize All" is generally not from the body text (usually page numbers).
   allConfig.hocr_char_boxes = '0';
+
+  if (wordMode) {
+    allConfig.tessedit_pageseg_mode = Tesseract.PSM["SINGLE_WORD"];
+  }
 
   // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
   if (!checkTesseractScheduler(recognizeAreaScheduler, allConfig)) {
@@ -700,13 +840,11 @@ async function recognizeArea(left, top, width, height) {
     }
   }
 
-  globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
 
   await renderPageQueue(currentPage.n);
 
 }
-
-
 
 
 async function recognizeAll() {
@@ -722,18 +860,25 @@ async function recognizeAll() {
     await renderPDFImageCache([...Array(imageAll.length).keys()]);
     let time2 = Date.now();
     console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
-    //muPDFScheduler.terminate();
   }
 
   const allConfig = getTesseractConfigs();
 
-  let recognizeImages = async (workerN) => {
+  const oemText = "Tesseract " + document.getElementById("oemLabelText").innerHTML;
+  addDisplayLabel(oemText); 
+  setCurrentHOCR(oemText);
+
+  let recognizeImages = async (pagesArr, workerN) => {
     let time1 = Date.now();
     const scheduler = await createTesseractScheduler(workerN);
 
-    const rets = await Promise.allSettled([...Array(globalThis.imageAll.length).keys()].map((x) => (
+    const rets = await Promise.allSettled(pagesArr.map((x) => (
       scheduler.addJob('recognize', globalThis.imageAll[x].src, allConfig).then((y) => {
-        convertPageWorker.postMessage([y.data.hocr, x, false]);
+        const image = document.createElement('img');
+        image.src = y.data.image;
+        window.imageAllBinary[x] = image;
+        window.hocrCurrentRaw[x] = y.data.hocr;
+        convertPageWorker.postMessage([y.data.hocr, x, false, false, oemText]);
       })
     )));
 
@@ -741,7 +886,6 @@ async function recognizeAll() {
 
     let time2 = Date.now();
     console.log("Runtime: " + (time2 - time1) / 1e3 + "s");
-
   }
 
   let workerN = Math.round((globalThis.navigator.hardwareConcurrency || 8) / 2);
@@ -752,7 +896,8 @@ async function recognizeAll() {
   workerN = Math.min(workerN, Math.ceil(globalThis.imageAll.length));
 
   console.log("Using " + workerN + " workers for OCR.")
-  recognizeImages(workerN);
+
+  recognizeImages([...Array(globalThis.imageAll.length).keys()], workerN);
 
   // Enable confidence threshold input boxes (only used for Tesseract)
   confThreshHighElem.disabled = false;
@@ -767,7 +912,7 @@ async function recognizeAll() {
 }
 
 
-function recognizeAreaClick() {
+function recognizeAreaClick(wordMode = false) {
 
   canvas.on('mouse:down', function (o) {
     let pointer = canvas.getPointer(o.e);
@@ -812,7 +957,7 @@ function recognizeAreaClick() {
     const height = rect.height;
 
     canvas.remove(rect);
-    await recognizeArea(left, top, width, height);
+    await recognizeArea(left, top, width, height, wordMode);
     
     canvas.renderAll();
     canvas.__eventListeners = {}
@@ -1172,7 +1317,7 @@ function addWordClick() {
 function clearFiles() {
   imageAll.length = 0;
   currentPage.n = 0;
-  globalThis.hocrAll.length = 0;
+  globalThis.hocrCurrent.length = 0;
   canvas.clear()
   pageCountElem.textContent = "";
   pageNumElem.value = "";
@@ -1184,6 +1329,7 @@ function clearFiles() {
   confThreshHighElem.disabled = true;
   confThreshMedElem.disabled = true;
   recognizeAllElem.disabled = true;
+  recognizePageElem.disabled = true;
   recognizeAreaElem.disabled = true;
   toggleEditButtons(true);
 
@@ -1246,7 +1392,39 @@ async function importFiles() {
 
   if (inputDataModes.imageMode || inputDataModes.pdfMode) {
     recognizeAllElem.disabled = false;
+    recognizePageElem.disabled = false;
     recognizeAreaElem.disabled = false;
+
+    // Color vs. grayscale is an option passed to mupdf, so can only be used with pdf inputs
+    // Binary images are calculated separately by Leptonica (within Tesseract) so apply to both
+    const colorModeElemOptions = colorModeElem.children;
+    while (colorModeElemOptions.length > 0) {
+      colorModeElemOptions[0].remove();
+    }
+    // for (let i = 0; i < colorModeElemOptions.length; i++){
+    //   colorModeElemOptions[i].remove();
+    // }
+    if (inputDataModes.imageMode) {
+      let option = document.createElement("option");
+      option.text = "Native";
+      option.value = "color";
+      option.selected = true;
+      colorModeElem.add(option);
+    } else {
+      let option = document.createElement("option");
+      option.text = "Color";
+      option.value = "color";
+      colorModeElem.add(option);
+      option = document.createElement("option");
+      option.text = "Grayscale";
+      option.value = "gray";
+      option.selected = true;
+      colorModeElem.add(option);
+    }
+    let option = document.createElement("option");
+    option.text = "Binary";
+    option.value = "binary";
+    colorModeElem.add(option);
   }
 
   imageFilesAll.sort();
@@ -1269,10 +1447,10 @@ async function importFiles() {
   // In the case of 1 HOCR file
   const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
 
-  //let pageCount, hocrAllRaw, abbyyMode;
+  //let pageCount, hocrCurrentRaw, abbyyMode;
   let hocrStrStart = "";
   let hocrStrEnd = "";
-  let abbyyMode, hocrStrPages, hocrArrPages, pageCount, pageCountImage, pageCountHOCR, hocrAllRaw;
+  let abbyyMode, hocrStrPages, hocrArrPages, pageCount, pageCountImage, pageCountHOCR;
 
   if (inputDataModes.pdfMode) {
 
@@ -1286,6 +1464,9 @@ async function importFiles() {
   }
 
   if (xmlModeImport) {
+
+    addDisplayLabel("User Upload");
+    displayLabelTextElem.innerHTML = "User Upload";
 
     if (singleHOCRMode) {
       const singleHOCRMode = true;
@@ -1324,9 +1505,9 @@ async function importFiles() {
       if (inputDataModes.imageMode && hocrArrPages.length != imageFilesAll.length) {
         throw new Error('Detected ' + hocrArrPages.length + ' pages in OCR but ' + imageFilesAll.length + " image files.")
       }
-      hocrAllRaw = Array(pageCountHOCR);
+      window.hocrCurrentRaw = Array(pageCountHOCR);
       for (let i = 0; i < pageCountHOCR; i++) {
-        hocrAllRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
+        window.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
       }
 
     } else {
@@ -1359,8 +1540,10 @@ async function importFiles() {
 
   pageCount = pageCountImage ?? pageCountHOCR;
 
-  globalThis.hocrAll = Array(pageCount);
+  globalThis.hocrCurrent = Array(pageCount);
+  globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw || Array(pageCount);
   globalThis.imageAll = Array(pageCount);
+  globalThis.imageAllBinary = Array(pageCount);
   inputDataModes.xmlMode = new Array(pageCount);
   if (xmlModeImport) {
     inputDataModes.xmlMode.fill(true);
@@ -1435,7 +1618,7 @@ async function importFiles() {
       toggleEditButtons(false);
       // Process HOCR using web worker, reading from file first if that has not been done already
       if (singleHOCRMode) {
-        convertPageWorker.postMessage([hocrAllRaw[i], i, abbyyMode]);
+        convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
       } else {
         const hocrFile = hocrFilesAll[i];
         const hocrNi = hocrN + 1;
@@ -1508,13 +1691,17 @@ export async function insertImageCache(n, png) {
 
 }
 
-export async function displayImage(n, image) {
-  if (currentPage.n == n) {
+export async function displayImage(n, image, binary = false) {
+  if (currentPage.n == n && !(colorModeElem.value == "binary" && !binary)) {
     currentPage.renderStatus = currentPage.renderStatus + 1;
 
     if (!inputDataModes.xmlMode[n]) {
       let widthRender = image.width;
       let heightRender = image.height;
+
+      if (!(image.width > 0 && image.height > 0)) {
+        debugger;
+      }
 
       let widthDisplay = Math.min(widthRender, parseFloat(zoomInputElem.value));
       let heightDisplay = Math.min(heightRender, heightRender * (widthDisplay / widthRender));
@@ -1535,37 +1722,74 @@ export async function displayImage(n, image) {
 }
 
 
-
+// Function that renders images and stores them in cache array (or returns early if the requested image already exists).
+// The color OR grayscale version is stored in imageAll, while the binary image is stored in imageAllBinary.
 async function renderPDFImageCache(pagesArr) {
 
-  await Promise.allSettled(pagesArr.map(async (n) => {
-    const colorCheckbox = colorCheckboxElem.checked;
+  const colorMode = colorModeElem.value;
 
-    // Skip if image has already been rendered or is being rendered currently (with same colorspace currently specified)
-    if (typeof (globalThis.imageAll[n]) != "undefined" && (globalThis.imageAllColor[n] == colorCheckbox)) return;
+  await Promise.allSettled(pagesArr.map(async (n) => {
+    // const colorCheckbox = colorCheckboxElem.checked;
+
+    // Whether the non-binary (color or grayscale) image needs to be rendered. 
+    const renderImage = !globalThis.imageAll[n] || (colorMode != "binary" && globalThis.imageAllColor[n] != colorMode) ? true : false;
+    // Whether the binary image needs to be rendered.
+    const renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
+
+    // Return early if no rendering is needed (requested image already exists)
+    if (!renderImage && !renderImageBinary) return;
 
     // Set to defined value to avoid the same page being rendered multiple times before this function call finishes
-    globalThis.imageAll[n] = false;
-    globalThis.imageAllColor[n] = colorCheckbox;
+    if (renderImage) {
+      globalThis.imageAll[n] = true;
+      globalThis.imageAllColor[n] = colorModeElem.value;
+    }
+    if (renderImageBinary) {
+      globalThis.imageAllBinary[n] = true;
+    }
 
-    // If OCR data is expecting certain dimensions, render to those.
-    // Otherwise, the image size is determined by renderPDFImage.
-    const imgDimsArg = inputDataModes.xmlMode[n] ? globalThis.pageMetricsObj["dimsAll"][n] : null;
+    if (renderImage) {
+      // If OCR data is expecting certain dimensions, render to those.
+      // Otherwise, the image size is determined by renderPDFImage.
+      const imgDimsArg = inputDataModes.xmlMode[n] ? globalThis.pageMetricsObj["dimsAll"][n] : null;
 
-    // Render to 300 dpi by default
-    let dpi = 300;
+      // Render to 300 dpi by default
+      let dpi = 300;
 
-    // When XML data exists, render to the size specified by that
-    if (inputDataModes.xmlMode[n]) {
-      const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
-      const imgWidthPdf = await muPDFScheduler.addJob('pageWidth', [n + 1, 300]);
-      if (imgWidthPdf != imgWidthXml) {
-        dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
+      // When XML data exists, render to the size specified by that
+      if (inputDataModes.xmlMode[n]) {
+        const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
+        const imgWidthPdf = await muPDFScheduler.addJob('pageWidth', [n + 1, 300]);
+        if (imgWidthPdf != imgWidthXml) {
+          dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
+        }
+      }
+
+      const useColor = colorMode == "color" ? true : false;
+
+      console.log("n+1ing job with parameters: ")
+      console.log([n + 1, dpi, useColor])
+      await muPDFScheduler.addJob('drawPageAsPNG', [n + 1, dpi, useColor]);
+    }
+
+    if (renderImageBinary) {
+      // Create scheduler if one does not already exist
+      if (!binaryScheduler) {
+        binaryScheduler = await createTesseractScheduler(4);
+      }
+      const image = document.createElement('img');
+      const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src);
+      await loadImage(res.data, image);
+      window.imageAllBinary[n] = image;
+      console.log("Rendered page " + n + " in binary");
+      await displayImage(n, image, true);
+      if (binaryScheduler["activeProgress"]) {
+        binaryScheduler["pngRenderCount"] = binaryScheduler["pngRenderCount"] + 1;
+        binaryScheduler["activeProgress"].setAttribute("aria-valuenow", binaryScheduler["pngRenderCount"]);
+        const valueMax = parseInt(binaryScheduler["activeProgress"].getAttribute("aria-valuemax"));
+        binaryScheduler["activeProgress"].setAttribute("style", "width: " + (binaryScheduler["pngRenderCount"] / valueMax) * 100 + "%");
       }
     }
-    console.log("n+1ing job with parameters: ")
-    console.log([n + 1, dpi, colorCheckbox])
-    return muPDFScheduler.addJob('drawPageAsPNG', [n + 1, dpi, colorCheckbox]);
   }));
 
 }
@@ -1578,15 +1802,15 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
   // Return if data is not loaded yet
   const imageMissing = inputDataModes.imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || inputDataModes.pdfMode && (typeof (muPDFScheduler) == "undefined");
-  const xmlMissing = globalThis.hocrAll.length == 0 || typeof (globalThis.hocrAll[n]) != "string";
+  const xmlMissing =  globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string";
   if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n]) {
     console.log("Exiting renderPageQueue early");
     return;
   }
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
-  if (loadXML && inputDataModes.xmlMode[n] && globalThis.hocrAll[n]) {
-    currentPage.xmlDoc = parser.parseFromString(globalThis.hocrAll[n], "text/xml");
+  if (loadXML && inputDataModes.xmlMode[n] && globalThis.hocrCurrent[n]) {
+    currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[n], "text/xml");
   } else if (!inputDataModes.xmlMode[n]) {
     currentPage.xmlDoc = null;
   }
@@ -1596,7 +1820,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   let canvasDims = null;
 
   // In the case of a pdf with no ocr data and no cached png, no page size data exists yet.
-  if (!(inputDataModes.pdfMode && !inputDataModes.xmlMode[n] && (typeof (imageAll[n]) == "undefined" || imageAll[n] == false))) {
+  if (!(inputDataModes.pdfMode && !inputDataModes.xmlMode[n] && (typeof (imageAll[n]) == "undefined" || imageAll[n] == true))) {
     imgDims = new Array(2);
     canvasDims = new Array(2);
 
@@ -1679,6 +1903,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     }
 
     if (imgDims != null) {
+      console.log(imgDims);
       let zoomFactor = Math.min(parseFloat(/** @type {HTMLInputElement} */(document.getElementById('zoomInput')).value) / imgDims[1], 1);
       canvas.setHeight(imgDims[0] * zoomFactor);
       canvas.setWidth(imgDims[1] * zoomFactor);
@@ -1687,25 +1912,26 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
     currentPage.renderStatus = 0;
 
+    const colorMode = colorModeElem.value;
+
     // If the input is a pdf, render the request page to png (if this has not been done already)
-    const colorCheckbox = colorCheckboxElem.checked;
-    if (inputDataModes.pdfMode && (typeof (imageAll[n]) == "undefined" || globalThis.imageAllColor[n] != colorCheckbox)) {
+    // Whether the non-binary (color or grayscale) image needs to be rendered.  This is only relevant for pdf inputs.
+    const renderImage = inputDataModes.pdfMode && (!globalThis.imageAll[n] || (colorMode != "binary" && globalThis.imageAllColor[n] != colorMode)) ? true : false;
+
+    // Whether the binary image needs to be rendered.  Relevant for both pdf and image inputs.
+    const renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
+
+    if (renderImage || renderImageBinary) {
       console.log("Rendering pdf");
       renderPDFImageCache([n]);
-      // imageAll[n] = false;
-      // globalThis.imageAllColor[n] = colorCheckbox;
-      // muPDFScheduler.addJob('drawPageAsPNG', [n + 1, 300, colorCheckbox]);
-
-      // If imageAll[n] == false, then the image is already being rendered
-      // This happens when page n+1 is being automatically rendered,
-      // and then the user advances to the next page before it finishes.
-    } else if (imageAll[n] != false) {
-      console.log("Using cached image");
+    } else if (colorMode == "binary" && imageAllBinary[n] != true) {
+      currentPage.backgroundImage = new fabric.Image(imageAllBinary[n], { objectCaching: false });
+      currentPage.renderStatus = currentPage.renderStatus + 1;
+      selectDisplayMode(displayModeElem.value);
+    } else if (colorMode != "binary" && imageAll[n] != true) {
       currentPage.backgroundImage = new fabric.Image(imageAll[n], { objectCaching: false });
       currentPage.renderStatus = currentPage.renderStatus + 1;
       selectDisplayMode(displayModeElem.value);
-    } else {
-      console.log("Image already rendering");
     }
 
     // If there is no OCR data to render, we are done
@@ -1718,7 +1944,12 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
     if (displayModeElem.value != "ebook") {
       // TODO: Make everything render from pdf to png ahead of time
-      globalThis.doc.image(imageAll[n].src, currentPage.leftAdjX, 0, { align: 'left', valign: 'top' });
+      if (colorModeElem.value == "binary") {
+        globalThis.doc.image(imageAllBinary[n].src, currentPage.leftAdjX, 0, { align: 'left', valign: 'top' });
+      } else {
+        globalThis.doc.image(imageAll[n].src, currentPage.leftAdjX, 0, { align: 'left', valign: 'top' });
+      }
+      
     }
   }
 
@@ -1744,7 +1975,7 @@ async function onPrevPage(marginAdj) {
   }
   working = true;
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
   currentPage.n = currentPage.n - 1;
@@ -1770,12 +2001,12 @@ async function onPrevPage(marginAdj) {
 
 
 async function onNextPage() {
-  if (currentPage.n + 1 >= globalThis.hocrAll.length || working) {
+  if (currentPage.n + 1 >= globalThis.hocrCurrent.length || working) {
     return;
   }
   working = true;
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
   currentPage.n = currentPage.n + 1;
@@ -1801,7 +2032,7 @@ async function onNextPage() {
 
 async function optimizeFontClick(value) {
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
   if (value) {
     await optimizeFont2();
@@ -1813,7 +2044,7 @@ async function optimizeFontClick(value) {
 }
 
 
-
+var binaryScheduler;
 async function renderPDF() {
 
   globalThis.doc = new PDFDocument({
@@ -1859,15 +2090,23 @@ async function renderPDF() {
   let minValue = parseInt(pdfPageMinElem.value);
   let maxValue = parseInt(pdfPageMaxElem.value);
 
+  let pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1);
+
   // Render all pages to PNG
   if (inputDataModes.pdfMode) {
     let time1 = Date.now();
     // Set pngRenderCount to only include PNG images rendered with the current color setting
-    const colorCheckbox = colorCheckboxElem.checked;
-    muPDFScheduler["pngRenderCount"] = [...Array(imageAll.length).keys()].filter((x) => typeof (imageAll[x]) == "object" && imageAllColor[x] == colorCheckbox).length;
+    //const colorCheckbox = colorCheckboxElem.checked;
+    muPDFScheduler["pngRenderCount"] = [...Array(imageAll.length).keys()].filter((x) => typeof (imageAll[x]) == "object" && imageAllColor[x] == colorModeElem.value).length;
 
     muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
-    await renderPDFImageCache([...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1));
+    if (colorModeElem.value == "binary") {
+      binaryScheduler = await createTesseractScheduler(4);
+      binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
+      binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, binaryScheduler["pngRenderCount"]);
+    }
+
+    await renderPDFImageCache(pagesArr);
     let time2 = Date.now();
     console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
   }
@@ -1949,12 +2188,26 @@ convertPageWorker.onmessage = function (e) {
 
   const recognizeAreaMode = e.data[2];
 
-  globalThis.hocrAll[e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
+  const oemText = e.data[3];
+  const oemCurrent = !oemText || oemText == document.getElementById("displayLabelText").innerHTML ? true : false;
+
+  // If an OEM engine is specified, save to the appropriate object within hocrAll,
+  // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
+  // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
+  // while the recognition job is running. 
+  if (oemText) {
+    globalThis.hocrAll[e.data[3]][e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
+    if (oemCurrent) {
+      globalThis.hocrCurrent[e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
+    }
+  } else {
+    globalThis.hocrCurrent[e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
+  }
 
   // When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
   if (recognizeAreaMode) {
     globalThis.pageMetricsObj["dimsAll"][e.data[1]] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
-    globalThis.hocrAll[e.data[1]] = globalThis.hocrAll[e.data[1]].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
+    globalThis.hocrCurrent[e.data[1]] = globalThis.hocrCurrent[e.data[1]].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
   } else {
     globalThis.pageMetricsObj["dimsAll"][e.data[1]] = e.data[0][1];
   }
@@ -1972,7 +2225,7 @@ convertPageWorker.onmessage = function (e) {
   fontMetricObjsMessage["messageAll"][e.data[1]] = e.data[0][10];
 
   // If this is the page the user has open, render it to the canvas
-  if (e.data[1] == currentPage.n) {
+  if (e.data[1] == currentPage.n && oemCurrent) {
     renderPageQueue(currentPage.n);
   }
   
@@ -2073,15 +2326,15 @@ async function handleDownload() {
 
   // Save any edits that may exist on current page
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrAll[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
   let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();
   if (download_type == "pdf") {
     await renderPDF();
   } else if (download_type == "hocr") {
-    renderHOCR(globalThis.hocrAll, globalThis.fontMetricsObj)
+    renderHOCR(globalThis.hocrCurrent, globalThis.fontMetricsObj)
   } else if (download_type == "text") {
-    renderText(globalThis.hocrAll)
+    renderText(globalThis.hocrCurrent)
   }
 
   downloadElem.disabled = false;
