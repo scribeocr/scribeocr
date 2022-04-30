@@ -49,8 +49,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
            descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
            fontSize = getFontSize(defaultFont, letterHeight - descHeight, "A", ctx);
          }
+      
          // If none of the above conditions are met (not enough info to calculate font size), the font size from the previous line is reused.
-
          ctx.font = 1000 + 'px ' + defaultFont;
          const AMetrics = ctx.measureText("A");
          const oMetrics = ctx.measureText("o");
@@ -71,7 +71,13 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           let titleStr = word.getAttribute('title') ?? "";
           let styleStr = word.getAttribute('style') ?? "";
 
-          if (word.childNodes[0].textContent.trim() == "") continue;
+          const compCount = word.getAttribute('compCount') ?? "";
+          const compStatus = word.getAttribute('compStatus') ?? "";
+          //const matchTruth = compCount == "1" && compStatus == "1";
+          const matchTruth = compStatus == "1";
+          const fillColorHexMatch = matchTruth ? "#00ff7b" : "#ff0000";
+
+          if (!word.childNodes[0]?.textContent.trim()) continue;
 
           let box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);})
           let box_width = box[2] - box[0];
@@ -169,53 +175,56 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             missingKerning = false;
           }
 
+          const displayMode = document.getElementById('displayMode').value;
+
           let opacity_arg, fill_arg;
           // Set current text color and opacity based on display mode selected
-          if(document.getElementById('displayMode').value == "invis"){
-          opacity_arg = 0
-          fill_arg = "black"
-        } else if(document.getElementById('displayMode').value == "ebook") {
-          opacity_arg = 1
-          fill_arg = "black"
-        } else {
-          opacity_arg = 1
-          fill_arg = fillColorHex
-        }
-
-        if(fontStyle == "small-caps"){
-          ctx.font = wordFontSize + 'px ' + fontFamilyWord + " Small Caps";
-        } else {
-          ctx.font = fontStyle + " " + wordFontSize + 'px ' + fontFamilyWord;
-        }
-
-
-
-        // Calculate font glyph metrics for precise positioning
-        let wordLastGlyphMetrics = fontObj[fontFamilyWord][fontStyle].charToGlyph(wordText.substr(-1)).getMetrics();
-        let wordFirstGlyphMetrics = fontObj[fontFamilyWord][fontStyle].charToGlyph(wordText.substr(0,1)).getMetrics();
-
-        let wordLeftBearing = wordFirstGlyphMetrics.xMin * (fontSize / fontObj[fontFamilyWord][fontStyle].unitsPerEm);
-        let wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObj[fontFamilyWord][fontStyle].unitsPerEm);
-
-
-        let wordWidth1 = ctx.measureText(wordText).width;
-        let wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing + (wordText.length - 1) * kerning;
-
-
-        //wordWidth = textbox.width
-        // If kerning is off, change the kerning value for both the canvas textbox and HOCR
-        if(wordText.length > 1 && Math.abs(box_width - wordWidth) > 1){
-          kerning = round3(kerning + (box_width - wordWidth) / (wordText.length - 1));
-          if(missingKerning){
-            if(styleStr.length > 0){
-              styleStr = styleStr + ";";
-            }
-            styleStr = styleStr + "letter-spacing:" + kerning + "px";
+          if (displayMode == "invis") {
+            opacity_arg = 0
+            fill_arg = "black"
+          } else if (displayMode == "ebook") {
+            opacity_arg = 1
+            fill_arg = "black"
+          } else if (displayMode == "eval") {
+            opacity_arg = 1;
+            fill_arg = fillColorHexMatch;
           } else {
-            styleStr = styleStr.replace(/(letter-spacing\:)([\d\.\-]+)/, "$1" + kerning);
+            opacity_arg = 1
+            fill_arg = fillColorHex
           }
-          word.setAttribute("style", styleStr);
-        }
+
+          if(fontStyle == "small-caps"){
+            ctx.font = wordFontSize + 'px ' + fontFamilyWord + " Small Caps";
+          } else {
+            ctx.font = fontStyle + " " + wordFontSize + 'px ' + fontFamilyWord;
+          }
+
+          // Calculate font glyph metrics for precise positioning
+          let wordLastGlyphMetrics = fontObj[fontFamilyWord][fontStyle].charToGlyph(wordText.substr(-1)).getMetrics();
+          let wordFirstGlyphMetrics = fontObj[fontFamilyWord][fontStyle].charToGlyph(wordText.substr(0,1)).getMetrics();
+
+          let wordLeftBearing = wordFirstGlyphMetrics.xMin * (fontSize / fontObj[fontFamilyWord][fontStyle].unitsPerEm);
+          let wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObj[fontFamilyWord][fontStyle].unitsPerEm);
+
+
+          let wordWidth1 = ctx.measureText(wordText).width;
+          let wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing + (wordText.length - 1) * kerning;
+
+
+          //wordWidth = textbox.width
+          // If kerning is off, change the kerning value for both the canvas textbox and HOCR
+          if(wordText.length > 1 && Math.abs(box_width - wordWidth) > 1){
+            kerning = round3(kerning + (box_width - wordWidth) / (wordText.length - 1));
+            if(missingKerning){
+              if(styleStr.length > 0){
+                styleStr = styleStr + ";";
+              }
+              styleStr = styleStr + "letter-spacing:" + kerning + "px";
+            } else {
+              styleStr = styleStr.replace(/(letter-spacing\:)([\d\.\-]+)/, "$1" + kerning);
+            }
+            word.setAttribute("style", styleStr);
+          }
 
 
 
@@ -370,6 +379,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             fill: fill_arg,
             fill_proof: fillColorHex,
             fill_ebook: 'black',
+            fill_eval: fillColorHexMatch,
             fontFamily: fontFamilyWordCanvas,
             fontStyle: fontStyleCanvas,
             wordID: word_id,

@@ -173,9 +173,40 @@ uploaderElem.addEventListener('change', importFiles);
 const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
 
+const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
+createGroundTruthElem.addEventListener('click', createGroundTruthClick);
 
-// const colorCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('colorCheckbox'));
-// colorCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
+const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
+
+// If evaluate option is enabled, show tab and widen navbar to fit everything on the same row
+enableEvalElem.addEventListener('click', () => {
+  if (enableEvalElem.checked) {
+    document.getElementById("nav-tab-container").setAttribute("class", "col-8 col-xl-7");
+    document.getElementById("nav-eval-tab").setAttribute("style", "");
+  } else {
+    document.getElementById("nav-tab-container").setAttribute("class", "col-8 col-xl-6");
+    document.getElementById("nav-eval-tab").setAttribute("style", "display:none");
+  }
+
+});
+
+
+enableEval
+
+const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
+const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
+
+const uploadOCRButtonElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRButton'));
+uploadOCRButtonElem.addEventListener('click', importOCRFiles);
+
+const uploadOCRLabelElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRLabel'));
+const uploadOCRDataElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRData'));
+
+uploadOCRDataElem.addEventListener('show.bs.collapse', function () {
+  if (!uploadOCRNameElem.value) {
+    uploadOCRNameElem.value = "OCR Data " + (displayLabelOptionsElem.childElementCount + 1);
+  }
+})
 
 
 document.getElementById('fontMinus').addEventListener('click', () => { changeWordFontSize('minus') });
@@ -262,13 +293,30 @@ const recognizePageElem = /** @type {HTMLInputElement} */(document.getElementByI
 recognizePageElem.addEventListener('click', recognizePage);
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
-recognizeAreaElem.addEventListener('click', recognizeAreaClick);
+recognizeAreaElem.addEventListener('click', () => recognizeAreaClick(false));
 const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
 recognizeWordElem.addEventListener('click', () => recognizeAreaClick(true));
 
+function displayModeClick(x) {
+
+  if (x == "eval") {
+    renderPageQueue(currentPage.n, 'screen', true);
+  } else {
+    selectDisplayMode(displayModeElem.value);
+  }
+  
+}
+
+
+const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
+ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
+
+const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
+ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
+
 
 const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
-displayModeElem.addEventListener('change', () => { selectDisplayMode(displayModeElem.value) });
+displayModeElem.addEventListener('change', () => { displayModeClick(displayModeElem.value) });
 
 const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
 pdfPageMinElem.addEventListener('keyup', function (event) {
@@ -400,6 +448,7 @@ function setCurrentHOCR(x) {
   const currentLabel = displayLabelText.innerHTML.trim();
   if (!x.trim() || x == currentLabel) return;
 
+  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   if (currentLabel) {
     window.hocrAll[currentLabel] = window.hocrCurrent;
   } 
@@ -410,7 +459,12 @@ function setCurrentHOCR(x) {
   displayLabelText.innerHTML = x;
   currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[currentPage.n], "text/xml");
   
-  renderPageQueue(currentPage.n, 'screen', false);
+  if (displayModeElem.value == "eval") {
+    renderPageQueue(currentPage.n, 'screen', true);
+  } else {
+    renderPageQueue(currentPage.n, 'screen', false);
+  }
+  
 }
 
 
@@ -418,7 +472,7 @@ function setCurrentHOCR(x) {
 
 async function changeDisplayFont(font) {
   if (!currentPage.xmlDoc) return;
-  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   const optimizeMode = optimizeFontElem.checked;
   if (typeof (fontObj[font]) != "undefined" && typeof (fontObj[font]["normal"]) != "undefined" && fontObj[font]["normal"].optimized == optimizeMode) {
     globalSettings.defaultFont = font;
@@ -469,19 +523,30 @@ function adjustMarginRangeChange(value) {
   window.pageMetricsObj["manAdjAll"][currentPage.n] = (parseInt(value) - 200);
 }
 
+// Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
+// This function cleans up any changes/event listners caused by the initial click in such cases.
+document.getElementById('navBar').addEventListener('click', function (e) {
+  newWordInit = true;
+  canvas.__eventListeners = {};
+}, true)
+
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
-document.getElementById('nav-import').addEventListener('hidden.bs.collapse', function () {
+document.getElementById('nav-import').addEventListener('hidden.bs.collapse', function (e) {
+  if (e.target.id != "nav-import") return;
   hideProgress("import-progress-collapse");
 })
 
-document.getElementById('nav-recognize').addEventListener('hidden.bs.collapse', function () {
+document.getElementById('nav-recognize').addEventListener('hidden.bs.collapse', function (e) {
+  if (e.target.id != "nav-recognize") return;
+  hideProgress("import-eval-progress-collapse");
   hideProgress("render-recognize-progress-collapse");
   hideProgress("recognize-recognize-progress-collapse");
 })
 
-document.getElementById('nav-download').addEventListener('hidden.bs.collapse', function () {
+document.getElementById('nav-download').addEventListener('hidden.bs.collapse', function (e) {
+  if (e.target.id != "nav-download") return;
   hideProgress("render-download-progress-collapse");
   hideProgress("binary-download-progress-collapse");
   hideProgress("generate-download-progress-collapse");
@@ -493,7 +558,7 @@ document.getElementById('nav-download').addEventListener('hidden.bs.collapse', f
 // When the navbar is "sticky", it does not automatically widen for large canvases (when the canvas size is larger than the viewport).
 // However, when the navbar is fixed, the canvas does not move out of the way of the navbar.
 // Therefore, the navbar is set to fixed, and the canvas is manually moved up/down when tabs are shown/collapsed.
-var tabHeightObj = { "nav-import": 66, "nav-recognize": 102, "nav-view": 117, "nav-edit": 104, "nav-layout": 88, "nav-download": 104, "nav-about": 55 }
+var tabHeightObj = { "nav-import": 66, "nav-recognize": 102, "nav-eval": 89, "nav-view": 117, "nav-edit": 104, "nav-layout": 88, "nav-download": 104, "nav-about": 55 }
 
 const paddingRowElem = document.getElementById('paddingRow');
 
@@ -522,11 +587,9 @@ function toggleEditButtons(disable = true) {
 }
 
 function initializeProgress(id, maxValue, initValue = 0) {
-  console.log("initValue " + initValue);
   const progressCollapse = document.getElementById(id);
 
   const progressCollapseObj = new bootstrap.Collapse(progressCollapse, { toggle: false });
-
 
   const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
 
@@ -650,46 +713,261 @@ async function recognizePage() {
 }
 
 
-// async function previewBinaryImage() {
+function createGroundTruthClick() {
+  // Use whatever the current HOCR is as a starting point
+  window.hocrAll["Ground Truth"] = structuredClone(window.hocrCurrent);
+  addDisplayLabel("Ground Truth");
+  setCurrentHOCR("Ground Truth");
 
-//   let image;
-//   let newBool = false;
-//   if (currentPage.backgroundImage["binaryPreview"]) {
-//     // currentPage.backgroundImage["binaryPreview"] = false;
-//     image = globalThis.imageAll[currentPage.n];
-//   } else {
-//     // currentPage.backgroundImage["binaryPreview"] = true;
-//     if (window.imageAllBinary[currentPage.n]) {
-//       image = window.imageAllBinary[currentPage.n];
-//     } else {
-//       image = document.createElement('img');
-//       if (!window.recognizeAreaScheduler) {
-//         const allConfig = getTesseractConfigs();
-//         allConfig.hocr_char_boxes = '0';
-//         recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
-//       }
-//       const res = await recognizeAreaScheduler.addJob("threshold", globalThis.imageAll[currentPage.n].src);
-//       await loadImage(res.data, image);
-//       window.imageAllBinary[currentPage.n] = image;
+  let option = document.createElement("option");
+  option.text = "Evaluate Mode (Compare with Ground Truth)";
+  option.value = "eval";
+  displayModeElem.add(option);
 
-//     }
-//     newBool = true;
-//   }
+  createGroundTruthElem.disabled = true;
+  // compareGroundTruthElem.disabled = false;
+}
 
-//   currentPage.backgroundImage = new fabric.Image(image, { objectCaching: false });
-//   currentPage.backgroundImage["binaryPreview"] = newBool;
-  
-//   selectDisplayMode(displayModeElem.value);
+window.evalStatsConfig = {};
 
-//   return;
-// }
+window.evalStats = new Array();
+function compareGroundTruthClick(n) {
+
+  // When a document/recognition is still loading only the page statistics can be calculated
+  const loadMode = loadCountHOCR && loadCountHOCR < parseInt(convertPageWorker["activeProgress"]?.getAttribute("aria-valuemax")) ? true : false;
+
+  const evalStatsConfigNew = {};
+  evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
+  evalStatsConfigNew["ignorePunct"] = document.getElementById("ignorePunct").checked;
+  evalStatsConfigNew["ignoreExtra"] = document.getElementById("ignoreExtra").checked;
+
+  // Compare all pages if this has not been done already
+  if (!loadMode && JSON.stringify(window.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || window.evalStats.length == 0) {
+    window.evalStats = new Array(imageAll.length);
+    for (let i = 0; i < imageAll.length; i++){
+      const res = compareHOCR(globalThis.hocrCurrent[i], window.hocrAll["Ground Truth"][i]);
+      window.evalStats[i] = res[1];
+    }
+    window.evalStatsConfig = evalStatsConfigNew;
+  }
+
+  const res = compareHOCR(globalThis.hocrCurrent[n], window.hocrAll["Ground Truth"][n]);
+
+  globalThis.hocrCurrent[n] = res[0].documentElement.outerHTML;
+  window.evalStats[n] = res[1];
+
+  // Display metrics for current page
+  document.getElementById("metricTotalWordsPage").innerHTML = window.evalStats[n][0];
+  document.getElementById("metricCorrectWordsPage").innerHTML = window.evalStats[n][1];
+  document.getElementById("metricIncorrectWordsPage").innerHTML = window.evalStats[n][2];
+  document.getElementById("metricMissedWordsPage").innerHTML = window.evalStats[n][3];
+  document.getElementById("metricExtraWordsPage").innerHTML = window.evalStats[n][4];
+
+  if (evalStatsConfigNew["ignoreExtra"]) {
+    document.getElementById("metricWERPage").innerHTML = Math.round(((window.evalStats[n][2] + window.evalStats[n][3]) / window.evalStats[n][0]) * 100) / 100;
+  } else {
+    document.getElementById("metricWERPage").innerHTML = Math.round(((window.evalStats[n][2] + window.evalStats[n][3] + window.evalStats[n][4]) / window.evalStats[n][0]) * 100) / 100;
+  }
+
+  // Calculate and display metrics for full document
+  if (!loadMode) {
+    let evalStatsDoc = [0, 0, 0, 0, 0]
+    for (let i = 0; i < window.evalStats.length; i++) {
+      evalStatsDoc[0] = evalStatsDoc[0] + window.evalStats[i][0];
+      evalStatsDoc[1] = evalStatsDoc[1] + window.evalStats[i][1];
+      evalStatsDoc[2] = evalStatsDoc[2] + window.evalStats[i][2];
+      evalStatsDoc[3] = evalStatsDoc[3] + window.evalStats[i][3];
+      evalStatsDoc[4] = evalStatsDoc[4] + window.evalStats[i][4];
+    }
+
+    document.getElementById("metricTotalWordsDoc").innerHTML = evalStatsDoc[0];
+    document.getElementById("metricCorrectWordsDoc").innerHTML = evalStatsDoc[1];
+    document.getElementById("metricIncorrectWordsDoc").innerHTML = evalStatsDoc[2];
+    document.getElementById("metricMissedWordsDoc").innerHTML = evalStatsDoc[3];
+    document.getElementById("metricExtraWordsDoc").innerHTML = evalStatsDoc[4];
+
+    if (evalStatsConfigNew["ignoreExtra"]) {
+      document.getElementById("metricWERDoc").innerHTML = Math.round(((evalStatsDoc[2] + evalStatsDoc[3]) / evalStatsDoc[0]) * 100) / 100;
+    } else {
+      document.getElementById("metricWERDoc").innerHTML = Math.round(((evalStatsDoc[2] + evalStatsDoc[3] + evalStatsDoc[4]) / evalStatsDoc[0]) * 100) / 100;
+    }
+  } else {
+    document.getElementById("metricTotalWordsDoc").innerHTML = '';
+    document.getElementById("metricCorrectWordsDoc").innerHTML = '';
+    document.getElementById("metricIncorrectWordsDoc").innerHTML = '';
+    document.getElementById("metricMissedWordsDoc").innerHTML = '';
+    document.getElementById("metricExtraWordsDoc").innerHTML = '';
+    document.getElementById("metricWERDoc").innerHTML = '';
+  }
+
+  currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[n], "text/xml");
+
+  // if (inputDataModes.xmlMode[n]) {
+  //   globalThis.hocrCurrent[n] = currentPage.xmlDoc.documentElement.outerHTML;
+  // }
+
+}
+
+
+function compareHOCR(hocrStrA, hocrStrB) {
+
+  hocrStrA = hocrStrA.replace(/compCount=['"]\d+['"]/g, "");
+  hocrStrA = hocrStrA.replace(/compStatus=['"]\d+['"]/g, "");
+
+  hocrStrB = hocrStrB.replace(/compCount=['"]\d+['"]/g, "");
+  hocrStrB = hocrStrB.replace(/compStatus=['"]\d+['"]/g, "");
+
+  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
+  const hocrB = parser.parseFromString(hocrStrB, "text/xml");
+
+  const hocrALines = hocrA.getElementsByClassName("ocr_line");
+  const hocrBLines = hocrB.getElementsByClassName("ocr_line");
+
+  window.hocrAOverlap = {};
+  window.hocrBOverlap = {};
+  window.hocrBCorrect = {};
+
+  //let minLineB = 0;
+  for (let i = 0; i < hocrALines.length; i++){
+    const hocrALine = hocrALines[i];
+    const titleStrLineA = hocrALine.getAttribute('title');
+    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+    
+    //for (let j = minLineB; j < hocrBLines.length; j++){
+    for (let j = 0; j < hocrBLines.length; j++) {
+      const hocrBLine = hocrBLines[j];
+      const titleStrLineB = hocrBLine.getAttribute('title');
+      const lineBoxB = [...titleStrLineB.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+
+      // If top of line A is below bottom of line B, move to next line B
+      if (lineBoxA[1] > lineBoxB[3]) {
+        //minLineB = minLineB + 1;
+        continue;
+
+      // If top of line B is below bottom of line A, move to next line A 
+      // (We assume no match is possible for any B)
+      } else if (lineBoxB[1] > lineBoxA[3]) {
+        //break;
+        continue;
+
+      // Otherwise, there is possible overlap
+      } else {
+        let minWordB = 0;
+        const hocrAWords = hocrALine.getElementsByClassName("ocrx_word");
+        const hocrBWords = hocrBLine.getElementsByClassName("ocrx_word");
+
+        for (let k = 0; k < hocrAWords.length; k++){
+          const hocrAWord = hocrAWords[k];
+          const hocrAWordID = hocrAWord.getAttribute("id");
+
+          // If option is set to ignore punctuation and the current "word" conly contains punctuation,
+          // exit early with options that will result in the word being printed in green.
+          if (ignorePunctElem.checked && !hocrAWord.textContent.replace(/[\W_]/g, "")) {
+            hocrAWord.setAttribute("compCount", "1");
+            hocrAWord.setAttribute("compStatus", "1");
+          }
+
+
+          //if (j == minLineB) hocrAWord.setAttribute("compCount", "0");
+          hocrAWord.setAttribute("compCount", hocrAWord.getAttribute("compCount") || "0");
+
+          const titleStrWordA = hocrAWord.getAttribute('title');
+          const wordBoxA = [...titleStrWordA.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+
+          for (let l = minWordB; l < hocrBWords.length; l++){
+            const hocrBWord = hocrBWords[l];
+            const hocrBWordID = hocrBWord.getAttribute("id");
+            const titleStrWordB = hocrBWord.getAttribute('title');
+            const wordBoxB = [...titleStrWordB.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+
+            // Remove 10% from all sides of ground truth bounding box
+            // This prevents small overlapping (around the edges) from triggering a comparison
+            wordBoxB[0] = wordBoxB[0] + Math.round((wordBoxB[2] - wordBoxB[0]) * 0.1);
+            wordBoxB[2] = wordBoxB[2] - Math.round((wordBoxB[2] - wordBoxB[0]) * 0.1);
+
+            wordBoxB[1] = wordBoxB[1] + Math.round((wordBoxB[3] - wordBoxB[1]) * 0.1);
+            wordBoxB[3] = wordBoxB[3] - Math.round((wordBoxB[3] - wordBoxB[1]) * 0.1);
+
+            // If left of word A is past right of word B, move to next word B
+            if (wordBoxA[0] > wordBoxB[2]) {
+              minWordB = minWordB + 1;
+              continue;
+
+            // If left of word B is past right of word A, move to next word A
+            // (We assume no match is possible for any B)
+            } else if (wordBoxB[0] > wordBoxA[2]) {
+              break;
+
+            // Otherwise, overlap is likely
+            } else {
+              // Check for overlap using word height
+              if (wordBoxA[1] > wordBoxB[3] || wordBoxB[1] > wordBoxA[3]) {
+                continue;
+              }
+
+              hocrAWord.setAttribute("compCount", (parseInt(hocrAWord.getAttribute("compCount")) + 1).toString());
+              let wordTextA = replaceLigatures(hocrAWord.textContent);
+              let wordTextB = replaceLigatures(hocrBWord.textContent);
+              if (ignorePunctElem.checked) {
+                wordTextA = wordTextA.replace(/[\W_]/g, "");
+                wordTextB = wordTextB.replace(/[\W_]/g, "");
+              }
+
+              hocrAOverlap[hocrAWordID] = 1;
+              hocrBOverlap[hocrBWordID] = 1;
+
+              // TODO: Account for cases without 1-to-1 mapping between bounding boxes
+              if (wordTextA == wordTextB) {
+                hocrAWord.setAttribute("compStatus", "1");
+                hocrBCorrect[hocrBWordID] = 1;
+              } else {
+                //hocrAWord.setAttribute("compStatus", "0");
+                hocrAWord.setAttribute("compStatus", hocrAWord.getAttribute("compStatus") || "0");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Note: These metrics leave open the door for some fringe edge cases. 
+  // For example, 
+
+  // Number of words in ground truth
+  const totalCountB = hocrB.getElementsByClassName("ocrx_word").length;
+
+  // Number of words in candidate OCR
+  const totalCountA = hocrA.getElementsByClassName("ocrx_word").length;
+
+  // Number of words in ground truth with any overlap with candidate OCR
+  const overlapCountB = Object.keys(hocrBOverlap).length;
+
+  // Number of words in candidate OCR with any overlap with ground truth
+  const overlapCountA = Object.keys(hocrAOverlap).length;
+
+  // Number of words in ground truth correctly identified by 1+ overlapping word in candidate OCR
+  const correctCount = Object.keys(hocrBCorrect).length;
+
+  // Number of words in ground truth not identified by 1+ overlapping word in candidate OCR
+  const incorrectCount = overlapCountB - correctCount;
+
+  const metricsRet = [totalCountB, correctCount, incorrectCount, (totalCountB - overlapCountB), (totalCountA - overlapCountA)];
+
+  return ([hocrA, metricsRet]);
+}
+
+function replaceLigatures(x) {
+  return x.replace(/ﬂ/g, "fl").replace(/ﬁ/g, "fi").replace(/ﬀ/g, "ff").replace(/ﬃ/g, "ffi").replace(/ﬄ/g, "ffl");
+}
+
 
 // var recognizeAreaScheduler;
 window.recognizeAreaScheduler = null;
 async function recognizeArea(left, top, width, height, wordMode = false) {
   
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
 
   const allConfig = getTesseractConfigs();
@@ -714,10 +992,12 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
   const res = await recognizeAreaScheduler.addJob('recognize', globalThis.imageAll[currentPage.n].src, allConfig);
   let hocrString = res.data.hocr;
 
+  console.log(hocrString);
+
   const lines = currentPage.xmlDoc?.getElementsByClassName("ocr_line");
 
   // If no page exists already, simply use the new scan without editing
-  if (!lines) {
+  if (!lines || lines.length == 0) {
     convertPageWorker.postMessage([hocrString, currentPage.n, false, true]);
     return;
     //currentPage.xmlDoc = currentPage.xmlDoc = parser.parseFromString(hocrString, "text/xml");
@@ -750,13 +1030,20 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
     const lineNewStr = hocrLinesArr[i];
     const titleStrLine = lineNewStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
     const lineNew = parser.parseFromString(lineNewStr, "text/xml").firstChild;
-    const lineBoxNew = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+    if (![...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]) {
+      return;
+    }
+    const lineBoxNew = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]?.slice(1, 5).map(function (x) { return parseInt(x); });
+
+    // For whatever reason Tesseract sometimes returns junk data with negative coordinates.
+    // In such cases, the above regex will fail to match anything.
+    if (!lineBoxNew) return;
 
     // Identify the OCR line a bounding box is in (or closest line if no match exists)
     let lineI = -1;
     let match = false;
     let newLastLine = false;
-    let lineBottomHOCR, line;
+    let lineBottomHOCR, line, lineMargin;
     do {
       lineI = lineI + 1;
       line = lines[lineI];
@@ -775,17 +1062,23 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
         } else {
           lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
         }
-        boxOffsetY = (lineBoxNew[0] + (lineBoxNew[0] + lineBoxNew[2]) / 2 - lineBoxAdj[0]) * baseline[0];
+        boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * baseline[0];
       } else {
         baseline = [0, 0];
       }
 
+      // Calculate size of margin to apply when detecting overlap (~30% of total height applied to each side)
+      // This prevents a very small overlap from causing a word to be placed on an existing line
+      const lineHeight = lineBoxAdj[3] - lineBoxAdj[1];
+      lineMargin = Math.round(lineHeight * 0.30);
+
       let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
       lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
-      if (lineTopHOCR < lineBoxNew[3] && lineBottomHOCR >= lineBoxNew[1]) match = true;
-      if (lineBottomHOCR < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
 
-    } while (lineBottomHOCR < lineBoxNew[1] && lineI + 1 < lines.length);
+      if ((lineTopHOCR + lineMargin) < lineBoxNew[3] && (lineBottomHOCR - lineMargin) >= lineBoxNew[1]) match = true;
+      if ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
+
+    } while ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 < lines.length);
 
     let words = line.getElementsByClassName("ocrx_word");
     let wordsNew = lineNew.getElementsByClassName("ocrx_word");
@@ -799,7 +1092,7 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
         let j = 0;
         do {
           word = words[j];
-          if (word.childNodes[0].textContent.trim() == "") continue;
+          if (!word.childNodes[0]?.textContent.trim()) continue;
           let titleStr = word.getAttribute('title') ?? "";
           box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
           j = j + 1;
@@ -840,7 +1133,7 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
     }
   }
 
-  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
 
   await renderPageQueue(currentPage.n);
 
@@ -911,14 +1204,14 @@ async function recognizeAll() {
 
 }
 
-
+var rect1;
 function recognizeAreaClick(wordMode = false) {
 
   canvas.on('mouse:down', function (o) {
     let pointer = canvas.getPointer(o.e);
     origX = pointer.x;
     origY = pointer.y;
-    rect = new fabric.Rect({
+    rect1 = new fabric.Rect({
       left: origX,
       top: origY,
       originX: 'left',
@@ -929,39 +1222,56 @@ function recognizeAreaClick(wordMode = false) {
       fill: 'rgba(255,0,0,0.5)',
       transparentCorners: false
     });
-    canvas.add(rect);
+    canvas.add(rect1);
     canvas.renderAll();
     canvas.on('mouse:move', function (o) {
       let pointer = canvas.getPointer(o.e);
 
       if (origX > pointer.x) {
-        rect.set({ left: Math.abs(pointer.x) });
+        rect1.set({ left: Math.abs(pointer.x) });
       }
       if (origY > pointer.y) {
-        rect.set({ top: Math.abs(pointer.y) });
+        rect1.set({ top: Math.abs(pointer.y) });
       }
 
-      rect.set({ width: Math.abs(origX - pointer.x) });
-      rect.set({ height: Math.abs(origY - pointer.y) });
+      rect1.set({ width: Math.abs(origX - pointer.x) });
+      rect1.set({ height: Math.abs(origY - pointer.y) });
 
+      console.log([rect1.left, rect1.top]);
       canvas.renderAll();
     });
-  });
+  }, {once: true});
+
+  // mouse:up:before must be used so this code runs ahead of fabric internal logic.
+  // Without this changes to active selection caused by mouse movement may change rect object.
+  canvas.on('mouse:up:before', async function (o) {
+
+    // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
+    let angleAdjXRect = 0;
+    let angleAdjYRect = 0;
+    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
+      angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.top + rect1.height * 0.5);
+      angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.left + angleAdjXRect / 2) * -1;
+    }
+
+    // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
+    const top = rect1.top - angleAdjYRect;
+    const left = rect1.left - angleAdjXRect - currentPage.leftAdjX;
 
 
-  canvas.on('mouse:up', async function (o) {
+    const width = rect1.width;
+    const height = rect1.height;
 
-    const left = rect.left;
-    const top = rect.top;
-    const width = rect.width;
-    const height = rect.height;
 
-    canvas.remove(rect);
+    canvas.remove(rect1);
+
+    if (width < 4 || height < 4) return;
+
     await recognizeArea(left, top, width, height, wordMode);
     
     canvas.renderAll();
     canvas.__eventListeners = {}
-  });
+  }, { once: true });
 
 }
 
@@ -1009,7 +1319,9 @@ function addWordClick() {
 
   });
 
-  canvas.on('mouse:up', function (o) {
+  // mouse:up:before must be used so this code runs ahead of fabric internal logic.
+  // Without this changes to active selection caused by mouse movement may change rect object.
+  canvas.on('mouse:up:before', function (o) {
 
     canvas.__eventListeners = {}
     if (newWordInit) { return; }
@@ -1062,6 +1374,9 @@ function addWordClick() {
       lineI = lineI + 1;
       line = lines[lineI];
       titleStrLine = line.getAttribute('title');
+      if (![...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]) {
+        debugger;
+      }
       lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
       baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
 
@@ -1104,7 +1419,7 @@ function addWordClick() {
       let i = 0;
       do {
         word = words[i];
-        if (word.childNodes[0].textContent.trim() == "") continue;
+        if (!word.childNodes[0]?.textContent.trim()) continue;
         let titleStr = word.getAttribute('title') ?? "";
         box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
         i = i + 1;
@@ -1331,6 +1646,9 @@ function clearFiles() {
   recognizeAllElem.disabled = true;
   recognizePageElem.disabled = true;
   recognizeAreaElem.disabled = true;
+  createGroundTruthElem.disabled = true;
+  // compareGroundTruthElem.disabled = true;
+  uploadOCRButtonElem.disabled = true;
   toggleEditButtons(true);
 
 }
@@ -1339,6 +1657,131 @@ function getXHeight(font, size) {
   let exTest = document.getElementById("exTest");
   exTest.setAttribute("style", "display:none;width:1ex;font-family:'" + font + "';font-size:" + size)
   return (getComputedStyle(exTest).width);
+}
+
+
+
+
+async function importOCRFiles() {
+  // TODO: Add input validation for names (e.g. unique, no illegal symbols)
+  const ocrName = uploadOCRNameElem.value;
+  const hocrFilesAll = uploadOCRFileElem.files;
+
+  if (hocrFilesAll.length == 0) return;
+
+  const mainData = false;
+
+  if (mainData) {
+    fontMetricObjsMessage["widthObjAll"] = new Array();
+    fontMetricObjsMessage["heightObjAll"] = new Array();
+    fontMetricObjsMessage["kerningObjAll"] = new Array();
+    fontMetricObjsMessage["cutObjAll"] = new Array();
+    fontMetricObjsMessage["heightSmallCapsObjAll"] = new Array();
+    fontMetricObjsMessage["messageAll"] = new Object();
+
+    globalThis.pageMetricsObj["angleAll"] = new Array();
+    globalThis.pageMetricsObj["dimsAll"] = new Array();
+    globalThis.pageMetricsObj["leftAll"] = new Array();
+    globalThis.pageMetricsObj["angleAdjAll"] = new Array();
+    globalThis.pageMetricsObj["manAdjAll"] = new Array();
+  }
+
+  // In the case of 1 HOCR file
+  const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
+
+  let hocrStrStart = "";
+  let hocrStrEnd = "";
+  let abbyyMode, hocrStrPages, hocrArrPages, pageCount, pageCountImage, pageCountHOCR;
+
+  addDisplayLabel(ocrName);
+  displayLabelTextElem.innerHTML = ocrName;
+
+  if (singleHOCRMode) {
+    const singleHOCRMode = true;
+    let hocrStrAll = await readOcrFile(hocrFilesAll[0]);
+
+    // Check whether input is Abbyy XML
+    const node2 = hocrStrAll.match(/\>([^\>]+)/)[1];
+    abbyyMode = /abbyy/i.test(node2) ? true : false;
+
+    if (abbyyMode) {
+
+      hocrStrPages = hocrStrAll.replace(/[\s\S]*?(?=\<page)/i, "");
+      hocrArrPages = hocrStrPages.split(/(?=\<page)/);
+    } else {
+
+      // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
+      inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
+
+      if (inputDataModes.resumeMode) {
+        let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
+        let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\/?\>)/i)[1].replace(/&quot;/g, '"');
+        globalThis.fontMetricsObj = JSON.parse(contentStr);
+
+      }
+
+      hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
+      hocrStrEnd = hocrStrAll.match(/\<\/body\>[\s\S]*$/)[0];
+      hocrStrPages = hocrStrAll.replace(/[\s\S]*?\<body\>/, "");
+      hocrStrPages = hocrStrPages.replace(/\<\/body\>[\s\S]*$/, "");
+      hocrStrPages = hocrStrPages.trim();
+
+      hocrArrPages = hocrStrPages.split(/(?=\<div class\=[\'\"]ocr_page[\'\"])/);
+    }
+
+    pageCountHOCR = hocrArrPages.length;
+    window.hocrCurrentRaw = Array(pageCountHOCR);
+    for (let i = 0; i < pageCountHOCR; i++) {
+      window.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
+    }
+
+  } else {
+    const singleHOCRMode = false;
+    pageCountHOCR = hocrFilesAll.length;
+
+    // Check whether input is Abbyy XML using the first file
+    let hocrStrFirst = await readOcrFile(hocrFilesAll[0]);
+    const node2 = hocrStrFirst.match(/\>([^\>]+)/)[1];
+    abbyyMode = /abbyy/i.test(node2) ? true : false;
+  }
+
+  // Enable confidence threshold input boxes (only used for Tesseract)
+  if (!abbyyMode && confThreshHighElem.disabled) {
+    confThreshHighElem.disabled = false;
+    confThreshMedElem.disabled = false;
+    confThreshHighElem.value = "85";
+    confThreshMedElem.value = "75";
+  }
+
+  // If both OCR data and image data are present, confirm they have the same number of pages
+  if (window.imageAll) {
+    if (window.imageAll.length != pageCountHOCR) {
+      document.getElementById("pageMismatchAlertTextRec").textContent = " Page mismatch detected. Image data has " + pageCountImage + " pages while OCR data has " + pageCountHOCR + " pages."
+      document.getElementById("pageMismatchAlertRec").setAttribute("style", "");
+    }
+  }
+
+  loadCountHOCR = 0;
+  convertPageWorker["activeProgress"] = initializeProgress("import-eval-progress-collapse", pageCountHOCR);
+
+  toggleEditButtons(false);
+  for (let i = 0; i < pageCountHOCR; i++) {
+    
+    // Process HOCR using web worker, reading from file first if that has not been done already
+    if (singleHOCRMode) {
+      convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
+    } else {
+      const hocrFile = hocrFilesAll[i];
+      readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
+    }
+
+  }
+
+  uploadOCRNameElem.value = '';
+  uploadOCRFileElem.value = '';
+  new bootstrap.Collapse(uploadOCRDataElem, { toggle: true })
+
+
 }
 
 
@@ -1394,6 +1837,8 @@ async function importFiles() {
     recognizeAllElem.disabled = false;
     recognizePageElem.disabled = false;
     recognizeAreaElem.disabled = false;
+    createGroundTruthElem.disabled = false;
+    uploadOCRButtonElem.disabled = false;
 
     // Color vs. grayscale is an option passed to mupdf, so can only be used with pdf inputs
     // Binary images are calculated separately by Leptonica (within Tesseract) so apply to both
@@ -1654,7 +2099,6 @@ async function initMuPDFScheduler(file, workers = 3) {
     const w = await initMuPDFWorker();
     const fileData = await file.arrayBuffer();
     const pdfDoc = await w.openDocument(fileData, file.name);
-    console.log(pdfDoc);
     w["pdfDoc"] = pdfDoc;
 
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
@@ -1767,8 +2211,6 @@ async function renderPDFImageCache(pagesArr) {
 
       const useColor = colorMode == "color" ? true : false;
 
-      console.log("n+1ing job with parameters: ")
-      console.log([n + 1, dpi, useColor])
       await muPDFScheduler.addJob('drawPageAsPNG', [n + 1, dpi, useColor]);
     }
 
@@ -1781,7 +2223,6 @@ async function renderPDFImageCache(pagesArr) {
       const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src);
       await loadImage(res.data, image);
       window.imageAllBinary[n] = image;
-      console.log("Rendered page " + n + " in binary");
       await displayImage(n, image, true);
       if (binaryScheduler["activeProgress"]) {
         binaryScheduler["pngRenderCount"] = binaryScheduler["pngRenderCount"] + 1;
@@ -1810,6 +2251,12 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
   if (loadXML && inputDataModes.xmlMode[n] && globalThis.hocrCurrent[n]) {
+    // Compare selected text to ground truth in eval mode
+    if (displayModeElem.value == "eval") {
+      console.time();
+      compareGroundTruthClick(n);
+      console.timeEnd();
+    }
     currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[n], "text/xml");
   } else if (!inputDataModes.xmlMode[n]) {
     currentPage.xmlDoc = null;
@@ -1922,7 +2369,6 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     const renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
 
     if (renderImage || renderImageBinary) {
-      console.log("Rendering pdf");
       renderPDFImageCache([n]);
     } else if (colorMode == "binary" && imageAllBinary[n] != true) {
       currentPage.backgroundImage = new fabric.Image(imageAllBinary[n], { objectCaching: false });
@@ -1975,7 +2421,7 @@ async function onPrevPage(marginAdj) {
   }
   working = true;
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
 
   currentPage.n = currentPage.n - 1;
@@ -2006,7 +2452,7 @@ async function onNextPage() {
   }
   working = true;
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
 
   currentPage.n = currentPage.n + 1;
@@ -2032,7 +2478,7 @@ async function onNextPage() {
 
 async function optimizeFontClick(value) {
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
   if (value) {
     await optimizeFont2();
@@ -2291,6 +2737,9 @@ globalThis.selectDisplayMode = function (x) {
   } else if (x == "ebook") {
     opacity_arg = 1
     fill_arg = "fill_ebook"
+  } else if (x == "eval") {
+    opacity_arg = 1
+    fill_arg = "fill_eval"
   } else {
     opacity_arg = 1
     fill_arg = "fill_proof"
@@ -2305,7 +2754,7 @@ globalThis.selectDisplayMode = function (x) {
   });
 
   // Include a background image if appropriate
-  if (['invis', 'proof'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
+  if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
     canvas.setBackgroundColor("black");
     canvas.setBackgroundImage(currentPage.backgroundImage, canvas.renderAll.bind(canvas), currentPage.backgroundOpts);
   } else {
@@ -2326,7 +2775,7 @@ async function handleDownload() {
 
   // Save any edits that may exist on current page
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
   let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();
   if (download_type == "pdf") {

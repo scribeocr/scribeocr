@@ -416,13 +416,16 @@ function convertPageAbbyy(xmlPage, pageNum){
          let contentStrLetter = letterArr[j][7];
          text[i] = text[i] + contentStrLetter;
 
-         lineAllHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-         if(ascCharArr.includes(contentStrLetter)){
-           lineAscHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-         } else if(xCharArr.includes(contentStrLetter)){
-           lineXHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-         }
-
+        lineAllHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
+        // Record height for different types of characters (used for calculating font size)
+        // Only full sized characters are included (no superscripts)
+        if (styleArr[i] != "sup") {
+          if (ascCharArr.includes(contentStrLetter)) {
+            lineAscHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
+          } else if (xCharArr.includes(contentStrLetter)) {
+            lineXHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
+          }
+        }
 
          if((ascCharArr.includes(contentStrLetter) || xCharArr.includes(contentStrLetter)) && !letterSusp && !dropCapFix && !(dropCap && i==0)){
            //baselineHeightArr.push(bboxes[i][j][3]);
