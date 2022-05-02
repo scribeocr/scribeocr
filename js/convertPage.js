@@ -475,7 +475,7 @@ function convertPageAbbyy(xmlPage, pageNum){
      }
 
      const lineAllHeight = Math.max(...lineAllHeightArr);
-     const lineAscHeight = quantile(lineAscHeightArr, 0.5);
+     let lineAscHeight = quantile(lineAscHeightArr, 0.5);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
     
      if(lineXHeight != null){
@@ -544,15 +544,30 @@ function convertPageAbbyy(xmlPage, pageNum){
        xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
      }
     
+    // Calculate character size metrics (x_size, x_ascenders, x_descenders)
+    // Ideally we would be able to calculate all 3 directly, however given this is not always possible,
+    // different calculations are used based on the data available.
+
+    // If no ascenders exist on the line but x-height is known, set ascender height to 1.5x x-height
+    // (This is a quick fix--this logic may be refined later)
+    if (!lineAscHeight && lineXHeight) {
+      lineAscHeight = Math.round(lineXHeight * 1.5);
+    }
+
     // Add character height (misleadingly called "x_size" in Tesseract hocr)
     xmlOut = xmlOut + "; x_size " + lineAllHeight;
-    // If x-height exists and is a plausible value, calculate x_ascenders (in addition to x_descenders)
-    if (lineAscHeight && lineXHeight && (lineAscHeight > lineXHeight * 1.2) && (lineAscHeight < lineXHeight * 2)){
+    // If x-height exists, calculate x_ascenders (in addition to x_descenders)
+    // In general, x-height must be a plausible value (to avoid obviously misidentified characters from determining font size).
+    // This restriction is not applied for lines with small caps. 
+    if (lineAscHeight && lineXHeight && (styleArr.includes("small-caps") || (lineAscHeight > lineXHeight * 1.1) && (lineAscHeight < lineXHeight * 2))) {
       xmlOut = xmlOut + "; x_ascenders " + (lineAscHeight - lineXHeight) + "; x_descenders " + (lineAllHeight - lineAscHeight);
-    // Otherwise, add only x_descenders
-    } else if(lineAscHeight){
+      // Otherwise, add only x_descenders
+    } else if (lineAscHeight) {
+      // console.log("Rejecting xheight: " + lineXHeight, + " " + lineAscHeight + " on page " + pageNum);
+      // console.log(text);
       xmlOut = xmlOut + "; x_descenders " + (lineAllHeight - lineAscHeight);
     }
+    
 
 
      xmlOut = xmlOut + "\">";

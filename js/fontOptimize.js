@@ -21,7 +21,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
     const lower = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
 
-    const singleStemClassA = ["f","i","l","t","I"];
+    const singleStemClassA = ["i","l","t","I"];
     const singleStemClassB = ["f","i","j","l","t","I","J","T"];
 
     //const workingFontRightBearingMedian = quantile(lower.map(x => workingFont.charToGlyph(x).getMetrics().rightSideBearing), 0.5);
@@ -58,12 +58,14 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
         }
       }
-      //shiftX = shiftX + workingFontRightBearingMedian;
 
-      // TODO: For simplicitly this assumes the visual center of the glyph is in the center of the bounding box.
-      // This is not always true (for example, for "f" and "t" in Libre Baskerville).
+      // TODO: For simplicitly we assume the stem is located at the midpoint of the bounding box (0.35 for "f")
+      // This is not always true (for example, "t" in Libre Baskerville).
       // Look into whether there is a low(ish) effort way of finding the visual center for real.
-      let glyphICenter = Math.max(glyphIMetrics.xMin,0) + Math.round(glyphIWidth / 2);
+
+      let glyphICenterPoint = charLit == "f" ? 0.35 : 0.5;
+
+      let glyphICenter = Math.max(glyphIMetrics.xMin, 0) + Math.round(glyphIWidth * glyphICenterPoint);
       let glyphIWidthQuarter = Math.round(glyphIWidth / 4);
 
       // Horizontal scaling is limited for certain letters with a single vertical stem.
@@ -183,7 +185,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
     }
 
-    // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
+{    // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
     // Adjust height of capital J (which often has a height greater than other capital letters)
     // All height from "J" above that of "A" is assumed to occur under the baseline
     const actJMult = Math.max(fontMetricsObj["charHeight"][74] / fontMetricsObj["charHeight"][65], 0);
@@ -192,26 +194,81 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
     const fontJMult = (fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
     const actFontJMult = actJMult / fontJMult;
 
-    if(Math.abs(actFontJMult) > 0.02){
+    if (Math.abs(1 - actFontJMult) > 0.02) {
       let glyphI = workingFont.charToGlyph("J");
       let glyphIMetrics = glyphI.getMetrics();
       const yAdj = Math.round(glyphIMetrics['yMax'] - (glyphIMetrics['yMax'] * actFontJMult));
 
-      for(let j=0; j < glyphI.path.commands.length; j++){
+      for (let j = 0; j < glyphI.path.commands.length; j++) {
         let pointJ = glyphI.path.commands[j];
-        if(pointJ.y != null){
+        if (pointJ.y != null) {
           pointJ.y = Math.round(pointJ.y * actFontJMult + yAdj);
         }
-        if(pointJ.y1 != null){
+        if (pointJ.y1 != null) {
           pointJ.y1 = Math.round(pointJ.y1 * actFontJMult + yAdj);
         }
-        if(pointJ.y2 != null){
+        if (pointJ.y2 != null) {
           pointJ.y2 = Math.round(pointJ.y2 * actFontJMult + yAdj);
         }
 
       }
 
     }
+}  
+  // Adjust "p" and "q" height
+  // All height from "p" or "q" above that of "a" is assumed to occur under the baseline
+  const actPMult = Math.max(fontMetricsObj["charHeight"][112] / fontMetricsObj["charHeight"][97], 0);
+  const actQMult = Math.max(fontMetricsObj["charHeight"][113] / fontMetricsObj["charHeight"][97], 0);
+
+  const fontPMetrics = workingFont.charToGlyph("p").getMetrics();
+  const fontQMetrics = workingFont.charToGlyph("q").getMetrics();
+  const fontAMetrics = workingFont.charToGlyph("a").getMetrics();
+
+  const fontPMult = (fontPMetrics.yMax - fontPMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
+  const fontQMult = (fontQMetrics.yMax - fontQMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
+  const actFontMult = { "p": actPMult / fontPMult, "q": actQMult / fontQMult }
+
+  const minA = fontAMetrics.yMin;
+  
+  const glyphHeight = {
+    "p": fontPMetrics.yMax - fontPMetrics.yMin,
+    "q": fontQMetrics.yMax - fontQMetrics.yMin
+  }
+
+  const glyphLowerStemHeight = {
+    "p": minA - fontPMetrics.yMin,
+    "q": minA - fontQMetrics.yMin
+  }
+
+  for (let letterI of ["p", "q"]) {
+    const actFontMultI = actFontMult[letterI];
+    if (Math.abs(actFontMultI) > 1.02) {
+      let glyphI = workingFont.charToGlyph(letterI);
+      let glyphIMetrics = glyphI.getMetrics();
+
+      // Adjust scaling factor to account for the fact that only the lower part of the stem is adjusted
+      let scaleYFactor = ((actFontMultI - 1) * (glyphHeight[letterI] / glyphLowerStemHeight[letterI])) + 1;
+
+      //const yAdj = Math.round(glyphIMetrics['yMax'] - (glyphIMetrics['yMax'] * actFontMultI));
+
+      for (let j = 0; j < glyphI.path.commands.length; j++) {
+        let pointJ = glyphI.path.commands[j];
+        if (pointJ.y && pointJ.y < minA) {
+          pointJ.y = Math.round((pointJ.y - minA) * scaleYFactor);
+        }
+        if (pointJ.y1 && pointJ.y1 < minA) {
+          pointJ.y1 = Math.round((pointJ.y1 - minA) * scaleYFactor);
+        }
+        if (pointJ.y2 && pointJ.y2 < minA) {
+          pointJ.y2 = Math.round((pointJ.y2 - minA) * scaleYFactor);
+        }
+
+      }
+    }
+  }
+
+
+
 
 
     let fontKerningObj = new Object;
@@ -234,8 +291,12 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       // Unlike letters, some text will legitimately have a large space before/after curly quotes.
       // TODO: Handle quotes in a more systematic way (setting advance for quotes, or kerning for all letters,
       // rather than relying on each individual pairing.)
-      if(["8220","8216"].includes(nameFirst) || ["8221","8217"].includes(nameSecond)){
+      if (["8220", "8216"].includes(nameFirst) || ["8221", "8217"].includes(nameSecond)) {
         fontKern = Math.min(Math.max(fontKern, minKern), maxKern * 2);
+      
+      // For pairs that commonly use ligatures ("ff", "fi", "fl") allow lower minimum
+      } else if (["102,102","102,105","102,108"]) {
+        fontKern = Math.min(Math.max(fontKern, Math.round(minKern * 1.5)), maxKern);
       } else {
         fontKern = Math.min(Math.max(fontKern, minKern), maxKern);
       }
