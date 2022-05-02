@@ -1,6 +1,4 @@
-//Please replace httpServer with the correct address for your testing server or an environment variable
-//const httpServer = 'http://192.168.50.10:8080';
-const httpServer = 'https://scribeocr.com/';
+const httpServer = Cypress.env('TESTSITE');
 
 describe('It recognises and downloads a', () => {
   beforeEach(() => {
