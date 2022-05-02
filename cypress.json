@@ -1,4 +1,7 @@
 {
   "viewportWidth": 1200,
-  "viewportHeight": 1000
+  "viewportHeight": 1000,
+  "env": {
+    "TESTSITE": "https://scribeocr.com/"
+  }
 }
