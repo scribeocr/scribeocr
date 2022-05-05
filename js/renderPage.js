@@ -349,10 +349,12 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
               let angleAdjYSup = Math.sin(angle * (Math.PI / 180)) * (box[0] - linebox[0]) * -1;
 
+              // In the special case of superscripts and dropcaps, the wordFontSize should always be used to determine fontDesc.
+              // fontSize, which may carry over from other words, will not be applicable. 
+              fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
               if(wordSup){
                 top = linebox[3] + baseline[1] + fontDesc + angleAdjY + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
               } else {
-                fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
                 top = box[3] + fontDesc + angleAdjY + angleAdjYSup;
               }
 

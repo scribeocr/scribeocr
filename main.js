@@ -16,7 +16,7 @@ import { renderPage } from './js/renderPage.js';
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 
-import { optimizeFont, calculateOverallFontMetrics } from "./js/fontOptimize.js";
+import { optimizeFont, calculateOverallFontMetrics, createSmallCapsFont } from "./js/fontOptimize.js";
 import { loadFont, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3 } from "./js/miscUtils.js";
@@ -1237,7 +1237,6 @@ function recognizeAreaClick(wordMode = false) {
       rect1.set({ width: Math.abs(origX - pointer.x) });
       rect1.set({ height: Math.abs(origY - pointer.y) });
 
-      console.log([rect1.left, rect1.top]);
       canvas.renderAll();
     });
   }, {once: true});
@@ -1872,7 +1871,7 @@ async function importFiles() {
     colorModeElem.add(option);
   }
 
-  imageFilesAll.sort();
+  imageFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
   hocrFilesAll.sort();
 
   // Check that input makes sense.  Valid options are:
@@ -2539,7 +2538,7 @@ async function renderPDF() {
   let pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1);
 
   // Render all pages to PNG
-  if (inputDataModes.pdfMode) {
+  if (inputDataModes.pdfMode && displayModeElem.value != "ebook") {
     let time1 = Date.now();
     // Set pngRenderCount to only include PNG images rendered with the current color setting
     //const colorCheckbox = colorCheckboxElem.checked;
@@ -2606,17 +2605,35 @@ export async function optimizeFont2() {
 
 
   fontObj[globalSettings.defaultFont]["normal"].tables.gsub = null;
+  fontObj[globalSettings.defaultFont]["italic"].tables.gsub = null;
 
   // Quick fix due to bug in pdfkit (see note in renderPDF function)
   fontObj[globalSettings.defaultFont]["normal"].tables.name.postScriptName["en"] = fontObj[globalSettings.defaultFont]["normal"].tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
-  let fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["normal"], fontObj[globalSettings.defaultFont]["italic"], globalThis.fontMetricsObj);
+  let fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["normal"], fontObj[globalSettings.defaultFont]["italic"], globalThis.fontMetricsObj["normal"]);
 
   fontDataOptimized = fontArr[0].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont, fontDataOptimized, true, true, true);
+  await loadFont(globalSettings.defaultFont, fontDataOptimized, true, true);
 
   fontDataOptimizedItalic = fontArr[1].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true, true);
+  await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true);
+
+  // Create small caps font using optimized "normal" font as a starting point
+  createSmallCapsFont(window.fontObj["Libre Baskerville"]["normal"], "Libre Baskerville", fontMetricsObj["heightSmallCaps"] || 1, fontMetricsObj);
+
+  // Optimize small caps if metrics exist to do so
+  if (globalThis.fontMetricsObj["small-caps"]) {
+    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont + " Small Caps"]["normal"], null, globalThis.fontMetricsObj["small-caps"]);
+    const fontDataOptimizedSmallCaps = fontArr[0].toArrayBuffer();
+    await loadFont(globalSettings.defaultFont + "-small-caps", fontDataOptimizedSmallCaps, true, true);
+  }
+
+  // Optimize italics if metrics exist to do so
+  if (globalThis.fontMetricsObj["italic"]) {
+    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["italic"], null, globalThis.fontMetricsObj["italic"], "italic");
+    const fontDataOptimizedItalic = fontArr[0].toArrayBuffer();
+    await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true);
+  }
 
 
 }
