@@ -576,14 +576,12 @@ function convertPageAbbyy(xmlPage, pageNum){
      lineBoxArrCalc[2] = Math.max(...bboxes.flat().map(x => x[2]).filter(x => x > 0));
      lineBoxArrCalc[3] = Math.max(...bboxes.flat().map(x => x[3]).filter(x => x > 0));
 
-     const baselineSlope = baselineSlopeArr.length == 0 ? 0 : quantile(baselineSlopeArr, 0.5);
+     const baselineSlope = quantile(baselineSlopeArr, 0.5) || 0;
 
-     const baselinePoint = baselineFirst[1] - lineBoxArrCalc[3] - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]);
+     const baselinePoint = baselineFirst[1] - lineBoxArrCalc[3] - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]) || 0;
 
      let xmlOut = "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
-     if(baselineSlopeArr.length > 0){
-       xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
-     }
+    xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
     
     // Calculate character size metrics (x_size, x_ascenders, x_descenders)
     // Ideally we would be able to calculate all 3 directly, however given this is not always possible,

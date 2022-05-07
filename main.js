@@ -311,6 +311,9 @@ function displayModeClick(x) {
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
 ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
 
+const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreCap"));
+ignoreCapElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
+
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
 ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
 
@@ -739,6 +742,7 @@ function compareGroundTruthClick(n) {
   const evalStatsConfigNew = {};
   evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
   evalStatsConfigNew["ignorePunct"] = document.getElementById("ignorePunct").checked;
+  evalStatsConfigNew["ignoreCap"] = document.getElementById("ignoreCap").checked;
   evalStatsConfigNew["ignoreExtra"] = document.getElementById("ignoreExtra").checked;
 
   // Compare all pages if this has not been done already
@@ -874,6 +878,18 @@ function compareHOCR(hocrStrA, hocrStrB) {
           const titleStrWordA = hocrAWord.getAttribute('title');
           const wordBoxA = [...titleStrWordA.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
 
+          // Remove 10% from all sides of bounding box
+          // This prevents small overlapping (around the edges) from triggering a comparison
+          const wordBoxAWidth = wordBoxA[2] - wordBoxA[0];
+          const wordBoxAHeight = wordBoxA[3] - wordBoxA[1];
+
+          wordBoxA[0] = wordBoxA[0] + Math.round(wordBoxAWidth * 0.1);
+          wordBoxA[2] = wordBoxA[2] - Math.round(wordBoxAWidth * 0.1);
+
+          wordBoxA[1] = wordBoxA[1] + Math.round(wordBoxAHeight * 0.1);
+          wordBoxA[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
+
+
           for (let l = minWordB; l < hocrBWords.length; l++){
             const hocrBWord = hocrBWords[l];
             const hocrBWordID = hocrBWord.getAttribute("id");
@@ -882,11 +898,14 @@ function compareHOCR(hocrStrA, hocrStrB) {
 
             // Remove 10% from all sides of ground truth bounding box
             // This prevents small overlapping (around the edges) from triggering a comparison
-            wordBoxB[0] = wordBoxB[0] + Math.round((wordBoxB[2] - wordBoxB[0]) * 0.1);
-            wordBoxB[2] = wordBoxB[2] - Math.round((wordBoxB[2] - wordBoxB[0]) * 0.1);
+            const wordBoxBWidth = wordBoxB[2] - wordBoxB[0];
+            const wordBoxBHeight = wordBoxB[3] - wordBoxB[1];
 
-            wordBoxB[1] = wordBoxB[1] + Math.round((wordBoxB[3] - wordBoxB[1]) * 0.1);
-            wordBoxB[3] = wordBoxB[3] - Math.round((wordBoxB[3] - wordBoxB[1]) * 0.1);
+            wordBoxB[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
+            wordBoxB[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
+
+            wordBoxB[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
+            wordBoxB[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
 
             // If left of word A is past right of word B, move to next word B
             if (wordBoxA[0] > wordBoxB[2]) {
@@ -911,6 +930,10 @@ function compareHOCR(hocrStrA, hocrStrB) {
               if (ignorePunctElem.checked) {
                 wordTextA = wordTextA.replace(/[\W_]/g, "");
                 wordTextB = wordTextB.replace(/[\W_]/g, "");
+              }
+              if (ignoreCapElem.checked) {
+                wordTextA = wordTextA.toLowerCase();
+                wordTextB = wordTextB.toLowerCase();
               }
 
               hocrAOverlap[hocrAWordID] = 1;
@@ -1662,11 +1685,13 @@ function getXHeight(font, size) {
 
 
 async function importOCRFiles() {
-  // TODO: Add input validation for names (e.g. unique, no illegal symbols)
+  // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
   const ocrName = uploadOCRNameElem.value;
   const hocrFilesAll = uploadOCRFileElem.files;
 
   if (hocrFilesAll.length == 0) return;
+
+  displayLabelTextElem.disabled = true;
 
   const mainData = false;
 
@@ -1683,7 +1708,7 @@ async function importOCRFiles() {
     globalThis.pageMetricsObj["leftAll"] = new Array();
     globalThis.pageMetricsObj["angleAdjAll"] = new Array();
     globalThis.pageMetricsObj["manAdjAll"] = new Array();
-  }
+  } 
 
   // In the case of 1 HOCR file
   const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
@@ -1692,8 +1717,7 @@ async function importOCRFiles() {
   let hocrStrEnd = "";
   let abbyyMode, hocrStrPages, hocrArrPages, pageCount, pageCountImage, pageCountHOCR;
 
-  addDisplayLabel(ocrName);
-  displayLabelTextElem.innerHTML = ocrName;
+  //displayLabelTextElem.innerHTML = ocrName;
 
   if (singleHOCRMode) {
     const singleHOCRMode = true;
@@ -1780,7 +1804,10 @@ async function importOCRFiles() {
   uploadOCRFileElem.value = '';
   new bootstrap.Collapse(uploadOCRDataElem, { toggle: true })
 
-
+  addDisplayLabel(ocrName);
+  setCurrentHOCR(ocrName);
+  displayLabelTextElem.disabled = true;
+  
 }
 
 
