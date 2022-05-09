@@ -31,7 +31,7 @@ import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
 // Third party libraries
 import { simd } from "./lib/wasm-feature-detect.js";
-import Tesseract from './tess/tesseract.es6.min.js';
+import Tesseract from './tess/tesseract.es6.js';
 
 
 // Opt-in to bootstrap tooltip feature
@@ -1188,15 +1188,23 @@ async function recognizeAll() {
     let time1 = Date.now();
     const scheduler = await createTesseractScheduler(workerN);
 
-    const rets = await Promise.allSettled(pagesArr.map((x) => (
-      scheduler.addJob('recognize', globalThis.imageAll[x].src, allConfig).then((y) => {
+    const rets = await Promise.allSettled(pagesArr.map((x) => { 
+      const allConfigI = JSON.parse(JSON.stringify(allConfig));
+
+      // Whether the binary image should be rotated
+      const rotateBinary = true;
+      const angleArg = rotateBinary ? pageMetricsObj["angleAll"][x] * (Math.PI / 180) * -1 || 0 : 0;
+      allConfigI["angle"] = angleArg;
+
+      return scheduler.addJob('recognize', globalThis.imageAll[x].src, allConfigI).then((y) => {
         const image = document.createElement('img');
         image.src = y.data.image;
         window.imageAllBinary[x] = image;
         window.hocrCurrentRaw[x] = y.data.hocr;
         convertPageWorker.postMessage([y.data.hocr, x, false, false, oemText]);
       })
-    )));
+      
+    }));
 
     await scheduler.terminate();
 
@@ -2242,19 +2250,25 @@ async function renderPDFImageCache(pagesArr) {
 
     if (renderImageBinary) {
       // Create scheduler if one does not already exist
-      if (!binaryScheduler) {
-        binaryScheduler = await createTesseractScheduler(4);
+      if (!window.binaryScheduler) {
+        window.binaryScheduler = await createTesseractScheduler(4);
       }
       const image = document.createElement('img');
-      const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src);
+      //const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src, { angle: 0.15 });
+      
+      // Whether the binary image should be rotated
+      const rotateBinary = true;
+      const angleArg = rotateBinary ? pageMetricsObj["angleAll"][n] * (Math.PI / 180) * -1 || 0 : 0;
+
+      const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src, { angle: angleArg });
       await loadImage(res.data, image);
       window.imageAllBinary[n] = image;
       await displayImage(n, image, true);
-      if (binaryScheduler["activeProgress"]) {
-        binaryScheduler["pngRenderCount"] = binaryScheduler["pngRenderCount"] + 1;
-        binaryScheduler["activeProgress"].setAttribute("aria-valuenow", binaryScheduler["pngRenderCount"]);
-        const valueMax = parseInt(binaryScheduler["activeProgress"].getAttribute("aria-valuemax"));
-        binaryScheduler["activeProgress"].setAttribute("style", "width: " + (binaryScheduler["pngRenderCount"] / valueMax) * 100 + "%");
+      if (window.binaryScheduler["activeProgress"]) {
+        window.binaryScheduler["pngRenderCount"] = window.binaryScheduler["pngRenderCount"] + 1;
+        window.binaryScheduler["activeProgress"].setAttribute("aria-valuenow", binaryScheduler["pngRenderCount"]);
+        const valueMax = parseInt(window.binaryScheduler["activeProgress"].getAttribute("aria-valuemax"));
+        window.binaryScheduler["activeProgress"].setAttribute("style", "width: " + (window.binaryScheduler["pngRenderCount"] / valueMax) * 100 + "%");
       }
     }
   }));
@@ -2321,9 +2335,17 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   // Calculate options for background image and overlay
   if (inputDataModes.xmlMode[n]) {
 
+    currentPage.backgroundOpts.originX = "center";
+    currentPage.backgroundOpts.originY = "center";
+
+    currentPage.backgroundOpts.left = imgDims[1] * 0.5;
+    currentPage.backgroundOpts.top = imgDims[0] * 0.5;
+
+
     let marginPx = Math.round(canvasDims[1] * leftGlobal);
     if (autoRotateCheckboxElem.checked) {
       currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][n] * -1 ?? 0;
+
     } else {
       currentPage.backgroundOpts.angle = 0;
     }
@@ -2357,9 +2379,9 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
         currentPage.leftAdjX = currentPage.leftAdjX - (globalThis.pageMetricsObj["angleAdjAll"][n] ?? 0);
       }
 
-      currentPage.backgroundOpts.left = currentPage.leftAdjX;
+      currentPage.backgroundOpts.left = imgDims[1] * 0.5 + currentPage.leftAdjX;
     } else {
-      currentPage.backgroundOpts.left = 0;
+      currentPage.backgroundOpts.left = imgDims[1] * 0.5;
     }
 
     if (mode == "screen") {
@@ -2516,7 +2538,7 @@ async function optimizeFontClick(value) {
 }
 
 
-var binaryScheduler;
+//var binaryScheduler;
 async function renderPDF() {
 
   globalThis.doc = new PDFDocument({
@@ -2573,9 +2595,9 @@ async function renderPDF() {
 
     muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
     if (colorModeElem.value == "binary") {
-      binaryScheduler = await createTesseractScheduler(4);
-      binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
-      binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, binaryScheduler["pngRenderCount"]);
+      window.binaryScheduler = await createTesseractScheduler(4);
+      window.binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
+      window.binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, window.binaryScheduler["pngRenderCount"]);
     }
 
     await renderPDFImageCache(pagesArr);
@@ -2800,6 +2822,7 @@ globalThis.selectDisplayMode = function (x) {
   // Include a background image if appropriate
   if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
     canvas.setBackgroundColor("black");
+    //canvas.setBackgroundImage(currentPage.backgroundImage, canvas.renderAll.bind(canvas));
     canvas.setBackgroundImage(currentPage.backgroundImage, canvas.renderAll.bind(canvas), currentPage.backgroundOpts);
   } else {
     canvas.setBackgroundColor(null);

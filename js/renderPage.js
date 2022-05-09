@@ -57,12 +57,18 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
          const jMetrics = ctx.measureText("gjpqy");
          ctx.font = fontSize + 'px ' + defaultFont;
 
-
+          const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
           let angleAdjX = 0;
           let angleAdjY = 0;
-          if(autoRotateCheckbox.checked && Math.abs(angle ?? 0) > 0.05){
-            angleAdjX = Math.sin(angle * (Math.PI / 180)) * (linebox[3] + baseline[1]);
-            angleAdjY = Math.sin(angle * (Math.PI / 180)) * (linebox[0] + angleAdjX /2) * -1;
+          if ((autoRotateCheckbox.checked || colorModeElem.value == "binary") && Math.abs(angle ?? 0) > 0.05) {
+            const shiftX = Math.sin(angle * (Math.PI / 180)) * (imgDims[0] * 0.5) * -1 || 0;
+            const shiftY = Math.sin(angle * (Math.PI / 180)) * ((imgDims[1] - shiftX) * 0.5) || 0;
+
+            const angleAdjXInt = Math.sin(angle * (Math.PI / 180)) * (linebox[3] + baseline[1]);
+            const angleAdjYInt = Math.sin(angle * (Math.PI / 180)) * (linebox[0] + angleAdjXInt / 2) * -1;
+            
+            angleAdjX = angleAdjXInt + shiftX;
+            angleAdjY = angleAdjYInt + shiftY;
           }
 
         for (let j = 0; j < words.length; j++) {
