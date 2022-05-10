@@ -6,13 +6,18 @@ import { quantile, round6 } from "./miscUtils.js";
 import { loadFont } from "./fontUtils.js";
 
 // Creates optimized version of `font` based on metrics in `fontMetricsObj`
-export async function optimizeFont(font, auxFont, fontMetricsObj){
+export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal"){
 
     let fontData = font.toArrayBuffer();
-    let fontDataAux = auxFont.toArrayBuffer();
 
-    let workingFont = opentype.parse(fontData, {lowMemory:false});
-    let workingFontAux = opentype.parse(fontDataAux, {lowMemory:false});
+  let workingFont = opentype.parse(fontData, { lowMemory: false });
+  
+  let fontDataAux, workingFontAux;
+  if (auxFont) {
+    fontDataAux = auxFont.toArrayBuffer();
+    workingFontAux = opentype.parse(fontDataAux, { lowMemory: false });
+  }
+  
 
     let oGlyph = workingFont.charToGlyph("o").getMetrics();
     let xHeight = oGlyph.yMax - oGlyph.yMin;
@@ -28,7 +33,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
     //console.log("workingFontRightBearingMedian: " + workingFontRightBearingMedian);
 
     // Adjust character width and advance
-    for (const [key, value] of Object.entries(fontMetricsObj["charWidth"])) {
+  for (const [key, value] of Object.entries(fontMetricsObj["charWidth"])) {
 
       // 33 is the first latin glyph (excluding space which is 32)
       if(parseInt(key) < 33) { continue; }
@@ -78,7 +83,6 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       } else {
         scaleXFactor = Math.max(Math.min(scaleXFactor, 1.3), 0.7);
       }
-      // glyphI.leftSideBearing = 0;
 
       for(let j=0; j < glyphI.path.commands.length; j++){
         let pointJ = glyphI.path.commands[j];
@@ -116,6 +120,10 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
 
       }
+    
+      // Do not adjust advance for italic "f".
+      if (key == "102" && type == "italic") continue;
+
 
       glyphIMetrics = glyphI.getMetrics();
 
@@ -123,14 +131,15 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       //glyphI.advanceWidth = Math.round(scaleXFactor * glyphIWidth) + glyphIMetrics.xMin;
       glyphI.advanceWidth = glyphIMetrics.xMax;
       glyphI.leftSideBearing = glyphIMetrics.xMin;
-      glyphI.rightSideBearing = 0;
+      //glyphI.rightSideBearing = 0;
 
 
     }
 
     // Adjust character height
-    const capsMult = xHeight * fontMetricsObj["heightCaps"] / fontAscHeight;
-    for (const [key, value] of Object.entries(fontMetricsObj["charHeight"])) {
+  const capsMult = xHeight * fontMetricsObj["heightCaps"] / fontAscHeight;
+  for (const [key, value] of Object.entries(fontMetricsObj["charHeight"])) {
+    
       // 33 is the first latin glyph (excluding space which is 32)
       if(parseInt(key) < 33) { continue; }
 
@@ -141,7 +150,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
       if(/[^A-Z]/.test(charLit)) { continue; }
 
       let glyphI = workingFont.charToGlyph(charLit);
-      let glyphI2 = workingFontAux.charToGlyph(charLit);
+      
 
       let glyphIMetrics = glyphI.getMetrics();
       //let glyphIHeight = glyphIMetrics.yMax - glyphIMetrics.yMin;
@@ -166,24 +175,25 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
 
       }
 
-      for(let j=0; j < glyphI2.path.commands.length; j++){
+    if (auxFont) {
+      let glyphI2 = workingFontAux.charToGlyph(charLit);
+      for (let j = 0; j < glyphI2.path.commands.length; j++) {
         let pointJ = glyphI2.path.commands[j];
-        if(pointJ.y != null){
+        if (pointJ.y != null) {
           //pointJ.x = Math.round((pointJ.x - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
           pointJ.y = Math.round(pointJ.y * capsMult);
         }
-        if(pointJ.y1 != null){
+        if (pointJ.y1 != null) {
           //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
           pointJ.y1 = Math.round(pointJ.y1 * capsMult);
         }
-        if(pointJ.y2 != null){
+        if (pointJ.y2 != null) {
           //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
           pointJ.y2 = Math.round(pointJ.y2 * capsMult);
         }
-
       }
-
     }
+  }
 
 {    // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
     // Adjust height of capital J (which often has a height greater than other capital letters)
@@ -267,17 +277,18 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
     }
   }
 
+  let fontKerningObj = new Object;
 
+  // Kerning is limited to +/-10% of the em size for most pairs.  Anything beyond this is likely not correct.
+  let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
+  let minKern = maxKern * -1;
 
+  for (const [key, value] of Object.entries(fontMetricsObj["pairKerningRaw"])) {
 
+    // Do not adjust pair kerning for italic "ff".
+    // Given the amount of overlap between these glyphs, this metric is rarely accurate. 
+    if (key == "102,102" && type == "italic") continue;
 
-    let fontKerningObj = new Object;
-
-    // Kerning is limited to +/-10% of the em size for most pairs.  Anything beyond this is likely not correct.
-    let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
-    let minKern = maxKern * -1;
-
-    for (const [key, value] of Object.entries(fontMetricsObj["pairKerningRaw"])) {
       let nameFirst = key.match(/\w+/)[0];
       let nameSecond = key.match(/\w+$/)[0];
 
@@ -295,8 +306,10 @@ export async function optimizeFont(font, auxFont, fontMetricsObj){
         fontKern = Math.min(Math.max(fontKern, minKern), maxKern * 2);
       
       // For pairs that commonly use ligatures ("ff", "fi", "fl") allow lower minimum
-      } else if (["102,102","102,105","102,108"]) {
+      } else if (["102,102", "102,105", "102,108"].includes(key)) {
+        console.log(key + " " + fontKern + " (" + minKern + ")");
         fontKern = Math.min(Math.max(fontKern, Math.round(minKern * 1.5)), maxKern);
+        console.log(key + " " + fontKern + " (" + minKern + ")");
       } else {
         fontKern = Math.min(Math.max(fontKern, minKern), maxKern);
       }
@@ -339,11 +352,11 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
 
   let fontMetricsObj = new Object;
 
-  if(charGoodCt == 0 && charErrorCt > 0){
+  if (charGoodCt == 0 && charErrorCt > 0) {
     document.getElementById("charInfoError").setAttribute("style", "");
     return;
-  } else if(charGoodCt == 0 && charWarnCt > 0){
-    if(Object.keys(fontMetricsObj).length > 0){
+  } else if (charGoodCt == 0 && charWarnCt > 0) {
+    if (Object.keys(fontMetricsObj).length > 0) {
       document.getElementById('optimizeFont').disabled = false;
       document.getElementById('download').disabled = false;
     } else {
@@ -355,101 +368,151 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
     document.getElementById('download').disabled = false;
 
 
-    fontMetricsObj["charWidth"] = new Object;
-    fontMetricsObj["charHeight"] = new Object;
-    fontMetricsObj["pairKerning"] = new Object;
-    fontMetricsObj["pairKerningRaw"] = new Object;
-    fontMetricsObj["cutMedian"] = new Object;
+    // fontMetricsObj["charWidth"] = new Object;
+    // fontMetricsObj["charHeight"] = new Object;
+    // fontMetricsObj["pairKerning"] = new Object;
+    // fontMetricsObj["pairKerningRaw"] = new Object;
+    // fontMetricsObj["cutMedian"] = new Object;
 
     const pageN = fontMetricObjsMessage["widthObjAll"].length;
 
     let widthObj = new Object;
-    for(let i=0; i<pageN; i++){
-      for (const [key, value] of Object.entries(fontMetricObjsMessage["widthObjAll"][i])) {
-        if(widthObj[key] == null){
-          widthObj[key] = new Array();
+    for (let i = 0; i < pageN; i++) {
+      for (const [style, obj] of Object.entries(fontMetricObjsMessage["widthObjAll"][i])) {
+        if (widthObj[style] == null) {
+          widthObj[style] = new Array();
         }
-        Array.prototype.push.apply(widthObj[key],value);
+        for (const [key, value] of Object.entries(obj)) {
+          if (widthObj[style][key] == null) {
+            widthObj[style][key] = new Array();
+          }
+          Array.prototype.push.apply(widthObj[style][key], value);
+        }
       }
     }
 
     let heightObj = new Object;
-    for(let i=0; i<pageN; i++){
-      for (const [key, value] of Object.entries(fontMetricObjsMessage["heightObjAll"][i])) {
-        if(heightObj[key] == null){
-          heightObj[key] = new Array();
+    for (let i = 0; i < pageN; i++) {
+      for (const [style, obj] of Object.entries(fontMetricObjsMessage["heightObjAll"][i])) {
+        if (heightObj[style] == null) {
+          heightObj[style] = new Array();
         }
-        Array.prototype.push.apply(heightObj[key],value);
+        for (const [key, value] of Object.entries(obj)) {
+          if (heightObj[style][key] == null) {
+            heightObj[style][key] = new Array();
+          }
+          Array.prototype.push.apply(heightObj[style][key], value);
+        }
       }
     }
 
     let cutObj = new Object;
-    for(let i=0; i<pageN; i++){
-      for (const [key, value] of Object.entries(fontMetricObjsMessage["cutObjAll"][i])) {
-        if(cutObj[key] == null){
-          cutObj[key] = new Array();
+    for (let i = 0; i < pageN; i++) {
+      for (const [style, obj] of Object.entries(fontMetricObjsMessage["cutObjAll"][i])) {
+        if (cutObj[style] == null) {
+          cutObj[style] = new Array();
         }
-        Array.prototype.push.apply(cutObj[key],value);
+        for (const [key, value] of Object.entries(obj)) {
+          if (cutObj[style][key] == null) {
+            cutObj[style][key] = new Array();
+          }
+          Array.prototype.push.apply(cutObj[style][key], value);
+        }
       }
     }
 
     let kerningObj = new Object;
-    for(let i=0; i<pageN; i++){
-      for (const [key, value] of Object.entries(fontMetricObjsMessage["kerningObjAll"][i])) {
-        if(kerningObj[key] == null){
-          kerningObj[key] = new Array();
+    for (let i = 0; i < pageN; i++) {
+      for (const [style, obj] of Object.entries(fontMetricObjsMessage["kerningObjAll"][i])) {
+        if (kerningObj[style] == null) {
+          kerningObj[style] = new Array();
         }
-        Array.prototype.push.apply(kerningObj[key],value);
+        for (const [key, value] of Object.entries(obj)) {
+          if (kerningObj[style][key] == null) {
+            kerningObj[style][key] = new Array();
+          }
+          Array.prototype.push.apply(kerningObj[style][key], value);
+        }
       }
     }
 
     let heightCapsObj = new Array();
-    for(let i=0; i<pageN; i++){
-      for (const [key, value] of Object.entries(fontMetricObjsMessage["heightObjAll"][i])) {
-        if(/[A-Z]/.test(String.fromCharCode(parseInt(key)))){
-          Array.prototype.push.apply(heightCapsObj,value);
+    for (let i = 0; i < pageN; i++) {
+      for (const [style, obj] of Object.entries(fontMetricObjsMessage["heightObjAll"][i])) {
+        if (heightCapsObj[style] == null) {
+          heightCapsObj[style] = new Array();
+        }
+        for (const [key, value] of Object.entries(obj)) {
+          if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))) {
+            Array.prototype.push.apply(heightCapsObj[style], value);
+          }
         }
       }
     }
-    fontMetricsObj["heightCaps"] = round6(quantile(heightCapsObj, 0.5));
 
     let heightSmallCapsObj = new Array();
-    for(let i=0; i<pageN; i++){
+    for (let i = 0; i < pageN; i++) {
       for (const [key, value] of Object.entries(fontMetricObjsMessage["heightSmallCapsObjAll"][i])) {
-        if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))){
-          Array.prototype.push.apply(heightSmallCapsObj,value);
+        if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))) {
+          Array.prototype.push.apply(heightSmallCapsObj, value);
         }
       }
     }
     let heightSmallCaps = round6(quantile(heightSmallCapsObj, 0.5)) ?? 1;
 
     // In the case of crazy values, revert to default of 1
-    heightSmallCaps = heightSmallCaps < 0.7  || heightSmallCaps > 1.3 ? 1 : heightSmallCaps;
+    heightSmallCaps = heightSmallCaps < 0.7 || heightSmallCaps > 1.3 ? 1 : heightSmallCaps;
 
     fontMetricsObj["heightSmallCaps"] = heightSmallCaps;
 
-   for (const [key, value] of Object.entries(widthObj)) {
-     fontMetricsObj["charWidth"][key] = round6(quantile(value, 0.5));
-   }
+    for (const [style, obj] of Object.entries(widthObj)) {
+      if (!fontMetricsObj[style]) {
+        fontMetricsObj[style] = {};
+      }
+      if (!fontMetricsObj[style]["charWidth"]) {
+        fontMetricsObj[style]["charWidth"] = {};
+      }
+      for (const [key, value] of Object.entries(obj)) {
+        fontMetricsObj[style]["charWidth"][key] = round6(quantile(value, 0.5));
+      }
+    }
 
-   for (const [key, value] of Object.entries(heightObj)) {
-     fontMetricsObj["charHeight"][key] = round6(quantile(value, 0.5));
-   }
+    for (const [style, obj] of Object.entries(heightObj)) {
+      if (!fontMetricsObj[style]["charHeight"]) {
+        fontMetricsObj[style]["charHeight"] = {};
+      }
+      for (const [key, value] of Object.entries(obj)) {
+        fontMetricsObj[style]["charHeight"][key] = round6(quantile(value, 0.5));
+      }
+    }
 
+    //fontMetricsObj["heightCaps"] = {};
+    for (const [style, obj] of Object.entries(heightCapsObj)) {
+      fontMetricsObj[style]["heightCaps"] = round6(quantile(obj, 0.5));
+    }
 
-   for (const [key, value] of Object.entries(cutObj)) {
-    fontMetricsObj["cutMedian"][key] = round6(quantile(value, 0.5));
-   }
+    for (const [style, obj] of Object.entries(cutObj)) {
+      if (!fontMetricsObj[style]["cutMedian"]) {
+        fontMetricsObj[style]["cutMedian"] = {};
+      }
+      for (const [key, value] of Object.entries(obj)) {
+        fontMetricsObj[style]["cutMedian"][key] = round6(quantile(value, 0.5));
+      }
+    }
 
-   let kerningNorm;
-   for (const [key, value] of Object.entries(kerningObj)) {
-     fontMetricsObj["pairKerningRaw"][key] = round6(quantile(value, 0.5));
-     //kerningNorm = Math.round((quantile(value, 0.5) - cutMedian[key.match(/\w+$/)]) * 1e5) / 1e5;
-     kerningNorm = quantile(value, 0.5) - fontMetricsObj["cutMedian"][key.match(/\w+$/)];
-     if(Math.abs(kerningNorm) > 0.02){
-       fontMetricsObj["pairKerning"][key] = round6(kerningNorm);
-     }
-   }
+    for (const [style, obj] of Object.entries(kerningObj)) {
+      if (!fontMetricsObj[style]["pairKerningRaw"]) {
+        fontMetricsObj[style]["pairKerningRaw"] = {};
+        fontMetricsObj[style]["pairKerning"] = {};
+      }
+      for (const [key, value] of Object.entries(obj)) {
+        fontMetricsObj[style]["pairKerningRaw"][key] = round6(quantile(value, 0.5));
+        const kerningNorm = quantile(value, 0.5) - fontMetricsObj[style]["cutMedian"][key.match(/\w+$/)];
+        if (Math.abs(kerningNorm) > 0.02 && value.length >= 3) {
+          fontMetricsObj[style]["pairKerning"][key] = round6(kerningNorm);
+        }
+      }
+    }
   }
 
   return(fontMetricsObj);
@@ -462,19 +525,25 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
 // Unfortunately, it looks like small caps cannot be loaded as a FontFace referring
 // to the same font family.  Therefore, they are instead loaded to a different font family.
 // https://stackoverflow.com/questions/14527408/defining-small-caps-font-variant-with-font-face
-export async function createSmallCapsFont(font, fontFamily, heightSmallCaps){
+export async function createSmallCapsFont(font, fontFamily, heightSmallCaps, fontMetricsObj = null) {
+  
+  let fontData = font.toArrayBuffer();
+  let workingFont = opentype.parse(fontData, { lowMemory: false });
 
-  let oGlyph = font.charToGlyph("o");
+  let oGlyph = workingFont.charToGlyph("o");
   let oGlyphMetrics = oGlyph.getMetrics();
   let xHeight = oGlyphMetrics.yMax - oGlyphMetrics.yMin;
-  let fontAscHeight = font.charToGlyph("A").getMetrics().yMax;
+  let fontAscHeight = workingFont.charToGlyph("A").getMetrics().yMax;
   const smallCapsMult = xHeight * (heightSmallCaps ?? 1) / fontAscHeight;
-  const lower = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
+  const lower = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"];
+  const singleStemClassA = ["i", "l", "t", "I"];
+  const singleStemClassB = ["f", "i", "j", "l", "t", "I", "J", "T"];
+
 
   for(let i=0;i<lower.length;i++){
     const charLit = lower[i];
-    const glyphIUpper = font.charToGlyph(charLit.toUpperCase());
-    const glyphI = font.charToGlyph(charLit);
+    const glyphIUpper = workingFont.charToGlyph(charLit.toUpperCase());
+    const glyphI = workingFont.charToGlyph(charLit);
 
     glyphI.path.commands = JSON.parse(JSON.stringify(glyphIUpper.path.commands));
 
@@ -514,9 +583,9 @@ export async function createSmallCapsFont(font, fontFamily, heightSmallCaps){
   }
 
   // Remove ligatures, as these are especially problematic for small caps fonts (as small caps may be replaced by lower case ligatures)
-  font.tables.gsub = null;
+  workingFont.tables.gsub = null;
 
-  let fontDataSmallCaps = font.toArrayBuffer();
+  let fontDataSmallCaps = workingFont.toArrayBuffer();
   await loadFont(fontFamily + " Small Caps", fontDataSmallCaps, true,false);
   return;
 

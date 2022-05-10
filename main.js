@@ -16,7 +16,7 @@ import { renderPage } from './js/renderPage.js';
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 
-import { optimizeFont, calculateOverallFontMetrics } from "./js/fontOptimize.js";
+import { optimizeFont, calculateOverallFontMetrics, createSmallCapsFont } from "./js/fontOptimize.js";
 import { loadFont, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3 } from "./js/miscUtils.js";
@@ -310,6 +310,9 @@ function displayModeClick(x) {
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
 ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
+
+const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreCap"));
+ignoreCapElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
 
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
 ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
@@ -739,6 +742,7 @@ function compareGroundTruthClick(n) {
   const evalStatsConfigNew = {};
   evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
   evalStatsConfigNew["ignorePunct"] = document.getElementById("ignorePunct").checked;
+  evalStatsConfigNew["ignoreCap"] = document.getElementById("ignoreCap").checked;
   evalStatsConfigNew["ignoreExtra"] = document.getElementById("ignoreExtra").checked;
 
   // Compare all pages if this has not been done already
@@ -874,6 +878,18 @@ function compareHOCR(hocrStrA, hocrStrB) {
           const titleStrWordA = hocrAWord.getAttribute('title');
           const wordBoxA = [...titleStrWordA.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
 
+          // Remove 10% from all sides of bounding box
+          // This prevents small overlapping (around the edges) from triggering a comparison
+          const wordBoxAWidth = wordBoxA[2] - wordBoxA[0];
+          const wordBoxAHeight = wordBoxA[3] - wordBoxA[1];
+
+          wordBoxA[0] = wordBoxA[0] + Math.round(wordBoxAWidth * 0.1);
+          wordBoxA[2] = wordBoxA[2] - Math.round(wordBoxAWidth * 0.1);
+
+          wordBoxA[1] = wordBoxA[1] + Math.round(wordBoxAHeight * 0.1);
+          wordBoxA[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
+
+
           for (let l = minWordB; l < hocrBWords.length; l++){
             const hocrBWord = hocrBWords[l];
             const hocrBWordID = hocrBWord.getAttribute("id");
@@ -882,11 +898,14 @@ function compareHOCR(hocrStrA, hocrStrB) {
 
             // Remove 10% from all sides of ground truth bounding box
             // This prevents small overlapping (around the edges) from triggering a comparison
-            wordBoxB[0] = wordBoxB[0] + Math.round((wordBoxB[2] - wordBoxB[0]) * 0.1);
-            wordBoxB[2] = wordBoxB[2] - Math.round((wordBoxB[2] - wordBoxB[0]) * 0.1);
+            const wordBoxBWidth = wordBoxB[2] - wordBoxB[0];
+            const wordBoxBHeight = wordBoxB[3] - wordBoxB[1];
 
-            wordBoxB[1] = wordBoxB[1] + Math.round((wordBoxB[3] - wordBoxB[1]) * 0.1);
-            wordBoxB[3] = wordBoxB[3] - Math.round((wordBoxB[3] - wordBoxB[1]) * 0.1);
+            wordBoxB[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
+            wordBoxB[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
+
+            wordBoxB[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
+            wordBoxB[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
 
             // If left of word A is past right of word B, move to next word B
             if (wordBoxA[0] > wordBoxB[2]) {
@@ -911,6 +930,10 @@ function compareHOCR(hocrStrA, hocrStrB) {
               if (ignorePunctElem.checked) {
                 wordTextA = wordTextA.replace(/[\W_]/g, "");
                 wordTextB = wordTextB.replace(/[\W_]/g, "");
+              }
+              if (ignoreCapElem.checked) {
+                wordTextA = wordTextA.toLowerCase();
+                wordTextB = wordTextB.toLowerCase();
               }
 
               hocrAOverlap[hocrAWordID] = 1;
@@ -1238,7 +1261,6 @@ function recognizeAreaClick(wordMode = false) {
       rect1.set({ width: Math.abs(origX - pointer.x) });
       rect1.set({ height: Math.abs(origY - pointer.y) });
 
-      console.log([rect1.left, rect1.top]);
       canvas.renderAll();
     });
   }, {once: true});
@@ -1664,11 +1686,13 @@ function getXHeight(font, size) {
 
 
 async function importOCRFiles() {
-  // TODO: Add input validation for names (e.g. unique, no illegal symbols)
+  // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
   const ocrName = uploadOCRNameElem.value;
   const hocrFilesAll = uploadOCRFileElem.files;
 
   if (hocrFilesAll.length == 0) return;
+
+  displayLabelTextElem.disabled = true;
 
   const mainData = false;
 
@@ -1685,7 +1709,7 @@ async function importOCRFiles() {
     globalThis.pageMetricsObj["leftAll"] = new Array();
     globalThis.pageMetricsObj["angleAdjAll"] = new Array();
     globalThis.pageMetricsObj["manAdjAll"] = new Array();
-  }
+  } 
 
   // In the case of 1 HOCR file
   const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
@@ -1694,8 +1718,7 @@ async function importOCRFiles() {
   let hocrStrEnd = "";
   let abbyyMode, hocrStrPages, hocrArrPages, pageCount, pageCountImage, pageCountHOCR;
 
-  addDisplayLabel(ocrName);
-  displayLabelTextElem.innerHTML = ocrName;
+  //displayLabelTextElem.innerHTML = ocrName;
 
   if (singleHOCRMode) {
     const singleHOCRMode = true;
@@ -1782,7 +1805,10 @@ async function importOCRFiles() {
   uploadOCRFileElem.value = '';
   new bootstrap.Collapse(uploadOCRDataElem, { toggle: true })
 
-
+  addDisplayLabel(ocrName);
+  setCurrentHOCR(ocrName);
+  displayLabelTextElem.disabled = true;
+  
 }
 
 
@@ -1873,7 +1899,7 @@ async function importFiles() {
     colorModeElem.add(option);
   }
 
-  imageFilesAll.sort();
+  imageFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
   hocrFilesAll.sort();
 
   // Check that input makes sense.  Valid options are:
@@ -2568,7 +2594,7 @@ async function renderPDF() {
   let pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1);
 
   // Render all pages to PNG
-  if (inputDataModes.pdfMode) {
+  if (inputDataModes.pdfMode && displayModeElem.value != "ebook") {
     let time1 = Date.now();
     // Set pngRenderCount to only include PNG images rendered with the current color setting
     //const colorCheckbox = colorCheckboxElem.checked;
@@ -2637,17 +2663,35 @@ export async function optimizeFont2() {
 
 
   fontObj[globalSettings.defaultFont]["normal"].tables.gsub = null;
+  fontObj[globalSettings.defaultFont]["italic"].tables.gsub = null;
 
   // Quick fix due to bug in pdfkit (see note in renderPDF function)
   fontObj[globalSettings.defaultFont]["normal"].tables.name.postScriptName["en"] = fontObj[globalSettings.defaultFont]["normal"].tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
-  let fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["normal"], fontObj[globalSettings.defaultFont]["italic"], globalThis.fontMetricsObj);
+  let fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["normal"], fontObj[globalSettings.defaultFont]["italic"], globalThis.fontMetricsObj["normal"]);
 
   fontDataOptimized = fontArr[0].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont, fontDataOptimized, true, true, true);
+  await loadFont(globalSettings.defaultFont, fontDataOptimized, true, true);
 
   fontDataOptimizedItalic = fontArr[1].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true, true);
+  await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true);
+
+  // Create small caps font using optimized "normal" font as a starting point
+  createSmallCapsFont(window.fontObj["Libre Baskerville"]["normal"], "Libre Baskerville", fontMetricsObj["heightSmallCaps"] || 1, fontMetricsObj);
+
+  // Optimize small caps if metrics exist to do so
+  if (globalThis.fontMetricsObj["small-caps"]) {
+    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont + " Small Caps"]["normal"], null, globalThis.fontMetricsObj["small-caps"]);
+    const fontDataOptimizedSmallCaps = fontArr[0].toArrayBuffer();
+    await loadFont(globalSettings.defaultFont + "-small-caps", fontDataOptimizedSmallCaps, true, true);
+  }
+
+  // Optimize italics if metrics exist to do so
+  if (globalThis.fontMetricsObj["italic"]) {
+    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["italic"], null, globalThis.fontMetricsObj["italic"], "italic");
+    const fontDataOptimizedItalic = fontArr[0].toArrayBuffer();
+    await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true);
+  }
 
 
 }
