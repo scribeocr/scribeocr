@@ -19,11 +19,16 @@ describe('It downloads a', () => {
     cy.get('#download').click()
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.txt')
   })
- 
-  it('downloads a pdf file from a pdf with different page numbered xml', () => {
+ /*
+  it('downloads a pdf file from a pdf with different page numbered xml, COLOR', () => {
     cy.get('#uploader').selectFile(
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'])
     cy.get('#pageCount').should('have.text', '114')
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Color')
+    
+
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
@@ -31,6 +36,7 @@ describe('It downloads a', () => {
     cy.wait(130000)
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.pdf', {contains: true})
   })
+ 
   it('downloads a hocr file from a pdf with different page numbered xml', () => {
     cy.get('#uploader').selectFile(
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'])
@@ -42,5 +48,5 @@ describe('It downloads a', () => {
     cy.get('#download').click()
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.hocr', {contains: true})
   })
-  
+  */
 })
