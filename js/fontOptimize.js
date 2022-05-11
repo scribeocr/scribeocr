@@ -201,7 +201,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     const actJMult = Math.max(fontMetricsObj["charHeight"][74] / fontMetricsObj["charHeight"][65], 0);
     const fontJMetrics = workingFont.charToGlyph("J").getMetrics();
     const fontAMetrics = workingFont.charToGlyph("A").getMetrics();
-    const fontJMult = (fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
+    const fontJMult = Math.min((fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin), 1);
     const actFontJMult = actJMult / fontJMult;
 
     if (Math.abs(1 - actFontJMult) > 0.02) {

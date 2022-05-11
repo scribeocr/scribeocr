@@ -1926,8 +1926,10 @@ async function importFiles() {
 
   if (inputDataModes.pdfMode) {
 
+    window.pdfFile = pdfFilesAll[0];
+
     // Initialize scheduler
-    await initMuPDFScheduler(pdfFilesAll[0], 3);
+    await initMuPDFScheduler(window.pdfFile, 3);
 
     pageCountImage = await muPDFScheduler.addJob('countPages', []);
 
@@ -2161,6 +2163,7 @@ export async function insertImageCache(n, png) {
     // Terminate if (likely) no longer needed to reduce memory use
     if ((muPDFScheduler["pngRenderCount"] / valueMax) == 1) {
       muPDFScheduler.terminate()
+      muPDFScheduler = null;
     }
   }
 
@@ -2224,6 +2227,14 @@ async function renderPDFImageCache(pagesArr) {
     }
 
     if (renderImage) {
+
+      // Initialize scheduler if one does not already exist
+      // This happens when the original scheduler is killed after all pages are rendered,
+      // but then the user changes from color to grayscale (or vice versa). 
+      if (!muPDFScheduler) {
+        await initMuPDFScheduler(window.pdfFile, 3);
+      }
+
       // If OCR data is expecting certain dimensions, render to those.
       // Otherwise, the image size is determined by renderPDFImage.
       const imgDimsArg = inputDataModes.xmlMode[n] ? globalThis.pageMetricsObj["dimsAll"][n] : null;
@@ -2268,6 +2279,11 @@ async function renderPDFImageCache(pagesArr) {
       if (!binaryScheduler) {
         binaryScheduler = true; // Prevent this block from being called before the following line finishes
         binaryScheduler = await createTesseractScheduler(4);
+
+        // Signal that scheduler is loaded to any functions that are waiting
+        if (window.muPDFLoaded) {
+          window.muPDFLoaded();
+        }
       }
       const image = document.createElement('img');
       const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src);
@@ -2604,6 +2620,12 @@ async function renderPDF() {
     if (colorModeElem.value == "binary") {
       if (!binaryScheduler) {
         binaryScheduler = await createTesseractScheduler(4);
+      // If binaryScheduler == true the scheduler is still loading and we should wait for it to finish
+      } else if (binaryScheduler == true) {
+        await new Promise(function (resolve, reject) {
+          window.muPDFLoaded = resolve;
+        });
+
       }
       binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
       binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, binaryScheduler["pngRenderCount"]);

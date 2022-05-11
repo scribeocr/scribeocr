@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <meta name="viewport" content="width=device-width">
   <link rel="stylesheet" href="./css/bootstrap.min.css">
   <style type="text/css">
 
@@ -416,6 +417,14 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   </div>
                 </div>
               </div>
+            </div>
+            <div id="simdWarning" class="alert alert-dismissible alert-warning d-flex align-items-center show fade" style="display:none !important">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
+              </svg>
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              <p class="mb-0"> Fast (SIMD-enabled) version of Tesseract not supported on your device. Tesseract LSTM recognition may be slow. <a href="http://docs.scribeocr.com/faq.html#what-devices-support-the-built-in-ocr-engine" target="_blank" class="alert-link">Learn more.</a></p>
             </div>
             <div class="collapse" id="render-recognize-progress-collapse">
               <div class="row" style="padding-top:0.4rem;margin:0.4rem 0.4rem 0 0.4rem;border-top:1px solid #dadada;">
