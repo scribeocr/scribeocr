@@ -24,7 +24,10 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
 
     let fontAscHeight = workingFont.charToGlyph("A").getMetrics().yMax;
 
-    const lower = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
+    // Define various character classes
+    const lower = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"];
+  
+    const upperAsc = ["1","4","5","7","A","B","D","E","F","H","I","K","L","M","N","P","R","T","U","V","W","X","Y","Z"]
 
     const singleStemClassA = ["i","l","t","I"];
     const singleStemClassB = ["f","i","j","l","t","I","J","T"];
@@ -195,10 +198,14 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     }
   }
 
+  const upperAscCodes = upperAsc.map((x) => String(x.charCodeAt(0)));
+  const charHeightKeys = Object.keys(fontMetricsObj["charHeight"]);
+  const charHeightA = round6(quantile(Object.values(fontMetricsObj["charHeight"]).filter((element, index) => upperAscCodes.includes(charHeightKeys[index]))));
+
 {    // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
     // Adjust height of capital J (which often has a height greater than other capital letters)
     // All height from "J" above that of "A" is assumed to occur under the baseline
-    const actJMult = Math.max(fontMetricsObj["charHeight"][74] / fontMetricsObj["charHeight"][65], 0);
+    const actJMult = Math.max(round6(fontMetricsObj["charHeight"][74]) / charHeightA, 0);
     const fontJMetrics = workingFont.charToGlyph("J").getMetrics();
     const fontAMetrics = workingFont.charToGlyph("A").getMetrics();
     const fontJMult = Math.min((fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin), 1);

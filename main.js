@@ -171,7 +171,7 @@ const uploaderElem = /** @type {HTMLInputElement} */(document.getElementById('up
 uploaderElem.addEventListener('change', importFiles);
 
 const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
-colorModeElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
+colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
 
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 createGroundTruthElem.addEventListener('click', createGroundTruthClick);
@@ -190,8 +190,6 @@ enableEvalElem.addEventListener('click', () => {
 
 });
 
-
-enableEval
 
 const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
@@ -239,7 +237,7 @@ zoomInputElem.addEventListener('change', (event) => { changeZoom(zoomInputElem.v
 document.getElementById('zoomPlus').addEventListener('click', () => { changeZoom('plus') });
 
 const displayFontElem = /** @type {HTMLInputElement} */(document.getElementById('displayFont'));
-displayFontElem.addEventListener('click', (event) => { changeDisplayFont(displayFontElem.value) });
+displayFontElem.addEventListener('change', (event) => { changeDisplayFont(displayFontElem.value) });
 
 // const previewBinaryElem = /** @type {HTMLInputElement} */(document.getElementById('previewBinary'));
 // previewBinaryElem.addEventListener('click', previewBinaryImage);
@@ -1929,7 +1927,7 @@ async function importFiles() {
     window.pdfFile = pdfFilesAll[0];
 
     // Initialize scheduler
-    await initMuPDFScheduler(window.pdfFile, 3);
+    await initSchedulerIfNeeded("muPDFScheduler");
 
     pageCountImage = await muPDFScheduler.addJob('countPages', []);
 
@@ -2153,7 +2151,6 @@ export async function insertImageCache(n, png) {
   // image.src = png;
   globalThis.imageAll[n] = image;
 
-  console.log("Page " + n + " pngRenderCount: " + muPDFScheduler["pngRenderCount"]);
   muPDFScheduler["pngRenderCount"] = muPDFScheduler["pngRenderCount"] + 1;
   if (typeof (muPDFScheduler["activeProgress"]) != "undefined") {
     muPDFScheduler["activeProgress"].setAttribute("aria-valuenow", muPDFScheduler["pngRenderCount"]);
@@ -2231,9 +2228,7 @@ async function renderPDFImageCache(pagesArr) {
       // Initialize scheduler if one does not already exist
       // This happens when the original scheduler is killed after all pages are rendered,
       // but then the user changes from color to grayscale (or vice versa). 
-      if (!muPDFScheduler) {
-        await initMuPDFScheduler(window.pdfFile, 3);
-      }
+      await initSchedulerIfNeeded("muPDFScheduler");
 
       // If OCR data is expecting certain dimensions, render to those.
       // Otherwise, the image size is determined by renderPDFImage.
@@ -2275,16 +2270,9 @@ async function renderPDFImageCache(pagesArr) {
     }
 
     if (renderImageBinary) {
-      // Create scheduler if one does not already exist
-      if (!binaryScheduler) {
-        binaryScheduler = true; // Prevent this block from being called before the following line finishes
-        binaryScheduler = await createTesseractScheduler(4);
 
-        // Signal that scheduler is loaded to any functions that are waiting
-        if (window.muPDFLoaded) {
-          window.muPDFLoaded();
-        }
-      }
+      await initSchedulerIfNeeded("binaryScheduler");
+
       const image = document.createElement('img');
       const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src);
       await loadImage(res.data, image);
@@ -2517,6 +2505,8 @@ async function onPrevPage(marginAdj) {
 }
 
 
+
+
 async function onNextPage() {
   if (currentPage.n + 1 >= globalThis.hocrCurrent.length || working) {
     return;
@@ -2560,8 +2550,36 @@ async function optimizeFontClick(value) {
   renderPageQueue(currentPage.n);
 }
 
+window["binarySchedulerInit"] = async function () {
+  window["binaryScheduler"] = await createTesseractScheduler(4);
+  return;
+}
 
-var binaryScheduler;
+window["muPDFSchedulerInit"] = async function () {
+  await initMuPDFScheduler(window.pdfFile, 3);
+  return;
+}
+
+// Function that is invoked before a scheduler is used.
+// If the scheduler already exists, resolves immediately.
+// If scheduler is being created already, return promise that resolves when that is done.
+// If scheduler does not exist and is not being created, initialize and return promise that resolves when done.
+async function initSchedulerIfNeeded(x) {
+  if (window[x] && typeof (window[x]) == "object") {
+    return;
+  } else if (window[x] == true) {
+    await new Promise(function (resolve, reject) {
+      window["x" + "Loaded"] = resolve;
+    });
+    return;
+  } else {
+    window[x] = true;
+    await window[x + "Init"]();
+    if (window["x" + "Loaded"]) window["x" + "Loaded"]();
+    return;
+  }
+}
+
 async function renderPDF() {
 
   globalThis.doc = new PDFDocument({
@@ -2611,29 +2629,27 @@ async function renderPDF() {
 
   // Render all pages to PNG
   if (inputDataModes.pdfMode && displayModeElem.value != "ebook") {
-    let time1 = Date.now();
-    // Set pngRenderCount to only include PNG images rendered with the current color setting
-    //const colorCheckbox = colorCheckboxElem.checked;
-    muPDFScheduler["pngRenderCount"] = [...Array(imageAll.length).keys()].filter((x) => typeof (imageAll[x]) == "object" && (colorModeElem.value == "binary" || imageAllColor[x] == colorModeElem.value)).length;
+    const pngRenderCount = [...Array(imageAll.length).keys()].filter((x) => typeof (imageAll[x]) == "object" && (colorModeElem.value == "binary" || imageAllColor[x] == colorModeElem.value)).length;
+    if (pngRenderCount < imageAll.length) {
 
-    muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
-    if (colorModeElem.value == "binary") {
-      if (!binaryScheduler) {
-        binaryScheduler = await createTesseractScheduler(4);
-      // If binaryScheduler == true the scheduler is still loading and we should wait for it to finish
-      } else if (binaryScheduler == true) {
-        await new Promise(function (resolve, reject) {
-          window.muPDFLoaded = resolve;
-        });
+      await initSchedulerIfNeeded("muPDFScheduler");
 
-      }
-      binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
-      binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, binaryScheduler["pngRenderCount"]);
+      // Set pngRenderCount to only include PNG images rendered with the current color setting
+      //const colorCheckbox = colorCheckboxElem.checked;
+      muPDFScheduler["pngRenderCount"] = pngRenderCount;
+
+      muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
     }
+    if (colorModeElem.value == "binary") {
 
+        await initSchedulerIfNeeded("binaryScheduler");
+        
+        binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
+        binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, binaryScheduler["pngRenderCount"]);
+    }
+    
     await renderPDFImageCache(pagesArr);
-    let time2 = Date.now();
-    console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
+
   }
 
   let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
