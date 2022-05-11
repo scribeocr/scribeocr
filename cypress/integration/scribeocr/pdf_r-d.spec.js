@@ -47,7 +47,28 @@ describe('It', () => {
     cy.verifyDownload('snow_drops.txt')
   })
 */
-  it('recognises and downloads a pdf file from a pdf with no imported ocr data', () => {
+  it('r & d pdf from pdf, no imported ocr data, COLOR', () => {
+    cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/the_past.pdf'])
+    cy.wait(3000)
+    cy.get('#pageCount').should('have.text', '1')
+    
+    cy.get('#nav-recognize-tab').click()
+    cy.get('#recognizeAll').click()
+
+    cy.wait(12000)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Color')
+    
+
+    cy.get('#nav-download-tab').click()
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionPDF').click()
+    cy.get('#download').click()
+    cy.verifyDownload('the_past.pdf')
+  })
+
+  it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/henreys_grave.pdf'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -56,6 +77,10 @@ describe('It', () => {
     cy.get('#recognizeAll').click()
 
     cy.wait(12000)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Binary')
+    
 
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()

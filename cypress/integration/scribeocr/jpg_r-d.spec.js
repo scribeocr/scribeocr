@@ -16,6 +16,8 @@ describe('It recognises and downloads a', () => {
     cy.get('#recognizeAll').click()
     cy.wait(10000)
 
+    
+
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
@@ -45,7 +47,7 @@ describe('It recognises and downloads a', () => {
     cy.verifyDownload('henreys_grave.txt', {contains: true})
   })
 
-  it('pdf file from a jpg with no imported ocr data', () => {
+  it('pdf file from a jpg with no imported ocr data, NATIVE', () => {
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_jpg/the_past.jpg'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -53,6 +55,28 @@ describe('It recognises and downloads a', () => {
     cy.get('#nav-recognize-tab').click()
     cy.get('#recognizeAll').click()
     cy.wait(10000)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Native')
+
+    cy.get('#nav-download-tab').click()
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionPDF').click()
+    cy.get('#download').click()
+    cy.verifyDownload('the_past', {contains: true})
+  })
+
+  it('pdf file from a jpg with no imported ocr data, BINARY', () => {
+    cy.get('#uploader').selectFile(['cypress/fixtures/multi_jpg/the_past.jpg'])
+    cy.wait(3000)
+    cy.get('#pageCount').should('have.text', '1')
+    
+    cy.get('#nav-recognize-tab').click()
+    cy.get('#recognizeAll').click()
+    cy.wait(10000)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Binary')
 
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
