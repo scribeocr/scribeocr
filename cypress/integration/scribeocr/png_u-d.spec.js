@@ -19,8 +19,8 @@ describe('It downloads a', () => {
 
   it('text file from 4 pngs with 4 hOCRs', () => {
     cy.get('#uploader').selectFile([
-      'cypress/fixtures/pretty_faces.xml', 
-      'cypress/fixtures/pretty_faces.png', 
+      'cypress/fixtures/pretty_faces.png',
+      'cypress/fixtures/pretty_faces.xml',  
       'cypress/fixtures/multi_png/aurelia_png.xml', 
       'cypress/fixtures/multi_png/aurelia.png', 
       'cypress/fixtures/multi_png/henreys_grave_png.xml', 
@@ -35,14 +35,35 @@ describe('It downloads a', () => {
     cy.verifyDownload('pretty_faces.txt', {contains: true})
   })
 
-  it('pdf file from a png with hOCR', () => {
+  it('pdf file from a png with hOCR, BINARY', () => {
     cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'])
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(100)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Binary')
+
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
+    cy.wait(1000)
+    cy.verifyDownload('pretty_faces.pdf', {contains: true})
+  })
+
+  it('pdf file from a png with hOCR, NATIVE', () => {
+    cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'])
+    cy.get('#pageCount').should('have.text', '1')
+    cy.wait(100)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Native')
+
+    cy.get('#nav-download-tab').click()
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionPDF').click()
+    cy.get('#download').click()
+    cy.wait(1000)
     cy.verifyDownload('pretty_faces.pdf', {contains: true})
   })
 
@@ -64,7 +85,7 @@ describe('It downloads a', () => {
     cy.verifyDownload('pretty_faces.pdf', {contains: true})
   })
 
-  it('hocr file from jpg)', () => {
+  it('hocr file from png)', () => {
     cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'])
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(3000)
@@ -76,7 +97,7 @@ describe('It downloads a', () => {
 
   })
 
-  it('hocr file from 4 jpgs)', () => {
+  it('hocr file from 4 pngs)', () => {
     cy.get('#uploader').selectFile([
       'cypress/fixtures/pretty_faces.xml', 
       'cypress/fixtures/pretty_faces.png', 
