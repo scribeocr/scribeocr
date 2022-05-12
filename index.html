@@ -139,7 +139,7 @@
             <button class="btn btn-info btn-sm" id="next">Next</button>
             <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
             Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
-            <span>Page: <input type="text" id="pageNum" name="pageNum" style="width:3em"> / <span id="pageCount"></span></span>
+            <span>Page: <input type="text" id="pageNum" name="pageNum" autocomplete="off" style="width:3em"> / <span id="pageCount"></span></span>
           </div>
         </div>
 
@@ -304,7 +304,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                     </svg>
                   </a>
 
-                  <input type="file" id="uploader" class="form-control btn-sm" label="Import Files" multiple>
+                  <input type="file" id="uploader" class="form-control btn-sm" autocomplete="off" label="Import Files" multiple>
                 </div>
               </div>
               <div class="col col-2">
@@ -660,7 +660,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   </svg>
                 </a>
                 <div class="form-check form-switch form-switch-lg">
-                  <input type="checkbox" id="optimizeFont" class="form-check-input" disabled>
+                  <input type="checkbox" id="optimizeFont" class="form-check-input" autocomplete="off" disabled>
                 </div>
               </div>
 
@@ -684,13 +684,13 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                 <div class="row">
                   <label for="staticEmail" class="col-sm-2 col-form-label">High</label>
                   <div class="col col-4">
-                    <input class="form-control btn-sm" type="text" id="confThreshHigh" name="pageNum" size="3" disabled>
+                    <input class="form-control btn-sm" type="text" id="confThreshHigh" name="pageNum" size="3" autocomplete="off" disabled>
                   </div>
                 </div>
                 <div class="row">
                   <label for="inputPassword" class="col-sm-2 col-form-label">Med</label>
                   <div class="col col-4">
-                    <input class="form-control btn-sm" type="text" id="confThreshMed" name="pageNum" size="3" disabled>
+                    <input class="form-control btn-sm" type="text" id="confThreshMed" name="pageNum" size="3" autocomplete="off" disabled>
                   </div>
                 </div>
               </div>

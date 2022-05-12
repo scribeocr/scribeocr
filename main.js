@@ -2681,7 +2681,13 @@ async function renderPDF() {
   globalThis.doc.end();
   stream.on('finish', function () {
     // get a blob you can do whatever you like with
-    let url = stream.toBlobURL('application/pdf');
+
+    // Note: Do not specify pdf MIME type.
+    // Due to a recent Firefox update, this causes the .pdf to be opened in the same tab (replacing the main site)
+    // https://support.mozilla.org/en-US/kb/manage-downloads-preferences-using-downloads-menu
+    
+    //let url = stream.toBlobURL('application/pdf');
+    let url = stream.toBlobURL();
     let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
 
     saveAs(url, fileName);
