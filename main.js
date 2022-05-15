@@ -2512,24 +2512,8 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     if (renderImage || renderImageBinary) {
       renderPDFImageCache([n], true);
 
-      // Edit rotation for binary images that have already been rotated
-      if (colorMode == "binary") {
-        if (currentPage.backgroundOpts.angle) {
-          currentPage.backgroundOpts.angle = 0;
-        } else {
-          currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][n];
-        }
-      }
-
     } else if (colorMode == "binary" && imageAllBinary[n] != true) {
-      // Edit rotation for binary images that have already been rotated
-      if (imageAllBinaryRotated[n]) {
-        if (currentPage.backgroundOpts.angle) {
-          currentPage.backgroundOpts.angle = 0;
-        } else {
-          currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][n];
-        }
-      }
+
       currentPage.backgroundImage = new fabric.Image(imageAllBinary[n], { objectCaching: false });
       currentPage.renderStatus = currentPage.renderStatus + 1;
       selectDisplayMode(displayModeElem.value);
@@ -2983,6 +2967,15 @@ globalThis.selectDisplayMode = function (x) {
       obj.set("opacity", opacity_arg);
     }
   });
+
+  // Edit rotation for binary images that have already been rotated
+  if (colorModeElem.value == "binary" && imageAllBinaryRotated[currentPage.n]) {
+    if (currentPage.backgroundOpts.angle) {
+      currentPage.backgroundOpts.angle = 0;
+    } else {
+      currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
+    }
+  }
 
   // Include a background image if appropriate
   if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
