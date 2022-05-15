@@ -19,7 +19,7 @@ import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 import { optimizeFont, calculateOverallFontMetrics, createSmallCapsFont } from "./js/fontOptimize.js";
 import { loadFont, loadFontFamily } from "./js/fontUtils.js";
 
-import { getRandomAlphanum, quantile, sleep, readOcrFile, round3 } from "./js/miscUtils.js";
+import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, rotateBoundingBox } from "./js/miscUtils.js";
 
 import {
   deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, toggleBoundingBoxesSelectedWords, changeWordFont, toggleSuperSelectedWords,
@@ -695,12 +695,13 @@ async function recognizePage() {
     recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
   }
 
-  recognizeAreaScheduler.addJob('recognize', globalThis.imageAll[currentPage.n].src, allConfig).then((y) => {
+  recognizeAreaScheduler.addJob('recognize', globalThis.imageAllBinary[currentPage.n].src, allConfig).then((y) => {
     const image = document.createElement('img');
     image.src = y.data.image;
     window.imageAllBinary[currentPage.n] = image;
     window.hocrCurrentRaw[currentPage.n] = y.data.hocr;
-    convertPageWorker.postMessage([y.data.hocr, currentPage.n, false, true]);
+    //convertPageWorker.postMessage([y.data.hocr, currentPage.n, false, true, undefined, pageMetricsObj["angleAll"][currentPage.n]]);
+    convertPage([y.data.hocr, currentPage.n, false, true, undefined, pageMetricsObj["angleAll"][currentPage.n]])
   })
 
   // Enable confidence threshold input boxes (only used for Tesseract)
@@ -714,6 +715,7 @@ async function recognizePage() {
   toggleEditButtons(false);
 
 }
+
 
 
 function createGroundTruthClick() {
@@ -1021,7 +1023,8 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
 
   // If no page exists already, simply use the new scan without editing
   if (!lines || lines.length == 0) {
-    convertPageWorker.postMessage([hocrString, currentPage.n, false, true]);
+    //convertPageWorker.postMessage([hocrString, currentPage.n, false, true]);
+    convertPage([hocrString, currentPage.n, false, true, undefined, undefined]);
     return;
     //currentPage.xmlDoc = currentPage.xmlDoc = parser.parseFromString(hocrString, "text/xml");
 
@@ -1196,12 +1199,31 @@ async function recognizeAll() {
       const angleArg = rotateBinary ? pageMetricsObj["angleAll"][x] * (Math.PI / 180) * -1 || 0 : 0;
       allConfigI["angle"] = angleArg;
 
-      return scheduler.addJob('recognize', globalThis.imageAll[x].src, allConfigI).then((y) => {
+      return scheduler.addJob('recognize', globalThis.imageAll[x].src, allConfigI).then(async (y) => {
         const image = document.createElement('img');
         image.src = y.data.image;
         window.imageAllBinary[x] = image;
         window.hocrCurrentRaw[x] = y.data.hocr;
-        convertPageWorker.postMessage([y.data.hocr, x, false, false, oemText]);
+        
+        // If the angle is already known, run once async
+        if (pageMetricsObj["angleAll"]?.[x]) {
+          convertPage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]).then(() => updateConvertPageCounter());
+        } else {
+          // If the angle is not already known, we wait until recognition finishes so we know the angle
+          await convertPage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]);
+          // If the angle is >1 degree, we rerun with the known angle (which results in the image being rotated in pre-processing step)
+          if (Math.abs(pageMetricsObj["angleAll"][x]) >= 1) {
+            const angleArg = rotateBinary ? pageMetricsObj["angleAll"][x] * (Math.PI / 180) * -1 || 0 : 0;
+            allConfigI["angle"] = angleArg;
+            return scheduler.addJob('recognize', globalThis.imageAll[x].src, allConfigI).then(async (y) => {
+              window.hocrCurrentRaw[x] = y.data.hocr;
+              convertPage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]).then(() => updateConvertPageCounter());
+            });
+          } else {
+            updateConvertPageCounter();
+          }
+        }
+        // convertPageWorker.postMessage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]);
       })
       
     }));
@@ -1280,8 +1302,27 @@ function recognizeAreaClick(wordMode = false) {
     let angleAdjXRect = 0;
     let angleAdjYRect = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
-      angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.top + rect1.height * 0.5);
-      angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.left + angleAdjXRect / 2) * -1;
+      // angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.top + rect1.height * 0.5);
+      // angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.left + angleAdjXRect / 2) * -1;
+
+      const rotateAngle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
+
+      const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
+
+      const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+      const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
+
+      const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
+      const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+
+      const baselineY = rect1.top + rect1.height - rect1.height / 3;
+
+      const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * rect1.left;
+      const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
+
+      angleAdjXRect = shiftX + angleAdjXInt;
+      angleAdjYRect = shiftY + angleAdjYInt;
+
     }
 
     // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
@@ -1377,9 +1418,31 @@ function addWordClick() {
     // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
     let angleAdjXRect = 0;
     let angleAdjYRect = 0;
+    let sinAngle = 0;
+    let shiftX = 0;
+    let shiftY = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
-      angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect.top + rect.height * 0.5);
-      angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect.left + angleAdjXRect / 2) * -1;
+      // angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect.top + rect.height * 0.5);
+      // angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect.left + angleAdjXRect / 2) * -1;
+
+      const rotateAngle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
+
+      const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
+
+      sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+      const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
+
+      shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
+      shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+
+      const baselineY = (rect.top + rect.height) - (rect.height) / 3;
+
+      const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (rect.left - shiftX);
+      const angleAdjXInt = sinAngle * ((baselineY - shiftY) - angleAdjYInt * 0.5);
+
+      angleAdjXRect = angleAdjXInt + shiftX;
+      angleAdjYRect = angleAdjYInt + shiftY;
+
     }
 
     // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
@@ -1535,8 +1598,15 @@ function addWordClick() {
     let angleAdjX = 0;
     let angleAdjY = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
-      angleAdjX = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (lineBoxChosen[3] + baselineChosen[1]);
-      angleAdjY = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (lineBoxChosen[0] + angleAdjX / 2) * -1;
+      // angleAdjX = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (lineBoxChosen[3] + baselineChosen[1]);
+      // angleAdjY = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (lineBoxChosen[0] + angleAdjX / 2) * -1;
+
+      const angleAdjXInt = sinAngle * (lineBoxChosen[3] + baselineChosen[1]);
+      const angleAdjYInt = sinAngle * (lineBoxChosen[0] + angleAdjXInt / 2) * -1;
+
+      angleAdjX = angleAdjXInt + shiftX;
+      angleAdjY = angleAdjYInt + shiftY;
+
     }
 
     let letterHeight = parseFloat(titleStrLineChosen.match(/x_size\s+([\d\.\-]+)/)?.[1]);
@@ -1800,10 +1870,12 @@ async function importOCRFiles() {
     
     // Process HOCR using web worker, reading from file first if that has not been done already
     if (singleHOCRMode) {
-      convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
+      //convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
+      convertPage([window.hocrCurrentRaw[i], i, abbyyMode, undefined, undefined, undefined]).then(() => updateConvertPageCounter());
     } else {
       const hocrFile = hocrFilesAll[i];
-      readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
+      //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
+      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined, undefined, undefined, undefined]).then(() => updateConvertPageCounter()));
     }
 
   }
@@ -2097,12 +2169,14 @@ async function importFiles() {
       toggleEditButtons(false);
       // Process HOCR using web worker, reading from file first if that has not been done already
       if (singleHOCRMode) {
-        convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
+        //convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
+        convertPage([window.hocrCurrentRaw[i], i, abbyyMode, undefined, undefined, undefined]).then(() => updateConvertPageCounter());
       } else {
         const hocrFile = hocrFilesAll[i];
         const hocrNi = hocrN + 1;
         hocrN = hocrN + 1;
-        readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, hocrNi]));
+        //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, hocrNi]));
+        readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined, undefined, undefined, undefined]).then(() => updateConvertPageCounter()));
       }
     }
 
@@ -2355,6 +2429,14 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       canvas.viewportTransform[4] = 0;
 
       canvas.clear();
+
+      if (imgDims != null) {
+        let zoomFactor = Math.min(parseFloat(/** @type {HTMLInputElement} */(document.getElementById('zoomInput')).value) / imgDims[1], 1);
+        canvas.setHeight(imgDims[0] * zoomFactor);
+        canvas.setWidth(imgDims[1] * zoomFactor);
+        canvas.setZoom(zoomFactor);
+      }
+
       let marginLine = new fabric.Line([marginPx, 0, marginPx, canvasDims[0]], { stroke: 'blue', strokeWidth: 1, selectable: false, hoverCursor: 'default' });
       canvas.add(marginLine);
 
@@ -2376,7 +2458,10 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       }
 
       if (autoRotateCheckboxElem.checked) {
-        currentPage.leftAdjX = currentPage.leftAdjX - (globalThis.pageMetricsObj["angleAdjAll"][n] ?? 0);
+        const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180));
+        const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
+
+        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsObj["angleAdjAll"][n] ?? 0);
       }
 
       currentPage.backgroundOpts.left = imgDims[1] * 0.5 + currentPage.leftAdjX;
@@ -2398,7 +2483,6 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     }
 
     if (imgDims != null) {
-      console.log(imgDims);
       let zoomFactor = Math.min(parseFloat(/** @type {HTMLInputElement} */(document.getElementById('zoomInput')).value) / imgDims[1], 1);
       canvas.setHeight(imgDims[0] * zoomFactor);
       canvas.setWidth(imgDims[1] * zoomFactor);
@@ -2689,6 +2773,8 @@ export async function optimizeFont2() {
 
 
 var convertPageWorker = new Worker('js/convertPage.js');
+convertPageWorker.promises = {};
+convertPageWorker.promiseId = 0;
 
 globalThis.fontMetricsObj = new Object;
 globalThis.pageMetricsObj = new Object;
@@ -2696,6 +2782,56 @@ var fontMetricObjsMessage = new Object;
 
 
 var loadCountHOCR = 0;
+
+function convertPage(args) {
+  
+  return new Promise(function (resolve, reject) {
+    let id = convertPageWorker.promiseId++;
+    convertPageWorker.promises[id] = { resolve: resolve };
+
+    args.push(id);
+
+    convertPageWorker.postMessage(args);
+
+  });
+
+}
+
+function updateConvertPageCounter() {
+
+  let activeProgress = convertPageWorker["activeProgress"];
+
+  loadCountHOCR = loadCountHOCR + 1;
+  activeProgress.setAttribute("aria-valuenow", loadCountHOCR);
+
+  const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
+
+  // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
+  // This can make the interface less jittery compared to updating after every loop.
+  // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
+  const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
+  if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
+    activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
+    if (loadCountHOCR == valueMax) {
+      // If resuming from a previous editing session font stats are already calculated
+      if (!inputDataModes.resumeMode) {
+        // Buttons are enabled from calculateOverallFontMetrics function in this case
+        globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+      } else {
+        optimizeFontElem.disabled = false;
+        downloadElem.disabled = false;
+        //recognizeAllElem.disabled = true;
+      }
+      calculateOverallPageMetrics();
+      // Render first handful of pages for pdfs so the interface starts off responsive
+      if (inputDataModes.pdfMode) {
+        renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
+      }
+
+    }
+  }
+} 
+
 convertPageWorker.onmessage = function (e) {
 
   const recognizeAreaMode = e.data[2];
@@ -2741,39 +2877,41 @@ convertPageWorker.onmessage = function (e) {
     renderPageQueue(currentPage.n);
   }
   
-  if (!recognizeAreaMode) {
-    let activeProgress = convertPageWorker["activeProgress"];
+  // if (!recognizeAreaMode) {
+  //   let activeProgress = convertPageWorker["activeProgress"];
 
-    loadCountHOCR = loadCountHOCR + 1;
-    activeProgress.setAttribute("aria-valuenow", loadCountHOCR);
+  //   loadCountHOCR = loadCountHOCR + 1;
+  //   activeProgress.setAttribute("aria-valuenow", loadCountHOCR);
 
-    const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
+  //   const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
 
-    // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
-    // This can make the interface less jittery compared to updating after every loop.
-    // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
-    const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
-    if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
-      activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
-      if (loadCountHOCR == valueMax) {
-        // If resuming from a previous editing session font stats are already calculated
-        if (!inputDataModes.resumeMode) {
-          // Buttons are enabled from calculateOverallFontMetrics function in this case
-          globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-        } else {
-          optimizeFontElem.disabled = false;
-          downloadElem.disabled = false;
-          //recognizeAllElem.disabled = true;
-        }
-        calculateOverallPageMetrics();
-        // Render first handful of pages for pdfs so the interface starts off responsive
-        if (inputDataModes.pdfMode) {
-          renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
-        }
+  //   // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
+  //   // This can make the interface less jittery compared to updating after every loop.
+  //   // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
+  //   const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
+  //   if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
+  //     activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
+  //     if (loadCountHOCR == valueMax) {
+  //       // If resuming from a previous editing session font stats are already calculated
+  //       if (!inputDataModes.resumeMode) {
+  //         // Buttons are enabled from calculateOverallFontMetrics function in this case
+  //         globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+  //       } else {
+  //         optimizeFontElem.disabled = false;
+  //         downloadElem.disabled = false;
+  //         //recognizeAllElem.disabled = true;
+  //       }
+  //       calculateOverallPageMetrics();
+  //       // Render first handful of pages for pdfs so the interface starts off responsive
+  //       if (inputDataModes.pdfMode) {
+  //         renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
+  //       }
 
-      }
-    }
-  } 
+  //     }
+  //   }
+  // } 
+
+  convertPageWorker.promises[e.data[e.data.length-1]].resolve();
 
 }
 

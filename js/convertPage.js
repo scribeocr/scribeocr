@@ -8,9 +8,9 @@ onmessage = function(e) {
   if(e.data[2]){
     workerResult = [convertPageAbbyy(e.data[0], e.data[1]),e.data[1]];
   } else {
-    workerResult = [convertPage(e.data[0]),e.data[1]];
+    workerResult = [convertPage(e.data[0],e.data[5]),e.data[1]];
   }
-  workerResult.push(e.data[3], e.data[4]);
+  workerResult.push(e.data[3], e.data[4], e.data[e.data.length-1]);
   postMessage(workerResult);
 }
 
@@ -39,7 +39,9 @@ const mean50 = arr => {
 };
 
 
-function convertPage(hocrString){
+function convertPage(hocrString, rotateAngle = 0) {
+  
+  rotateAngle = rotateAngle || 0;
 
   let widthObjPage = { "normal": {} };
   let heightObjPage = { "normal": {} };
@@ -132,6 +134,8 @@ function convertPage(hocrString){
        xHeight = letterHeight - ascHeight - descHeight;
     }
 
+    let heightSmallCapsLine = [];
+
     function convertWord(match){
        let text = "";
        //let it = match.matchAll(/<span class\=[\"\']ocrx_cinfo[\"\'] title=\'([^\'\"]+)[\"\']\>([^\<]*)\<\/span\>/ig);
@@ -142,16 +146,76 @@ function convertPage(hocrString){
 
        // Unlike Abbyy, which generally identifies small caps as lowercase letters (and identifies small cap text explicitly as a formatting property),
        // Tesseract (at least the Legacy model) reports them as upper-case letters.
-      let wordStr = letterArr.map(x => x[2]).join(""); heightObjPage
-       let smallCaps = false;
-       if(!/[a-z]/.test(wordStr) && /[A-Z].?[A-Z]/.test(wordStr)){
-         let wordBboxesTop = letterArr.map(x => x[1].match(/\d+ (\d+)/)[1]);
-         let wordBboxesBottom = letterArr.map(x => x[1].match(/\d+ \d+ \d+ (\d+)/)[1]);
-         if(Math.min(...letterArr.map(x => x[1].match(/\d+ (\d+)/)[1]).map(x => Math.sign((x - wordBboxesBottom[0]) + ((wordBboxesBottom[0] - wordBboxesTop[0]) * 0.8))).slice(1)) == 1){
-           smallCaps = true;
-         }
-       }
+      let wordStr = letterArr.map(x => x[2]).join(""); 
+      let smallCaps = false;
+      let smallCapsTitle = false;
+      if (!/[a-z]/.test(wordStr) && /[A-Z].?[A-Z]/.test(wordStr)) {
+        // Filter to only include letters
+        const filterArr = wordStr.split("").map((x) => /[a-z]/i.test(x));
+        const letterArrSub = letterArr.filter((x, y) => filterArr[y]);
 
+        let wordBboxesTop = letterArrSub.map(x => parseInt(x[1].match(/\d+ (\d+)/)[1]));
+        let wordBboxesBottom = letterArrSub.map(x => parseInt(x[1].match(/\d+ \d+ \d+ (\d+)/)[1]));
+
+        // Check for small caps words in title case (first letter larger than all following letters)
+        if (Math.min(...letterArrSub.map(x => x[1].match(/\d+ (\d+)/)[1]).map(x => Math.sign((x - wordBboxesBottom[0]) + ((wordBboxesBottom[0] - wordBboxesTop[0]) * 0.90))).slice(1)) == 1){
+          smallCaps = true;
+          smallCapsTitle = true;
+          for (let i = 1; i < wordBboxesTop.length; i++) {
+            heightSmallCapsLine.push(wordBboxesBottom[i] - wordBboxesTop[i]);
+          }
+        // Check for small caps words in lowercase (all letters the same size, which is around the same size as small caps in previous words in line)
+        } else {
+          const letterHeightArr = wordBboxesBottom.map((x, y) => x - wordBboxesTop[y]);
+          const heightSmallCapsLineMedian = quantile(heightSmallCapsLine, 0.5);
+          if (heightSmallCapsLineMedian && letterHeightArr.filter((x) => x > heightSmallCapsLineMedian * 1.05).length == 0) {
+            smallCaps = true;
+          }
+        }
+       }
+      
+      // Tesseract does not split superscript footnote references into separate words, so that happens here
+      let letterArrSuper = [];
+      //if (/^\W?[a-z]/i.test(wordStr) && /\d$/i.test(wordStr)) {
+      if (/\d$/i.test(wordStr)) {
+        const numsN = wordStr.match(/\d+$/)[0].length;
+
+        const bboxes = letterArr.map(x => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5).map((y) => parseInt(y)));
+
+        // Adjust box such that top/bottom approximate those coordinates at the leftmost point
+        let lineboxAdj = linebox.slice();
+
+        if (baseline[0] < 0) {
+          lineboxAdj[1] = lineboxAdj[1] - (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
+        } else {
+          lineboxAdj[3] = lineboxAdj[3] - (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
+        }
+
+        const expectedBaseline = (bboxes[0][0] + (bboxes[bboxes.length - 1][2] - bboxes[0][0]) / 2 - lineboxAdj[0]) * baseline[0] + baseline[1] + lineboxAdj[3];
+
+        const lineAscHeight = expectedBaseline - lineboxAdj[1];
+
+        let baseN = 0;
+        for (let i = bboxes.length - 1; i >= 0; i--){
+          if (bboxes[i][3] < expectedBaseline - lineAscHeight / 4) {
+            baseN++;
+          } else {
+            break;
+          }
+        }
+
+        const superN = Math.min(numsN, baseN);
+
+        if (wordStr == "42") {
+          console.log("Test");
+        }
+
+        if (superN > 0) {
+          letterArrSuper = letterArr.slice(letterArr.length - superN, letterArr.length);
+          letterArr = letterArr.slice(0, letterArr.length - superN);
+        }
+
+      } 
 
        for (let j = 0; j < letterArr.length; j++) {
         let titleStrLetter = letterArr[j][1];
@@ -165,17 +229,28 @@ function convertPage(hocrString){
         const charWidth = bboxes[j][2] - bboxes[j][0];
         const charHeight = bboxes[j][3] - bboxes[j][1];
 
-        if(smallCaps){
-          if (j > 0) {
-            // If word is small caps, convert any letter but the first to lower case
-            contentStrLetter = contentStrLetter.toLowerCase();
-            charUnicode = String(contentStrLetter.charCodeAt(0));
+         if (smallCaps) {
+           if (smallCapsTitle) {
+             if (j > 0) {
+               // If word is small caps, convert any letter but the first to lower case
+               contentStrLetter = contentStrLetter.toLowerCase();
+               charUnicode = String(contentStrLetter.charCodeAt(0));
 
-            if(heightSmallCapsObjPage[charUnicode] == null){
-              heightSmallCapsObjPage[charUnicode] = new Array();
-            }
-            heightSmallCapsObjPage[charUnicode].push(charHeight / xHeight);
-          }
+               if (heightSmallCapsObjPage[charUnicode] == null) {
+                 heightSmallCapsObjPage[charUnicode] = new Array();
+               }
+               heightSmallCapsObjPage[charUnicode].push(charHeight / xHeight);
+             } 
+
+           } else {
+             contentStrLetter = contentStrLetter.toLowerCase();
+             charUnicode = String(contentStrLetter.charCodeAt(0));
+
+             if (heightSmallCapsObjPage[charUnicode] == null) {
+               heightSmallCapsObjPage[charUnicode] = new Array();
+             }
+             heightSmallCapsObjPage[charUnicode].push(charHeight / xHeight);
+           }
 
         } else {
           if(widthObjPage["normal"][charUnicode] == null){
@@ -216,15 +291,51 @@ function convertPage(hocrString){
       text = text ?? "";
       text = text.trim()
 
-      if (text == "") return ("");
-
       let wordXML = match.match(wordElementRegex)[0];
 
-      if (smallCaps) {
-        wordXML = wordXML.slice(0, -1) + " style='font-variant:small-caps'" + ">";
+      if (letterArrSuper.length > 0) {
+        // Calculate new bounding boxes
+
+        let wordXMLCore = "";
+        if (text) {
+          const bboxesCore = letterArr.map(x => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5));
+          let wordBoxCore = new Array(4);
+          wordBoxCore[0] = Math.min(...bboxesCore.map(x => x[0]));
+          wordBoxCore[1] = Math.min(...bboxesCore.map(x => x[1]));
+          wordBoxCore[2] = Math.max(...bboxesCore.map(x => x[2]));
+          wordBoxCore[3] = Math.max(...bboxesCore.map(x => x[3]));
+
+          const wordBoxCoreStr = wordBoxCore[0] + " " + wordBoxCore[1] + " " + wordBoxCore[2] + " " + wordBoxCore[3];
+
+          wordXMLCore = wordXML.replace(/(\d+) (\d+) (\d+) (\d+)/, wordBoxCoreStr) + text + "</span>";
+        }
+
+        const bboxesSuper = letterArrSuper.map(x => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5));
+        let wordBoxSuper = new Array(4);
+        wordBoxSuper[0] = Math.min(...bboxesSuper.map(x => x[0]));
+        wordBoxSuper[1] = Math.min(...bboxesSuper.map(x => x[1]));
+        wordBoxSuper[2] = Math.max(...bboxesSuper.map(x => x[2]));
+        wordBoxSuper[3] = Math.max(...bboxesSuper.map(x => x[3]));
+
+        const wordBoxSuperStr = wordBoxSuper[0] + " " + wordBoxSuper[1] + " " + wordBoxSuper[2] + " " + wordBoxSuper[3];
+
+        const textSuper = wordStr.slice(letterArr.length, wordStr.length);
+
+        const wordXMLSuper = wordXML.replace(/(\d+) (\d+) (\d+) (\d+)/, wordBoxSuperStr).replace(/id\=['"]([^'"]*)['"]/i, "id=\"$1a\"") + "<sup>" + textSuper + "</sup>" + "</span>";
+
+        return wordXMLCore + wordXMLSuper;
+
+
+      } else {
+        if (text == "") return ("");
+        
+        if (smallCaps) {
+          wordXML = wordXML.slice(0, -1) + " style='font-variant:small-caps'" + ">";
+        }
+
+        return (wordXML + text + "</span>");
       }
 
-      return (wordXML + text + "</span>");
 
     }
     if(charMode){
@@ -246,14 +357,65 @@ function convertPage(hocrString){
     lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
   }
 
-  const angleOut = Math.asin(angleRiseMedian) * (180/Math.PI);
+  let angleOut = Math.abs(rotateAngle) > 0.05 ? rotateAngle : Math.asin(angleRiseMedian) * (180 / Math.PI);
+  const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+  const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
 
-  let leftOut = quantile(lineLeft, 0.2);
-  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut;
+  let leftOut = quantile(lineLeft, 0.2) - shiftX;
+  let leftAdjOut = quantile(lineLeftAdj, 0.2) - shiftX - leftOut;
+  
   // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
-  if(lineLeft.length < 5){
+  if (lineLeft.length < 5) {
     leftOut = null;
   }
+
+  
+  // Transform bounding boxes if rotation is specified.
+  // This option is used when an image is rotated before it is sent to Tesseract,
+  // however the HOCR needs to be applied to the original image. 
+  if (Math.abs(rotateAngle) > 0.05) {
+
+    // const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+    const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
+
+    // const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
+    const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+
+    function rotateBoundingBox(boxStr) {
+
+      const prefixStr = boxStr.match(/bbox(?:es)?/);
+
+      let box = [...boxStr.matchAll(charBboxRegex)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+
+      box[0] = box[0] - shiftX;
+      box[2] = box[2] - shiftX;
+      box[1] = box[1] - shiftY;
+      box[3] = box[3] - shiftY;
+
+      const baselineY = box[3] - (box[3] - box[1]) / 3;
+
+      const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * box[0];
+      const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
+
+      //const angleAdjXInt = sinAngle * (box[3] - (box[3] - box[1]) / 3);
+      //const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
+
+      box[0] = box[0] - angleAdjXInt;
+      box[2] = box[2] - angleAdjXInt;
+      box[1] = box[1] - angleAdjYInt;
+      box[3] = box[3] - angleAdjYInt;
+
+      box = box.map((x) => Math.round(x));
+
+      return prefixStr + " " + box[0] + " " + box[1] + " " + box[2] + " " + box[3];
+
+    }
+
+    hocrString = hocrString.replaceAll(charBboxRegex, rotateBoundingBox);
+
+  }
+
+
 
   const xmlOut = hocrString;
   const dimsOut = pageDims;
