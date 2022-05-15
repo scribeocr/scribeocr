@@ -1203,6 +1203,7 @@ async function recognizeAll() {
         const image = document.createElement('img');
         image.src = y.data.image;
         window.imageAllBinary[x] = image;
+        window.imageAllBinaryRotated[x] = Boolean(allConfigI["angle"]);
         window.hocrCurrentRaw[x] = y.data.hocr;
         
         // If the angle is already known, run once async
@@ -2095,6 +2096,7 @@ async function importFiles() {
   globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw || Array(pageCount);
   globalThis.imageAll = Array(pageCount);
   globalThis.imageAllBinary = Array(pageCount);
+  globalThis.imageAllBinaryRotated = Array(pageCount);
   inputDataModes.xmlMode = new Array(pageCount);
   if (xmlModeImport) {
     inputDataModes.xmlMode.fill(true);
@@ -2276,7 +2278,7 @@ export async function displayImage(n, image, binary = false) {
 
 // Function that renders images and stores them in cache array (or returns early if the requested image already exists).
 // The color OR grayscale version is stored in imageAll, while the binary image is stored in imageAllBinary.
-async function renderPDFImageCache(pagesArr) {
+async function renderPDFImageCache(pagesArr, rotateBinary = null) {
 
   const colorMode = colorModeElem.value;
 
@@ -2286,7 +2288,13 @@ async function renderPDFImageCache(pagesArr) {
     // Whether the non-binary (color or grayscale) image needs to be rendered. 
     const renderImage = !globalThis.imageAll[n] || (colorMode != "binary" && globalThis.imageAllColor[n] != colorMode) ? true : false;
     // Whether the binary image needs to be rendered.
-    const renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
+    let renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
+
+    // By default binary images are not re-rendered with a different rotation setting.
+    // This behavior can be changed by setting `rotate` to true or false.
+    if ([true, false].includes(rotateBinary) && rotateBinary != imageAllBinaryRotated[n]) {
+      renderImageBinary = true;
+    }
 
     // Return early if no rendering is needed (requested image already exists)
     if (!renderImage && !renderImageBinary) return;
@@ -2331,12 +2339,13 @@ async function renderPDFImageCache(pagesArr) {
       //const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src, { angle: 0.15 });
       
       // Whether the binary image should be rotated
-      const rotateBinary = true;
+      rotateBinary = rotateBinary ?? true;
       const angleArg = rotateBinary ? pageMetricsObj["angleAll"][n] * (Math.PI / 180) * -1 || 0 : 0;
 
       const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src, { angle: angleArg });
       await loadImage(res.data, image);
       window.imageAllBinary[n] = image;
+      window.imageAllBinaryRotated[n] = Boolean(angleArg);
       await displayImage(n, image, true);
       if (window.binaryScheduler["activeProgress"]) {
         window.binaryScheduler["pngRenderCount"] = window.binaryScheduler["pngRenderCount"] + 1;
@@ -2501,8 +2510,26 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     const renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
 
     if (renderImage || renderImageBinary) {
-      renderPDFImageCache([n]);
+      renderPDFImageCache([n], true);
+
+      // Edit rotation for binary images that have already been rotated
+      if (colorMode == "binary") {
+        if (currentPage.backgroundOpts.angle) {
+          currentPage.backgroundOpts.angle = 0;
+        } else {
+          currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][n];
+        }
+      }
+
     } else if (colorMode == "binary" && imageAllBinary[n] != true) {
+      // Edit rotation for binary images that have already been rotated
+      if (imageAllBinaryRotated[n]) {
+        if (currentPage.backgroundOpts.angle) {
+          currentPage.backgroundOpts.angle = 0;
+        } else {
+          currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][n];
+        }
+      }
       currentPage.backgroundImage = new fabric.Image(imageAllBinary[n], { objectCaching: false });
       currentPage.renderStatus = currentPage.renderStatus + 1;
       selectDisplayMode(displayModeElem.value);
@@ -2684,7 +2711,7 @@ async function renderPDF() {
       window.binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, window.binaryScheduler["pngRenderCount"]);
     }
 
-    await renderPDFImageCache(pagesArr);
+    await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked);
     let time2 = Date.now();
     console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
   }
@@ -2959,7 +2986,7 @@ globalThis.selectDisplayMode = function (x) {
 
   // Include a background image if appropriate
   if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
-    canvas.setBackgroundColor("black");
+    canvas.setBackgroundColor("white");
     //canvas.setBackgroundImage(currentPage.backgroundImage, canvas.renderAll.bind(canvas));
     canvas.setBackgroundImage(currentPage.backgroundImage, canvas.renderAll.bind(canvas), currentPage.backgroundOpts);
   } else {
