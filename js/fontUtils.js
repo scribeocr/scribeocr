@@ -11,20 +11,20 @@ export async function loadFontFamily(fontFamily, fontMetricsObj) {
   const heightSmallCaps = fontMetricsObj["heightSmallCaps"] || 1;
 
   if(fontFamily.toLowerCase() == "open sans"){
-    await loadFont("Open Sans-italic", null, true, false);
-    await loadFont("Open Sans", null, true, false);
-    await loadFont("Open Sans-small-caps", null, true, false);
-    createSmallCapsFont(window.fontObj["Open Sans"]["small-caps"], "Open Sans", heightSmallCaps);
+    await loadFont("Open Sans-italic", null, true);
+    await loadFont("Open Sans", null, true);
+    await loadFont("Open Sans-small-caps", null, true);
+    await createSmallCapsFont(window.fontObj["Open Sans"]["small-caps"], "Open Sans", heightSmallCaps);
   } else if(fontFamily.toLowerCase() == "libre baskerville"){
-    await loadFont("Libre Baskerville-italic", null, true, false);
-    await loadFont("Libre Baskerville", null, true, false);
-    await loadFont("Libre Baskerville-small-caps", null, true, false);
-    createSmallCapsFont(window.fontObj["Libre Baskerville"]["small-caps"], "Libre Baskerville", heightSmallCaps);
+    await loadFont("Libre Baskerville-italic", null, true);
+    await loadFont("Libre Baskerville", null, true);
+    await loadFont("Libre Baskerville-small-caps", null, true);
+    await createSmallCapsFont(window.fontObj["Libre Baskerville"]["small-caps"], "Libre Baskerville", heightSmallCaps);
   }
 }
 
 // Load font as FontFace (used for displaying on canvas)
-export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = false, use = true) {
+export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = false) {
 
   if(typeof(window.fontFaceObj) == "undefined"){
     window.fontFaceObj = new Object;
@@ -59,12 +59,13 @@ export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = fa
 
   // Without clearing the cache FabricJS continues to use old font metrics.
   fabric.util.clearFabricFontCache(fontFamily);
+  fabric.util.clearFabricFontCache(fontFamily + " Small Caps");
 
 }
 
 
 // Load font as opentype.js object, call loadFontBrowser to load as FontFace
-export async function loadFont(font, src = null, overwrite = false, use = true){
+export async function loadFont(font, src = null, overwrite = false){
   if(typeof(window.fontObj) == "undefined"){
     window.fontObj = new Object;
   }
@@ -102,7 +103,7 @@ export async function loadFont(font, src = null, overwrite = false, use = true){
 
     }
   }
-  await loadFontBrowser(familyStr, styleStr, src, overwrite = overwrite, use = use);
+  await loadFontBrowser(familyStr, styleStr, src, overwrite = overwrite);
 }
 
 // Object containing location of various font files

@@ -689,6 +689,7 @@ async function recognizePage() {
   if (!checkTesseractScheduler(recognizeAreaScheduler, allConfig)) {
     if (recognizeAreaScheduler) {
       await recognizeAreaScheduler.terminate()
+      recognizeAreaScheduler = null;
     }
     recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
   }
@@ -1008,6 +1009,7 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
   if (!checkTesseractScheduler(recognizeAreaScheduler, allConfig)) {
     if (recognizeAreaScheduler) {
       await recognizeAreaScheduler.terminate()
+      recognizeAreaScheduler = null;
     }
     recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
   }
@@ -1172,6 +1174,8 @@ async function recognizeAll() {
 
   // Render all pages to PNG
   if (inputDataModes.pdfMode) {
+    await initSchedulerIfNeeded("muPDFScheduler");
+
     muPDFScheduler["activeProgress"] = initializeProgress("render-recognize-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
     let time1 = Date.now();
     await renderPDFImageCache([...Array(imageAll.length).keys()]);
@@ -2297,7 +2301,7 @@ async function renderPDFImageCache(pagesArr, rotateBinary = null) {
 
     // By default binary images are not re-rendered with a different rotation setting.
     // This behavior can be changed by setting `rotate` to true or false.
-    if ([true, false].includes(rotateBinary) && rotateBinary != imageAllBinaryRotated[n]) {
+    if ([true, false].includes(rotateBinary) && rotateBinary != window.imageAllBinaryRotated[n]) {
       renderImageBinary = true;
     }
 
@@ -2385,6 +2389,7 @@ async function renderPDFImageCache(pagesArr, rotateBinary = null) {
         // Terminate if (likely) no longer needed to reduce memory use
         if ((binaryScheduler["pngRenderCount"] / valueMax) == 1) {
           binaryScheduler.terminate();
+          binaryScheduler = null;
         }
       }
     }
@@ -2675,6 +2680,12 @@ window["binarySchedulerInit"] = async function () {
 
 window["muPDFSchedulerInit"] = async function () {
   await initMuPDFScheduler(window.pdfFile, 3);
+  if (window.imageAll) {
+    window["muPDFScheduler"]["pngRenderCount"] = [...Array(imageAll.length).keys()].filter((x) => typeof (imageAll[x]) == "object" && (colorModeElem.value == "binary" || imageAllColor[x] == colorModeElem.value)).length;
+  } else {
+    window["muPDFScheduler"]["pngRenderCount"] = 0;
+  }
+  
   return;
 }
 
@@ -2714,17 +2725,20 @@ async function renderPDF() {
       fontObjData[familyKey] = new Object;
     }
 
-    //Note: pdfkit has a bug where fonts with spaces in the name create corrupted files (they open in browser but not Adobe products)
-    //Taking all spaces out of font names as a quick fix--this can likely be removed down the line if patched.
-    //https://github.com/foliojs/pdfkit/issues/1314
-
     for (const [key, value] of Object.entries(familyObj)) {
+
       if (key == "small-caps") {
+        //Note: pdfkit has a bug where fonts with spaces in the name create corrupted files (they open in browser but not Adobe products)
+        //Taking all spaces out of font names as a quick fix--this can likely be removed down the line if patched.
+        //https://github.com/foliojs/pdfkit/issues/1314
+
         fontObj[familyKey][key].tables.name.postScriptName["en"] = globalSettings.defaultFont + "-SmallCaps";
         fontObj[familyKey][key].tables.name.fontSubfamily["en"] = "SmallCaps";
         fontObj[familyKey][key].tables.name.postScriptName["en"] = fontObj[familyKey][key].tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
         fontObjData[familyKey][key] = fontObj[familyKey][key].toArrayBuffer();
+      // if (key == "small-caps" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
+      //   fontObjData[familyKey][key] = fontDataOptimizedSmallCaps;
       } else if (key == "normal" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
         fontObjData[familyKey][key] = fontDataOptimized;
       } else if (key == "italic" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
@@ -2755,7 +2769,7 @@ async function renderPDF() {
 
       // Set pngRenderCount to only include PNG images rendered with the current color setting
       //const colorCheckbox = colorCheckboxElem.checked;
-      muPDFScheduler["pngRenderCount"] = pngRenderCount;
+      // muPDFScheduler["pngRenderCount"] = pngRenderCount;
 
       muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
     }
@@ -2820,7 +2834,7 @@ async function renderPDF() {
 
 
 // TODO: Rework storage of optimized vs. non-optimized fonts to be more organized
-var fontDataOptimized, fontDataOptimizedItalic;
+var fontDataOptimized, fontDataOptimizedItalic, fontDataOptimizedSmallCaps;
 
 export async function optimizeFont2() {
 
@@ -2834,26 +2848,29 @@ export async function optimizeFont2() {
   let fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["normal"], fontObj[globalSettings.defaultFont]["italic"], globalThis.fontMetricsObj["normal"]);
 
   fontDataOptimized = fontArr[0].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont, fontDataOptimized, true, true);
+  await loadFont(globalSettings.defaultFont, fontDataOptimized, true);
 
   fontDataOptimizedItalic = fontArr[1].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true);
+  await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
 
   // Create small caps font using optimized "normal" font as a starting point
-  createSmallCapsFont(window.fontObj["Libre Baskerville"]["normal"], "Libre Baskerville", fontMetricsObj["heightSmallCaps"] || 1, fontMetricsObj);
+  //createSmallCapsFont(window.fontObj["Libre Baskerville"]["normal"], "Libre Baskerville", fontMetricsObj["heightSmallCaps"] || 1, fontMetricsObj);
 
   // Optimize small caps if metrics exist to do so
   if (globalThis.fontMetricsObj["small-caps"]) {
-    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont + " Small Caps"]["normal"], null, globalThis.fontMetricsObj["small-caps"]);
-    const fontDataOptimizedSmallCaps = fontArr[0].toArrayBuffer();
-    await loadFont(globalSettings.defaultFont + "-small-caps", fontDataOptimizedSmallCaps, true, true);
+    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["small-caps"], null, globalThis.fontMetricsObj["small-caps"]);
+    fontDataOptimizedSmallCaps = fontArr[0].toArrayBuffer();
+    const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
+    await loadFont(globalSettings.defaultFont + "-small-caps", fontDataOptimizedSmallCaps, true);
+    fontObj[globalSettings.defaultFont]["small-caps"].kerningPairs = kerningPairs;
+    //await loadFont(globalSettings.defaultFont + " Small Caps", fontDataOptimizedSmallCaps, true);
   }
 
   // Optimize italics if metrics exist to do so
   if (globalThis.fontMetricsObj["italic"]) {
     fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["italic"], null, globalThis.fontMetricsObj["italic"], "italic");
-    const fontDataOptimizedItalic = fontArr[0].toArrayBuffer();
-    await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true, true);
+    fontDataOptimizedItalic = fontArr[0].toArrayBuffer();
+    await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
   }
 
 
@@ -3046,7 +3063,7 @@ globalThis.selectDisplayMode = function (x) {
   });
 
   // Edit rotation for binary images that have already been rotated
-  if (colorModeElem.value == "binary" && imageAllBinaryRotated[currentPage.n]) {
+  if (colorModeElem.value == "binary" && window.imageAllBinaryRotated[currentPage.n]) {
     if (currentPage.backgroundOpts.angle) {
       currentPage.backgroundOpts.angle = 0;
     } else {

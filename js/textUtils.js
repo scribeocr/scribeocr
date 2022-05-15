@@ -12,6 +12,11 @@ export function getFontSize(font, charHeight, compChar = "o"){
 export function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "normal"){
   window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
 
+  if (/small caps$/i.test(fontFamily)) {
+    fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
+    fontStyle = "small-caps";
+  }
+
   // Calculate font glyph metrics for precise positioning
   const wordLastGlyphMetrics = window.fontObj[fontFamily][fontStyle].charToGlyph(wordText.substr(-1)).getMetrics();
   const wordFirstGlyphMetrics = window.fontObj[fontFamily][fontStyle].charToGlyph(wordText.substr(0,1)).getMetrics();
@@ -28,6 +33,11 @@ export function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "nor
 
 export function calcWordWidth(wordText, fontFamily, fontSize, fontStyle = "normal"){
   window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
+
+  if (/small caps$/i.test(fontFamily)) {
+    fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
+    fontStyle = "small-caps";
+  }
 
   // Calculate font glyph metrics for precise positioning
   const wordLastGlyphMetrics = window.fontObj[fontFamily][fontStyle].charToGlyph(wordText.substr(-1)).getMetrics();

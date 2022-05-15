@@ -200,7 +200,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
 
   const upperAscCodes = upperAsc.map((x) => String(x.charCodeAt(0)));
   const charHeightKeys = Object.keys(fontMetricsObj["charHeight"]);
-  const charHeightA = round6(quantile(Object.values(fontMetricsObj["charHeight"]).filter((element, index) => upperAscCodes.includes(charHeightKeys[index]))));
+  const charHeightA = round6(quantile(Object.values(fontMetricsObj["charHeight"]).filter((element, index) => upperAscCodes.includes(charHeightKeys[index])), 0.5));
 
 {    // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
     // Adjust height of capital J (which often has a height greater than other capital letters)
@@ -208,7 +208,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     const actJMult = Math.max(round6(fontMetricsObj["charHeight"][74]) / charHeightA, 0);
     const fontJMetrics = workingFont.charToGlyph("J").getMetrics();
     const fontAMetrics = workingFont.charToGlyph("A").getMetrics();
-    const fontJMult = Math.min((fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin), 1);
+    const fontJMult = Math.max((fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin), 1);
     const actFontJMult = actJMult / fontJMult;
 
     if (Math.abs(1 - actFontJMult) > 0.02) {
@@ -314,9 +314,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
       
       // For pairs that commonly use ligatures ("ff", "fi", "fl") allow lower minimum
       } else if (["102,102", "102,105", "102,108"].includes(key)) {
-        console.log(key + " " + fontKern + " (" + minKern + ")");
         fontKern = Math.min(Math.max(fontKern, Math.round(minKern * 1.5)), maxKern);
-        console.log(key + " " + fontKern + " (" + minKern + ")");
       } else {
         fontKern = Math.min(Math.max(fontKern, minKern), maxKern);
       }
@@ -394,7 +392,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage){
             widthObj[style][key] = new Array();
           }
           Array.prototype.push.apply(widthObj[style][key], value);
-        }
+        } optimizeFont
       }
     }
 
@@ -593,7 +591,7 @@ export async function createSmallCapsFont(font, fontFamily, heightSmallCaps, fon
   workingFont.tables.gsub = null;
 
   let fontDataSmallCaps = workingFont.toArrayBuffer();
-  await loadFont(fontFamily + " Small Caps", fontDataSmallCaps, true,false);
+  await loadFont(fontFamily + "-small-caps", fontDataSmallCaps, true);
   return;
 
 }

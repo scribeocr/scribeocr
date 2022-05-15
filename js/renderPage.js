@@ -54,9 +54,9 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       
          // If none of the above conditions are met (not enough info to calculate font size), the font size from the previous line is reused.
          ctx.font = 1000 + 'px ' + defaultFont;
-         const AMetrics = ctx.measureText("A");
+         //const AMetrics = ctx.measureText("A");
          const oMetrics = ctx.measureText("o");
-         const jMetrics = ctx.measureText("gjpqy");
+         //const jMetrics = ctx.measureText("gjpqy");
          ctx.font = fontSize + 'px ' + defaultFont;
 
           const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
@@ -297,47 +297,14 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             window.doc.fontSize(wordFontSize);
             window.doc.fillColor(fill_arg).fillOpacity(opacity_arg);
 
-            // TODO: Implement mode for exporting with other fonts (where spacing looks natural, as opposed to trying to perfectly align letters with image).
-            lineMode = false;
-            if(lineMode){
-
-              if(j == 0){
-                window.doc.text(
-                wordText,
-                left,
-                top,
-                {baseline: "alphabetic",
-                continued: true,
-                align: 'left',
-                //width: linebox[2] - linebox[0],
-                lineBreak: false})
-              } else if(j + 1 == words.length){
-                window.doc.text(
-                " " + wordText,
-                {baseline: "alphabetic",
-              lineBreak: false})
-            } else {
-              window.doc.text(
-              " " + wordText,
-              {baseline: "alphabetic",
-              continued: true,
-            lineBreak: false})
-
-            }
-
-            } else {
-              window.doc.text(
+            window.doc.text(
               wordText,
               left,
               top,
-              {baseline: "alphabetic",
-              characterSpacing: kerning })
-              if(wordText == "reflection"){
-                console.log("Word: " + wordText + " Kerning: " + kerning + " (Font size: " + wordFontSize + ", " + defaultFont + "-" + fontStyle + ")");
-              }
-
-            }
-
+              {
+                baseline: "alphabetic",
+                characterSpacing: kerning
+              })
 
           // Otherwise, render to the canvas
           } else {
@@ -375,9 +342,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
             let fontFamilyWordCanvas = fontStyle == "small-caps" ? fontFamilyWord + " Small Caps" : fontFamilyWord;
             let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;
-
-
-
+            // let fontFamilyWordCanvas = fontFamilyWord;
+            // let fontStyleCanvas = fontStyle;
 
             let textbox = new fabric.IText(wordText, { left: left,
             //top: y,
