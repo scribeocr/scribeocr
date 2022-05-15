@@ -1066,6 +1066,7 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
     if (!lineBoxNew) return;
 
     // Identify the OCR line a bounding box is in (or closest line if no match exists)
+    const sinAngle = Math.sin(pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
     let lineI = -1;
     let match = false;
     let newLastLine = false;
@@ -1088,7 +1089,8 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
         } else {
           lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
         }
-        boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * baseline[0];
+        //boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * baseline[0];
+        boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * sinAngle;
       } else {
         baseline = [0, 0];
       }
@@ -1488,7 +1490,8 @@ function addWordClick() {
         } else {
           lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
         }
-        boxOffsetY = (rectMidHOCR - lineBoxAdj[0]) * baseline[0];
+        //boxOffsetY = (rectMidHOCR - lineBoxAdj[0]) * baseline[0];
+        boxOffsetY = (rectMidHOCR - lineBoxAdj[0]) * sinAngle;
       } else {
         baseline = [0, 0];
       }
