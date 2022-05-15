@@ -1,18 +1,20 @@
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./textUtils.js"
 import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
-import { round3 } from "./miscUtils.js"
+import { round3, rotateBoundingBox } from "./miscUtils.js"
 
 export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFont, lineMode = false, imgDims, canvasDims, angle, pdfMode, fontObj, leftAdjX){
 
   let ctx = canvas.getContext('2d');
-  let imgWidth = imgDims[1];
-  let imgHeight = imgDims[0];
 
   let canvasWidth = canvasDims[1];
   let canvasHeight = canvasDims[0];
 
-  let max_width = document.getElementById('zoomInput').value;
+  const sinAngle = Math.sin(angle * (Math.PI / 180));
+  const cosAngle = Math.cos(angle * (Math.PI / 180));
+
+  const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((imgDims[1] - shiftX) * 0.5) || 0;
 
 
   let lines = xmlDoc.getElementsByClassName("ocr_line");
@@ -22,7 +24,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         let line = lines[i]
         let titleStrLine = line.getAttribute('title');
 
-        let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
+        let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
         let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
         if(baseline != null){
           baseline = baseline.slice(1,5).map(function (x) {return parseFloat(x);});
@@ -57,12 +59,17 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
          const jMetrics = ctx.measureText("gjpqy");
          ctx.font = fontSize + 'px ' + defaultFont;
 
+          const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
+          let angleAdjXLine = 0;
+          let angleAdjYLine = 0;
+          if ((autoRotateCheckbox.checked) && Math.abs(angle ?? 0) > 0.05) {
 
-          let angleAdjX = 0;
-          let angleAdjY = 0;
-          if(autoRotateCheckbox.checked && Math.abs(angle ?? 0) > 0.05){
-            angleAdjX = Math.sin(angle * (Math.PI / 180)) * (linebox[3] + baseline[1]);
-            angleAdjY = Math.sin(angle * (Math.PI / 180)) * (linebox[0] + angleAdjX /2) * -1;
+            const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
+            const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
+            
+            angleAdjXLine = angleAdjXInt + shiftX;
+            angleAdjYLine = angleAdjYInt + shiftY;
+
           }
 
         for (let j = 0; j < words.length; j++) {
@@ -79,9 +86,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
           if (!word.childNodes[0]?.textContent.trim()) continue;
 
-          let box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);})
+          let box = [...titleStr.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);})
           let box_width = box[2] - box[0];
           let box_height = box[3] - box[1];
+
+          const angleAdjXWord = Math.abs(angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (box[0] - linebox[0]) : angleAdjXLine;
 
           let wordText, wordSup, wordDropCap;
           if(/\<sup\>/i.test(word.innerHTML)){
@@ -249,7 +258,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             // is used temporarily for any mode with a backgound image included.
             //let left,top;
             // if(document.getElementById('displayMode').value == "ebook"){
-            //   left = box[0] - wordLeftBearing + angleAdjX + leftAdjX;
+            //   left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
             //   top = linebox[3] + baseline[1] + angleAdjY;
             // } else {
             //   left = box[0] - wordLeftBearing + leftAdjX;
@@ -259,17 +268,17 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             let top;
             if(wordSup || wordDropCap){
 
-              let angleAdjYSup = Math.sin(angle * (Math.PI / 180)) * (box[0] - linebox[0]) * -1;
+              let angleAdjYSup = sinAngle * (box[0] - linebox[0]) * -1;
 
               if(wordSup){
-                top = linebox[3] + baseline[1] + angleAdjY + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
+                top = linebox[3] + baseline[1] + angleAdjYLine + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
               } else {
-                top = box[3] + angleAdjY + angleAdjYSup;
+                top = box[3] + angleAdjYLine + angleAdjYSup;
               }
             } else {
-               top = linebox[3] + baseline[1] + angleAdjY;
+              top = linebox[3] + baseline[1] + angleAdjYLine;
             }
-            let left = box[0] - wordLeftBearing + angleAdjX + leftAdjX;
+            let left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
 
 
             // Characters that go off the edge will cause an additional case to be made.
@@ -343,25 +352,25 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
             let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
 
-            let left = box[0] - wordLeftBearing + angleAdjX + leftAdjX;
+            let left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
             let top;
             if(wordSup || wordDropCap){
 
-              let angleAdjYSup = Math.sin(angle * (Math.PI / 180)) * (box[0] - linebox[0]) * -1;
+              let angleAdjYSup = sinAngle * (box[0] - linebox[0]) * -1;
 
               // In the special case of superscripts and dropcaps, the wordFontSize should always be used to determine fontDesc.
               // fontSize, which may carry over from other words, will not be applicable. 
               fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
               if(wordSup){
-                top = linebox[3] + baseline[1] + fontDesc + angleAdjY + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
+                top = linebox[3] + baseline[1] + fontDesc + angleAdjYLine + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
               } else {
-                top = box[3] + fontDesc + angleAdjY + angleAdjYSup;
+                top = box[3] + fontDesc + angleAdjYLine + angleAdjYSup;
               }
 
 
               //top = linebox[3] + baseline[1] + fontDesc + angleAdjY;
             } else {
-              top = linebox[3] + baseline[1] + fontDesc + angleAdjY;
+              top = linebox[3] + baseline[1] + fontDesc + angleAdjYLine;
             }
 
             let fontFamilyWordCanvas = fontStyle == "small-caps" ? fontFamilyWord + " Small Caps" : fontFamilyWord;

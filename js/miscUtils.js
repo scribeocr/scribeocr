@@ -38,6 +38,46 @@ export function quantile(arr, ntile){
 };
 
 
+export function rotateBoundingBox(box, angle, origin, baselineOffset = 0, deltaMode = false) {
+
+  const angleRad = angle * (Math.PI / 180);
+  let sinAngle = Math.sin(angleRad);
+  let cosAngle = Math.cos(angleRad);
+
+
+  const shiftX = sinAngle * origin[0] * -1 || 0;
+  const shiftY = sinAngle * ((origin[1] * 2 - shiftX) * 0.5) || 0;
+
+  const angleAdjXInt = sinAngle * (box[3] + baselineOffset);
+  const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
+
+  return [angleAdjXInt + shiftX, angleAdjYInt + shiftY]
+  
+
+  // const shiftX = sinAngle * origin[0] * -1 || 0;
+  // const shiftY = sinAngle * origin[1] || 0;
+
+  // const originNew = [origin[0] + shiftX, origin[1] + shiftY];
+  // // const originNew = origin;
+
+  // sinAngle = Math.sin(angleRad);
+  // cosAngle = Math.cos(angleRad);
+
+  // const boxNew = [0, 0, 0, 0];
+  // boxNew[0] = (box[0] - origin[0]) * cosAngle - (box[1] - origin[1]) * sinAngle + originNew[0]; 
+  // boxNew[1] = (box[0] - origin[0]) * sinAngle + (box[1] - origin[1]) * cosAngle + originNew[1];
+  // if (deltaMode) {
+  //   // Deltas are multiplied by 0.5 because the canvas size is not increased with the rotation,
+  //   // so the corners of the page are cut off in the rotated version. 
+  //   return [(boxNew[0] - box[0]), (boxNew[1] - box[1])].map((x) => Math.round(x));
+  // }
+  // boxNew[2] = boxNew[0] + (box[2] - box[0]);
+  // boxNew[3] = boxNew[1] + (box[3] - box[1]);
+
+  // return boxNew.map((x) => Math.round(x));
+
+}
+
 export const mean50 = arr => {
   if(arr.length == 0){
     return null;
