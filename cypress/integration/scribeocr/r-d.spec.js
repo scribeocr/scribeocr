@@ -47,7 +47,7 @@ describe('It recognises and downloads a', () => {
     cy.verifyDownload('henreys_grave.txt')
   })
 
-  it('pdf file from a jpg with no imported ocr data', () => {
+  it('pdf file from a jpg with no imported ocr data, NATIVE', () => {
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_jpg/the_past.jpg'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -56,11 +56,33 @@ describe('It recognises and downloads a', () => {
     cy.get('#recognizeAll').click()
     cy.wait(10000)
 
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Native')
+
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
-    cy.verifyDownload('the_past.pdf')
+    cy.verifyDownload('the_past', {contains: true})
+  })
+
+  it('pdf file from a jpg with no imported ocr data, BINARY', () => {
+    cy.get('#uploader').selectFile(['cypress/fixtures/multi_jpg/the_past.jpg'])
+    cy.wait(3000)
+    cy.get('#pageCount').should('have.text', '1')
+    
+    cy.get('#nav-recognize-tab').click()
+    cy.get('#recognizeAll').click()
+    cy.wait(10000)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Binary')
+
+    cy.get('#nav-download-tab').click()
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionPDF').click()
+    cy.get('#download').click()
+    cy.verifyDownload('the_past', {contains: true})
   })
 
   it('pdf file from 4 jpgs with no imported ocr data', () => {
@@ -164,21 +186,47 @@ describe('It recognises and downloads a', () => {
     cy.verifyDownload('snow_drops.txt')
   })
 */
-  it('pdf file from a pdf with no imported ocr data', () => {
-    cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/henreys_grave.pdf'])
-    cy.wait(3000)
-    cy.get('#pageCount').should('have.text', '1')
-    
-    cy.get('#nav-recognize-tab').click()
-    cy.get('#recognizeAll').click()
-    cy.wait(10000)
+it('r & d pdf from pdf, no imported ocr data, COLOR', () => {
+  cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/the_past.pdf'])
+  cy.wait(3000)
+  cy.get('#pageCount').should('have.text', '1')
+  
+  cy.get('#nav-recognize-tab').click()
+  cy.get('#recognizeAll').click()
 
-    cy.get('#nav-download-tab').click()
-    cy.get('#downloadFormat').click()
-    cy.get('#formatLabelOptionPDF').click()
-    cy.get('#download').click()
-    cy.verifyDownload('henreys_grave.pdf')
-  })
+  cy.wait(12000)
+
+  cy.get('#nav-view-tab').click()
+  cy.get('#colorMode').select('Color')
+  
+
+  cy.get('#nav-download-tab').click()
+  cy.get('#downloadFormat').click()
+  cy.get('#formatLabelOptionPDF').click()
+  cy.get('#download').click()
+  cy.verifyDownload('the_past.pdf')
+})
+
+it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
+  cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/henreys_grave.pdf'])
+  cy.wait(3000)
+  cy.get('#pageCount').should('have.text', '1')
+  
+  cy.get('#nav-recognize-tab').click()
+  cy.get('#recognizeAll').click()
+
+  cy.wait(12000)
+
+  cy.get('#nav-view-tab').click()
+  cy.get('#colorMode').select('Binary')
+  
+
+  cy.get('#nav-download-tab').click()
+  cy.get('#downloadFormat').click()
+  cy.get('#formatLabelOptionPDF').click()
+  cy.get('#download').click()
+  cy.verifyDownload('henreys_grave.pdf')
+})
 /*
   it('recognises and downloads a pdf file from 5 pdfs with no imported ocr data', () => {
     cy.get('#uploader').selectFile([
@@ -283,7 +331,7 @@ describe('It recognises and downloads a', () => {
     cy.verifyDownload('henreys_grave.txt')
   })
 
-  it('pdf file from a png with no imported ocr data', () => {
+  it('pdf file from a png with no imported ocr data, NATIVE', () => {
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_png/the_past.png'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -292,6 +340,28 @@ describe('It recognises and downloads a', () => {
     cy.get('#recognizeAll').click()
     cy.wait(15000)
 
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Native')
+    
+    cy.get('#nav-download-tab').click()
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionPDF').click()
+    cy.get('#download').click()
+    cy.verifyDownload('the_past.pdf')
+  })
+
+  it('pdf file from a png with no imported ocr data, BINARY', () => {
+    cy.get('#uploader').selectFile(['cypress/fixtures/multi_png/the_past.png'])
+    cy.wait(3000)
+    cy.get('#pageCount').should('have.text', '1')
+    
+    cy.get('#nav-recognize-tab').click()
+    cy.get('#recognizeAll').click()
+    cy.wait(15000)
+
+    cy.get('#nav-view-tab').click()
+    cy.get('#colorMode').select('Binary')
+    
     cy.get('#nav-download-tab').click()
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()

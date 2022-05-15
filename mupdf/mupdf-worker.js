@@ -116,10 +116,8 @@ mupdf.openDocument = function (data, magic) {
 mupdf.drawPageAsPNG = function (doc, page, dpi, color=true) {
   if(color){
     mupdf.doDrawPageAsPNG(doc, page, dpi);
-    console.log("Rendered page " + (page - 1) + " in color")
   } else {
     mupdf.doDrawPageAsPNGGray(doc, page, dpi);
-	  console.log("Rendered page " + (page - 1) + " in gray")
   }
 
 	let n = mupdf.getLastDrawSize();
