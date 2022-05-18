@@ -1735,11 +1735,30 @@ function addWordClick() {
   });
 }
 
-
+// Resets the environment.
+var fontMetricObjsMessage, loadCountHOCR;
 function clearFiles() {
-  imageAll.length = 0;
+  
   currentPage.n = 0;
-  globalThis.hocrCurrent.length = 0;
+
+  window.imageAll = [];
+  window.hocrCurrent = [];
+  window.fontMetricsObj = {};
+  window.pageMetricsObj = {};
+  fontMetricObjsMessage = {};
+
+  if (window.binaryScheduler) {
+    window.binaryScheduler.terminate();
+    window.binaryScheduler = null;
+  }
+
+  if (window.muPDFScheduler) {
+    window.binaryScheduler.terminate();
+    window.binaryScheduler = null;
+  }
+
+  loadCountHOCR = 0;
+
   canvas.clear()
   pageCountElem.textContent = "";
   pageNumElem.value = "";
@@ -1760,12 +1779,7 @@ function clearFiles() {
 
 }
 
-function getXHeight(font, size) {
-  let exTest = document.getElementById("exTest");
-  exTest.setAttribute("style", "display:none;width:1ex;font-family:'" + font + "';font-size:" + size)
-  return (getComputedStyle(exTest).width);
-}
-
+clearFiles();
 
 
 
@@ -2298,13 +2312,14 @@ async function renderPDFImageCache(pagesArr, rotateBinary = null) {
     // const colorCheckbox = colorCheckboxElem.checked;
 
     // Whether the non-binary (color or grayscale) image needs to be rendered. 
-    const renderImage = !globalThis.imageAll[n] || (colorMode != "binary" && globalThis.imageAllColor[n] != colorMode) ? true : false;
+    const renderImage = inputDataModes.pdfMode && (!globalThis.imageAll[n] || (colorMode != "binary" && globalThis.imageAllColor[n] != colorMode)) ? true : false;
     // Whether the binary image needs to be rendered.
     let renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
 
     // By default binary images are not re-rendered with a different rotation setting.
     // This behavior can be changed by setting `rotate` to true or false.
-    if ([true, false].includes(rotateBinary) && rotateBinary != window.imageAllBinaryRotated[n]) {
+    //if (colorMode == "binary" && [true, false].includes(rotateBinary) && rotateBinary != window.imageAllBinaryRotated[n]) {
+    if (colorMode == "binary" && (rotateBinary == true && window.imageAllBinaryRotated[n] == false || rotateBinary == false && window.imageAllBinaryRotated[n] == true)) {
       renderImageBinary = true;
     }
 
@@ -2677,7 +2692,10 @@ async function optimizeFontClick(value) {
 }
 
 window["binarySchedulerInit"] = async function () {
-  window["binaryScheduler"] = await createTesseractScheduler(4);
+  // Workers take a non-trivial amount of time to started so a tradeoff exists with how many to use.   
+  // Using 1 scheduler per 4 pages as a quick fix--have not benchmarked optimal number.
+  const n = Math.min(Math.ceil(imageAll.length / 4), 4);
+  window["binaryScheduler"] = await createTesseractScheduler(n);
   return;
 }
 
@@ -2701,13 +2719,13 @@ async function initSchedulerIfNeeded(x) {
     return;
   } else if (window[x] == true) {
     await new Promise(function (resolve, reject) {
-      window["x" + "Loaded"] = resolve;
+      window[x + "Loaded"] = resolve;
     });
     return;
   } else {
     window[x] = true;
     await window[x + "Init"]();
-    if (window["x" + "Loaded"]) window["x" + "Loaded"]();
+    if (window[x + "Loaded"]) window[x + "Loaded"]();
     return;
   }
 }
@@ -2776,17 +2794,17 @@ async function renderPDF() {
 
       muPDFScheduler["activeProgress"] = initializeProgress("render-download-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
     }
-    if (colorModeElem.value == "binary") {
-
-        await initSchedulerIfNeeded("binaryScheduler");
-        
-        binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
-        binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, binaryScheduler["pngRenderCount"]);
-    }
-    
-    await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked);
-
   }
+  if (colorModeElem.value == "binary" && displayModeElem.value != "ebook") {
+
+      await initSchedulerIfNeeded("binaryScheduler");
+      
+      binaryScheduler["pngRenderCount"] = [...Array(imageAllBinary.length).keys()].filter((x) => typeof (imageAllBinary[x]) == "object").length;
+      binaryScheduler["activeProgress"] = initializeProgress("binary-download-progress-collapse", imageAll.length, binaryScheduler["pngRenderCount"]);
+  }
+  
+  await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked);
+
 
   let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
   let dimsLimit = new Array(maxValue - minValue + 1);
@@ -2884,12 +2902,6 @@ var convertPageWorker = new Worker('js/convertPage.js');
 convertPageWorker.promises = {};
 convertPageWorker.promiseId = 0;
 
-globalThis.fontMetricsObj = new Object;
-globalThis.pageMetricsObj = new Object;
-var fontMetricObjsMessage = new Object;
-
-
-var loadCountHOCR = 0;
 
 function convertPage(args) {
   

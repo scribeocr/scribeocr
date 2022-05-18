@@ -8,7 +8,7 @@ import { createSmallCapsFont } from "./fontOptimize.js";
 
 // Load all font styles for specified font family
 export async function loadFontFamily(fontFamily, fontMetricsObj) {
-  const heightSmallCaps = fontMetricsObj["heightSmallCaps"] || 1;
+  const heightSmallCaps = fontMetricsObj?.["heightSmallCaps"] || 1;
 
   if(fontFamily.toLowerCase() == "open sans"){
     await loadFont("Open Sans-italic", null, true);
