@@ -23,7 +23,6 @@
 "use strict";
 
 //import { arrayBufferToBase64 } from "./js/miscUtils.js";
-import { insertImageCache, displayImage } from "../main.js";
 
 
 export async function initMuPDFWorker() {
@@ -41,11 +40,11 @@ export async function initMuPDFWorker() {
 				if (type === "RESULT"){
 					//worker.promises[id].resolve(result);
 					if (["drawPageAsPNG"].includes(worker.promises[id].func)) {
-						const n = worker.promises[id].page - 1;
-						await insertImageCache(n, result);
+						//const n = worker.promises[id].page - 1;
+						// await insertImageCache(n, result);
 						worker.promises[id].resolve(result);
 						delete worker.promises[id];
-						await displayImage(n, imageAll[n]);
+						//await displayImage(n, imageAll[n]);
 					} else {
 						worker.promises[id].resolve(result);
 						delete worker.promises[id];
