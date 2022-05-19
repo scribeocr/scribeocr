@@ -63,7 +63,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
-    cy.verifyDownload('the_past', {contains: true})
+    cy.verifyDownload('the_past.pdf', {contains: true})
   })
 
   it('pdf file from a jpg with no imported ocr data, BINARY', () => {
@@ -82,7 +82,7 @@ describe('It recognises and downloads a', () => {
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
-    cy.verifyDownload('the_past', {contains: true})
+    cy.verifyDownload('the_past.pdf', {contains: true})
   })
 
   it('pdf file from 4 jpgs with no imported ocr data', () => {
