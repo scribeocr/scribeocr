@@ -16,8 +16,8 @@ import { renderPage } from './js/renderPage.js';
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 
-import { optimizeFont, calculateOverallFontMetrics, createSmallCapsFont } from "./js/fontOptimize.js";
-import { loadFont, loadFontFamily } from "./js/fontUtils.js";
+import { optimizeFont, calculateOverallFontMetrics } from "./js/fontOptimize.js";
+import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, rotateBoundingBox } from "./js/miscUtils.js";
 
@@ -135,7 +135,9 @@ canvas.overlayVpt = false;
 canvas.renderOnAddRemove = false;
 
 // Content that should be run once, after all dependencies are done loading are done loading
-globalThis.runOnLoad = function () {
+window.runOnLoad = function () {
+
+  // window.runOnLoadRun = true;
 
   // Load fonts
   loadFontFamily("Open Sans", globalThis.fontMetricsObj);
@@ -238,9 +240,6 @@ document.getElementById('zoomPlus').addEventListener('click', () => { changeZoom
 
 const displayFontElem = /** @type {HTMLInputElement} */(document.getElementById('displayFont'));
 displayFontElem.addEventListener('change', (event) => { changeDisplayFont(displayFontElem.value) });
-
-// const previewBinaryElem = /** @type {HTMLInputElement} */(document.getElementById('previewBinary'));
-// previewBinaryElem.addEventListener('click', previewBinaryImage);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
 optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked) });
@@ -435,7 +434,7 @@ function setPsmLabel(x) {
 function addDisplayLabel(x) {
   // Exit early if option already exists
   const existingOptions = displayLabelOptionsElem.children;
-  for (let i = 0; i < existingOptions.length; i++){
+  for (let i = 0; i < existingOptions.length; i++) {
     if (existingOptions[i].innerHTML == x) return;
   }
   let option = document.createElement("a");
@@ -659,7 +658,7 @@ function getTesseractConfigs() {
     hocr_char_boxes: '1',
     // The Tesseract LSTM engine frequently identifies a bar character "|"
     // This is virtually always a false positive (usually "I").
-    tessedit_char_blacklist: "|"
+    tessedit_char_blacklist: "|ﬁﬂéï"
   };
 
   return (allConfig);
@@ -702,7 +701,11 @@ async function recognizePage() {
     window.imageAllBinary[currentPage.n] = image;
     window.hocrCurrentRaw[currentPage.n] = y.data.hocr;
     //convertPageWorker.postMessage([y.data.hocr, currentPage.n, false, true, undefined, pageMetricsObj["angleAll"][currentPage.n]]);
-    convertPage([y.data.hocr, currentPage.n, false, true, undefined, pageMetricsObj["angleAll"][currentPage.n]])
+    const argsObj = {
+      "angle": pageMetricsObj["angleAll"][currentPage.n],
+      "recognizeAreaMode": true
+    }
+    convertPage([y.data.hocr, currentPage.n, false, argsObj])
   })
 
   // Enable confidence threshold input boxes (only used for Tesseract)
@@ -751,7 +754,7 @@ function compareGroundTruthClick(n) {
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(window.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || window.evalStats.length == 0) {
     window.evalStats = new Array(imageAll.length);
-    for (let i = 0; i < imageAll.length; i++){
+    for (let i = 0; i < imageAll.length; i++) {
       const res = compareHOCR(globalThis.hocrCurrent[i], window.hocrAll["Ground Truth"][i]);
       window.evalStats[i] = res[1];
     }
@@ -835,7 +838,7 @@ function compareHOCR(hocrStrA, hocrStrB) {
   window.hocrBCorrect = {};
 
   //let minLineB = 0;
-  for (let i = 0; i < hocrALines.length; i++){
+  for (let i = 0; i < hocrALines.length; i++) {
     const hocrALine = hocrALines[i];
     const titleStrLineA = hocrALine.getAttribute('title');
     const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
@@ -851,19 +854,19 @@ function compareHOCR(hocrStrA, hocrStrB) {
         //minLineB = minLineB + 1;
         continue;
 
-      // If top of line B is below bottom of line A, move to next line A
-      // (We assume no match is possible for any B)
+        // If top of line B is below bottom of line A, move to next line A
+        // (We assume no match is possible for any B)
       } else if (lineBoxB[1] > lineBoxA[3]) {
         //break;
         continue;
 
-      // Otherwise, there is possible overlap
+        // Otherwise, there is possible overlap
       } else {
         let minWordB = 0;
         const hocrAWords = hocrALine.getElementsByClassName("ocrx_word");
         const hocrBWords = hocrBLine.getElementsByClassName("ocrx_word");
 
-        for (let k = 0; k < hocrAWords.length; k++){
+        for (let k = 0; k < hocrAWords.length; k++) {
           const hocrAWord = hocrAWords[k];
           const hocrAWordID = hocrAWord.getAttribute("id");
 
@@ -893,7 +896,7 @@ function compareHOCR(hocrStrA, hocrStrB) {
           wordBoxA[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
 
 
-          for (let l = minWordB; l < hocrBWords.length; l++){
+          for (let l = minWordB; l < hocrBWords.length; l++) {
             const hocrBWord = hocrBWords[l];
             const hocrBWordID = hocrBWord.getAttribute("id");
             const titleStrWordB = hocrBWord.getAttribute('title');
@@ -915,12 +918,12 @@ function compareHOCR(hocrStrA, hocrStrB) {
               minWordB = minWordB + 1;
               continue;
 
-            // If left of word B is past right of word A, move to next word A
-            // (We assume no match is possible for any B)
+              // If left of word B is past right of word A, move to next word A
+              // (We assume no match is possible for any B)
             } else if (wordBoxB[0] > wordBoxA[2]) {
               break;
 
-            // Otherwise, overlap is likely
+              // Otherwise, overlap is likely
             } else {
               // Check for overlap using word height
               if (wordBoxA[1] > wordBoxB[3] || wordBoxB[1] > wordBoxA[3]) {
@@ -1029,7 +1032,12 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
   // If no page exists already, simply use the new scan without editing
   if (!lines || lines.length == 0) {
     //convertPageWorker.postMessage([hocrString, currentPage.n, false, true]);
-    convertPage([hocrString, currentPage.n, false, true, undefined, undefined]);
+    const argsObj = {
+      "recognizeAreaMode": true
+    }
+
+    convertPage([hocrString, currentPage.n, false, argsObj]);
+
     return;
     //currentPage.xmlDoc = currentPage.xmlDoc = parser.parseFromString(hocrString, "text/xml");
 
@@ -1219,19 +1227,33 @@ async function recognizeAll() {
         window.hocrCurrentRaw[x] = y.data.hocr;
 
         // If the angle is already known, run once async
-        if (pageMetricsObj["angleAll"]?.[x]) {
-          convertPage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]).then(() => updateConvertPageCounter());
+        if (typeof (pageMetricsObj["angleAll"]?.[x]) == "number") {
+          const argsObj = {
+            "engine": oemText,
+            "angle": pageMetricsObj["angleAll"][x]
+          }
+
+          convertPage([y.data.hocr, x, false, argsObj]).then(() => updateConvertPageCounter());
         } else {
+          const argsObj = {
+            "engine": oemText
+          }
+
           // If the angle is not already known, we wait until recognition finishes so we know the angle
-          await convertPage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]);
-          // If the angle is >1 degree, we rerun with the known angle (which results in the image being rotated in pre-processing step)
-          if (Math.abs(pageMetricsObj["angleAll"][x]) >= 1) {
+          await convertPage([y.data.hocr, x, false, argsObj]);
+          // If the angle is >0.25 degree, we rerun with the known angle (which results in the image being rotated in pre-processing step)
+          if (Math.abs(pageMetricsObj["angleAll"][x]) >= 0.25) {
             const angleArg = rotateBinary ? pageMetricsObj["angleAll"][x] * (Math.PI / 180) * -1 || 0 : 0;
             allConfigI["angle"] = angleArg;
             const inputImage = await window.imageAll[x];
             return scheduler.addJob('recognize', inputImage.src, allConfigI).then(async (y) => {
               window.hocrCurrentRaw[x] = y.data.hocr;
-              convertPage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]).then(() => updateConvertPageCounter());
+              const argsObj = {
+                "engine": oemText,
+                "angle": pageMetricsObj["angleAll"][x]
+              }
+
+              convertPage([y.data.hocr, x, false, argsObj]).then(() => updateConvertPageCounter());
             });
           } else {
             updateConvertPageCounter();
@@ -1306,7 +1328,7 @@ function recognizeAreaClick(wordMode = false) {
 
       canvas.renderAll();
     });
-  }, {once: true});
+  }, { once: true });
 
   // mouse:up:before must be used so this code runs ahead of fabric internal logic.
   // Without this changes to active selection caused by mouse movement may change rect object.
@@ -1645,7 +1667,7 @@ function addWordClick() {
     // https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics/fontBoundingBoxDescent
     //let fontDesc = (jMetrics.fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
 
-    let fontBoundingBoxDescent = Math.round(Math.abs(fontObj[globalSettings.defaultFont]["normal"].descender) * (1000 / fontObj[globalSettings.defaultFont]["normal"].unitsPerEm));
+    let fontBoundingBoxDescent = Math.round(Math.abs(fontNormal.descender) * (1000 / fontNormal.unitsPerEm));
 
     let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
 
@@ -1674,7 +1696,7 @@ function addWordClick() {
     });
 
 
-    textbox.on('editing:exited', function () {
+    textbox.on('editing:exited', async function () {
       if (this.hasStateChanged) {
         if (document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)) {
           let textInt = this.text;
@@ -1685,7 +1707,7 @@ function addWordClick() {
           textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
           this.text = textInt;
         }
-        const wordWidth = calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
+        const wordWidth = await calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
         if (this.text.length > 1) {
           const kerning = round3((this.boxWidth - wordWidth) / (this.text.length - 1));
           this.charSpacing = kerning * 1000 / this.fontSize;
@@ -1706,11 +1728,11 @@ function addWordClick() {
       rangeBaselineElem.value = "100";
     });
 
-    textbox.on('modified', (opt) => {
+    textbox.on('modified', async (opt) => {
       // inspect action and check if the value is what you are looking for
       if (opt.action == "scaleX") {
         const textboxWidth = opt.target.calcTextWidth()
-        const wordMetrics = calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
+        const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
         const widthCalc = (textboxWidth - wordMetrics[1]) * opt.target.scaleX;
 
         let rightNow = opt.target.left + widthCalc;
@@ -1900,11 +1922,11 @@ async function importOCRFiles() {
     // Process HOCR using web worker, reading from file first if that has not been done already
     if (singleHOCRMode) {
       //convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
-      convertPage([window.hocrCurrentRaw[i], i, abbyyMode, undefined, undefined, undefined]).then(() => updateConvertPageCounter());
+      convertPage([window.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
     } else {
       const hocrFile = hocrFilesAll[i];
       //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
-      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined, undefined, undefined, undefined]).then(() => updateConvertPageCounter()));
+      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateConvertPageCounter()));
     }
 
   }
@@ -1921,6 +1943,14 @@ async function importOCRFiles() {
 
 
 async function importFiles() {
+
+  // It looks like the "load" event is not always triggered (when the page is refreshed).
+  // This is a quick fix to make sure this function always runs.
+  // if(!window.runOnLoadRun){
+  //   window.runOnLoad();
+  // }
+
+  window.runOnLoad();
 
   const curFiles = uploaderElem.files;
 
@@ -2202,13 +2232,13 @@ async function importFiles() {
       // Process HOCR using web worker, reading from file first if that has not been done already
       if (singleHOCRMode) {
         //convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
-        convertPage([window.hocrCurrentRaw[i], i, abbyyMode, undefined, undefined, undefined]).then(() => updateConvertPageCounter());
+        convertPage([window.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
       } else {
         const hocrFile = hocrFilesAll[i];
         const hocrNi = hocrN + 1;
         hocrN = hocrN + 1;
         //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, hocrNi]));
-        readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined, undefined, undefined, undefined]).then(() => updateConvertPageCounter()));
+        readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateConvertPageCounter()));
       }
     }
 
@@ -2349,6 +2379,8 @@ async function renderPDFImageCache(pagesArr, rotateBinary = null) {
       });
     }
 
+    // If a binary image exists and we don't care how it was rotated, return early.
+    if (rotateBinary == null && imageAllBinary[n]) return;
 
     // Whether the binary image needs to be rendered.
     let renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
@@ -2400,7 +2432,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
   // Return if data is not loaded yet
   const imageMissing = inputDataModes.imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || inputDataModes.pdfMode && (typeof (muPDFScheduler) == "undefined");
-  const xmlMissing =  globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string";
+  const xmlMissing = globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string";
   if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n]) {
     console.log("Exiting renderPageQueue early");
     return;
@@ -2537,7 +2569,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
     //const colorMode = colorModeElem.value;
 
-    renderPDFImageCache([n], true);
+    renderPDFImageCache([n]);
     const backgroundImage = colorModeElem.value == "binary" ? await imageAllBinary[n] : await imageAll[n];
     currentPage.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
     currentPage.renderStatus = currentPage.renderStatus + 1;
@@ -2715,20 +2747,23 @@ async function renderPDF() {
         //Taking all spaces out of font names as a quick fix--this can likely be removed down the line if patched.
         //https://github.com/foliojs/pdfkit/issues/1314
 
-        fontObj[familyKey][key].tables.name.postScriptName["en"] = globalSettings.defaultFont + "-SmallCaps";
-        fontObj[familyKey][key].tables.name.fontSubfamily["en"] = "SmallCaps";
-        fontObj[familyKey][key].tables.name.postScriptName["en"] = fontObj[familyKey][key].tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
+        const fontObjI = await fontObj[familyKey][key];
 
-        fontObjData[familyKey][key] = fontObj[familyKey][key].toArrayBuffer();
-      // if (key == "small-caps" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
-      //   fontObjData[familyKey][key] = fontDataOptimizedSmallCaps;
+        fontObjI.tables.name.postScriptName["en"] = globalSettings.defaultFont + "-SmallCaps";
+        fontObjI.tables.name.fontSubfamily["en"] = "SmallCaps";
+        fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
+
+        fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
+        // if (key == "small-caps" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
+        //   fontObjData[familyKey][key] = fontDataOptimizedSmallCaps;
       } else if (key == "normal" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
         fontObjData[familyKey][key] = fontDataOptimized;
       } else if (key == "italic" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
         fontObjData[familyKey][key] = fontDataOptimizedItalic;
       } else {
-        fontObj[familyKey][key].tables.name.postScriptName["en"] = fontObj[familyKey][key].tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
-        fontObjData[familyKey][key] = fontObj[familyKey][key].toArrayBuffer();
+        const fontObjI = await fontObj[familyKey][key];
+        fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
+        fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
       }
 
 
@@ -2756,7 +2791,7 @@ async function renderPDF() {
   }
   if (colorModeElem.value == "binary" && displayModeElem.value != "ebook") {
 
-      await initSchedulerIfNeeded("binaryScheduler");
+    await initSchedulerIfNeeded("binaryScheduler");
 
   }
 
@@ -2810,26 +2845,56 @@ async function renderPDF() {
 
 }
 
+// Modified version of code found in FileSaver.js
+window.saveAs = function(blob, name, opts) {
+  var a = document.createElement('a');
+  name = name || blob.name || 'download';
+  a.download = name;
+  //a.rel = 'noopener'; // tabnabbing
+  // TODO: detect chrome extensions & packaged apps
+  // a.target = '_blank'
+  if (typeof blob === 'string') {
+    a.href = blob;
+  } else {
+    a.href = window.URL.createObjectURL(blob);
+  }
+  a.dispatchEvent(new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true,
+    view: window
+  }));
+}
+
 
 // TODO: Rework storage of optimized vs. non-optimized fonts to be more organized
 var fontDataOptimized, fontDataOptimizedItalic, fontDataOptimizedSmallCaps;
 
 export async function optimizeFont2() {
 
+  const fontNormal = await fontObj[globalSettings.defaultFont]["normal"];
+  const fontItalic = await fontObj[globalSettings.defaultFont]["italic"];
 
-  fontObj[globalSettings.defaultFont]["normal"].tables.gsub = null;
-  fontObj[globalSettings.defaultFont]["italic"].tables.gsub = null;
+
+  fontNormal.tables.gsub = null;
+  fontItalic.tables.gsub = null;
 
   // Quick fix due to bug in pdfkit (see note in renderPDF function)
-  fontObj[globalSettings.defaultFont]["normal"].tables.name.postScriptName["en"] = fontObj[globalSettings.defaultFont]["normal"].tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
+  fontNormal.tables.name.postScriptName["en"] = fontNormal.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
-  let fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["normal"], fontObj[globalSettings.defaultFont]["italic"], globalThis.fontMetricsObj["normal"]);
+  // Italic fonts can be optimized in 2 ways.  If metrics exist for italics, then they are optimized using those (similar to normal fonts).
+  // If no metrics exist for italics, then a subset of optimizations are applied using metrics from the normal variant. 
+  const fontAuxArg = globalThis.fontMetricsObj["italic"] ? null : fontItalic;
+  let fontArr = await optimizeFont(fontNormal, fontAuxArg, globalThis.fontMetricsObj["normal"]);
 
   fontDataOptimized = fontArr[0].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont, fontDataOptimized, true);
+  window.fontObj[globalSettings.defaultFont]["normal"] = loadFont(globalSettings.defaultFont, fontDataOptimized, true);
+  await loadFontBrowser(globalSettings.defaultFont, "normal", fontDataOptimized, true);
 
-  fontDataOptimizedItalic = fontArr[1].toArrayBuffer();
-  await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
+  if (!globalThis.fontMetricsObj["italic"]) {
+    fontDataOptimizedItalic = fontArr[1].toArrayBuffer();
+    window.fontObj[globalSettings.defaultFont]["italic"] = loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
+    await loadFontBrowser(globalSettings.defaultFont, "italic", fontDataOptimizedItalic, true);
+  }
 
   // Create small caps font using optimized "normal" font as a starting point
   //createSmallCapsFont(window.fontObj["Libre Baskerville"]["normal"], "Libre Baskerville", fontMetricsObj["heightSmallCaps"] || 1, fontMetricsObj);
@@ -2839,16 +2904,18 @@ export async function optimizeFont2() {
     fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["small-caps"], null, globalThis.fontMetricsObj["small-caps"]);
     fontDataOptimizedSmallCaps = fontArr[0].toArrayBuffer();
     const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
-    await loadFont(globalSettings.defaultFont + "-small-caps", fontDataOptimizedSmallCaps, true);
+    window.fontObj[globalSettings.defaultFont]["small-caps"] = loadFont(globalSettings.defaultFont + "-small-caps", fontDataOptimizedSmallCaps, true);
+    await loadFontBrowser(globalSettings.defaultFont, "small-caps", fontDataOptimizedSmallCaps, true);
     fontObj[globalSettings.defaultFont]["small-caps"].kerningPairs = kerningPairs;
     //await loadFont(globalSettings.defaultFont + " Small Caps", fontDataOptimizedSmallCaps, true);
   }
 
   // Optimize italics if metrics exist to do so
   if (globalThis.fontMetricsObj["italic"]) {
-    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["italic"], null, globalThis.fontMetricsObj["italic"], "italic");
+    fontArr = await optimizeFont(fontItalic, null, globalThis.fontMetricsObj["italic"], "italic");
     fontDataOptimizedItalic = fontArr[0].toArrayBuffer();
-    await loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
+    window.fontObj[globalSettings.defaultFont]["italic"] = loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
+    await loadFontBrowser(globalSettings.defaultFont, "italic", fontDataOptimizedItalic, true);
   }
 
 
@@ -2860,7 +2927,16 @@ convertPageWorker.promises = {};
 convertPageWorker.promiseId = 0;
 
 
+// Input array contents:
+// [0] HOCR data
+// [1] Page number
+// [2] Abbyy mode
+// [3] Object with arbitrary values to pass through to result
 function convertPage(args) {
+
+  if (args.length == 3) {
+    args.push({});
+  }
 
   return new Promise(function (resolve, reject) {
     let id = convertPageWorker.promiseId++;
@@ -2909,52 +2985,54 @@ function updateConvertPageCounter() {
   }
 }
 
+
+
 convertPageWorker.onmessage = function (e) {
 
-  const recognizeAreaMode = e.data[2];
+  const n = e.data[1];
+  const argsObj = e.data[2];
 
-  const oemText = e.data[3];
-  const oemCurrent = !oemText || oemText == document.getElementById("displayLabelText").innerHTML ? true : false;
+  const oemCurrent = !argsObj["engine"] || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
 
   // If an OEM engine is specified, save to the appropriate object within hocrAll,
   // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
   // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
   // while the recognition job is running.
-  if (oemText) {
-    globalThis.hocrAll[e.data[3]][e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
+  if (argsObj["engine"]) {
+    globalThis.hocrAll[argsObj["engine"]][n] = e.data[0][0] || "<div class='ocr_page'></div>";
     if (oemCurrent) {
-      globalThis.hocrCurrent[e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
+      globalThis.hocrCurrent[n] = e.data[0][0] || "<div class='ocr_page'></div>";
     }
   } else {
-    globalThis.hocrCurrent[e.data[1]] = e.data[0][0] || "<div class='ocr_page'></div>";
+    globalThis.hocrCurrent[n] = e.data[0][0] || "<div class='ocr_page'></div>";
   }
 
   // When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
-  if (recognizeAreaMode) {
-    globalThis.pageMetricsObj["dimsAll"][e.data[1]] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
-    globalThis.hocrCurrent[e.data[1]] = globalThis.hocrCurrent[e.data[1]].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
+  if (argsObj["recognizeAreaMode"]) {
+    globalThis.pageMetricsObj["dimsAll"][n] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
+    globalThis.hocrCurrent[n] = globalThis.hocrCurrent[n].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
   } else {
-    globalThis.pageMetricsObj["dimsAll"][e.data[1]] = e.data[0][1];
+    globalThis.pageMetricsObj["dimsAll"][n] = e.data[0][1];
   }
 
-  inputDataModes.xmlMode[e.data[1]] = true;
+  inputDataModes.xmlMode[n] = true;
 
-  globalThis.pageMetricsObj["angleAll"][e.data[1]] = e.data[0][2];
-  globalThis.pageMetricsObj["leftAll"][e.data[1]] = e.data[0][3];
-  globalThis.pageMetricsObj["angleAdjAll"][e.data[1]] = e.data[0][4];
-  fontMetricObjsMessage["widthObjAll"].push(e.data[0][5]);
-  fontMetricObjsMessage["heightObjAll"].push(e.data[0][6]);
-  fontMetricObjsMessage["heightSmallCapsObjAll"].push(e.data[0][7]);
-  fontMetricObjsMessage["cutObjAll"].push(e.data[0][8]);
-  fontMetricObjsMessage["kerningObjAll"].push(e.data[0][9]);
-  fontMetricObjsMessage["messageAll"][e.data[1]] = e.data[0][10];
+  globalThis.pageMetricsObj["angleAll"][n] = e.data[0][2];
+  globalThis.pageMetricsObj["leftAll"][n] = e.data[0][3];
+  globalThis.pageMetricsObj["angleAdjAll"][n] = e.data[0][4];
+  fontMetricObjsMessage["widthObjAll"][n] = e.data[0][5];
+  fontMetricObjsMessage["heightObjAll"][n] = e.data[0][6];
+  fontMetricObjsMessage["heightSmallCapsObjAll"][n] = e.data[0][7];
+  fontMetricObjsMessage["cutObjAll"][n] = e.data[0][8];
+  fontMetricObjsMessage["kerningObjAll"][n] = e.data[0][9];
+  fontMetricObjsMessage["messageAll"][n] = e.data[0][10];
 
   // If this is the page the user has open, render it to the canvas
-  if (e.data[1] == currentPage.n && oemCurrent) {
+  if (n == currentPage.n && oemCurrent) {
     renderPageQueue(currentPage.n);
   }
 
-  convertPageWorker.promises[e.data[e.data.length-1]].resolve();
+  convertPageWorker.promises[e.data[e.data.length - 1]].resolve();
 
 }
 

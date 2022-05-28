@@ -3,7 +3,8 @@ const httpServer = Cypress.env('TESTSITE');
 describe('It', () => {
   beforeEach(() => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
+    cy.get('#nav-import-tab').click()
+cy.wait(500);
   })
 
   it('downloads a text file from jpg with hOCR (xml for browserstack but data from tess)', () => {
@@ -14,6 +15,7 @@ describe('It', () => {
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(500)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.get('#download').click()
@@ -34,6 +36,7 @@ describe('It', () => {
     ])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.get('#download').click()
@@ -50,9 +53,11 @@ describe('It', () => {
     cy.wait(3000)
 
     cy.get('#nav-view-tab').click()
+cy.wait(500)
     cy.get('#colorMode').select('Native')
 
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -69,9 +74,11 @@ describe('It', () => {
     cy.wait(3000)
 
     cy.get('#nav-view-tab').click()
+cy.wait(500)
     cy.get('#colorMode').select('Binary')
 
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -93,6 +100,7 @@ describe('It', () => {
     cy.get('#pageCount').should('have.text', '4')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -108,6 +116,7 @@ describe('It', () => {
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
     cy.get('#download').click()
@@ -131,6 +140,7 @@ describe('It', () => {
     cy.get('#pageCount').should('have.text', '4')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.wait(3000)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()

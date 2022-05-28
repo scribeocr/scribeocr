@@ -3,7 +3,8 @@ const httpServer = Cypress.env('TESTSITE');
 describe('It downloads a', () => {
   beforeEach(() => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
+    cy.get('#nav-import-tab').click()
+cy.wait(500);
   })
 
   //JPG Upload -> Download 
@@ -17,6 +18,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(500)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.get('#download').click()
@@ -38,6 +40,7 @@ describe('It downloads a', () => {
     ])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.get('#download').click()
@@ -55,9 +58,11 @@ describe('It downloads a', () => {
     cy.wait(3000)
 
     cy.get('#nav-view-tab').click()
+cy.wait(500)
     cy.get('#colorMode').select('Native')
 
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -75,9 +80,11 @@ describe('It downloads a', () => {
     cy.wait(3000)
 
     cy.get('#nav-view-tab').click()
+cy.wait(500)
     cy.get('#colorMode').select('Binary')
 
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -100,6 +107,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '4')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.wait(3000)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
@@ -117,6 +125,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
     cy.get('#download').click()
@@ -138,6 +147,7 @@ describe('It downloads a', () => {
     ])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
     cy.get('#download').click()
@@ -156,6 +166,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '114')
     cy.wait(5000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.wait(5000)
@@ -168,6 +179,7 @@ describe('It downloads a', () => {
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'])
     cy.get('#pageCount').should('have.text', '114')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -179,6 +191,7 @@ describe('It downloads a', () => {
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'])
     cy.get('#pageCount').should('have.text', '114')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
     cy.get('#download').click()
@@ -194,6 +207,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(100)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.get('#download').click()
@@ -212,6 +226,7 @@ describe('It downloads a', () => {
       'cypress/fixtures/multi_png/the_past.png'])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.get('#download').click()
@@ -225,9 +240,11 @@ describe('It downloads a', () => {
     
 
     cy.get('#nav-view-tab').click()
+cy.wait(500)
     cy.get('#colorMode').select('Binary')
 
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -241,9 +258,11 @@ describe('It downloads a', () => {
     cy.wait(100)
 
     cy.get('#nav-view-tab').click()
+cy.wait(500)
     cy.get('#colorMode').select('Native')
 
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -262,6 +281,7 @@ describe('It downloads a', () => {
       'cypress/fixtures/multi_png/the_past.png'])
     cy.get('#pageCount').should('have.text', '4')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -274,6 +294,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '1')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
     cy.get('#download').click()
@@ -296,6 +317,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '4')
     cy.wait(3000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.wait(3000)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()

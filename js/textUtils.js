@@ -9,7 +9,7 @@ export function getFontSize(font, charHeight, compChar = "o"){
 }
 
 
-export function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "normal"){
+export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "normal"){
   window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
 
   if (/small caps$/i.test(fontFamily)) {
@@ -18,11 +18,12 @@ export function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "nor
   }
 
   // Calculate font glyph metrics for precise positioning
-  const wordLastGlyphMetrics = window.fontObj[fontFamily][fontStyle].charToGlyph(wordText.substr(-1)).getMetrics();
-  const wordFirstGlyphMetrics = window.fontObj[fontFamily][fontStyle].charToGlyph(wordText.substr(0,1)).getMetrics();
+  const fontObjI = await window.fontObj[fontFamily][fontStyle];
+  const wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
+  const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0,1)).getMetrics();
 
-  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing * (fontSize / window.fontObj[fontFamily][fontStyle].unitsPerEm);
-  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / window.fontObj[fontFamily][fontStyle].unitsPerEm);
+  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing * (fontSize / fontObjI.unitsPerEm);
+  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObjI.unitsPerEm);
 
   const wordWidth1 = window.ctx.measureText(wordText).width;
   const wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;
@@ -31,7 +32,7 @@ export function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "nor
 }
 
 
-export function calcWordWidth(wordText, fontFamily, fontSize, fontStyle = "normal"){
+export async function calcWordWidth(wordText, fontFamily, fontSize, fontStyle = "normal"){
   window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
 
   if (/small caps$/i.test(fontFamily)) {
@@ -40,11 +41,12 @@ export function calcWordWidth(wordText, fontFamily, fontSize, fontStyle = "norma
   }
 
   // Calculate font glyph metrics for precise positioning
-  const wordLastGlyphMetrics = window.fontObj[fontFamily][fontStyle].charToGlyph(wordText.substr(-1)).getMetrics();
-  const wordFirstGlyphMetrics = window.fontObj[fontFamily][fontStyle].charToGlyph(wordText.substr(0,1)).getMetrics();
+  const fontObjI = await window.fontObj[fontFamily][fontStyle];
+  const wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
+  const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0,1)).getMetrics();
 
-  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing * (fontSize / window.fontObj[fontFamily][fontStyle].unitsPerEm);
-  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / window.fontObj[fontFamily][fontStyle].unitsPerEm);
+  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing * (fontSize / fontObjI.unitsPerEm);
+  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObjI.unitsPerEm);
 
   const wordWidth1 = window.ctx.measureText(wordText).width;
   const wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;

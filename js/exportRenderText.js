@@ -1,5 +1,5 @@
 
-export function renderText(hocrCurrent){
+export function renderText(hocrCurrent) {
 
   let textStr = "";
   const exportParser = new DOMParser();
@@ -9,14 +9,16 @@ export function renderText(hocrCurrent){
   let minValue = parseInt(pdfPageMinElem.value);
   let maxValue = parseInt(pdfPageMaxElem.value);
 
-  for(let g = (minValue-1); g < maxValue; g++){
-    if(g > 0){
+  for (let g = (minValue - 1); g < maxValue; g++) {
+    if (g > 0) {
       textStr = textStr + "\n\n";
     }
-    const pageXML = exportParser.parseFromString(hocrCurrent[g],"text/xml");
+    // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
+    if (!hocrCurrent[g] || hocrCurrent[g]?.length < 50) continue;
+    const pageXML = exportParser.parseFromString(hocrCurrent[g], "text/xml");
     const lines = pageXML.getElementsByClassName("ocr_line");
     for (let h = 0; h < lines.length; h++) {
-      if(h > 0){
+      if (h > 0) {
         textStr = textStr + "\n";
       }
 
@@ -25,7 +27,7 @@ export function renderText(hocrCurrent){
 
       for (let i = 0; i < words.length; i++) {
         const word = words[i];
-        if(i > 0){
+        if (i > 0) {
           textStr = textStr + " ";
         }
         textStr = textStr + word.textContent;
@@ -34,7 +36,7 @@ export function renderText(hocrCurrent){
     }
   }
 
-  const textBlob = new Blob([textStr]);
+  const textBlob = new Blob([textStr], { type: 'text/plain' });
   const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
   let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
 

@@ -8,42 +8,78 @@ import { createSmallCapsFont } from "./fontOptimize.js";
 
 // Load all font styles for specified font family
 export async function loadFontFamily(fontFamily, fontMetricsObj) {
-  const heightSmallCaps = fontMetricsObj?.["heightSmallCaps"] || 1;
 
-  if(fontFamily.toLowerCase() == "open sans"){
-    await loadFont("Open Sans-italic", null, true);
-    await loadFont("Open Sans", null, true);
-    await loadFont("Open Sans-small-caps", null, true);
-    await createSmallCapsFont(window.fontObj["Open Sans"]["small-caps"], "Open Sans", heightSmallCaps);
-  } else if(fontFamily.toLowerCase() == "libre baskerville"){
-    await loadFont("Libre Baskerville-italic", null, true);
-    await loadFont("Libre Baskerville", null, true);
-    await loadFont("Libre Baskerville-small-caps", null, true);
-    await createSmallCapsFont(window.fontObj["Libre Baskerville"]["small-caps"], "Libre Baskerville", heightSmallCaps);
+  //const heightSmallCaps = fontMetricsObj?.["heightSmallCaps"] || 1;
+  const heightSmallCaps = 1;
+
+  let familyStr;
+  if (fontFamily.toLowerCase() == "open sans") {
+    familyStr = "Open Sans";
+  } else if (fontFamily.toLowerCase() == "libre baskerville") {
+    familyStr = "Libre Baskerville";
+  } else {
+    familyStr = fontFamily;
   }
+
+  if (!window.fontObj) {
+    window.fontObj = {};
+    window.fontObjRaw = {};
+  }
+  if (!window.fontObj[familyStr]) {
+    window.fontObj[familyStr] = {};
+    window.fontObjRaw[familyStr] = {};
+  }
+
+  // Font data can either be stored in an array or found through a URL
+  const sourceItalic = window.fontObjRaw[familyStr]["italic"] || fontFiles[familyStr + "-italic"];
+  const sourceNormal = window.fontObjRaw[familyStr]["normal"] || fontFiles[familyStr];
+
+  window.fontObj[familyStr]["italic"] = loadFont(familyStr + "-italic", sourceItalic, true).then(async (x) => {
+    await loadFontBrowser(familyStr, "italic", sourceItalic, true);
+    return x;
+  });
+  window.fontObj[familyStr]["normal"] = loadFont(familyStr, sourceNormal, true).then(async (x) => {
+    await loadFontBrowser(familyStr, "normal", sourceNormal, true);
+    return x;
+  });
+  
+  // Most fonts do not include small caps variants, so we create our own using the normal variant as a starting point. 
+  window.fontObj[familyStr]["small-caps"] = createSmallCapsFont(window.fontObj[familyStr]["normal"], heightSmallCaps).then(async (x) => {
+    window.fontObjRaw[familyStr]["small-caps"] = x.toArrayBuffer();
+    loadFontBrowser(familyStr, "small-caps", window.fontObjRaw[familyStr]["small-caps"], true);
+    return (x);
+  });
+
+  await Promise.allSettled([window.fontObj[familyStr]["normal"], window.fontObj[familyStr]["italic"], window.fontObj[familyStr]["small-caps"]]);
 }
 
 // Load font as FontFace (used for displaying on canvas)
 export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = false) {
 
-  if(typeof(window.fontFaceObj) == "undefined"){
+  src = await src;
+
+  if (typeof (src) == "string") {
+    src = "url(" + src + ")";
+  }
+
+  if (typeof (window.fontFaceObj) == "undefined") {
     window.fontFaceObj = new Object;
   }
 
   // Only load font if not already loaded.
-  if(overwrite || !document.fonts.check(fontStyle + " 10px '" + fontFamily + "'")){
+  if (overwrite || !document.fonts.check(fontStyle + " 10px '" + fontFamily + "'")) {
     let newFont;
-    if(fontStyle == "small-caps"){
-        newFont = new FontFace(fontFamily + " Small Caps", src);
+    if (fontStyle == "small-caps") {
+      newFont = new FontFace(fontFamily + " Small Caps", src);
     } else {
-      newFont = new FontFace(fontFamily, src, {style:fontStyle});
+      newFont = new FontFace(fontFamily, src, { style: fontStyle });
     }
 
-    if(typeof(fontFaceObj[fontFamily]) == "undefined"){
+    if (typeof (fontFaceObj[fontFamily]) == "undefined") {
       fontFaceObj[fontFamily] = new Object;
     }
 
-    if(typeof(fontFaceObj[fontFamily][fontStyle]) != "undefined"){
+    if (typeof (fontFaceObj[fontFamily][fontStyle]) != "undefined") {
       document.fonts.delete(fontFaceObj[fontFamily][fontStyle]);
     }
 
@@ -61,49 +97,44 @@ export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = fa
   fabric.util.clearFabricFontCache(fontFamily);
   fabric.util.clearFabricFontCache(fontFamily + " Small Caps");
 
+  return;
+
 }
 
 
 // Load font as opentype.js object, call loadFontBrowser to load as FontFace
-export async function loadFont(font, src = null, overwrite = false){
-  if(typeof(window.fontObj) == "undefined"){
-    window.fontObj = new Object;
-  }
+export async function loadFont(font, src, overwrite = false) {
 
-
-  if(src == null){
-    src = fontFiles[font];
+  if (typeof (window.fontObjRaw) == "undefined") {
+    window.fontObjRaw = {};
   }
 
   let styleStr = font.match(/[\-](.+)/);
-  if(styleStr == null){
+  if (styleStr == null) {
     styleStr = "normal";
-  // Alternative names for "Normal"
+    // Alternative names for "Normal"
   } else {
     styleStr = styleStr[1].toLowerCase()
-    if(["medium","roman"].includes(styleStr)){
-        styleStr = "normal";
-      }
+    if (["medium", "roman"].includes(styleStr)) {
+      styleStr = "normal";
+    }
   }
 
   const familyStr = font.match(/[^\-]+/)[0];
 
-  if(!fontObj[familyStr]){
-    fontObj[familyStr] = new Object;
+  if (!fontObjRaw[familyStr]) {
+    fontObjRaw[familyStr] = new Object;
   }
 
   // Only load font if not already loaded
-  if(overwrite || !fontObj[familyStr][styleStr]){
-    if(typeof(src) == "string"){
-      fontObj[familyStr][styleStr] = await opentype.load(src);
-
-      src = "url(" + src + ")";
+  if (overwrite || !fontObj[familyStr][styleStr]) {
+    if (typeof (src) == "string") {
+      return opentype.load(src);
     } else {
-      fontObj[familyStr][styleStr] = opentype.parse(src, {lowMemory:false});
-
+      return opentype.parse(src, { lowMemory: false });
     }
   }
-  await loadFontBrowser(familyStr, styleStr, src, overwrite = overwrite);
+  //await loadFontBrowser(familyStr, styleStr, src, overwrite = overwrite);
 }
 
 // Object containing location of various font files

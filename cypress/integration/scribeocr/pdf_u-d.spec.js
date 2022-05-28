@@ -3,7 +3,8 @@ const httpServer = Cypress.env('TESTSITE');
 describe('It downloads a', () => {
   beforeEach(() => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
+    cy.get('#nav-import-tab').click()
+cy.wait(500);
   })
   it('text file from a pdf with different page numbered xml', () => {
     cy.get('#uploader').selectFile(
@@ -13,6 +14,7 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '114')
     cy.wait(5000)
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
     cy.wait(5000)
@@ -26,10 +28,12 @@ describe('It downloads a', () => {
     cy.get('#pageCount').should('have.text', '114')
 
     cy.get('#nav-view-tab').click()
+cy.wait(500)
     cy.get('#colorMode').select('Color')
     
 
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
     cy.get('#download').click()
@@ -42,6 +46,7 @@ describe('It downloads a', () => {
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml', 'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'])
     cy.get('#pageCount').should('have.text', '114')
     cy.get('#nav-download-tab').click()
+cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
     cy.wait(15000)

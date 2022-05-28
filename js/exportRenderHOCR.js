@@ -1,5 +1,5 @@
 
-export function renderHOCR(hocrCurrent, fontMetricsObj){
+export function renderHOCR(hocrCurrent, fontMetricsObj) {
 
   let minValue = parseInt(document.getElementById('pdfPageMin').value);
   let maxValue = parseInt(document.getElementById('pdfPageMax').value);
@@ -7,9 +7,9 @@ export function renderHOCR(hocrCurrent, fontMetricsObj){
   const exportParser = new DOMParser();
   let firstPageStr;
   // Normally the content from the first page is used, however when the first page is empty or encounters a parsing error another page is used
-  for (let i = (minValue - 1); i < maxValue; i++){
+  for (let i = (minValue - 1); i < maxValue; i++) {
     // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
-    if (hocrCurrent[i].length > 50) {
+    if (hocrCurrent[i]?.length > 50) {
       firstPageStr = hocrCurrent[i].replace(/\<html\>/, "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">");
       break;
     }
@@ -18,7 +18,7 @@ export function renderHOCR(hocrCurrent, fontMetricsObj){
   // If HTML start/end nodes do not already exist, append them now
   // This is relevant for OCR data generated within this program,
   // as well as imported Abbyy data.
-  if(!/[^\>\n]*?(xml|html)/.test(firstPageStr)){
+  if (!/[^\>\n]*?(xml|html)/.test(firstPageStr)) {
     let html_start = String.raw`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -37,23 +37,25 @@ export function renderHOCR(hocrCurrent, fontMetricsObj){
     firstPageStr = html_start + firstPageStr + html_end;
   }
 
-  let exportXML = exportParser.parseFromString(firstPageStr,"text/xml");
+  let exportXML = exportParser.parseFromString(firstPageStr, "text/xml");
 
-  let fontXML = exportParser.parseFromString("<meta name='font-metrics' content='" + JSON.stringify(fontMetricsObj) + "'></meta>","text/xml");
-   exportXML.getElementsByTagName("head")[0].appendChild(fontXML.firstChild);
+  let fontXML = exportParser.parseFromString("<meta name='font-metrics' content='" + JSON.stringify(fontMetricsObj) + "'></meta>", "text/xml");
+  exportXML.getElementsByTagName("head")[0].appendChild(fontXML.firstChild);
 
-  for (let i = minValue; i < maxValue; i++){
+  // TODO: Consider how empty pages are handled (e.g. what happens when the first page is empty)
+  for (let i = minValue; i < maxValue; i++) {
 
-    const pageXML = exportParser.parseFromString(hocrCurrent[i], "text/xml");
-    
+    const pageXML = hocrCurrent[i]?.length > 50 ? exportParser.parseFromString(hocrCurrent[i], "text/xml") : exportParser.parseFromString('<div class="ocr_page"></div>', "text/xml");
+
     exportXML.body.appendChild(pageXML.getElementsByClassName("ocr_page")[0])
+
   }
 
   let hocrInt = exportXML.documentElement.outerHTML;
   hocrInt = hocrInt.replaceAll(/xmlns\=[\'\"]{2}\s?/ig, "");
 
 
-  let hocrBlob = new Blob([hocrInt]);
+  let hocrBlob = new Blob([hocrInt], { type: 'text/plain' });
 
   let fileName = document.getElementById("downloadFileName").value.replace(/\.\w{1,4}$/, "") + ".hocr";
 
