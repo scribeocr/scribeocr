@@ -1456,7 +1456,7 @@ function addWordClick() {
 
   // mouse:up:before must be used so this code runs ahead of fabric internal logic.
   // Without this changes to active selection caused by mouse movement may change rect object.
-  canvas.on('mouse:up:before', function (o) {
+  canvas.on('mouse:up:before', async function (o) {
 
     canvas.__eventListeners = {}
     if (newWordInit) { return; }
@@ -1694,6 +1694,9 @@ function addWordClick() {
     // Can return to this simpler code if that changes.
     // https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics/fontBoundingBoxDescent
     //let fontDesc = (jMetrics.fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
+
+    const fontNormal = await fontObj[globalSettings.defaultFont]["normal"];
+    //const fontItalic = await fontObj[globalSettings.defaultFont]["italic"];
 
     let fontBoundingBoxDescent = Math.round(Math.abs(fontNormal.descender) * (1000 / fontNormal.unitsPerEm));
 
