@@ -33,7 +33,7 @@ function deleteHOCRWord(word_id){
 }
 
 
-export function toggleStyleSelectedWords(style){
+export async function toggleStyleSelectedWords(style){
   style = style.toLowerCase()
 
   const selectedObjects = window.canvas.getActiveObjects();
@@ -48,7 +48,7 @@ export function toggleStyleSelectedWords(style){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
     updateHOCRStyleWord(wordIDI, newValueStr);
-    const wordMetricsOrig = calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
+    const wordMetricsOrig = await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
 
     if(enable && style == "small-caps"){
         wordI.fontFamily = wordI.fontFamily.replace(/\s+small caps$/i, "") + " Small Caps";
@@ -58,7 +58,7 @@ export function toggleStyleSelectedWords(style){
         wordI.fontStyle = newValueStr;
     }
 
-    const wordMetricsNew = calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
+    const wordMetricsNew = await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
     if(wordI.text.length > 1){
       const wordWidth = wordMetricsNew[0];
       const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
@@ -111,7 +111,7 @@ function updateHOCRFontWord(word_id, value){
 }
 
 
-export function changeWordFontSize(fontSize){
+export async function changeWordFontSize(fontSize){
 
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects || selectedObjects.length == 0) return;
@@ -129,7 +129,7 @@ export function changeWordFontSize(fontSize){
     document.getElementById("fontSize").value = fontSize;
     wordI.fontSize = fontSize;
     if(wordI.text.length > 1){
-      const wordWidth = calcWordWidth(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
+      const wordWidth = await calcWordWidth(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
       const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
       wordI.charSpacing = kerning * 1000 / wordI.fontSize;
     }
@@ -192,7 +192,7 @@ export function updateHOCRBoundingBoxWord(word_id, leftDelta, rightDelta){
   }
 }
 
-export function changeWordFont(fontName){
+export async function changeWordFont(fontName){
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
   const fontNameCanvas = fontName == "Default" ? globalSettings.defaultFont : fontName;
@@ -204,7 +204,7 @@ export function changeWordFont(fontName){
     wordI.fontFamily = fontNameCanvas;
     wordI.defaultFontFamily = fontName == "Default" ? true : false;
     if(wordI.text.length > 1){
-      const wordWidth = calcWordWidth(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
+      const wordWidth = await calcWordWidth(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
       const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
       wordI.charSpacing = kerning * 1000 / wordI.fontSize;
     }

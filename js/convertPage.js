@@ -246,10 +246,12 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
         // Tesseract often misidentifies hyphens as other types of dashes. 
         // If the width of an en or em dash is shorter than it should be if correctly identified, and it is between two letters, it is replaced with a hyphen.
         if (contentStrLetter == "—" && charWidth < xHeight || contentStrLetter == "–" && charWidth < (xHeight * 0.85)) {
-          if (j > 0 && j + 1 < letterArr.length) {
-            if (/[A-Za-z]/.test(letterArr[j - 1][2]) && /[A-Za-z]/.test(letterArr[j + 1][2])) {
-              contentStrLetter = "-";
-            }
+          const betweenLettersCond = j > 0 && j + 1 < letterArr.length && /[A-Za-z]/.test(letterArr[j - 1][2]) && /[A-sssZa-z]/.test(letterArr[j + 1][2]);
+          // The intent of this condition is to flag hyphens that are the last character on a line.
+          // However, as that info does not currently exist in this scope, we just check that the dash is the final character in the word at present. 
+          const finalCharCond = j + 1 == letterArr.length;
+          if (betweenLettersCond || finalCharCond) {
+            contentStrLetter = "-";
           }
         }
 

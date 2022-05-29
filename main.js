@@ -192,6 +192,16 @@ enableEvalElem.addEventListener('click', () => {
 
 });
 
+const enableEnginesElem = /** @type {HTMLInputElement} */(document.getElementById('enableExtraEngines'));
+enableEnginesElem.addEventListener('click', () => {
+  if (enableEnginesElem.checked) {
+    document.getElementById("engineCol").setAttribute("style", "");
+  } else {
+    document.getElementById("engineCol").setAttribute("style", "display:none");
+  }
+});
+
+
 
 const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
@@ -283,6 +293,11 @@ document.getElementById('oemLabelOptionLegacy').addEventListener('click', () => 
 
 document.getElementById('psmLabelOption3').addEventListener('click', () => { setPsmLabel("3") });
 document.getElementById('psmLabelOption4').addEventListener('click', () => { setPsmLabel("4") });
+
+document.getElementById('buildLabelOptionDefault').addEventListener('click', () => { setBuildLabel("default") });
+document.getElementById('buildLabelOptionVanilla').addEventListener('click', () => { setBuildLabel("vanilla") });
+
+
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 recognizeAllElem.addEventListener('click', recognizeAll);
@@ -429,6 +444,13 @@ function setPsmLabel(x) {
   }
 }
 
+function setBuildLabel(x) {
+  if (x.toLowerCase() == "default") {
+    document.getElementById("buildLabelText").innerHTML = "Default";
+  } else if (x.toLowerCase() == "vanilla") {
+    document.getElementById("buildLabelText").innerHTML = "Vanilla";
+  }
+}
 
 
 function addDisplayLabel(x) {
@@ -618,13 +640,19 @@ async function createTesseractScheduler(workerN, config = null) {
 
   const allConfig = config || getTesseractConfigs();
 
+  // SIMD support can be manually disabled for debugging purposes.
+  const disableSIMD = document.getElementById("disableSIMD").checked;
+
+  const buildLabel = document.getElementById("buildLabelText").innerHTML;
+  const buildVersion = buildLabel == "Default" ? "" : "-" + buildLabel.toLowerCase();
+
   let workerOptions;
-  if (globalSettings.simdSupport) {
+  if (globalSettings.simdSupport && !disableSIMD) {
     console.log("Using Tesseract with SIMD support (fast LSTM performance).")
-    workerOptions = { corePath: './tess/tesseract-core-sse.wasm.js', workerPath: './tess/worker.min.js' };
+    workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '-sse.wasm.js', workerPath: './tess/worker.min.js' };
   } else {
     console.log("Using Tesseract without SIMD support (slow LSTM performance).")
-    workerOptions = { corePath: './tess/tesseract-core.wasm.js', workerPath: './tess/worker.min.js' };
+    workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '.wasm.js', workerPath: './tess/worker.min.js' };
   }
 
   const scheduler = Tesseract.createScheduler();

@@ -414,6 +414,24 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   </div>
                 </div>
               </div>
+              <div class="col col-2" id="engineCol" style="display:none">
+                <label>Alternative Builds</label>
+                <div class="row">
+                  <div class="form-group">
+                    <div class="dropdown">
+                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="build" data-bs-toggle="dropdown"
+                        style="width:100%;text-align:left">
+                        <div style="display:inline"> Build: </div>
+                        <div id="buildLabelText" style="display:inline">Default</div>
+                      </button>
+                      <ul class="dropdown-menu">
+                        <li><a id="buildLabelOptionDefault" class="dropdown-item" href="#">Scribe Tesseract</a></li>
+                        <li><a id="buildLabelOptionVanilla" class="dropdown-item" href="#">Vanilla Tesseract</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div id="simdWarning" class="alert alert-dismissible alert-warning d-flex align-items-center show fade" style="display:none !important">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
@@ -871,6 +889,12 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
                     <div class="form-check form-switch">
                       <label><input class="form-check-input" type="checkbox" id="enableEval"> Evaluate Accuracy</label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <label><input class="form-check-input" type="checkbox" id="enableExtraEngines"> Alternative Engine Builds</label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <label><input class="form-check-input" type="checkbox" id="disableSIMD"> Use Slow (Non-SIMD) Engine</label>
                     </div>
                   </div>
                 </div>
