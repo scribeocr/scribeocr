@@ -183,10 +183,12 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
             heightSmallCapsLine.push(wordBboxesBottom[i] - wordBboxesTop[i]);
           }
           // Check for small caps words in lowercase (all letters the same size, which is around the same size as small caps in previous words in line)
+          // The 10% margin accounts for random variation in general, however is also important since rounded letters (e.g. "O") are taller but
+          // less common, so will almost always exceed the median. 
         } else {
           const letterHeightArr = wordBboxesBottom.map((x, y) => x - wordBboxesTop[y]);
           const heightSmallCapsLineMedian = quantile(heightSmallCapsLine, 0.5);
-          if (heightSmallCapsLineMedian && letterHeightArr.filter((x) => x > heightSmallCapsLineMedian * 1.05).length == 0) {
+          if (heightSmallCapsLineMedian && letterHeightArr.filter((x) => x > heightSmallCapsLineMedian * 1.1).length == 0) {
             smallCaps = true;
           }
         }
@@ -244,15 +246,25 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
         } 
 
         // Tesseract often misidentifies hyphens as other types of dashes. 
-        // If the width of an en or em dash is shorter than it should be if correctly identified, and it is between two letters, it is replaced with a hyphen.
         if (contentStrLetter == "—" && charWidth < xHeight || contentStrLetter == "–" && charWidth < (xHeight * 0.85)) {
-          const betweenLettersCond = j > 0 && j + 1 < letterArr.length && /[A-Za-z]/.test(letterArr[j - 1][2]) && /[A-sssZa-z]/.test(letterArr[j + 1][2]);
-          // The intent of this condition is to flag hyphens that are the last character on a line.
-          // However, as that info does not currently exist in this scope, we just check that the dash is the final character in the word at present. 
-          const finalCharCond = j + 1 == letterArr.length;
-          if (betweenLettersCond || finalCharCond) {
+          // If the width of an en or em dash is shorter than it should be if correctly identified, and it is between two letters, it is replaced with a hyphen.
+          if (j > 0 && j + 1 < letterArr.length && /[A-Za-z]/.test(letterArr[j - 1][2]) && /[A-Za-z]/.test(letterArr[j + 1][2])) {
             contentStrLetter = "-";
+
+            // The intent of this condition is to flag hyphens that are the last character on a line.
+            // However, as that info does not currently exist in this scope, we just check that the dash is the final character in the word at present. 
+          } else if (j + 1 == letterArr.length) {
+            contentStrLetter = "-";
+
+          // For em dashes between two numbers, replace with en dash or hyphen depending on width of character
+          } else if (contentStrLetter == "—" && j > 0 && j + 1 < letterArr.length && /\d/.test(letterArr[j - 1][2]) && /\d/.test(letterArr[j + 1][2])) {
+            if (charWidth > (xHeight * 0.8)) {
+              contentStrLetter = "–";
+            } else {
+              contentStrLetter = "-";
+            }
           }
+          
         }
 
         // TODO: Make this impact word bounding box calculation
