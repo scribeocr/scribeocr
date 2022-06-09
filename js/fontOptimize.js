@@ -451,8 +451,10 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
 
     for (const [family, obj] of Object.entries(fontMetricsObj)) {
       fontMetricsOut[family] = {};
+      fontMetricsOut[family]["obs"] = 0;
       for (const [style, obj2] of Object.entries(obj)) {
         fontMetricsOut[family][style] = calculateFontMetrics(obj2);
+        fontMetricsOut[family]["obs"] = fontMetricsOut[family]["obs"] + fontMetricsOut[family][style]["obs"];
       }  
     }
 
@@ -466,6 +468,7 @@ function fontMetrics(){
   this.height = {};
   this.advance = {};
   this.kerning = {};
+  this.obs = 0;
 }
 
 // The following functions are used for combining an array of page-level fontMetrics objects produced by convertPage.js into a single document-level object.
@@ -478,6 +481,9 @@ function unionSingleFontMetrics(fontMetricsA, fontMetricsB){
   }
 
   const fontMetricsOut = new fontMetrics();
+
+  if(fontMetricsA?.obs) fontMetricsOut.obs = fontMetricsOut.obs + fontMetricsA.obs;
+  if(fontMetricsB?.width) fontMetricsOut.obs = fontMetricsOut.obs + fontMetricsB.obs;
 
   for (const [prop, obj] of Object.entries(fontMetricsA)) {
     for (const [key, value] of Object.entries(obj)) {
@@ -555,6 +561,8 @@ function calculateFontMetrics(fontMetricObj){
   }
 
   fontMetricOut["heightCaps"] = round6(quantile(heightCapsArr, 0.5));
+
+  fontMetricOut["obs"] = fontMetricObj["obs"];
 
   return(fontMetricOut);
 }

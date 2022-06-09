@@ -29,6 +29,7 @@ function fontMetrics(){
   this.height = {};
   this.advance = {};
   this.kerning = {};
+  this.obs = 0;
 }
 
 // Sans/serif lookup for common font families
@@ -329,6 +330,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
   
           fontMetricsObj[fontFamily][style]["width"][charUnicode].push(charWidth / xHeight);
           fontMetricsObj[fontFamily][style]["height"][charUnicode].push(charHeight / xHeight);
+          fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
 
           if (j == 0) {
             cuts[j] = 0;
@@ -486,12 +488,6 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
   const xmlOut = hocrString;
   const dimsOut = pageDims;
 
-  // const widthOut = widthObjPage;
-  // const heightOut = heightObjPage;
-  // const heightSmallCapsOut = heightObjPage["small-caps"];
-  // const cutOut = cutObjPage;
-  // const kerningOut = kerningObjPage;
-
   fontMetricsObj["message"] = charMode ? "" : "char_warning";
 
   return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
@@ -516,11 +512,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
   }
 
   const fontMetricsObj = {};
-
-  // let widthObjPage = new Object;
-  // let heightObjPage = new Object;
-  // let cutObjPage = new Object;
-  // let kerningObjPage = new Object;
 
   let lineLeft = new Array;
   let lineTop = new Array;
@@ -567,6 +558,8 @@ function convertPageAbbyy(xmlPage, pageNum) {
         fontFamily = "Libre Baskerville";
       } else if (sansFontsRegex.test(fontName)) {
         fontFamily = "Open Sans";
+      } else if (fontName != "Default Metrics Font") {
+        console.log("Unidentified font in XML import: " + fontName);
       }
     }
 
@@ -784,6 +777,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
           }
           for (let k = 0; k < value.length; k++) {
             fontMetricsObj[fontFamily][style]["width"][key].push(value[k] / lineXHeight);
+            fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
           }
         }
       }

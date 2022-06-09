@@ -2751,8 +2751,8 @@ async function optimizeFontClick(value) {
   // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
   // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font. 
   const metricsFontFamilies = Object.keys(globalThis.fontMetricsObj);
-  const multiFontMode = metricsFontFamilies.includes("Libre Baskerville") || metricsFontFamilies.includes("Open Sans");
-  const optFontFamilies = multiFontMode ? metricsFontFamilies : [globalSettings.defaultFont];
+  // const multiFontMode = metricsFontFamilies.includes("Libre Baskerville") || metricsFontFamilies.includes("Open Sans");
+  const optFontFamilies = globalSettings.multiFontMode ? metricsFontFamilies.filter((x) => x != "Default") : [globalSettings.defaultFont];
 
   for (let family of optFontFamilies) {
     if (value) {
@@ -3062,6 +3062,14 @@ function updateConvertPageCounter() {
         downloadElem.disabled = false;
       }
       calculateOverallPageMetrics();
+
+      let defaultFontObs = 0;
+      let namedFontObs = 0;
+      if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
+      if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
+      if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
+
+      globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
 
       // Enable font optimization (if possible) by default
       if(optimizeFontElem.disabled == false){
