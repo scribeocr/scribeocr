@@ -5,7 +5,7 @@
 // TODO: This file contains many miscellaneous functions and would benefit from being refactored.
 // Additionally, various data stored as global variables
 
-window.d = function () {
+globalThis.d = function () {
   debugger;
 }
 
@@ -135,13 +135,13 @@ canvas.overlayVpt = false;
 canvas.renderOnAddRemove = false;
 
 // Content that should be run once, after all dependencies are done loading are done loading
-window.runOnLoad = function () {
+globalThis.runOnLoad = function () {
 
-  // window.runOnLoadRun = true;
+  // globalThis.runOnLoadRun = true;
 
   // Load fonts
-  loadFontFamily("Open Sans", globalThis.fontMetricsObj);
-  loadFontFamily("Libre Baskerville", globalThis.fontMetricsObj);
+  loadFontFamily("Open Sans");
+  loadFontFamily("Libre Baskerville");
 
   // Detect whether SIMD instructions are supported
   simd().then(async function (x) {
@@ -160,8 +160,6 @@ window.runOnLoad = function () {
 
 
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
-
-//const upload = document.getElementById('uploader');
 
 globalThis.bsCollapse = new bootstrap.Collapse(document.getElementById("collapseRange"), { toggle: false });
 
@@ -189,7 +187,6 @@ enableEvalElem.addEventListener('click', () => {
     document.getElementById("nav-tab-container").setAttribute("class", "col-8 col-xl-6");
     document.getElementById("nav-eval-tab").setAttribute("style", "display:none");
   }
-
 });
 
 const enableEnginesElem = /** @type {HTMLInputElement} */(document.getElementById('enableExtraEngines'));
@@ -300,9 +297,9 @@ document.getElementById('buildLabelOptionVanilla').addEventListener('click', () 
 
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
-recognizeAllElem.addEventListener('click', recognizeAll);
+recognizeAllElem.addEventListener('click', () => {recognizePages(false)});
 const recognizePageElem = /** @type {HTMLInputElement} */(document.getElementById('recognizePage'));
-recognizePageElem.addEventListener('click', recognizePage);
+recognizePageElem.addEventListener('click', () => {recognizePages(true)});
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
 recognizeAreaElem.addEventListener('click', () => recognizeAreaClick(false));
@@ -465,20 +462,20 @@ function addDisplayLabel(x) {
   displayLabelOptionsElem.appendChild(option);
 }
 
-window.hocrAll = new Object;
+globalThis.hocrAll = new Object;
 function setCurrentHOCR(x) {
-  const currentLabel = displayLabelText.innerHTML.trim();
+  const currentLabel = displayLabelTextElem.innerHTML.trim();
   if (!x.trim() || x == currentLabel) return;
 
   globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   if (currentLabel) {
-    window.hocrAll[currentLabel] = window.hocrCurrent;
+    globalThis.hocrAll[currentLabel] = globalThis.hocrCurrent;
   }
-  if (!window.hocrAll[x]) {
-    window.hocrAll[x] = Array(imageAll.length);
+  if (!globalThis.hocrAll[x]) {
+    globalThis.hocrAll[x] = Array(globalThis.imageAll["native"].length);
   }
-  window.hocrCurrent = window.hocrAll[x];
-  displayLabelText.innerHTML = x;
+  globalThis.hocrCurrent = globalThis.hocrAll[x];
+  displayLabelTextElem.innerHTML = x;
   currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[currentPage.n], "text/xml");
 
   if (displayModeElem.value == "eval") {
@@ -496,15 +493,15 @@ async function changeDisplayFont(font) {
   if (!currentPage.xmlDoc) return;
   globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   const optimizeMode = optimizeFontElem.checked;
-  if (typeof (fontObj[font]) != "undefined" && typeof (fontObj[font]["normal"]) != "undefined" && fontObj[font]["normal"].optimized == optimizeMode) {
+  if (typeof (globalThis.fontObj[font]) != "undefined" && typeof (globalThis.fontObj[font]["normal"]) != "undefined" && globalThis.fontObj[font]["normal"].optimized == optimizeMode) {
     globalSettings.defaultFont = font;
     renderPageQueue(currentPage.n, 'screen', false);
   } else {
     console.log("Loading new font");
-    await loadFontFamily(font, window.fontMetricsObj);
+    await loadFontFamily(font);
     globalSettings.defaultFont = font;
     if (optimizeMode) {
-      await optimizeFont2();
+      await optimizeFont2(globalSettings.defaultFont);
     }
     renderPageQueue(currentPage.n, 'screen', false);
   }
@@ -514,7 +511,7 @@ async function changeDisplayFont(font) {
 
 function changeZoom(value) {
   if (currentPage.xmlDoc) {
-    window.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
   }
 
   let currentValue = parseFloat(zoomInputElem.value);
@@ -535,14 +532,14 @@ function changeZoom(value) {
 
 
 function adjustMarginRange(value) {
-  window.canvas.viewportTransform[4] = (parseInt(value) - 200);
-  window.canvas.renderAll();
+  globalThis.canvas.viewportTransform[4] = (parseInt(value) - 200);
+  globalThis.canvas.renderAll();
 }
 
 
 function adjustMarginRangeChange(value) {
-  if (typeof (window.pageMetricsObj["manAdjAll"]) == "undefined") return;
-  window.pageMetricsObj["manAdjAll"][currentPage.n] = (parseInt(value) - 200);
+  if (typeof (globalThis.pageMetricsObj["manAdjAll"]) == "undefined") return;
+  globalThis.pageMetricsObj["manAdjAll"][currentPage.n] = (parseInt(value) - 200);
 }
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
@@ -649,20 +646,22 @@ async function createTesseractScheduler(workerN, config = null) {
   let workerOptions;
   if (globalSettings.simdSupport && !disableSIMD) {
     console.log("Using Tesseract with SIMD support (fast LSTM performance).")
-    workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '-sse.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang" };
+    workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '-sse.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang"};
   } else {
     console.log("Using Tesseract without SIMD support (slow LSTM performance).")
     workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang" };
   }
 
-  const scheduler = Tesseract.createScheduler();
+  const scheduler = await Tesseract.createScheduler();
 
+  scheduler["workers"] = [];
   for (let i = 0; i < workerN; i++) {
     const w = Tesseract.createWorker(workerOptions);
     await w.load();
     await w.loadLanguage('eng');
     await w.initialize('eng', allConfig.tessedit_ocr_engine_mode);
     await w.setParameters(allConfig);
+    scheduler["workers"][i] = w;
 
     scheduler.addWorker(w);
   }
@@ -686,7 +685,9 @@ function getTesseractConfigs() {
     hocr_char_boxes: '1',
     // The Tesseract LSTM engine frequently identifies a bar character "|"
     // This is virtually always a false positive (usually "I").
-    tessedit_char_blacklist: "|ﬁﬂéï"
+    tessedit_char_blacklist: "|ﬁﬂéï",
+    debug_file: "/debug.txt",
+    max_page_gradient_recognize: "100"
   };
 
   return (allConfig);
@@ -703,56 +704,10 @@ function checkTesseractScheduler(scheduler, config = null) {
 
 }
 
-async function recognizePage() {
-
-  const allConfig = getTesseractConfigs();
-
-  // Do not use character-level data.
-  // The character-level data is not used for font kerning metrics, as at present only 1 font is optimized,
-  // and the text Tesseract misses using "Recognize All" is generally not from the body text (usually page numbers).
-  allConfig.hocr_char_boxes = '0';
-
-  // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
-  if (!checkTesseractScheduler(recognizeAreaScheduler, allConfig)) {
-    if (recognizeAreaScheduler) {
-      await recognizeAreaScheduler.terminate()
-      recognizeAreaScheduler = null;
-    }
-    recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
-  }
-
-  const inputImage = await window.imageAll[currentPage.n];
-
-  recognizeAreaScheduler.addJob('recognize', inputImage.src, allConfig).then((y) => {
-    const image = document.createElement('img');
-    image.src = y.data.image;
-    window.imageAllBinary[currentPage.n] = image;
-    window.hocrCurrentRaw[currentPage.n] = y.data.hocr;
-    //convertPageWorker.postMessage([y.data.hocr, currentPage.n, false, true, undefined, pageMetricsObj["angleAll"][currentPage.n]]);
-    const argsObj = {
-      "angle": pageMetricsObj["angleAll"][currentPage.n],
-      "recognizeAreaMode": true
-    }
-    convertPage([y.data.hocr, currentPage.n, false, argsObj])
-  })
-
-  // Enable confidence threshold input boxes (only used for Tesseract)
-  confThreshHighElem.disabled = false;
-  confThreshMedElem.disabled = false;
-
-  // Set threshold values if not already set
-  confThreshHighElem.value = confThreshHighElem.value || "85";
-  confThreshMedElem.value = confThreshMedElem.value || "75";
-
-  toggleEditButtons(false);
-
-}
-
-
 
 function createGroundTruthClick() {
   // Use whatever the current HOCR is as a starting point
-  window.hocrAll["Ground Truth"] = structuredClone(window.hocrCurrent);
+  globalThis.hocrAll["Ground Truth"] = structuredClone(globalThis.hocrCurrent);
   addDisplayLabel("Ground Truth");
   setCurrentHOCR("Ground Truth");
 
@@ -765,9 +720,9 @@ function createGroundTruthClick() {
   // compareGroundTruthElem.disabled = false;
 }
 
-window.evalStatsConfig = {};
+globalThis.evalStatsConfig = {};
 
-window.evalStats = new Array();
+globalThis.evalStats = new Array();
 function compareGroundTruthClick(n) {
 
   // When a document/recognition is still loading only the page statistics can be calculated
@@ -780,54 +735,54 @@ function compareGroundTruthClick(n) {
   evalStatsConfigNew["ignoreExtra"] = document.getElementById("ignoreExtra").checked;
 
   // Compare all pages if this has not been done already
-  if (!loadMode && JSON.stringify(window.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || window.evalStats.length == 0) {
-    window.evalStats = new Array(imageAll.length);
-    for (let i = 0; i < imageAll.length; i++) {
-      const res = compareHOCR(globalThis.hocrCurrent[i], window.hocrAll["Ground Truth"][i]);
-      window.evalStats[i] = res[1];
+  if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
+    globalThis.evalStats = new Array(globalThis.imageAll["native"].length);
+    for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
+      const res = compareHOCR(globalThis.hocrCurrent[i], globalThis.hocrAll["Ground Truth"][i]);
+      globalThis.evalStats[i] = res[1];
     }
-    window.evalStatsConfig = evalStatsConfigNew;
+    globalThis.evalStatsConfig = evalStatsConfigNew;
   }
 
-  const res = compareHOCR(globalThis.hocrCurrent[n], window.hocrAll["Ground Truth"][n]);
+  const res = compareHOCR(globalThis.hocrCurrent[n], globalThis.hocrAll["Ground Truth"][n]);
 
   globalThis.hocrCurrent[n] = res[0].documentElement.outerHTML;
-  window.evalStats[n] = res[1];
+  globalThis.evalStats[n] = res[1];
 
   // Display metrics for current page
-  document.getElementById("metricTotalWordsPage").innerHTML = window.evalStats[n][0];
-  document.getElementById("metricCorrectWordsPage").innerHTML = window.evalStats[n][1];
-  document.getElementById("metricIncorrectWordsPage").innerHTML = window.evalStats[n][2];
-  document.getElementById("metricMissedWordsPage").innerHTML = window.evalStats[n][3];
-  document.getElementById("metricExtraWordsPage").innerHTML = window.evalStats[n][4];
+  document.getElementById("metricTotalWordsPage").innerHTML = globalThis.evalStats[n][0];
+  document.getElementById("metricCorrectWordsPage").innerHTML = globalThis.evalStats[n][1];
+  document.getElementById("metricIncorrectWordsPage").innerHTML = globalThis.evalStats[n][2];
+  document.getElementById("metricMissedWordsPage").innerHTML = globalThis.evalStats[n][3];
+  document.getElementById("metricExtraWordsPage").innerHTML = globalThis.evalStats[n][4];
 
   if (evalStatsConfigNew["ignoreExtra"]) {
-    document.getElementById("metricWERPage").innerHTML = Math.round(((window.evalStats[n][2] + window.evalStats[n][3]) / window.evalStats[n][0]) * 100) / 100;
+    document.getElementById("metricWERPage").innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
   } else {
-    document.getElementById("metricWERPage").innerHTML = Math.round(((window.evalStats[n][2] + window.evalStats[n][3] + window.evalStats[n][4]) / window.evalStats[n][0]) * 100) / 100;
+    document.getElementById("metricWERPage").innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3] + globalThis.evalStats[n][4]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
   }
 
   // Calculate and display metrics for full document
   if (!loadMode) {
     let evalStatsDoc = [0, 0, 0, 0, 0]
-    for (let i = 0; i < window.evalStats.length; i++) {
-      evalStatsDoc[0] = evalStatsDoc[0] + window.evalStats[i][0];
-      evalStatsDoc[1] = evalStatsDoc[1] + window.evalStats[i][1];
-      evalStatsDoc[2] = evalStatsDoc[2] + window.evalStats[i][2];
-      evalStatsDoc[3] = evalStatsDoc[3] + window.evalStats[i][3];
-      evalStatsDoc[4] = evalStatsDoc[4] + window.evalStats[i][4];
+    for (let i = 0; i < globalThis.evalStats.length; i++) {
+      evalStatsDoc[0] = evalStatsDoc[0] + globalThis.evalStats[i][0];
+      evalStatsDoc[1] = evalStatsDoc[1] + globalThis.evalStats[i][1];
+      evalStatsDoc[2] = evalStatsDoc[2] + globalThis.evalStats[i][2];
+      evalStatsDoc[3] = evalStatsDoc[3] + globalThis.evalStats[i][3];
+      evalStatsDoc[4] = evalStatsDoc[4] + globalThis.evalStats[i][4];
     }
 
-    document.getElementById("metricTotalWordsDoc").innerHTML = evalStatsDoc[0];
-    document.getElementById("metricCorrectWordsDoc").innerHTML = evalStatsDoc[1];
-    document.getElementById("metricIncorrectWordsDoc").innerHTML = evalStatsDoc[2];
-    document.getElementById("metricMissedWordsDoc").innerHTML = evalStatsDoc[3];
-    document.getElementById("metricExtraWordsDoc").innerHTML = evalStatsDoc[4];
+    document.getElementById("metricTotalWordsDoc").innerHTML = evalStatsDoc[0].toString();
+    document.getElementById("metricCorrectWordsDoc").innerHTML = evalStatsDoc[1].toString();
+    document.getElementById("metricIncorrectWordsDoc").innerHTML = evalStatsDoc[2].toString();
+    document.getElementById("metricMissedWordsDoc").innerHTML = evalStatsDoc[3].toString();
+    document.getElementById("metricExtraWordsDoc").innerHTML = evalStatsDoc[4].toString();
 
     if (evalStatsConfigNew["ignoreExtra"]) {
-      document.getElementById("metricWERDoc").innerHTML = Math.round(((evalStatsDoc[2] + evalStatsDoc[3]) / evalStatsDoc[0]) * 100) / 100;
+      document.getElementById("metricWERDoc").innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3]) / evalStatsDoc[0]) * 100) / 100).toString();
     } else {
-      document.getElementById("metricWERDoc").innerHTML = Math.round(((evalStatsDoc[2] + evalStatsDoc[3] + evalStatsDoc[4]) / evalStatsDoc[0]) * 100) / 100;
+      document.getElementById("metricWERDoc").innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3] + evalStatsDoc[4]) / evalStatsDoc[0]) * 100) / 100).toString();
     }
   } else {
     document.getElementById("metricTotalWordsDoc").innerHTML = '';
@@ -839,10 +794,6 @@ function compareGroundTruthClick(n) {
   }
 
   currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[n], "text/xml");
-
-  // if (inputDataModes.xmlMode[n]) {
-  //   globalThis.hocrCurrent[n] = currentPage.xmlDoc.documentElement.outerHTML;
-  // }
 
 }
 
@@ -861,9 +812,9 @@ function compareHOCR(hocrStrA, hocrStrB) {
   const hocrALines = hocrA.getElementsByClassName("ocr_line");
   const hocrBLines = hocrB.getElementsByClassName("ocr_line");
 
-  window.hocrAOverlap = {};
-  window.hocrBOverlap = {};
-  window.hocrBCorrect = {};
+  globalThis.hocrAOverlap = {};
+  globalThis.hocrBOverlap = {};
+  globalThis.hocrBCorrect = {};
 
   //let minLineB = 0;
   for (let i = 0; i < hocrALines.length; i++) {
@@ -1020,7 +971,7 @@ function replaceLigatures(x) {
 
 
 // var recognizeAreaScheduler;
-window.recognizeAreaScheduler = null;
+globalThis.recognizeAreaScheduler = null;
 async function recognizeArea(left, top, width, height, wordMode = false) {
 
   if (inputDataModes.xmlMode[currentPage.n]) {
@@ -1039,16 +990,16 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
   }
 
   // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
-  if (!checkTesseractScheduler(recognizeAreaScheduler, allConfig)) {
-    if (recognizeAreaScheduler) {
+  if (!checkTesseractScheduler(globalThis.recognizeAreaScheduler, allConfig)) {
+    if (globalThis.recognizeAreaScheduler) {
       await recognizeAreaScheduler.terminate()
-      recognizeAreaScheduler = null;
+      globalThis.recognizeAreaScheduler = null;
     }
-    recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
+    globalThis.recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
   }
   allConfig.rectangle = { left, top, width, height };
 
-  const inputImage = await window.imageAll[currentPage.n];
+  const inputImage = await globalThis.imageAll["native"][currentPage.n];
 
   const res = await recognizeAreaScheduler.addJob('recognize', inputImage.src, allConfig);
   let hocrString = res.data.hocr;
@@ -1059,7 +1010,6 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
 
   // If no page exists already, simply use the new scan without editing
   if (!lines || lines.length == 0) {
-    //convertPageWorker.postMessage([hocrString, currentPage.n, false, true]);
     const argsObj = {
       "recognizeAreaMode": true
     }
@@ -1067,7 +1017,6 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
     convertPage([hocrString, currentPage.n, false, argsObj]);
 
     return;
-    //currentPage.xmlDoc = currentPage.xmlDoc = parser.parseFromString(hocrString, "text/xml");
 
   }
 
@@ -1107,7 +1056,7 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
     if (!lineBoxNew) return;
 
     // Identify the OCR line a bounding box is in (or closest line if no match exists)
-    const sinAngle = Math.sin(pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
+    const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
     let lineI = -1;
     let match = false;
     let newLastLine = false;
@@ -1209,105 +1158,182 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
 }
 
 
-async function recognizeAll() {
-
-  loadCountHOCR = 0;
-
-  convertPageWorker["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", imageAll.length);
-
-  // Render all pages to PNG
-  if (inputDataModes.pdfMode) {
-    await initSchedulerIfNeeded("muPDFScheduler");
-
-    //muPDFScheduler["activeProgress"] = initializeProgress("render-recognize-progress-collapse", imageAll.length, muPDFScheduler["pngRenderCount"]);
-    let time1 = Date.now();
-    await renderPDFImageCache([...Array(imageAll.length).keys()]);
-    let time2 = Date.now();
-    console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
-
-  }
+async function recognizePages(single = false) {
 
   const allConfig = getTesseractConfigs();
+  let scheduler;
 
+  if(!single){
+    loadCountHOCR = 0;
+
+    convertPageWorker["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
+  
+    // Render all pages to PNG
+    if (inputDataModes.pdfMode) {
+      await initSchedulerIfNeeded("muPDFScheduler");
+  
+      //muPDFScheduler["activeProgress"] = initializeProgress("render-recognize-progress-collapse", imageAll["native"].length, muPDFScheduler["pngRenderCount"]);
+      let time1 = Date.now();
+      await renderPDFImageCache([...Array(globalThis.imageAll["native"].length).keys()]);
+      let time2 = Date.now();
+      console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
+    }
+
+    let workerN = Math.round((globalThis.navigator.hardwareConcurrency || 8) / 2);
+    // Use at most 6 workers.  While some systems could support many more workers in theory,
+    // browser-imposed memory limits make this problematic in reality.
+    workerN = Math.min(workerN, 6);
+    // Do not create more workers than there are pages
+    workerN = Math.min(workerN, Math.ceil(globalThis.imageAll["native"].length));
+  
+    console.log("Using " + workerN + " workers for OCR.")
+  
+  
+    scheduler = await createTesseractScheduler(workerN, allConfig);
+  } else {
+    
+    // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
+    if (!checkTesseractScheduler(globalThis.recognizeAreaScheduler, allConfig)) {
+      if (globalThis.recognizeAreaScheduler) {
+        await globalThis.recognizeAreaScheduler.terminate()
+        globalThis.recognizeAreaScheduler = null;
+      }
+      globalThis.recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
+    }
+
+    scheduler = recognizeAreaScheduler;
+  }
+
+  // OCR results from different engines are only saved separately when running recognition on an entire document. 
+  // Running recognition on a single page will simply overwrite whatever data is actively displayed. 
   const oemText = "Tesseract " + document.getElementById("oemLabelText").innerHTML;
-  addDisplayLabel(oemText);
-  setCurrentHOCR(oemText);
+  if(!single) {
+    addDisplayLabel(oemText);
+    setCurrentHOCR(oemText);  
+  }
 
-  let recognizeImages = async (pagesArr, workerN) => {
+  let recognizeImages = async (pagesArr) => {
     let time1 = Date.now();
-    const scheduler = await createTesseractScheduler(workerN);
 
     const rets = await Promise.allSettled(pagesArr.map(async (x) => {
-      const allConfigI = JSON.parse(JSON.stringify(allConfig));
 
       // Whether the binary image should be rotated
-      const rotateBinary = true;
-      const angleArg = rotateBinary ? pageMetricsObj["angleAll"][x] * (Math.PI / 180) * -1 || 0 : 0;
-      allConfigI["angle"] = angleArg;
+      const rotate = true;
+      const angleKnown = typeof (globalThis.pageMetricsObj["angleAll"]?.[x]) == "number";
 
-      const inputImage = await window.imageAll[x];
+      // Do not rotate an image that has already been rotated
+      const rotateDegrees = rotate && Math.abs(globalThis.pageMetricsObj["angleAll"][x]) > 0.05 && !globalThis.imageAll["nativeRotated"][x] ? globalThis.pageMetricsObj["angleAll"][x] * -1 || 0 : 0;
+      const rotateRadians = rotateDegrees * (Math.PI / 180);
 
-      return scheduler.addJob('recognize', inputImage.src, allConfigI).then(async (y) => {
-        const image = document.createElement('img');
-        image.src = y.data.image;
-        window.imageAllBinary[x] = image;
-        window.imageAllBinaryRotated[x] = Boolean(allConfigI["angle"]);
-        window.hocrCurrentRaw[x] = y.data.hocr;
+      const inputImage = await globalThis.imageAll["native"][x];
+
+      const maxGradient = angleKnown ? "100" : "0.01";
+
+      // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
+      const saveNativeImage = autoRotateCheckboxElem.checked && !globalThis.imageAll["nativeRotated"][x] && rotateRadians != 0;
+      // const saveGreyImageArg = saveNativeImage && colorModeElem.value == "gray" ? "true" : "false";
+      // const saveColorImageArg = saveNativeImage && colorModeElem.value == "color" ? "true" : "false";
+      const saveColorImageArg = saveNativeImage ? "true" : "false";
+
+      const saveBinaryImageArg = !globalThis.imageAll["binary"][x] || autoRotateCheckboxElem.checked && !globalThis.imageAll["binaryRotated"][x] && rotateRadians != 0 ? "true" : "false";
+
+      return scheduler.addJob('recognize', inputImage.src, {angle: rotateRadians}, {max_page_gradient_recognize: maxGradient, debug_file: "/debug.txt", scribe_save_binary_rotated_image : saveBinaryImageArg, 
+        scribe_save_original_rotated_image: saveColorImageArg }).then(async (y) => {
+
+        console.log(y.data.debug);
+
+        if(saveBinaryImageArg == "true") {
+          const image = document.createElement('img');
+          image.src = y.data.imageBinary;
+          globalThis.imageAll["binary"][x] = image;
+  
+          globalThis.imageAll["binaryRotated"][x] = Math.abs(rotateDegrees) > 0.05;
+        }
+
+        if(saveNativeImage) {
+          const image = document.createElement('img');
+          image.src = y.data.imageOriginal;
+          globalThis.imageAll["native"][x] = image;
+          globalThis.imageAll["nativeRotated"][x] = Math.abs(rotateDegrees) > 0.05;  
+        }
+    
+        globalThis.hocrCurrentRaw[x] = y.data.hocr;
 
         // If the angle is already known, run once async
-        if (typeof (pageMetricsObj["angleAll"]?.[x]) == "number") {
+        if (angleKnown) {
           const argsObj = {
             "engine": oemText,
-            "angle": pageMetricsObj["angleAll"][x]
+            "angle": globalThis.pageMetricsObj["angleAll"][x],
+            "single": single
           }
 
-          convertPage([y.data.hocr, x, false, argsObj]).then(() => updateConvertPageCounter());
+          convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
         } else {
-          const argsObj = {
-            "engine": oemText
-          }
-
+          
           // If the angle is not already known, we wait until recognition finishes so we know the angle
-          await convertPage([y.data.hocr, x, false, argsObj]);
+          //await convertPage([y.data.hocr, x, false, argsObj]);
           // If the angle is >0.25 degree, we rerun with the known angle (which results in the image being rotated in pre-processing step)
-          if (Math.abs(pageMetricsObj["angleAll"][x]) >= 0.25) {
-            const angleArg = rotateBinary ? pageMetricsObj["angleAll"][x] * (Math.PI / 180) * -1 || 0 : 0;
-            allConfigI["angle"] = angleArg;
-            const inputImage = await window.imageAll[x];
-            return scheduler.addJob('recognize', inputImage.src, allConfigI).then(async (y) => {
-              window.hocrCurrentRaw[x] = y.data.hocr;
+          if (/Page Gradient/.test(y.data.debug)) {
+
+            const rotateRadians = parseFloat(y.data.debug.match(/Page Gradient\: ([\-\d\.]+)/)?.[1]);
+            const rotateDegrees = rotateRadians * (180 / Math.PI);
+
+            // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
+            const saveNativeImage = autoRotateCheckboxElem.checked && !globalThis.imageAll["nativeRotated"][x] && rotateRadians != 0;
+            const saveColorImageArg = saveNativeImage ? "true" : "false";
+            const saveBinaryImageArg = !globalThis.imageAll["binary"][x] || autoRotateCheckboxElem.checked && !globalThis.imageAll["binaryRotated"][x] && rotateRadians != 0 ? "true" : "false";
+
+            globalThis.pageMetricsObj["angleAll"][x] = rotateDegrees * -1;
+
+            //const inputImage = await globalThis.imageAll["native"][x];
+            return scheduler.addJob('recognize', inputImage.src, {angle: rotateRadians}, {scribe_save_binary_rotated_image : saveBinaryImageArg, 
+              scribe_save_original_rotated_image: saveColorImageArg}).then(async (y) => {
+
+              if(saveBinaryImageArg == "true") {
+                const image = document.createElement('img');
+                image.src = y.data.imageBinary;
+                globalThis.imageAll["binary"][x] = image;
+        
+                globalThis.imageAll["binaryRotated"][x] = Math.abs(rotateDegrees) > 0.05;
+              }
+      
+              if(saveNativeImage) {
+                const image = document.createElement('img');
+                image.src = y.data.imageOriginal;
+                globalThis.imageAll["native"][x] = image;
+                // globalThis.imageAll["nativeColor"][x] = saveGreyImageArg == "true" ? "gray" : "color";
+                globalThis.imageAll["nativeRotated"][x] = Math.abs(rotateDegrees) > 0.05;  
+              }
+      
+              globalThis.hocrCurrentRaw[x] = y.data.hocr;
               const argsObj = {
                 "engine": oemText,
-                "angle": pageMetricsObj["angleAll"][x]
+                "angle": globalThis.pageMetricsObj["angleAll"][x]
               }
 
-              convertPage([y.data.hocr, x, false, argsObj]).then(() => updateConvertPageCounter());
+              convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
             });
           } else {
-            updateConvertPageCounter();
+            const argsObj = {
+              "engine": oemText,
+              "single": single
+            }
+            convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
           }
         }
-        // convertPageWorker.postMessage([y.data.hocr, x, false, false, oemText, pageMetricsObj["angleAll"][x]]);
       })
 
     }));
 
-    await scheduler.terminate();
+    if(!single) await scheduler.terminate();
 
     let time2 = Date.now();
     console.log("Runtime: " + (time2 - time1) / 1e3 + "s");
   }
 
-  let workerN = Math.round((globalThis.navigator.hardwareConcurrency || 8) / 2);
-  // Use at most 6 workers.  While some systems could support many more workers in theory,
-  // browser-imposed memory limits make this problematic in reality.
-  workerN = Math.min(workerN, 6);
-  // Do not create more workers than there are pages
-  workerN = Math.min(workerN, Math.ceil(globalThis.imageAll.length));
+  const inputPages = single ? [currentPage.n] : [...Array(globalThis.imageAll["native"].length).keys()];
 
-  console.log("Using " + workerN + " workers for OCR.")
-
-  recognizeImages([...Array(globalThis.imageAll.length).keys()], workerN);
+  recognizeImages(inputPages);
 
   // Enable confidence threshold input boxes (only used for Tesseract)
   confThreshHighElem.disabled = false;
@@ -1486,8 +1512,6 @@ function addWordClick() {
     let shiftX = 0;
     let shiftY = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
-      // angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect.top + rect.height * 0.5);
-      // angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect.left + angleAdjXRect / 2) * -1;
 
       const rotateAngle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
 
@@ -1663,9 +1687,6 @@ function addWordClick() {
     let angleAdjX = 0;
     let angleAdjY = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
-      // angleAdjX = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (lineBoxChosen[3] + baselineChosen[1]);
-      // angleAdjY = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (lineBoxChosen[0] + angleAdjX / 2) * -1;
-
       const angleAdjXInt = sinAngle * (lineBoxChosen[3] + baselineChosen[1]);
       const angleAdjYInt = sinAngle * (lineBoxChosen[0] + angleAdjXInt / 2) * -1;
 
@@ -1695,7 +1716,7 @@ function addWordClick() {
     // https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics/fontBoundingBoxDescent
     //let fontDesc = (jMetrics.fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
 
-    const fontNormal = await fontObj[globalSettings.defaultFont]["normal"];
+    const fontNormal = await globalThis.fontObj[globalSettings.defaultFont]["normal"];
     //const fontItalic = await fontObj[globalSettings.defaultFont]["italic"];
 
     let fontBoundingBoxDescent = Math.round(Math.abs(fontNormal.descender) * (1000 / fontNormal.unitsPerEm));
@@ -1798,24 +1819,26 @@ function addWordClick() {
 
 // Resets the environment.
 var fontMetricObjsMessage, loadCountHOCR;
-function clearFiles() {
+async function clearFiles() {
 
   currentPage.n = 0;
 
-  window.imageAll = [];
-  window.hocrCurrent = [];
-  window.fontMetricsObj = {};
-  window.pageMetricsObj = {};
-  fontMetricObjsMessage = {};
+  globalThis.imageAll = {};
+  globalThis.hocrCurrent = [];
+  globalThis.fontMetricsObj = {};
+  globalThis.pageMetricsObj = {};
+  fontMetricObjsMessage = [];
 
-  if (window.binaryScheduler) {
-    window.binaryScheduler.terminate();
-    window.binaryScheduler = null;
+  if (globalThis.binaryScheduler) {
+    const bs = await globalThis.binaryScheduler;
+    bs.terminate();
+    globalThis.binaryScheduler = null;
   }
 
-  if (window.muPDFScheduler) {
-    window.binaryScheduler.terminate();
-    window.binaryScheduler = null;
+  if (globalThis.muPDFScheduler) {
+    const ms = await globalThis.muPDFScheduler;
+    globalThis.ms.terminate();
+    globalThis.muPDFScheduler = null;
   }
 
   loadCountHOCR = 0;
@@ -1856,12 +1879,6 @@ async function importOCRFiles() {
   const mainData = false;
 
   if (mainData) {
-    fontMetricObjsMessage["widthObjAll"] = new Array();
-    fontMetricObjsMessage["heightObjAll"] = new Array();
-    fontMetricObjsMessage["kerningObjAll"] = new Array();
-    fontMetricObjsMessage["cutObjAll"] = new Array();
-    fontMetricObjsMessage["heightSmallCapsObjAll"] = new Array();
-    fontMetricObjsMessage["messageAll"] = new Object();
 
     globalThis.pageMetricsObj["angleAll"] = new Array();
     globalThis.pageMetricsObj["dimsAll"] = new Array();
@@ -1913,9 +1930,9 @@ async function importOCRFiles() {
     }
 
     pageCountHOCR = hocrArrPages.length;
-    window.hocrCurrentRaw = Array(pageCountHOCR);
+    globalThis.hocrCurrentRaw = Array(pageCountHOCR);
     for (let i = 0; i < pageCountHOCR; i++) {
-      window.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
+      globalThis.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
     }
 
   } else {
@@ -1937,8 +1954,8 @@ async function importOCRFiles() {
   }
 
   // If both OCR data and image data are present, confirm they have the same number of pages
-  if (window.imageAll) {
-    if (window.imageAll.length != pageCountHOCR) {
+  if (globalThis.imageAll["native"]) {
+    if (globalThis.imageAll["native"].length != pageCountHOCR) {
       document.getElementById("pageMismatchAlertTextRec").textContent = " Page mismatch detected. Image data has " + pageCountImage + " pages while OCR data has " + pageCountHOCR + " pages."
       document.getElementById("pageMismatchAlertRec").setAttribute("style", "");
     }
@@ -1952,8 +1969,8 @@ async function importOCRFiles() {
 
     // Process HOCR using web worker, reading from file first if that has not been done already
     if (singleHOCRMode) {
-      //convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
-      convertPage([window.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
+      //convertPageWorker.postMessage([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
+      convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
     } else {
       const hocrFile = hocrFilesAll[i];
       //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
@@ -1977,22 +1994,15 @@ async function importFiles() {
 
   // It looks like the "load" event is not always triggered (when the page is refreshed).
   // This is a quick fix to make sure this function always runs.
-  // if(!window.runOnLoadRun){
-  //   window.runOnLoad();
+  // if(!globalThis.runOnLoadRun){
+  //   globalThis.runOnLoad();
   // }
 
-  window.runOnLoad();
+  globalThis.runOnLoad();
 
   const curFiles = uploaderElem.files;
 
   if (curFiles.length == 0) return;
-
-  fontMetricObjsMessage["widthObjAll"] = new Array();
-  fontMetricObjsMessage["heightObjAll"] = new Array();
-  fontMetricObjsMessage["kerningObjAll"] = new Array();
-  fontMetricObjsMessage["cutObjAll"] = new Array();
-  fontMetricObjsMessage["heightSmallCapsObjAll"] = new Array();
-  fontMetricObjsMessage["messageAll"] = new Object();
 
   globalThis.pageMetricsObj["angleAll"] = new Array();
   globalThis.pageMetricsObj["dimsAll"] = new Array();
@@ -2042,9 +2052,6 @@ async function importFiles() {
     while (colorModeElemOptions.length > 0) {
       colorModeElemOptions[0].remove();
     }
-    // for (let i = 0; i < colorModeElemOptions.length; i++){
-    //   colorModeElemOptions[i].remove();
-    // }
     if (inputDataModes.imageMode) {
       let option = document.createElement("option");
       option.text = "Native";
@@ -2095,12 +2102,14 @@ async function importFiles() {
 
   if (inputDataModes.pdfMode) {
 
-    window.pdfFile = pdfFilesAll[0];
+    globalThis.pdfFile = pdfFilesAll[0];
 
     // Initialize scheduler
     await initSchedulerIfNeeded("muPDFScheduler");
 
-    pageCountImage = await muPDFScheduler.addJob('countPages', []);
+    const ms = await globalThis.muPDFScheduler;
+
+    pageCountImage = await ms.addJob('countPages', []);
 
   } else if (inputDataModes.imageMode) {
     pageCountImage = imageFilesAll.length;
@@ -2148,9 +2157,9 @@ async function importFiles() {
       if (inputDataModes.imageMode && hocrArrPages.length != imageFilesAll.length) {
         throw new Error('Detected ' + hocrArrPages.length + ' pages in OCR but ' + imageFilesAll.length + " image files.")
       }
-      window.hocrCurrentRaw = Array(pageCountHOCR);
+      globalThis.hocrCurrentRaw = Array(pageCountHOCR);
       for (let i = 0; i < pageCountHOCR; i++) {
-        window.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
+        globalThis.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
       }
 
     } else {
@@ -2185,9 +2194,24 @@ async function importFiles() {
 
   globalThis.hocrCurrent = Array(pageCount);
   globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw || Array(pageCount);
-  globalThis.imageAll = Array(pageCount);
-  globalThis.imageAllBinary = Array(pageCount);
-  globalThis.imageAllBinaryRotated = Array(pageCount);
+
+  // Global object that contains arrays with page images or related properties. 
+  globalThis.imageAll = {
+    // Unedited images uploaded by user (unused when user provides a PDF).
+    nativeRaw: Array(pageCount),
+    // Native images.  When the user uploads images directly, this contains whatever they uploaded.
+    // When a user uploads a pdf, this will contain the images rendered by muPDF (either grayscale or color depending on setting).
+    native: Array(pageCount),
+    // Binarized image.
+    binary: Array(pageCount),
+    // Whether the native image was re-rendered with rotation applied. 
+    nativeRotated: Array(pageCount),
+    // Whether the binarized image was re-rendered with rotation applied. 
+    binaryRotated: Array(pageCount),
+    // [For pdf uploads only] Whether the "native" image was rendered in color or grayscale.
+    nativeColor: Array(pageCount)
+  }
+
   inputDataModes.xmlMode = new Array(pageCount);
   if (xmlModeImport) {
     inputDataModes.xmlMode.fill(true);
@@ -2195,14 +2219,9 @@ async function importFiles() {
     inputDataModes.xmlMode.fill(false);
   }
 
-  if (inputDataModes.pdfMode) {
-    globalThis.imageAllColor = Array(pageCount);
-  }
-
-
-  if (inputDataModes.pdfMode && !xmlModeImport) {
-    renderPageQueue(0);
-  }
+  // if (inputDataModes.pdfMode && !xmlModeImport) {
+  //   renderPageQueue(0);
+  // }
 
   let imageN = -1;
   let hocrN = -1;
@@ -2239,7 +2258,8 @@ async function importFiles() {
       reader.addEventListener("load", () => {
         image.src = reader.result;
 
-        imageAll[imageNi] = image;
+        globalThis.imageAll["nativeRaw"][imageNi] = image;
+        globalThis.imageAll["native"][imageNi] = globalThis.imageAll["nativeRaw"][imageNi];
 
         loadCountHOCR = loadCountHOCR + 1;
         const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
@@ -2262,8 +2282,8 @@ async function importFiles() {
       toggleEditButtons(false);
       // Process HOCR using web worker, reading from file first if that has not been done already
       if (singleHOCRMode) {
-        //convertPageWorker.postMessage([window.hocrCurrentRaw[i], i, abbyyMode]);
-        convertPage([window.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
+        //convertPageWorker.postMessage([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
+        convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
       } else {
         const hocrFile = hocrFilesAll[i];
         const hocrNi = hocrN + 1;
@@ -2275,9 +2295,26 @@ async function importFiles() {
 
   }
 
-  // Render first handful of pages for pdfs so the interface starts off responsive
-  // In the case of OCR data, this step is triggered elsewhere after all the data loads
   if (inputDataModes.pdfMode && !xmlModeImport) {
+
+    // Confirm that 300 dpi leads to a reasonably sized image and lower dpi if not.
+    const ms = await globalThis.muPDFScheduler;
+    const pageDims1 = (await ms.addJob('pageSizes', [300])).slice(1);
+
+    // For reasons that are unclear, a small number of pages have been rendered into massive files
+    // so a hard-cap on resolution must be imposed.
+    const pageWidth1 = pageDims1.map((x) => x[0]);
+    const pageDPI = pageWidth1.map((x) => Math.round(300 * 2000 / Math.max(x, 2000)));
+
+    // In addition to capping the resolution, also switch the width/height
+    const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
+
+    globalThis.pageMetricsObj["dimsAll"] = pageDims;
+    
+    // Render first handful of pages for pdfs so the interface starts off responsive
+    // In the case of OCR data, this step is triggered elsewhere after all the data loads
+    await renderPDFImageCache([0]);
+    renderPageQueue(0);
     renderPDFImageCache([...Array(Math.min(pageCount, 5)).keys()]);
   }
 
@@ -2293,8 +2330,8 @@ async function importFiles() {
 
 // Scheduler for compressing PNG data
 async function initMuPDFScheduler(file, workers = 3) {
-  window.muPDFScheduler = Tesseract.createScheduler();
-  muPDFScheduler["pngRenderCount"] = 0;
+  globalThis.muPDFScheduler = await Tesseract.createScheduler();
+  globalThis.muPDFScheduler["pngRenderCount"] = 0;
   for (let i = 0; i < workers; i++) {
     const w = await initMuPDFWorker();
     const fileData = await file.arrayBuffer();
@@ -2302,7 +2339,7 @@ async function initMuPDFScheduler(file, workers = 3) {
     w["pdfDoc"] = pdfDoc;
 
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-    muPDFScheduler.addWorker(w);
+    globalThis.muPDFScheduler.addWorker(w);
   }
 }
 
@@ -2315,16 +2352,12 @@ async function loadImage(url, elem) {
 }
 
 export async function displayImage(n, image, binary = false) {
-  if (currentPage.n == n && !(colorModeElem.value == "binary" && !binary)) {
+  if (currentPage.n == n && !(colorModeElem.value == "binary" && !binary || colorModeElem.value != "binary" && binary)) {
     currentPage.renderStatus = currentPage.renderStatus + 1;
 
     if (!inputDataModes.xmlMode[n]) {
       let widthRender = image.width;
       let heightRender = image.height;
-
-      if (!(image.width > 0 && image.height > 0)) {
-        debugger;
-      }
 
       let widthDisplay = Math.min(widthRender, parseFloat(zoomInputElem.value));
       let heightDisplay = Math.min(heightRender, heightRender * (widthDisplay / widthRender));
@@ -2346,109 +2379,120 @@ export async function displayImage(n, image, binary = false) {
 
 
 // Function that renders images and stores them in cache array (or returns early if the requested image already exists).
-// The color OR grayscale version is stored in imageAll, while the binary image is stored in imageAllBinary.
-async function renderPDFImageCache(pagesArr, rotateBinary = null) {
+// This function contains 2 distinct image rendering steps:
+// 1. Pages are rendered from .pdf to .png [either color or grayscale] using muPDF
+// 1. Existing .png images are processed (currently rotation and/or thresholding) using Tesseract/Leptonica
+async function renderPDFImageCache(pagesArr, rotate = null) {
 
   const colorMode = colorModeElem.value;
+  const colorName = colorMode == "binary" ? "binary" : "native";
 
-  await Promise.allSettled(pagesArr.map(async (n) => {
+  await Promise.allSettled(pagesArr.map((n) => {
 
-    // Whether the non-binary (color or grayscale) image needs to be rendered.
-    const renderImage = inputDataModes.pdfMode && (!globalThis.imageAll[n] || (colorMode != "binary" && globalThis.imageAllColor[n] != colorMode)) ? true : false;
+    // In imageMode, if the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image. 
+    if(inputDataModes.imageMode && rotate == false && globalThis.imageAll["nativeRotated"][n] == true) {
+      // globalThis.imageAll["nativeColor"][n] = "color";
+      globalThis.imageAll["nativeRotated"][n] = false;
+      globalThis.imageAll["native"][n] = globalThis.imageAll["nativeRaw"][n];
+    }
 
-    if (renderImage) {
+    // In pdfMode, determine whether an original/unedited version of the image needs to be obtained.
+    // This can happen for 3 reasons:
+    // 1. Page has not yet been rendered
+    // 2. Page was previously rendered, but in different colorMode (gray vs. color)
+    // 3. Page was overwritten by rotated version, but a non-rotated version is needed
+    const renderNativePDF = inputDataModes.pdfMode && (!globalThis.imageAll["native"][n] || 
+      (colorMode != "binary" && globalThis.imageAll["nativeColor"][n] != colorMode) ||
+      rotate == false && globalThis.imageAll["nativeRotated"][n] == true) ? true : false;
 
-      globalThis.imageAllColor[n] = colorModeElem.value;
-      imageAll[n] = new Promise(async function (resolve, reject) {
+    // In pdfMode the page is re-rendered from the pdf
+    if (renderNativePDF) {
+
+      globalThis.imageAll["nativeColor"][n] = colorModeElem.value;
+      globalThis.imageAll["nativeRotated"][n] = false;
+      globalThis.imageAll["native"][n] = new Promise(async function (resolve, reject) {
 
         // Initialize scheduler if one does not already exist
         // This happens when the original scheduler is killed after all pages are rendered,
         // but then the user changes from color to grayscale (or vice versa).
         await initSchedulerIfNeeded("muPDFScheduler");
 
+        const ms = await globalThis.muPDFScheduler;
+
         // Render to 300 dpi by default
         let dpi = 300;
 
-        // When XML data exists, render to the size specified by that
-        if (inputDataModes.xmlMode[n]) {
-          const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
-          const imgWidthPdf = await muPDFScheduler.addJob('pageWidth', [n + 1, 300]);
-          if (imgWidthPdf != imgWidthXml) {
-            dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
-          }
-
-          // Otherwise, confirm that 300 dpi leads to a reasonably sized image and lower dpi if not.
-          // For reasons that are unclear, a small number of pages have been rendered into massive files
-          // so a hard-cap on resolution must be imposed.
-        } else {
-          const imgWidthPdf = await muPDFScheduler.addJob('pageWidth', [n + 1, 300]);
-          if (imgWidthPdf > 2000) {
-            dpi = Math.round(300 * (2000 / imgWidthPdf));
-          }
-        }
-
-        // When XML data exists, render to the size specified by that
-        if (inputDataModes.xmlMode[n]) {
-          const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
-          const imgWidthPdf = await muPDFScheduler.addJob('pageWidth', [n + 1, 300]);
-          if (imgWidthPdf != imgWidthXml) {
-            dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
-          }
+        const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
+        const imgWidthPdf = await ms.addJob('pageWidth', [n + 1, 300]);
+        if (imgWidthPdf != imgWidthXml) {
+          dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
         }
 
         const useColor = colorMode == "color" ? true : false;
 
-        const res = await muPDFScheduler.addJob('drawPageAsPNG', [n + 1, dpi, useColor]);
+        const res = await ms.addJob('drawPageAsPNG', [n + 1, dpi, useColor]);
 
         const image = document.createElement('img');
         await loadImage(res, image);
 
         resolve(image);
 
-        await displayImage(n, image);
+        // await displayImage(n, image);
 
       });
     }
 
-    // If a binary image exists and we don't care how it was rotated, return early.
-    if (rotateBinary == null && imageAllBinary[n]) return;
+    // Whether binarized image needs to be rendered
+    const renderBinary = colorMode == "binary" && !globalThis.imageAll["binary"][n];
 
-    // Whether the binary image needs to be rendered.
-    let renderImageBinary = !globalThis.imageAllBinary[n] && colorMode == "binary" ? true : false;
+    // // Whether native image needs to be rendered
+    // const renderNativeImage = colorMode == "gray" && globalThis.imageAll["nativeColor"][n] == "color";
 
-    // Whether the binary image should be rotated
-    rotateBinary = rotateBinary ?? true;
-    const angleArg = rotateBinary ? pageMetricsObj["angleAll"][n] * (Math.PI / 180) * -1 || 0 : 0;
+    // Whether binarized image needs to be rotated (or re-rendered without rotation)
+    const rotateBinary = colorMode == "binary" && (rotate == true && !globalThis.imageAll["binaryRotated"][n] && Math.abs(globalThis.pageMetricsObj["angleAll"][n]) > 0.05 || rotate == false && globalThis.imageAll["binaryRotated"][n] == true);
 
+    // Whether native image needs to be rotated
+    const rotateNative = colorName == "native" && (rotate == true && !globalThis.imageAll["nativeRotated"][n] && Math.abs(globalThis.pageMetricsObj["angleAll"][n]) > 0.05);
 
-    // By default binary images are not re-rendered with a different rotation setting.
-    // This behavior can be changed by setting `rotate` to true or false.
-    //if (colorMode == "binary" && [true, false].includes(rotateBinary) && rotateBinary != window.imageAllBinaryRotated[n]) {
-    if (colorMode == "binary" && Math.abs(pageMetricsObj["angleAll"][n]) > 0.05 && (Boolean(angleArg) == true && window.imageAllBinaryRotated[n] == false || rotateBinary == false && window.imageAllBinaryRotated[n] == true)) {
-      renderImageBinary = true;
+    // If nothing needs to be done, return early.
+    if (!(renderBinary || rotateBinary || rotateNative )) return;
+
+    // If no preference is specified for rotation, default to true
+    const angleArg = rotate != false ? globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180) * -1 || 0 : 0;
+
+    const saveBinaryImageArg = "true";
+    // const saveGreyImageArg = colorModeElem.value == "gray" ? "true" : "false";
+    // const saveColorImageArg = colorModeElem.value == "color" ? "true" : "false";  
+    const saveColorImageArg = rotateNative ? "true" : "false";  
+
+    const resPromise = (async () => {
+
+      // Wait for non-rotated version before replacing with promise
+      const inputImage = await Promise.resolve(globalThis.imageAll["native"][n]);
+
+      const bs = await getBinaryScheduler();
+
+      return bs.addJob("threshold", inputImage.src, { angle: angleArg }, { debug_file: "/debug.txt", max_page_gradient_recognize: "100", scribe_save_binary_rotated_image : saveBinaryImageArg, scribe_save_original_rotated_image: saveColorImageArg});
+
+    })();
+
+    if(saveColorImageArg == "true"){
+      globalThis.imageAll["nativeRotated"][n] = Boolean(angleArg);
+      globalThis.imageAll["native"][n] = resPromise.then(async (res) => {
+        const image = document.createElement('img');
+        await loadImage(res.data.imageOriginal, image);
+        // displayImage(n, image, false);
+        return(image);
+      });  
     }
 
-    if (renderImageBinary) {
-
-
-
-      window.imageAllBinaryRotated[n] = Boolean(angleArg);
-      imageAllBinary[n] = new Promise(async function (resolve, reject) {
-
-        await initSchedulerIfNeeded("binaryScheduler");
-
+    if(saveBinaryImageArg == "true") {
+      globalThis.imageAll["binaryRotated"][n] = Boolean(angleArg);
+      globalThis.imageAll["binary"][n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
-        //const res = await binaryScheduler.addJob("threshold", globalThis.imageAll[n].src, { angle: 0.15 });
-
-        const inputImage = await window.imageAll[n];
-
-        const res = await binaryScheduler.addJob("threshold", inputImage.src, { angle: angleArg });
-        await loadImage(res.data, image);
-        //window.imageAllBinary[n] = image;
-        resolve(image);
-
-        await displayImage(n, image, true);
-
+        await loadImage(res.data.imageBinary, image);
+        // displayImage(n, image, true);
+        return(image);
       });
     }
   }));
@@ -2462,7 +2506,7 @@ async function renderPDFImageCache(pagesArr, rotateBinary = null) {
 export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null) {
 
   // Return if data is not loaded yet
-  const imageMissing = inputDataModes.imageMode && (imageAll.length == 0 || imageAll[n] == null || imageAll[n].complete != true) || inputDataModes.pdfMode && (typeof (muPDFScheduler) == "undefined");
+  const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null) || inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined");
   const xmlMissing = globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string";
   if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n]) {
     console.log("Exiting renderPageQueue early");
@@ -2486,32 +2530,30 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   let imgDims = null;
   let canvasDims = null;
 
-  // In the case of a pdf with no ocr data and no cached png, no page size data exists yet.
-  if (!(inputDataModes.pdfMode && !inputDataModes.xmlMode[n] && (typeof (imageAll[n]) == "undefined"))) {
-    imgDims = new Array(2);
-    canvasDims = new Array(2);
+  imgDims = new Array(2);
+  canvasDims = new Array(2);
 
-    // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
-    if (inputDataModes.xmlMode[n]) {
-      imgDims[1] = globalThis.pageMetricsObj["dimsAll"][n][1];
-      imgDims[0] = globalThis.pageMetricsObj["dimsAll"][n][0];
-    } else {
-      const backgroundImage = await imageAll[n];
-      imgDims[1] = backgroundImage.width;
-      imgDims[0] = backgroundImage.height;
-    }
-
-    // The canvas size and image size are generally the same.
-    // The exception is when rendering a pdf with the "standardize page size" option on,
-    // which will scale the canvas size but not the image size.
-    if (mode == "pdf" && dimsLimit[0] > 0 && dimsLimit[1] > 0) {
-      canvasDims[1] = dimsLimit[1];
-      canvasDims[0] = dimsLimit[0];
-    } else {
-      canvasDims[1] = imgDims[1];
-      canvasDims[0] = imgDims[0];
-    }
+  // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
+  if (inputDataModes.xmlMode[n] || inputDataModes.pdfMode) {
+    imgDims[1] = globalThis.pageMetricsObj["dimsAll"][n][1];
+    imgDims[0] = globalThis.pageMetricsObj["dimsAll"][n][0];
+  } else {
+    const backgroundImage = await globalThis.imageAll["native"][n];
+    imgDims[1] = backgroundImage.width;
+    imgDims[0] = backgroundImage.height;
   }
+
+  // The canvas size and image size are generally the same.
+  // The exception is when rendering a pdf with the "standardize page size" option on,
+  // which will scale the canvas size but not the image size.
+  if (mode == "pdf" && dimsLimit[0] > 0 && dimsLimit[1] > 0) {
+    canvasDims[1] = dimsLimit[1];
+    canvasDims[0] = dimsLimit[0];
+  } else {
+    canvasDims[1] = imgDims[1];
+    canvasDims[0] = imgDims[0];
+  }
+
 
   // Calculate options for background image and overlay
   if (inputDataModes.xmlMode[n]) {
@@ -2601,7 +2643,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     //const colorMode = colorModeElem.value;
 
     renderPDFImageCache([n]);
-    const backgroundImage = colorModeElem.value == "binary" ? await imageAllBinary[n] : await imageAll[n];
+    const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
     currentPage.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
     currentPage.renderStatus = currentPage.renderStatus + 1;
     selectDisplayMode(displayModeElem.value);
@@ -2616,20 +2658,20 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
     if (displayModeElem.value != "ebook") {
 
-      const backgroundImage = colorModeElem.value == "binary" ? await imageAllBinary[n] : await imageAll[n];
+      const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
       globalThis.doc.image(backgroundImage.src, currentPage.leftAdjX, 0, { align: 'left', valign: 'top' });
 
     }
   }
 
   if (mode == "screen") {
-    await renderPage(canvas, null, currentPage.xmlDoc, "screen", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, fontObj, currentPage.leftAdjX);
+    await renderPage(canvas, null, currentPage.xmlDoc, "screen", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
     if (currentPage.n == n) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
     }
     await selectDisplayMode(displayModeElem.value);
   } else if (inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, doc, currentPage.xmlDoc, "pdf", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, fontObj, currentPage.leftAdjX);
+    await renderPage(canvas, globalThis.doc, currentPage.xmlDoc, "pdf", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
   }
 
 }
@@ -2651,7 +2693,7 @@ async function onPrevPage(marginAdj) {
   pageNumElem.value = (currentPage.n + 1).toString();
 
   rangeLeftMarginElem.value = 200 + globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
-  canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
+  canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
 
   await renderPageQueue(currentPage.n);
 
@@ -2684,7 +2726,7 @@ async function onNextPage() {
   pageNumElem.value = (currentPage.n + 1).toString();
 
   rangeLeftMarginElem.value = 200 + globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
-  canvas.viewportTransform[4] = pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
+  canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
 
   await renderPageQueue(currentPage.n);
 
@@ -2705,29 +2747,47 @@ async function optimizeFontClick(value) {
   if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
-  if (value) {
-    await optimizeFont2();
-  } else {
-    await loadFontFamily(globalSettings.defaultFont, globalThis.fontMetricsObj);
 
+  // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
+  // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font. 
+  const metricsFontFamilies = Object.keys(globalThis.fontMetricsObj);
+  const multiFontMode = metricsFontFamilies.includes("Libre Baskerville") || metricsFontFamilies.includes("Open Sans");
+  const optFontFamilies = multiFontMode ? metricsFontFamilies : [globalSettings.defaultFont];
+
+  for (let family of optFontFamilies) {
+    if (value) {
+      await optimizeFont2(family);
+    } else {
+      await loadFontFamily(family);
+    }
   }
+
   renderPageQueue(currentPage.n);
+}
+
+async function getBinaryScheduler() {
+  // Initialize scheduler if one does not already exist
+  if(!globalThis.binaryScheduler) {
+    const n = Math.min(Math.ceil(globalThis.imageAll["native"].length / 4), 4);
+    console.log("Creating new Tesseract scheduler with " + n + " workers.")
+    globalThis.binaryScheduler = createTesseractScheduler(n);
+  }
+  return(globalThis.binaryScheduler)
 }
 
 window["binarySchedulerInit"] = async function () {
   // Workers take a non-trivial amount of time to started so a tradeoff exists with how many to use.
   // Using 1 scheduler per 4 pages as a quick fix--have not benchmarked optimal number.
-  const n = Math.min(Math.ceil(imageAll.length / 4), 4);
-  window["binaryScheduler"] = await createTesseractScheduler(n);
-  return;
+  const n = Math.min(Math.ceil(globalThis.imageAll["native"].length / 4), 4);
+  return await createTesseractScheduler(n);
 }
 
 window["muPDFSchedulerInit"] = async function () {
-  await initMuPDFScheduler(window.pdfFile, 3);
-  if (window.imageAll) {
+  await initMuPDFScheduler(globalThis.pdfFile, 3);
+  if (globalThis.imageAll["native"]) {
     // TODO: Fix to work with promises
     window["muPDFScheduler"]["pngRenderCount"] = 0;
-    //window["muPDFScheduler"]["pngRenderCount"] = [...Array(imageAll.length).keys()].filter((x) => typeof (imageAll[x]) == "object" && (colorModeElem.value == "binary" || imageAllColor[x] == colorModeElem.value)).length;
+    //window["muPDFScheduler"]["pngRenderCount"] = [...Array(imageAll["native"].length).keys()].filter((x) => typeof (imageAll["native"][x]) == "object" && (colorModeElem.value == "binary" || imageAll["native"]["nativeColor"][x] == colorModeElem.value)).length;
   } else {
     window["muPDFScheduler"]["pngRenderCount"] = 0;
   }
@@ -2740,19 +2800,11 @@ window["muPDFSchedulerInit"] = async function () {
 // If scheduler is being created already, return promise that resolves when that is done.
 // If scheduler does not exist and is not being created, initialize and return promise that resolves when done.
 async function initSchedulerIfNeeded(x) {
-  if (window[x] && typeof (window[x]) == "object") {
-    return;
-  } else if (window[x] == true) {
-    await new Promise(function (resolve, reject) {
-      window[x + "Loaded"] = resolve;
-    });
-    return;
-  } else {
-    window[x] = true;
-    await window[x + "Init"]();
-    if (window[x + "Loaded"]) window[x + "Loaded"]();
-    return;
+
+  if(!window[x]){
+    window[x] = window[x + "Init"]();
   }
+  return(window[x]);
 }
 
 async function renderPDF() {
@@ -2764,9 +2816,24 @@ async function renderPDF() {
 
   const stream = globalThis.doc.pipe(blobStream());
 
+  stream.on('finish', function () {
+    // get a blob you can do whatever you like with
+
+    // Note: Do not specify pdf MIME type.
+    // Due to a recent Firefox update, this causes the .pdf to be opened in the same tab (replacing the main site)
+    // https://support.mozilla.org/en-US/kb/manage-downloads-preferences-using-downloads-menu
+
+    //let url = stream.toBlobURL('application/pdf');
+    globalThis.downloadBlob = stream.toBlobURL();
+    let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
+
+    globalThis.saveAs(globalThis.downloadBlob, fileName);
+
+  });
+
   let fontObjData = new Object;
   //TODO: Edit so that only fonts used in the document are inserted into the PDF.
-  for (const [familyKey, familyObj] of Object.entries(fontObj)) {
+  for (const [familyKey, familyObj] of Object.entries(globalThis.fontObj)) {
     if (typeof (fontObjData[familyKey]) == "undefined") {
       fontObjData[familyKey] = new Object;
     }
@@ -2778,7 +2845,7 @@ async function renderPDF() {
         //Taking all spaces out of font names as a quick fix--this can likely be removed down the line if patched.
         //https://github.com/foliojs/pdfkit/issues/1314
 
-        const fontObjI = await fontObj[familyKey][key];
+        const fontObjI = await globalThis.fontObj[familyKey][key];
 
         fontObjI.tables.name.postScriptName["en"] = globalSettings.defaultFont + "-SmallCaps";
         fontObjI.tables.name.fontSubfamily["en"] = "SmallCaps";
@@ -2788,11 +2855,11 @@ async function renderPDF() {
         // if (key == "small-caps" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
         //   fontObjData[familyKey][key] = fontDataOptimizedSmallCaps;
       } else if (key == "normal" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
-        fontObjData[familyKey][key] = fontDataOptimized;
+        fontObjData[familyKey][key] = fontDataOptimized[familyKey]["normal"];
       } else if (key == "italic" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
-        fontObjData[familyKey][key] = fontDataOptimizedItalic;
+        fontObjData[familyKey][key] = fontDataOptimized[familyKey]["italic"];
       } else {
-        const fontObjI = await fontObj[familyKey][key];
+        const fontObjI = await globalThis.fontObj[familyKey][key];
         fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
         fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
       }
@@ -2813,17 +2880,12 @@ async function renderPDF() {
 
     // TODO: Fix to work with promises
     const pngRenderCount = 0;
-    //const pngRenderCount = [...Array(imageAll.length).keys()].filter((x) => typeof (imageAll[x]) == "object" && (colorModeElem.value == "binary" || imageAllColor[x] == colorModeElem.value)).length;
-    if (pngRenderCount < imageAll.length) {
+    //const pngRenderCount = [...Array(imageAll["native"].length).keys()].filter((x) => typeof (imageAll["native"][x]) == "object" && (colorModeElem.value == "binary" || imageAll["nativeColor"][x] == colorModeElem.value)).length;
+    if (pngRenderCount < globalThis.imageAll["native"].length) {
 
       await initSchedulerIfNeeded("muPDFScheduler");
 
     }
-  }
-  if (colorModeElem.value == "binary" && displayModeElem.value != "ebook") {
-
-    await initSchedulerIfNeeded("binaryScheduler");
-
   }
 
   await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked);
@@ -2856,28 +2918,14 @@ async function renderPDF() {
   }
 
   globalThis.doc.end();
-  stream.on('finish', function () {
-    // get a blob you can do whatever you like with
-
-    // Note: Do not specify pdf MIME type.
-    // Due to a recent Firefox update, this causes the .pdf to be opened in the same tab (replacing the main site)
-    // https://support.mozilla.org/en-US/kb/manage-downloads-preferences-using-downloads-menu
-
-    //let url = stream.toBlobURL('application/pdf');
-    let url = stream.toBlobURL();
-    let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
-
-    saveAs(url, fileName);
-
-  });
-
+  
   // Quick fix to avoid issues where the last page rendered would be mistaken for the last page on screen
   renderPageQueue(currentPage.n);
 
 }
 
 // Modified version of code found in FileSaver.js
-window.saveAs = function(blob, name, opts) {
+globalThis.saveAs = function(blob, name, opts) {
   var a = document.createElement('a');
   name = name || blob.name || 'download';
   a.download = name;
@@ -2887,7 +2935,7 @@ window.saveAs = function(blob, name, opts) {
   if (typeof blob === 'string') {
     a.href = blob;
   } else {
-    a.href = window.URL.createObjectURL(blob);
+    a.href = globalThis.URL.createObjectURL(blob);
   }
   a.dispatchEvent(new MouseEvent('click', {
     bubbles: true,
@@ -2898,13 +2946,18 @@ window.saveAs = function(blob, name, opts) {
 
 
 // TODO: Rework storage of optimized vs. non-optimized fonts to be more organized
-var fontDataOptimized, fontDataOptimizedItalic, fontDataOptimizedSmallCaps;
+// var fontDataOptimized, fontDataOptimizedItalic, fontDataOptimizedSmallCaps;
 
-export async function optimizeFont2() {
+var fontDataOptimized = {};
 
-  const fontNormal = await fontObj[globalSettings.defaultFont]["normal"];
-  const fontItalic = await fontObj[globalSettings.defaultFont]["italic"];
+export async function optimizeFont2(fontFamily) {
 
+  const fontMetricI = globalThis.fontMetricsObj[fontFamily] || globalThis.fontMetricsObj["Default"];
+  
+  if(!fontMetricI) return;
+
+  const fontNormal = await globalThis.fontObj[fontFamily]["normal"];
+  const fontItalic = await globalThis.fontObj[fontFamily]["italic"];
 
   fontNormal.tables.gsub = null;
   fontItalic.tables.gsub = null;
@@ -2914,39 +2967,42 @@ export async function optimizeFont2() {
 
   // Italic fonts can be optimized in 2 ways.  If metrics exist for italics, then they are optimized using those (similar to normal fonts).
   // If no metrics exist for italics, then a subset of optimizations are applied using metrics from the normal variant. 
-  const fontAuxArg = globalThis.fontMetricsObj["italic"] ? null : fontItalic;
-  let fontArr = await optimizeFont(fontNormal, fontAuxArg, globalThis.fontMetricsObj["normal"]);
+  const fontAuxArg = fontMetricI["italic"] ? null : fontItalic;
+  let fontArr = await optimizeFont(fontNormal, fontAuxArg, fontMetricI["normal"]);
 
-  fontDataOptimized = fontArr[0].toArrayBuffer();
-  window.fontObj[globalSettings.defaultFont]["normal"] = loadFont(globalSettings.defaultFont, fontDataOptimized, true);
-  await loadFontBrowser(globalSettings.defaultFont, "normal", fontDataOptimized, true);
+  if(!fontDataOptimized[fontFamily]){
+    fontDataOptimized[fontFamily] = {};
+  }
 
-  if (!globalThis.fontMetricsObj["italic"]) {
-    fontDataOptimizedItalic = fontArr[1].toArrayBuffer();
-    window.fontObj[globalSettings.defaultFont]["italic"] = loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
-    await loadFontBrowser(globalSettings.defaultFont, "italic", fontDataOptimizedItalic, true);
+  fontDataOptimized[fontFamily]["normal"] = fontArr[0].toArrayBuffer();
+  globalThis.fontObj[fontFamily]["normal"] = loadFont(fontFamily, fontDataOptimized[fontFamily]["normal"], true);
+  await loadFontBrowser(fontFamily, "normal", fontDataOptimized[fontFamily]["normal"], true);
+
+  if (!fontMetricI["italic"]) {
+    fontDataOptimized[fontFamily]["italic"] = fontArr[1].toArrayBuffer();
+    globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true);
+    await loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true);
   }
 
   // Create small caps font using optimized "normal" font as a starting point
-  //createSmallCapsFont(window.fontObj["Libre Baskerville"]["normal"], "Libre Baskerville", fontMetricsObj["heightSmallCaps"] || 1, fontMetricsObj);
+  //createSmallCapsFont(globalThis.fontObj["Libre Baskerville"]["normal"], "Libre Baskerville", fontMetricsObj["heightSmallCaps"] || 1, fontMetricsObj);
 
   // Optimize small caps if metrics exist to do so
-  if (globalThis.fontMetricsObj["small-caps"]) {
-    fontArr = await optimizeFont(fontObj[globalSettings.defaultFont]["small-caps"], null, globalThis.fontMetricsObj["small-caps"]);
-    fontDataOptimizedSmallCaps = fontArr[0].toArrayBuffer();
+  if (fontMetricI["small-caps"]) {
+    fontArr = await optimizeFont(globalThis.fontObj[fontFamily]["small-caps"], null, fontMetricI["small-caps"]);
+    fontDataOptimized[fontFamily]["small-caps"] = fontArr[0].toArrayBuffer();
     const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
-    window.fontObj[globalSettings.defaultFont]["small-caps"] = loadFont(globalSettings.defaultFont + "-small-caps", fontDataOptimizedSmallCaps, true);
-    await loadFontBrowser(globalSettings.defaultFont, "small-caps", fontDataOptimizedSmallCaps, true);
-    fontObj[globalSettings.defaultFont]["small-caps"].kerningPairs = kerningPairs;
-    //await loadFont(globalSettings.defaultFont + " Small Caps", fontDataOptimizedSmallCaps, true);
+    globalThis.fontObj[fontFamily]["small-caps"] = loadFont(fontFamily + "-small-caps", fontDataOptimized[fontFamily]["small-caps"], true);
+    await loadFontBrowser(fontFamily, "small-caps", fontDataOptimized[fontFamily]["small-caps"], true);
+    globalThis.fontObj[fontFamily]["small-caps"].kerningPairs = kerningPairs;
   }
 
   // Optimize italics if metrics exist to do so
-  if (globalThis.fontMetricsObj["italic"]) {
-    fontArr = await optimizeFont(fontItalic, null, globalThis.fontMetricsObj["italic"], "italic");
-    fontDataOptimizedItalic = fontArr[0].toArrayBuffer();
-    window.fontObj[globalSettings.defaultFont]["italic"] = loadFont(globalSettings.defaultFont + "-italic", fontDataOptimizedItalic, true);
-    await loadFontBrowser(globalSettings.defaultFont, "italic", fontDataOptimizedItalic, true);
+  if (fontMetricI["italic"]) {
+    fontArr = await optimizeFont(fontItalic, null, fontMetricI["italic"], "italic");
+    fontDataOptimized[fontFamily]["italic"] = fontArr[0].toArrayBuffer();
+    globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true);
+    await loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true);
   }
 
 
@@ -3004,9 +3060,14 @@ function updateConvertPageCounter() {
       } else {
         optimizeFontElem.disabled = false;
         downloadElem.disabled = false;
-        //recognizeAllElem.disabled = true;
       }
       calculateOverallPageMetrics();
+
+      // Enable font optimization (if possible) by default
+      if(optimizeFontElem.disabled == false){
+        optimizeFontElem.checked = true;
+        optimizeFontClick(optimizeFontElem.checked);
+      }
       // Render first handful of pages for pdfs so the interface starts off responsive
       if (inputDataModes.pdfMode) {
         renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
@@ -3023,13 +3084,13 @@ convertPageWorker.onmessage = function (e) {
   const n = e.data[1];
   const argsObj = e.data[2];
 
-  const oemCurrent = !argsObj["engine"] || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
+  const oemCurrent = !argsObj["engine"] || argsObj["single"] || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
 
   // If an OEM engine is specified, save to the appropriate object within hocrAll,
   // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
   // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
   // while the recognition job is running.
-  if (argsObj["engine"]) {
+  if (argsObj["engine"] && !argsObj["single"]) {
     globalThis.hocrAll[argsObj["engine"]][n] = e.data[0][0] || "<div class='ocr_page'></div>";
     if (oemCurrent) {
       globalThis.hocrCurrent[n] = e.data[0][0] || "<div class='ocr_page'></div>";
@@ -3051,12 +3112,8 @@ convertPageWorker.onmessage = function (e) {
   globalThis.pageMetricsObj["angleAll"][n] = e.data[0][2];
   globalThis.pageMetricsObj["leftAll"][n] = e.data[0][3];
   globalThis.pageMetricsObj["angleAdjAll"][n] = e.data[0][4];
-  fontMetricObjsMessage["widthObjAll"][n] = e.data[0][5];
-  fontMetricObjsMessage["heightObjAll"][n] = e.data[0][6];
-  fontMetricObjsMessage["heightSmallCapsObjAll"][n] = e.data[0][7];
-  fontMetricObjsMessage["cutObjAll"][n] = e.data[0][8];
-  fontMetricObjsMessage["kerningObjAll"][n] = e.data[0][9];
-  fontMetricObjsMessage["messageAll"][n] = e.data[0][10];
+
+  fontMetricObjsMessage[n] = e.data[0][5];
 
   // If this is the page the user has open, render it to the canvas
   if (n == currentPage.n && oemCurrent) {
@@ -3109,9 +3166,10 @@ globalThis.selectDisplayMode = function (x) {
     }
   });
 
-  // Edit rotation for binary images that have already been rotated
-  if (colorModeElem.value == "binary" && window.imageAllBinaryRotated[currentPage.n]) {
-    if (currentPage.backgroundOpts.angle) {
+  // Edit rotation for images that have already been rotated
+  if (colorModeElem.value == "binary" && globalThis.imageAll["binaryRotated"][currentPage.n] || colorModeElem.value != "binary" && globalThis.imageAll["nativeRotated"][currentPage.n]) {
+    // If rotation is requested, 
+    if (autoRotateCheckboxElem.checked) {
       currentPage.backgroundOpts.angle = 0;
     } else {
       currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][currentPage.n];

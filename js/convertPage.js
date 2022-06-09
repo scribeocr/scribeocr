@@ -24,6 +24,20 @@ onmessage = function (e) {
   postMessage(workerResult);
 }
 
+function fontMetrics(){
+  this.width = {};
+  this.height = {};
+  this.advance = {};
+  this.kerning = {};
+}
+
+// Sans/serif lookup for common font families
+// Should be added to if additional fonts are encountered
+const serifFonts = ["Baskerville", "Book", "Cambria", "Courier", "Garamond", "Georgia", "Times"];
+const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
+
+const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
+const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
 
 function quantile(arr, ntile) {
   if (arr.length == 0) {
@@ -53,10 +67,12 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
 
   rotateAngle = rotateAngle || 0;
 
-  let widthObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
-  let heightObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
-  let cutObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
-  let kerningObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
+  // let widthObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
+  // let heightObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
+  // let cutObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
+  // let kerningObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
+
+  const fontMetricsObj = {};
 
   var angleRisePage = new Array;
   var lineLeft = new Array;
@@ -116,6 +132,8 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
   function convertLine(match) {
     let titleStrLine = match.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
     if (!titleStrLine) return;
+
+    const stylesLine = {};
 
     let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) })
 
@@ -281,42 +299,55 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
         let style;
         if (italic) {
           style = "italic"
+          stylesLine["italic"] = true;
         } else if (smallCaps) {
           style = "small-caps";
+          stylesLine["small-caps"] = true;
         } else {
           style = "normal";
+          stylesLine["normal"] = true;
         }
 
-        if (widthObjPage[style][charUnicode] == null) {
-          widthObjPage[style][charUnicode] = [];
-          heightObjPage[style][charUnicode] = [];
+        const fontFamily = "Default";
+        if(!fontMetricsObj[fontFamily]){
+          fontMetricsObj[fontFamily] = {};
         }
-
+        for(const [style, value] of Object.entries(stylesLine)){
+          if(!fontMetricsObj[fontFamily][style]){
+            fontMetricsObj[fontFamily][style] = new fontMetrics();
+          }
+        }
+    
+        // Add character metrics to appropriate array(s) for later font optimization.
         // Skip letters likely misidentified due to hallucination effect (where e.g. "v" is misidentified as "V") or small caps
+        // TODO: Also skip superscripts + drop caps
         if (!(/[A-Z]/.test(contentStrLetter) && (charHeight / xHeight) < 1.2)) {
-          //if(!(["V","O"].includes(charUnicode) && (charHeight / xHeight) < 1.2)){
-
-          widthObjPage[style][charUnicode].push(charWidth / xHeight);
-          heightObjPage[style][charUnicode].push(charHeight / xHeight);
-        }
-
-        if (j == 0) {
-          cuts[j] = 0;
-        } else {
-          cuts[j] = bboxes[j][0] - bboxes[j - 1][2];
-
-          var bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
-          var cuts_ex = cuts[j] / xHeight;
-
-          if (cutObjPage[style][charUnicode] == null) {
-            cutObjPage[style][charUnicode] = [];
+          if (!fontMetricsObj[fontFamily][style]["width"][charUnicode]) {
+            fontMetricsObj[fontFamily][style]["width"][charUnicode] = [];
+            fontMetricsObj[fontFamily][style]["height"][charUnicode] = [];
           }
-          cutObjPage[style][charUnicode].push(cuts_ex);
+  
+          fontMetricsObj[fontFamily][style]["width"][charUnicode].push(charWidth / xHeight);
+          fontMetricsObj[fontFamily][style]["height"][charUnicode].push(charHeight / xHeight);
 
-          if (kerningObjPage[style][bigramUnicode] == null) {
-            kerningObjPage[style][bigramUnicode] = [];
+          if (j == 0) {
+            cuts[j] = 0;
+          } else {
+            cuts[j] = bboxes[j][0] - bboxes[j - 1][2];
+
+            var bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
+            var cuts_ex = cuts[j] / xHeight;
+
+            if (!fontMetricsObj[fontFamily][style]["advance"][charUnicode]) {
+              fontMetricsObj[fontFamily][style]["advance"][charUnicode] = [];
+            }
+            fontMetricsObj[fontFamily][style]["advance"][charUnicode].push(cuts_ex);
+
+            if (!fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode]) {
+              fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode] = [];
+            }
+            fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode].push(cuts_ex);
           }
-          kerningObjPage[style][bigramUnicode].push(cuts_ex);
         }
 
         text = text + contentStrLetter;
@@ -455,15 +486,15 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
   const xmlOut = hocrString;
   const dimsOut = pageDims;
 
-  const widthOut = widthObjPage;
-  const heightOut = heightObjPage;
-  const heightSmallCapsOut = heightObjPage["small-caps"];
-  const cutOut = cutObjPage;
-  const kerningOut = kerningObjPage;
+  // const widthOut = widthObjPage;
+  // const heightOut = heightObjPage;
+  // const heightSmallCapsOut = heightObjPage["small-caps"];
+  // const cutOut = cutObjPage;
+  // const kerningOut = kerningObjPage;
 
-  const message_out = charMode ? "" : "char_warning";
+  fontMetricsObj["message"] = charMode ? "" : "char_warning";
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, widthOut, heightOut, heightSmallCapsOut, cutOut, kerningOut, message_out]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
 
 }
 
@@ -484,10 +515,12 @@ function convertPageAbbyy(xmlPage, pageNum) {
     return (["", pageDims, null, null, null, new Object, new Object, new Object, new Object, new Object, "char_error"])
   }
 
-  let widthObjPage = new Object;
-  let heightObjPage = new Object;
-  let cutObjPage = new Object;
-  let kerningObjPage = new Object;
+  const fontMetricsObj = {};
+
+  // let widthObjPage = new Object;
+  // let heightObjPage = new Object;
+  // let cutObjPage = new Object;
+  // let kerningObjPage = new Object;
 
   let lineLeft = new Array;
   let lineTop = new Array;
@@ -502,6 +535,8 @@ function convertPageAbbyy(xmlPage, pageNum) {
     let cutPxObjLine = new Object;
     let kerningPxObjLine = new Object;
 
+    const stylesLine = {};
+
     // Unlike Tesseract HOCR, Abbyy XML does not provide accurate metrics for determining font size, so they are calculated here.
     // Strangely, while Abbyy XML does provide a "baseline" attribute, it is often wildly incorrect (sometimes falling outside of the bounding box entirely).
     // One guess as to why is that coordinates calculated pre-dewarping are used along with a baseline calculated post-dewarping.
@@ -512,6 +547,28 @@ function convertPageAbbyy(xmlPage, pageNum) {
     let baselineHeightArr = new Array();
     let baselineSlopeArr = new Array();
     let baselineFirst = new Array();
+
+    let fontFamily = "Default";
+    const xmlLinePreChar = xmlLine.match(/^[\s\S]*?(?=\<charParams)/)?.[0];
+    const xmlLineFormatting = xmlLinePreChar?.match(/\<formatting[^\>]+/)?.[0];
+    const fontName = xmlLineFormatting?.match(/ff\=['"]([^'"]*)/)?.[1];
+
+    // Font support is currently limited to 1 font for Sans and 1 font for Serif.
+    if(fontName){
+      // First, test to see if "sans" or "serif" is in the name of the font
+      if(/(^|\W)sans($|\W)/i.test(fontName)){
+        fontFamily = "Open Sans";
+      } else if (/(^|\W)serif($|\W)/i.test(fontName)) {
+        fontFamily = "Libre Baskerville";
+
+      // If not, check against a list of known sans/serif fonts.
+      // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
+      } else if (serifFontsRegex.test(fontName)) {
+        fontFamily = "Libre Baskerville";
+      } else if (sansFontsRegex.test(fontName)) {
+        fontFamily = "Open Sans";
+      }
+    }
 
     let dropCap = false;
     let dropCapMatch = xmlLine.match(abbyyDropCapRegex);
@@ -533,8 +590,12 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
     // Unlike Tesseract, Abbyy XML does not have a native "word" unit (it provides only lines and letters).
     // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
-    //
-    // These regex remove blank characters that happen next to changes in formatting to avoid making too many words.
+    
+    // Replace character identified as tab with space (so it is split into separate word)
+    // For whatever reason many non-tab values can be found in elements where isTab is true (e.g. "_", "....")
+    xmlLine = xmlLine.replaceAll(/isTab\=['"](?:1|true)['"]\s*\>[^\<]+/ig, "> ")
+
+    // These regex remove blank characters that occur next to changes in formatting to avoid making too many words.
     // Note: Abbyy is inconsistent regarding where formatting elements are placed.
     // Sometimes the <format> comes after the space between words, and sometimes it comes before the space between words.
     xmlLine = xmlLine.replaceAll(/(\<\/formatting\>\<formatting[^\>]*\>\s*)<charParams[^\>]*\>\s*\<\/charParams\>/ig, "$1")
@@ -572,10 +633,13 @@ function convertPageAbbyy(xmlPage, pageNum) {
           styleArr[i] = "sup";
         } else if (/italic\=[\'\"](1|true)/i.test(letterArr[0][1])) {
           styleArr[i] = "italic";
+          stylesLine["italic"] = true;
         } else if (/smallcaps\=[\'\"](1|true)/i.test(letterArr[0][1])) {
           styleArr[i] = "small-caps";
+          stylesLine["small-caps"] = true;
         } else {
           styleArr[i] = "normal";
+          stylesLine["normal"] = true;
         }
       } else {
         if (i > 0) {
@@ -646,6 +710,10 @@ function convertPageAbbyy(xmlPage, pageNum) {
           }
         }
 
+        // Add character metrics to appropriate arrays (for font optimization)
+        // This step is skipped for superscripts + drop caps
+        if(["sup","dropcap"].includes(styleArr[i])) continue;
+
         const charUnicode = String(contentStrLetter.charCodeAt(0));
         const charWidth = bboxes[i][j][2] - bboxes[i][j][0];
         const charHeight = bboxes[i][j][3] - bboxes[i][j][1];
@@ -696,68 +764,66 @@ function convertPageAbbyy(xmlPage, pageNum) {
     let lineAscHeight = quantile(lineAscHeightArr, 0.5);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
 
+
+    if(!fontMetricsObj[fontFamily]){
+      fontMetricsObj[fontFamily] = {};
+    }
+    for(const [style, value] of Object.entries(stylesLine)){
+      if(!fontMetricsObj[fontFamily][style]){
+        fontMetricsObj[fontFamily][style] = new fontMetrics();
+      }
+    }
+
     if (lineXHeight != null) {
       for (const [style, obj] of Object.entries(widthPxObjLine)) {
-        if (widthObjPage[style] == null) {
-          widthObjPage[style] = new Array();
-        }
         for (const [key, value] of Object.entries(obj)) {
           if (parseInt(key) < 33) { continue };
 
-          if (widthObjPage[style][key] == null) {
-            widthObjPage[style][key] = new Array();
+          if (fontMetricsObj[fontFamily][style]["width"][key] == null) {
+            fontMetricsObj[fontFamily][style]["width"][key] = new Array();
           }
           for (let k = 0; k < value.length; k++) {
-            widthObjPage[style][key].push(value[k] / lineXHeight);
+            fontMetricsObj[fontFamily][style]["width"][key].push(value[k] / lineXHeight);
           }
         }
       }
 
       for (const [style, obj] of Object.entries(heightPxObjLine)) {
-        if (heightObjPage[style] == null) {
-          heightObjPage[style] = new Array();
-        }
         for (const [key, value] of Object.entries(obj)) {
           if (parseInt(key) < 33) { continue };
 
-          if (heightObjPage[style][key] == null) {
-            heightObjPage[style][key] = new Array();
+          if (fontMetricsObj[fontFamily][style]["height"][key] == null) {
+            fontMetricsObj[fontFamily][style]["height"][key] = new Array();
           }
           for (let k = 0; k < value.length; k++) {
-            heightObjPage[style][key].push(value[k] / lineXHeight);
+            fontMetricsObj[fontFamily][style]["height"][key].push(value[k] / lineXHeight);
           }
         }
       }
 
 
       for (const [style, obj] of Object.entries(cutPxObjLine)) {
-        if (cutObjPage[style] == null) {
-          cutObjPage[style] = new Array();
-        }
         for (const [key, value] of Object.entries(obj)) {
           if (parseInt(key) < 33) { continue };
 
-          if (cutObjPage[style][key] == null) {
-            cutObjPage[style][key] = new Array();
+          if (fontMetricsObj[fontFamily][style]["advance"][key] == null) {
+            fontMetricsObj[fontFamily][style]["advance"][key] = new Array();
           }
           for (let k = 0; k < value.length; k++) {
-            cutObjPage[style][key].push(value[k] / lineXHeight);
+            fontMetricsObj[fontFamily][style]["advance"][key].push(value[k] / lineXHeight);
           }
         }
       }
 
       for (const [style, obj] of Object.entries(kerningPxObjLine)) {
-        if (kerningObjPage[style] == null) {
-          kerningObjPage[style] = new Array();
-        }
         for (const [key, value] of Object.entries(obj)) {
           if (parseInt(key) < 33) { continue };
 
-          if (kerningObjPage[style][key] == null) {
-            kerningObjPage[style][key] = new Array();
+          if (fontMetricsObj[fontFamily][style]["kerning"][key] == null) {
+            fontMetricsObj[fontFamily][style]["kerning"][key] = new Array();
           }
           for (let k = 0; k < value.length; k++) {
-            kerningObjPage[style][key].push(value[k] / lineXHeight);
+            fontMetricsObj[fontFamily][style]["kerning"][key].push(value[k] / lineXHeight);
           }
         }
       }
@@ -832,16 +898,33 @@ function convertPageAbbyy(xmlPage, pageNum) {
         xmlOut = xmlOut + ";x_wconf 100";
       }
       xmlOut = xmlOut + "\'"
-      if (styleArr[i] == "italic") {
-        xmlOut = xmlOut + " style='font-style:italic'" + ">" + text[i] + "</span>";;
-      } else if (styleArr[i] == "small-caps") {
-        xmlOut = xmlOut + " style='font-variant:small-caps'" + ">" + text[i] + "</span>";
-      } else if (styleArr[i] == "sup") {
-        xmlOut = xmlOut + ">" + "<sup>" + text[i] + "</sup>" + "</span>";
-      } else if (styleArr[i] == "dropcap") {
-        xmlOut = xmlOut + ">" + "<span class='ocr_dropcap'>" + text[i] + "</span>" + "</span>";
+
+      // Add "style" attribute (if applicable)
+      if(["italic","small-caps"].includes(styleArr[i]) || fontFamily != "Default") {
+        xmlOut = xmlOut + " style='"
+
+        if (styleArr[i] == "italic") {
+          xmlOut = xmlOut + "font-style:italic" ;
+        } else if (styleArr[i] == "small-caps") {
+          xmlOut = xmlOut + "font-variant:small-caps";
+        } 
+
+        if (fontFamily != "Default") {
+          xmlOut = xmlOut + "font-family:" + fontFamily;
+        }
+
+        xmlOut = xmlOut + "'>"
       } else {
-        xmlOut = xmlOut + ">" + text[i] + "</span>";
+        xmlOut = xmlOut + ">"
+      }
+
+      // Add word text, along with any formatting that uses nested elements rather than attributes
+      if (styleArr[i] == "sup") {
+        xmlOut = xmlOut + "<sup>" + text[i] + "</sup>" + "</span>";
+      } else if (styleArr[i] == "dropcap") {
+        xmlOut = xmlOut + "<span class='ocr_dropcap'>" + text[i] + "</span>" + "</span>";
+      } else {
+        xmlOut = xmlOut + text[i] + "</span>";
       }
 
     }
@@ -882,10 +965,11 @@ function convertPageAbbyy(xmlPage, pageNum) {
   }
 
   const dimsOut = pageDims;
-  const widthOut = widthObjPage;
-  const heightOut = heightObjPage;
-  const cutOut = cutObjPage;
-  const kerningOut = kerningObjPage;
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, widthOut, heightOut, new Object, cutOut, kerningOut, ""]);
+  // const widthOut = widthObjPage;
+  // const heightOut = heightObjPage;
+  // const cutOut = cutObjPage;
+  // const kerningOut = kerningObjPage;
+
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
 
 }

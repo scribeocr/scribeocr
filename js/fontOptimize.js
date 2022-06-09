@@ -3,7 +3,6 @@
 // Functions to calculate font metrics and generate new fonts.
 
 import { quantile, round6 } from "./miscUtils.js";
-import { loadFont } from "./fontUtils.js";
 
 // Creates optimized version of `font` based on metrics in `fontMetricsObj`
 export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal") {
@@ -37,7 +36,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
   //console.log("workingFontRightBearingMedian: " + workingFontRightBearingMedian);
 
   // Adjust character width and advance
-  for (const [key, value] of Object.entries(fontMetricsObj["charWidth"])) {
+  for (const [key, value] of Object.entries(fontMetricsObj["width"])) {
 
     // 33 is the first latin glyph (excluding space which is 32)
     if (parseInt(key) < 33) { continue; }
@@ -60,7 +59,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     // Left bearings are currently only changed for specific punctuation characters (overall scaling aside)
     let shiftX = 0;
     if ([";", ":", "‘", "’", "“", "”", "\""].includes(charLit)) {
-      let leftBearingCorrect = Math.round(fontMetricsObj["cutMedian"][key] * xHeight);
+      let leftBearingCorrect = Math.round(fontMetricsObj["advance"][key] * xHeight);
       if (isFinite(leftBearingCorrect)) {
         let leftBearingAct = glyphI.leftSideBearing;
         shiftX = leftBearingCorrect - leftBearingAct;
@@ -142,7 +141,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
 
   // Adjust character height
   const capsMult = xHeight * fontMetricsObj["heightCaps"] / fontAscHeight;
-  for (const [key, value] of Object.entries(fontMetricsObj["charHeight"])) {
+  for (const [key, value] of Object.entries(fontMetricsObj["height"])) {
 
     // 33 is the first latin glyph (excluding space which is 32)
     if (parseInt(key) < 33) { continue; }
@@ -200,13 +199,13 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
   }
 
   const upperAscCodes = upperAsc.map((x) => String(x.charCodeAt(0)));
-  const charHeightKeys = Object.keys(fontMetricsObj["charHeight"]);
-  const charHeightA = round6(quantile(Object.values(fontMetricsObj["charHeight"]).filter((element, index) => upperAscCodes.includes(charHeightKeys[index])), 0.5));
+  const charHeightKeys = Object.keys(fontMetricsObj["height"]);
+  const charHeightA = round6(quantile(Object.values(fontMetricsObj["height"]).filter((element, index) => upperAscCodes.includes(charHeightKeys[index])), 0.5));
 
   {    // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
     // Adjust height of capital J (which often has a height greater than other capital letters)
     // All height from "J" above that of "A" is assumed to occur under the baseline
-    const actJMult = Math.max(round6(fontMetricsObj["charHeight"][74]) / charHeightA, 0);
+    const actJMult = Math.max(round6(fontMetricsObj["height"][74]) / charHeightA, 0);
     const fontJMetrics = workingFont.charToGlyph("J").getMetrics();
     const fontAMetrics = workingFont.charToGlyph("A").getMetrics();
     const fontJMult = Math.max((fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin), 1);
@@ -235,8 +234,8 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
   }
   // Adjust "p" and "q" height
   // All height from "p" or "q" above that of "a" is assumed to occur under the baseline
-  const actPMult = Math.max(fontMetricsObj["charHeight"][112] / fontMetricsObj["charHeight"][97], 0);
-  const actQMult = Math.max(fontMetricsObj["charHeight"][113] / fontMetricsObj["charHeight"][97], 0);
+  const actPMult = Math.max(fontMetricsObj["height"][112] / fontMetricsObj["height"][97], 0);
+  const actQMult = Math.max(fontMetricsObj["height"][113] / fontMetricsObj["height"][97], 0);
 
   const fontPMetrics = workingFont.charToGlyph("p").getMetrics();
   const fontQMetrics = workingFont.charToGlyph("q").getMetrics();
@@ -291,7 +290,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
   let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
   let minKern = maxKern * -1;
 
-  for (const [key, value] of Object.entries(fontMetricsObj["pairKerningRaw"])) {
+  for (const [key, value] of Object.entries(fontMetricsObj["kerning"])) {
 
     // Do not adjust pair kerning for italic "ff".
     // Given the amount of overlap between these glyphs, this metric is rarely accurate. 
@@ -337,195 +336,6 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
   return ([workingFont, workingFontAux]);
 
 }
-
-
-// Calculations that are run after all files (both image and OCR) have been loaded.
-export function calculateOverallFontMetrics(fontMetricObjsMessage) {
-  // TODO: Figure out what happens if there is one blank page with no identified characters (as that would presumably trigger an error and/or warning on the page level).
-  // Make sure the program still works in that case for both Tesseract and Abbyy.
-  let charErrorCt = 0;
-  let charWarnCt = 0;
-  let charGoodCt = 0;
-  for (const [key, value] of Object.entries(fontMetricObjsMessage["messageAll"])) {
-    if (value == "char_error") {
-      charErrorCt = charErrorCt + 1;
-    } else if (value == "char_warning") {
-      charWarnCt = charWarnCt + 1;
-    } else {
-      charGoodCt = charGoodCt + 1;
-    }
-  }
-
-  let fontMetricsObj = new Object;
-
-  if (charGoodCt == 0 && charErrorCt > 0) {
-    document.getElementById("charInfoError").setAttribute("style", "");
-    return;
-  } else if (charGoodCt == 0 && charWarnCt > 0) {
-    if (Object.keys(fontMetricsObj).length > 0) {
-      document.getElementById('optimizeFont').disabled = false;
-      document.getElementById('download').disabled = false;
-    } else {
-      document.getElementById("charInfoAlert").setAttribute("style", "");
-      document.getElementById('download').disabled = false;
-    }
-  } else {
-    document.getElementById('optimizeFont').disabled = false;
-    document.getElementById('download').disabled = false;
-
-
-    // fontMetricsObj["charWidth"] = new Object;
-    // fontMetricsObj["charHeight"] = new Object;
-    // fontMetricsObj["pairKerning"] = new Object;
-    // fontMetricsObj["pairKerningRaw"] = new Object;
-    // fontMetricsObj["cutMedian"] = new Object;
-
-    const pageN = fontMetricObjsMessage["widthObjAll"].length;
-
-    let widthObj = new Object;
-    for (let i = 0; i < pageN; i++) {
-      for (const [style, obj] of Object.entries(fontMetricObjsMessage["widthObjAll"][i])) {
-        if (widthObj[style] == null) {
-          widthObj[style] = new Array();
-        }
-        for (const [key, value] of Object.entries(obj)) {
-          if (widthObj[style][key] == null) {
-            widthObj[style][key] = new Array();
-          }
-          Array.prototype.push.apply(widthObj[style][key], value);
-        } optimizeFont
-      }
-    }
-
-    let heightObj = new Object;
-    for (let i = 0; i < pageN; i++) {
-      for (const [style, obj] of Object.entries(fontMetricObjsMessage["heightObjAll"][i])) {
-        if (heightObj[style] == null) {
-          heightObj[style] = new Array();
-        }
-        for (const [key, value] of Object.entries(obj)) {
-          if (heightObj[style][key] == null) {
-            heightObj[style][key] = new Array();
-          }
-          Array.prototype.push.apply(heightObj[style][key], value);
-        }
-      }
-    }
-
-    let cutObj = new Object;
-    for (let i = 0; i < pageN; i++) {
-      for (const [style, obj] of Object.entries(fontMetricObjsMessage["cutObjAll"][i])) {
-        if (cutObj[style] == null) {
-          cutObj[style] = new Array();
-        }
-        for (const [key, value] of Object.entries(obj)) {
-          if (cutObj[style][key] == null) {
-            cutObj[style][key] = new Array();
-          }
-          Array.prototype.push.apply(cutObj[style][key], value);
-        }
-      }
-    }
-
-    let kerningObj = new Object;
-    for (let i = 0; i < pageN; i++) {
-      for (const [style, obj] of Object.entries(fontMetricObjsMessage["kerningObjAll"][i])) {
-        if (kerningObj[style] == null) {
-          kerningObj[style] = new Array();
-        }
-        for (const [key, value] of Object.entries(obj)) {
-          if (kerningObj[style][key] == null) {
-            kerningObj[style][key] = new Array();
-          }
-          Array.prototype.push.apply(kerningObj[style][key], value);
-        }
-      }
-    }
-
-    let heightCapsObj = new Array();
-    for (let i = 0; i < pageN; i++) {
-      for (const [style, obj] of Object.entries(fontMetricObjsMessage["heightObjAll"][i])) {
-        if (heightCapsObj[style] == null) {
-          heightCapsObj[style] = new Array();
-        }
-        for (const [key, value] of Object.entries(obj)) {
-          if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))) {
-            Array.prototype.push.apply(heightCapsObj[style], value);
-          }
-        }
-      }
-    }
-
-    let heightSmallCapsObj = new Array();
-    for (let i = 0; i < pageN; i++) {
-      if (fontMetricObjsMessage["heightSmallCapsObjAll"][i]) {
-        for (const [key, value] of Object.entries(fontMetricObjsMessage["heightSmallCapsObjAll"][i])) {
-          if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))) {
-            Array.prototype.push.apply(heightSmallCapsObj, value);
-          }
-        }
-      }
-    }
-    let heightSmallCaps = round6(quantile(heightSmallCapsObj, 0.5)) ?? 1;
-
-    // In the case of crazy values, revert to default of 1
-    heightSmallCaps = heightSmallCaps < 0.7 || heightSmallCaps > 1.3 ? 1 : heightSmallCaps;
-
-    fontMetricsObj["heightSmallCaps"] = heightSmallCaps;
-
-    for (const [style, obj] of Object.entries(widthObj)) {
-      if (!fontMetricsObj[style]) {
-        fontMetricsObj[style] = {};
-      }
-      if (!fontMetricsObj[style]["charWidth"]) {
-        fontMetricsObj[style]["charWidth"] = {};
-      }
-      for (const [key, value] of Object.entries(obj)) {
-        fontMetricsObj[style]["charWidth"][key] = round6(quantile(value, 0.5));
-      }
-    }
-
-    for (const [style, obj] of Object.entries(heightObj)) {
-      if (!fontMetricsObj[style]["charHeight"]) {
-        fontMetricsObj[style]["charHeight"] = {};
-      }
-      for (const [key, value] of Object.entries(obj)) {
-        fontMetricsObj[style]["charHeight"][key] = round6(quantile(value, 0.5));
-      }
-    }
-
-    //fontMetricsObj["heightCaps"] = {};
-    for (const [style, obj] of Object.entries(heightCapsObj)) {
-      fontMetricsObj[style]["heightCaps"] = round6(quantile(obj, 0.5));
-    }
-
-    for (const [style, obj] of Object.entries(cutObj)) {
-      if (!fontMetricsObj[style]["cutMedian"]) {
-        fontMetricsObj[style]["cutMedian"] = {};
-      }
-      for (const [key, value] of Object.entries(obj)) {
-        fontMetricsObj[style]["cutMedian"][key] = round6(quantile(value, 0.5));
-      }
-    }
-
-    for (const [style, obj] of Object.entries(kerningObj)) {
-      if (!fontMetricsObj[style]["pairKerningRaw"]) {
-        fontMetricsObj[style]["pairKerningRaw"] = {};
-        fontMetricsObj[style]["pairKerning"] = {};
-      }
-      for (const [key, value] of Object.entries(obj)) {
-        fontMetricsObj[style]["pairKerningRaw"][key] = round6(quantile(value, 0.5));
-        const kerningNorm = quantile(value, 0.5) - fontMetricsObj[style]["cutMedian"][key.match(/\w+$/)];
-        if (Math.abs(kerningNorm) > 0.02 && value.length >= 3) {
-          fontMetricsObj[style]["pairKerning"][key] = round6(kerningNorm);
-        }
-      }
-    }
-  }
-
-  return (fontMetricsObj);
-}
-
 
 
 // Note: Small caps are treated differently from Bold and Italic styles.
@@ -597,8 +407,155 @@ export async function createSmallCapsFont(font, heightSmallCaps, fontMetricsObj 
 
   return workingFont;
 
-  // let fontDataSmallCaps = workingFont.toArrayBuffer();
-  // await loadFont(fontFamily + "-small-caps", fontDataSmallCaps, true);
-  // return;
+}
+
+// Calculations that are run after all files (both image and OCR) have been loaded.
+export function calculateOverallFontMetrics(fontMetricObjsMessage) {
+  // TODO: Figure out what happens if there is one blank page with no identified characters (as that would presumably trigger an error and/or warning on the page level).
+  // Make sure the program still works in that case for both Tesseract and Abbyy.
+  let charErrorCt = 0;
+  let charWarnCt = 0;
+  let charGoodCt = 0;
+  for (const [key, obj] of Object.entries(fontMetricObjsMessage)) {
+    if (obj["message"] == "char_error") {
+      charErrorCt = charErrorCt + 1;
+    } else if (obj["message"] == "char_warning") {
+      charWarnCt = charWarnCt + 1;
+    } else {
+      charGoodCt = charGoodCt + 1;
+    }
+  }
+
+  let fontMetricsObj = {};
+
+  if (charGoodCt == 0 && charErrorCt > 0) {
+    document.getElementById("charInfoError").setAttribute("style", "");
+    return;
+  } else if (charGoodCt == 0 && charWarnCt > 0) {
+    if (Object.keys(fontMetricsObj).length > 0) {
+      document.getElementById('optimizeFont').disabled = false;
+      document.getElementById('download').disabled = false;
+    } else {
+      document.getElementById("charInfoAlert").setAttribute("style", "");
+      document.getElementById('download').disabled = false;
+    }
+  } else {
+    document.getElementById('optimizeFont').disabled = false;
+    document.getElementById('download').disabled = false;
+
+    const pageN = fontMetricObjsMessage.length;
+
+    fontMetricsObj = fontMetricObjsMessage.reduce((x,y) => unionFontMetrics(x,y));
+
+    const fontMetricsOut = {};
+
+    for (const [family, obj] of Object.entries(fontMetricsObj)) {
+      fontMetricsOut[family] = {};
+      for (const [style, obj2] of Object.entries(obj)) {
+        fontMetricsOut[family][style] = calculateFontMetrics(obj2);
+      }  
+    }
+
+    return (fontMetricsOut);
+  }
+}
+
+
+function fontMetrics(){
+  this.width = {};
+  this.height = {};
+  this.advance = {};
+  this.kerning = {};
+}
+
+// The following functions are used for combining an array of page-level fontMetrics objects produced by convertPage.js into a single document-level object.
+function unionSingleFontMetrics(fontMetricsA, fontMetricsB){
+  // If one of the inputs is undefined, return early with the only valid object
+  if(fontMetricsA && !fontMetricsB){
+    return(fontMetricsA);
+  } else if (!fontMetricsA && fontMetricsB){
+    return(fontMetricsB);
+  }
+
+  const fontMetricsOut = new fontMetrics();
+
+  for (const [prop, obj] of Object.entries(fontMetricsA)) {
+    for (const [key, value] of Object.entries(obj)) {
+      if(!fontMetricsOut[prop][key]){
+        fontMetricsOut[prop][key] = [];
+      }
+      Array.prototype.push.apply(fontMetricsOut[prop][key], value);
+    }  
+  }
+  for (const [prop, obj] of Object.entries(fontMetricsB)) {
+    for (const [key, value] of Object.entries(obj)) {
+      if(!fontMetricsOut[prop][key]){
+        fontMetricsOut[prop][key] = [];
+      }
+      Array.prototype.push.apply(fontMetricsOut[prop][key], value);
+    }  
+  }
+  return(fontMetricsOut);
+}
+
+function unionFontMetrics(fontMetricsA, fontMetricsB){
+  const fontMetricsOut = {};
+
+  for(const [family, obj] of Object.entries(fontMetricsA)){
+    for(const [style, obj2] of Object.entries(obj)){
+      if (Object.keys(obj2["width"]).length == 0) continue;
+      if(!fontMetricsOut[family]){
+        fontMetricsOut[family] = {};
+      }
+      if(!fontMetricsOut[family][style]){
+        fontMetricsOut[family][style] = {};
+      }
+    }  
+  }
+
+  for(const [family, obj] of Object.entries(fontMetricsB)){
+    for(const [style, obj2] of Object.entries(obj)){
+      if (Object.keys(obj2["width"]).length == 0) continue;
+      if(!fontMetricsOut[family]){
+        fontMetricsOut[family] = {};
+      }
+      if(!fontMetricsOut[family][style]){
+        fontMetricsOut[family][style] = {};
+      }
+    }  
+  }
+
+  for(const [family, obj] of Object.entries(fontMetricsOut)){
+    for(const [style, obj2] of Object.entries(obj)){
+      fontMetricsOut[family][style] = unionSingleFontMetrics(fontMetricsA?.[family]?.[style], fontMetricsB?.[family]?.[style]);
+    }  
+  }
+
+  return(fontMetricsOut);
 
 }
+
+function calculateFontMetrics(fontMetricObj){
+
+  const fontMetricOut = new fontMetrics();
+
+  // Take the median of each array
+  for (let prop of ["width","height","advance","kerning"]){
+    for (let [key, value] of Object.entries(fontMetricObj[prop])) {
+      fontMetricOut[prop][key] = round6(quantile(value, 0.5));
+    }  
+  }
+
+  // Calculate median hight of capital letters only
+  const heightCapsArr = [];
+  for (const [key, value] of Object.entries(fontMetricObj["height"])) {
+    if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))) {
+      Array.prototype.push.apply(heightCapsArr, value);
+    }
+  }
+
+  fontMetricOut["heightCaps"] = round6(quantile(heightCapsArr, 0.5));
+
+  return(fontMetricOut);
+}
+

@@ -7,9 +7,8 @@
 import { createSmallCapsFont } from "./fontOptimize.js";
 
 // Load all font styles for specified font family
-export async function loadFontFamily(fontFamily, fontMetricsObj) {
+export async function loadFontFamily(fontFamily) {
 
-  //const heightSmallCaps = fontMetricsObj?.["heightSmallCaps"] || 1;
   const heightSmallCaps = 1;
 
   let familyStr;
@@ -21,36 +20,36 @@ export async function loadFontFamily(fontFamily, fontMetricsObj) {
     familyStr = fontFamily;
   }
 
-  if (!window.fontObj) {
-    window.fontObj = {};
-    window.fontObjRaw = {};
+  if (!globalThis.fontObj) {
+    globalThis.fontObj = {};
+    globalThis.fontObjRaw = {};
   }
-  if (!window.fontObj[familyStr]) {
-    window.fontObj[familyStr] = {};
-    window.fontObjRaw[familyStr] = {};
+  if (!globalThis.fontObj[familyStr]) {
+    globalThis.fontObj[familyStr] = {};
+    globalThis.fontObjRaw[familyStr] = {};
   }
 
   // Font data can either be stored in an array or found through a URL
-  const sourceItalic = window.fontObjRaw[familyStr]["italic"] || fontFiles[familyStr + "-italic"];
-  const sourceNormal = window.fontObjRaw[familyStr]["normal"] || fontFiles[familyStr];
+  const sourceItalic = globalThis.fontObjRaw[familyStr]["italic"] || fontFiles[familyStr + "-italic"];
+  const sourceNormal = globalThis.fontObjRaw[familyStr]["normal"] || fontFiles[familyStr];
 
-  window.fontObj[familyStr]["italic"] = loadFont(familyStr + "-italic", sourceItalic, true).then(async (x) => {
+  globalThis.fontObj[familyStr]["italic"] = loadFont(familyStr + "-italic", sourceItalic, true).then(async (x) => {
     await loadFontBrowser(familyStr, "italic", sourceItalic, true);
     return x;
   });
-  window.fontObj[familyStr]["normal"] = loadFont(familyStr, sourceNormal, true).then(async (x) => {
+  globalThis.fontObj[familyStr]["normal"] = loadFont(familyStr, sourceNormal, true).then(async (x) => {
     await loadFontBrowser(familyStr, "normal", sourceNormal, true);
     return x;
   });
   
   // Most fonts do not include small caps variants, so we create our own using the normal variant as a starting point. 
-  window.fontObj[familyStr]["small-caps"] = createSmallCapsFont(window.fontObj[familyStr]["normal"], heightSmallCaps).then(async (x) => {
-    window.fontObjRaw[familyStr]["small-caps"] = x.toArrayBuffer();
-    loadFontBrowser(familyStr, "small-caps", window.fontObjRaw[familyStr]["small-caps"], true);
+  globalThis.fontObj[familyStr]["small-caps"] = createSmallCapsFont(globalThis.fontObj[familyStr]["normal"], heightSmallCaps).then(async (x) => {
+    globalThis.fontObjRaw[familyStr]["small-caps"] = x.toArrayBuffer();
+    loadFontBrowser(familyStr, "small-caps", globalThis.fontObjRaw[familyStr]["small-caps"], true);
     return (x);
   });
 
-  await Promise.allSettled([window.fontObj[familyStr]["normal"], window.fontObj[familyStr]["italic"], window.fontObj[familyStr]["small-caps"]]);
+  await Promise.allSettled([globalThis.fontObj[familyStr]["normal"], globalThis.fontObj[familyStr]["italic"], globalThis.fontObj[familyStr]["small-caps"]]);
 }
 
 // Load font as FontFace (used for displaying on canvas)
@@ -62,8 +61,8 @@ export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = fa
     src = "url(" + src + ")";
   }
 
-  if (typeof (window.fontFaceObj) == "undefined") {
-    window.fontFaceObj = new Object;
+  if (typeof (globalThis.fontFaceObj) == "undefined") {
+    globalThis.fontFaceObj = new Object;
   }
 
   // Only load font if not already loaded.
@@ -75,15 +74,15 @@ export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = fa
       newFont = new FontFace(fontFamily, src, { style: fontStyle });
     }
 
-    if (typeof (fontFaceObj[fontFamily]) == "undefined") {
-      fontFaceObj[fontFamily] = new Object;
+    if (typeof (globalThis.fontFaceObj[fontFamily]) == "undefined") {
+      globalThis.fontFaceObj[fontFamily] = new Object;
     }
 
-    if (typeof (fontFaceObj[fontFamily][fontStyle]) != "undefined") {
-      document.fonts.delete(fontFaceObj[fontFamily][fontStyle]);
+    if (typeof (globalThis.fontFaceObj[fontFamily][fontStyle]) != "undefined") {
+      document.fonts.delete(globalThis.fontFaceObj[fontFamily][fontStyle]);
     }
 
-    fontFaceObj[fontFamily][fontStyle] = newFont;
+    globalThis.fontFaceObj[fontFamily][fontStyle] = newFont;
 
     await newFont.load();
     // add font to document
@@ -105,8 +104,8 @@ export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = fa
 // Load font as opentype.js object, call loadFontBrowser to load as FontFace
 export async function loadFont(font, src, overwrite = false) {
 
-  if (typeof (window.fontObjRaw) == "undefined") {
-    window.fontObjRaw = {};
+  if (typeof (globalThis.fontObjRaw) == "undefined") {
+    globalThis.fontObjRaw = {};
   }
 
   let styleStr = font.match(/[\-](.+)/);
@@ -122,12 +121,12 @@ export async function loadFont(font, src, overwrite = false) {
 
   const familyStr = font.match(/[^\-]+/)[0];
 
-  if (!fontObjRaw[familyStr]) {
-    fontObjRaw[familyStr] = new Object;
+  if (!globalThis.fontObjRaw[familyStr]) {
+    globalThis.fontObjRaw[familyStr] = new Object;
   }
 
   // Only load font if not already loaded
-  if (overwrite || !fontObj[familyStr][styleStr]) {
+  if (overwrite || !globalThis.fontObj[familyStr][styleStr]) {
     if (typeof (src) == "string") {
       return opentype.load(src);
     } else {

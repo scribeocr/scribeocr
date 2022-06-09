@@ -247,25 +247,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         // small caps are not being inserted properly.
         // This is particularly problematic when a PDF export starts with small caps (then the entire document goes crazy).
         const fontPDFStr = fontFamilyWord + "-" + fontStyle;
-        //console.log("Comp: " + fontPDFStr + " " + doc._font.name);
-        // if(fontPDFStr != doc._font.name){
-        //   doc.font(defaultFont + "-" + fontStyle);
-        // }
-
         window.doc.font(defaultFont + "-" + fontStyle);
-
-        //doc.font("Libre Baskerville-small-caps")
-
-        // TODO: Rotation is currently not applied to the background of the PDF, so a different left/top argument
-        // is used temporarily for any mode with a backgound image included.
-        //let left,top;
-        // if(document.getElementById('displayMode').value == "ebook"){
-        //   left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
-        //   top = linebox[3] + baseline[1] + angleAdjY;
-        // } else {
-        //   left = box[0] - wordLeftBearing + leftAdjX;
-        //   top = linebox[3] + baseline[1];
-        // }
 
         let top;
         if (wordSup || wordDropCap) {
@@ -285,16 +267,10 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
         // Characters that go off the edge will cause an additional case to be made.
         // To avoid this, such characters are skipped.
-        if (top <= 0 || top + wordFontSize >= canvasHeight || left <= 0 || left + wordWidth1 >= canvasWidth) {
+        if (top <= 0 || top + wordFontSize >= canvasHeight || left <= 0 || left + wordWidth >= canvasWidth) {
           console.log("Skipping word: " + wordText);
           continue;
-          console.log("Failed to skip: " + wordText);
         }
-
-        if (top <= 0 || top + wordFontSize >= canvasHeight || left <= 0 || left + wordWidth1 >= canvasWidth) {
-          console.log("Failed to skip: " + wordText);
-        }
-
 
         window.doc.fontSize(wordFontSize);
         window.doc.fillColor(fill_arg).fillOpacity(opacity_arg);
