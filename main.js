@@ -2952,7 +2952,7 @@ var fontDataOptimized = {};
 
 export async function optimizeFont2(fontFamily) {
 
-  const fontMetricI = globalThis.fontMetricsObj[fontFamily] || globalThis.fontMetricsObj["Default"];
+  const fontMetricI = globalSettings.multiFontMode ? globalThis.fontMetricsObj[fontFamily] : globalThis.fontMetricsObj["Default"];
   
   if(!fontMetricI) return;
 
