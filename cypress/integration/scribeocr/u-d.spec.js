@@ -10,7 +10,7 @@ describe('It downloads a', () => {
 
   it('text file from jpg with hOCR', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
+    cy.get('#nav-import-tab').should('be.visible').click();
     cy.wait(5000)
     cy.get('#uploader', { timeout: 10000 }).selectFile([
       'cypress/fixtures/multi_jpg/henreys_grave.xml',

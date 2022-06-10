@@ -10,8 +10,8 @@ describe('It recognises and downloads a', () => {
   
   it('text file from a jpg with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_jpg/aurelia.jpg'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -32,8 +32,8 @@ describe('It recognises and downloads a', () => {
 
   it('text file from 4 jpgs with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile([
       'cypress/fixtures/multi_jpg/henreys_grave.jpg', 
       'cypress/fixtures/multi_jpg/aurelia.jpg',
@@ -59,8 +59,8 @@ describe('It recognises and downloads a', () => {
 
   it('pdf file from a jpg with no imported ocr data, NATIVE', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_jpg/the_past.jpg'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -84,8 +84,8 @@ describe('It recognises and downloads a', () => {
 
   it('pdf file from a jpg with no imported ocr data, BINARY', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_jpg/the_past.jpg'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -109,8 +109,8 @@ describe('It recognises and downloads a', () => {
 
   it('pdf file from 4 jpgs with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000)
     cy.get('#uploader').selectFile([
       'cypress/fixtures/multi_jpg/aurelia.jpg', 
       'cypress/fixtures/multi_jpg/henreys_grave.jpg',
@@ -136,8 +136,8 @@ describe('It recognises and downloads a', () => {
 
   it('hocr file from a jpg with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/snow_drops.jpg'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -157,8 +157,8 @@ describe('It recognises and downloads a', () => {
 
   it('text file from 4 jpgs with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile([
       'cypress/fixtures/multi_jpg/the_past.jpg', 
       'cypress/fixtures/multi_jpg/henreys_grave.jpg',
@@ -185,8 +185,8 @@ describe('It recognises and downloads a', () => {
 
   it('text file from a pdf with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/aurelia.pdf'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -230,8 +230,8 @@ describe('It recognises and downloads a', () => {
 */
 it('r & d pdf from pdf, no imported ocr data, COLOR', () => {
   cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+  cy.get('#nav-import-tab').should('be.visible').click();
+  cy.wait(3000);  
   cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/the_past.pdf'])
   cy.wait(3000)
   cy.get('#pageCount').should('have.text', '1')
@@ -257,8 +257,8 @@ it('r & d pdf from pdf, no imported ocr data, COLOR', () => {
 
 it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
   cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+  cy.get('#nav-import-tab').should('be.visible').click();
+  cy.wait(3000)
   cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/henreys_grave.pdf'])
   cy.wait(3000)
   cy.get('#pageCount').should('have.text', '1')
@@ -307,8 +307,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 */
   it('hocr file from a pdf with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000)
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/pretty_faces.pdf'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -353,8 +353,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 
   it('text file from a png with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_png/aurelia.png'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -375,8 +375,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 
   it('text file from 4 pngs with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile([
       'cypress/fixtures/multi_png/henreys_grave.png', 
       'cypress/fixtures/multi_png/aurelia.png',
@@ -402,8 +402,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 
   it('pdf file from a png with no imported ocr data, NATIVE', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_png/the_past.png'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -427,8 +427,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 
   it('pdf file from a png with no imported ocr data, BINARY', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile(['cypress/fixtures/multi_png/the_past.png'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -452,8 +452,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 
   it('pdf file from 4 pngs with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile([
       'cypress/fixtures/multi_png/aurelia.png', 
       'cypress/fixtures/multi_png/henreys_grave.png',
@@ -479,8 +479,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 
   it('hocr file from a png with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000)
     cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.png'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
@@ -500,8 +500,8 @@ it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
 
   it('text file from 4 pngs with no imported ocr data', () => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click();
-    
+    cy.get('#nav-import-tab').should('be.visible').click();
+    cy.wait(3000);
     cy.get('#uploader').selectFile([
       'cypress/fixtures/multi_png/the_past.png', 
       'cypress/fixtures/multi_png/henreys_grave.png',
