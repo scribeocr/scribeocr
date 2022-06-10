@@ -187,6 +187,25 @@ describe('It downloads a', () => {
     cy.get('#download').click()
     cy.verifyDownload('siegeofcorinthpo00byrorich_bw.txt')
   })
+
+  it('text file from a pdf with compressed xml.gz', () => {
+    cy.visit(httpServer);
+    cy.get('#nav-import-tab').click();
+    cy.wait(5000)
+    cy.get('#uploader', { timeout: 10000 }).selectFile(
+      ['cypress/fixtures/compositionserie00dowa_abbyy.gz', 
+        'cypress/fixtures/compositionserie00dowa_bw.pdf'
+    ])
+    //cy.get('#pageCount').should('have.text', '114')
+    cy.wait(5000)
+    cy.get('#nav-download-tab').click()
+    cy.wait(3000)
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionText').click()
+    cy.wait(5000)
+    cy.get('#download').click()
+    cy.verifyDownload('compositionserie00dowa_bw.txt')
+  })
   /* 
   it('downloads a pdf file from a pdf with different page numbered xml', () => {
     cy.get('#uploader').selectFile(
