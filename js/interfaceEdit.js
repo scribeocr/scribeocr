@@ -221,7 +221,7 @@ export function toggleSuperSelectedWords(){
   const wordI = selectedObjects[0];
   const wordIDI = wordI.wordID;
   updateHOCRSuperWord(wordIDI, !wordI.wordSup);
-  hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
 
   renderPageQueue(currentPage.n);
 }

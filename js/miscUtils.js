@@ -2,6 +2,8 @@
 // File summary:
 // Various utility functions used in other files.
 
+import pako from '../lib/pako.esm.min.js';
+
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
 export function getRandomInt(min, max) {
   min = Math.ceil(min);

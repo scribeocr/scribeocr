@@ -34,8 +34,12 @@ function fontMetrics(){
 
 // Sans/serif lookup for common font families
 // Should be added to if additional fonts are encountered
-const serifFonts = ["Baskerville", "Book", "Cambria", "Courier", "Garamond", "Georgia", "Times"];
+const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
 const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
+
+// Fonts that should not be added (both Sans and Serif variants):
+// DejaVu
+
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
@@ -175,6 +179,30 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
 
       let italic = /<\/em>\s*<\/span>/.test(match);
 
+      const fontName = match.match(/^[^\>]+?x_font\s*([\w\-]+)/)?.[1];
+
+      let fontFamily = "Default";
+
+      // Font support is currently limited to 1 font for Sans and 1 font for Serif.
+      if(fontName){
+        // First, test to see if "sans" or "serif" is in the name of the font
+        if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
+          fontFamily = "Open Sans";
+        } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
+          fontFamily = "Libre Baskerville";
+
+        // If not, check against a list of known sans/serif fonts.
+        // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
+        } else if (serifFontsRegex.test(fontName)) {
+          fontFamily = "Libre Baskerville";
+        } else if (sansFontsRegex.test(fontName)) {
+          fontFamily = "Open Sans";
+        } else if (fontName != "Default Metrics Font") {
+          console.log("Unidentified font in XML: " + fontName);
+        }
+      }
+
+
       //let it = match.matchAll(/<span class\=[\"\']ocrx_cinfo[\"\'] title=\'([^\'\"]+)[\"\']\>([^\<]*)\<\/span\>/ig);
       let it = match.matchAll(charRegex);
       let letterArr = [...it];
@@ -284,6 +312,12 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
             }
           }
           
+        } else if (["’", "”"].includes(contentStrLetter) && j == 0 && j + 1 < letterArr.length && /[a-z\d]/i.test(letterArr[j+1][2]) ) {
+          if(contentStrLetter == "’") {
+            contentStrLetter = "‘";
+          } else if (contentStrLetter == "”") {
+            contentStrLetter = "“";
+          }
         }
 
         // TODO: Make this impact word bounding box calculation
@@ -373,7 +407,22 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
 
           const wordBoxCoreStr = wordBoxCore[0] + " " + wordBoxCore[1] + " " + wordBoxCore[2] + " " + wordBoxCore[3];
 
-          wordXMLCore = wordXML.replace(/(\d+) (\d+) (\d+) (\d+)/, wordBoxCoreStr) + text + "</span>";
+          wordXMLCore = wordXML;
+
+          if(smallCaps || italic || fontFamily != "Default"){
+            wordXMLCore = wordXMLCore.slice(0, -1) + " style='";
+            if (smallCaps) {
+              wordXMLCore = wordXMLCore + "font-variant:small-caps;";
+            } else if (italic) {
+              wordXMLCore = wordXMLCore + "font-variant:italic;";
+            }
+            if (fontFamily != "Default") {
+              wordXMLCore = wordXMLCore + "font-family:" + fontFamily;
+            }
+            wordXMLCore = wordXMLCore + "'>";
+          }
+    
+          wordXMLCore = wordXMLCore.replace(/(\d+) (\d+) (\d+) (\d+)/, wordBoxCoreStr) + text + "</span>";
         }
 
         const bboxesSuper = letterArrSuper.map(x => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5));
@@ -395,10 +444,17 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
       } else {
         if (text == "") return ("");
 
-        if (smallCaps) {
-          wordXML = wordXML.slice(0, -1) + " style='font-variant:small-caps'" + ">";
-        } else if (italic) {
-          wordXML = wordXML.slice(0, -1) + " style='font-variant:italic'" + ">";
+        if(smallCaps || italic || fontFamily != "Default"){
+          wordXML = wordXML.slice(0, -1) + " style='";
+          if (smallCaps) {
+            wordXML = wordXML + "font-variant:small-caps;";
+          } else if (italic) {
+            wordXML = wordXML + "font-variant:italic;";
+          }
+          if (fontFamily != "Default") {
+            wordXML = wordXML + "font-family:" + fontFamily;
+          }
+          wordXML = wordXML + "'>";
         }
 
         return (wordXML + text + "</span>");
@@ -547,9 +603,9 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // Font support is currently limited to 1 font for Sans and 1 font for Serif.
     if(fontName){
       // First, test to see if "sans" or "serif" is in the name of the font
-      if(/(^|\W)sans($|\W)/i.test(fontName)){
+      if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
         fontFamily = "Open Sans";
-      } else if (/(^|\W)serif($|\W)/i.test(fontName)) {
+      } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
         fontFamily = "Libre Baskerville";
 
       // If not, check against a list of known sans/serif fonts.

@@ -242,12 +242,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       // Add to PDF document (if that option is selected)
       if (mode == "pdf") {
 
-        // TODO: Investigate this block of code.
-        // Specifically, the "fontPDFStr != doc._font.name" condition is virtually alawys true due to differences in formatting, and
-        // small caps are not being inserted properly.
-        // This is particularly problematic when a PDF export starts with small caps (then the entire document goes crazy).
-        const fontPDFStr = fontFamilyWord + "-" + fontStyle;
-        window.doc.font(defaultFont + "-" + fontStyle);
+        globalThis.doc.font(fontFamilyWord + "-" + fontStyle);
+
 
         let top;
         if (wordSup || wordDropCap) {
@@ -272,10 +268,10 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           continue;
         }
 
-        window.doc.fontSize(wordFontSize);
-        window.doc.fillColor(fill_arg).fillOpacity(opacity_arg);
+        globalThis.doc.fontSize(wordFontSize);
+        globalThis.doc.fillColor(fill_arg).fillOpacity(opacity_arg);
 
-        window.doc.text(
+        globalThis.doc.text(
           wordText,
           left,
           top,

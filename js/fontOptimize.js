@@ -428,24 +428,26 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
 
   let fontMetricsObj = {};
 
+  const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
+  const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
+
   if (charGoodCt == 0 && charErrorCt > 0) {
     document.getElementById("charInfoError").setAttribute("style", "");
     return;
   } else if (charGoodCt == 0 && charWarnCt > 0) {
+
     if (Object.keys(fontMetricsObj).length > 0) {
-      document.getElementById('optimizeFont').disabled = false;
-      document.getElementById('download').disabled = false;
+      optimizeFontElem.disabled = false;
+      downloadElem.disabled = false;
     } else {
       document.getElementById("charInfoAlert").setAttribute("style", "");
-      document.getElementById('download').disabled = false;
+      downloadElem.disabled = false;
     }
   } else {
-    document.getElementById('optimizeFont').disabled = false;
-    document.getElementById('download').disabled = false;
+    optimizeFontElem.disabled = false;
+    downloadElem.disabled = false;
 
-    const pageN = fontMetricObjsMessage.length;
-
-    fontMetricsObj = fontMetricObjsMessage.reduce((x,y) => unionFontMetrics(x,y));
+    fontMetricsObj = fontMetricObjsMessage.filter((x) => !["char_error", "char_warning"].includes(x?.message)).reduce((x,y) => unionFontMetrics(x,y));
 
     const fontMetricsOut = {};
 

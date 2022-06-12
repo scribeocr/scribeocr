@@ -687,7 +687,8 @@ function getTesseractConfigs() {
     // This is virtually always a false positive (usually "I").
     tessedit_char_blacklist: "|ﬁﬂéï",
     debug_file: "/debug.txt",
-    max_page_gradient_recognize: "100"
+    max_page_gradient_recognize: "100",
+    hocr_font_info: "1"
   };
 
   return (allConfig);
@@ -2266,10 +2267,6 @@ async function importFiles() {
         convertPageWorker["activeProgress"].setAttribute("aria-valuenow", loadCountHOCR);
         if (loadCountHOCR % 5 == 0 || loadCountHOCR == valueMax) {
           convertPageWorker["activeProgress"].setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
-          if (loadCountHOCR == valueMax) {
-            globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-            calculateOverallPageMetrics();
-          }
         }
 
       }, false);
