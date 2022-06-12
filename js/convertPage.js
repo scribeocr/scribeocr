@@ -18,7 +18,7 @@ onmessage = function (e) {
   if (abbyyMode) {
     workerResult = [convertPageAbbyy(hocrStr, n)];
   } else {
-    workerResult = [convertPage(hocrStr, argsObj["angle"], argsObj["engine"])];
+    workerResult = [convertPage(hocrStr, argsObj["angle"], argsObj["engine"], argsObj["pageDims"])];
   }
   workerResult.push(n, argsObj, e.data[e.data.length - 1]);
   postMessage(workerResult);
@@ -71,7 +71,7 @@ const mean50 = arr => {
 };
 
 
-function convertPage(hocrString, rotateAngle = 0, engine = null) {
+function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null) {
 
   rotateAngle = rotateAngle || 0;
 
@@ -86,12 +86,15 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
   var lineLeft = new Array;
   var lineTop = new Array;
 
-  let pageDims = [null, null];
-  let pageElement = hocrString.match(/<div class=[\"\']ocr_page[\"\'][^\>]+/i);
-  if (pageElement != null) {
-    pageElement = pageElement[0];
-    pageDims = pageElement.match(/bbox \d+ \d+ (\d+) (\d+)/i);
-    pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
+  // If page dimensions are not provided as an argument, we assume that the entire image is being recognized
+  // (so the width/height of the image bounding box is the same as the width/height of the image).
+  if(!pageDims) {
+    let pageElement = hocrString.match(/<div class=[\"\']ocr_page[\"\'][^\>]+/i);
+    if (pageElement != null) {
+      pageElement = pageElement[0];
+      pageDims = pageElement.match(/bbox \d+ \d+ (\d+) (\d+)/i);
+      pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
+    }  
   }
 
   // Test whether character-level data (class="ocrx_cinfo" in Tesseract) is present.

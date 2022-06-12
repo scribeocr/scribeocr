@@ -3,6 +3,13 @@ import { getFontSize, calcWordWidth, calcWordMetrics } from "./textUtils.js"
 import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
 import { round3, rotateBoundingBox } from "./miscUtils.js"
 
+const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
+const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
+const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
+const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
+const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
+
+
 export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFont, lineMode = false, imgDims, canvasDims, angle, pdfMode, fontObj, leftAdjX) {
 
   let ctx = canvas.getContext('2d');
@@ -62,7 +69,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
     const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
     let angleAdjXLine = 0;
     let angleAdjYLine = 0;
-    if ((autoRotateCheckbox.checked) && Math.abs(angle ?? 0) > 0.05) {
+    if ((autoRotateCheckboxElem.checked) && Math.abs(angle ?? 0) > 0.05) {
 
       const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
       const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
@@ -342,7 +349,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           opacity: opacity_arg,
           charSpacing: kerning * 1000 / wordFontSize,
           fontSize: wordFontSize,
-          showTextBoxBorder: document.getElementById("showBoundingBoxes").checked
+          showTextBoxBorder: showBoundingBoxesElem.checked
         });
 
         let renderWordBoxes = false;
@@ -385,19 +392,19 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           }
         });
         textbox.on('selected', function () {
-          console.log("Event: selected");
-          if (!this.defaultFontFamily && Object.keys(fontObj).includes(this.fontFamily)) {
-            document.getElementById("wordFont").value = this.fontFamily;
+          const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
+          if (!this.defaultFontFamily && Object.keys(globalThis.fontObj).includes(fontFamily)) {
+            wordFontElem.value = fontFamily;
           }
-          document.getElementById("fontSize").value = this.fontSize;
-
+          fontSizeElem.value = this.fontSize;
+    
         });
         textbox.on('deselected', function () {
           console.log("Event: deselected");
-          document.getElementById("wordFont").value = "Default";
+          wordFontElem.value = "Default";
           //document.getElementById("collapseRange").setAttribute("class", "collapse");
           bsCollapse.hide();
-          document.getElementById("rangeBaseline").value = 100;
+          rangeBaselineElem.value = "100";
         });
         textbox.on('modified', async (opt) => {
           // inspect action and check if the value is what you are looking for

@@ -41,7 +41,9 @@ var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl);
 })
 
-
+// Quick fix to get VSCode type errors to stop
+// Long-term should see if there is a way to get types to work with fabric.js
+var fabric = globalThis.fabric;
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
@@ -731,9 +733,9 @@ function compareGroundTruthClick(n) {
 
   const evalStatsConfigNew = {};
   evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
-  evalStatsConfigNew["ignorePunct"] = document.getElementById("ignorePunct").checked;
-  evalStatsConfigNew["ignoreCap"] = document.getElementById("ignoreCap").checked;
-  evalStatsConfigNew["ignoreExtra"] = document.getElementById("ignoreExtra").checked;
+  evalStatsConfigNew["ignorePunct"] = ignorePunctElem.checked;
+  evalStatsConfigNew["ignoreCap"] = ignoreCapElem.checked;
+  evalStatsConfigNew["ignoreExtra"] = ignoreExtraElem.checked;
 
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
@@ -971,20 +973,56 @@ function replaceLigatures(x) {
 }
 
 
-// var recognizeAreaScheduler;
+
+function canvasToImage(canvasCoords, imageRotated){
+
+  // If the rendered image has been rotated to match the user-specified rotation setting (or the angle is so small it doesn't matter)
+  // the only difference between coordinate systems is the left margin offset. 
+  if (autoRotateCheckboxElem.checked && imageRotated || !autoRotateCheckboxElem.checked && imageRotated || Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) <= 0.05) {
+    return {left : canvasCoords.left - currentPage.leftAdjX, top: canvasCoords.top, width: canvasCoords.width, height: canvasCoords.height}
+  }
+
+  // Otherwise, we must also account for rotation applied by the canvas
+  const rotateAngle = autoRotateCheckboxElem.checked && !imageRotated ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1;
+
+  let angleAdjXRect = 0;
+  let angleAdjYRect = 0;
+
+  const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
+
+  const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+  const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
+
+  const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+
+  const baselineY = rect1.top + rect1.height - rect1.height / 3;
+
+  const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * rect1.left;
+  const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
+
+  angleAdjXRect = shiftX + angleAdjXInt;
+  angleAdjYRect = shiftY + angleAdjYInt;
+
+  return {left : canvasCoords.left - angleAdjXRect - currentPage.leftAdjX, top: canvasCoords.top - angleAdjYRect, width: canvasCoords.width, height: canvasCoords.height}
+}
+
+
+// Note: The coordinate arguments (left/top) refer to the HOCR coordinate space.
+// This does not necessarily match either the canvas coordinate space or the Tesseract coordinate space. 
 globalThis.recognizeAreaScheduler = null;
-async function recognizeArea(left, top, width, height, wordMode = false) {
+async function recognizeArea(hocrCoords, wordMode = false) {
+
+  let left = hocrCoords.left;
+  let top = hocrCoords.top;
+  let width = hocrCoords.width;
+  let height = hocrCoords.height;
 
   if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
 
   const allConfig = getTesseractConfigs();
-
-  // Do not use character-level data.
-  // The character-level data is not used for font kerning metrics, as at present only 1 font is optimized,
-  // and the text Tesseract misses using "Recognize All" is generally not from the body text (usually page numbers).
-  allConfig.hocr_char_boxes = '0';
 
   if (wordMode) {
     allConfig.tessedit_pageseg_mode = Tesseract.PSM["SINGLE_WORD"];
@@ -1005,157 +1043,149 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
   const res = await recognizeAreaScheduler.addJob('recognize', inputImage.src, allConfig);
   let hocrString = res.data.hocr;
 
-  console.log(hocrString);
+  const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n]) > 0.05 ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : 0;
+
+  const oemText = "Tesseract " + document.getElementById("oemLabelText").innerHTML;
+
+  const argsObj = {
+    "mode": "area",
+    "angle": angleArg,
+    "pageDims": globalThis.pageMetricsObj.dimsAll[currentPage.n],
+    "engine": oemText
+  }
+
+  convertPage([hocrString, currentPage.n, false, argsObj]);
+
+  toggleEditButtons(false);
+
+  return;
+
+}
+
+function combineData(hocrString){
 
   const lines = currentPage.xmlDoc?.getElementsByClassName("ocr_line");
 
-  // If no page exists already, simply use the new scan without editing
-  if (!lines || lines.length == 0) {
-    const argsObj = {
-      "recognizeAreaMode": true
-    }
-
-    convertPage([hocrString, currentPage.n, false, argsObj]);
-
-    return;
-
-  }
-
-  // Perform various string cleaning functions.  These are largely copied from convertPage.js
-
-  // Remove all bold/italics tags.  These complicate the syntax and are unfortunately virtually always wrong anyway (coming from Tesseract).
-  hocrString = hocrString.replaceAll(/<\/?strong>/ig, "");
-  hocrString = hocrString.replaceAll(/<\/?em>/ig, "");
-
-  // Delete namespace to simplify xpath
-  hocrString = hocrString.replace(/<html[^>]*>/i, "<html>");
-
-  // Replace various classes with "ocr_line" class for simplicity
-  // At least in Tesseract, these elements are not identified accurately or consistently enough to warrent different treatment.
-  hocrString = hocrString.replace(/(class=\')ocr_caption/ig, "$1ocr_line");
-  hocrString = hocrString.replace(/(class=\')ocr_textfloat/ig, "$1ocr_line");
-  hocrString = hocrString.replace(/(class=\')ocr_header/ig, "$1ocr_line");
-
-  // Differs from convertPage.js by only requiring 2 consecutive closing span tags (as no character-level elements are present)
   const lineRegex = new RegExp(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/, "ig");
   const hocrLinesArr = hocrString.match(lineRegex);
 
   if (!hocrLinesArr) return;
 
-  // Otherwise, integrate the new data into the existing data
-  for (let i = 0; i < hocrLinesArr.length; i++) {
-    const lineNewStr = hocrLinesArr[i];
-    const titleStrLine = lineNewStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
-    const lineNew = parser.parseFromString(lineNewStr, "text/xml").firstChild;
-    if (![...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]) {
-      return;
-    }
-    const lineBoxNew = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]?.slice(1, 5).map(function (x) { return parseInt(x); });
-
-    // For whatever reason Tesseract sometimes returns junk data with negative coordinates.
-    // In such cases, the above regex will fail to match anything.
-    if (!lineBoxNew) return;
-
-    // Identify the OCR line a bounding box is in (or closest line if no match exists)
-    const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
-    let lineI = -1;
-    let match = false;
-    let newLastLine = false;
-    let lineBottomHOCR, line, lineMargin;
-    do {
-      lineI = lineI + 1;
-      line = lines[lineI];
-      const titleStrLine = line.getAttribute('title');
-      const lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-      let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-
-      let boxOffsetY = 0;
-      let lineBoxAdj = lineBox.slice();
-      if (baseline != null) {
-        baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
-
-        // Adjust box such that top/bottom approximate those coordinates at the leftmost point.
-        if (baseline[0] < 0) {
-          lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+    // Otherwise, integrate the new data into the existing data
+    for (let i = 0; i < hocrLinesArr.length; i++) {
+      const lineNewStr = hocrLinesArr[i];
+      const titleStrLine = lineNewStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+      const lineNew = parser.parseFromString(lineNewStr, "text/xml").firstChild;
+      if (![...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]) {
+        return;
+      }
+      const lineBoxNew = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]?.slice(1, 5).map(function (x) { return parseInt(x); });
+  
+      // For whatever reason Tesseract sometimes returns junk data with negative coordinates.
+      // In such cases, the above regex will fail to match anything.
+      if (!lineBoxNew) return;
+  
+      const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
+  
+      // Identify the OCR line a bounding box is in (or closest line if no match exists)
+      let lineI = -1;
+      let match = false;
+      let newLastLine = false;
+      let lineBottomHOCR, line, lineMargin;
+      do {
+        lineI = lineI + 1;
+        line = lines[lineI];
+        const titleStrLine = line.getAttribute('title');
+        const lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+        let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
+  
+        let boxOffsetY = 0;
+        let lineBoxAdj = lineBox.slice();
+        if (baseline != null) {
+          baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
+  
+          // Adjust box such that top/bottom approximate those coordinates at the leftmost point.
+          if (baseline[0] < 0) {
+            lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+          } else {
+            lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+          }
+          //boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * baseline[0];
+          boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * sinAngle;
         } else {
-          lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+          baseline = [0, 0];
         }
-        //boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * baseline[0];
-        boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * sinAngle;
+  
+        // Calculate size of margin to apply when detecting overlap (~30% of total height applied to each side)
+        // This prevents a very small overlap from causing a word to be placed on an existing line
+        const lineHeight = lineBoxAdj[3] - lineBoxAdj[1];
+        lineMargin = Math.round(lineHeight * 0.30);
+  
+        let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
+        lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
+  
+        if ((lineTopHOCR + lineMargin) < lineBoxNew[3] && (lineBottomHOCR - lineMargin) >= lineBoxNew[1]) match = true;
+        if ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
+  
+      } while ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 < lines.length);
+  
+      let words = line.getElementsByClassName("ocrx_word");
+      let wordsNew = lineNew.getElementsByClassName("ocrx_word");
+  
+      if (match) {
+        // Inserting wordNew seems to remove it from the wordsNew array
+        const wordsNewLen = wordsNew.length;
+        for (let i = 0; i < wordsNewLen; i++) {
+          let wordNew = wordsNew[0];
+  
+          // Identify closest word on existing line
+          let word, box;
+          let j = 0;
+          do {
+            word = words[j];
+            if (!word.childNodes[0]?.textContent.trim()) continue;
+            let titleStr = word.getAttribute('title') ?? "";
+            box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+            j = j + 1;
+          } while (box[2] < lineBoxNew[0] && j < words.length);
+  
+          // Replace id (which is likely duplicative) with unique id
+          let wordChosenID = word.getAttribute('id');
+          let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+          wordNew.setAttribute("id", wordIDNew)
+  
+          // Add to page XML
+          if (i == words.length) {
+            word.insertAdjacentElement("afterend", wordNew);
+          } else {
+            word.insertAdjacentElement("beforebegin", wordNew);
+          }
+        }
       } else {
-        baseline = [0, 0];
-      }
-
-      // Calculate size of margin to apply when detecting overlap (~30% of total height applied to each side)
-      // This prevents a very small overlap from causing a word to be placed on an existing line
-      const lineHeight = lineBoxAdj[3] - lineBoxAdj[1];
-      lineMargin = Math.round(lineHeight * 0.30);
-
-      let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
-      lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
-
-      if ((lineTopHOCR + lineMargin) < lineBoxNew[3] && (lineBottomHOCR - lineMargin) >= lineBoxNew[1]) match = true;
-      if ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
-
-    } while ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 < lines.length);
-
-    let words = line.getElementsByClassName("ocrx_word");
-    let wordsNew = lineNew.getElementsByClassName("ocrx_word");
-
-    if (match) {
-      for (let i = 0; i < wordsNew.length; i++) {
-        let wordNew = wordsNew[i];
-
-        // Identify closest word on existing line
-        let word, box;
-        let j = 0;
-        do {
-          word = words[j];
-          if (!word.childNodes[0]?.textContent.trim()) continue;
-          let titleStr = word.getAttribute('title') ?? "";
-          box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-          j = j + 1;
-        } while (box[2] < lineBoxNew[0] && j < words.length);
-
         // Replace id (which is likely duplicative) with unique id
-        let wordChosenID = word.getAttribute('id');
-        let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
-        wordNew.setAttribute("id", wordIDNew)
-
-        // Add to page XML
-        if (i == words.length) {
-          word.insertAdjacentElement("afterend", wordNew);
+        let lineChosenID = lineNew.getAttribute('id');
+        let lineIDNew = lineChosenID + getRandomAlphanum(3).join('');
+        lineNew.setAttribute("id", lineIDNew);
+  
+        for (let i = 0; i < wordsNew.length; i++) {
+          let wordNew = wordsNew[i];
+  
+          // Replace id (which is likely duplicative) with unique id
+          let wordChosenID = wordNew.getAttribute('id');
+          let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+          wordNew.setAttribute("id", wordIDNew)
+        }
+  
+        if (newLastLine) {
+          line.insertAdjacentElement("afterend", lineNew);
         } else {
-          word.insertAdjacentElement("beforebegin", wordNew);
+          line.insertAdjacentElement("beforebegin", lineNew);
         }
-      }
-    } else {
-      // Replace id (which is likely duplicative) with unique id
-      let lineChosenID = lineNew.getAttribute('id');
-      let lineIDNew = lineChosenID + getRandomAlphanum(3).join('');
-      lineNew.setAttribute("id", lineIDNew);
-
-      for (let i = 0; i < wordsNew.length; i++) {
-        let wordNew = wordsNew[i];
-
-        // Replace id (which is likely duplicative) with unique id
-        let wordChosenID = wordNew.getAttribute('id');
-        let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
-        wordNew.setAttribute("id", wordIDNew)
-      }
-
-      if (newLastLine) {
-        line.insertAdjacentElement("afterend", lineNew);
-      } else {
-        line.insertAdjacentElement("beforebegin", lineNew);
       }
     }
-  }
-
-  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
-
-  await renderPageQueue(currentPage.n);
-
+  
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+  
 }
 
 
@@ -1212,6 +1242,7 @@ async function recognizePages(single = false) {
     addDisplayLabel(oemText);
     setCurrentHOCR(oemText);  
   }
+  const mode = single ? "page" : "full";
 
   let recognizeImages = async (pagesArr) => {
     let time1 = Date.now();
@@ -1265,7 +1296,7 @@ async function recognizePages(single = false) {
           const argsObj = {
             "engine": oemText,
             "angle": globalThis.pageMetricsObj["angleAll"][x],
-            "single": single
+            "mode": mode
           }
 
           convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
@@ -1309,7 +1340,8 @@ async function recognizePages(single = false) {
               globalThis.hocrCurrentRaw[x] = y.data.hocr;
               const argsObj = {
                 "engine": oemText,
-                "angle": globalThis.pageMetricsObj["angleAll"][x]
+                "angle": globalThis.pageMetricsObj["angleAll"][x],
+                "mode": mode
               }
 
               convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
@@ -1317,7 +1349,7 @@ async function recognizePages(single = false) {
           } else {
             const argsObj = {
               "engine": oemText,
-              "single": single
+              "mode": mode
             }
             convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
           }
@@ -1389,47 +1421,17 @@ function recognizeAreaClick(wordMode = false) {
   // Without this changes to active selection caused by mouse movement may change rect object.
   canvas.on('mouse:up:before', async function (o) {
 
-    // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
-    let angleAdjXRect = 0;
-    let angleAdjYRect = 0;
-    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
-      // angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.top + rect1.height * 0.5);
-      // angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.left + angleAdjXRect / 2) * -1;
-
-      const rotateAngle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
-
-      const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
-
-      const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
-      const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
-
-      const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
-      const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
-
-      const baselineY = rect1.top + rect1.height - rect1.height / 3;
-
-      const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * rect1.left;
-      const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
-
-      angleAdjXRect = shiftX + angleAdjXInt;
-      angleAdjYRect = shiftY + angleAdjYInt;
-
+    if(rect1.width < 4 || rect1.height < 4) {
+      canvas.remove(rect1);
+      return;
     }
 
-    // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
-    const top = rect1.top - angleAdjYRect;
-    const left = rect1.left - angleAdjXRect - currentPage.leftAdjX;
-
-
-    const width = rect1.width;
-    const height = rect1.height;
-
+    const canvasCoords = {left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height};
+    const hocrCoords = canvasToImage(canvasCoords, globalThis.imageAll.nativeRotated[currentPage.n]);
 
     canvas.remove(rect1);
 
-    if (width < 4 || height < 4) return;
-
-    await recognizeArea(left, top, width, height, wordMode);
+    await recognizeArea(hocrCoords, wordMode);
 
     canvas.renderAll();
     canvas.__eventListeners = {}
@@ -1769,8 +1771,9 @@ function addWordClick() {
       }
     });
     textbox.on('selected', function () {
-      if (!this.defaultFontFamily && Object.keys(fontObj).includes(this.fontFamily)) {
-        wordFontElem.value = this.fontFamily;
+      const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
+      if (!this.defaultFontFamily && Object.keys(globalThis.fontObj).includes(fontFamily)) {
+        wordFontElem.value = fontFamily;
       }
       fontSizeElem.value = this.fontSize;
 
@@ -2264,13 +2267,6 @@ async function importFiles() {
 
         updateDataProgress();
 
-        // loadCountHOCR = loadCountHOCR + 1;
-        // const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
-        // convertPageWorker["activeProgress"].setAttribute("aria-valuenow", loadCountHOCR);
-        // if (loadCountHOCR % 5 == 0 || loadCountHOCR == valueMax) {
-        //   convertPageWorker["activeProgress"].setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
-        // }
-
       }, false);
 
       reader.readAsDataURL(imageFilesAll[i]);
@@ -2327,7 +2323,6 @@ async function importFiles() {
 
 }
 
-// Scheduler for compressing PNG data
 async function initMuPDFScheduler(file, workers = 3) {
   globalThis.muPDFScheduler = await Tesseract.createScheduler();
   globalThis.muPDFScheduler["pngRenderCount"] = 0;
@@ -2620,6 +2615,13 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     if (mode == "screen") {
       canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
     }
+
+  } else {
+    currentPage.backgroundOpts.originX = "left";
+    currentPage.backgroundOpts.originY = "top";
+
+    currentPage.backgroundOpts.left = 0;
+    currentPage.backgroundOpts.top = 0;
 
   }
 
@@ -3096,13 +3098,24 @@ convertPageWorker.onmessage = function (e) {
   const n = e.data[1];
   const argsObj = e.data[2];
 
-  const oemCurrent = !argsObj["engine"] || argsObj["single"] || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
+  // Detect if the new data needs to be combined with existing data.
+  // This occurs when using "recognize area" mode on a page with existing OCR data. 
+  if(argsObj["mode"] == "area") {
+    const lines = currentPage.xmlDoc?.getElementsByClassName("ocr_line");
+    if(lines && lines.length > 0) {
+      combineData(e.data[0][0]);
+      renderPageQueue(currentPage.n, 'screen', false)
+      return;
+    }
+  }
+
+  const oemCurrent = !argsObj["engine"] || argsObj["mode"] != "full" || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
 
   // If an OEM engine is specified, save to the appropriate object within hocrAll,
   // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
   // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
   // while the recognition job is running.
-  if (argsObj["engine"] && !argsObj["single"]) {
+  if (argsObj["engine"] && argsObj["mode"] == "full") {
     globalThis.hocrAll[argsObj["engine"]][n] = e.data[0][0] || "<div class='ocr_page'></div>";
     if (oemCurrent) {
       globalThis.hocrCurrent[n] = e.data[0][0] || "<div class='ocr_page'></div>";
@@ -3112,7 +3125,7 @@ convertPageWorker.onmessage = function (e) {
   }
 
   // When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
-  if (argsObj["recognizeAreaMode"]) {
+  if (argsObj["mode"] == "area") {
     globalThis.pageMetricsObj["dimsAll"][n] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
     globalThis.hocrCurrent[n] = globalThis.hocrCurrent[n].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
   } else {
