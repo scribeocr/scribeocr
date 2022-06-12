@@ -1268,7 +1268,7 @@ async function recognizePages(single = false) {
             "single": single
           }
 
-          convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
+          convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
         } else {
           
           // If the angle is not already known, we wait until recognition finishes so we know the angle
@@ -1312,14 +1312,14 @@ async function recognizePages(single = false) {
                 "angle": globalThis.pageMetricsObj["angleAll"][x]
               }
 
-              convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
+              convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
             });
           } else {
             const argsObj = {
               "engine": oemText,
               "single": single
             }
-            convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
+            convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
           }
         }
       })
@@ -1971,11 +1971,11 @@ async function importOCRFiles() {
     // Process HOCR using web worker, reading from file first if that has not been done already
     if (singleHOCRMode) {
       //convertPageWorker.postMessage([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
-      convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
+      convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateDataProgress());
     } else {
       const hocrFile = hocrFilesAll[i];
       //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
-      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateConvertPageCounter()));
+      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateDataProgress()));
     }
 
   }
@@ -2262,12 +2262,14 @@ async function importFiles() {
         globalThis.imageAll["nativeRaw"][imageNi] = image;
         globalThis.imageAll["native"][imageNi] = globalThis.imageAll["nativeRaw"][imageNi];
 
-        loadCountHOCR = loadCountHOCR + 1;
-        const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
-        convertPageWorker["activeProgress"].setAttribute("aria-valuenow", loadCountHOCR);
-        if (loadCountHOCR % 5 == 0 || loadCountHOCR == valueMax) {
-          convertPageWorker["activeProgress"].setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
-        }
+        updateDataProgress();
+
+        // loadCountHOCR = loadCountHOCR + 1;
+        // const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
+        // convertPageWorker["activeProgress"].setAttribute("aria-valuenow", loadCountHOCR);
+        // if (loadCountHOCR % 5 == 0 || loadCountHOCR == valueMax) {
+        //   convertPageWorker["activeProgress"].setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
+        // }
 
       }, false);
 
@@ -2280,13 +2282,13 @@ async function importFiles() {
       // Process HOCR using web worker, reading from file first if that has not been done already
       if (singleHOCRMode) {
         //convertPageWorker.postMessage([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
-        convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
+        convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateDataProgress());
       } else {
         const hocrFile = hocrFilesAll[i];
         const hocrNi = hocrN + 1;
         hocrN = hocrN + 1;
         //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, hocrNi]));
-        readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateConvertPageCounter()));
+        readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateDataProgress()));
       }
     }
 
@@ -2607,7 +2609,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
         const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180));
         const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
 
-        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsObj["angleAdjAll"][n] ?? 0);
+        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsObj["angleAdjAll"][n] || 0);
       }
 
       currentPage.backgroundOpts.left = imgDims[1] * 0.5 + currentPage.leftAdjX;
@@ -2656,7 +2658,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     if (displayModeElem.value != "ebook") {
 
       const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
-      globalThis.doc.image(backgroundImage.src, currentPage.leftAdjX, 0, { align: 'left', valign: 'top' });
+      globalThis.doc.image(backgroundImage.src, (currentPage.leftAdjX || 0), 0, { align: 'left', valign: 'top' });
 
     }
   }
@@ -3034,7 +3036,10 @@ function convertPage(args) {
 
 }
 
-function updateConvertPageCounter() {
+// Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
+// Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
+// as well as after every image is loaded (not including .pdfs). 
+function updateDataProgress() {
 
   let activeProgress = convertPageWorker["activeProgress"];
 
@@ -3050,34 +3055,36 @@ function updateConvertPageCounter() {
   if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
     activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
     if (loadCountHOCR == valueMax) {
-      // If resuming from a previous editing session font stats are already calculated
-      if (!inputDataModes.resumeMode) {
-        // Buttons are enabled from calculateOverallFontMetrics function in this case
-        globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-      } else {
-        optimizeFontElem.disabled = false;
-        downloadElem.disabled = false;
+      if(inputDataModes.xmlMode[0]) {
+        // If resuming from a previous editing session font stats are already calculated
+        if (inputDataModes.resumeMode) {
+          optimizeFontElem.disabled = false;
+        } else {
+          // Buttons are enabled from calculateOverallFontMetrics function in this case
+          globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+        }
+
+        calculateOverallPageMetrics();
+
+        // Enable font optimization (if possible) by default
+        if(optimizeFontElem.disabled == false){
+          let defaultFontObs = 0;
+          let namedFontObs = 0;
+          if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
+          if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
+          if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
+    
+          globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
+    
+          optimizeFontElem.checked = true;
+          optimizeFontClick(optimizeFontElem.checked);
+        }
       }
-      calculateOverallPageMetrics();
-
-      let defaultFontObs = 0;
-      let namedFontObs = 0;
-      if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
-      if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
-      if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
-
-      globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
-
-      // Enable font optimization (if possible) by default
-      if(optimizeFontElem.disabled == false){
-        optimizeFontElem.checked = true;
-        optimizeFontClick(optimizeFontElem.checked);
-      }
+      downloadElem.disabled = false;
       // Render first handful of pages for pdfs so the interface starts off responsive
       if (inputDataModes.pdfMode) {
         renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
       }
-
     }
   }
 }

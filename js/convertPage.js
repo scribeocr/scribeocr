@@ -40,6 +40,9 @@ const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact
 // Fonts that should not be added (both Sans and Serif variants):
 // DejaVu
 
+// Includes all capital letters except for "J" and "Q"
+const ascCharArr = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "b", "d", "h", "k", "l", "t", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z"]
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
@@ -138,6 +141,10 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
     let titleStrLine = match.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
     if (!titleStrLine) return;
 
+    let lineAscHeightArr = [];
+    let lineXHeightArr = [];
+    let lineAllHeightArr = [];
+
     const stylesLine = {};
 
     let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) })
@@ -157,19 +164,20 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
       lineTop.push(linebox[1]);
     }
 
-    let letterHeight = parseFloat(titleStrLine.match(/x_size\s+([\d\.\-]+)/)[1]);
-    let ascHeight = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/);
-    ascHeight = ascHeight == null ? null : parseFloat(ascHeight[1]);
-    let descHeight = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/);
-    descHeight = descHeight == null ? null : parseFloat(descHeight[1]);
+    // Line font size metrics as reported by Tesseract.
+    // As these are frequently not correct (as Tesseract calculates them before character recognition),
+    // we calculate them as well and compare and compare. 
+    let lineAllHeightTess = parseFloat(titleStrLine.match(/x_size\s+([\d\.\-]+)/)[1]);
+    let lineAscHeightTess = parseFloat(titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/)?.[1]);
+    let lineDescHeightTess = parseFloat(titleStrLine.match(/x_descenders\s+([\d\.\-]+)/)?.[1]);
 
     // The only known scenario where letterHeight, ascHeight, and descHeight are not all defined
     // is when Abbyy data is loaded, HOCR is exported, and then that HOCR is re-imported.
     // As this HOCR is always at the word-level, convertWord is never run, so it does not matter
     // that xHeight is left undefined.
-    let xHeight;
-    if (letterHeight != null && ascHeight != null && descHeight != null) {
-      xHeight = letterHeight - ascHeight - descHeight;
+    let lineXHeightTess;
+    if (lineAllHeightTess != null && lineAscHeightTess != null && lineDescHeightTess != null) {
+      lineXHeightTess = lineAllHeightTess - lineAscHeightTess - lineDescHeightTess;
     }
 
     let heightSmallCapsLine = [];
@@ -293,7 +301,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
         } 
 
         // Tesseract often misidentifies hyphens as other types of dashes. 
-        if (contentStrLetter == "—" && charWidth < xHeight || contentStrLetter == "–" && charWidth < (xHeight * 0.85)) {
+        if (contentStrLetter == "—" && charWidth < lineXHeightTess || contentStrLetter == "–" && charWidth < (lineXHeightTess * 0.85)) {
           // If the width of an en or em dash is shorter than it should be if correctly identified, and it is between two letters, it is replaced with a hyphen.
           if (j > 0 && j + 1 < letterArr.length && /[A-Za-z]/.test(letterArr[j - 1][2]) && /[A-Za-z]/.test(letterArr[j + 1][2])) {
             contentStrLetter = "-";
@@ -305,7 +313,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
 
           // For em dashes between two numbers, replace with en dash or hyphen depending on width of character
           } else if (contentStrLetter == "—" && j > 0 && j + 1 < letterArr.length && /\d/.test(letterArr[j - 1][2]) && /\d/.test(letterArr[j + 1][2])) {
-            if (charWidth > (xHeight * 0.8)) {
+            if (charWidth > (lineXHeightTess * 0.8)) {
               contentStrLetter = "–";
             } else {
               contentStrLetter = "-";
@@ -356,15 +364,23 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
         // Add character metrics to appropriate array(s) for later font optimization.
         // Skip letters likely misidentified due to hallucination effect (where e.g. "v" is misidentified as "V") or small caps
         // TODO: Also skip superscripts + drop caps
-        if (!(/[A-Z]/.test(contentStrLetter) && (charHeight / xHeight) < 1.2)) {
+        if (!(/[A-Z]/.test(contentStrLetter) && (charHeight / lineXHeightTess) < 1.2)) {
           if (!fontMetricsObj[fontFamily][style]["width"][charUnicode]) {
             fontMetricsObj[fontFamily][style]["width"][charUnicode] = [];
             fontMetricsObj[fontFamily][style]["height"][charUnicode] = [];
           }
   
-          fontMetricsObj[fontFamily][style]["width"][charUnicode].push(charWidth / xHeight);
-          fontMetricsObj[fontFamily][style]["height"][charUnicode].push(charHeight / xHeight);
+          fontMetricsObj[fontFamily][style]["width"][charUnicode].push(charWidth / lineXHeightTess);
+          fontMetricsObj[fontFamily][style]["height"][charUnicode].push(charHeight / lineXHeightTess);
           fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
+
+          // Save character heights to array for font size calculations
+          lineAllHeightArr.push(charHeight);
+          if (ascCharArr.includes(contentStrLetter)) {
+            lineAscHeightArr.push(charHeight);
+          } else if (xCharArr.includes(contentStrLetter)) {
+            lineXHeightArr.push(charHeight);
+          }
 
           if (j == 0) {
             cuts[j] = 0;
@@ -372,7 +388,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
             cuts[j] = bboxes[j][0] - bboxes[j - 1][2];
 
             var bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
-            var cuts_ex = cuts[j] / xHeight;
+            var cuts_ex = cuts[j] / lineXHeightTess;
 
             if (!fontMetricsObj[fontFamily][style]["advance"][charUnicode]) {
               fontMetricsObj[fontFamily][style]["advance"][charUnicode] = [];
@@ -464,6 +480,28 @@ function convertPage(hocrString, rotateAngle = 0, engine = null) {
     }
     if (charMode) {
       match = match.replaceAll(wordRegex, convertWord);
+    }
+
+    // Note that not all of these numbers are directly comparable to the Tesseract version
+    // For example, lineAscHeightCalc is the median height of an ascender,
+    // while x_ascenders from Tesseract is [ascender height] - [x height]
+    const lineAllHeightCalc = Math.max(...lineAllHeightArr);
+    let lineAscHeightCalc = quantile(lineAscHeightArr, 0.5);
+    const lineXHeightCalc = quantile(lineXHeightArr, 0.5);
+
+    // When Tesseract font size metrics are significantly different from those calculated here, replace them.
+    if(lineAscHeightCalc && lineXHeightCalc) {
+      if(Math.abs(lineXHeightTess - lineXHeightCalc) > 2){
+        match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
+        match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "$1" + (lineAscHeightCalc - lineXHeightCalc).toString());
+        match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
+      }
+    } else if (lineAscHeightCalc){
+      if(Math.abs((lineXHeightTess + lineAscHeightTess) - lineAscHeightCalc) > 2){
+        match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
+        match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "");
+        match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
+      }
     }
 
     return (match);
@@ -571,10 +609,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
   let lineLeft = new Array;
   let lineTop = new Array;
-
-  // Includes all capital letters except for "J" and "Q"
-  const ascCharArr = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "b", "d", "h", "k", "l", "t", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-  const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z"]
 
   function convertLineAbbyy(xmlLine, lineNum, pageNum = 1) {
     let widthPxObjLine = new Object;
@@ -1000,7 +1034,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
   let angleRiseMedian = mean50(angleRisePage);
 
-  const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI);
+  const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI) || 0;
 
 
   let lineLeftAdj = new Array;
@@ -1008,7 +1042,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
     lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
   }
   let leftOut = quantile(lineLeft, 0.2);
-  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut;
+  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut || 0;
   // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
   if (lineLeft.length < 5) {
     leftOut = null;

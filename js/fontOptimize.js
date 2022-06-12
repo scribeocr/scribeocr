@@ -429,7 +429,6 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
   let fontMetricsObj = {};
 
   const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
-  const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
 
   if (charGoodCt == 0 && charErrorCt > 0) {
     document.getElementById("charInfoError").setAttribute("style", "");
@@ -438,14 +437,11 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
 
     if (Object.keys(fontMetricsObj).length > 0) {
       optimizeFontElem.disabled = false;
-      downloadElem.disabled = false;
     } else {
       document.getElementById("charInfoAlert").setAttribute("style", "");
-      downloadElem.disabled = false;
     }
   } else {
     optimizeFontElem.disabled = false;
-    downloadElem.disabled = false;
 
     fontMetricsObj = fontMetricObjsMessage.filter((x) => !["char_error", "char_warning"].includes(x?.message)).reduce((x,y) => unionFontMetrics(x,y));
 
