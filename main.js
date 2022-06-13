@@ -1870,7 +1870,7 @@ async function clearFiles() {
 clearFiles();
 
 
-
+// TODO: See if this can be easily combined with the main import function, since most of it is copy/paste from that
 async function importOCRFiles() {
   // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
   const ocrName = uploadOCRNameElem.value;
@@ -1914,14 +1914,15 @@ async function importOCRFiles() {
       hocrArrPages = hocrStrPages.split(/(?=\<page)/);
     } else {
 
-      // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-      inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
+      if(mainData) {
+        // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
+        inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
 
-      if (inputDataModes.resumeMode) {
-        let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-        let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\/?\>)/i)[1].replace(/&quot;/g, '"');
-        globalThis.fontMetricsObj = JSON.parse(contentStr);
-
+        if (inputDataModes.resumeMode) {
+          let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
+          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
+          globalThis.fontMetricsObj = JSON.parse(contentStr);
+        }
       }
 
       hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
@@ -1974,11 +1975,11 @@ async function importOCRFiles() {
     // Process HOCR using web worker, reading from file first if that has not been done already
     if (singleHOCRMode) {
       //convertPageWorker.postMessage([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
-      convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateDataProgress());
+      convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateDataProgress(mainData));
     } else {
       const hocrFile = hocrFilesAll[i];
       //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
-      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateDataProgress()));
+      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateDataProgress(mainData)));
     }
 
   }
@@ -2115,6 +2116,23 @@ async function importFiles() {
 
     pageCountImage = await ms.addJob('countPages', []);
 
+    // If no XML data is provided, page sizes are calculated using muPDF alone
+    if(!xmlModeImport) {
+      // Confirm that 300 dpi leads to a reasonably sized image and lower dpi if not.
+      const pageDims1 = (await ms.addJob('pageSizes', [300])).slice(1);
+
+      // For reasons that are unclear, a small number of pages have been rendered into massive files
+      // so a hard-cap on resolution must be imposed.
+      const pageWidth1 = pageDims1.map((x) => x[0]);
+      const pageDPI = pageWidth1.map((x) => Math.round(300 * 2000 / Math.max(x, 2000)));
+
+      // In addition to capping the resolution, also switch the width/height
+      const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
+
+      globalThis.pageMetricsObj["dimsAll"] = pageDims;
+
+    }
+
   } else if (inputDataModes.imageMode) {
     pageCountImage = imageFilesAll.length;
   }
@@ -2143,7 +2161,7 @@ async function importFiles() {
 
         if (inputDataModes.resumeMode) {
           let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\/?\>)/i)[1].replace(/&quot;/g, '"');
+          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
           globalThis.fontMetricsObj = JSON.parse(contentStr);
 
         }
@@ -2223,9 +2241,12 @@ async function importFiles() {
     inputDataModes.xmlMode.fill(false);
   }
 
-  // if (inputDataModes.pdfMode && !xmlModeImport) {
-  //   renderPageQueue(0);
-  // }
+  if (inputDataModes.pdfMode && !xmlModeImport) {
+      // Render first handful of pages for pdfs so the interface starts off responsive
+      // In the case of OCR data, this step is triggered elsewhere after all the data loads
+      renderPageQueue(0);
+      renderPDFImageCache([...Array(Math.min(pageCount, 5)).keys()]);
+  }
 
   let imageN = -1;
   let hocrN = -1;
@@ -2290,29 +2311,6 @@ async function importFiles() {
 
   }
 
-  if (inputDataModes.pdfMode && !xmlModeImport) {
-
-    // Confirm that 300 dpi leads to a reasonably sized image and lower dpi if not.
-    const ms = await globalThis.muPDFScheduler;
-    const pageDims1 = (await ms.addJob('pageSizes', [300])).slice(1);
-
-    // For reasons that are unclear, a small number of pages have been rendered into massive files
-    // so a hard-cap on resolution must be imposed.
-    const pageWidth1 = pageDims1.map((x) => x[0]);
-    const pageDPI = pageWidth1.map((x) => Math.round(300 * 2000 / Math.max(x, 2000)));
-
-    // In addition to capping the resolution, also switch the width/height
-    const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
-
-    globalThis.pageMetricsObj["dimsAll"] = pageDims;
-    
-    // Render first handful of pages for pdfs so the interface starts off responsive
-    // In the case of OCR data, this step is triggered elsewhere after all the data loads
-    await renderPDFImageCache([0]);
-    renderPageQueue(0);
-    renderPDFImageCache([...Array(Math.min(pageCount, 5)).keys()]);
-  }
-
   // Enable downloads now for pdf imports if no HOCR data exists
   if (inputDataModes.pdfMode && !xmlModeImport) {
     downloadElem.disabled = false;
@@ -2347,7 +2345,7 @@ async function loadImage(url, elem) {
 
 export async function displayImage(n, image, binary = false) {
   if (currentPage.n == n && !(colorModeElem.value == "binary" && !binary || colorModeElem.value != "binary" && binary)) {
-    currentPage.renderStatus = currentPage.renderStatus + 1;
+    // currentPage.renderStatus = currentPage.renderStatus + 1;
 
     if (!inputDataModes.xmlMode[n]) {
       let widthRender = image.width;
@@ -2493,7 +2491,7 @@ async function renderPDFImageCache(pagesArr, rotate = null) {
 
 }
 
-
+currentPage.renderNum = 0;
 
 //var backgroundOpts = new Object;
 // Function that handles page-level info for rendering to canvas and pdf
@@ -2625,6 +2623,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
   }
 
+  let renderNum;
   if (mode == "screen") {
     // Clear canvas if objects (anything but the background) exists
     if (canvas.getObjects().length) {
@@ -2641,13 +2640,23 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
     currentPage.renderStatus = 0;
 
+    // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
+    // (whether by quickly changing pages or on the same page).
+    // TODO: Find a better solution. 
+    currentPage.renderNum = currentPage.renderNum + 1;
+    renderNum = currentPage.renderNum;
+
     //const colorMode = colorModeElem.value;
 
     renderPDFImageCache([n]);
     const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
     currentPage.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
-    currentPage.renderStatus = currentPage.renderStatus + 1;
-    selectDisplayMode(displayModeElem.value);
+    if (currentPage.n == n && currentPage.renderNum == renderNum) {
+      currentPage.renderStatus = currentPage.renderStatus + 1;
+      selectDisplayMode(displayModeElem.value);
+    } else {
+      return;
+    }
 
     // If there is no OCR data to render, we are done
     if (!inputDataModes.xmlMode[n]) {
@@ -2665,12 +2674,15 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     }
   }
 
-  if (mode == "screen") {
+  if (mode == "screen" && currentPage.n == n) {
     await renderPage(canvas, null, currentPage.xmlDoc, "screen", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
-    if (currentPage.n == n) {
+    if (currentPage.n == n && currentPage.renderNum == renderNum) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
+      await selectDisplayMode(displayModeElem.value);
+    } else {
+      return;
     }
-    await selectDisplayMode(displayModeElem.value);
+    
   } else if (inputDataModes.xmlMode[n]) {
     await renderPage(canvas, globalThis.doc, currentPage.xmlDoc, "pdf", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
   }
@@ -3041,7 +3053,7 @@ function convertPage(args) {
 // Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
 // Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
 // as well as after every image is loaded (not including .pdfs). 
-function updateDataProgress() {
+function updateDataProgress(mainData = true) {
 
   let activeProgress = convertPageWorker["activeProgress"];
 
@@ -3057,7 +3069,11 @@ function updateDataProgress() {
   if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
     activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
     if (loadCountHOCR == valueMax) {
-      if(inputDataModes.xmlMode[0]) {
+
+      // Full-document stats (including font optimization) are only calulated for the "main" data, 
+      // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
+      // those uploads to not cause new fonts to be created. 
+      if(inputDataModes.xmlMode[0] && mainData) {
         // If resuming from a previous editing session font stats are already calculated
         if (inputDataModes.resumeMode) {
           optimizeFontElem.disabled = false;
