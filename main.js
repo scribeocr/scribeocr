@@ -33,6 +33,11 @@ import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 import { simd } from "./lib/wasm-feature-detect.js";
 import Tesseract from './tess/tesseract.es6.js';
 
+// Debugging functions
+import { searchHOCR } from "./js/debug.js"
+
+globalThis.searchHOCR = searchHOCR;
+
 
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
@@ -844,6 +849,7 @@ function compareHOCR(hocrStrA, hocrStrB) {
 
         // Otherwise, there is possible overlap
       } else {
+
         let minWordB = 0;
         const hocrAWords = hocrALine.getElementsByClassName("ocrx_word");
         const hocrBWords = hocrBLine.getElementsByClassName("ocrx_word");
@@ -879,6 +885,7 @@ function compareHOCR(hocrStrA, hocrStrB) {
 
 
           for (let l = minWordB; l < hocrBWords.length; l++) {
+
             const hocrBWord = hocrBWords[l];
             const hocrBWordID = hocrBWord.getAttribute("id");
             const titleStrWordB = hocrBWord.getAttribute('title');
@@ -916,8 +923,10 @@ function compareHOCR(hocrStrA, hocrStrB) {
               let wordTextA = replaceLigatures(hocrAWord.textContent);
               let wordTextB = replaceLigatures(hocrBWord.textContent);
               if (ignorePunctElem.checked) {
-                wordTextA = wordTextA.replace(/[\W_]/g, "");
-                wordTextB = wordTextB.replace(/[\W_]/g, "");
+                // Punctuation next to numbers is not ignored, even if this setting is enabled, as punctuation differences are
+                // often/usually substantive in this context (e.g. "-$1,000" vs $1,000" or "$100" vs. "$1.00")
+                wordTextA = wordTextA.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
+                wordTextB = wordTextB.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
               }
               if (ignoreCapElem.checked) {
                 wordTextA = wordTextA.toLowerCase();
@@ -971,8 +980,6 @@ function compareHOCR(hocrStrA, hocrStrB) {
 function replaceLigatures(x) {
   return x.replace(/ﬂ/g, "fl").replace(/ﬁ/g, "fi").replace(/ﬀ/g, "ff").replace(/ﬃ/g, "ffi").replace(/ﬄ/g, "ffl");
 }
-
-
 
 function canvasToImage(canvasCoords, imageRotated){
 
@@ -1137,17 +1144,20 @@ function combineData(hocrString){
         const wordsNewLen = wordsNew.length;
         for (let i = 0; i < wordsNewLen; i++) {
           let wordNew = wordsNew[0];
-  
+
+          let wordNewtitleStr = wordNew.getAttribute('title') ?? "";
+          const wordBoxNew = [...wordNewtitleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+
           // Identify closest word on existing line
-          let word, box;
+          let word, wordBox;
           let j = 0;
           do {
             word = words[j];
             if (!word.childNodes[0]?.textContent.trim()) continue;
             let titleStr = word.getAttribute('title') ?? "";
-            box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+            wordBox = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
             j = j + 1;
-          } while (box[2] < lineBoxNew[0] && j < words.length);
+          } while (wordBox[2] < wordBoxNew[0] && j < words.length);
   
           // Replace id (which is likely duplicative) with unique id
           let wordChosenID = word.getAttribute('id');
@@ -1155,7 +1165,9 @@ function combineData(hocrString){
           wordNew.setAttribute("id", wordIDNew)
   
           // Add to page XML
-          if (i == words.length) {
+          // Note: Words will appear correctly on the canvas (and in the pdf) regardless of whether they are in the right order.
+          // However, it is still important to get the order correct (this makes evaluation easier, improves copy/paste functionality in some pdf readers, etc.)
+          if (wordBoxNew[0] > wordBox[0]) {
             word.insertAdjacentElement("afterend", wordNew);
           } else {
             word.insertAdjacentElement("beforebegin", wordNew);
@@ -2865,20 +2877,19 @@ async function renderPDF() {
         fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
         fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
-        // if (key == "small-caps" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
-        //   fontObjData[familyKey][key] = fontDataOptimizedSmallCaps;
-      } else if (key == "normal" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
-        fontObjData[familyKey][key] = fontDataOptimized[familyKey]["normal"];
-      } else if (key == "italic" && optimizeFontElem.checked && familyKey == globalSettings.defaultFont) {
-        fontObjData[familyKey][key] = fontDataOptimized[familyKey]["italic"];
+      } else if (key == "normal" && optimizeFontElem.checked ) {
+        fontObjData[familyKey][key] = fontDataOptimized?.[familyKey]?.["normal"];
+      } else if (key == "italic" && optimizeFontElem.checked ) {
+        fontObjData[familyKey][key] = fontDataOptimized?.[familyKey]?.["italic"];
       } else {
         const fontObjI = await globalThis.fontObj[familyKey][key];
         fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
         fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
       }
 
-
-      globalThis.doc.registerFont(familyKey + "-" + key, fontObjData[familyKey][key]);
+      if(fontObjData[familyKey][key]) {
+        globalThis.doc.registerFont(familyKey + "-" + key, fontObjData[familyKey][key]);
+      }
     }
   }
 
@@ -3005,9 +3016,17 @@ export async function optimizeFont2(fontFamily) {
     fontArr = await optimizeFont(globalThis.fontObj[fontFamily]["small-caps"], null, fontMetricI["small-caps"]);
     fontDataOptimized[fontFamily]["small-caps"] = fontArr[0].toArrayBuffer();
     const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
-    globalThis.fontObj[fontFamily]["small-caps"] = loadFont(fontFamily + "-small-caps", fontDataOptimized[fontFamily]["small-caps"], true);
+    globalThis.fontObj[fontFamily]["small-caps"] = loadFont(fontFamily + "-small-caps", fontDataOptimized[fontFamily]["small-caps"], true).then((x) => {
+      // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
+      x.kerningPairs = kerningPairs;
+      return(x);
+    });
     await loadFontBrowser(fontFamily, "small-caps", fontDataOptimized[fontFamily]["small-caps"], true);
-    globalThis.fontObj[fontFamily]["small-caps"].kerningPairs = kerningPairs;
+
+    // TODO: Fix to re-apply kerning pairs while running async
+    // const smallCapsFont = await globalThis.fontObj[fontFamily]["small-caps"];
+    // smallCapsFont.kerningPairs = kerningPairs;
+    // globalThis.fontObj[fontFamily]["small-caps"].kerningPairs = kerningPairs;
   }
 
   // Optimize italics if metrics exist to do so
