@@ -195,11 +195,12 @@ export function updateHOCRBoundingBoxWord(word_id, leftDelta, rightDelta){
 export async function changeWordFont(fontName){
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
-  const fontNameCanvas = fontName == "Default" ? globalSettings.defaultFont : fontName;
+  let fontNameCanvas = fontName == "Default" ? globalSettings.defaultFont : fontName;
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
+    fontNameCanvas = /Small Caps$/.test(wordI.fontFamily) ? fontName + " Small Caps" : fontName;
     updateHOCRFontWord(wordIDI, fontName);
     wordI.fontFamily = fontNameCanvas;
     wordI.defaultFontFamily = fontName == "Default" ? true : false;
@@ -221,7 +222,7 @@ export function toggleSuperSelectedWords(){
   const wordI = selectedObjects[0];
   const wordIDI = wordI.wordID;
   updateHOCRSuperWord(wordIDI, !wordI.wordSup);
-  hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
+  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
 
   renderPageQueue(currentPage.n);
 }

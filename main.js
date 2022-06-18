@@ -41,7 +41,9 @@ var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl);
 })
 
-
+// Quick fix to get VSCode type errors to stop
+// Long-term should see if there is a way to get types to work with fabric.js
+var fabric = globalThis.fabric;
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
@@ -687,7 +689,8 @@ function getTesseractConfigs() {
     // This is virtually always a false positive (usually "I").
     tessedit_char_blacklist: "|ﬁﬂéï",
     debug_file: "/debug.txt",
-    max_page_gradient_recognize: "100"
+    max_page_gradient_recognize: "100",
+    hocr_font_info: "1"
   };
 
   return (allConfig);
@@ -730,9 +733,9 @@ function compareGroundTruthClick(n) {
 
   const evalStatsConfigNew = {};
   evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
-  evalStatsConfigNew["ignorePunct"] = document.getElementById("ignorePunct").checked;
-  evalStatsConfigNew["ignoreCap"] = document.getElementById("ignoreCap").checked;
-  evalStatsConfigNew["ignoreExtra"] = document.getElementById("ignoreExtra").checked;
+  evalStatsConfigNew["ignorePunct"] = ignorePunctElem.checked;
+  evalStatsConfigNew["ignoreCap"] = ignoreCapElem.checked;
+  evalStatsConfigNew["ignoreExtra"] = ignoreExtraElem.checked;
 
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
@@ -970,20 +973,56 @@ function replaceLigatures(x) {
 }
 
 
-// var recognizeAreaScheduler;
+
+function canvasToImage(canvasCoords, imageRotated){
+
+  // If the rendered image has been rotated to match the user-specified rotation setting (or the angle is so small it doesn't matter)
+  // the only difference between coordinate systems is the left margin offset. 
+  if (autoRotateCheckboxElem.checked && imageRotated || !autoRotateCheckboxElem.checked && imageRotated || Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) <= 0.05) {
+    return {left : canvasCoords.left - currentPage.leftAdjX, top: canvasCoords.top, width: canvasCoords.width, height: canvasCoords.height}
+  }
+
+  // Otherwise, we must also account for rotation applied by the canvas
+  const rotateAngle = autoRotateCheckboxElem.checked && !imageRotated ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1;
+
+  let angleAdjXRect = 0;
+  let angleAdjYRect = 0;
+
+  const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
+
+  const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+  const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
+
+  const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+
+  const baselineY = rect1.top + rect1.height - rect1.height / 3;
+
+  const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * rect1.left;
+  const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
+
+  angleAdjXRect = shiftX + angleAdjXInt;
+  angleAdjYRect = shiftY + angleAdjYInt;
+
+  return {left : canvasCoords.left - angleAdjXRect - currentPage.leftAdjX, top: canvasCoords.top - angleAdjYRect, width: canvasCoords.width, height: canvasCoords.height}
+}
+
+
+// Note: The coordinate arguments (left/top) refer to the HOCR coordinate space.
+// This does not necessarily match either the canvas coordinate space or the Tesseract coordinate space. 
 globalThis.recognizeAreaScheduler = null;
-async function recognizeArea(left, top, width, height, wordMode = false) {
+async function recognizeArea(hocrCoords, wordMode = false) {
+
+  let left = hocrCoords.left;
+  let top = hocrCoords.top;
+  let width = hocrCoords.width;
+  let height = hocrCoords.height;
 
   if (inputDataModes.xmlMode[currentPage.n]) {
     globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
   }
 
   const allConfig = getTesseractConfigs();
-
-  // Do not use character-level data.
-  // The character-level data is not used for font kerning metrics, as at present only 1 font is optimized,
-  // and the text Tesseract misses using "Recognize All" is generally not from the body text (usually page numbers).
-  allConfig.hocr_char_boxes = '0';
 
   if (wordMode) {
     allConfig.tessedit_pageseg_mode = Tesseract.PSM["SINGLE_WORD"];
@@ -1004,157 +1043,149 @@ async function recognizeArea(left, top, width, height, wordMode = false) {
   const res = await recognizeAreaScheduler.addJob('recognize', inputImage.src, allConfig);
   let hocrString = res.data.hocr;
 
-  console.log(hocrString);
+  const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n]) > 0.05 ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : 0;
+
+  const oemText = "Tesseract " + document.getElementById("oemLabelText").innerHTML;
+
+  const argsObj = {
+    "mode": "area",
+    "angle": angleArg,
+    "pageDims": globalThis.pageMetricsObj.dimsAll[currentPage.n],
+    "engine": oemText
+  }
+
+  convertPage([hocrString, currentPage.n, false, argsObj]);
+
+  toggleEditButtons(false);
+
+  return;
+
+}
+
+function combineData(hocrString){
 
   const lines = currentPage.xmlDoc?.getElementsByClassName("ocr_line");
 
-  // If no page exists already, simply use the new scan without editing
-  if (!lines || lines.length == 0) {
-    const argsObj = {
-      "recognizeAreaMode": true
-    }
-
-    convertPage([hocrString, currentPage.n, false, argsObj]);
-
-    return;
-
-  }
-
-  // Perform various string cleaning functions.  These are largely copied from convertPage.js
-
-  // Remove all bold/italics tags.  These complicate the syntax and are unfortunately virtually always wrong anyway (coming from Tesseract).
-  hocrString = hocrString.replaceAll(/<\/?strong>/ig, "");
-  hocrString = hocrString.replaceAll(/<\/?em>/ig, "");
-
-  // Delete namespace to simplify xpath
-  hocrString = hocrString.replace(/<html[^>]*>/i, "<html>");
-
-  // Replace various classes with "ocr_line" class for simplicity
-  // At least in Tesseract, these elements are not identified accurately or consistently enough to warrent different treatment.
-  hocrString = hocrString.replace(/(class=\')ocr_caption/ig, "$1ocr_line");
-  hocrString = hocrString.replace(/(class=\')ocr_textfloat/ig, "$1ocr_line");
-  hocrString = hocrString.replace(/(class=\')ocr_header/ig, "$1ocr_line");
-
-  // Differs from convertPage.js by only requiring 2 consecutive closing span tags (as no character-level elements are present)
   const lineRegex = new RegExp(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/, "ig");
   const hocrLinesArr = hocrString.match(lineRegex);
 
   if (!hocrLinesArr) return;
 
-  // Otherwise, integrate the new data into the existing data
-  for (let i = 0; i < hocrLinesArr.length; i++) {
-    const lineNewStr = hocrLinesArr[i];
-    const titleStrLine = lineNewStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
-    const lineNew = parser.parseFromString(lineNewStr, "text/xml").firstChild;
-    if (![...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]) {
-      return;
-    }
-    const lineBoxNew = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]?.slice(1, 5).map(function (x) { return parseInt(x); });
-
-    // For whatever reason Tesseract sometimes returns junk data with negative coordinates.
-    // In such cases, the above regex will fail to match anything.
-    if (!lineBoxNew) return;
-
-    // Identify the OCR line a bounding box is in (or closest line if no match exists)
-    const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
-    let lineI = -1;
-    let match = false;
-    let newLastLine = false;
-    let lineBottomHOCR, line, lineMargin;
-    do {
-      lineI = lineI + 1;
-      line = lines[lineI];
-      const titleStrLine = line.getAttribute('title');
-      const lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-      let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-
-      let boxOffsetY = 0;
-      let lineBoxAdj = lineBox.slice();
-      if (baseline != null) {
-        baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
-
-        // Adjust box such that top/bottom approximate those coordinates at the leftmost point.
-        if (baseline[0] < 0) {
-          lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+    // Otherwise, integrate the new data into the existing data
+    for (let i = 0; i < hocrLinesArr.length; i++) {
+      const lineNewStr = hocrLinesArr[i];
+      const titleStrLine = lineNewStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+      const lineNew = parser.parseFromString(lineNewStr, "text/xml").firstChild;
+      if (![...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]) {
+        return;
+      }
+      const lineBoxNew = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0]?.slice(1, 5).map(function (x) { return parseInt(x); });
+  
+      // For whatever reason Tesseract sometimes returns junk data with negative coordinates.
+      // In such cases, the above regex will fail to match anything.
+      if (!lineBoxNew) return;
+  
+      const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
+  
+      // Identify the OCR line a bounding box is in (or closest line if no match exists)
+      let lineI = -1;
+      let match = false;
+      let newLastLine = false;
+      let lineBottomHOCR, line, lineMargin;
+      do {
+        lineI = lineI + 1;
+        line = lines[lineI];
+        const titleStrLine = line.getAttribute('title');
+        const lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+        let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
+  
+        let boxOffsetY = 0;
+        let lineBoxAdj = lineBox.slice();
+        if (baseline != null) {
+          baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
+  
+          // Adjust box such that top/bottom approximate those coordinates at the leftmost point.
+          if (baseline[0] < 0) {
+            lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+          } else {
+            lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+          }
+          //boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * baseline[0];
+          boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * sinAngle;
         } else {
-          lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+          baseline = [0, 0];
         }
-        //boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * baseline[0];
-        boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * sinAngle;
+  
+        // Calculate size of margin to apply when detecting overlap (~30% of total height applied to each side)
+        // This prevents a very small overlap from causing a word to be placed on an existing line
+        const lineHeight = lineBoxAdj[3] - lineBoxAdj[1];
+        lineMargin = Math.round(lineHeight * 0.30);
+  
+        let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
+        lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
+  
+        if ((lineTopHOCR + lineMargin) < lineBoxNew[3] && (lineBottomHOCR - lineMargin) >= lineBoxNew[1]) match = true;
+        if ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
+  
+      } while ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 < lines.length);
+  
+      let words = line.getElementsByClassName("ocrx_word");
+      let wordsNew = lineNew.getElementsByClassName("ocrx_word");
+  
+      if (match) {
+        // Inserting wordNew seems to remove it from the wordsNew array
+        const wordsNewLen = wordsNew.length;
+        for (let i = 0; i < wordsNewLen; i++) {
+          let wordNew = wordsNew[0];
+  
+          // Identify closest word on existing line
+          let word, box;
+          let j = 0;
+          do {
+            word = words[j];
+            if (!word.childNodes[0]?.textContent.trim()) continue;
+            let titleStr = word.getAttribute('title') ?? "";
+            box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+            j = j + 1;
+          } while (box[2] < lineBoxNew[0] && j < words.length);
+  
+          // Replace id (which is likely duplicative) with unique id
+          let wordChosenID = word.getAttribute('id');
+          let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+          wordNew.setAttribute("id", wordIDNew)
+  
+          // Add to page XML
+          if (i == words.length) {
+            word.insertAdjacentElement("afterend", wordNew);
+          } else {
+            word.insertAdjacentElement("beforebegin", wordNew);
+          }
+        }
       } else {
-        baseline = [0, 0];
-      }
-
-      // Calculate size of margin to apply when detecting overlap (~30% of total height applied to each side)
-      // This prevents a very small overlap from causing a word to be placed on an existing line
-      const lineHeight = lineBoxAdj[3] - lineBoxAdj[1];
-      lineMargin = Math.round(lineHeight * 0.30);
-
-      let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
-      lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
-
-      if ((lineTopHOCR + lineMargin) < lineBoxNew[3] && (lineBottomHOCR - lineMargin) >= lineBoxNew[1]) match = true;
-      if ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
-
-    } while ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 < lines.length);
-
-    let words = line.getElementsByClassName("ocrx_word");
-    let wordsNew = lineNew.getElementsByClassName("ocrx_word");
-
-    if (match) {
-      for (let i = 0; i < wordsNew.length; i++) {
-        let wordNew = wordsNew[i];
-
-        // Identify closest word on existing line
-        let word, box;
-        let j = 0;
-        do {
-          word = words[j];
-          if (!word.childNodes[0]?.textContent.trim()) continue;
-          let titleStr = word.getAttribute('title') ?? "";
-          box = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-          j = j + 1;
-        } while (box[2] < lineBoxNew[0] && j < words.length);
-
         // Replace id (which is likely duplicative) with unique id
-        let wordChosenID = word.getAttribute('id');
-        let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
-        wordNew.setAttribute("id", wordIDNew)
-
-        // Add to page XML
-        if (i == words.length) {
-          word.insertAdjacentElement("afterend", wordNew);
+        let lineChosenID = lineNew.getAttribute('id');
+        let lineIDNew = lineChosenID + getRandomAlphanum(3).join('');
+        lineNew.setAttribute("id", lineIDNew);
+  
+        for (let i = 0; i < wordsNew.length; i++) {
+          let wordNew = wordsNew[i];
+  
+          // Replace id (which is likely duplicative) with unique id
+          let wordChosenID = wordNew.getAttribute('id');
+          let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+          wordNew.setAttribute("id", wordIDNew)
+        }
+  
+        if (newLastLine) {
+          line.insertAdjacentElement("afterend", lineNew);
         } else {
-          word.insertAdjacentElement("beforebegin", wordNew);
+          line.insertAdjacentElement("beforebegin", lineNew);
         }
-      }
-    } else {
-      // Replace id (which is likely duplicative) with unique id
-      let lineChosenID = lineNew.getAttribute('id');
-      let lineIDNew = lineChosenID + getRandomAlphanum(3).join('');
-      lineNew.setAttribute("id", lineIDNew);
-
-      for (let i = 0; i < wordsNew.length; i++) {
-        let wordNew = wordsNew[i];
-
-        // Replace id (which is likely duplicative) with unique id
-        let wordChosenID = wordNew.getAttribute('id');
-        let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
-        wordNew.setAttribute("id", wordIDNew)
-      }
-
-      if (newLastLine) {
-        line.insertAdjacentElement("afterend", lineNew);
-      } else {
-        line.insertAdjacentElement("beforebegin", lineNew);
       }
     }
-  }
-
-  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
-
-  await renderPageQueue(currentPage.n);
-
+  
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+  
 }
 
 
@@ -1211,6 +1242,7 @@ async function recognizePages(single = false) {
     addDisplayLabel(oemText);
     setCurrentHOCR(oemText);  
   }
+  const mode = single ? "page" : "full";
 
   let recognizeImages = async (pagesArr) => {
     let time1 = Date.now();
@@ -1264,10 +1296,10 @@ async function recognizePages(single = false) {
           const argsObj = {
             "engine": oemText,
             "angle": globalThis.pageMetricsObj["angleAll"][x],
-            "single": single
+            "mode": mode
           }
 
-          convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
+          convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
         } else {
           
           // If the angle is not already known, we wait until recognition finishes so we know the angle
@@ -1308,17 +1340,18 @@ async function recognizePages(single = false) {
               globalThis.hocrCurrentRaw[x] = y.data.hocr;
               const argsObj = {
                 "engine": oemText,
-                "angle": globalThis.pageMetricsObj["angleAll"][x]
+                "angle": globalThis.pageMetricsObj["angleAll"][x],
+                "mode": mode
               }
 
-              convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
+              convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
             });
           } else {
             const argsObj = {
               "engine": oemText,
-              "single": single
+              "mode": mode
             }
-            convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateConvertPageCounter()});
+            convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
           }
         }
       })
@@ -1388,47 +1421,17 @@ function recognizeAreaClick(wordMode = false) {
   // Without this changes to active selection caused by mouse movement may change rect object.
   canvas.on('mouse:up:before', async function (o) {
 
-    // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
-    let angleAdjXRect = 0;
-    let angleAdjYRect = 0;
-    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
-      // angleAdjXRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.top + rect1.height * 0.5);
-      // angleAdjYRect = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180)) * (rect1.left + angleAdjXRect / 2) * -1;
-
-      const rotateAngle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
-
-      const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
-
-      const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
-      const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
-
-      const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
-      const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
-
-      const baselineY = rect1.top + rect1.height - rect1.height / 3;
-
-      const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * rect1.left;
-      const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
-
-      angleAdjXRect = shiftX + angleAdjXInt;
-      angleAdjYRect = shiftY + angleAdjYInt;
-
+    if(rect1.width < 4 || rect1.height < 4) {
+      canvas.remove(rect1);
+      return;
     }
 
-    // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
-    const top = rect1.top - angleAdjYRect;
-    const left = rect1.left - angleAdjXRect - currentPage.leftAdjX;
-
-
-    const width = rect1.width;
-    const height = rect1.height;
-
+    const canvasCoords = {left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height};
+    const hocrCoords = canvasToImage(canvasCoords, globalThis.imageAll.nativeRotated[currentPage.n]);
 
     canvas.remove(rect1);
 
-    if (width < 4 || height < 4) return;
-
-    await recognizeArea(left, top, width, height, wordMode);
+    await recognizeArea(hocrCoords, wordMode);
 
     canvas.renderAll();
     canvas.__eventListeners = {}
@@ -1768,8 +1771,9 @@ function addWordClick() {
       }
     });
     textbox.on('selected', function () {
-      if (!this.defaultFontFamily && Object.keys(fontObj).includes(this.fontFamily)) {
-        wordFontElem.value = this.fontFamily;
+      const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
+      if (!this.defaultFontFamily && Object.keys(globalThis.fontObj).includes(fontFamily)) {
+        wordFontElem.value = fontFamily;
       }
       fontSizeElem.value = this.fontSize;
 
@@ -1866,7 +1870,7 @@ async function clearFiles() {
 clearFiles();
 
 
-
+// TODO: See if this can be easily combined with the main import function, since most of it is copy/paste from that
 async function importOCRFiles() {
   // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
   const ocrName = uploadOCRNameElem.value;
@@ -1910,14 +1914,15 @@ async function importOCRFiles() {
       hocrArrPages = hocrStrPages.split(/(?=\<page)/);
     } else {
 
-      // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-      inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
+      if(mainData) {
+        // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
+        inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
 
-      if (inputDataModes.resumeMode) {
-        let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-        let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\/?\>)/i)[1].replace(/&quot;/g, '"');
-        globalThis.fontMetricsObj = JSON.parse(contentStr);
-
+        if (inputDataModes.resumeMode) {
+          let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
+          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
+          globalThis.fontMetricsObj = JSON.parse(contentStr);
+        }
       }
 
       hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
@@ -1970,11 +1975,11 @@ async function importOCRFiles() {
     // Process HOCR using web worker, reading from file first if that has not been done already
     if (singleHOCRMode) {
       //convertPageWorker.postMessage([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
-      convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
+      convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateDataProgress(mainData));
     } else {
       const hocrFile = hocrFilesAll[i];
       //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, i]));
-      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateConvertPageCounter()));
+      readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateDataProgress(mainData)));
     }
 
   }
@@ -2111,6 +2116,23 @@ async function importFiles() {
 
     pageCountImage = await ms.addJob('countPages', []);
 
+    // If no XML data is provided, page sizes are calculated using muPDF alone
+    if(!xmlModeImport) {
+      // Confirm that 300 dpi leads to a reasonably sized image and lower dpi if not.
+      const pageDims1 = (await ms.addJob('pageSizes', [300])).slice(1);
+
+      // For reasons that are unclear, a small number of pages have been rendered into massive files
+      // so a hard-cap on resolution must be imposed.
+      const pageWidth1 = pageDims1.map((x) => x[0]);
+      const pageDPI = pageWidth1.map((x) => Math.round(300 * 2000 / Math.max(x, 2000)));
+
+      // In addition to capping the resolution, also switch the width/height
+      const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
+
+      globalThis.pageMetricsObj["dimsAll"] = pageDims;
+
+    }
+
   } else if (inputDataModes.imageMode) {
     pageCountImage = imageFilesAll.length;
   }
@@ -2139,7 +2161,7 @@ async function importFiles() {
 
         if (inputDataModes.resumeMode) {
           let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\/?\>)/i)[1].replace(/&quot;/g, '"');
+          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
           globalThis.fontMetricsObj = JSON.parse(contentStr);
 
         }
@@ -2219,9 +2241,12 @@ async function importFiles() {
     inputDataModes.xmlMode.fill(false);
   }
 
-  // if (inputDataModes.pdfMode && !xmlModeImport) {
-  //   renderPageQueue(0);
-  // }
+  if (inputDataModes.pdfMode && !xmlModeImport) {
+      // Render first handful of pages for pdfs so the interface starts off responsive
+      // In the case of OCR data, this step is triggered elsewhere after all the data loads
+      renderPageQueue(0);
+      renderPDFImageCache([...Array(Math.min(pageCount, 5)).keys()]);
+  }
 
   let imageN = -1;
   let hocrN = -1;
@@ -2261,16 +2286,7 @@ async function importFiles() {
         globalThis.imageAll["nativeRaw"][imageNi] = image;
         globalThis.imageAll["native"][imageNi] = globalThis.imageAll["nativeRaw"][imageNi];
 
-        loadCountHOCR = loadCountHOCR + 1;
-        const valueMax = parseInt(convertPageWorker["activeProgress"].getAttribute("aria-valuemax"));
-        convertPageWorker["activeProgress"].setAttribute("aria-valuenow", loadCountHOCR);
-        if (loadCountHOCR % 5 == 0 || loadCountHOCR == valueMax) {
-          convertPageWorker["activeProgress"].setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
-          if (loadCountHOCR == valueMax) {
-            globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-            calculateOverallPageMetrics();
-          }
-        }
+        updateDataProgress();
 
       }, false);
 
@@ -2283,39 +2299,16 @@ async function importFiles() {
       // Process HOCR using web worker, reading from file first if that has not been done already
       if (singleHOCRMode) {
         //convertPageWorker.postMessage([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
-        convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateConvertPageCounter());
+        convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateDataProgress());
       } else {
         const hocrFile = hocrFilesAll[i];
         const hocrNi = hocrN + 1;
         hocrN = hocrN + 1;
         //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, hocrNi]));
-        readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateConvertPageCounter()));
+        readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateDataProgress()));
       }
     }
 
-  }
-
-  if (inputDataModes.pdfMode && !xmlModeImport) {
-
-    // Confirm that 300 dpi leads to a reasonably sized image and lower dpi if not.
-    const ms = await globalThis.muPDFScheduler;
-    const pageDims1 = (await ms.addJob('pageSizes', [300])).slice(1);
-
-    // For reasons that are unclear, a small number of pages have been rendered into massive files
-    // so a hard-cap on resolution must be imposed.
-    const pageWidth1 = pageDims1.map((x) => x[0]);
-    const pageDPI = pageWidth1.map((x) => Math.round(300 * 2000 / Math.max(x, 2000)));
-
-    // In addition to capping the resolution, also switch the width/height
-    const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
-
-    globalThis.pageMetricsObj["dimsAll"] = pageDims;
-    
-    // Render first handful of pages for pdfs so the interface starts off responsive
-    // In the case of OCR data, this step is triggered elsewhere after all the data loads
-    await renderPDFImageCache([0]);
-    renderPageQueue(0);
-    renderPDFImageCache([...Array(Math.min(pageCount, 5)).keys()]);
   }
 
   // Enable downloads now for pdf imports if no HOCR data exists
@@ -2328,7 +2321,6 @@ async function importFiles() {
 
 }
 
-// Scheduler for compressing PNG data
 async function initMuPDFScheduler(file, workers = 3) {
   globalThis.muPDFScheduler = await Tesseract.createScheduler();
   globalThis.muPDFScheduler["pngRenderCount"] = 0;
@@ -2353,7 +2345,7 @@ async function loadImage(url, elem) {
 
 export async function displayImage(n, image, binary = false) {
   if (currentPage.n == n && !(colorModeElem.value == "binary" && !binary || colorModeElem.value != "binary" && binary)) {
-    currentPage.renderStatus = currentPage.renderStatus + 1;
+    // currentPage.renderStatus = currentPage.renderStatus + 1;
 
     if (!inputDataModes.xmlMode[n]) {
       let widthRender = image.width;
@@ -2499,7 +2491,7 @@ async function renderPDFImageCache(pagesArr, rotate = null) {
 
 }
 
-
+currentPage.renderNum = 0;
 
 //var backgroundOpts = new Object;
 // Function that handles page-level info for rendering to canvas and pdf
@@ -2610,7 +2602,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
         const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180));
         const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
 
-        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsObj["angleAdjAll"][n] ?? 0);
+        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsObj["angleAdjAll"][n] || 0);
       }
 
       currentPage.backgroundOpts.left = imgDims[1] * 0.5 + currentPage.leftAdjX;
@@ -2622,8 +2614,16 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
     }
 
+  } else {
+    currentPage.backgroundOpts.originX = "left";
+    currentPage.backgroundOpts.originY = "top";
+
+    currentPage.backgroundOpts.left = 0;
+    currentPage.backgroundOpts.top = 0;
+
   }
 
+  let renderNum;
   if (mode == "screen") {
     // Clear canvas if objects (anything but the background) exists
     if (canvas.getObjects().length) {
@@ -2640,13 +2640,23 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
     currentPage.renderStatus = 0;
 
+    // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
+    // (whether by quickly changing pages or on the same page).
+    // TODO: Find a better solution. 
+    currentPage.renderNum = currentPage.renderNum + 1;
+    renderNum = currentPage.renderNum;
+
     //const colorMode = colorModeElem.value;
 
     renderPDFImageCache([n]);
     const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
     currentPage.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
-    currentPage.renderStatus = currentPage.renderStatus + 1;
-    selectDisplayMode(displayModeElem.value);
+    if (currentPage.n == n && currentPage.renderNum == renderNum) {
+      currentPage.renderStatus = currentPage.renderStatus + 1;
+      selectDisplayMode(displayModeElem.value);
+    } else {
+      return;
+    }
 
     // If there is no OCR data to render, we are done
     if (!inputDataModes.xmlMode[n]) {
@@ -2659,17 +2669,20 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     if (displayModeElem.value != "ebook") {
 
       const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
-      globalThis.doc.image(backgroundImage.src, currentPage.leftAdjX, 0, { align: 'left', valign: 'top' });
+      globalThis.doc.image(backgroundImage.src, (currentPage.leftAdjX || 0), 0, { align: 'left', valign: 'top' });
 
     }
   }
 
-  if (mode == "screen") {
+  if (mode == "screen" && currentPage.n == n) {
     await renderPage(canvas, null, currentPage.xmlDoc, "screen", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
-    if (currentPage.n == n) {
+    if (currentPage.n == n && currentPage.renderNum == renderNum) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
+      await selectDisplayMode(displayModeElem.value);
+    } else {
+      return;
     }
-    await selectDisplayMode(displayModeElem.value);
+    
   } else if (inputDataModes.xmlMode[n]) {
     await renderPage(canvas, globalThis.doc, currentPage.xmlDoc, "pdf", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
   }
@@ -3037,7 +3050,10 @@ function convertPage(args) {
 
 }
 
-function updateConvertPageCounter() {
+// Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
+// Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
+// as well as after every image is loaded (not including .pdfs). 
+function updateDataProgress(mainData = true) {
 
   let activeProgress = convertPageWorker["activeProgress"];
 
@@ -3053,34 +3069,40 @@ function updateConvertPageCounter() {
   if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
     activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
     if (loadCountHOCR == valueMax) {
-      // If resuming from a previous editing session font stats are already calculated
-      if (!inputDataModes.resumeMode) {
-        // Buttons are enabled from calculateOverallFontMetrics function in this case
-        globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-      } else {
-        optimizeFontElem.disabled = false;
-        downloadElem.disabled = false;
+
+      // Full-document stats (including font optimization) are only calulated for the "main" data, 
+      // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
+      // those uploads to not cause new fonts to be created. 
+      if(inputDataModes.xmlMode[0] && mainData) {
+        // If resuming from a previous editing session font stats are already calculated
+        if (inputDataModes.resumeMode) {
+          optimizeFontElem.disabled = false;
+        } else {
+          // Buttons are enabled from calculateOverallFontMetrics function in this case
+          globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+        }
+
+        calculateOverallPageMetrics();
+
+        // Enable font optimization (if possible) by default
+        if(optimizeFontElem.disabled == false){
+          let defaultFontObs = 0;
+          let namedFontObs = 0;
+          if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
+          if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
+          if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
+    
+          globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
+    
+          optimizeFontElem.checked = true;
+          optimizeFontClick(optimizeFontElem.checked);
+        }
       }
-      calculateOverallPageMetrics();
-
-      let defaultFontObs = 0;
-      let namedFontObs = 0;
-      if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
-      if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
-      if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
-
-      globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
-
-      // Enable font optimization (if possible) by default
-      if(optimizeFontElem.disabled == false){
-        optimizeFontElem.checked = true;
-        optimizeFontClick(optimizeFontElem.checked);
-      }
+      downloadElem.disabled = false;
       // Render first handful of pages for pdfs so the interface starts off responsive
       if (inputDataModes.pdfMode) {
         renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
       }
-
     }
   }
 }
@@ -3092,13 +3114,24 @@ convertPageWorker.onmessage = function (e) {
   const n = e.data[1];
   const argsObj = e.data[2];
 
-  const oemCurrent = !argsObj["engine"] || argsObj["single"] || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
+  // Detect if the new data needs to be combined with existing data.
+  // This occurs when using "recognize area" mode on a page with existing OCR data. 
+  if(argsObj["mode"] == "area") {
+    const lines = currentPage.xmlDoc?.getElementsByClassName("ocr_line");
+    if(lines && lines.length > 0) {
+      combineData(e.data[0][0]);
+      renderPageQueue(currentPage.n, 'screen', false)
+      return;
+    }
+  }
+
+  const oemCurrent = !argsObj["engine"] || argsObj["mode"] != "full" || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
 
   // If an OEM engine is specified, save to the appropriate object within hocrAll,
   // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
   // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
   // while the recognition job is running.
-  if (argsObj["engine"] && !argsObj["single"]) {
+  if (argsObj["engine"] && argsObj["mode"] == "full") {
     globalThis.hocrAll[argsObj["engine"]][n] = e.data[0][0] || "<div class='ocr_page'></div>";
     if (oemCurrent) {
       globalThis.hocrCurrent[n] = e.data[0][0] || "<div class='ocr_page'></div>";
@@ -3108,7 +3141,7 @@ convertPageWorker.onmessage = function (e) {
   }
 
   // When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
-  if (argsObj["recognizeAreaMode"]) {
+  if (argsObj["mode"] == "area") {
     globalThis.pageMetricsObj["dimsAll"][n] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
     globalThis.hocrCurrent[n] = globalThis.hocrCurrent[n].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
   } else {
