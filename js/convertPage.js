@@ -613,6 +613,8 @@ function convertPageAbbyy(xmlPage, pageNum) {
   let lineLeft = new Array;
   let lineTop = new Array;
 
+  let lineAllHeightPageArr = [];
+
   function convertLineAbbyy(xmlLine, lineNum, pageNum = 1) {
     let widthPxObjLine = new Object;
     let heightPxObjLine = new Object;
@@ -676,6 +678,14 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
     // Unlike Tesseract, Abbyy XML does not have a native "word" unit (it provides only lines and letters).
     // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
+
+    // TODO: Investigate possible fix for too many words issue:
+    // The reason for splitting letters at every formatting change is (1) this splits up superscripts from
+    // the words they are attached to and (2) to split up normal and italic parts of text (even if not separated by a space),
+    // as the canvas GUI currently only supports one font style per word. 
+    // Unfortunately, in some documents Abbyy has the nonsensical habbit of using formatting tags just to change font size
+    // on a specific character (e.g. switching from font size 10.5 to 11 for a single period).
+    // When this happens, the heuristic here results in too many words being created--not sure if there's an easy fix. 
     
     // Replace character identified as tab with space (so it is split into separate word)
     // For whatever reason many non-tab values can be found in elements where isTab is true (e.g. "_", "....")
@@ -687,16 +697,43 @@ function convertPageAbbyy(xmlPage, pageNum) {
     xmlLine = xmlLine.replaceAll(/(\<\/formatting\>\<formatting[^\>]*\>\s*)<charParams[^\>]*\>\s*\<\/charParams\>/ig, "$1")
     xmlLine = xmlLine.replaceAll(/\<charParams[^\>]*\>\s*\<\/charParams\>(\s*\<\/formatting\>\<formatting[^\>]*\>\s*)/ig, "$1")
 
-    let wordStrArr = xmlLine.split(abbyySplitRegex);
+    // xmlLine = xmlLine.replaceAll(/(\<\/formatting\>\<formatting[^\>]*\>)(\s*<charParams[^\>]*\>\.\<\/charParams\>)\<\/formatting\>/ig, "$1")
 
-    // Filter off any array elements that do not have a character.
-    // (This can happen ocassionally, for example when multiple spaces are next to eachother.)
-    // TODO: This will drop formatting information in edge cases--e.g. if a formatting element is followed by multiple spaces.
-    // However, hopefully these are uncommon enough that they should not be a big issue.
-    let filterArr = wordStrArr.map(x => /charParams/i.test(x));
-    wordStrArr = wordStrArr.filter((r, i) => filterArr[i]);
+
+
+    let wordStrArr1 = xmlLine.split(abbyySplitRegex);
+
+
+    // Account for special cases:
+    // 1. Filter off any array elements that do not have a character.
+    //    (This can happen ocassionally, for example when multiple spaces are next to eachother.)
+    //    TODO: This will drop formatting information in edge cases--e.g. if a formatting element is followed by multiple spaces.
+    //    However, hopefully these are uncommon enough that they should not be a big issue.
+    // 2. Period with its own "word" due to being wrapped in separate <formatting> tags
+    //    This odd behavior appears around to superscripts, and makes sense when normal text is followed by a superscript followed by a period. 
+    //    However, it also happens when normal text is followed by a period followed by a superscript (the normal behavior),
+    //    and it does not make sense for a period to get its own word in this case. 
+
+    let wordStrArr = [];
+    for(let i=0;i<wordStrArr1.length;i++){
+      const wordStrArrI = wordStrArr1[i];
+      const wordMatch = wordStrArrI.match(/[^\<\>]+(?=<\/charParams\>)/g);
+      if(!wordMatch){
+        continue;
+      } else if (wordMatch.length == 1){
+        if(wordMatch[0] == ".") {
+          if(wordStrArr.length > 0 && !/superscript\=[\'\"](1|true)/i.test(wordStrArr[wordStrArr.length-1])){
+            wordStrArr[wordStrArr.length-1] = wordStrArr[wordStrArr.length-1] + wordStrArrI.replace(/(\<formatting[^\>]+\>\s*)/i, "");
+            continue;
+          }
+        }
+      } 
+      wordStrArr.push(wordStrArrI);
+
+    }
 
     if (wordStrArr.length == 0) return (["", 0]);
+
 
     let bboxes = Array(wordStrArr.length);
     let cuts = Array(wordStrArr.length);
@@ -766,6 +803,19 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
         if (dropCapFix) {
           letterArr[j][7] = letterArr[j][7].toUpperCase();
+        }
+
+        // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines
+        if (letterArr[j][7] == "¬" && i+1 == wordStrArr1.length && j+1 == letterArr.length && i > 2) {
+          letterArr[j][7] = "-";
+        } else if (["’","&apos;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
+          letterArr[j][7] = "‘";
+        } else if (["”","&quot;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
+          letterArr[j][7] = "“";
+        } else if (["‘","&apos;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
+          letterArr[j][7] = "’";
+        } else if (["“","&quot;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
+          letterArr[j][7] = "”";
         }
 
         let contentStrLetter = letterArr[j][7];
@@ -846,9 +896,23 @@ function convertPageAbbyy(xmlPage, pageNum) {
       }
     }
 
-    const lineAllHeight = Math.max(...lineAllHeightArr);
+    let lineAllHeight = Math.max(...lineAllHeightArr);
     let lineAscHeight = quantile(lineAscHeightArr, 0.5);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
+
+    // The above calculations fail for lines without any alphanumeric characters (e.g. a line that only contains a dash),
+    // as this will cause the value of `lineAllHeight` to be very low, and the font size will be extremely small. 
+    // While this may seem like a fringe case, it frequently happens for tables as Abbyy make a new "<line>" element for 
+    // each individual cell. 
+    // Therefore, as a quick fix, whenever the lineAllHeight value is small/dubious it is replaced by the median for the page (so far). 
+    if(lineAllHeight < 10 && !lineAscHeight && !lineXHeight && lineAllHeightPageArr.length > 0) {
+      const lineAllHeightMedian = quantile(lineAllHeightPageArr, 0.5);
+      if(lineAllHeightMedian > lineAllHeight) {
+        lineAllHeight = lineAllHeightMedian;
+      }
+    } else {
+      lineAllHeightPageArr.push(lineAllHeight);
+    }
 
 
     if(!fontMetricsObj[fontFamily]){
@@ -1052,10 +1116,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
   }
 
   const dimsOut = pageDims;
-  // const widthOut = widthObjPage;
-  // const heightOut = heightObjPage;
-  // const cutOut = cutObjPage;
-  // const kerningOut = kerningObjPage;
 
   return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
 
