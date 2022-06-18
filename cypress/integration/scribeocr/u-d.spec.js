@@ -115,7 +115,9 @@ cy.wait(500)
     cy.wait(3000)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
+    cy.wait(1000)
     cy.get('#download').click()
+    cy.wait(5000)
     cy.verifyDownload('snow_drops.pdf', {contains: true})
     
   }) 
@@ -190,9 +192,9 @@ cy.wait(500)
     cy.wait(5000)
     cy.get('#uploader', { timeout: 10000 }).selectFile(
       ['cypress/fixtures/compositionserie00dowa_abbyy.gz', 
-        'cypress/fixtures/compositionserie00dowa_bw.pdf'
+        'cypress/fixtures/compositionserie00dowa.pdf'
     ])
-    //cy.get('#pageCount').should('have.text', '114')
+    cy.get('#pageCount').should('have.text', '94')
     cy.wait(5000)
     cy.get('#nav-download-tab').click()
     cy.wait(3000)
@@ -200,7 +202,7 @@ cy.wait(500)
     cy.get('#formatLabelOptionText').click()
     cy.wait(5000)
     cy.get('#download').click()
-    cy.verifyDownload('compositionserie00dowa_bw.txt')
+    cy.verifyDownload('compositionserie00dowa.txt')
   })
   /* 
   it('downloads a pdf file from a pdf with different page numbered xml', () => {
@@ -333,6 +335,9 @@ cy.wait(500)
   })
 
   it('hocr file from jpg', () => {
+    cy.visit(httpServer);
+    cy.get('#nav-import-tab').click();
+    cy.wait(5000)
     cy.get('#uploader').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'])
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
