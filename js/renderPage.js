@@ -1,7 +1,7 @@
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./textUtils.js"
 import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
-import { round3, rotateBoundingBox } from "./miscUtils.js"
+import { round3 } from "./miscUtils.js"
 
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -26,7 +26,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
   let lines = xmlDoc.getElementsByClassName("ocr_line");
 
-  let fontSize;
+  let lineFontSize;
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i]
     let titleStrLine = line.getAttribute('title');
@@ -38,9 +38,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
     } else {
       baseline = [0, 0];
     }
-    let words = line.getElementsByClassName("ocrx_word");
-
-
+    let words = line.getElementsByClassName("ocrx_word");      
 
     // If possible (native Tesseract HOCR) get font size using x-height.
     // If not possible (Abbyy XML) get font size using ascender height.
@@ -52,11 +50,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       ascHeight = parseFloat(ascHeight[1]);
       descHeight = parseFloat(descHeight[1]);
       let xHeight = letterHeight - ascHeight - descHeight;
-      fontSize = getFontSize(defaultFont, xHeight, "o", ctx);
+      lineFontSize = getFontSize(defaultFont, xHeight, "o");
     } else if (letterHeight != null) {
       letterHeight = parseFloat(letterHeight[1]);
       descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-      fontSize = getFontSize(defaultFont, letterHeight - descHeight, "A", ctx);
+      lineFontSize = getFontSize(defaultFont, letterHeight - descHeight, "A");
     }
 
     // If none of the above conditions are met (not enough info to calculate font size), the font size from the previous line is reused.
@@ -64,14 +62,23 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
     //const AMetrics = ctx.measureText("A");
     const oMetrics = ctx.measureText("o");
     //const jMetrics = ctx.measureText("gjpqy");
-    ctx.font = fontSize + 'px ' + defaultFont;
+    ctx.font = lineFontSize + 'px ' + defaultFont;
 
     const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
     let angleAdjXLine = 0;
     let angleAdjYLine = 0;
     if ((autoRotateCheckboxElem.checked) && Math.abs(angle ?? 0) > 0.05) {
 
-      const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
+      const x = linebox[0];
+      const y = linebox[3] + baseline[1];
+
+      const xRot = x * cosAngle - sinAngle * y;
+      const yRot = x * sinAngle + cosAngle * y;
+
+      const angleAdjXInt = x - xRot;
+      // const angleAdjYInt = y - yRot;
+
+      // const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
       const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
 
       angleAdjXLine = angleAdjXInt + shiftX;
@@ -97,7 +104,26 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       let box_width = box[2] - box[0];
       let box_height = box[3] - box[1];
 
-      const angleAdjXWord = Math.abs(angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (box[0] - linebox[0]) : angleAdjXLine;
+      // const angleAdjXWord = Math.abs(angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (box[0] - linebox[0]) : angleAdjXLine;
+
+      let angleAdjXWord = angleAdjXLine;
+      if((autoRotateCheckboxElem.checked) && Math.abs(angle) >= 1) {
+
+        angleAdjXWord = angleAdjXWord + ((box[0] - linebox[0]) / cosAngle - (box[0] - linebox[0]));
+
+        // const x = box[0];
+        // const y = linebox[3] + baseline[1] + Math.tan(angle * (Math.PI/180)) * (box[0] - linebox[0]);
+
+        // const xRot = x * cosAngle - sinAngle * y;
+        // const yRot = x * sinAngle + cosAngle * y;
+
+        // const angleAdjXInt = x - xRot;
+  
+        // angleAdjXWord = angleAdjXInt + shiftX;
+      }
+
+      // const angleAdjXWord = Math.abs(angle) >= 1 ? box[0] * cosAngle - sinAngle * y : angleAdjXLine;
+
 
       let wordText, wordSup, wordDropCap;
       if (/\<sup\>/i.test(word.innerHTML)) {
@@ -122,16 +148,16 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         wordFontSize = parseFloat(fontSizeStr[1]);
       } else if (wordSup) {
         // All superscripts are assumed to be numbers for now
-        wordFontSize = getFontSize(defaultFont, box_height, "1", ctx);
+        wordFontSize = getFontSize(defaultFont, box_height, "1");
       } else if (wordDropCap) {
         // Note: In addition to being taller, drop caps are often narrower than other glyphs.
         // Unfortunately, while Fabric JS (canvas library) currently supports horizontally scaling glyphs,
         // pdfkit (pdf library) does not.  This feature should be added to Scribe if pdfkit supports it
         // in the future.
         // https://github.com/foliojs/pdfkit/issues/1032
-        wordFontSize = getFontSize(defaultFont, box_height, wordText.slice(0, 1), ctx);
+        wordFontSize = getFontSize(defaultFont, box_height, wordText.slice(0, 1));
       } else {
-        wordFontSize = fontSize;
+        wordFontSize = lineFontSize;
       }
 
       let fontStyle;
@@ -144,13 +170,13 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       }
 
 
-      let fontFamilyWord = styleStr.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/);
+      let wordFontFamily = styleStr.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/)?.[1];
       let defaultFontFamily;
-      if (fontFamilyWord == null) {
-        fontFamilyWord = defaultFont
+      if (wordFontFamily == null) {
+        wordFontFamily = defaultFont;
         defaultFontFamily = true;
       } else {
-        fontFamilyWord = fontFamilyWord[1].trim();
+        wordFontFamily = wordFontFamily.trim();
         defaultFontFamily = false;
       }
 
@@ -209,20 +235,20 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         fill_arg = fillColorHex
       }
 
-      if (fontStyle == "small-caps") {
-        ctx.font = wordFontSize + 'px ' + fontFamilyWord + " Small Caps";
-      } else {
-        ctx.font = fontStyle + " " + wordFontSize + 'px ' + fontFamilyWord;
-      }
+      const fontObjI = await fontObj[wordFontFamily][fontStyle];
 
-      const fontObjI = await fontObj[fontFamilyWord][fontStyle];
+      if (fontStyle == "small-caps") {
+        ctx.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
+      } else {
+        ctx.font = fontStyle + " " + wordFontSize + 'px ' + wordFontFamily;
+      }
 
       // Calculate font glyph metrics for precise positioning
       let wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
       let wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
 
-      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (fontSize / fontObjI.unitsPerEm);
-      let wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObjI.unitsPerEm);
+      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (lineFontSize / fontObjI.unitsPerEm);
+      let wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (lineFontSize / fontObjI.unitsPerEm);
 
 
       let wordWidth1 = ctx.measureText(wordText).width;
@@ -249,7 +275,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       // Add to PDF document (if that option is selected)
       if (mode == "pdf") {
 
-        globalThis.doc.font(fontFamilyWord + "-" + fontStyle);
+        globalThis.doc.font(wordFontFamily + "-" + fontStyle);
 
 
         let top;
@@ -298,7 +324,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
         let fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
 
-        let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
+        let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
 
         let left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
         let top;
@@ -321,9 +347,9 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           top = linebox[3] + baseline[1] + fontDesc + angleAdjYLine;
         }
 
-        let fontFamilyWordCanvas = fontStyle == "small-caps" ? fontFamilyWord + " Small Caps" : fontFamilyWord;
+        let wordFontFamilyCanvas = fontStyle == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
         let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;
-        // let fontFamilyWordCanvas = fontFamilyWord;
+        // let wordFontFamilyCanvas = wordFontFamily;
         // let fontStyleCanvas = fontStyle;
 
         let textbox = new fabric.IText(wordText, {
@@ -339,7 +365,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           fill_proof: fillColorHex,
           fill_ebook: 'black',
           fill_eval: fillColorHexMatch,
-          fontFamily: fontFamilyWordCanvas,
+          fontFamily: wordFontFamilyCanvas,
           fontStyle: fontStyleCanvas,
           wordID: word_id,
           line: i,

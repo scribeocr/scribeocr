@@ -464,6 +464,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
 function fontMetrics(){
   this.width = {};
   this.height = {};
+  this.desc = {};
   this.advance = {};
   this.kerning = {};
   this.obs = 0;
@@ -544,7 +545,7 @@ function calculateFontMetrics(fontMetricObj){
   const fontMetricOut = new fontMetrics();
 
   // Take the median of each array
-  for (let prop of ["width","height","advance","kerning"]){
+  for (let prop of ["width","height","desc","advance","kerning"]){
     for (let [key, value] of Object.entries(fontMetricObj[prop])) {
       fontMetricOut[prop][key] = round6(quantile(value, 0.5));
     }  

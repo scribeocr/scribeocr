@@ -9,10 +9,6 @@ export function searchHOCR(regexStr, regexFlags){
         res.push(words[i]);
       }
     }
-    if(res.length == 1){
-      return res[0]
-    } else {
-      return(res)
-    }
+    return(res)
   }
   

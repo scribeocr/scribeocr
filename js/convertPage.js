@@ -27,6 +27,7 @@ onmessage = function (e) {
 function fontMetrics(){
   this.width = {};
   this.height = {};
+  this.desc = {};
   this.advance = {};
   this.kerning = {};
   this.obs = 0;
@@ -82,9 +83,11 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
   const fontMetricsObj = {};
 
-  var angleRisePage = new Array;
-  var lineLeft = new Array;
-  var lineTop = new Array;
+  const angleRisePage = [];
+  const lineLeft = [];
+  const lineTop = [];
+
+  const charMetricsPage = {};
 
   // If page dimensions are not provided as an argument, we assume that the entire image is being recognized
   // (so the width/height of the image bounding box is the same as the width/height of the image).
@@ -190,6 +193,8 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
       let italic = /<\/em>\s*<\/span>/.test(match);
 
+      const wordID = match.match(/id\=['"]([^'"]*)['"]/i)?.[1];
+
       const fontName = match.match(/^[^\>]+?x_font\s*([\w\-]+)/)?.[1];
 
       let fontFamily = "Default";
@@ -290,13 +295,18 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
       }
 
+      charMetricsPage[wordID] = [];
+
       for (let j = 0; j < letterArr.length; j++) {
         // let titleStrLetter = letterArr[j][1];
         let contentStrLetter = letterArr[j][2];
         // bboxes[j] = [...titleStrLetter.matchAll(charBboxRegex)][0].slice(1, 5).map(function (x) { return parseInt(x) });
 
+        // Calculate metrics for character
         const charWidth = bboxes[j][2] - bboxes[j][0];
         const charHeight = bboxes[j][3] - bboxes[j][1];
+        const expectedBaseline = (bboxes[j][0] - lineboxAdj[0]) * baseline[0] + baseline[1] + lineboxAdj[3];
+        const charDesc = expectedBaseline - bboxes[j][3]; // Number of pixels below the baseline
 
         // If word is small caps, convert letters to lower case. 
         if (smallCaps && (!smallCapsTitle || j > 0)) {
@@ -322,18 +332,38 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
               contentStrLetter = "-";
             }
           }
-          
-        } else if (["’", "”"].includes(contentStrLetter) && j == 0 && j + 1 < letterArr.length && /[a-z\d]/i.test(letterArr[j+1][2]) ) {
-          if(contentStrLetter == "’") {
-            contentStrLetter = "‘";
-          } else if (contentStrLetter == "”") {
-            contentStrLetter = "“";
-          }
-        }
 
+        // Correct quotes
+        } else if(["“", "”", "‘", "’", "&#34;", "&#39;"].includes(contentStrLetter)) {
+
+          // Quotes at the beginning of a word are assumed to be opening quotes
+          if (["’", "”"].includes(contentStrLetter) && j == 0 && j + 1 < letterArr.length && /[a-z\d]/i.test(letterArr[j+1][2]) ) {
+            if(contentStrLetter == "’") {
+              contentStrLetter = "‘";
+            } else if (contentStrLetter == "”") {
+              contentStrLetter = "“";
+            }
+  
+          // Single quotes between two letters are assumed to be close quotes 
+          } else if (["‘", "&#39;"].includes(contentStrLetter) && j > 0 && j + 1 < letterArr.length && /[a-z\d]/i.test(letterArr[j+1][2]) && /[a-z\d]/i.test(letterArr[j-1][2]) ) {
+            if(contentStrLetter == "‘") {
+              contentStrLetter = "’";
+            } else if (contentStrLetter == "&#39;") {
+              contentStrLetter = "’";
+            }
+
+          // Quotes at the end of a word are assumed to be closing quotes
+          } else if (["“", "‘"].includes(contentStrLetter) && j > 0 && j + 1 == letterArr.length && /[a-z\d]/i.test(letterArr[j-1][2]) ) {
+            if(contentStrLetter == "‘") {
+              contentStrLetter = "’";
+            } else if (contentStrLetter == "“") {
+              contentStrLetter = "”";
+            }
+          }
+        } 
+          
         // TODO: Make this impact word bounding box calculation
         // NOTE: This issue appears to be caused by superscripts when the page is at an angle--auto-rotate may resolve before this step. 
-        const expectedBaseline = (bboxes[j][0] - lineboxAdj[0]) * baseline[0] + baseline[1] + lineboxAdj[3];
         if (bboxes[j][1] > expectedBaseline && /[A-Za-z\d]/.test(contentStrLetter)) {
           continue;
         }
@@ -354,7 +384,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
           stylesLine["normal"] = true;
         }
 
-        const fontFamily = "Default";
+        // const fontFamily = "Default";
         if(!fontMetricsObj[fontFamily]){
           fontMetricsObj[fontFamily] = {};
         }
@@ -363,6 +393,8 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
             fontMetricsObj[fontFamily][style] = new fontMetrics();
           }
         }
+
+        charMetricsPage[wordID].push([charWidth / lineXHeightTess, charHeight / lineXHeightTess, charDesc / lineXHeightTess]);
     
         // Add character metrics to appropriate array(s) for later font optimization.
         // Skip letters likely misidentified due to hallucination effect (where e.g. "v" is misidentified as "V") or small caps
@@ -371,10 +403,12 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
           if (!fontMetricsObj[fontFamily][style]["width"][charUnicode]) {
             fontMetricsObj[fontFamily][style]["width"][charUnicode] = [];
             fontMetricsObj[fontFamily][style]["height"][charUnicode] = [];
+            fontMetricsObj[fontFamily][style]["desc"][charUnicode] = [];
           }
   
           fontMetricsObj[fontFamily][style]["width"][charUnicode].push(charWidth / lineXHeightTess);
           fontMetricsObj[fontFamily][style]["height"][charUnicode].push(charHeight / lineXHeightTess);
+          fontMetricsObj[fontFamily][style]["desc"][charUnicode].push((bboxes[j][3] - expectedBaseline) / lineXHeightTess);
           fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
 
           // Save character heights to array for font size calculations
@@ -390,8 +424,8 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
           } else {
             cuts[j] = bboxes[j][0] - bboxes[j - 1][2];
 
-            var bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
-            var cuts_ex = cuts[j] / lineXHeightTess;
+            const bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
+            const cuts_ex = cuts[j] / lineXHeightTess;
 
             if (!fontMetricsObj[fontFamily][style]["advance"][charUnicode]) {
               fontMetricsObj[fontFamily][style]["advance"][charUnicode] = [];
@@ -546,51 +580,106 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
     // const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
     const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
 
-    function rotateBoundingBox(boxStr) {
+    function rotateLine(lineStr) {
 
-      const prefixStr = boxStr.match(/bbox(?:es)?/);
+      // Add preprocessing angle to baseline angle
+      const baseline = [...lineStr.matchAll(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/g)][0]?.slice(1, 5)?.map(function (x) { return parseFloat(x) });
+      const baselineAngleRadXML = Math.atan(baseline[0]);
+      const baselineAngleRadAdj = rotateAngle * (Math.PI / 180);
+      const baselineAngleRadTotal = Math.tan(baselineAngleRadXML + baselineAngleRadAdj);
 
-      let box = [...boxStr.matchAll(charBboxRegex)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+      // lineStr = lineStr.replace(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/, "baseline " + String(baselineAngleRadTotal) + " $2");
 
-      box[0] = box[0] - shiftX;
-      box[2] = box[2] - shiftX;
-      box[1] = box[1] - shiftY;
-      box[3] = box[3] - shiftY;
+      const wordBoxArr = [];
 
-      const baselineY = box[3] - (box[3] - box[1]) / 3;
+      // Rotate word bounding boxes
+      function rotateBoundingBox(boxStr) {
 
-      const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * box[0];
-      const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
+        const prefixStr = boxStr.match(/bbox(?:es)?/);
+  
+        let box = [...boxStr.matchAll(charBboxRegex)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+  
+        const x = box[0] - shiftX / 2;
+        const y = box[3] - (box[3] - box[1]) / 3 - shiftY / 2;
 
-      //const angleAdjXInt = sinAngle * (box[3] - (box[3] - box[1]) / 3);
-      //const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
+     
+        box[0] = box[0] - shiftX;
+        box[2] = box[2] - shiftX;
+        box[1] = box[1] - shiftY;
+        box[3] = box[3] - shiftY;
 
-      box[0] = box[0] - angleAdjXInt;
-      box[2] = box[2] - angleAdjXInt;
-      box[1] = box[1] - angleAdjYInt;
-      box[3] = box[3] - angleAdjYInt;
+        // const baselineY = box[3] - (box[3] - box[1]) / 3;
 
-      box = box.map((x) => Math.round(x));
 
-      return prefixStr + " " + box[0] + " " + box[1] + " " + box[2] + " " + box[3];
+        const angleAdjYInt = (1 - cosAngle) * y - sinAngle * box[0];
+        // const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
+
+
+        const xRot = x * cosAngle - sinAngle * y;
+        const yRot = x * sinAngle + cosAngle * y;
+  
+        const angleAdjXInt = x - xRot;
+  
+
+        // const angleAdjXInt = (1-cosAngle) * box[0] + sinAngle * (baselineY - angleAdjYInt)
+  
+        //const angleAdjXInt = sinAngle * (box[3] - (box[3] - box[1]) / 3);
+        //const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
+  
+        box[0] = box[0] - angleAdjXInt;
+        box[2] = box[2] - angleAdjXInt;
+        box[1] = box[1] - angleAdjYInt;
+        box[3] = box[3] - angleAdjYInt;
+  
+        box = box.map((x) => Math.round(x));
+
+        wordBoxArr.push(box);
+  
+        return prefixStr + " " + box[0] + " " + box[1] + " " + box[2] + " " + box[3];
+  
+      }
+
+      lineStr = lineStr.replaceAll(charBboxRegex, rotateBoundingBox);
+
+      // Recalculate line bounding box
+      let lineBoxNew = new Array(4);
+      lineBoxNew[0] = Math.min(...wordBoxArr.map(x => x[0]));
+      lineBoxNew[1] = Math.min(...wordBoxArr.map(x => x[1]));
+      lineBoxNew[2] = Math.max(...wordBoxArr.map(x => x[2]));
+      lineBoxNew[3] = Math.max(...wordBoxArr.map(x => x[3]));
+
+      const titleStrLine = lineStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+      const linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+
+      // const baselineOffsetAdj = baselineAngleRadAdj <= 0 ? 0 : baselineAngleRadAdj * (linebox[2] - linebox[0]);
+      const baselineOffsetAdj = baselineAngleRadAdj <= 0 ? 0 : linebox[3] - lineBoxNew[3];
+      const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
+
+      lineStr = lineStr.replace(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/, "baseline " + String(baselineAngleRadTotal) + " " + String(baselineOffsetTotal));
+
+
+      const lineBoxStr = lineBoxNew[0] + " " + lineBoxNew[1] + " " + lineBoxNew[2] + " " + lineBoxNew[3];
+
+      lineStr = lineStr.replace(/(\d+) (\d+) (\d+) (\d+)/, lineBoxStr);
+
+      
+
+      return lineStr;
 
     }
 
-    hocrString = hocrString.replaceAll(charBboxRegex, rotateBoundingBox);
+    hocrString = hocrString.replaceAll(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/g, rotateLine);
 
   }
-
-
 
   const xmlOut = hocrString;
   const dimsOut = pageDims;
 
   fontMetricsObj["message"] = charMode ? "" : "char_warning";
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, charMetricsPage]);
 
 }
-
 
 const abbyyDropCapRegex = new RegExp(/\<par dropCapCharsCount\=[\'\"](\d*)/, "i");
 const abbyyLineBoxRegex = new RegExp(/\<line baseline\=[\'\"](\d*)[\'\"] l\=[\'\"](\d*)[\'\"] t\=[\'\"](\d*)[\'\"] r\=[\'\"](\d*)[\'\"] b\=[\'\"](\d*)[\'\"]\>/, "i");
@@ -868,12 +957,14 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
         if (j == 0) {
           cuts[i][j] = 0;
-        } else {
+
+        // This condition avoids errors caused by skipping letters (e.g. when the x coordinate is "0")
+        } else if(bboxes[i][j]?.[0] && bboxes[i][j - 1]?.[2]){
           cuts[i][j] = bboxes[i][j][0] - bboxes[i][j - 1][2];
 
-          var bigramUnicode = letterArr[j - 1][7].charCodeAt(0) + "," + letterArr[j][7].charCodeAt(0);
+          const bigramUnicode = letterArr[j - 1][7].charCodeAt(0) + "," + letterArr[j][7].charCodeAt(0);
           // Quick fix so it runs--need to figure out how to calculate x-height from Abbyy XML
-          var cuts_ex = cuts[i][j];
+          const cuts_ex = cuts[i][j];
 
           if (!cutPxObjLine[styleArr[i]]) {
             cutPxObjLine[styleArr[i]] = new Array();
@@ -992,7 +1083,17 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
     const baselineSlope = quantile(baselineSlopeArr, 0.5) || 0;
 
-    const baselinePoint = baselineFirst[1] - lineBoxArrCalc[3] - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]) || 0;
+    // if(pageNum == 6) debugger;
+
+    // baselinePoint should be the offset between the bottom of the line bounding box, and the baseline at the leftmost point
+    let baselinePoint = baselineFirst[1] - lineBoxArrCalc[3];
+    if(baselineSlope < 0) {
+      baselinePoint = baselinePoint - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]);
+    }
+    baselinePoint = baselinePoint || 0;
+
+
+    // const baselinePoint = baselineFirst[1] - lineBoxArrCalc[3] - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]) || 0;
 
     let xmlOut = "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
     xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
@@ -1029,14 +1130,15 @@ function convertPageAbbyy(xmlPage, pageNum) {
     for (let i = 0; i < text.length; i++) {
       if (text[i].trim() == "") { continue };
       let bboxesI = bboxes[i];
-      const bboxesILeft = bboxesI[0][0];
+      const bboxesILeft = Math.min(...bboxesI.map(x => x[0]).filter(x => x > 0));
+
       // Abbyy XML can strangely give coordinates of 0 (this has been observed for some but not all superscripts), so these must be filtered out,
       // and it cannot be assumed that the rightmost letter has the maximum x coordinate.
       // TODO: Figure out why this happens and whether these glyphs should be dropped completely.
-      const bboxesIRight = Math.max(...bboxesI.map(x => x[2]));
+      const bboxesIRight = Math.max(...bboxesI.map(x => x[2]).filter(x => x > 0));
 
       const bboxesITop = Math.min(...bboxesI.map(x => x[1]).filter(x => x > 0));
-      const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]));
+      const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]).filter(x => x > 0));
 
       if (!isFinite(bboxesITop) || !isFinite(bboxesIBottom)) {
         continue;
@@ -1117,6 +1219,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
   const dimsOut = pageDims;
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, {}]);
 
 }

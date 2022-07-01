@@ -245,13 +245,22 @@
                 </div>
                 <div class="row">
                   <div class="form-group">
-                    <button type="button" id="recognizeWord" class="btn btn-secondary btn-sm" style="width:100%;text-align:left">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye"
-                        viewBox="0 0 16 16">
-                        <path
-                          d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
-                        <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
-                      </svg> Recognize Word</button>
+                    <div class="btn-group" style="width:100%;">
+                      <button type="button" id="recognizeWord" class="btn btn-secondary btn-sm" style="width:100%;text-align:left">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye"
+                          viewBox="0 0 16 16">
+                          <path
+                            d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
+                          <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
+                        </svg> Recognize Word</button>
+                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                      </button>
+                      <ul class="dropdown-menu">
+                        <!-- <li><a class="dropdown-item" id="recognizeNumber">Recognize Number</a></li> -->
+                        <li><a class="dropdown-item" id="recognizeArea">Recognize Area</a></li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -366,9 +375,10 @@ All files are sorted in alphabetic order." data-bs-placement="right">
           <div class="collapse" id="nav-recognize" role="tabpanel" aria-labelledby="nav-recognize-tab" data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
               <div class="col col-2" style="padding-right:0.25rem;">
-                <label>Recognize Text</label>
-                <button type="button" id="recognizeAll" class="btn btn-info btn-sm" style="min-width:100%;" disabled>Full Document</button>
-                <div class="row">
+                <label></label>
+                <button type="button" id="recognizeAll" class="btn btn-info btn-sm" style="min-width:100%;" disabled>Recognize Text</button>
+                
+                <!-- <div class="row">
                   <div class="col-6" style="padding-right:0.25rem">
                     <div style="padding-top:0.4rem;width:100%">
                       <button type="button" id="recognizePage" class="btn btn-info btn-sm" style="width:100%" disabled>Page</button>
@@ -379,10 +389,25 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                       <button type="button" id="recognizeArea" class="btn btn-info btn-sm" style="width:100%" disabled>Area</button>
                     </div>
                   </div>
+                </div> -->
+              </div>
+              <div class="col col-2" id="basicRecognitionOptions">
+                <div style="display:inline-block">
+                  <t>Speed</t>
+                </div>
+                <div style="float:right;">
+                  <t>Quality</t>
+                </div>
+                <div class="row">
+                  <div class="form-group">
+                    <input type="range" class="form-range" min="0" max="1" step="1" id="ocrQuality" style="padding-top:0.35rem">                  
+                  </div>
                 </div>
               </div>
-              <div class="col col-2">
-                <label>Options</label>
+              <div class="col col-2" style="display:none" id="advancedRecognitionOptions">
+                <div>
+                  <label>Options</label>
+                </div>
                 <div class="row">
                   <div class="form-group">
                     <div class="dropdown">
@@ -393,6 +418,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                       <ul class="dropdown-menu">
                         <li><a id="oemLabelOptionLstm" class="dropdown-item" href="#">Tesseract LSTM</a></li>
                         <li><a id="oemLabelOptionLegacy" class="dropdown-item" href="#">Tesseract Legacy</a></li>
+                        <li><a id="oemLabelOptionCombined" class="dropdown-item" href="#">LSTM + Legacy Combined</a></li>
                       </ul>
                     </div>
                   </div>
@@ -888,6 +914,9 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                 <div class="collapse" id="optionalFeatures">
                   <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
                     <div class="form-check form-switch">
+                      <label><input class="form-check-input" type="checkbox" id="enableAdvancedRecognition"> Advanced Recognition Options</label>
+                    </div>
+                    <div class="form-check form-switch">
                       <label><input class="form-check-input" type="checkbox" id="enableEval"> Evaluate Accuracy</label>
                     </div>
                     <div class="form-check form-switch">
@@ -934,7 +963,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
           <div class="container">
             <div class="col">
               <canvas id="c" style="border-style:solid;" width="450" height="600"></canvas>
-              <canvas id="d" style="display:none;"></canvas>
+              <canvas id="d" style="display:none"></canvas>
               <img id="imgInvis" style="display:none;"></img>
             </div>
 

@@ -13,13 +13,14 @@ import { renderText } from './js/exportRenderText.js';
 import { renderHOCR } from './js/exportRenderHOCR.js';
 
 import { renderPage } from './js/renderPage.js';
+import { coords } from './js/coordinates.js';
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 
 import { optimizeFont, calculateOverallFontMetrics } from "./js/fontOptimize.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
-import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, rotateBoundingBox } from "./js/miscUtils.js";
+import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatures } from "./js/miscUtils.js";
 
 import {
   deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, toggleBoundingBoxesSelectedWords, changeWordFont, toggleSuperSelectedWords,
@@ -27,6 +28,8 @@ import {
 } from "./js/interfaceEdit.js";
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
+
+import { evalWord, evalWords } from "./js/compareHOCR.js";
 
 
 // Third party libraries
@@ -49,6 +52,10 @@ var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 // Quick fix to get VSCode type errors to stop
 // Long-term should see if there is a way to get types to work with fabric.js
 var fabric = globalThis.fabric;
+
+// Filtering was throwing an error when GL was enabled
+// May be worth investigating down the line as GL will be faster
+fabric.enableGLFiltering = false;
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
@@ -166,6 +173,20 @@ globalThis.runOnLoad = function () {
 
 
 
+// Define canvas
+globalThis.canvasAlt = new fabric.Canvas('d');
+globalThis.ctxAlt = canvasAlt.getContext('2d');
+
+// // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
+canvasAlt.overlayVpt = false;
+// // Turn off (some) automatic rendering of canvas
+canvasAlt.renderOnAddRemove = false;
+
+// Simplified version of evalWord for debugging from the console
+globalThis.evalWord = function(word, altText = null) {
+  evalWord(word, currentPage.n, altText, true);
+}
+
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
 
 globalThis.bsCollapse = new bootstrap.Collapse(document.getElementById("collapseRange"), { toggle: false });
@@ -182,6 +203,23 @@ colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 
 
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 createGroundTruthElem.addEventListener('click', createGroundTruthClick);
+
+const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
+
+
+const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
+
+// If evaluate option is enabled, show tab and widen navbar to fit everything on the same row
+enableAdvancedRecognitionElem.addEventListener('click', () => {
+  if (enableAdvancedRecognitionElem.checked) {
+    document.getElementById("advancedRecognitionOptions").setAttribute("style", "");
+    document.getElementById("basicRecognitionOptions").setAttribute("style", "display:none");
+  } else {
+    document.getElementById("advancedRecognitionOptions").setAttribute("style", "display:none");
+    document.getElementById("basicRecognitionOptions").setAttribute("style", "");
+  }
+});
+
 
 const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
 
@@ -294,6 +332,8 @@ document.getElementById('formatLabelOptionText').addEventListener('click', () =>
 
 document.getElementById('oemLabelOptionLstm').addEventListener('click', () => { setOemLabel("lstm") });
 document.getElementById('oemLabelOptionLegacy').addEventListener('click', () => { setOemLabel("legacy") });
+document.getElementById('oemLabelOptionCombined').addEventListener('click', () => { setOemLabel("combined") });
+
 
 document.getElementById('psmLabelOption3').addEventListener('click', () => { setPsmLabel("3") });
 document.getElementById('psmLabelOption4').addEventListener('click', () => { setPsmLabel("4") });
@@ -304,9 +344,9 @@ document.getElementById('buildLabelOptionVanilla').addEventListener('click', () 
 
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
-recognizeAllElem.addEventListener('click', () => {recognizePages(false)});
-const recognizePageElem = /** @type {HTMLInputElement} */(document.getElementById('recognizePage'));
-recognizePageElem.addEventListener('click', () => {recognizePages(true)});
+recognizeAllElem.addEventListener('click', recognizeAll);
+// const recognizePageElem = /** @type {HTMLInputElement} */(document.getElementById('recognizePage'));
+// recognizePageElem.addEventListener('click', () => {recognizePages(true)});
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
 recognizeAreaElem.addEventListener('click', () => recognizeAreaClick(false));
@@ -365,7 +405,7 @@ pageNumElem.addEventListener('keyup', function (event) {
       renderPageQueue(currentPage.n);
 
       // Render 1 page ahead and behind
-      if (inputDataModes.pdfMode && cacheMode) {
+      if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {
         let cacheArr = [...Array(cachePages).keys()].map(i => i + currentPage.n + 1).filter(x => x < nMax && x >= 0);
         if (cacheArr.length > 0) {
           renderPDFImageCache(cacheArr);
@@ -435,6 +475,8 @@ function setOemLabel(x) {
     document.getElementById("oemLabelText").innerHTML = "LSTM";
   } else if (x.toLowerCase() == "legacy") {
     document.getElementById("oemLabelText").innerHTML = "Legacy";
+  } else if (x.toLowerCase() == "combined") {
+    document.getElementById("oemLabelText").innerHTML = "Combined";
   }
 }
 
@@ -469,19 +511,37 @@ function addDisplayLabel(x) {
   displayLabelOptionsElem.appendChild(option);
 }
 
-globalThis.hocrAll = new Object;
+globalThis.ocrAll = {};
 function setCurrentHOCR(x) {
   const currentLabel = displayLabelTextElem.innerHTML.trim();
   if (!x.trim() || x == currentLabel) return;
 
-  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+  if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+  }
+
   if (currentLabel) {
-    globalThis.hocrAll[currentLabel] = globalThis.hocrCurrent;
+    if (!globalThis.ocrAll[currentLabel]) {
+      globalThis.ocrAll[currentLabel] = Array(globalThis.imageAll["native"].length);
+      for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+        globalThis.ocrAll[currentLabel][i] = {hocr:null, charMetrics:{}};
+      }
+    }
+    // globalThis.ocrAll[currentLabel]["hocr"] = globalThis.hocrCurrent;
+    for(let i=0;i<globalThis.hocrCurrent.length;i++) {
+      globalThis.ocrAll[currentLabel][i]["hocr"] = structuredClone(globalThis.hocrCurrent[i]);
+    }
   }
-  if (!globalThis.hocrAll[x]) {
-    globalThis.hocrAll[x] = Array(globalThis.imageAll["native"].length);
+  if (!globalThis.ocrAll[x]) {
+    globalThis.ocrAll[x] = Array(globalThis.imageAll["native"].length);
+    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+      globalThis.ocrAll[x][i] = {hocr:null, charMetrics:{}};
+    }
   }
-  globalThis.hocrCurrent = globalThis.hocrAll[x];
+
+  //globalThis.hocrCurrent = globalThis.ocrAll[x]["hocr"];
+  globalThis.hocrCurrent = globalThis.ocrAll[x].map((y) => y["hocr"]);
+
   displayLabelTextElem.innerHTML = x;
   currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[currentPage.n], "text/xml");
 
@@ -498,7 +558,9 @@ function setCurrentHOCR(x) {
 
 async function changeDisplayFont(font) {
   if (!currentPage.xmlDoc) return;
-  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+  if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+  }
   const optimizeMode = optimizeFontElem.checked;
   if (typeof (globalThis.fontObj[font]) != "undefined" && typeof (globalThis.fontObj[font]["normal"]) != "undefined" && globalThis.fontObj[font]["normal"].optimized == optimizeMode) {
     globalSettings.defaultFont = font;
@@ -714,8 +776,19 @@ function checkTesseractScheduler(scheduler, config = null) {
 
 
 function createGroundTruthClick() {
+  if (!globalThis.ocrAll["Ground Truth"]) {
+    globalThis.ocrAll["Ground Truth"] = Array(globalThis.imageAll["native"].length);
+    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+      globalThis.ocrAll["Ground Truth"][i] = {hocr:null, charMetrics:{}};
+    }
+  }
+
+  for(let i=0;i<globalThis.hocrCurrent.length;i++) {
+    globalThis.ocrAll["Ground Truth"][i]["hocr"] = structuredClone(globalThis.hocrCurrent[i]);
+  }
+
   // Use whatever the current HOCR is as a starting point
-  globalThis.hocrAll["Ground Truth"] = structuredClone(globalThis.hocrCurrent);
+  // globalThis.ocrAll["Ground Truth"]["hocr"] = structuredClone(globalThis.hocrCurrent);
   addDisplayLabel("Ground Truth");
   setCurrentHOCR("Ground Truth");
 
@@ -730,8 +803,8 @@ function createGroundTruthClick() {
 
 globalThis.evalStatsConfig = {};
 
-globalThis.evalStats = new Array();
-function compareGroundTruthClick(n) {
+globalThis.evalStats = [];
+async function compareGroundTruthClick(n) {
 
   // When a document/recognition is still loading only the page statistics can be calculated
   const loadMode = loadCountHOCR && loadCountHOCR < parseInt(convertPageWorker["activeProgress"]?.getAttribute("aria-valuemax")) ? true : false;
@@ -746,13 +819,13 @@ function compareGroundTruthClick(n) {
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
     globalThis.evalStats = new Array(globalThis.imageAll["native"].length);
     for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
-      const res = compareHOCR(globalThis.hocrCurrent[i], globalThis.hocrAll["Ground Truth"][i]);
+      const res = await compareHOCR(globalThis.hocrCurrent[i], globalThis.ocrAll["Ground Truth"][i]["hocr"]);
       globalThis.evalStats[i] = res[1];
     }
     globalThis.evalStatsConfig = evalStatsConfigNew;
   }
 
-  const res = compareHOCR(globalThis.hocrCurrent[n], globalThis.hocrAll["Ground Truth"][n]);
+  const res = await compareHOCR(globalThis.hocrCurrent[n], globalThis.ocrAll["Ground Truth"][n]["hocr"]);
 
   globalThis.hocrCurrent[n] = res[0].documentElement.outerHTML;
   globalThis.evalStats[n] = res[1];
@@ -806,7 +879,7 @@ function compareGroundTruthClick(n) {
 }
 
 
-function compareHOCR(hocrStrA, hocrStrB) {
+async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", charMetricsA = null, charMetricsB = null, n = null) {
 
   hocrStrA = hocrStrA.replace(/compCount=['"]\d+['"]/g, "");
   hocrStrA = hocrStrA.replace(/compStatus=['"]\d+['"]/g, "");
@@ -820,21 +893,21 @@ function compareHOCR(hocrStrA, hocrStrB) {
   const hocrALines = hocrA.getElementsByClassName("ocr_line");
   const hocrBLines = hocrB.getElementsByClassName("ocr_line");
 
-  globalThis.hocrAOverlap = {};
-  globalThis.hocrBOverlap = {};
-  globalThis.hocrBCorrect = {};
+  const hocrAOverlap = {};
+  const hocrBOverlap = {};
+  const hocrBCorrect = {};
 
   //let minLineB = 0;
   for (let i = 0; i < hocrALines.length; i++) {
     const hocrALine = hocrALines[i];
     const titleStrLineA = hocrALine.getAttribute('title');
-    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
 
     //for (let j = minLineB; j < hocrBLines.length; j++){
     for (let j = 0; j < hocrBLines.length; j++) {
       const hocrBLine = hocrBLines[j];
       const titleStrLineB = hocrBLine.getAttribute('title');
-      const lineBoxB = [...titleStrLineB.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+      const lineBoxB = [...titleStrLineB.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
 
       // If top of line A is below bottom of line B, move to next line B
       if (lineBoxA[1] > lineBoxB[3]) {
@@ -870,18 +943,20 @@ function compareHOCR(hocrStrA, hocrStrB) {
           hocrAWord.setAttribute("compCount", hocrAWord.getAttribute("compCount") || "0");
 
           const titleStrWordA = hocrAWord.getAttribute('title');
-          const wordBoxA = [...titleStrWordA.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+          const wordBoxA = [...titleStrWordA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
 
           // Remove 10% from all sides of bounding box
           // This prevents small overlapping (around the edges) from triggering a comparison
           const wordBoxAWidth = wordBoxA[2] - wordBoxA[0];
           const wordBoxAHeight = wordBoxA[3] - wordBoxA[1];
 
-          wordBoxA[0] = wordBoxA[0] + Math.round(wordBoxAWidth * 0.1);
-          wordBoxA[2] = wordBoxA[2] - Math.round(wordBoxAWidth * 0.1);
+          const wordBoxACore = structuredClone(wordBoxA);
 
-          wordBoxA[1] = wordBoxA[1] + Math.round(wordBoxAHeight * 0.1);
-          wordBoxA[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
+          wordBoxACore[0] = wordBoxA[0] + Math.round(wordBoxAWidth * 0.1);
+          wordBoxACore[2] = wordBoxA[2] - Math.round(wordBoxAWidth * 0.1);
+
+          wordBoxACore[1] = wordBoxA[1] + Math.round(wordBoxAHeight * 0.1);
+          wordBoxACore[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
 
 
           for (let l = minWordB; l < hocrBWords.length; l++) {
@@ -889,33 +964,35 @@ function compareHOCR(hocrStrA, hocrStrB) {
             const hocrBWord = hocrBWords[l];
             const hocrBWordID = hocrBWord.getAttribute("id");
             const titleStrWordB = hocrBWord.getAttribute('title');
-            const wordBoxB = [...titleStrWordB.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+            const wordBoxB = [...titleStrWordB.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
 
             // Remove 10% from all sides of ground truth bounding box
             // This prevents small overlapping (around the edges) from triggering a comparison
             const wordBoxBWidth = wordBoxB[2] - wordBoxB[0];
             const wordBoxBHeight = wordBoxB[3] - wordBoxB[1];
 
-            wordBoxB[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
-            wordBoxB[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
+            const wordBoxBCore = structuredClone(wordBoxB);
 
-            wordBoxB[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
-            wordBoxB[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
+            wordBoxBCore[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
+            wordBoxBCore[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
+
+            wordBoxBCore[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
+            wordBoxBCore[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
 
             // If left of word A is past right of word B, move to next word B
-            if (wordBoxA[0] > wordBoxB[2]) {
+            if (wordBoxACore[0] > wordBoxBCore[2]) {
               minWordB = minWordB + 1;
               continue;
 
               // If left of word B is past right of word A, move to next word A
               // (We assume no match is possible for any B)
-            } else if (wordBoxB[0] > wordBoxA[2]) {
+            } else if (wordBoxBCore[0] > wordBoxACore[2]) {
               break;
 
               // Otherwise, overlap is likely
             } else {
               // Check for overlap using word height
-              if (wordBoxA[1] > wordBoxB[3] || wordBoxB[1] > wordBoxA[3]) {
+              if (wordBoxACore[1] > wordBoxBCore[3] || wordBoxBCore[1] > wordBoxACore[3]) {
                 continue;
               }
 
@@ -940,9 +1017,144 @@ function compareHOCR(hocrStrA, hocrStrB) {
               if (wordTextA == wordTextB) {
                 hocrAWord.setAttribute("compStatus", "1");
                 hocrBCorrect[hocrBWordID] = 1;
+
+                if(mode == "comb") {
+                  // If the words match, add 10 points to the confidence score
+                  const x_wconf = parseInt(titleStrWordA.match(/x_wconf\s+(\d+)/)?.[1]);
+                  hocrAWord.setAttribute("title", titleStrWordA.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(Math.max(x_wconf + 10, 100))));
+                }
+
               } else {
-                //hocrAWord.setAttribute("compStatus", "0");
-                hocrAWord.setAttribute("compStatus", hocrAWord.getAttribute("compStatus") || "0");
+
+                if(mode == "comb") {
+
+                  hocrAWord.setAttribute("title", titleStrWordA.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(0)));
+
+                  // If the words do not match, set to low confidence
+                  hocrAWord.setAttribute("compStatus", hocrAWord.getAttribute("compStatus") || "0");
+
+
+                  // Check if there is a 1-to-1 comparison between words (this is usually true)
+                  const oneToOne = Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxA[2]) < (wordBoxA[2] - wordBoxA[0]) * 0.1;
+                
+                  let twoToOne = false;
+                  let wordsAArr = [];
+                  let wordsBArr = [];
+
+                  // If there is no 1-to-1 comparison, check if a 2-to-1 comparison is possible using the next word in either dataset
+                  if(!oneToOne){
+                    if(wordBoxA[2] < wordBoxB[2]) {
+                      if(hocrAWord.nextSibling) {
+                        const titleStrWordANext = hocrAWord.nextSibling.getAttribute('title');
+                        wordBoxB[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
+                        wordBoxB[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
+            
+                        wordBoxB[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
+                        wordBoxB[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
+            
+                        const wordBoxANext = [...titleStrWordANext.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+                        if(Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxANext[2]) < (wordBoxANext[2] - wordBoxA[0]) * 0.1) {
+                          twoToOne = true;
+                          wordsAArr.push(hocrAWord);
+                          wordsAArr.push(hocrAWord.nextSibling);
+                          wordsBArr.push(hocrBWord);
+                        }
+                      }
+                    } else {
+                      if(hocrBWord.nextSibling) {
+                        const titleStrWordBNext = hocrBWord.nextSibling.getAttribute('title');
+                        const wordBoxBNext = [...titleStrWordBNext.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+                        if(Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxA[2] - wordBoxBNext[2]) < (wordBoxBNext[2] - wordBoxA[0]) * 0.1) {
+                          twoToOne = true;
+                          wordsAArr.push(hocrAWord);
+                          wordsBArr.push(hocrBWord);
+                          wordsBArr.push(hocrBWord.nextSibling);
+                        }
+                      }
+                    }
+                  }
+
+                
+                  // Only consider switching word contents if their bounding boxes are close together
+                  // This should filter off cases where 2+ words in one dataset match to 1 word in another
+                  // TODO: Account for cases without 1-to-1 mapping between bounding boxes
+                  if(!oneToOne && !twoToOne) {
+                    console.log("Skipping words due to low overlap: " + wordTextA + " [Legacy] " + wordTextB + " [LSTM]");
+                    continue;
+                  };
+
+                  const replaceItalic = false;
+
+
+                  // Tesseract Legacy commonly identifies letters as numbers (usually 1).
+                  // This does not just happen with "l"--in test documents "r" and "i" were also misidentified as "1" multiple times. 
+                  const replaceNum = /[a-z]\d[a-z]/i.test(hocrAWord.innerHTML);
+
+                  const replaceII = /[a-z]ii|ii[a-z]/.test(hocrAWord.innerHTML);
+
+                  let replaceMetrics = false;
+
+                  let hocrAError = 0;
+                  let hocrBError = 0;
+
+                  if(oneToOne) {
+                    hocrAError = await evalWord(hocrAWord, n, null);
+                    hocrBError = await evalWord(hocrAWord, n, hocrBWord.innerHTML);
+
+                    console.log("Legacy Word: " + hocrAWord.innerHTML + " [Error: " + String(hocrAError) + "]");
+                    console.log("LSTM Word: " + hocrBWord.innerHTML + " [Error: " + String(hocrBError) + "]");
+  
+                  } else if (twoToOne) {
+                    const hocrError = await evalWords(wordsAArr, wordsBArr, n);
+                    hocrAError = hocrError[0];
+                    hocrBError = hocrError[1];
+
+                    console.log("Legacy Word: " + wordsAArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrAError) + "]");
+                    console.log("LSTM Word: " + wordsBArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrBError) + "]");
+  
+                  }
+                  
+                  if(hocrBError < hocrAError) {
+                    replaceMetrics = true;
+                  }
+
+                  const replaceAny = replaceItalic || replaceNum || replaceII || replaceMetrics;
+            
+                  if(replaceAny) {
+                    const skip = ["eg","ie"].includes(hocrAWord.innerHTML.replace(/\W/g,""));
+                    if(!skip){
+                      if(oneToOne){
+                        hocrAWord.innerHTML = hocrBWord.innerHTML;
+                      } else {
+                        const wordsBArrRep = wordsBArr.map((x) => x.cloneNode(true));
+
+                        const styleStrWordA = hocrAWord.getAttribute('style');
+
+                        for(let i=0;i<wordsBArrRep.length;i++) {
+
+                          // Use font variant from word A (assumed to be Tesseract Legacy)
+                          const fontVariant = styleStrWordA?.match(/font-variant\:\w+/)?.[0];
+                          if(fontVariant) {
+                            const styleStrWordB = wordsBArrRep[i].getAttribute('style')?.replace(/font-variant\:\w+/, "") || "";
+                            wordsBArrRep[i].setAttribute("style", styleStrWordB + ";" + fontVariant);
+                          }
+                          // Set confidence to 0
+                          const titleStrWord = wordsBArrRep[i].getAttribute('title');
+                          wordsBArrRep[i].setAttribute("title", titleStrWord.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(0)));
+
+                          // Change ID so there are no duplicates
+                          wordsBArrRep[i].id = wordsBArrRep[i].id + "b";
+
+                        }
+
+                        hocrAWord.replaceWith(...wordsBArrRep);
+                        k = k + wordsBArrRep.length - 1;
+                      }
+                      
+                    }
+                    
+                  }
+                }
               }
             }
           }
@@ -951,6 +1163,10 @@ function compareHOCR(hocrStrA, hocrStrB) {
     }
   }
 
+  if (mode == "comb") {
+    return hocrA.documentElement.outerHTML;
+  }
+  
   // Note: These metrics leave open the door for some fringe edge cases.
   // For example,
 
@@ -977,56 +1193,23 @@ function compareHOCR(hocrStrA, hocrStrB) {
   return ([hocrA, metricsRet]);
 }
 
-function replaceLigatures(x) {
-  return x.replace(/ﬂ/g, "fl").replace(/ﬁ/g, "fi").replace(/ﬀ/g, "ff").replace(/ﬃ/g, "ffi").replace(/ﬄ/g, "ffl");
-}
 
-function canvasToImage(canvasCoords, imageRotated){
-
-  // If the rendered image has been rotated to match the user-specified rotation setting (or the angle is so small it doesn't matter)
-  // the only difference between coordinate systems is the left margin offset. 
-  if (autoRotateCheckboxElem.checked && imageRotated || !autoRotateCheckboxElem.checked && imageRotated || Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) <= 0.05) {
-    return {left : canvasCoords.left - currentPage.leftAdjX, top: canvasCoords.top, width: canvasCoords.width, height: canvasCoords.height}
-  }
-
-  // Otherwise, we must also account for rotation applied by the canvas
-  const rotateAngle = autoRotateCheckboxElem.checked && !imageRotated ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1;
-
-  let angleAdjXRect = 0;
-  let angleAdjYRect = 0;
-
-  const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
-
-  const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
-  const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
-
-  const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
-
-  const baselineY = rect1.top + rect1.height - rect1.height / 3;
-
-  const angleAdjYInt = (1 - cosAngle) * baselineY - sinAngle * rect1.left;
-  const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
-
-  angleAdjXRect = shiftX + angleAdjXInt;
-  angleAdjYRect = shiftY + angleAdjYInt;
-
-  return {left : canvasCoords.left - angleAdjXRect - currentPage.leftAdjX, top: canvasCoords.top - angleAdjYRect, width: canvasCoords.width, height: canvasCoords.height}
-}
 
 
 // Note: The coordinate arguments (left/top) refer to the HOCR coordinate space.
 // This does not necessarily match either the canvas coordinate space or the Tesseract coordinate space. 
 globalThis.recognizeAreaScheduler = null;
-async function recognizeArea(hocrCoords, wordMode = false) {
+async function recognizeArea(imageCoords, wordMode = false) {
 
-  let left = hocrCoords.left;
-  let top = hocrCoords.top;
-  let width = hocrCoords.width;
-  let height = hocrCoords.height;
+  let left = imageCoords.left;
+  let top = imageCoords.top;
+  let width = imageCoords.width;
+  let height = imageCoords.height;
 
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+      globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    }
   }
 
   const allConfig = getTesseractConfigs();
@@ -1067,6 +1250,23 @@ async function recognizeArea(hocrCoords, wordMode = false) {
 
   return;
 
+}
+
+
+function calcWordBaseline(wordbox, linebox, baseline) {
+  // Adjust box such that top/bottom approximate those coordinates at the leftmost point
+  const lineboxAdj = linebox.slice();
+
+  // if (baseline[0] < 0) {
+  //   lineboxAdj[1] = lineboxAdj[1] - (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
+  // } else {
+  //   lineboxAdj[3] = lineboxAdj[3] - (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
+  // }
+
+  const wordboxXMid = wordbox[0] + (wordbox[2] - wordbox[0]) / 2;
+
+  return (wordboxXMid - lineboxAdj[0]) * baseline[0] + baseline[1] + lineboxAdj[3];
+  
 }
 
 function combineData(hocrString){
@@ -1196,14 +1396,59 @@ function combineData(hocrString){
       }
     }
   
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+      globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    }
+    
+}
+
+async function recognizeAll() {
+
+  // User can select engine directly using advanced options, or indirectly using basic options. 
+  let oemMode;
+  if(enableAdvancedRecognitionElem.checked) {
+    oemMode = document.getElementById("oemLabelText").innerHTML;
+  } else {
+    if(ocrQualityElem.value == "1") {
+      oemMode = "combined";
+    } else {
+      oemMode = "legacy";
+      setOemLabel("legacy");
+    }
+  }
+
+  // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
+  if(oemMode == "legacy" || oemMode == "lstm") {
+    await recognizePages(false, null, true);
+
+  } else if (oemMode == "combined") {
+    const config = getTesseractConfigs();
+    config.tessedit_ocr_engine_mode = "0";
+    await recognizePages(false, config, true);
+    config.tessedit_ocr_engine_mode = "1";
+    await recognizePages(false, config, false);
   
+  
+    addDisplayLabel("Tesseract Combined");
+    setCurrentHOCR("Tesseract Combined");  
+    
+    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+      console.log("Comparing page " + String(i+1));
+      globalThis.ocrAll["Tesseract Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", ocrAll["Tesseract Legacy"][i]["charMetrics"], ocrAll["Tesseract LSTM"][i]["charMetrics"], i);
+      globalThis.hocrCurrent[i] = ocrAll["Tesseract Combined"][i]["hocr"];
+    }  
+  }
+
+  currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[currentPage.n], "text/xml");
+
+  renderPageQueue(currentPage.n);
+
 }
 
 
-async function recognizePages(single = false) {
+async function recognizePages(single = false, config = null, saveMetrics = true) {
 
-  const allConfig = getTesseractConfigs();
+  const allConfig = config || getTesseractConfigs();
   let scheduler;
 
   if(!single){
@@ -1249,7 +1494,7 @@ async function recognizePages(single = false) {
 
   // OCR results from different engines are only saved separately when running recognition on an entire document. 
   // Running recognition on a single page will simply overwrite whatever data is actively displayed. 
-  const oemText = "Tesseract " + document.getElementById("oemLabelText").innerHTML;
+  const oemText = "Tesseract " + (allConfig.tessedit_ocr_engine_mode == "1" ? "LSTM" : "Legacy");
   if(!single) {
     addDisplayLabel(oemText);
     setCurrentHOCR(oemText);  
@@ -1308,10 +1553,13 @@ async function recognizePages(single = false) {
           const argsObj = {
             "engine": oemText,
             "angle": globalThis.pageMetricsObj["angleAll"][x],
-            "mode": mode
+            "mode": mode,
+            "saveMetrics": saveMetrics
           }
 
-          convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
+          // We wait for updateDataProgress because this is the function responsible for triggering the calculation of full-document metrics + font optimization
+          // once the document is finished processing. 
+          return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics)});
         } else {
           
           // If the angle is not already known, we wait until recognition finishes so we know the angle
@@ -1353,17 +1601,19 @@ async function recognizePages(single = false) {
               const argsObj = {
                 "engine": oemText,
                 "angle": globalThis.pageMetricsObj["angleAll"][x],
-                "mode": mode
+                "mode": mode,
+                "saveMetrics": saveMetrics
               }
 
-              convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
+              return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics)});
             });
           } else {
             const argsObj = {
               "engine": oemText,
-              "mode": mode
+              "mode": mode,
+              "saveMetrics": saveMetrics
             }
-            convertPage([y.data.hocr, x, false, argsObj]).then(() => {if(!single) updateDataProgress()});
+            return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics)});
           }
         }
       })
@@ -1376,10 +1626,6 @@ async function recognizePages(single = false) {
     console.log("Runtime: " + (time2 - time1) / 1e3 + "s");
   }
 
-  const inputPages = single ? [currentPage.n] : [...Array(globalThis.imageAll["native"].length).keys()];
-
-  recognizeImages(inputPages);
-
   // Enable confidence threshold input boxes (only used for Tesseract)
   confThreshHighElem.disabled = false;
   confThreshMedElem.disabled = false;
@@ -1389,6 +1635,10 @@ async function recognizePages(single = false) {
   confThreshMedElem.value = confThreshMedElem.value || "75";
 
   toggleEditButtons(false);
+
+  const inputPages = single ? [currentPage.n] : [...Array(globalThis.imageAll["native"].length).keys()];
+
+  await recognizeImages(inputPages);
 
 }
 
@@ -1439,11 +1689,13 @@ function recognizeAreaClick(wordMode = false) {
     }
 
     const canvasCoords = {left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height};
-    const hocrCoords = canvasToImage(canvasCoords, globalThis.imageAll.nativeRotated[currentPage.n]);
+
+    // TODO: Fix this to work with binary image (binary = true)
+    const imageCoords = coords.canvasToImage(canvasCoords, currentPage.n, false);
 
     canvas.remove(rect1);
 
-    await recognizeArea(hocrCoords, wordMode);
+    await recognizeArea(imageCoords, wordMode);
 
     canvas.renderAll();
     canvas.__eventListeners = {}
@@ -1870,7 +2122,7 @@ async function clearFiles() {
   confThreshHighElem.disabled = true;
   confThreshMedElem.disabled = true;
   recognizeAllElem.disabled = true;
-  recognizePageElem.disabled = true;
+  // recognizePageElem.disabled = true;
   recognizeAreaElem.disabled = true;
   createGroundTruthElem.disabled = true;
   // compareGroundTruthElem.disabled = true;
@@ -1896,11 +2148,11 @@ async function importOCRFiles() {
 
   if (mainData) {
 
-    globalThis.pageMetricsObj["angleAll"] = new Array();
-    globalThis.pageMetricsObj["dimsAll"] = new Array();
-    globalThis.pageMetricsObj["leftAll"] = new Array();
-    globalThis.pageMetricsObj["angleAdjAll"] = new Array();
-    globalThis.pageMetricsObj["manAdjAll"] = new Array();
+    globalThis.pageMetricsObj["angleAll"] = [];
+    globalThis.pageMetricsObj["dimsAll"] = [];
+    globalThis.pageMetricsObj["leftAll"] = [];
+    globalThis.pageMetricsObj["angleAdjAll"] = [];
+    globalThis.pageMetricsObj["manAdjAll"] = [];
   }
 
   // In the case of 1 HOCR file
@@ -2021,19 +2273,20 @@ async function importFiles() {
 
   if (curFiles.length == 0) return;
 
-  globalThis.pageMetricsObj["angleAll"] = new Array();
-  globalThis.pageMetricsObj["dimsAll"] = new Array();
-  globalThis.pageMetricsObj["leftAll"] = new Array();
-  globalThis.pageMetricsObj["angleAdjAll"] = new Array();
-  globalThis.pageMetricsObj["manAdjAll"] = new Array();
+  globalThis.pageMetricsObj = {};
+  globalThis.pageMetricsObj["angleAll"] = [];
+  globalThis.pageMetricsObj["dimsAll"] = [];
+  globalThis.pageMetricsObj["leftAll"] = [];
+  globalThis.pageMetricsObj["angleAdjAll"] = [];
+  globalThis.pageMetricsObj["manAdjAll"] = [];
 
 
   // Sort files into (1) HOCR files, (2) image files, or (3) unsupported using extension.
-  let imageFilesAll = new Array();
-  let hocrFilesAll = new Array();
-  let pdfFilesAll = new Array()
-  let unsupportedFilesAll = new Array();
-  let unsupportedExt = new Object;
+  let imageFilesAll = [];
+  let hocrFilesAll = [];
+  let pdfFilesAll = []
+  let unsupportedFilesAll = [];
+  let unsupportedExt = {};
   for (let i = 0; i < curFiles.length; i++) {
     const file = curFiles[i];
     let fileExt = file.name.match(/\.([^\.]+)$/)?.[1].toLowerCase() || "";
@@ -2058,7 +2311,7 @@ async function importFiles() {
 
   if (inputDataModes.imageMode || inputDataModes.pdfMode) {
     recognizeAllElem.disabled = false;
-    recognizePageElem.disabled = false;
+    // recognizePageElem.disabled = false;
     recognizeAreaElem.disabled = false;
     createGroundTruthElem.disabled = false;
     uploadOCRButtonElem.disabled = false;
@@ -2505,7 +2758,12 @@ async function renderPDFImageCache(pagesArr, rotate = null) {
 
 currentPage.renderNum = 0;
 
-//var backgroundOpts = new Object;
+let pageNumPending = null;
+let pageRendering = null; 
+let renderIt = 0;
+let promiseResolve;
+
+//var backgroundOpts = {};
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null) {
 
@@ -2517,12 +2775,28 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     return;
   }
 
+  const renderItI = renderIt + 1;
+  renderIt = renderItI;
+
+  // If a page is already being rendered, wait for it to complete
+  if(pageRendering) {
+    await pageRendering;
+    // If another page has been requested already, return early
+    if(renderIt != renderItI) return;
+  }
+
+  // let promiseResolve;
+
+  pageRendering = new Promise(function(resolve, reject){
+    promiseResolve = resolve;
+  });
+
   // Parse the relevant XML (relevant for both Canvas and PDF)
   if (loadXML && inputDataModes.xmlMode[n] && globalThis.hocrCurrent[n]) {
     // Compare selected text to ground truth in eval mode
     if (displayModeElem.value == "eval") {
       console.time();
-      compareGroundTruthClick(n);
+      await compareGroundTruthClick(n);
       console.timeEnd();
     }
     currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[n], "text/xml");
@@ -2667,11 +2941,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       currentPage.renderStatus = currentPage.renderStatus + 1;
       selectDisplayMode(displayModeElem.value);
     } else {
-      return;
-    }
-
-    // If there is no OCR data to render, we are done
-    if (!inputDataModes.xmlMode[n]) {
+      promiseResolve();
       return;
     }
 
@@ -2686,18 +2956,18 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     }
   }
 
-  if (mode == "screen" && currentPage.n == n) {
+  if (mode == "screen" && currentPage.n == n && inputDataModes.xmlMode[n]) {
     await renderPage(canvas, null, currentPage.xmlDoc, "screen", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
     if (currentPage.n == n && currentPage.renderNum == renderNum) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
       await selectDisplayMode(displayModeElem.value);
-    } else {
-      return;
-    }
-    
+    } 
   } else if (inputDataModes.xmlMode[n]) {
     await renderPage(canvas, globalThis.doc, currentPage.xmlDoc, "pdf", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
   }
+
+  promiseResolve();
+  return;
 
 }
 
@@ -2711,7 +2981,9 @@ async function onPrevPage(marginAdj) {
   }
   working = true;
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+      globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    }
   }
 
   currentPage.n = currentPage.n - 1;
@@ -2723,7 +2995,7 @@ async function onPrevPage(marginAdj) {
   await renderPageQueue(currentPage.n);
 
   // Render 1 page back
-  if (inputDataModes.pdfMode && cacheMode) {
+  if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {
     const nMax = parseInt(pageCountElem.textContent);
     const cacheArr = [...Array(cachePages).keys()].map(i => i * -1 + currentPage.n - 1).filter(x => x < nMax && x >= 0);
     if (cacheArr.length > 0) {
@@ -2744,7 +3016,9 @@ async function onNextPage() {
   }
   working = true;
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+      globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    }
   }
 
   currentPage.n = currentPage.n + 1;
@@ -2756,7 +3030,7 @@ async function onNextPage() {
   await renderPageQueue(currentPage.n);
 
   // Render 1 page ahead
-  if (inputDataModes.pdfMode && cacheMode) {
+  if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {
     const nMax = parseInt(pageCountElem.textContent);
     const cacheArr = [...Array(cachePages).keys()].map(i => i + currentPage.n + 1).filter(x => x < nMax && x >= 0);
     if (cacheArr.length > 0) {
@@ -2770,14 +3044,16 @@ async function onNextPage() {
 
 async function optimizeFontClick(value) {
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+      globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    }
   }
 
   // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
   // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font. 
   const metricsFontFamilies = Object.keys(globalThis.fontMetricsObj);
   // const multiFontMode = metricsFontFamilies.includes("Libre Baskerville") || metricsFontFamilies.includes("Open Sans");
-  const optFontFamilies = globalSettings.multiFontMode ? metricsFontFamilies.filter((x) => x != "Default") : [globalSettings.defaultFont];
+  const optFontFamilies = globalSettings.multiFontMode ? metricsFontFamilies.filter((x) => !["Default","message"].includes(x)) : [globalSettings.defaultFont];
 
   for (let family of optFontFamilies) {
     if (value) {
@@ -2856,11 +3132,11 @@ async function renderPDF() {
 
   });
 
-  let fontObjData = new Object;
+  let fontObjData = {};
   //TODO: Edit so that only fonts used in the document are inserted into the PDF.
   for (const [familyKey, familyObj] of Object.entries(globalThis.fontObj)) {
     if (typeof (fontObjData[familyKey]) == "undefined") {
-      fontObjData[familyKey] = new Object;
+      fontObjData[familyKey] = {};
     }
 
     for (const [key, value] of Object.entries(familyObj)) {
@@ -2877,9 +3153,9 @@ async function renderPDF() {
         fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
         fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
-      } else if (key == "normal" && optimizeFontElem.checked ) {
+      } else if (key == "normal" && optimizeFontElem.checked && fontDataOptimized?.[familyKey]?.["normal"]) {
         fontObjData[familyKey][key] = fontDataOptimized?.[familyKey]?.["normal"];
-      } else if (key == "italic" && optimizeFontElem.checked ) {
+      } else if (key == "italic" && optimizeFontElem.checked && fontDataOptimized?.[familyKey]?.["italic"]) {
         fontObjData[familyKey][key] = fontDataOptimized?.[familyKey]?.["italic"];
       } else {
         const fontObjI = await globalThis.fontObj[familyKey][key];
@@ -3072,7 +3348,7 @@ function convertPage(args) {
 // Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
 // Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
 // as well as after every image is loaded (not including .pdfs). 
-function updateDataProgress(mainData = true) {
+async function updateDataProgress(mainData = true) {
 
   let activeProgress = convertPageWorker["activeProgress"];
 
@@ -3114,7 +3390,7 @@ function updateDataProgress(mainData = true) {
           globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
     
           optimizeFontElem.checked = true;
-          optimizeFontClick(optimizeFontElem.checked);
+          await optimizeFontClick(optimizeFontElem.checked);
         }
       }
       downloadElem.disabled = false;
@@ -3146,12 +3422,13 @@ convertPageWorker.onmessage = function (e) {
 
   const oemCurrent = !argsObj["engine"] || argsObj["mode"] != "full" || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
 
-  // If an OEM engine is specified, save to the appropriate object within hocrAll,
+  // If an OEM engine is specified, save to the appropriate object within ocrAll,
   // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
   // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
   // while the recognition job is running.
   if (argsObj["engine"] && argsObj["mode"] == "full") {
-    globalThis.hocrAll[argsObj["engine"]][n] = e.data[0][0] || "<div class='ocr_page'></div>";
+    globalThis.ocrAll[argsObj["engine"]][n]["hocr"] = e.data[0][0] || "<div class='ocr_page'></div>";
+    globalThis.ocrAll[argsObj["engine"]][n]["charMetrics"] = e.data[0][6];
     if (oemCurrent) {
       globalThis.hocrCurrent[n] = e.data[0][0] || "<div class='ocr_page'></div>";
     }
@@ -3173,7 +3450,9 @@ convertPageWorker.onmessage = function (e) {
   globalThis.pageMetricsObj["leftAll"][n] = e.data[0][3];
   globalThis.pageMetricsObj["angleAdjAll"][n] = e.data[0][4];
 
-  fontMetricObjsMessage[n] = e.data[0][5];
+  if(argsObj["saveMetrics"] ?? true){
+    fontMetricObjsMessage[n] = e.data[0][5];
+  }
 
   // If this is the page the user has open, render it to the canvas
   if (n == currentPage.n && oemCurrent) {
@@ -3259,7 +3538,9 @@ async function handleDownload() {
 
   // Save any edits that may exist on current page
   if (inputDataModes.xmlMode[currentPage.n]) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+      globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+    }
   }
   let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();
   if (download_type == "pdf") {
