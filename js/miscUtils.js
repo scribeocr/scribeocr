@@ -33,7 +33,9 @@ export function quantile(arr, ntile){
     return null;
   }
   let arr1 = [...arr];
-  const mid = Math.floor(arr.length * ntile)
+  const mid = Math.floor(arr.length * ntile);
+
+  // Using sort() will convert numbers to strings by default
   arr1.sort((a, b) => a - b);
 
   return arr1[mid];

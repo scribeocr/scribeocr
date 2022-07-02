@@ -475,69 +475,46 @@ function fontMetrics(){
 function unionSingleFontMetrics(fontMetricsA, fontMetricsB){
   // If one of the inputs is undefined, return early with the only valid object
   if(fontMetricsA && !fontMetricsB){
-    return(fontMetricsA);
+    return;
   } else if (!fontMetricsA && fontMetricsB){
-    return(fontMetricsB);
-  }
+    fontMetricsA = structuredClone(fontMetricsB);
+  } 
 
-  const fontMetricsOut = new fontMetrics();
+  if(fontMetricsB?.obs) fontMetricsA.obs = fontMetricsA.obs + fontMetricsB.obs;
 
-  if(fontMetricsA?.obs) fontMetricsOut.obs = fontMetricsOut.obs + fontMetricsA.obs;
-  if(fontMetricsB?.width) fontMetricsOut.obs = fontMetricsOut.obs + fontMetricsB.obs;
-
-  for (const [prop, obj] of Object.entries(fontMetricsA)) {
-    for (const [key, value] of Object.entries(obj)) {
-      if(!fontMetricsOut[prop][key]){
-        fontMetricsOut[prop][key] = [];
-      }
-      Array.prototype.push.apply(fontMetricsOut[prop][key], value);
-    }  
-  }
   for (const [prop, obj] of Object.entries(fontMetricsB)) {
     for (const [key, value] of Object.entries(obj)) {
-      if(!fontMetricsOut[prop][key]){
-        fontMetricsOut[prop][key] = [];
+      if(!fontMetricsA[prop][key]){
+        fontMetricsA[prop][key] = [];
       }
-      Array.prototype.push.apply(fontMetricsOut[prop][key], value);
+      Array.prototype.push.apply(fontMetricsA[prop][key], value);
     }  
   }
-  return(fontMetricsOut);
+  return(fontMetricsA);
 }
 
+// Combines font metric objects by adding the observations from fontMetricsB to fontMetricsA
 function unionFontMetrics(fontMetricsA, fontMetricsB){
-  const fontMetricsOut = {};
-
-  for(const [family, obj] of Object.entries(fontMetricsA)){
-    for(const [style, obj2] of Object.entries(obj)){
-      if (Object.keys(obj2["width"]).length == 0) continue;
-      if(!fontMetricsOut[family]){
-        fontMetricsOut[family] = {};
-      }
-      if(!fontMetricsOut[family][style]){
-        fontMetricsOut[family][style] = {};
-      }
-    }  
-  }
 
   for(const [family, obj] of Object.entries(fontMetricsB)){
     for(const [style, obj2] of Object.entries(obj)){
       if (Object.keys(obj2["width"]).length == 0) continue;
-      if(!fontMetricsOut[family]){
-        fontMetricsOut[family] = {};
+      if(!fontMetricsA[family]){
+        fontMetricsA[family] = {};
       }
-      if(!fontMetricsOut[family][style]){
-        fontMetricsOut[family][style] = {};
+      if(!fontMetricsA[family][style]){
+        fontMetricsA[family][style] = new fontMetrics();
       }
     }  
   }
 
-  for(const [family, obj] of Object.entries(fontMetricsOut)){
+  for(const [family, obj] of Object.entries(fontMetricsA)){
     for(const [style, obj2] of Object.entries(obj)){
-      fontMetricsOut[family][style] = unionSingleFontMetrics(fontMetricsA?.[family]?.[style], fontMetricsB?.[family]?.[style]);
+      unionSingleFontMetrics(fontMetricsA?.[family]?.[style], fontMetricsB?.[family]?.[style]);
     }  
   }
 
-  return(fontMetricsOut);
+  return(fontMetricsA);
 
 }
 

@@ -704,6 +704,8 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
   let lineAllHeightPageArr = [];
 
+  let pageAscHeightArr = [];
+
   function convertLineAbbyy(xmlLine, lineNum, pageNum = 1) {
     let widthPxObjLine = new Object;
     let heightPxObjLine = new Object;
@@ -1104,10 +1106,16 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // Ideally we would be able to calculate all 3 directly, however given this is not always possible,
     // different calculations are used based on the data available.
 
-    // If no ascenders exist on the line but x-height is known, set ascender height to 1.5x x-height
-    // (This is a quick fix--this logic may be refined later)
-    if (!lineAscHeight && lineXHeight) {
-      lineAscHeight = Math.round(lineXHeight * 1.5);
+    // If no ascenders exist on the line but x-height is known, set ascender height using the median ascender height / x-height ratio for the page so far,
+    // and 1.5x the x-height as a last resort. 
+    if (lineXHeight && !(lineAscHeight && (styleArr.includes("small-caps") || (lineAscHeight > lineXHeight * 1.1) && (lineAscHeight < lineXHeight * 2)))) {
+      if(pageAscHeightArr.length >= 3) {
+        lineAscHeight = lineXHeight * quantile(pageAscHeightArr, 0.5);
+      } else {
+        lineAscHeight = Math.round(lineXHeight * 1.5);
+      }
+    } else if(lineXHeight) {
+      pageAscHeightArr.push(lineAscHeight / lineXHeight);
     }
 
     // Add character height (misleadingly called "x_size" in Tesseract hocr)
@@ -1115,7 +1123,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // If x-height exists, calculate x_ascenders (in addition to x_descenders)
     // In general, x-height must be a plausible value (to avoid obviously misidentified characters from determining font size).
     // This restriction is not applied for lines with small caps. 
-    if (lineAscHeight && lineXHeight && (styleArr.includes("small-caps") || (lineAscHeight > lineXHeight * 1.1) && (lineAscHeight < lineXHeight * 2))) {
+    if (lineAscHeight && lineXHeight) {
       xmlOut = xmlOut + "; x_ascenders " + (lineAscHeight - lineXHeight) + "; x_descenders " + (lineAllHeight - lineAscHeight);
       // Otherwise, add only x_descenders
     } else if (lineAscHeight) {
