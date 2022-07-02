@@ -159,22 +159,6 @@ function updateHOCRFontSizeWord(word_id, value){
   }
 }
 
-
-export function toggleBoundingBoxesSelectedWords(){
-  const selectedObjects = window.canvas.getActiveObjects();
-  if (!selectedObjects) return;
-  const selectedN = selectedObjects.length;
-  for(let i=0; i<selectedN; i++){
-    const wordI = selectedObjects[i];
-    //const wordIDI = wordI.wordID;
-    wordI.hasControls = true;
-    // Only allow left/right scaling
-    // This is the only type of scaling that is currently reflected in HOCR, so any other edit would just disappear
-    wordI.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
-
-  }
-}
-
 export function updateHOCRBoundingBoxWord(word_id, leftDelta, rightDelta){
   let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
   if(it.singleNodeValue != null){

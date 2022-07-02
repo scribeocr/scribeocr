@@ -987,8 +987,12 @@ function convertPageAbbyy(xmlPage, pageNum) {
       }
     }
 
+    if(text.includes("countries;")) {
+      debugger;
+    }
+
     let lineAllHeight = Math.max(...lineAllHeightArr);
-    let lineAscHeight = quantile(lineAscHeightArr, 0.5);
+    let lineAscHeight = quantile(lineAscHeightArr, 0.75);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
 
     // The above calculations fail for lines without any alphanumeric characters (e.g. a line that only contains a dash),
@@ -1106,6 +1110,10 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // (This is a quick fix--this logic may be refined later)
     if (!lineAscHeight && lineXHeight) {
       lineAscHeight = Math.round(lineXHeight * 1.5);
+    }
+
+    if(text.includes("countries;")) {
+      debugger;
     }
 
     // Add character height (misleadingly called "x_size" in Tesseract hocr)

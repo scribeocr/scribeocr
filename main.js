@@ -23,7 +23,7 @@ import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatures } from "./js/miscUtils.js";
 
 import {
-  deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, toggleBoundingBoxesSelectedWords, changeWordFont, toggleSuperSelectedWords,
+  deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, changeWordFont, toggleSuperSelectedWords,
   updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord
 } from "./js/interfaceEdit.js";
 
@@ -273,7 +273,7 @@ document.getElementById('styleItalic').addEventListener('click', () => { toggleS
 document.getElementById('styleSmallCaps').addEventListener('click', () => { toggleStyleSelectedWords('small-caps') });
 document.getElementById('styleSuper').addEventListener('click', toggleSuperSelectedWords);
 
-document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
+// document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 document.getElementById('editBaseline').addEventListener('click', adjustBaseline);
 
 const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
@@ -290,8 +290,8 @@ const zoomInputElem = /** @type {HTMLInputElement} */(document.getElementById('z
 zoomInputElem.addEventListener('change', (event) => { changeZoom(zoomInputElem.value) });
 document.getElementById('zoomPlus').addEventListener('click', () => { changeZoom('plus') });
 
-const displayFontElem = /** @type {HTMLInputElement} */(document.getElementById('displayFont'));
-displayFontElem.addEventListener('change', (event) => { changeDisplayFont(displayFontElem.value) });
+// const displayFontElem = /** @type {HTMLInputElement} */(document.getElementById('displayFont'));
+// displayFontElem.addEventListener('change', (event) => { changeDisplayFont(displayFontElem.value) });
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
 optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked) });
@@ -556,26 +556,26 @@ function setCurrentHOCR(x) {
 
 
 
-async function changeDisplayFont(font) {
-  if (!currentPage.xmlDoc) return;
-  if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
-    globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
-  }
-  const optimizeMode = optimizeFontElem.checked;
-  if (typeof (globalThis.fontObj[font]) != "undefined" && typeof (globalThis.fontObj[font]["normal"]) != "undefined" && globalThis.fontObj[font]["normal"].optimized == optimizeMode) {
-    globalSettings.defaultFont = font;
-    renderPageQueue(currentPage.n, 'screen', false);
-  } else {
-    console.log("Loading new font");
-    await loadFontFamily(font);
-    globalSettings.defaultFont = font;
-    if (optimizeMode) {
-      await optimizeFont2(globalSettings.defaultFont);
-    }
-    renderPageQueue(currentPage.n, 'screen', false);
-  }
+// async function changeDisplayFont(font) {
+//   if (!currentPage.xmlDoc) return;
+//   if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
+//     globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+//   }
+//   const optimizeMode = optimizeFontElem.checked;
+//   if (typeof (globalThis.fontObj[font]) != "undefined" && typeof (globalThis.fontObj[font]["normal"]) != "undefined" && globalThis.fontObj[font]["normal"].optimized == optimizeMode) {
+//     globalSettings.defaultFont = font;
+//     renderPageQueue(currentPage.n, 'screen', false);
+//   } else {
+//     console.log("Loading new font");
+//     await loadFontFamily(font);
+//     globalSettings.defaultFont = font;
+//     if (optimizeMode) {
+//       await optimizeFont2(globalSettings.defaultFont);
+//     }
+//     renderPageQueue(currentPage.n, 'screen', false);
+//   }
 
-}
+// }
 
 
 function changeZoom(value) {
@@ -646,7 +646,7 @@ document.getElementById('nav-download').addEventListener('hidden.bs.collapse', f
 // When the navbar is "sticky", it does not automatically widen for large canvases (when the canvas size is larger than the viewport).
 // However, when the navbar is fixed, the canvas does not move out of the way of the navbar.
 // Therefore, the navbar is set to fixed, and the canvas is manually moved up/down when tabs are shown/collapsed.
-var tabHeightObj = { "nav-import": 66, "nav-recognize": 102, "nav-eval": 89, "nav-view": 117, "nav-edit": 104, "nav-layout": 88, "nav-download": 104, "nav-about": 55 }
+var tabHeightObj = { "nav-import": 66, "nav-recognize": 102, "nav-eval": 89, "nav-view": 117, "nav-edit": 104, "nav-download": 104, "nav-about": 55 }
 
 const paddingRowElem = document.getElementById('paddingRow');
 
@@ -667,7 +667,7 @@ for (const [key, value] of Object.entries(tabHeightObj)) {
 
 
 function toggleEditButtons(disable = true) {
-  let editButtons = ["styleItalic", "styleSmallCaps", "styleSuper", "editBoundingBox", "editBaseline", "deleteWord", "addWord"];
+  let editButtons = ["styleItalic", "styleSmallCaps", "styleSuper", "editBaseline", "deleteWord", "addWord"];
   for (let i = 0; i < editButtons.length; i++) {
     const editButtonElem = /** @type {HTMLInputElement} */(document.getElementById(editButtons[i]));
     editButtonElem.disabled = disable;
@@ -2014,6 +2014,8 @@ function addWordClick() {
       fontSize: fontSize
     });
 
+    textbox.hasControls = true;
+    textbox.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
 
     textbox.on('editing:exited', async function () {
       if (this.hasStateChanged) {

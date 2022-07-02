@@ -378,6 +378,9 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           showTextBoxBorder: showBoundingBoxesElem.checked
         });
 
+        textbox.hasControls = true;
+        textbox.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
+
         let renderWordBoxes = false;
         if (renderWordBoxes) {
           let rect = new fabric.Rect({
