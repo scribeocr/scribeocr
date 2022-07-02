@@ -443,6 +443,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
   } else {
     optimizeFontElem.disabled = false;
 
+    // TODO: This reduce-based implementation is extremely inefficient due to allocating a ton of arrays. Should be replaced with implementation that pushes to single array. 
     fontMetricsObj = fontMetricObjsMessage.filter((x) => !["char_error", "char_warning"].includes(x?.message)).reduce((x,y) => unionFontMetrics(x,y));
 
     const fontMetricsOut = {};

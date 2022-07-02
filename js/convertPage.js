@@ -806,7 +806,8 @@ function convertPageAbbyy(xmlPage, pageNum) {
     let wordStrArr = [];
     for(let i=0;i<wordStrArr1.length;i++){
       const wordStrArrI = wordStrArr1[i];
-      const wordMatch = wordStrArrI.match(/[^\<\>]+(?=<\/charParams\>)/g);
+      //const wordMatch = wordStrArrI.match(/[^\<\>]+?(?=<\/charParams\>)/g);
+      const wordMatch = wordStrArrI.match(/>([^\<\>]+?)(?=<\/charParams\>)/g)?.map((x) => x.substring(1));
       if(!wordMatch){
         continue;
       } else if (wordMatch.length == 1){
@@ -987,10 +988,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
       }
     }
 
-    if(text.includes("countries;")) {
-      debugger;
-    }
-
     let lineAllHeight = Math.max(...lineAllHeightArr);
     let lineAscHeight = quantile(lineAscHeightArr, 0.75);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
@@ -1080,10 +1077,11 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // completely different than a bounding box calculated from a union of all letters in the line.
     // Therefore, the line bounding boxes are recaclculated here.
     let lineBoxArrCalc = new Array(4);
-    lineBoxArrCalc[0] = Math.min(...bboxes.flat().map(x => x[0]).filter(x => x > 0));
-    lineBoxArrCalc[1] = Math.min(...bboxes.flat().map(x => x[1]).filter(x => x > 0));
-    lineBoxArrCalc[2] = Math.max(...bboxes.flat().map(x => x[2]).filter(x => x > 0));
-    lineBoxArrCalc[3] = Math.max(...bboxes.flat().map(x => x[3]).filter(x => x > 0));
+    // reduce((acc, val) => acc.concat(val), []) is used as a drop-in replacement for flat() with significantly better performance
+    lineBoxArrCalc[0] = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[0]).filter(x => x > 0));
+    lineBoxArrCalc[1] = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[1]).filter(x => x > 0));
+    lineBoxArrCalc[2] = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[2]).filter(x => x > 0));
+    lineBoxArrCalc[3] = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[3]).filter(x => x > 0));
 
     const baselineSlope = quantile(baselineSlopeArr, 0.5) || 0;
 
@@ -1110,10 +1108,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // (This is a quick fix--this logic may be refined later)
     if (!lineAscHeight && lineXHeight) {
       lineAscHeight = Math.round(lineXHeight * 1.5);
-    }
-
-    if(text.includes("countries;")) {
-      debugger;
     }
 
     // Add character height (misleadingly called "x_size" in Tesseract hocr)
