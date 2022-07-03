@@ -3150,7 +3150,7 @@ async function renderPDF() {
 
         const fontObjI = await globalThis.fontObj[familyKey][key];
 
-        fontObjI.tables.name.postScriptName["en"] = globalSettings.defaultFont + "-SmallCaps";
+        fontObjI.tables.name.postScriptName["en"] = familyKey.replace(/\s+/g, "")        + "-SmallCaps";
         fontObjI.tables.name.fontSubfamily["en"] = "SmallCaps";
         fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
@@ -3390,6 +3390,15 @@ async function updateDataProgress(mainData = true) {
           if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
     
           globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
+
+          // Change default font to whatever named font appears more
+          if (globalSettings.multiFontMode) {
+            if ((globalThis.fontMetricsObj["Libre Baskerville"]?.obs || 0) > (globalThis.fontMetricsObj["Open Sans"]?.obs || 0)) {
+              globalSettings.defaultFont = "Libre Baskerville";
+            } else {
+              globalSettings.defaultFont = "Open Sans";
+            }
+          }
     
           optimizeFontElem.checked = true;
           await optimizeFontClick(optimizeFontElem.checked);
