@@ -1398,11 +1398,16 @@ async function recognizeAll() {
     await recognizePages(false, null, true);
 
   } else if (oemMode == "combined") {
+
+    loadCountHOCR = 0;
+    convertPageWorker["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
+    globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
+
     const config = getTesseractConfigs();
     config.tessedit_ocr_engine_mode = "0";
-    await recognizePages(false, config, true);
+    await recognizePages(false, config, true, true);
     config.tessedit_ocr_engine_mode = "1";
-    await recognizePages(false, config, false);
+    await recognizePages(false, config, false, true);
   
   
     addDisplayLabel("Tesseract Combined");
@@ -1422,17 +1427,23 @@ async function recognizeAll() {
 }
 
 
-async function recognizePages(single = false, config = null, saveMetrics = true) {
+async function recognizePages(single = false, config = null, saveMetrics = true, comb = false) {
 
   const allConfig = config || getTesseractConfigs();
   let scheduler;
 
   if(!single){
-    loadCountHOCR = 0;
 
-    convertPageWorker["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
+    // When running in Legacy + LSTM combined mode, recognizePages is run twice, so the progress bar is initialized outside this function.
+    if(!comb){
+      loadCountHOCR = 0;
 
+      convertPageWorker["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
+  
+      globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);  
     globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
+      globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);  
+    }
   
     // Render all pages to PNG
     if (inputDataModes.pdfMode) {
@@ -1537,7 +1548,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true)
 
           // We wait for updateDataProgress because this is the function responsible for triggering the calculation of full-document metrics + font optimization
           // once the document is finished processing. 
-          return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics)});
+          return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
         } else {
           
           // If the angle is not already known, we wait until recognition finishes so we know the angle
@@ -1585,7 +1596,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true)
                 "saveMetrics": saveMetrics
               }
 
-              return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics)});
+              return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
             });
           } else {
 
@@ -1596,7 +1607,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true)
               "mode": mode,
               "saveMetrics": saveMetrics
             }
-            return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics)});
+            return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
           }
         }
       })
@@ -3333,7 +3344,7 @@ function convertPage(args) {
 // Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
 // Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
 // as well as after every image is loaded (not including .pdfs). 
-async function updateDataProgress(mainData = true) {
+async function updateDataProgress(mainData = true, combMode = false) {
 
   let activeProgress = convertPageWorker["activeProgress"];
 
@@ -3342,58 +3353,69 @@ async function updateDataProgress(mainData = true) {
 
   const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
 
+  // const combMode = valueMax == globalThis.imageAll.native.length * 2;
+
   // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
   // This can make the interface less jittery compared to updating after every loop.
   // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
   const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
   if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
     activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
-    if (loadCountHOCR == valueMax) {
+  }
 
+  // The following block is either run after all recognition is done (when only 1 engine is being used), 
+  // or after the Legacy engine is done (when Legacy + LSTM are both being run).
+  // It is assumed that all Legacy recognition will finish before any LSTM recognition begins, which may change in the future. 
+  if ((!combMode && loadCountHOCR == valueMax) || (combMode && loadCountHOCR == globalThis.imageAll.native.length)) {
+
+    // Full-document stats (including font optimization) are only calulated for the "main" data, 
       // Full-document stats (including font optimization) are only calulated for the "main" data, 
-      // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
+    // Full-document stats (including font optimization) are only calulated for the "main" data, 
+    // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
+    // those uploads to not cause new fonts to be created. 
       // those uploads to not cause new fonts to be created. 
-      if(inputDataModes.xmlMode[0] && mainData) {
-        // If resuming from a previous editing session font stats are already calculated
-        if (inputDataModes.resumeMode) {
-          optimizeFontElem.disabled = false;
-        } else {
-          // Buttons are enabled from calculateOverallFontMetrics function in this case
-          globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-        }
-
-        calculateOverallPageMetrics();
-
-        // Enable font optimization (if possible) by default
-        if(optimizeFontElem.disabled == false){
-          let defaultFontObs = 0;
-          let namedFontObs = 0;
-          if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
-          if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
-          if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
-    
-          globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
-
-          // Change default font to whatever named font appears more
-          if (globalSettings.multiFontMode) {
-            if ((globalThis.fontMetricsObj["Libre Baskerville"]?.obs || 0) > (globalThis.fontMetricsObj["Open Sans"]?.obs || 0)) {
-              globalSettings.defaultFont = "Libre Baskerville";
-            } else {
-              globalSettings.defaultFont = "Open Sans";
-            }
-          }
-    
-          optimizeFontElem.checked = true;
-          await optimizeFontClick(optimizeFontElem.checked);
-        }
+    // those uploads to not cause new fonts to be created. 
+    if(inputDataModes.xmlMode[0] && mainData) {
+      // If resuming from a previous editing session font stats are already calculated
+      if (inputDataModes.resumeMode) {
+        optimizeFontElem.disabled = false;
+      } else {
+        // Buttons are enabled from calculateOverallFontMetrics function in this case
+        globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
       }
-      downloadElem.disabled = false;
-      // Render first handful of pages for pdfs so the interface starts off responsive
-      if (inputDataModes.pdfMode) {
-        renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
+
+      calculateOverallPageMetrics();
+
+      // Enable font optimization (if possible) by default
+      if(optimizeFontElem.disabled == false){
+        let defaultFontObs = 0;
+        let namedFontObs = 0;
+        if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
+        if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
+        if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
+  
+        globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
+
+        // Change default font to whatever named font appears more
+        if (globalSettings.multiFontMode) {
+          if ((globalThis.fontMetricsObj["Libre Baskerville"]?.obs || 0) > (globalThis.fontMetricsObj["Open Sans"]?.obs || 0)) {
+            globalSettings.defaultFont = "Libre Baskerville";
+          } else {
+            globalSettings.defaultFont = "Open Sans";
+          }
+        }
+  
+        optimizeFontElem.checked = true;
+        await optimizeFontClick(optimizeFontElem.checked);
       }
     }
+    downloadElem.disabled = false;
+    // Render first handful of pages for pdfs so the interface starts off responsive
+    if (inputDataModes.pdfMode) {
+      renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
+    }
   }
+  
 }
 
 

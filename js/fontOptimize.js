@@ -254,9 +254,9 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
   for(let i=0;i<descAdjArr.length;i++) {
     const charI = descAdjArr[i];
     const charICode = charI.charCodeAt(0);
-    const actMult = Math.max(fontMetricsObj["height"][charICode] / fontMetricsObj["height"][charICode], 0);
+    const actMult = Math.max(fontMetricsObj["height"][charICode] / fontMetricsObj["height"][97], 0);
     const fontMetrics = workingFont.charToGlyph(charI).getMetrics();
-    const fontMult = (fontMetrics.yMax - fontMetrics.yMin) / (fontMetrics.yMax - fontMetrics.yMin);
+    const fontMult = (fontMetrics.yMax - fontMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
     const actFontMult = actMult / fontMult;
     const glyphHeight = fontMetrics.yMax - fontMetrics.yMin;
     const glyphLowerStemHeight = minA - fontMetrics.yMin;
@@ -264,7 +264,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
       let glyphI = workingFont.charToGlyph(charI);
 
       // Adjust scaling factor to account for the fact that only the lower part of the stem is adjusted
-      let scaleYFactor = ((actFontMult - 1) * (glyphHeight[charI] / glyphLowerStemHeight[charI])) + 1;
+      let scaleYFactor = ((actFontMult - 1) * (glyphHeight / glyphLowerStemHeight)) + 1;
 
       for (let j = 0; j < glyphI.path.commands.length; j++) {
         let pointJ = glyphI.path.commands[j];
