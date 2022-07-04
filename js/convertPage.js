@@ -1,7 +1,47 @@
 
+// Functions from other modules
+// The following functions are copy/pasted from other files due to issues with import/module support for workers. 
+// They should be replaced with import statements once all browsers support this or an alternative is found. 
+
 function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
 }
+
+// Sans/serif lookup for common font families
+// Should be added to if additional fonts are encountered
+const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
+const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
+
+const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
+const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
+
+// Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font (Open Sans) or serif font (Libre Baskerville)
+function determineSansSerif(fontName) {
+
+  let fontFamily = "Default";
+  // Font support is currently limited to 1 font for Sans and 1 font for Serif.
+  if(fontName){
+    // First, test to see if "sans" or "serif" is in the name of the font
+    if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
+      fontFamily = "Open Sans";
+    } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
+      fontFamily = "Libre Baskerville";
+
+    // If not, check against a list of known sans/serif fonts.
+    // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
+    } else if (serifFontsRegex.test(fontName)) {
+      fontFamily = "Libre Baskerville";
+    } else if (sansFontsRegex.test(fontName)) {
+      fontFamily = "Open Sans";
+    } else if (fontName != "Default Metrics Font") {
+      console.log("Unidentified font in XML: " + fontName);
+    }
+  }
+
+  return fontFamily;
+
+}
+
 
 // Input array contents:
 // [0] HOCR data
@@ -33,20 +73,9 @@ function fontMetrics(){
   this.obs = 0;
 }
 
-// Sans/serif lookup for common font families
-// Should be added to if additional fonts are encountered
-const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
-const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
-
-// Fonts that should not be added (both Sans and Serif variants):
-// DejaVu
-
 // Includes all capital letters except for "J" and "Q"
 const ascCharArr = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "b", "d", "h", "k", "l", "t", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z"]
-
-const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
-const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
 
 function quantile(arr, ntile) {
   if (arr.length == 0) {
@@ -197,27 +226,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
       const fontName = match.match(/^[^\>]+?x_font\s*([\w\-]+)/)?.[1];
 
-      let fontFamily = "Default";
-
-      // Font support is currently limited to 1 font for Sans and 1 font for Serif.
-      if(fontName){
-        // First, test to see if "sans" or "serif" is in the name of the font
-        if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
-          fontFamily = "Open Sans";
-        } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
-          fontFamily = "Libre Baskerville";
-
-        // If not, check against a list of known sans/serif fonts.
-        // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
-        } else if (serifFontsRegex.test(fontName)) {
-          fontFamily = "Libre Baskerville";
-        } else if (sansFontsRegex.test(fontName)) {
-          fontFamily = "Open Sans";
-        } else if (fontName != "Default Metrics Font") {
-          console.log("Unidentified font in XML: " + fontName);
-        }
-      }
-
+      let fontFamily = determineSansSerif(fontName);
 
       //let it = match.matchAll(/<span class\=[\"\']ocrx_cinfo[\"\'] title=\'([^\'\"]+)[\"\']\>([^\<]*)\<\/span\>/ig);
       let it = match.matchAll(charRegex);

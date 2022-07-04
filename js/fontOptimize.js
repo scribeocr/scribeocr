@@ -4,6 +4,10 @@
 
 import { quantile, round6 } from "./miscUtils.js";
 
+import { glyphAlts } from "../fonts/glyphs.js";
+
+import { determineSansSerif } from "./fontUtils.js";
+
 // Creates optimized version of `font` based on metrics in `fontMetricsObj`
 export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal") {
 
@@ -18,6 +22,14 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     workingFontAux = opentype.parse(fontDataAux, { lowMemory: false });
   }
 
+  if(type == "normal" && globalThis.fontVariants.sans_g && /sans/i.test(font.names.fontFamily.en)) {
+    const glyphI = workingFont.charToGlyph("g");
+    glyphI.path = JSON.parse(glyphAlts.sans_g_single);
+  }
+  if(type == "normal" && globalThis.fontVariants.sans_1 && /sans/i.test(font.names.fontFamily.en)) {
+    const glyphI = workingFont.charToGlyph("1");
+    glyphI.path = JSON.parse(glyphAlts.sans_1_base);
+  }
 
   let oGlyph = workingFont.charToGlyph("o").getMetrics();
   let xHeight = oGlyph.yMax - oGlyph.yMin;
@@ -232,41 +244,27 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
 
     }
   }
-  // Adjust "p" and "q" height
+
+
+  // Adjust height of descenders
   // All height from "p" or "q" above that of "a" is assumed to occur under the baseline
-  const actPMult = Math.max(fontMetricsObj["height"][112] / fontMetricsObj["height"][97], 0);
-  const actQMult = Math.max(fontMetricsObj["height"][113] / fontMetricsObj["height"][97], 0);
-
-  const fontPMetrics = workingFont.charToGlyph("p").getMetrics();
-  const fontQMetrics = workingFont.charToGlyph("q").getMetrics();
+  const descAdjArr = ["g","p","q"];
   const fontAMetrics = workingFont.charToGlyph("a").getMetrics();
-
-  const fontPMult = (fontPMetrics.yMax - fontPMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
-  const fontQMult = (fontQMetrics.yMax - fontQMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
-  const actFontMult = { "p": actPMult / fontPMult, "q": actQMult / fontQMult }
-
   const minA = fontAMetrics.yMin;
-
-  const glyphHeight = {
-    "p": fontPMetrics.yMax - fontPMetrics.yMin,
-    "q": fontQMetrics.yMax - fontQMetrics.yMin
-  }
-
-  const glyphLowerStemHeight = {
-    "p": minA - fontPMetrics.yMin,
-    "q": minA - fontQMetrics.yMin
-  }
-
-  for (let letterI of ["p", "q"]) {
-    const actFontMultI = actFontMult[letterI];
-    if (Math.abs(actFontMultI) > 1.02) {
-      let glyphI = workingFont.charToGlyph(letterI);
-      let glyphIMetrics = glyphI.getMetrics();
+  for(let i=0;i<descAdjArr.length;i++) {
+    const charI = descAdjArr[i];
+    const charICode = charI.charCodeAt(0);
+    const actMult = Math.max(fontMetricsObj["height"][charICode] / fontMetricsObj["height"][charICode], 0);
+    const fontMetrics = workingFont.charToGlyph(charI).getMetrics();
+    const fontMult = (fontMetrics.yMax - fontMetrics.yMin) / (fontMetrics.yMax - fontMetrics.yMin);
+    const actFontMult = actMult / fontMult;
+    const glyphHeight = fontMetrics.yMax - fontMetrics.yMin;
+    const glyphLowerStemHeight = minA - fontMetrics.yMin;
+    if (Math.abs(actFontMult) > 1.02) {
+      let glyphI = workingFont.charToGlyph(charI);
 
       // Adjust scaling factor to account for the fact that only the lower part of the stem is adjusted
-      let scaleYFactor = ((actFontMultI - 1) * (glyphHeight[letterI] / glyphLowerStemHeight[letterI])) + 1;
-
-      //const yAdj = Math.round(glyphIMetrics['yMax'] - (glyphIMetrics['yMax'] * actFontMultI));
+      let scaleYFactor = ((actFontMult - 1) * (glyphHeight[charI] / glyphLowerStemHeight[charI])) + 1;
 
       for (let j = 0; j < glyphI.path.commands.length; j++) {
         let pointJ = glyphI.path.commands[j];
@@ -279,7 +277,6 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
         if (pointJ.y2 && pointJ.y2 < minA) {
           pointJ.y2 = Math.round((pointJ.y2 - minA) * scaleYFactor);
         }
-
       }
     }
   }
@@ -411,6 +408,9 @@ export async function createSmallCapsFont(font, heightSmallCaps, fontMetricsObj 
 
 // Calculations that are run after all files (both image and OCR) have been loaded.
 export function calculateOverallFontMetrics(fontMetricObjsMessage) {
+
+  globalThis.fontVariants = identifyFontVariants(globalThis.fontScores);
+
   // TODO: Figure out what happens if there is one blank page with no identified characters (as that would presumably trigger an error and/or warning on the page level).
   // Make sure the program still works in that case for both Tesseract and Abbyy.
   let charErrorCt = 0;
@@ -542,5 +542,70 @@ function calculateFontMetrics(fontMetricObj){
   fontMetricOut["obs"] = fontMetricObj["obs"];
 
   return(fontMetricOut);
+}
+
+
+export function parseDebugInfo(debugTxt){
+  if(!globalThis.fontScores) globalThis.fontScores = {"Libre Baskerville": {}, "Open Sans": {}};
+
+  const fontLines = debugTxt.match(/Modal Font.+/g);
+
+  if(!fontLines) return;
+
+  // Filter statement added as this regex fails for some lines where the "letter" has multiple characters (possibly non-ASCII punctuation)
+  const fontArr = fontLines.map((x) => x.match(/Modal Font: ([^;]+?); Letter: (.); Font: ([^;]+?); Score: (\d+)/)).filter((x) => x?.length == 5);
+
+  for(let i=0;i<fontArr.length;i++){
+    const modalFont = fontArr[i][1];
+    const char = fontArr[i][2];
+    const font = fontArr[i][3];
+    const score = parseInt(fontArr[i][4]);
+    const modalFontFamily = determineSansSerif(modalFont);
+    if(!globalThis.fontScores[modalFontFamily][char]) globalThis.fontScores[modalFontFamily][char] = {};
+    if(!globalThis.fontScores[modalFontFamily][char][font]) globalThis.fontScores[modalFontFamily][char][font] = 0;
+
+    globalThis.fontScores[modalFontFamily][char][font] = globalThis.fontScores[modalFontFamily][char][font] + score;
+  }
+  return;
+}
+
+function calcTopFont(fontScoresChar) {
+  if(!fontScoresChar) return "";
+
+  const fonts = Object.keys(fontScoresChar);
+  let maxScore = 0;
+  let maxScoreFont = "";
+  for(let i=0;i<fonts.length;i++){
+    const font = fonts[i];
+    const score = fontScoresChar[font];
+    if(score > maxScore) {
+      maxScore = score;
+      maxScoreFont = font;
+    }
+  }
+  return maxScoreFont;
+}
+
+
+// Sans fonts with "1" without horizontal base: Arial, Helvetica, Impact, Trebuchet.  All serif fonts are included.
+const base_1 = ["Calibri", "Comic", "Franklin", "Tahoma", "Verdana", "Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
+const base_1_regex = new RegExp(base_1.reduce((x,y) => x + '|' + y), 'i');
+
+// Fonts with double "g" are: Calibri, Franklin, Trebuchet
+const single_g = ["Arial", "Comic", "DejaVu", "Helvetica", "Impact", "Tahoma", "Verdana"];
+const single_g_regex = new RegExp(single_g.reduce((x,y) => x + '|' + y), 'i');
+
+// While the majority of glyphs can be approximated by applying geometric transformations to a single sans and serif font,
+// there are some exceptions (e.g. the lowercase "g" has 2 distinct variations).
+// This function identifies variations that require switching out a glyph from the default font entirely. 
+export function identifyFontVariants(fontScores) {
+  const variants = {};
+
+  const sans_g = calcTopFont(fontScores?.["Open Sans"]?.["g"]);
+  variants["sans_g"] = single_g_regex.test(sans_g);
+  const sans_1 = calcTopFont(fontScores?.["Open Sans"]?.["1"]);
+  variants["sans_1"] = base_1_regex.test(sans_1);
+
+  return variants;
 }
 

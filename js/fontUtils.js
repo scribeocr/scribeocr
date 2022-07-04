@@ -6,6 +6,44 @@
 
 import { createSmallCapsFont } from "./fontOptimize.js";
 
+// Sans/serif lookup for common font families
+// Should be added to if additional fonts are encountered
+// Fonts that should not be added (both Sans and Serif variants):
+// DejaVu
+const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
+const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
+
+const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
+const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
+
+// Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font (Open Sans) or serif font (Libre Baskerville)
+export function determineSansSerif(fontName) {
+
+  let fontFamily = "Default";
+  // Font support is currently limited to 1 font for Sans and 1 font for Serif.
+  if(fontName){
+    // First, test to see if "sans" or "serif" is in the name of the font
+    if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
+      fontFamily = "Open Sans";
+    } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
+      fontFamily = "Libre Baskerville";
+
+    // If not, check against a list of known sans/serif fonts.
+    // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
+    } else if (serifFontsRegex.test(fontName)) {
+      fontFamily = "Libre Baskerville";
+    } else if (sansFontsRegex.test(fontName)) {
+      fontFamily = "Open Sans";
+    } else if (fontName != "Default Metrics Font") {
+      console.log("Unidentified font in XML: " + fontName);
+    }
+  }
+
+  return fontFamily;
+
+}
+
+
 // Load all font styles for specified font family
 export async function loadFontFamily(fontFamily) {
 

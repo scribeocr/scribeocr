@@ -17,7 +17,7 @@ import { coords } from './js/coordinates.js';
 
 import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
 
-import { optimizeFont, calculateOverallFontMetrics } from "./js/fontOptimize.js";
+import { optimizeFont, calculateOverallFontMetrics, parseDebugInfo } from "./js/fontOptimize.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatures } from "./js/miscUtils.js";
@@ -529,7 +529,7 @@ function setCurrentHOCR(x) {
     }
     // globalThis.ocrAll[currentLabel]["hocr"] = globalThis.hocrCurrent;
     for(let i=0;i<globalThis.hocrCurrent.length;i++) {
-      globalThis.ocrAll[currentLabel][i]["hocr"] = structuredClone(globalThis.hocrCurrent[i]);
+      globalThis.ocrAll[currentLabel][i]["hocr"] = JSON.parse(JSON.stringify(globalThis.hocrCurrent[i]));
     }
   }
   if (!globalThis.ocrAll[x]) {
@@ -552,30 +552,6 @@ function setCurrentHOCR(x) {
   }
 
 }
-
-
-
-
-// async function changeDisplayFont(font) {
-//   if (!currentPage.xmlDoc) return;
-//   if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
-//     globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
-//   }
-//   const optimizeMode = optimizeFontElem.checked;
-//   if (typeof (globalThis.fontObj[font]) != "undefined" && typeof (globalThis.fontObj[font]["normal"]) != "undefined" && globalThis.fontObj[font]["normal"].optimized == optimizeMode) {
-//     globalSettings.defaultFont = font;
-//     renderPageQueue(currentPage.n, 'screen', false);
-//   } else {
-//     console.log("Loading new font");
-//     await loadFontFamily(font);
-//     globalSettings.defaultFont = font;
-//     if (optimizeMode) {
-//       await optimizeFont2(globalSettings.defaultFont);
-//     }
-//     renderPageQueue(currentPage.n, 'screen', false);
-//   }
-
-// }
 
 
 function changeZoom(value) {
@@ -784,7 +760,7 @@ function createGroundTruthClick() {
   }
 
   for(let i=0;i<globalThis.hocrCurrent.length;i++) {
-    globalThis.ocrAll["Ground Truth"][i]["hocr"] = structuredClone(globalThis.hocrCurrent[i]);
+    globalThis.ocrAll["Ground Truth"][i]["hocr"] = JSON.parse(JSON.stringify(globalThis.hocrCurrent[i]));
   }
 
   // Use whatever the current HOCR is as a starting point
@@ -950,7 +926,7 @@ async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", charMetricsA = nu
           const wordBoxAWidth = wordBoxA[2] - wordBoxA[0];
           const wordBoxAHeight = wordBoxA[3] - wordBoxA[1];
 
-          const wordBoxACore = structuredClone(wordBoxA);
+          const wordBoxACore = JSON.parse(JSON.stringify(wordBoxA));
 
           wordBoxACore[0] = wordBoxA[0] + Math.round(wordBoxAWidth * 0.1);
           wordBoxACore[2] = wordBoxA[2] - Math.round(wordBoxAWidth * 0.1);
@@ -971,7 +947,7 @@ async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", charMetricsA = nu
             const wordBoxBWidth = wordBoxB[2] - wordBoxB[0];
             const wordBoxBHeight = wordBoxB[3] - wordBoxB[1];
 
-            const wordBoxBCore = structuredClone(wordBoxB);
+            const wordBoxBCore = JSON.parse(JSON.stringify(wordBoxB));
 
             wordBoxBCore[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
             wordBoxBCore[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
@@ -1455,6 +1431,8 @@ async function recognizePages(single = false, config = null, saveMetrics = true)
     loadCountHOCR = 0;
 
     convertPageWorker["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
+
+    globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
   
     // Render all pages to PNG
     if (inputDataModes.pdfMode) {
@@ -1529,7 +1507,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true)
       return scheduler.addJob('recognize', inputImage.src, {angle: rotateRadians}, {max_page_gradient_recognize: maxGradient, debug_file: "/debug.txt", scribe_save_binary_rotated_image : saveBinaryImageArg, 
         scribe_save_original_rotated_image: saveColorImageArg }).then(async (y) => {
 
-        console.log(y.data.debug);
+        parseDebugInfo(y.data.debug);
 
         if(saveBinaryImageArg == "true") {
           const image = document.createElement('img');
@@ -1581,6 +1559,8 @@ async function recognizePages(single = false, config = null, saveMetrics = true)
             return scheduler.addJob('recognize', inputImage.src, {angle: rotateRadians}, {scribe_save_binary_rotated_image : saveBinaryImageArg, 
               scribe_save_original_rotated_image: saveColorImageArg}).then(async (y) => {
 
+              parseDebugInfo(y.data.debug);
+
               if(saveBinaryImageArg == "true") {
                 const image = document.createElement('img');
                 image.src = y.data.imageBinary;
@@ -1608,6 +1588,9 @@ async function recognizePages(single = false, config = null, saveMetrics = true)
               return convertPage([y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics)});
             });
           } else {
+
+            parseDebugInfo(y.data.debug);
+
             const argsObj = {
               "engine": oemText,
               "mode": mode,
