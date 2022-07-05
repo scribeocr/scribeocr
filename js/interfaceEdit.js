@@ -203,9 +203,12 @@ export async function changeWordFont(fontName){
 export function toggleSuperSelectedWords(){
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects || selectedObjects.length == 0) return;
-  const wordI = selectedObjects[0];
-  const wordIDI = wordI.wordID;
-  updateHOCRSuperWord(wordIDI, !wordI.wordSup);
+  const selectedN = selectedObjects.length;
+  for(let i=0; i<selectedN; i++){
+    const wordI = selectedObjects[i];
+    const wordIDI = wordI.wordID;
+    updateHOCRSuperWord(wordIDI, !wordI.wordSup);
+  }
   globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
 
   renderPageQueue(currentPage.n);

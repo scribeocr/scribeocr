@@ -48,7 +48,14 @@
     }
 
     .btn-info:active {
-      box-shadow: 0 0 0 0.1rem rgb(82 125 168 / 50%) !important
+      box-shadow: 0 0 0 0.1rem rgb(82 125 168 / 50%) !important;
+    }
+
+    .btn-check:checked+.btn-secondary, .btn-secondary.active, .btn-secondary:active, .show>.btn-secondary.dropdown-toggle {
+      color: #000;
+      background-color: #dddddd;
+      border-color: #dddddd;
+      /* border-color: #bdbdbd; */
     }
 
     .btn {
@@ -164,7 +171,7 @@
                 <label></label>
                 <div class="mb-2 row">
                   <div class="form-group">
-                    <button type="button" id="styleItalic" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" disabled>
+                    <button type="button" id="styleItalic" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" data-bs-toggle="button" disabled>
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-type-italic" viewBox="0 0 16 16">
                         <path d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z" />
                       </svg> Italic</button>
@@ -172,7 +179,7 @@
                 </div>
                 <div class="row">
                   <div class="form-group">
-                    <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" disabled>
+                    <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" data-bs-toggle="button" disabled>
                       <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type" fill="currentColor">
                         <g>
                           <path id="svg_1" d="m2.244,13.081l0.943,-2.803l3.473,0l0.944,2.803l1.256,0l-3.32,-9.331l-1.218,0l-3.322,9.331l1.244,0zm2.7,-7.923l1.396,4.156l-2.83,0l1.4,-4.156l0.034,0z" />
@@ -188,7 +195,7 @@
                   <label></label>
                 <div class="mb-2 row">
                   <div class="form-group">
-                    <button type="button" id="styleSuper" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" disabled>
+                    <button type="button" id="styleSuper" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" data-bs-toggle="button">
                       <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type" fill="currentColor">
                         <g>
                           <path stroke="null" id="svg_3"

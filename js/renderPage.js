@@ -8,6 +8,12 @@ const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wo
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
+const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
+const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
+const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
+const styleItalicButton = new bootstrap.Button(styleItalicElem);
+const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
+const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
 
 export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFont, lineMode = false, imgDims, canvasDims, angle, pdfMode, fontObj, leftAdjX) {
@@ -426,7 +432,17 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             wordFontElem.value = fontFamily;
           }
           fontSizeElem.value = this.fontSize;
-    
+          if(this.wordSup != styleSuperElem.classList.contains("active")) {
+            styleSuperButton.toggle();
+          }
+          const italic = this.fontStyle == "italic";
+          if(italic != styleItalicElem.classList.contains("active")) {
+            styleItalicButton.toggle();
+          }
+          const smallCaps = /Small Caps/i.test(this.fontFamily);
+          if(smallCaps != styleSmallCapsElem.classList.contains("active")) {
+            styleSmallCapsButton.toggle();
+          }
         });
         textbox.on('deselected', function () {
           console.log("Event: deselected");

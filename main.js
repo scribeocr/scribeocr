@@ -268,10 +268,17 @@ fontSizeElem.addEventListener('change', (event) => { changeWordFontSize(fontSize
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
 wordFontElem.addEventListener('change', (event) => { changeWordFont(wordFontElem.value) });
 
+const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
+const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
+const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
-document.getElementById('styleItalic').addEventListener('click', () => { toggleStyleSelectedWords('italic') });
-document.getElementById('styleSmallCaps').addEventListener('click', () => { toggleStyleSelectedWords('small-caps') });
-document.getElementById('styleSuper').addEventListener('click', toggleSuperSelectedWords);
+styleItalicElem.addEventListener('click', () => { toggleStyleSelectedWords('italic') });
+styleSmallCapsElem.addEventListener('click', () => { toggleStyleSelectedWords('small-caps') });
+styleSuperElem.addEventListener('click', toggleSuperSelectedWords);
+
+const styleItalicButton = new bootstrap.Button(styleItalicElem);
+const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
+const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 document.getElementById('editBaseline').addEventListener('click', adjustBaseline);
@@ -2036,7 +2043,17 @@ function addWordClick() {
         wordFontElem.value = fontFamily;
       }
       fontSizeElem.value = this.fontSize;
-
+      if(this.wordSup != styleSuperElem.classList.contains("active")) {
+        styleSuperButton.toggle();
+      }
+      const italic = this.fontStyle == "italic";
+      if(italic != styleItalicElem.classList.contains("active")) {
+        styleItalicButton.toggle();
+      }
+      const smallCaps = /Small Caps/i.test(this.fontFamily);
+      if(smallCaps != styleSmallCapsElem.classList.contains("active")) {
+        styleSmallCapsButton.toggle();
+      }
     });
     textbox.on('deselected', function () {
       wordFontElem.value = "Default";
