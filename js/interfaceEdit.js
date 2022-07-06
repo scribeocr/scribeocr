@@ -82,7 +82,7 @@ function updateHOCRStyleWord(word_id, value){
     if(value == "italic"){
       styleStr = styleStr + ";font-style:italic";
     } else if(value == "small-caps"){
-      styleStr = ";font-variant:small-caps";
+      styleStr = styleStr + ";font-variant:small-caps";
     }
 
     it.singleNodeValue.setAttribute("style", styleStr);

@@ -1081,6 +1081,7 @@ async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", charMetricsA = nu
                   let hocrBError = 0;
 
                   if(oneToOne) {
+                    // TODO: Figure out how to compare between small caps/non small-caps words (this is the only relevant style as it is the only style LSTM detects)
                     hocrAError = await evalWord(hocrAWord, n, null);
                     hocrBError = await evalWord(hocrAWord, n, hocrBWord.innerHTML);
 
@@ -1108,6 +1109,24 @@ async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", charMetricsA = nu
                     if(!skip){
                       if(oneToOne){
                         hocrAWord.innerHTML = hocrBWord.innerHTML;
+
+
+                        let styleStrA = hocrAWord.getAttribute("style") ?? "";
+                        let styleStrB = hocrBWord.getAttribute("style") ?? "";
+
+                        // Switch to small caps/non-small caps based on style of replacement word. 
+                        // This is not relevant for italics as the LSTM engine does not detect italics. 
+                        if(/small-caps/.test(styleStrB) && !/small-caps/.test(styleStrA)) {
+                          styleStrA = styleStrA.replace(/font\-style[^;]*(;|$)/i,"").replace(/;$/, "");
+                          styleStrA = styleStrA.replace(/font\-variant[^;]*(;|$)/i,"").replace(/;$/, "");
+                          styleStrA = styleStrA + ";font-variant:small-caps";
+                          hocrAWord.setAttribute("style", styleStrA);
+                        } else if (!/small-caps/.test(styleStrB) && /small-caps/.test(styleStrA)) {
+                          styleStrA = styleStrA.replace(/font\-style[^;]*(;|$)/i,"").replace(/;$/, "");
+                          styleStrA = styleStrA.replace(/font\-variant[^;]*(;|$)/i,"").replace(/;$/, "");
+                          hocrAWord.setAttribute("style", styleStrA);
+                        }
+
                       } else {
                         const wordsBArrRep = wordsBArr.map((x) => x.cloneNode(true));
 
@@ -3287,14 +3306,16 @@ export async function optimizeFont2(fontFamily) {
     fontDataOptimized[fontFamily] = {};
   }
 
+  const promiseArr = [];
+
   fontDataOptimized[fontFamily]["normal"] = fontArr[0].toArrayBuffer();
   globalThis.fontObj[fontFamily]["normal"] = loadFont(fontFamily, fontDataOptimized[fontFamily]["normal"], true);
-  await loadFontBrowser(fontFamily, "normal", fontDataOptimized[fontFamily]["normal"], true);
+  promiseArr.push(loadFontBrowser(fontFamily, "normal", fontDataOptimized[fontFamily]["normal"], true));
 
   if (!fontMetricI["italic"]) {
     fontDataOptimized[fontFamily]["italic"] = fontArr[1].toArrayBuffer();
     globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true);
-    await loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true);
+    promiseArr.push(loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true));
   }
 
   // Create small caps font using optimized "normal" font as a starting point
@@ -3310,12 +3331,8 @@ export async function optimizeFont2(fontFamily) {
       x.kerningPairs = kerningPairs;
       return(x);
     });
-    await loadFontBrowser(fontFamily, "small-caps", fontDataOptimized[fontFamily]["small-caps"], true);
+    promiseArr.push(loadFontBrowser(fontFamily, "small-caps", fontDataOptimized[fontFamily]["small-caps"], true));
 
-    // TODO: Fix to re-apply kerning pairs while running async
-    // const smallCapsFont = await globalThis.fontObj[fontFamily]["small-caps"];
-    // smallCapsFont.kerningPairs = kerningPairs;
-    // globalThis.fontObj[fontFamily]["small-caps"].kerningPairs = kerningPairs;
   }
 
   // Optimize italics if metrics exist to do so
@@ -3323,9 +3340,10 @@ export async function optimizeFont2(fontFamily) {
     fontArr = await optimizeFont(fontItalic, null, fontMetricI["italic"], "italic");
     fontDataOptimized[fontFamily]["italic"] = fontArr[0].toArrayBuffer();
     globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true);
-    await loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true);
+    promiseArr.push(loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true));
   }
 
+  await Promise.allSettled(promiseArr);
 
 }
 

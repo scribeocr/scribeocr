@@ -239,10 +239,14 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
       let wordStr = letterArr.map(x => x[2]).join("");
       let smallCaps = false;
       let smallCapsTitle = false;
+      let minLetterIndex = 0;
       if (!/[a-z]/.test(wordStr) && /[A-Z].?[A-Z]/.test(wordStr)) {
         // Filter to only include letters
         const filterArr = wordStr.split("").map((x) => /[a-z]/i.test(x));
         const letterArrSub = letterArr.filter((x, y) => filterArr[y]);
+
+        // Index of first letter (the only capital letter for title case)
+        minLetterIndex = Math.min(...[...Array(filterArr.length).keys()].filter((x, y) => filterArr[y]));
 
         let wordBboxesTop = letterArrSub.map(x => parseInt(x[1].match(/\d+ (\d+)/)[1]));
         let wordBboxesBottom = letterArrSub.map(x => parseInt(x[1].match(/\d+ \d+ \d+ (\d+)/)[1]));
@@ -318,7 +322,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
         const charDesc = expectedBaseline - bboxes[j][3]; // Number of pixels below the baseline
 
         // If word is small caps, convert letters to lower case. 
-        if (smallCaps && (!smallCapsTitle || j > 0)) {
+        if (smallCaps && (!smallCapsTitle || j > minLetterIndex)) {
           contentStrLetter = contentStrLetter.toLowerCase();
         } 
 
@@ -1095,8 +1099,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
     lineBoxArrCalc[3] = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[3]).filter(x => x > 0));
 
     const baselineSlope = quantile(baselineSlopeArr, 0.5) || 0;
-
-    // if(pageNum == 6) debugger;
 
     // baselinePoint should be the offset between the bottom of the line bounding box, and the baseline at the leftmost point
     let baselinePoint = baselineFirst[1] - lineBoxArrCalc[3];

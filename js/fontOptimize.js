@@ -546,7 +546,7 @@ function calculateFontMetrics(fontMetricObj){
 
 
 export function parseDebugInfo(debugTxt){
-  if(!globalThis.fontScores) globalThis.fontScores = {"Libre Baskerville": {}, "Open Sans": {}};
+  if(!globalThis.fontScores) globalThis.fontScores = {"Libre Baskerville": {}, "Open Sans": {}, "Default" : {}};
 
   const fontLines = debugTxt.match(/Modal Font.+/g);
 
