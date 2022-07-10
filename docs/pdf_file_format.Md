@@ -65,3 +65,8 @@ The following operators are related, but rarely or never used for this project.
    1. https://brendanzagaeski.appspot.com/0004.html
 1. *Developing with PDF* book, "Text" chapter
    1. https://www.oreilly.com/library/view/developing-with-pdf/9781449327903/ch04.html
+
+# muPDF Key Functions
+
+1. `fz_run_page` writes the contents of a page (`fz_page`) to a device (`fz_device`)
+   1. https://github.com/ArtifexSoftware/mupdf/blob/e3b06e9559ffd67e8a2708104bad4cb882498b6a/include/mupdf/fitz/document.h
