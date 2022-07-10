@@ -59,3 +59,9 @@ The following operators are related, but rarely or never used for this project.
 
 ### Tj and Tc Operators
 `(Hello World) Tj` writes the string "Hello World" using a simpler syntax than `TJ` (described above) due to the absence of character-level positioning.  `5 Tc` sets the character spacing to 5 for the text.  Unfortunately, while uniform character spacing can be adjusted, the kerning data embedded in font files is not considered when characters are positioned this way.  Therefore, any font with pair kerning (which is virtually all of them) cannot be accurately represented using (only) `Tj`. 
+
+# Resources
+1. Minimal PDF file
+   1. https://brendanzagaeski.appspot.com/0004.html
+1. *Developing with PDF* book, "Text" chapter
+   1. https://www.oreilly.com/library/view/developing-with-pdf/9781449327903/ch04.html
