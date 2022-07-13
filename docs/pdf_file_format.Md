@@ -60,6 +60,11 @@ The following operators are related, but rarely or never used for this project.
 ### Tj and Tc Operators
 `(Hello World) Tj` writes the string "Hello World" using a simpler syntax than `TJ` (described above) due to the absence of character-level positioning.  `5 Tc` sets the character spacing to 5 for the text.  Unfortunately, while uniform character spacing can be adjusted, the kerning data embedded in font files is not considered when characters are positioned this way.  Therefore, any font with pair kerning (which is virtually all of them) cannot be accurately represented using (only) `Tj`. 
 
+# Embedded Fonts
+1. Embedded OpenType fonts are supported as of PDF 1.6
+   1. https://www.verypdf.com/document/pdf-format-reference/index.htm
+
+
 # Resources
 1. Minimal PDF file
    1. https://brendanzagaeski.appspot.com/0004.html
@@ -70,3 +75,4 @@ The following operators are related, but rarely or never used for this project.
 
 1. `fz_run_page` writes the contents of a page (`fz_page`) to a device (`fz_device`)
    1. https://github.com/ArtifexSoftware/mupdf/blob/e3b06e9559ffd67e8a2708104bad4cb882498b6a/include/mupdf/fitz/document.h
+
