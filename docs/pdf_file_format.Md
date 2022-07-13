@@ -60,6 +60,15 @@ The following operators are related, but rarely or never used for this project.
 ### Tj and Tc Operators
 `(Hello World) Tj` writes the string "Hello World" using a simpler syntax than `TJ` (described above) due to the absence of character-level positioning.  `5 Tc` sets the character spacing to 5 for the text.  Unfortunately, while uniform character spacing can be adjusted, the kerning data embedded in font files is not considered when characters are positioned this way.  Therefore, any font with pair kerning (which is virtually all of them) cannot be accurately represented using (only) `Tj`. 
 
+# Non-ASCII Characters
+When using `Tj` and `TJ` to show text, ASCII characters can be typed literally (e.g. `(HELLO WORLD) Tj`).  However, non-ASCII characters need to be replaced by an escape sequence (based on the specified encoding). 
+
+This part of the PDF spec explains the idea of escape sequences for non-ASCII characters:
+https://www.verypdf.com/document/pdf-format-reference/pg_0055.htm
+
+This part of the PDF spec provides a lookup table for multiple encodings:
+https://www.verypdf.com/document/pdf-format-reference/pg_0999.htm
+
 # Embedded Fonts
 Fonts in PDF are described by (1) a font dictionary and (2) [optionally] an embedded font file (called a "font program" in the PDF specification).  
 
