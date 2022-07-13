@@ -61,8 +61,23 @@ The following operators are related, but rarely or never used for this project.
 `(Hello World) Tj` writes the string "Hello World" using a simpler syntax than `TJ` (described above) due to the absence of character-level positioning.  `5 Tc` sets the character spacing to 5 for the text.  Unfortunately, while uniform character spacing can be adjusted, the kerning data embedded in font files is not considered when characters are positioned this way.  Therefore, any font with pair kerning (which is virtually all of them) cannot be accurately represented using (only) `Tj`. 
 
 # Embedded Fonts
-1. Embedded OpenType fonts are supported as of PDF 1.6
-   1. https://www.verypdf.com/document/pdf-format-reference/index.htm
+Fonts in PDF are described by (1) a font dictionary and (2) [optionally] an embedded font file (called a "font program" in the PDF specification).  
+
+1. Font dictionary
+   1. "For all font types, the term font dictionary refers to a PDF dictionary containing information about the font; likewise, a CIDFont dictionary contains information about a CIDFont. Except for Type 3, this dictionary is distinct from the font pro-gram that defines the font’s glyphs. That font program may be embedded in the PDF file as a stream object or be obtained from some external source."
+   2. https://www.verypdf.com/document/pdf-format-reference/pg_0411.htm
+3. Embedded OpenType fonts are supported as of PDF 1.6
+   1. https://www.verypdf.com/document/pdf-format-reference/pg_0466.htm
+   2. "A Type1 font dictionary or CIDFontType0CID Font dictionary, if the embedded font program contains a “CFF” table without CIDFont operators."
+3. Type 1 font dictionary
+   1. Definition:
+      1. https://www.verypdf.com/document/pdf-format-reference/pg_0413.htm
+   1. Example
+      1. https://www.verypdf.com/document/pdf-format-reference/pg_0415.htm
+1. Glyph Metrics
+   1. Even when font files are embedded, metrics are stored separately in a .pdf file
+   2. "The width information for each glyph is stored both in the font dictionary and in the font program itself. (The two sets of widths must be identical; storing this in-formation in the font dictionary, although redundant, enables a consumer application to determine glyph positioning without having to look inside the fontprogram.)"
+      1. https://www.verypdf.com/document/pdf-format-reference/pg_0394.htm
 
 
 # Resources
