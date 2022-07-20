@@ -20,9 +20,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
   let ctx = canvas.getContext('2d');
 
-  let canvasWidth = canvasDims[1];
-  let canvasHeight = canvasDims[0];
-
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 

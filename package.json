@@ -7,6 +7,7 @@
     "lib": "lib"
   },
   "devDependencies": {
+    "@types/node": "^18.0.6",
     "cy-verify-downloads": "^0.1.2",
     "cypress": "^9.5.4"
   },

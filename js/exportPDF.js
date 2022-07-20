@@ -86,7 +86,7 @@ function createFontObj(font, firstObjIndex){
 // This is different than wordRegex in the convertPage.js file, as here we assume that the xml is already at the word-level (no character-level elements).
 const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)/, "ig");
 
-export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", rotate = false, progress = null) {
+export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", rotate = false, dimsLimit = [-1,-1], progress = null) {
 
   // Get count of various objects inserted into pdf
   let fontCount = 0;
@@ -146,7 +146,7 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
   // Add pages
   for(let i=minpage;i<=maxpage;i++) {
     const angle = rotate ? (globalThis.pageMetricsObj["angleAll"][i] || 0) : 0;
-    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], globalThis.pageMetricsObj.dimsAll[i], 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle));
+    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], globalThis.pageMetricsObj.dimsAll[i], dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle));
     if (progress) progress.increment();
   }
 
@@ -172,20 +172,32 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
 
 }
 
-async function hocrPageToPDF(hocrStr, dims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle) {
+async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle) {
+
+  if (outputDims[0] < 1) {
+    outputDims = inputDims;
+  }
+
+  const lines = hocrStr.match(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/g);
+
+  // Start 2nd object: Page
+  let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims[1]) + " " + String(outputDims[0]) + "]";
+
+  if (lines) secondObj += "/Contents " + String(firstObjIndex) + " 0 R";
+
+  secondObj += pageResourceStr + "/Parent " + parentIndex + " 0 R>>\nendobj\n\n";  
+
+  // If there is no text content, return the empty page with no contents
+  if(!lines) return secondObj;
 
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  const shiftX = sinAngle * (dims[0] * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((dims[1] - shiftX) * 0.5) || 0;
+  const shiftX = sinAngle * (inputDims[0] * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((inputDims[1] - shiftX) * 0.5) || 0;
 
   // Start 1st object: Text Content
   let textStream = "";
-
-  const lines = hocrStr.match(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/g);
-
-  if(!lines) return "";
 
   if (textMode == "invis") {
     textStream += "/GS0 gs\n";
@@ -202,7 +214,7 @@ async function hocrPageToPDF(hocrStr, dims, firstObjIndex, parentIndex, pageReso
   let lineOrigin = [0,0];
 
   // Move cursor to top of the page
-  textStream += "1 0 0 1 0 " + String(dims[0]) + " Tm\n";
+  textStream += "1 0 0 1 0 " + String(outputDims[0]) + " Tm\n";
 
   let pdfFontCurrent = "";
 
@@ -502,12 +514,7 @@ async function hocrPageToPDF(hocrStr, dims, firstObjIndex, parentIndex, pageReso
 
   textStream += "ET";
 
-  let pdfOut = String(firstObjIndex) + " 0 obj\n<</Length " + String(textStream.length) + " >>\nstream\n" + textStream + "\nendstream\nendobj\n\n";
-
-  // Start 2nd object: Page
-  pdfOut += String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(dims[1]) + " " + String(dims[0]) + "]";
-
-  pdfOut += "/Contents " + String(firstObjIndex) + " 0 R" + pageResourceStr + "/Parent " + parentIndex + " 0 R>>\nendobj\n\n";  
+  let pdfOut = String(firstObjIndex) + " 0 obj\n<</Length " + String(textStream.length) + " >>\nstream\n" + textStream + "\nendstream\nendobj\n\n" + secondObj;
   
   return pdfOut;
 

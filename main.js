@@ -3546,6 +3546,15 @@ async function handleDownload() {
     const maxValue = parseInt(pdfPageMaxElem.value)-1;
     const pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue);
 
+    let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
+    let dimsLimit = [-1,-1];
+    if (standardizeSizeMode) {
+      for (let i = minValue; i <= maxValue; i++) {
+        dimsLimit[0] = Math.max(dimsLimit[0], globalThis.pageMetricsObj["dimsAll"][i][0]);
+        dimsLimit[1] = Math.max(dimsLimit[1], globalThis.pageMetricsObj["dimsAll"][i][1]);
+      }
+    }
+
     // The progress bar is incremented by 1 when each page of the text overlay is completed (within hocrToPDF).
     // When images are inserted into the pdf the progress is also incremented after each image is rendered. 
     const maxValueProgress = addOverlayCheckboxElem.checked ? maxValue + 1 : (maxValue+1) * 2;
@@ -3566,7 +3575,10 @@ async function handleDownload() {
       // (as the mupdf part of the code expects both the background and overlay pdf to have corresponding page numbers)
       // Consider reworking if performance hit is meaningful.
       const invisibleText = displayModeElem.value == "invis";
-      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, downloadProgress);
+
+      // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
+      // and assume that the overlay PDF is the same size as the input images. 
+      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, [-1,-1], downloadProgress);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -3578,16 +3590,6 @@ async function handleDownload() {
       // const fileData = await pdfOverlayBlob.arrayBuffer();
       // The file name is only used to detect the ".pdf" extension
       const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
-
-      let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
-      let dimsLimit = [-1,-1];
-      if (standardizeSizeMode) {
-        for (let i = minValue; i <= maxValue; i++) {
-          dimsLimit[0] = Math.max(dimsLimit[0], globalThis.pageMetricsObj["dimsAll"][i][0]);
-          dimsLimit[1] = Math.max(dimsLimit[1], globalThis.pageMetricsObj["dimsAll"][i][1]);
-        }
-      }
-    
 
       let content;
 
@@ -3607,7 +3609,7 @@ async function handleDownload() {
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 	    
     } else {
-      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, autoRotateCheckboxElem.checked, downloadProgress);
+      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, autoRotateCheckboxElem.checked, dimsLimit, downloadProgress);
       pdfBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
     }
     saveAs(pdfBlob, fileName);
