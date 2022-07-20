@@ -31,6 +31,7 @@ import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
 import { evalWord, evalWords } from "./js/compareHOCR.js";
 
+import { hocrToPDF } from "./js/exportPDF.js";
 
 // Third party libraries
 import { simd } from "./lib/wasm-feature-detect.js";
@@ -244,6 +245,9 @@ enableEnginesElem.addEventListener('click', () => {
 });
 
 
+const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
+const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
+
 
 const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
@@ -351,7 +355,9 @@ document.getElementById('buildLabelOptionVanilla').addEventListener('click', () 
 
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
-recognizeAllElem.addEventListener('click', recognizeAll);
+recognizeAllElem.addEventListener('click', () => {
+  globalThis.state.recognizeAllPromise = recognizeAll();
+});
 // const recognizePageElem = /** @type {HTMLInputElement} */(document.getElementById('recognizePage'));
 // recognizePageElem.addEventListener('click', () => {recognizePages(true)});
 
@@ -669,16 +675,27 @@ function initializeProgress(id, maxValue, initValue = 0) {
   progressBar.setAttribute("aria-valuemax", maxValue);
   progressCollapseObj.show()
 
-  return (progressBar);
+  const progressObj = {"elem": progressBar, "value": initValue, "maxValue": maxValue, "increment": async function() {
+    this.value++;
+    if ((this.value + 1) % 5 == 0 || (this.value + 1) == this.maxValue) {
+      this.elem.setAttribute("aria-valuenow", (this.value + 1).toString());
+      this.elem.setAttribute("style", "width: " + ((this.value + 1) / maxValue * 100) + "%");
+      await sleep(0);
+    }
+  }} 
+
+  return (progressObj);
 
 }
+
+
 
 // Hides progress bar if completed
 function hideProgress(id) {
   const progressCollapse = document.getElementById(id);
   if (progressCollapse.getAttribute("class") == "collapse show") {
     const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
-    if (parseInt(progressBar.getAttribute("aria-valuenow")) == parseInt(progressBar.getAttribute("aria-valuemax"))) {
+    if (parseInt(progressBar.getAttribute("aria-valuenow")) >= parseInt(progressBar.getAttribute("aria-valuemax"))) {
       progressCollapse.setAttribute("class", "collapse");
     }
   }
@@ -1450,6 +1467,8 @@ async function recognizeAll() {
 
   renderPageQueue(currentPage.n);
 
+  return(true);
+
 }
 
 
@@ -2151,6 +2170,7 @@ async function clearFiles() {
   optimizeFontElem.checked = false;
   optimizeFontElem.disabled = true;
   downloadElem.disabled = true;
+  addOverlayCheckboxElem.disabled = true;
   confThreshHighElem.disabled = true;
   confThreshMedElem.disabled = true;
   recognizeAllElem.disabled = true;
@@ -2305,6 +2325,8 @@ async function importFiles() {
 
   if (curFiles.length == 0) return;
 
+  globalThis.state.importDone = false;
+
   globalThis.pageMetricsObj = {};
   globalThis.pageMetricsObj["angleAll"] = [];
   globalThis.pageMetricsObj["dimsAll"] = [];
@@ -2375,10 +2397,19 @@ async function importFiles() {
     option.text = "Binary";
     option.value = "binary";
     colorModeElem.add(option);
+
+    // For PDF inputs, enable "Add Text to Import PDF" option
+    if(inputDataModes.pdfMode) {
+      addOverlayCheckboxElem.checked = true;
+      addOverlayCheckboxElem.disabled = false;
+    } else {
+      addOverlayCheckboxElem.checked = false;
+      addOverlayCheckboxElem.disabled = true;
+    }
   }
 
-  imageFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
-  hocrFilesAll.sort();
+  imageFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
+  hocrFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
 
   // Check that input makes sense.  Valid options are:
   // (1) N HOCR files and 0 image files
@@ -2422,6 +2453,8 @@ async function importFiles() {
       // so a hard-cap on resolution must be imposed.
       const pageWidth1 = pageDims1.map((x) => x[0]);
       const pageDPI = pageWidth1.map((x) => Math.round(300 * 2000 / Math.max(x, 2000)));
+
+      console.log("DPI " + String(pageDPI));
 
       // In addition to capping the resolution, also switch the width/height
       const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
@@ -2599,8 +2632,8 @@ async function importFiles() {
         convertPage([globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(() => updateDataProgress());
       } else {
         const hocrFile = hocrFilesAll[i];
-        const hocrNi = hocrN + 1;
-        hocrN = hocrN + 1;
+        // const hocrNi = hocrN + 1;
+        // hocrN = hocrN + 1;
         //readOcrFile(hocrFile).then((x) => convertPageWorker.postMessage([x, hocrNi]));
         readOcrFile(hocrFile).then((x) => convertPage([x, i, undefined]).then(() => updateDataProgress()));
       }
@@ -2611,6 +2644,7 @@ async function importFiles() {
   // Enable downloads now for pdf imports if no HOCR data exists
   if (inputDataModes.pdfMode && !xmlModeImport) {
     downloadElem.disabled = false;
+    globalThis.state.importDone = true;
   }
 
   pageNumElem.value = "1";
@@ -2621,14 +2655,18 @@ async function importFiles() {
 async function initMuPDFScheduler(file, workers = 3) {
   globalThis.muPDFScheduler = await Tesseract.createScheduler();
   globalThis.muPDFScheduler["pngRenderCount"] = 0;
+  globalThis.muPDFScheduler["workers"] = new Array(workers); 
   for (let i = 0; i < workers; i++) {
     const w = await initMuPDFWorker();
-    const fileData = await file.arrayBuffer();
-    const pdfDoc = await w.openDocument(fileData, file.name);
-    w["pdfDoc"] = pdfDoc;
+    if(file) {
+      const fileData = await file.arrayBuffer();
+      const pdfDoc = await w.openDocument(fileData, file.name);
+      w["pdfDoc"] = pdfDoc;  
+    }
 
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
     globalThis.muPDFScheduler.addWorker(w);
+    globalThis.muPDFScheduler["workers"][i] = w;
   }
 }
 
@@ -2671,12 +2709,14 @@ export async function displayImage(n, image, binary = false) {
 // This function contains 2 distinct image rendering steps:
 // 1. Pages are rendered from .pdf to .png [either color or grayscale] using muPDF
 // 1. Existing .png images are processed (currently rotation and/or thresholding) using Tesseract/Leptonica
-async function renderPDFImageCache(pagesArr, rotate = null) {
+async function renderPDFImageCache(pagesArr, rotate = null, progress = null) {
 
   const colorMode = colorModeElem.value;
   const colorName = colorMode == "binary" ? "binary" : "native";
 
   await Promise.allSettled(pagesArr.map((n) => {
+
+    if (n < 0 || n >= globalThis.imageAll.native.length) return;
 
     // In imageMode, if the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image. 
     if(inputDataModes.imageMode && rotate == false && globalThis.imageAll["nativeRotated"][n] == true) {
@@ -2744,7 +2784,10 @@ async function renderPDFImageCache(pagesArr, rotate = null) {
     const rotateNative = colorName == "native" && (rotate == true && !globalThis.imageAll["nativeRotated"][n] && Math.abs(globalThis.pageMetricsObj["angleAll"][n]) > 0.05);
 
     // If nothing needs to be done, return early.
-    if (!(renderBinary || rotateBinary || rotateNative )) return;
+    if (!(renderBinary || rotateBinary || rotateNative )) {
+      if (progress) progress.increment();
+      return;
+    };
 
     // If no preference is specified for rotation, default to true
     const angleArg = rotate != false ? globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180) * -1 || 0 : 0;
@@ -2771,6 +2814,7 @@ async function renderPDFImageCache(pagesArr, rotate = null) {
         const image = document.createElement('img');
         await loadImage(res.data.imageOriginal, image);
         // displayImage(n, image, false);
+        if (progress && saveBinaryImageArg != "true") progress.increment();
         return(image);
       });  
     }
@@ -2780,6 +2824,7 @@ async function renderPDFImageCache(pagesArr, rotate = null) {
       globalThis.imageAll["binary"][n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
         await loadImage(res.data.imageBinary, image);
+        if(progress) progress.increment();
         // displayImage(n, image, true);
         return(image);
       });
@@ -2790,10 +2835,15 @@ async function renderPDFImageCache(pagesArr, rotate = null) {
 
 currentPage.renderNum = 0;
 
-let pageNumPending = null;
-let pageRendering = null; 
-let renderIt = 0;
-let promiseResolve;
+// Global object containing information regarding the application's state
+// (E.g. is a page currently rendering, is recognition currently running, etc.)
+globalThis.state = {
+  pageRendering : Promise.resolve(true),
+  renderIt : 0,
+  promiseResolve : undefined,
+  recognizeAllPromise : Promise.resolve(true),
+  importDone : false
+}
 
 //var backgroundOpts = {};
 // Function that handles page-level info for rendering to canvas and pdf
@@ -2807,20 +2857,16 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     return;
   }
 
-  const renderItI = renderIt + 1;
-  renderIt = renderItI;
+  const renderItI = globalThis.state.renderIt + 1;
+  globalThis.state.renderIt = renderItI;
 
   // If a page is already being rendered, wait for it to complete
-  if(pageRendering) {
-    await pageRendering;
-    // If another page has been requested already, return early
-    if(renderIt != renderItI) return;
-  }
+  await globalThis.state.pageRendering;
+  // If another page has been requested already, return early
+  if(globalThis.state.renderIt != renderItI) return;
 
-  // let promiseResolve;
-
-  pageRendering = new Promise(function(resolve, reject){
-    promiseResolve = resolve;
+  globalThis.state.pageRendering = new Promise(function(resolve, reject){
+    globalThis.state.promiseResolve = resolve;
   });
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
@@ -2973,7 +3019,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
       currentPage.renderStatus = currentPage.renderStatus + 1;
       selectDisplayMode(displayModeElem.value);
     } else {
-      promiseResolve();
+      globalThis.state.promiseResolve();
       return;
     }
 
@@ -2998,7 +3044,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     await renderPage(canvas, globalThis.doc, currentPage.xmlDoc, "pdf", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
   }
 
-  promiseResolve();
+  globalThis.state.promiseResolve();
   return;
 
 }
@@ -3140,122 +3186,6 @@ async function initSchedulerIfNeeded(x) {
   return(window[x]);
 }
 
-async function renderPDF() {
-
-  globalThis.doc = new PDFDocument({
-    margin: 0,
-    autoFirstPage: false
-  });
-
-  const stream = globalThis.doc.pipe(blobStream());
-
-  stream.on('finish', function () {
-    // get a blob you can do whatever you like with
-
-    // Note: Do not specify pdf MIME type.
-    // Due to a recent Firefox update, this causes the .pdf to be opened in the same tab (replacing the main site)
-    // https://support.mozilla.org/en-US/kb/manage-downloads-preferences-using-downloads-menu
-
-    //let url = stream.toBlobURL('application/pdf');
-    globalThis.downloadBlob = stream.toBlobURL();
-    let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
-
-    globalThis.saveAs(globalThis.downloadBlob, fileName);
-
-  });
-
-  let fontObjData = {};
-  //TODO: Edit so that only fonts used in the document are inserted into the PDF.
-  for (const [familyKey, familyObj] of Object.entries(globalThis.fontObj)) {
-    if (typeof (fontObjData[familyKey]) == "undefined") {
-      fontObjData[familyKey] = {};
-    }
-
-    for (const [key, value] of Object.entries(familyObj)) {
-
-      if (key == "small-caps") {
-        //Note: pdfkit has a bug where fonts with spaces in the name create corrupted files (they open in browser but not Adobe products)
-        //Taking all spaces out of font names as a quick fix--this can likely be removed down the line if patched.
-        //https://github.com/foliojs/pdfkit/issues/1314
-
-        const fontObjI = await globalThis.fontObj[familyKey][key];
-
-        fontObjI.tables.name.postScriptName["en"] = familyKey.replace(/\s+/g, "")        + "-SmallCaps";
-        fontObjI.tables.name.fontSubfamily["en"] = "SmallCaps";
-        fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
-
-        fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
-      } else if (key == "normal" && optimizeFontElem.checked && fontDataOptimized?.[familyKey]?.["normal"]) {
-        fontObjData[familyKey][key] = fontDataOptimized?.[familyKey]?.["normal"];
-      } else if (key == "italic" && optimizeFontElem.checked && fontDataOptimized?.[familyKey]?.["italic"]) {
-        fontObjData[familyKey][key] = fontDataOptimized?.[familyKey]?.["italic"];
-      } else {
-        const fontObjI = await globalThis.fontObj[familyKey][key];
-        fontObjI.tables.name.postScriptName["en"] = fontObjI.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
-        fontObjData[familyKey][key] = fontObjI.toArrayBuffer();
-      }
-
-      if(fontObjData[familyKey][key]) {
-        globalThis.doc.registerFont(familyKey + "-" + key, fontObjData[familyKey][key]);
-      }
-    }
-  }
-
-
-  let minValue = parseInt(pdfPageMinElem.value);
-  let maxValue = parseInt(pdfPageMaxElem.value);
-
-  let pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue - 1);
-
-  // Render all pages to PNG
-  if (inputDataModes.pdfMode && displayModeElem.value != "ebook") {
-
-    // TODO: Fix to work with promises
-    const pngRenderCount = 0;
-    //const pngRenderCount = [...Array(imageAll["native"].length).keys()].filter((x) => typeof (imageAll["native"][x]) == "object" && (colorModeElem.value == "binary" || imageAll["nativeColor"][x] == colorModeElem.value)).length;
-    if (pngRenderCount < globalThis.imageAll["native"].length) {
-
-      await initSchedulerIfNeeded("muPDFScheduler");
-
-    }
-  }
-
-  await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked);
-
-
-  let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
-  let dimsLimit = new Array(maxValue - minValue + 1);
-  dimsLimit.fill(0);
-  if (standardizeSizeMode) {
-    for (let i = (minValue - 1); i < maxValue; i++) {
-      dimsLimit[0] = Math.max(dimsLimit[0], globalThis.pageMetricsObj["dimsAll"][i][0]);
-      dimsLimit[1] = Math.max(dimsLimit[1], globalThis.pageMetricsObj["dimsAll"][i][1]);
-    }
-  }
-
-  const downloadProgress = initializeProgress("generate-download-progress-collapse", maxValue);
-
-  for (let i = (minValue - 1); i < maxValue; i++) {
-
-    await renderPageQueue(i, "pdf", true, false, dimsLimit);
-
-    // Update progress bar
-    if ((i + 1) % 5 == 0 || (i + 1) == maxValue) {
-      downloadProgress.setAttribute("aria-valuenow", (i + 1).toString());
-      downloadProgress.setAttribute("style", "width: " + ((i + 1) / maxValue * 100) + "%");
-      await sleep(0);
-
-    }
-
-  }
-
-  globalThis.doc.end();
-  
-  // Quick fix to avoid issues where the last page rendered would be mistaken for the last page on screen
-  renderPageQueue(currentPage.n);
-
-}
-
 // Modified version of code found in FileSaver.js
 globalThis.saveAs = function(blob, name, opts) {
   var a = document.createElement('a');
@@ -3309,12 +3239,22 @@ export async function optimizeFont2(fontFamily) {
   const promiseArr = [];
 
   fontDataOptimized[fontFamily]["normal"] = fontArr[0].toArrayBuffer();
-  globalThis.fontObj[fontFamily]["normal"] = loadFont(fontFamily, fontDataOptimized[fontFamily]["normal"], true);
+  const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
+  globalThis.fontObj[fontFamily]["normal"] = loadFont(fontFamily, fontDataOptimized[fontFamily]["normal"], true).then((x) => {
+    // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
+    x.kerningPairs = kerningPairs;
+    return(x);
+  });
   promiseArr.push(loadFontBrowser(fontFamily, "normal", fontDataOptimized[fontFamily]["normal"], true));
 
   if (!fontMetricI["italic"]) {
+    const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
     fontDataOptimized[fontFamily]["italic"] = fontArr[1].toArrayBuffer();
-    globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true);
+    globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true).then((x) => {
+      // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
+      x.kerningPairs = kerningPairs;
+      return(x);
+    });
     promiseArr.push(loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true));
   }
 
@@ -3338,8 +3278,13 @@ export async function optimizeFont2(fontFamily) {
   // Optimize italics if metrics exist to do so
   if (fontMetricI["italic"]) {
     fontArr = await optimizeFont(fontItalic, null, fontMetricI["italic"], "italic");
+    const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
     fontDataOptimized[fontFamily]["italic"] = fontArr[0].toArrayBuffer();
-    globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true);
+    globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true).then((x) => {
+      // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
+      x.kerningPairs = kerningPairs;
+      return(x);
+    });
     promiseArr.push(loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true));
   }
 
@@ -3381,14 +3326,12 @@ function convertPage(args) {
 // as well as after every image is loaded (not including .pdfs). 
 async function updateDataProgress(mainData = true, combMode = false) {
 
-  let activeProgress = convertPageWorker["activeProgress"];
+  let activeProgress = convertPageWorker["activeProgress"].elem;
 
   loadCountHOCR = loadCountHOCR + 1;
   activeProgress.setAttribute("aria-valuenow", loadCountHOCR);
 
   const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
-
-  // const combMode = valueMax == globalThis.imageAll.native.length * 2;
 
   // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
   // This can make the interface less jittery compared to updating after every loop.
@@ -3403,8 +3346,6 @@ async function updateDataProgress(mainData = true, combMode = false) {
   // It is assumed that all Legacy recognition will finish before any LSTM recognition begins, which may change in the future. 
   if ((!combMode && loadCountHOCR == valueMax) || (combMode && loadCountHOCR == globalThis.imageAll.native.length)) {
 
-    // Full-document stats (including font optimization) are only calulated for the "main" data, 
-      // Full-document stats (including font optimization) are only calulated for the "main" data, 
     // Full-document stats (including font optimization) are only calulated for the "main" data, 
     // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
     // those uploads to not cause new fonts to be created. 
@@ -3444,7 +3385,11 @@ async function updateDataProgress(mainData = true, combMode = false) {
         await optimizeFontClick(optimizeFontElem.checked);
       }
     }
-    downloadElem.disabled = false;
+    if (!globalThis.state.importDone) {
+      globalThis.state.importDone = true;
+      downloadElem.disabled = false;
+    }
+    
     // Render first handful of pages for pdfs so the interface starts off responsive
     if (inputDataModes.pdfMode) {
       renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
@@ -3452,8 +3397,6 @@ async function updateDataProgress(mainData = true, combMode = false) {
   }
   
 }
-
-
 
 convertPageWorker.onmessage = function (e) {
 
@@ -3594,8 +3537,80 @@ async function handleDownload() {
     }
   }
   let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();
+
+  // If recognition is currently running, wait for it to finish.
+  await globalThis.state.recognizeAllPromise;
+
   if (download_type == "pdf") {
-    await renderPDF();
+    const minValue = parseInt(pdfPageMinElem.value)-1;
+    const maxValue = parseInt(pdfPageMaxElem.value)-1;
+    const pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue);
+
+    // The progress bar is incremented by 1 when each page of the text overlay is completed (within hocrToPDF).
+    // When images are inserted into the pdf the progress is also incremented after each image is rendered. 
+    const maxValueProgress = addOverlayCheckboxElem.checked ? maxValue + 1 : (maxValue+1) * 2;
+
+    const downloadProgress = initializeProgress("generate-download-progress-collapse", maxValueProgress);
+    await sleep(0);
+  
+    const fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
+    let pdfBlob;
+
+    // For proof or ocr mode the text layer needs to be combined with a background layer
+    if (displayModeElem.value != "ebook") {
+
+      const insertInputPDF = globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked;
+      const rotateText = !insertInputPDF && autoRotateCheckboxElem.checked;
+
+      // Currently makes a pdf with all pages, regardless of what the user requests 
+      // (as the mupdf part of the code expects both the background and overlay pdf to have corresponding page numbers)
+      // Consider reworking if performance hit is meaningful.
+      const invisibleText = displayModeElem.value == "invis";
+      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, downloadProgress);
+
+      const enc = new TextEncoder();
+      const pdfEnc = enc.encode(pdfStr);
+
+      await initSchedulerIfNeeded("muPDFScheduler");
+
+      // const pdfOverlayBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
+      const w = globalThis.muPDFScheduler["workers"][0];
+      // const fileData = await pdfOverlayBlob.arrayBuffer();
+      // The file name is only used to detect the ".pdf" extension
+      const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
+
+      let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
+      let dimsLimit = [-1,-1];
+      if (standardizeSizeMode) {
+        for (let i = minValue; i <= maxValue; i++) {
+          dimsLimit[0] = Math.max(dimsLimit[0], globalThis.pageMetricsObj["dimsAll"][i][0]);
+          dimsLimit[1] = Math.max(dimsLimit[1], globalThis.pageMetricsObj["dimsAll"][i][1]);
+        }
+      }
+    
+
+      let content;
+
+      // If the input document is a .pdf and "Add Text to Import PDF" option is enabled, we insert the text into that pdf (rather than making a new one from scratch)
+      if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
+        content = await w.overlayText([pdfOverlay, minValue, maxValue, dimsLimit[1], dimsLimit[0]]);
+
+      // If the input is a series of images, those images need to be inserted into a new pdf
+      } else {
+        await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked, downloadProgress);
+        const imgArr1 = colorModeElem.value == "binary" ? await Promise.all(imageAll.binary): await Promise.all(imageAll.native);
+        const imgArr = imgArr1.map((x) => x.src);
+
+        content = await w.overlayTextImage([pdfOverlay, imgArr, minValue, maxValue, dimsLimit[1], dimsLimit[0]]);
+      } 
+
+  		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
+	    
+    } else {
+      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, autoRotateCheckboxElem.checked, downloadProgress);
+      pdfBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
+    }
+    saveAs(pdfBlob, fileName);
   } else if (download_type == "hocr") {
     renderHOCR(globalThis.hocrCurrent, globalThis.fontMetricsObj)
   } else if (download_type == "text") {

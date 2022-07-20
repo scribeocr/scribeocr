@@ -17,7 +17,7 @@ cy.wait(500);
 cy.wait(500)
     cy.get('#recognizeAll').click()
 
-    cy.wait(11000)
+    cy.wait(20000)
 
     cy.get('#nav-download-tab').click()
 cy.wait(500)
@@ -61,7 +61,7 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#recognizeAll').click()
 
-    cy.wait(12000)
+    cy.wait(20000)
 
     cy.get('#nav-view-tab').click()
 cy.wait(500)
@@ -85,7 +85,7 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#recognizeAll').click()
 
-    cy.wait(12000)
+    cy.wait(20000)
 
     cy.get('#nav-view-tab').click()
 cy.wait(500)
@@ -134,7 +134,7 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#recognizeAll').click()
 
-    cy.wait(12000)
+    cy.wait(20000)
 
     cy.get('#nav-download-tab').click()
 cy.wait(500)

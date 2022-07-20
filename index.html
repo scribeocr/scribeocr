@@ -108,8 +108,6 @@
 
   <script src="./lib/blob-stream.min.js" async></script>
 
-  <!-- Contains modified version of pdfkit.  Do not update without porting over changes. -->
-  <script src="./lib/pdfkit.standalone.min.js" async></script>
   <!-- Contains modified version of opentype.  Do not update without porting over changes. -->
   <script src="./lib/opentype.min.js" async></script>
 
@@ -747,11 +745,12 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   </div>
                 </div>
               </div>
-              <div class="col col-2">
+              <div class="col col-3">
                 <label>PDF Options</label>
                 <div class="form-check form-switch">
                   <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
                   <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page Size</label>
+                  <label><input class="form-check-input" type="checkbox" id="addOverlayCheckbox" disabled> Add Text to Import PDF</label>
                 </div>
               </div>
 

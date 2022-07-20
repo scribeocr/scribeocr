@@ -90,7 +90,9 @@ Module.onRuntimeInitialized = function () {
 	mupdf.pageHeight = Module.cwrap('pageHeight', 'number', ['number', 'number', 'number']);
 	mupdf.pageLinksJSON = Module.cwrap('pageLinks', 'string', ['number', 'number', 'number']);
 	mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number']);
-  mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number']);
+  	mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number']);
+	mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
+	mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number']);
 	mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
 	mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
 	mupdf.pageTextJSON = Module.cwrap('pageText', 'string', ['number', 'number', 'number']);
@@ -104,6 +106,40 @@ Module.onRuntimeInitialized = function () {
 	postMessage("READY");
 	ready = true;
 };
+
+mupdf.overlayText = function (doc1, doc2, minpage, maxpage, pagewidth, pageheight) {
+	// Module.FS_createDataFile("/", "test_1.pdf", data, 1, 1, 1);
+	// mupdf.writeDocument();
+	mupdf.overlayPDFText(doc1, doc2, minpage, maxpage, pagewidth, pageheight);
+	let content = FS.readFile("/download.pdf");
+
+	FS.unlink("/download.pdf");
+	// FS.unlink("/test_2.pdf");
+	return content;
+}
+
+// doc is ignored (the active document is always the first argument, although not used here)
+mupdf.overlayTextImage = function (doc, doc1, imageArr, minpage, maxpage, pagewidth, pageheight) {
+	for(let i=0;i<imageArr.length;i++) {
+		const pageNum = i + minpage;
+		const imgData = new Uint8Array(atob(imageArr[i].split(',')[1])
+        .split('')
+        .map(c => c.charCodeAt(0)));
+		Module.FS_createDataFile("/", String(pageNum) + ".png", imgData, 1, 1, 1);
+	}
+
+	mupdf.overlayPDFTextImage(doc1, minpage, maxpage, pagewidth, pageheight);
+	let content = FS.readFile("/download.pdf");
+
+	for(let i=0;i<imageArr.length;i++) {
+		const pageNum = i + minpage;
+		FS.unlink(String(pageNum) + ".png");
+	}
+
+	FS.unlink("/download.pdf");
+	// FS.unlink("/test_2.pdf");
+	return content;
+}
 
 mupdf.openDocument = function (data, magic) {
 	let n = data.byteLength;

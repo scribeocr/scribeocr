@@ -1,5 +1,5 @@
 
-import { getFontSize, calcWordWidth, calcWordMetrics } from "./textUtils.js"
+import { getFontSize, calcWordWidth, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
 import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
 import { round3 } from "./miscUtils.js"
 
@@ -110,25 +110,12 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       let box_width = box[2] - box[0];
       let box_height = box[3] - box[1];
 
-      // const angleAdjXWord = Math.abs(angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (box[0] - linebox[0]) : angleAdjXLine;
-
       let angleAdjXWord = angleAdjXLine;
       if((autoRotateCheckboxElem.checked) && Math.abs(angle) >= 1) {
 
         angleAdjXWord = angleAdjXWord + ((box[0] - linebox[0]) / cosAngle - (box[0] - linebox[0]));
 
-        // const x = box[0];
-        // const y = linebox[3] + baseline[1] + Math.tan(angle * (Math.PI/180)) * (box[0] - linebox[0]);
-
-        // const xRot = x * cosAngle - sinAngle * y;
-        // const yRot = x * sinAngle + cosAngle * y;
-
-        // const angleAdjXInt = x - xRot;
-  
-        // angleAdjXWord = angleAdjXInt + shiftX;
       }
-
-      // const angleAdjXWord = Math.abs(angle) >= 1 ? box[0] * cosAngle - sinAngle * y : angleAdjXLine;
 
 
       let wordText, wordSup, wordDropCap;
@@ -187,7 +174,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       }
 
 
-      let x_wconf;
       let confMatch = titleStr.match(/(?:;|\s)x_wconf\s+(\d+)/);
       let wordConf = 0;
       if (confMatch != null) {
@@ -212,17 +198,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         fillColorHex = "#ff0000";
       }
 
-      let missingKerning, kerning;
-      //let kerning;
-      let kerningMatch = styleStr.match(/letter-spacing\:([\d\.\-]+)/);
-      if (kerningMatch == null) {
-        kerning = 0;
-        missingKerning = true;
-      } else {
-        kerning = parseFloat(kerningMatch[1]);
-        missingKerning = false;
-      }
-
       const displayMode = document.getElementById('displayMode').value;
 
       let opacity_arg, fill_arg;
@@ -241,87 +216,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         fill_arg = fillColorHex
       }
 
+      const kerning = await calcCharSpacing(wordText, wordFontFamily, fontStyle, wordFontSize, box_width);
+
       const fontObjI = await fontObj[wordFontFamily][fontStyle];
-
-      if (fontStyle == "small-caps") {
-        ctx.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
-      } else {
-        ctx.font = fontStyle + " " + wordFontSize + 'px ' + wordFontFamily;
-      }
-
-      // Calculate font glyph metrics for precise positioning
-      let wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
       let wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
-
       let wordLeftBearing = wordFirstGlyphMetrics.xMin * (lineFontSize / fontObjI.unitsPerEm);
-      let wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (lineFontSize / fontObjI.unitsPerEm);
-
-
-      let wordWidth1 = ctx.measureText(wordText).width;
-      let wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing + (wordText.length - 1) * kerning;
-
-
-      //wordWidth = textbox.width
-      // If kerning is off, change the kerning value for both the canvas textbox and HOCR
-      if (wordText.length > 1 && Math.abs(box_width - wordWidth) > 1) {
-        kerning = round3(kerning + (box_width - wordWidth) / (wordText.length - 1));
-        if (missingKerning) {
-          if (styleStr.length > 0) {
-            styleStr = styleStr + ";";
-          }
-          styleStr = styleStr + "letter-spacing:" + kerning + "px";
-        } else {
-          styleStr = styleStr.replace(/(letter-spacing\:)([\d\.\-]+)/, "$1" + kerning);
-        }
-        word.setAttribute("style", styleStr);
-      }
-
-
-
-      // Add to PDF document (if that option is selected)
-      if (mode == "pdf") {
-
-        globalThis.doc.font(wordFontFamily + "-" + fontStyle);
-
-
-        let top;
-        if (wordSup || wordDropCap) {
-
-          let angleAdjYSup = sinAngle * (box[0] - linebox[0]) * -1;
-
-          if (wordSup) {
-            top = linebox[3] + baseline[1] + angleAdjYLine + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
-          } else {
-            top = box[3] + angleAdjYLine + angleAdjYSup;
-          }
-        } else {
-          top = linebox[3] + baseline[1] + angleAdjYLine;
-        }
-        let left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
-
-
-        // Characters that go off the edge will cause an additional case to be made.
-        // To avoid this, such characters are skipped.
-        if (top <= 0 || top + wordFontSize >= canvasHeight || left <= 0 || left + wordWidth >= canvasWidth) {
-          console.log("Skipping word: " + wordText);
-          continue;
-        }
-
-        globalThis.doc.fontSize(wordFontSize);
-        globalThis.doc.fillColor(fill_arg).fillOpacity(opacity_arg);
-
-        globalThis.doc.text(
-          wordText,
-          left,
-          top,
-          {
-            baseline: "alphabetic",
-            characterSpacing: kerning
-          })
-
-        // Otherwise, render to the canvas
-      } else {
-
 
         // The function fontBoundingBoxDescent currently is not enabled by default in Firefox.
         // Can return to this simpler code if that changes.
@@ -487,7 +386,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
         canvas.add(textbox);
 
-      }
     }
   }
 

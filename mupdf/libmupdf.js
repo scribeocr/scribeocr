@@ -982,26 +982,13 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 351864: function() {
-  throw "trylater";
- },
- 351886: function($0) {
+ 356312: function($0) {
   throw new Error(UTF8ToString($0));
  },
- 351925: function() {
+ 356351: function() {
   throw new Error("Cannot create MuPDF context!");
- },
- 351978: function($0, $1) {
-  fetcher.postMessage([ "READ", $0, $1 ]);
- },
- 352021: function($0) {
-  fetcher.postMessage([ "CLOSE", $0 ]);
  }
 };
-
-function js_init_fetch(state, url, content_length, block_shift) {
- fetcher.postMessage([ "OPEN", state, [ UTF8ToString(url), content_length, block_shift ] ]);
-}
 
 function callRuntimeCallbacks(callbacks) {
  while (callbacks.length > 0) {
@@ -3649,7 +3636,7 @@ var SYSCALLS = {
   HEAP32[buf + 24 >> 2] = stat.gid;
   HEAP32[buf + 28 >> 2] = stat.rdev;
   HEAP32[buf + 32 >> 2] = 0;
-  tempI64 = [ stat.size >>> 0, (tempDouble = stat.size, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ],
+  tempI64 = [ stat.size >>> 0, (tempDouble = stat.size, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
   HEAP32[buf + 40 >> 2] = tempI64[0], HEAP32[buf + 44 >> 2] = tempI64[1];
   HEAP32[buf + 48 >> 2] = 4096;
   HEAP32[buf + 52 >> 2] = stat.blocks;
@@ -3659,7 +3646,7 @@ var SYSCALLS = {
   HEAP32[buf + 68 >> 2] = 0;
   HEAP32[buf + 72 >> 2] = stat.ctime.getTime() / 1e3 | 0;
   HEAP32[buf + 76 >> 2] = 0;
-  tempI64 = [ stat.ino >>> 0, (tempDouble = stat.ino, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ],
+  tempI64 = [ stat.ino >>> 0, (tempDouble = stat.ino, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
   HEAP32[buf + 80 >> 2] = tempI64[0], HEAP32[buf + 84 >> 2] = tempI64[1];
   return 0;
  },
@@ -3829,6 +3816,17 @@ function ___sys_fcntl64(fd, cmd, varargs) {
  }
 }
 
+function ___sys_ftruncate64(fd, zero, low, high) {
+ try {
+  var length = SYSCALLS.get64(low, high);
+  FS.ftruncate(fd, length);
+  return 0;
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
 function ___sys_ioctl(fd, op, varargs) {
  SYSCALLS.varargs = varargs;
  try {
@@ -3900,6 +3898,28 @@ function ___sys_open(path, flags, varargs) {
   var mode = varargs ? SYSCALLS.get() : 0;
   var stream = FS.open(pathname, flags, mode);
   return stream.fd;
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
+function ___sys_rmdir(path) {
+ try {
+  path = SYSCALLS.getStr(path);
+  FS.rmdir(path);
+  return 0;
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
+function ___sys_unlink(path) {
+ try {
+  path = SYSCALLS.getStr(path);
+  FS.unlink(path);
+  return 0;
  } catch (e) {
   if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
   return -e.errno;
@@ -4069,7 +4089,7 @@ function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
    return -61;
   }
   FS.llseek(stream, offset, whence);
-  tempI64 = [ stream.position >>> 0, (tempDouble = stream.position, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ],
+  tempI64 = [ stream.position >>> 0, (tempDouble = stream.position, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
   HEAP32[newOffset >> 2] = tempI64[0], HEAP32[newOffset + 4 >> 2] = tempI64[1];
   if (stream.getdents && offset === 0 && whence === 0) stream.getdents = null;
   return 0;
@@ -4493,6 +4513,18 @@ FS.FSNode = FSNode;
 
 FS.staticInit();
 
+Module["FS_createPath"] = FS.createPath;
+
+Module["FS_createDataFile"] = FS.createDataFile;
+
+Module["FS_createPreloadedFile"] = FS.createPreloadedFile;
+
+Module["FS_createLazyFile"] = FS.createLazyFile;
+
+Module["FS_createDevice"] = FS.createDevice;
+
+Module["FS_unlink"] = FS.unlink;
+
 var ASSERTIONS = true;
 
 function intArrayFromString(stringy, dontAddNull, length) {
@@ -4506,8 +4538,11 @@ function intArrayFromString(stringy, dontAddNull, length) {
 var asmLibraryArg = {
  "__gmtime_r": ___gmtime_r,
  "__sys_fcntl64": ___sys_fcntl64,
+ "__sys_ftruncate64": ___sys_ftruncate64,
  "__sys_ioctl": ___sys_ioctl,
  "__sys_open": ___sys_open,
+ "__sys_rmdir": ___sys_rmdir,
+ "__sys_unlink": ___sys_unlink,
  "_emscripten_throw_longjmp": __emscripten_throw_longjmp,
  "emscripten_asm_const_int": _emscripten_asm_const_int,
  "emscripten_memcpy_big": _emscripten_memcpy_big,
@@ -4592,11 +4627,12 @@ var asmLibraryArg = {
  "invoke_viiiiiiiiii": invoke_viiiiiiiiii,
  "invoke_viiiiiiiiiii": invoke_viiiiiiiiiii,
  "invoke_viiiiiiiiiiiii": invoke_viiiiiiiiiiiii,
+ "invoke_viiiiiijj": invoke_viiiiiijj,
+ "invoke_viiiij": invoke_viiiij,
  "invoke_viiij": invoke_viiij,
  "invoke_viij": invoke_viij,
  "invoke_viiji": invoke_viiji,
  "invoke_vij": invoke_vij,
- "js_init_fetch": js_init_fetch,
  "setTempRet0": _setTempRet0,
  "strftime": _strftime,
  "time": _time,
@@ -4617,8 +4653,6 @@ var _saveSetjmp = Module["_saveSetjmp"] = createExportWrapper("saveSetjmp");
 
 var _free = Module["_free"] = createExportWrapper("free");
 
-var _openDocumentFromStream = Module["_openDocumentFromStream"] = createExportWrapper("openDocumentFromStream");
-
 var _freeDocument = Module["_freeDocument"] = createExportWrapper("freeDocument");
 
 var _countPages = Module["_countPages"] = createExportWrapper("countPages");
@@ -4628,6 +4662,10 @@ var _pageText = Module["_pageText"] = createExportWrapper("pageText");
 var _doDrawPageAsPNG = Module["_doDrawPageAsPNG"] = createExportWrapper("doDrawPageAsPNG");
 
 var _doDrawPageAsPNGGray = Module["_doDrawPageAsPNGGray"] = createExportWrapper("doDrawPageAsPNGGray");
+
+var _overlayPDFText = Module["_overlayPDFText"] = createExportWrapper("overlayPDFText");
+
+var _overlayPDFTextImage = Module["_overlayPDFTextImage"] = createExportWrapper("overlayPDFTextImage");
 
 var _getLastDrawData = Module["_getLastDrawData"] = createExportWrapper("getLastDrawData");
 
@@ -4655,13 +4693,17 @@ var _outlineDown = Module["_outlineDown"] = createExportWrapper("outlineDown");
 
 var _outlineNext = Module["_outlineNext"] = createExportWrapper("outlineNext");
 
-var _onFetchData = Module["_onFetchData"] = createExportWrapper("onFetchData");
-
-var _openURL = Module["_openURL"] = createExportWrapper("openURL");
+var _memset = Module["_memset"] = createExportWrapper("memset");
 
 var ___errno_location = Module["___errno_location"] = createExportWrapper("__errno_location");
 
 var _fflush = Module["_fflush"] = createExportWrapper("fflush");
+
+var _emscripten_main_thread_process_queued_calls = Module["_emscripten_main_thread_process_queued_calls"] = createExportWrapper("emscripten_main_thread_process_queued_calls");
+
+var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function() {
+ return (_emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = Module["asm"]["emscripten_stack_get_end"]).apply(null, arguments);
+};
 
 var __get_tzname = Module["__get_tzname"] = createExportWrapper("_get_tzname");
 
@@ -4683,13 +4725,7 @@ var _emscripten_stack_get_free = Module["_emscripten_stack_get_free"] = function
  return (_emscripten_stack_get_free = Module["_emscripten_stack_get_free"] = Module["asm"]["emscripten_stack_get_free"]).apply(null, arguments);
 };
 
-var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function() {
- return (_emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = Module["asm"]["emscripten_stack_get_end"]).apply(null, arguments);
-};
-
 var _setThrew = Module["_setThrew"] = createExportWrapper("setThrew");
-
-var dynCall_viiji = Module["dynCall_viiji"] = createExportWrapper("dynCall_viiji");
 
 var dynCall_jji = Module["dynCall_jji"] = createExportWrapper("dynCall_jji");
 
@@ -4698,6 +4734,8 @@ var dynCall_iji = Module["dynCall_iji"] = createExportWrapper("dynCall_iji");
 var dynCall_vij = Module["dynCall_vij"] = createExportWrapper("dynCall_vij");
 
 var dynCall_jii = Module["dynCall_jii"] = createExportWrapper("dynCall_jii");
+
+var dynCall_viiji = Module["dynCall_viiji"] = createExportWrapper("dynCall_viiji");
 
 var dynCall_iiijj = Module["dynCall_iiijj"] = createExportWrapper("dynCall_iiijj");
 
@@ -4710,6 +4748,10 @@ var dynCall_viij = Module["dynCall_viij"] = createExportWrapper("dynCall_viij");
 var dynCall_iij = Module["dynCall_iij"] = createExportWrapper("dynCall_iij");
 
 var dynCall_viiij = Module["dynCall_viiij"] = createExportWrapper("dynCall_viiij");
+
+var dynCall_viiiij = Module["dynCall_viiiij"] = createExportWrapper("dynCall_viiiij");
+
+var dynCall_viiiiiijj = Module["dynCall_viiiiiijj"] = createExportWrapper("dynCall_viiiiiijj");
 
 var dynCall_jiij = Module["dynCall_jiij"] = createExportWrapper("dynCall_jiij");
 
@@ -4820,6 +4862,39 @@ function invoke_viii(index, a1, a2, a3) {
  }
 }
 
+function invoke_viiiii(index, a1, a2, a3, a4, a5) {
+ var sp = stackSave();
+ try {
+  wasmTable.get(index)(a1, a2, a3, a4, a5);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_viiff(index, a1, a2, a3, a4) {
+ var sp = stackSave();
+ try {
+  wasmTable.get(index)(a1, a2, a3, a4);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_viiiifi(index, a1, a2, a3, a4, a5, a6) {
+ var sp = stackSave();
+ try {
+  wasmTable.get(index)(a1, a2, a3, a4, a5, a6);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
 function invoke_viiii(index, a1, a2, a3, a4) {
  var sp = stackSave();
  try {
@@ -4864,17 +4939,6 @@ function invoke_iiiii(index, a1, a2, a3, a4) {
  }
 }
 
-function invoke_viiiii(index, a1, a2, a3, a4, a5) {
- var sp = stackSave();
- try {
-  wasmTable.get(index)(a1, a2, a3, a4, a5);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
 function invoke_viiiiiiifi(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
  var sp = stackSave();
  try {
@@ -4890,17 +4954,6 @@ function invoke_viiiiiifi(index, a1, a2, a3, a4, a5, a6, a7, a8) {
  var sp = stackSave();
  try {
   wasmTable.get(index)(a1, a2, a3, a4, a5, a6, a7, a8);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_viiiifi(index, a1, a2, a3, a4, a5, a6) {
- var sp = stackSave();
- try {
-  wasmTable.get(index)(a1, a2, a3, a4, a5, a6);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
@@ -5000,17 +5053,6 @@ function invoke_viiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
  var sp = stackSave();
  try {
   wasmTable.get(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_viiff(index, a1, a2, a3, a4) {
- var sp = stackSave();
- try {
-  wasmTable.get(index)(a1, a2, a3, a4);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
@@ -5524,6 +5566,28 @@ function invoke_viiij(index, a1, a2, a3, a4, a5) {
  }
 }
 
+function invoke_viiiij(index, a1, a2, a3, a4, a5, a6) {
+ var sp = stackSave();
+ try {
+  dynCall_viiiij(index, a1, a2, a3, a4, a5, a6);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_viiiiiijj(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
+ var sp = stackSave();
+ try {
+  dynCall_viiiiiijj(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
 function invoke_jiij(index, a1, a2, a3, a4) {
  var sp = stackSave();
  try {
@@ -5637,45 +5701,29 @@ if (!Object.getOwnPropertyDescriptor(Module, "writeAsciiToMemory")) Module["writ
  abort("'writeAsciiToMemory' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");
 };
 
-if (!Object.getOwnPropertyDescriptor(Module, "addRunDependency")) Module["addRunDependency"] = function() {
- abort("'addRunDependency' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["addRunDependency"] = addRunDependency;
 
-if (!Object.getOwnPropertyDescriptor(Module, "removeRunDependency")) Module["removeRunDependency"] = function() {
- abort("'removeRunDependency' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["removeRunDependency"] = removeRunDependency;
 
 if (!Object.getOwnPropertyDescriptor(Module, "FS_createFolder")) Module["FS_createFolder"] = function() {
  abort("'FS_createFolder' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");
 };
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createPath")) Module["FS_createPath"] = function() {
- abort("'FS_createPath' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createPath"] = FS.createPath;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createDataFile")) Module["FS_createDataFile"] = function() {
- abort("'FS_createDataFile' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createDataFile"] = FS.createDataFile;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createPreloadedFile")) Module["FS_createPreloadedFile"] = function() {
- abort("'FS_createPreloadedFile' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createPreloadedFile"] = FS.createPreloadedFile;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createLazyFile")) Module["FS_createLazyFile"] = function() {
- abort("'FS_createLazyFile' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createLazyFile"] = FS.createLazyFile;
 
 if (!Object.getOwnPropertyDescriptor(Module, "FS_createLink")) Module["FS_createLink"] = function() {
  abort("'FS_createLink' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");
 };
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createDevice")) Module["FS_createDevice"] = function() {
- abort("'FS_createDevice' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createDevice"] = FS.createDevice;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_unlink")) Module["FS_unlink"] = function() {
- abort("'FS_unlink' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_unlink"] = FS.unlink;
 
 if (!Object.getOwnPropertyDescriptor(Module, "getLEB")) Module["getLEB"] = function() {
  abort("'getLEB' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");

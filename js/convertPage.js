@@ -440,15 +440,21 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
             const bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
             const cuts_ex = cuts[j] / lineXHeightTess;
 
-            if (!fontMetricsObj[fontFamily][style]["advance"][charUnicode]) {
-              fontMetricsObj[fontFamily][style]["advance"][charUnicode] = [];
+            // Only record space between characters when text is moving forward
+            // This *should* always be true, however there are some fringe cases where this assumption does not hold,
+            // such as Tesseract identifying the same character twice. 
+            if (cuts[j] + charWidth > 0) {
+              if (!fontMetricsObj[fontFamily][style]["advance"][charUnicode]) {
+                fontMetricsObj[fontFamily][style]["advance"][charUnicode] = [];
+              }
+              fontMetricsObj[fontFamily][style]["advance"][charUnicode].push(cuts_ex);
+  
+              if (!fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode]) {
+                fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode] = [];
+              }
+              fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode].push(cuts_ex);
+  
             }
-            fontMetricsObj[fontFamily][style]["advance"][charUnicode].push(cuts_ex);
-
-            if (!fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode]) {
-              fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode] = [];
-            }
-            fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode].push(cuts_ex);
           }
         }
 

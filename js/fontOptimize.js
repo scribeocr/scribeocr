@@ -76,6 +76,11 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
         let leftBearingAct = glyphI.leftSideBearing;
         shiftX = leftBearingCorrect - leftBearingAct;
 
+        // Reset shiftX to 0 if resulting advance would be very small or negative
+        if (shiftX + glyphI.advanceWidth < workingFont.unitsPerEm * 0.05) {
+          shiftX = 0;
+        }
+
       }
     }
 
