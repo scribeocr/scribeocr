@@ -807,7 +807,7 @@ globalThis.evalStats = [];
 async function compareGroundTruthClick(n) {
 
   // When a document/recognition is still loading only the page statistics can be calculated
-  const loadMode = loadCountHOCR && loadCountHOCR < parseInt(convertPageWorker["activeProgress"]?.getAttribute("aria-valuemax")) ? true : false;
+  const loadMode = loadCountHOCR && loadCountHOCR < parseInt(convertPageWorker["activeProgress"]?.elem?.getAttribute("aria-valuemax")) ? true : false;
 
   const evalStatsConfigNew = {};
   evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
@@ -879,7 +879,7 @@ async function compareGroundTruthClick(n) {
 }
 
 
-async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", charMetricsA = null, charMetricsB = null, n = null) {
+async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null) {
 
   hocrStrA = hocrStrA.replace(/compCount=['"]\d+['"]/g, "");
   hocrStrA = hocrStrA.replace(/compStatus=['"]\d+['"]/g, "");
@@ -1452,14 +1452,30 @@ async function recognizeAll() {
     config.tessedit_ocr_engine_mode = "1";
     await recognizePages(false, config, false, true);
   
-  
-    addDisplayLabel("Tesseract Combined");
-    setCurrentHOCR("Tesseract Combined");  
+    // Whether user uploaded data will be compared against in addition to both Tesseract engines
+    const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
+
+    if(userUploadMode) {
+      addDisplayLabel("Tesseract Combined");
+      setCurrentHOCR("Tesseract Combined");  
+    }
+
+    addDisplayLabel("Combined");
+    setCurrentHOCR("Combined");  
     
     for(let i=0;i<globalThis.imageAll["native"].length;i++) {
       console.log("Comparing page " + String(i+1));
-      globalThis.ocrAll["Tesseract Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", ocrAll["Tesseract Legacy"][i]["charMetrics"], ocrAll["Tesseract LSTM"][i]["charMetrics"], i);
-      globalThis.hocrCurrent[i] = ocrAll["Tesseract Combined"][i]["hocr"];
+
+      const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
+
+      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", i);
+      globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
+
+      // If the user uploaded data, compare to that as well
+      if(userUploadMode) {
+        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", i);
+        globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
+      }
     }  
   }
 
