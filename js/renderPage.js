@@ -235,7 +235,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
           baselineWord = box[3];
 
-          let angleAdjYWord;
+          let angleAdjYWord = angleAdjYLine;
 
           // Recalculate the angle adjustments (given different x and y coordinates)
           if ((autoRotateCheckboxElem.checked) && Math.abs(angle ?? 0) > 0.05) {
