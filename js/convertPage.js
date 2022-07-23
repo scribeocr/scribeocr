@@ -366,7 +366,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
             }
 
           // Quotes at the end of a word are assumed to be closing quotes
-          } else if (["“", "‘"].includes(contentStrLetter) && j > 0 && j + 1 == letterArr.length && /[a-z\d]/i.test(letterArr[j-1][2]) ) {
+          } else if (["“", "‘"].includes(contentStrLetter) && j > 0 && j + 1 == letterArr.length && /[a-z\d,]/i.test(letterArr[j-1][2]) ) {
             if(contentStrLetter == "‘") {
               contentStrLetter = "’";
             } else if (contentStrLetter == "“") {

@@ -29,7 +29,7 @@ import {
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
-import { evalWord, evalWords } from "./js/compareHOCR.js";
+import { evalWords, compareHOCR } from "./js/compareHOCR.js";
 
 import { hocrToPDF } from "./js/exportPDF.js";
 
@@ -178,15 +178,27 @@ globalThis.runOnLoad = function () {
 globalThis.canvasAlt = new fabric.Canvas('d');
 globalThis.ctxAlt = canvasAlt.getContext('2d');
 
+globalThis.canvasComp1 = new fabric.Canvas('e');
+globalThis.ctxComp1 = canvasAlt.getContext('2d');
+
+globalThis.canvasComp2 = new fabric.Canvas('f');
+globalThis.ctxComp2 = canvasAlt.getContext('2d');
+
+globalThis.canvasDebug = new fabric.Canvas('g');
+globalThis.ctxDebug = canvasAlt.getContext('2d');
+
+
 // // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
 canvasAlt.overlayVpt = false;
+globalThis.canvasComp1.overlayVpt = false;
+globalThis.canvasComp2.overlayVpt = false;
+globalThis.canvasDebug.overlayVpt = false;
+
 // // Turn off (some) automatic rendering of canvas
 canvasAlt.renderOnAddRemove = false;
-
-// Simplified version of evalWord for debugging from the console
-globalThis.evalWord = function(word, altText = null) {
-  evalWord(word, currentPage.n, altText, true);
-}
+canvasComp1.renderOnAddRemove = false;
+canvasComp2.renderOnAddRemove = false;
+canvasDebug.renderOnAddRemove = false;
 
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
 
@@ -352,7 +364,8 @@ document.getElementById('psmLabelOption4').addEventListener('click', () => { set
 document.getElementById('buildLabelOptionDefault').addEventListener('click', () => { setBuildLabel("default") });
 document.getElementById('buildLabelOptionVanilla').addEventListener('click', () => { setBuildLabel("vanilla") });
 
-
+const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
+showConflictsElem.addEventListener('input', showDebugImages);
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 recognizeAllElem.addEventListener('click', () => {
@@ -416,6 +429,7 @@ pageNumElem.addEventListener('keyup', function (event) {
       rangeLeftMarginElem.value = 200 + globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
       canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
       renderPageQueue(currentPage.n);
+      showDebugImages();
 
       // Render 1 page ahead and behind
       if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {
@@ -820,6 +834,7 @@ async function compareGroundTruthClick(n) {
     globalThis.evalStats = new Array(globalThis.imageAll["native"].length);
     for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
       const res = await compareHOCR(globalThis.hocrCurrent[i], globalThis.ocrAll["Ground Truth"][i]["hocr"]);
+      globalThis.hocrCurrent[i] = res[0].documentElement.outerHTML;
       globalThis.evalStats[i] = res[1];
     }
     globalThis.evalStatsConfig = evalStatsConfigNew;
@@ -878,339 +893,6 @@ async function compareGroundTruthClick(n) {
 
 }
 
-
-async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null) {
-
-  hocrStrA = hocrStrA.replace(/compCount=['"]\d+['"]/g, "");
-  hocrStrA = hocrStrA.replace(/compStatus=['"]\d+['"]/g, "");
-
-  hocrStrB = hocrStrB.replace(/compCount=['"]\d+['"]/g, "");
-  hocrStrB = hocrStrB.replace(/compStatus=['"]\d+['"]/g, "");
-
-  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
-  const hocrB = parser.parseFromString(hocrStrB, "text/xml");
-
-  const hocrALines = hocrA.getElementsByClassName("ocr_line");
-  const hocrBLines = hocrB.getElementsByClassName("ocr_line");
-
-  const hocrAOverlap = {};
-  const hocrBOverlap = {};
-  const hocrBCorrect = {};
-
-  //let minLineB = 0;
-  for (let i = 0; i < hocrALines.length; i++) {
-    const hocrALine = hocrALines[i];
-    const titleStrLineA = hocrALine.getAttribute('title');
-    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-
-    //for (let j = minLineB; j < hocrBLines.length; j++){
-    for (let j = 0; j < hocrBLines.length; j++) {
-      const hocrBLine = hocrBLines[j];
-      const titleStrLineB = hocrBLine.getAttribute('title');
-      const lineBoxB = [...titleStrLineB.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-
-      // If top of line A is below bottom of line B, move to next line B
-      if (lineBoxA[1] > lineBoxB[3]) {
-        //minLineB = minLineB + 1;
-        continue;
-
-        // If top of line B is below bottom of line A, move to next line A
-        // (We assume no match is possible for any B)
-      } else if (lineBoxB[1] > lineBoxA[3]) {
-        //break;
-        continue;
-
-        // Otherwise, there is possible overlap
-      } else {
-
-        let minWordB = 0;
-        const hocrAWords = hocrALine.getElementsByClassName("ocrx_word");
-        const hocrBWords = hocrBLine.getElementsByClassName("ocrx_word");
-
-        for (let k = 0; k < hocrAWords.length; k++) {
-          const hocrAWord = hocrAWords[k];
-          const hocrAWordID = hocrAWord.getAttribute("id");
-
-          // If option is set to ignore punctuation and the current "word" conly contains punctuation,
-          // exit early with options that will result in the word being printed in green.
-          if (ignorePunctElem.checked && !hocrAWord.textContent.replace(/[\W_]/g, "")) {
-            hocrAWord.setAttribute("compCount", "1");
-            hocrAWord.setAttribute("compStatus", "1");
-          }
-
-
-          //if (j == minLineB) hocrAWord.setAttribute("compCount", "0");
-          hocrAWord.setAttribute("compCount", hocrAWord.getAttribute("compCount") || "0");
-
-          const titleStrWordA = hocrAWord.getAttribute('title');
-          const wordBoxA = [...titleStrWordA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-
-          // Remove 10% from all sides of bounding box
-          // This prevents small overlapping (around the edges) from triggering a comparison
-          const wordBoxAWidth = wordBoxA[2] - wordBoxA[0];
-          const wordBoxAHeight = wordBoxA[3] - wordBoxA[1];
-
-          const wordBoxACore = JSON.parse(JSON.stringify(wordBoxA));
-
-          wordBoxACore[0] = wordBoxA[0] + Math.round(wordBoxAWidth * 0.1);
-          wordBoxACore[2] = wordBoxA[2] - Math.round(wordBoxAWidth * 0.1);
-
-          wordBoxACore[1] = wordBoxA[1] + Math.round(wordBoxAHeight * 0.1);
-          wordBoxACore[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
-
-
-          for (let l = minWordB; l < hocrBWords.length; l++) {
-
-            const hocrBWord = hocrBWords[l];
-            const hocrBWordID = hocrBWord.getAttribute("id");
-            const titleStrWordB = hocrBWord.getAttribute('title');
-            const wordBoxB = [...titleStrWordB.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-
-            // Remove 10% from all sides of ground truth bounding box
-            // This prevents small overlapping (around the edges) from triggering a comparison
-            const wordBoxBWidth = wordBoxB[2] - wordBoxB[0];
-            const wordBoxBHeight = wordBoxB[3] - wordBoxB[1];
-
-            const wordBoxBCore = JSON.parse(JSON.stringify(wordBoxB));
-
-            wordBoxBCore[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
-            wordBoxBCore[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
-
-            wordBoxBCore[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
-            wordBoxBCore[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
-
-            // If left of word A is past right of word B, move to next word B
-            if (wordBoxACore[0] > wordBoxBCore[2]) {
-              minWordB = minWordB + 1;
-              continue;
-
-              // If left of word B is past right of word A, move to next word A
-              // (We assume no match is possible for any B)
-            } else if (wordBoxBCore[0] > wordBoxACore[2]) {
-              break;
-
-              // Otherwise, overlap is likely
-            } else {
-              // Check for overlap using word height
-              if (wordBoxACore[1] > wordBoxBCore[3] || wordBoxBCore[1] > wordBoxACore[3]) {
-                continue;
-              }
-
-              hocrAWord.setAttribute("compCount", (parseInt(hocrAWord.getAttribute("compCount")) + 1).toString());
-              let wordTextA = replaceLigatures(hocrAWord.textContent);
-              let wordTextB = replaceLigatures(hocrBWord.textContent);
-              if (ignorePunctElem.checked) {
-                // Punctuation next to numbers is not ignored, even if this setting is enabled, as punctuation differences are
-                // often/usually substantive in this context (e.g. "-$1,000" vs $1,000" or "$100" vs. "$1.00")
-                wordTextA = wordTextA.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
-                wordTextB = wordTextB.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
-              }
-              if (ignoreCapElem.checked) {
-                wordTextA = wordTextA.toLowerCase();
-                wordTextB = wordTextB.toLowerCase();
-              }
-
-              hocrAOverlap[hocrAWordID] = 1;
-              hocrBOverlap[hocrBWordID] = 1;
-
-              // TODO: Account for cases without 1-to-1 mapping between bounding boxes
-              if (wordTextA == wordTextB) {
-                hocrAWord.setAttribute("compStatus", "1");
-                hocrBCorrect[hocrBWordID] = 1;
-
-                if(mode == "comb") {
-                  // If the words match, add 10 points to the confidence score
-                  const x_wconf = parseInt(titleStrWordA.match(/x_wconf\s+(\d+)/)?.[1]);
-                  hocrAWord.setAttribute("title", titleStrWordA.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(Math.max(x_wconf + 10, 100))));
-                }
-
-              } else {
-
-                if(mode == "comb") {
-
-                  hocrAWord.setAttribute("title", titleStrWordA.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(0)));
-
-                  // If the words do not match, set to low confidence
-                  hocrAWord.setAttribute("compStatus", hocrAWord.getAttribute("compStatus") || "0");
-
-
-                  // Check if there is a 1-to-1 comparison between words (this is usually true)
-                  const oneToOne = Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxA[2]) < (wordBoxA[2] - wordBoxA[0]) * 0.1;
-                
-                  let twoToOne = false;
-                  let wordsAArr = [];
-                  let wordsBArr = [];
-
-                  // If there is no 1-to-1 comparison, check if a 2-to-1 comparison is possible using the next word in either dataset
-                  if(!oneToOne){
-                    if(wordBoxA[2] < wordBoxB[2]) {
-                      if(hocrAWord.nextSibling) {
-                        const titleStrWordANext = hocrAWord.nextSibling.getAttribute('title');
-                        wordBoxB[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
-                        wordBoxB[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
-            
-                        wordBoxB[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
-                        wordBoxB[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
-            
-                        const wordBoxANext = [...titleStrWordANext.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-                        if(Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxANext[2]) < (wordBoxANext[2] - wordBoxA[0]) * 0.1) {
-                          twoToOne = true;
-                          wordsAArr.push(hocrAWord);
-                          wordsAArr.push(hocrAWord.nextSibling);
-                          wordsBArr.push(hocrBWord);
-                        }
-                      }
-                    } else {
-                      if(hocrBWord.nextSibling) {
-                        const titleStrWordBNext = hocrBWord.nextSibling.getAttribute('title');
-                        const wordBoxBNext = [...titleStrWordBNext.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-                        if(Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxA[2] - wordBoxBNext[2]) < (wordBoxBNext[2] - wordBoxA[0]) * 0.1) {
-                          twoToOne = true;
-                          wordsAArr.push(hocrAWord);
-                          wordsBArr.push(hocrBWord);
-                          wordsBArr.push(hocrBWord.nextSibling);
-                        }
-                      }
-                    }
-                  }
-
-                
-                  // Only consider switching word contents if their bounding boxes are close together
-                  // This should filter off cases where 2+ words in one dataset match to 1 word in another
-                  // TODO: Account for cases without 1-to-1 mapping between bounding boxes
-                  if(!oneToOne && !twoToOne) {
-                    console.log("Skipping words due to low overlap: " + wordTextA + " [Legacy] " + wordTextB + " [LSTM]");
-                    continue;
-                  };
-
-                  const replaceItalic = false;
-
-
-                  // Tesseract Legacy commonly identifies letters as numbers (usually 1).
-                  // This does not just happen with "l"--in test documents "r" and "i" were also misidentified as "1" multiple times. 
-                  const replaceNum = /[a-z]\d[a-z]/i.test(hocrAWord.innerHTML);
-
-                  const replaceII = /[a-z]ii|ii[a-z]/.test(hocrAWord.innerHTML);
-
-                  let replaceMetrics = false;
-
-                  let hocrAError = 0;
-                  let hocrBError = 0;
-
-                  if(oneToOne) {
-                    // TODO: Figure out how to compare between small caps/non small-caps words (this is the only relevant style as it is the only style LSTM detects)
-                    hocrAError = await evalWord(hocrAWord, n, null);
-                    hocrBError = await evalWord(hocrAWord, n, hocrBWord.innerHTML);
-
-                    console.log("Legacy Word: " + hocrAWord.innerHTML + " [Error: " + String(hocrAError) + "]");
-                    console.log("LSTM Word: " + hocrBWord.innerHTML + " [Error: " + String(hocrBError) + "]");
-  
-                  } else if (twoToOne) {
-                    const hocrError = await evalWords(wordsAArr, wordsBArr, n);
-                    hocrAError = hocrError[0];
-                    hocrBError = hocrError[1];
-
-                    console.log("Legacy Word: " + wordsAArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrAError) + "]");
-                    console.log("LSTM Word: " + wordsBArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrBError) + "]");
-  
-                  }
-                  
-                  if(hocrBError < hocrAError) {
-                    replaceMetrics = true;
-                  }
-
-                  const replaceAny = replaceItalic || replaceNum || replaceII || replaceMetrics;
-            
-                  if(replaceAny) {
-                    const skip = ["eg","ie"].includes(hocrAWord.innerHTML.replace(/\W/g,""));
-                    if(!skip){
-                      if(oneToOne){
-                        hocrAWord.innerHTML = hocrBWord.innerHTML;
-
-
-                        let styleStrA = hocrAWord.getAttribute("style") ?? "";
-                        let styleStrB = hocrBWord.getAttribute("style") ?? "";
-
-                        // Switch to small caps/non-small caps based on style of replacement word. 
-                        // This is not relevant for italics as the LSTM engine does not detect italics. 
-                        if(/small-caps/.test(styleStrB) && !/small-caps/.test(styleStrA)) {
-                          styleStrA = styleStrA.replace(/font\-style[^;]*(;|$)/i,"").replace(/;$/, "");
-                          styleStrA = styleStrA.replace(/font\-variant[^;]*(;|$)/i,"").replace(/;$/, "");
-                          styleStrA = styleStrA + ";font-variant:small-caps";
-                          hocrAWord.setAttribute("style", styleStrA);
-                        } else if (!/small-caps/.test(styleStrB) && /small-caps/.test(styleStrA)) {
-                          styleStrA = styleStrA.replace(/font\-style[^;]*(;|$)/i,"").replace(/;$/, "");
-                          styleStrA = styleStrA.replace(/font\-variant[^;]*(;|$)/i,"").replace(/;$/, "");
-                          hocrAWord.setAttribute("style", styleStrA);
-                        }
-
-                      } else {
-                        const wordsBArrRep = wordsBArr.map((x) => x.cloneNode(true));
-
-                        const styleStrWordA = hocrAWord.getAttribute('style');
-
-                        for(let i=0;i<wordsBArrRep.length;i++) {
-
-                          // Use font variant from word A (assumed to be Tesseract Legacy)
-                          const fontVariant = styleStrWordA?.match(/font-variant\:\w+/)?.[0];
-                          if(fontVariant) {
-                            const styleStrWordB = wordsBArrRep[i].getAttribute('style')?.replace(/font-variant\:\w+/, "") || "";
-                            wordsBArrRep[i].setAttribute("style", styleStrWordB + ";" + fontVariant);
-                          }
-                          // Set confidence to 0
-                          const titleStrWord = wordsBArrRep[i].getAttribute('title');
-                          wordsBArrRep[i].setAttribute("title", titleStrWord.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(0)));
-
-                          // Change ID so there are no duplicates
-                          wordsBArrRep[i].id = wordsBArrRep[i].id + "b";
-
-                        }
-
-                        hocrAWord.replaceWith(...wordsBArrRep);
-                        k = k + wordsBArrRep.length - 1;
-                      }
-                      
-                    }
-                    
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (mode == "comb") {
-    return hocrA.documentElement.outerHTML;
-  }
-  
-  // Note: These metrics leave open the door for some fringe edge cases.
-  // For example,
-
-  // Number of words in ground truth
-  const totalCountB = hocrB.getElementsByClassName("ocrx_word").length;
-
-  // Number of words in candidate OCR
-  const totalCountA = hocrA.getElementsByClassName("ocrx_word").length;
-
-  // Number of words in ground truth with any overlap with candidate OCR
-  const overlapCountB = Object.keys(hocrBOverlap).length;
-
-  // Number of words in candidate OCR with any overlap with ground truth
-  const overlapCountA = Object.keys(hocrAOverlap).length;
-
-  // Number of words in ground truth correctly identified by 1+ overlapping word in candidate OCR
-  const correctCount = Object.keys(hocrBCorrect).length;
-
-  // Number of words in ground truth not identified by 1+ overlapping word in candidate OCR
-  const incorrectCount = overlapCountB - correctCount;
-
-  const metricsRet = [totalCountB, correctCount, incorrectCount, (totalCountB - overlapCountB), (totalCountA - overlapCountA)];
-
-  return ([hocrA, metricsRet]);
-}
 
 
 
@@ -1275,12 +957,6 @@ async function recognizeArea(imageCoords, wordMode = false) {
 function calcWordBaseline(wordbox, linebox, baseline) {
   // Adjust box such that top/bottom approximate those coordinates at the leftmost point
   const lineboxAdj = linebox.slice();
-
-  // if (baseline[0] < 0) {
-  //   lineboxAdj[1] = lineboxAdj[1] - (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
-  // } else {
-  //   lineboxAdj[3] = lineboxAdj[3] - (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
-  // }
 
   const wordboxXMid = wordbox[0] + (wordbox[2] - wordbox[0]) / 2;
 
@@ -1455,25 +1131,40 @@ async function recognizeAll() {
     // Whether user uploaded data will be compared against in addition to both Tesseract engines
     const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
 
+    const debugMode = true;
+
+    if(debugMode) {
+      globalThis.debugImg = {};
+      globalThis.debugImg["Combined"] = new Array(globalThis.imageAll["native"].length);
+      for(let i=0; i < globalThis.imageAll["native"].length; i++) {
+        globalThis.debugImg["Combined"][i] = [];
+      }
+    }
+
     if(userUploadMode) {
       addDisplayLabel("Tesseract Combined");
       setCurrentHOCR("Tesseract Combined");  
+      if (debugMode) {
+        globalThis.debugImg["Tesseract Combined"] = new Array(globalThis.imageAll["native"].length);
+        for(let i=0; i < globalThis.imageAll["native"].length; i++) {
+          globalThis.debugImg["Tesseract Combined"][i] = [];
+        }
+      }
     }
 
     addDisplayLabel("Combined");
-    setCurrentHOCR("Combined");  
+    setCurrentHOCR("Combined");      
     
     for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-      console.log("Comparing page " + String(i+1));
 
       const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
 
-      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", i);
+      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", i, tessCombinedLabel);
       globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
 
       // If the user uploaded data, compare to that as well
       if(userUploadMode) {
-        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", i);
+        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", i, "Combined");
         globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
       }
     }  
@@ -1485,6 +1176,49 @@ async function recognizeAll() {
 
   return(true);
 
+}
+
+async function showDebugImages() {
+
+  if (!showConflictsElem.checked) {
+    canvasDebug.clear();
+    document.getElementById("g")?.setAttribute("style", "display:none");
+    return;
+  }
+
+  canvasDebug.clear();
+  document.getElementById("g")?.setAttribute("style", "");
+
+  if (!globalThis.debugImg?.Combined?.[currentPage.n]) return;
+
+  const imgArr = globalThis.debugImg.Combined[currentPage.n];
+
+  let top = 0;
+  let leftMax = 150;
+
+  for (let i=0; i<imgArr.length; i++) {
+    const img1 = imgArr[i][0];
+    const img2 = imgArr[i][1];
+
+    const imgElem1 = document.createElement('img');
+    await loadImage(img1, imgElem1);
+    const imgElem2 = document.createElement('img');
+    await loadImage(img2, imgElem2);
+
+    const imgFab1 = new fabric.Image(imgElem1, {left: 0, top: top});
+    const imgFab2 = new fabric.Image(imgElem2, {left: imgElem1.width + 10, top: top});
+
+    canvasDebug.add(imgFab1);
+    canvasDebug.add(imgFab2);
+
+    top += imgElem1.height + 10;
+    leftMax = Math.max(leftMax, imgElem1.width + imgElem2.width + 10);
+  }
+
+  canvasDebug.setWidth(leftMax);
+  canvasDebug.setHeight(top);
+
+  canvasDebug.renderAll();
 }
 
 
@@ -3088,6 +2822,8 @@ async function onPrevPage(marginAdj) {
 
   await renderPageQueue(currentPage.n);
 
+  showDebugImages();
+
   // Render 1 page back
   if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {
     const nMax = parseInt(pageCountElem.textContent);
@@ -3122,6 +2858,8 @@ async function onNextPage() {
   canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
 
   await renderPageQueue(currentPage.n);
+
+  showDebugImages();
 
   // Render 1 page ahead
   if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {

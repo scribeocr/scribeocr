@@ -217,7 +217,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
       const fontObjI = await fontObj[wordFontFamily][fontStyle];
       let wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
-      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (lineFontSize / fontObjI.unitsPerEm);
+
+      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
 
         // The function fontBoundingBoxDescent currently is not enabled by default in Firefox.
         // Can return to this simpler code if that changes.
@@ -226,28 +227,43 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
         let fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
 
-        let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
+        let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
 
-        let left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
+        let baselineWord;
         let top;
         if (wordSup || wordDropCap) {
 
-          let angleAdjYSup = sinAngle * (box[0] - linebox[0]) * -1;
+          baselineWord = box[3];
 
-          // In the special case of superscripts and dropcaps, the wordFontSize should always be used to determine fontDesc.
-          // fontSize, which may carry over from other words, will not be applicable. 
-          fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
-          if (wordSup) {
-            top = linebox[3] + baseline[1] + fontDesc + angleAdjYLine + (box[3] - (linebox[3] + baseline[1])) + angleAdjYSup;
-          } else {
-            top = box[3] + fontDesc + angleAdjYLine + angleAdjYSup;
+          let angleAdjYWord;
+
+          // Recalculate the angle adjustments (given different x and y coordinates)
+          if ((autoRotateCheckboxElem.checked) && Math.abs(angle ?? 0) > 0.05) {
+
+            const x = box[0];
+            const y = box[3];
+      
+            const xRot = x * cosAngle - sinAngle * y;
+            const yRot = x * sinAngle + cosAngle * y;
+      
+            const angleAdjXInt = x - xRot;
+            // const angleAdjYInt = y - yRot;
+      
+            // const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
+            const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
+      
+            angleAdjXWord = angleAdjXInt + shiftX;
+            angleAdjYWord = angleAdjYInt + shiftY;
+      
           }
 
-
-          //top = linebox[3] + baseline[1] + fontDesc + angleAdjY;
+          top = box[3] + fontDesc + angleAdjYWord;
+      
         } else {
           top = linebox[3] + baseline[1] + fontDesc + angleAdjYLine;
         }
+
+        const left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
 
         let wordFontFamilyCanvas = fontStyle == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
         let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;

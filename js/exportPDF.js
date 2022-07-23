@@ -407,6 +407,10 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
         } else {
           fillColor = "1 0 0 rg";
         }  
+      } else if (textMode == "eval") {
+        const compStatus = word.match(/compStatus\=[\'\"]([^\'\"]+)/)?.[1] ?? "";
+        const matchTruth = compStatus == "1";
+        fillColor = matchTruth ? "0 1 0.5 rg" : "1 0 0 rg";
       }
 
       const sinAngle = 0;

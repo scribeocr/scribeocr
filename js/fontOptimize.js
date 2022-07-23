@@ -298,12 +298,14 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     // Given the amount of overlap between these glyphs, this metric is rarely accurate. 
     if (key == "102,102" && type == "italic") continue;
 
-    let nameFirst = key.match(/\w+/)[0];
-    let nameSecond = key.match(/\w+$/)[0];
+    const nameFirst = key.match(/\w+/)[0];
+    const nameSecond = key.match(/\w+$/)[0];
 
+    const charFirst = String.fromCharCode(parseInt(nameFirst));
+    const charSecond = String.fromCharCode(parseInt(nameSecond));
 
-    let indexFirst = workingFont.charToGlyphIndex(String.fromCharCode(parseInt(nameFirst)));
-    let indexSecond = workingFont.charToGlyphIndex(String.fromCharCode(parseInt(nameSecond)));
+    const indexFirst = workingFont.charToGlyphIndex(charFirst);
+    const indexSecond = workingFont.charToGlyphIndex(charSecond);
 
     let fontKern = Math.round(value * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
 
