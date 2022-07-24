@@ -768,6 +768,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                     // hocrBError = (await evalWord(hocrAWord, n, hocrBWord.innerHTML)) + penalizeWord(hocrBWord.innerHTML);
 
                     if(debugLabel) {
+                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL()]);
                       globalThis.debugLog += "Legacy Word: " + hocrAWord.innerHTML + " [Error: " + String(hocrAError) + "]\n";
                       globalThis.debugLog += "LSTM Word: " + hocrBWord.innerHTML + " [Error: " + String(hocrBError) + "]\n";  
                     }
@@ -775,10 +776,6 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
 
                     // const hocrError = [0.1,0.1];
                     const hocrError = await evalWords(wordsAArr, wordsBArr, n, Boolean(debugLabel));
-
-                    if (debugLabel) {
-                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL()]);
-                    }
 
                     const wordsAText = wordsAArr.map((x) => x.innerHTML).join("");
                     const wordsBText =  wordsBArr.map((x) => x.innerHTML).join("");
@@ -802,6 +799,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
 
 
                     if(debugLabel) {
+                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL()]);
                       globalThis.debugLog += "Legacy Word: " + wordsAArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrAError) + "]\n";
                       globalThis.debugLog += "LSTM Word: " + wordsBArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrBError) + "]\n";
                     }

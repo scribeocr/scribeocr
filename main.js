@@ -2978,38 +2978,40 @@ export async function optimizeFont2(fontFamily) {
   fontNormal.tables.gsub = null;
   fontItalic.tables.gsub = null;
 
-  // Quick fix due to bug in pdfkit (see note in renderPDF function)
-  fontNormal.tables.name.postScriptName["en"] = fontNormal.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
-
-  // Italic fonts can be optimized in 2 ways.  If metrics exist for italics, then they are optimized using those (similar to normal fonts).
-  // If no metrics exist for italics, then a subset of optimizations are applied using metrics from the normal variant. 
-  const fontAuxArg = fontMetricI["italic"] ? null : fontItalic;
-  let fontArr = await optimizeFont(fontNormal, fontAuxArg, fontMetricI["normal"]);
-
-  if(!fontDataOptimized[fontFamily]){
-    fontDataOptimized[fontFamily] = {};
-  }
+  if(!fontDataOptimized[fontFamily]) fontDataOptimized[fontFamily] = {};
 
   const promiseArr = [];
 
-  fontDataOptimized[fontFamily]["normal"] = fontArr[0].toArrayBuffer();
-  const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
-  globalThis.fontObj[fontFamily]["normal"] = loadFont(fontFamily, fontDataOptimized[fontFamily]["normal"], true).then((x) => {
-    // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
-    x.kerningPairs = kerningPairs;
-    return(x);
-  });
-  promiseArr.push(loadFontBrowser(fontFamily, "normal", fontDataOptimized[fontFamily]["normal"], true));
+  // Quick fix due to bug in pdfkit (see note in renderPDF function)
+  // fontNormal.tables.name.postScriptName["en"] = fontNormal.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
-  if (!fontMetricI["italic"]) {
+  // Optimize normal font if metrics exist to do so
+  if (fontMetricI["normal"]) {
+
+    // Italic fonts can be optimized in 2 ways.  If metrics exist for italics, then they are optimized using those (similar to normal fonts).
+    // If no metrics exist for italics, then a subset of optimizations are applied using metrics from the normal variant. 
+    const fontAuxArg = fontMetricI["italic"] ? null : fontItalic;
+    const fontArr = await optimizeFont(fontNormal, fontAuxArg, fontMetricI["normal"]);
+
+    fontDataOptimized[fontFamily]["normal"] = fontArr[0].toArrayBuffer();
     const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
-    fontDataOptimized[fontFamily]["italic"] = fontArr[1].toArrayBuffer();
-    globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true).then((x) => {
+    globalThis.fontObj[fontFamily]["normal"] = loadFont(fontFamily, fontDataOptimized[fontFamily]["normal"], true).then((x) => {
       // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
       x.kerningPairs = kerningPairs;
       return(x);
     });
-    promiseArr.push(loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true));
+    promiseArr.push(loadFontBrowser(fontFamily, "normal", fontDataOptimized[fontFamily]["normal"], true));
+
+    if (!fontMetricI["italic"]) {
+      const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
+      fontDataOptimized[fontFamily]["italic"] = fontArr[1].toArrayBuffer();
+      globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true).then((x) => {
+        // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
+        x.kerningPairs = kerningPairs;
+        return(x);
+      });
+      promiseArr.push(loadFontBrowser(fontFamily, "italic", fontDataOptimized[fontFamily]["italic"], true));
+    }
   }
 
   // Create small caps font using optimized "normal" font as a starting point
@@ -3017,7 +3019,7 @@ export async function optimizeFont2(fontFamily) {
 
   // Optimize small caps if metrics exist to do so
   if (fontMetricI["small-caps"]) {
-    fontArr = await optimizeFont(globalThis.fontObj[fontFamily]["small-caps"], null, fontMetricI["small-caps"]);
+    const fontArr = await optimizeFont(globalThis.fontObj[fontFamily]["small-caps"], null, fontMetricI["small-caps"]);
     fontDataOptimized[fontFamily]["small-caps"] = fontArr[0].toArrayBuffer();
     const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
     globalThis.fontObj[fontFamily]["small-caps"] = loadFont(fontFamily + "-small-caps", fontDataOptimized[fontFamily]["small-caps"], true).then((x) => {
@@ -3031,7 +3033,7 @@ export async function optimizeFont2(fontFamily) {
 
   // Optimize italics if metrics exist to do so
   if (fontMetricI["italic"]) {
-    fontArr = await optimizeFont(fontItalic, null, fontMetricI["italic"], "italic");
+    const fontArr = await optimizeFont(fontItalic, null, fontMetricI["italic"], "italic");
     const kerningPairs = JSON.parse(JSON.stringify(fontArr[0].kerningPairs));
     fontDataOptimized[fontFamily]["italic"] = fontArr[0].toArrayBuffer();
     globalThis.fontObj[fontFamily]["italic"] = loadFont(fontFamily + "-italic", fontDataOptimized[fontFamily]["italic"], true).then((x) => {

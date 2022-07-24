@@ -30,6 +30,10 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     const glyphI = workingFont.charToGlyph("1");
     glyphI.path = JSON.parse(glyphAlts.sans_1_base);
   }
+  if(type == "italic" && globalThis.fontVariants.serif_italic_y && /libre/i.test(font.names.fontFamily.en)) {
+    const glyphI = workingFont.charToGlyph("y");
+    glyphI.path = JSON.parse(glyphAlts.serif_min_y);
+  }
 
   let oGlyph = workingFont.charToGlyph("o").getMetrics();
   let xHeight = oGlyph.yMax - oGlyph.yMin;
@@ -550,10 +554,14 @@ export function parseDebugInfo(debugTxt){
     const font = fontArr[i][3];
     const score = parseInt(fontArr[i][4]);
     const modalFontFamily = determineSansSerif(modalFont);
-    if(!globalThis.fontScores[modalFontFamily][char]) globalThis.fontScores[modalFontFamily][char] = {};
-    if(!globalThis.fontScores[modalFontFamily][char][font]) globalThis.fontScores[modalFontFamily][char][font] = 0;
+    const style = /italic/i.test(modalFont) ? "italic" : "normal";
 
-    globalThis.fontScores[modalFontFamily][char][font] = globalThis.fontScores[modalFontFamily][char][font] + score;
+
+    if(!globalThis.fontScores[modalFontFamily][style]) globalThis.fontScores[modalFontFamily][style] = {};
+    if(!globalThis.fontScores[modalFontFamily][style][char]) globalThis.fontScores[modalFontFamily][style][char] = {};
+    if(!globalThis.fontScores[modalFontFamily][style][char][font]) globalThis.fontScores[modalFontFamily][style][char][font] = 0;
+
+    globalThis.fontScores[modalFontFamily][style][char][font] = globalThis.fontScores[modalFontFamily][style][char][font] + score;
   }
   return;
 }
@@ -584,16 +592,22 @@ const base_1_regex = new RegExp(base_1.reduce((x,y) => x + '|' + y), 'i');
 const single_g = ["Arial", "Comic", "DejaVu", "Helvetica", "Impact", "Tahoma", "Verdana"];
 const single_g_regex = new RegExp(single_g.reduce((x,y) => x + '|' + y), 'i');
 
+// Fonts where cursive "y" has an open counter where the lowest point is to the left of the tail
+const min_y = ["Bookman", "Georgia"];
+const min_y_regex = new RegExp(min_y.reduce((x,y) => x + '|' + y), 'i');
+
 // While the majority of glyphs can be approximated by applying geometric transformations to a single sans and serif font,
 // there are some exceptions (e.g. the lowercase "g" has 2 distinct variations).
 // This function identifies variations that require switching out a glyph from the default font entirely. 
 export function identifyFontVariants(fontScores) {
   const variants = {};
 
-  const sans_g = calcTopFont(fontScores?.["Open Sans"]?.["g"]);
+  const sans_g = calcTopFont(fontScores?.["Open Sans"]?.["normal"]?.["g"]);
   variants["sans_g"] = single_g_regex.test(sans_g);
-  const sans_1 = calcTopFont(fontScores?.["Open Sans"]?.["1"]);
+  const sans_1 = calcTopFont(fontScores?.["Open Sans"]?.["normal"]?.["1"]);
   variants["sans_1"] = base_1_regex.test(sans_1);
+  const min_y = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["y"]);
+  variants["serif_italic_y"] = min_y_regex.test(min_y);
 
   return variants;
 }
