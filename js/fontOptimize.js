@@ -156,40 +156,23 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
 
   }
 
-  // Adjust character height
+  // Adjust height for capital letters
   const capsMult = xHeight * fontMetricsObj["heightCaps"] / fontAscHeight;
-  for (const [key, value] of Object.entries(fontMetricsObj["height"])) {
+  for (const key of [...Array(26).keys()].map((x) => x + 65)) {
 
-    // 33 is the first latin glyph (excluding space which is 32)
-    if (parseInt(key) < 33) { continue; }
-
-    const charLit = String.fromCharCode(parseInt(key));
-
-    // Currently only capital letters that start (approximately) at the baseline have their height adjusted.
-    //if(/[^A-Z]/.test(charLit) || ["J","Q"].includes(charLit)) { continue; }
-    if (/[^A-Z]/.test(charLit)) { continue; }
+    const charLit = String.fromCharCode(key);
 
     let glyphI = workingFont.charToGlyph(charLit);
-
-
-    let glyphIMetrics = glyphI.getMetrics();
-    //let glyphIHeight = glyphIMetrics.yMax - glyphIMetrics.yMin;
-    //let scaleYFactor = (value * xHeight) / glyphIHeight;
-
-    //scaleYFactor = Math.max(Math.min(scaleYFactor, 1.3), 0.7);
 
     for (let j = 0; j < glyphI.path.commands.length; j++) {
       let pointJ = glyphI.path.commands[j];
       if (pointJ.y != null) {
-        //pointJ.x = Math.round((pointJ.x - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
         pointJ.y = Math.round(pointJ.y * capsMult);
       }
       if (pointJ.y1 != null) {
-        //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
         pointJ.y1 = Math.round(pointJ.y1 * capsMult);
       }
       if (pointJ.y2 != null) {
-        //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
         pointJ.y2 = Math.round(pointJ.y2 * capsMult);
       }
 
@@ -200,15 +183,12 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
       for (let j = 0; j < glyphI2.path.commands.length; j++) {
         let pointJ = glyphI2.path.commands[j];
         if (pointJ.y != null) {
-          //pointJ.x = Math.round((pointJ.x - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
           pointJ.y = Math.round(pointJ.y * capsMult);
         }
         if (pointJ.y1 != null) {
-          //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
           pointJ.y1 = Math.round(pointJ.y1 * capsMult);
         }
         if (pointJ.y2 != null) {
-          //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
           pointJ.y2 = Math.round(pointJ.y2 * capsMult);
         }
       }
@@ -532,7 +512,9 @@ function calculateFontMetrics(fontMetricObj){
   // Take the median of each array
   for (let prop of ["width","height","desc","advance","kerning"]){
     for (let [key, value] of Object.entries(fontMetricObj[prop])) {
-      fontMetricOut[prop][key] = round6(quantile(value, 0.5));
+      if (value.length > 0) {
+        fontMetricOut[prop][key] = round6(quantile(value, 0.5));
+      }
     }  
   }
 

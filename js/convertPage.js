@@ -110,13 +110,11 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
   // let cutObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
   // let kerningObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
 
-  const fontMetricsObj = {};
+  const fontMetricsPage = {};
 
   const angleRisePage = [];
   const lineLeft = [];
   const lineTop = [];
-
-  const charMetricsPage = {};
 
   // If page dimensions are not provided as an argument, we assume that the entire image is being recognized
   // (so the width/height of the image bounding box is the same as the width/height of the image).
@@ -175,6 +173,8 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
   function convertLine(match) {
     let titleStrLine = match.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
     if (!titleStrLine) return;
+
+    const fontMetricsLine = {};
 
     let lineAscHeightArr = [];
     let lineXHeightArr = [];
@@ -308,8 +308,6 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
       }
 
-      charMetricsPage[wordID] = [];
-
       for (let j = 0; j < letterArr.length; j++) {
         // let titleStrLetter = letterArr[j][1];
         let contentStrLetter = letterArr[j][2];
@@ -398,31 +396,29 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
         }
 
         // const fontFamily = "Default";
-        if(!fontMetricsObj[fontFamily]){
-          fontMetricsObj[fontFamily] = {};
+        if(!fontMetricsLine[fontFamily]){
+          fontMetricsLine[fontFamily] = {};
         }
         for(const [style, value] of Object.entries(stylesLine)){
-          if(!fontMetricsObj[fontFamily][style]){
-            fontMetricsObj[fontFamily][style] = new fontMetrics();
+          if(!fontMetricsLine[fontFamily][style]){
+            fontMetricsLine[fontFamily][style] = new fontMetrics();
           }
         }
-
-        charMetricsPage[wordID].push([charWidth / lineXHeightTess, charHeight / lineXHeightTess, charDesc / lineXHeightTess]);
     
         // Add character metrics to appropriate array(s) for later font optimization.
         // Skip letters likely misidentified due to hallucination effect (where e.g. "v" is misidentified as "V") or small caps
-        // TODO: Also skip superscripts + drop caps
-        if (!(/[A-Z]/.test(contentStrLetter) && (charHeight / lineXHeightTess) < 1.2)) {
-          if (!fontMetricsObj[fontFamily][style]["width"][charUnicode]) {
-            fontMetricsObj[fontFamily][style]["width"][charUnicode] = [];
-            fontMetricsObj[fontFamily][style]["height"][charUnicode] = [];
-            fontMetricsObj[fontFamily][style]["desc"][charUnicode] = [];
+        const minCapsHeight = smallCaps ? 1.1 : 1.2; // Minimum believable caps height (as ratio to x-height)
+        if (!(/[A-Z]/.test(contentStrLetter) && (charHeight / lineXHeightTess) < minCapsHeight)) {
+          if (!fontMetricsLine[fontFamily][style]["width"][charUnicode]) {
+            fontMetricsLine[fontFamily][style]["width"][charUnicode] = [];
+            fontMetricsLine[fontFamily][style]["height"][charUnicode] = [];
+            fontMetricsLine[fontFamily][style]["desc"][charUnicode] = [];
           }
   
-          fontMetricsObj[fontFamily][style]["width"][charUnicode].push(charWidth / lineXHeightTess);
-          fontMetricsObj[fontFamily][style]["height"][charUnicode].push(charHeight / lineXHeightTess);
-          fontMetricsObj[fontFamily][style]["desc"][charUnicode].push((bboxes[j][3] - expectedBaseline) / lineXHeightTess);
-          fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
+          fontMetricsLine[fontFamily][style]["width"][charUnicode].push(charWidth);
+          fontMetricsLine[fontFamily][style]["height"][charUnicode].push(charHeight);
+          fontMetricsLine[fontFamily][style]["desc"][charUnicode].push((bboxes[j][3] - expectedBaseline));
+          fontMetricsLine[fontFamily][style]["obs"] = fontMetricsLine[fontFamily][style]["obs"] + 1;
 
           // Save character heights to array for font size calculations
           lineAllHeightArr.push(charHeight);
@@ -438,26 +434,26 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
             cuts[j] = bboxes[j][0] - bboxes[j - 1][2];
 
             const bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
-            const cuts_ex = cuts[j] / lineXHeightTess;
+            const cuts_ex = cuts[j];
 
             // Only record space between characters when text is moving forward
             // This *should* always be true, however there are some fringe cases where this assumption does not hold,
             // such as Tesseract identifying the same character twice. 
             if (cuts[j] + charWidth > 0) {
-              if (!fontMetricsObj[fontFamily][style]["advance"][charUnicode]) {
-                fontMetricsObj[fontFamily][style]["advance"][charUnicode] = [];
+              if (!fontMetricsLine[fontFamily][style]["advance"][charUnicode]) {
+                fontMetricsLine[fontFamily][style]["advance"][charUnicode] = [];
               }
-              fontMetricsObj[fontFamily][style]["advance"][charUnicode].push(cuts_ex);
+              fontMetricsLine[fontFamily][style]["advance"][charUnicode].push(cuts_ex);
   
-              if (!fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode]) {
-                fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode] = [];
+              if (!fontMetricsLine[fontFamily][style]["kerning"][bigramUnicode]) {
+                fontMetricsLine[fontFamily][style]["kerning"][bigramUnicode] = [];
               }
-              fontMetricsObj[fontFamily][style]["kerning"][bigramUnicode].push(cuts_ex);
+              fontMetricsLine[fontFamily][style]["kerning"][bigramUnicode].push(cuts_ex);
   
             }
           }
         }
-
+        if (contentStrLetter.length > 1) console.log(contentStrLetter);
         text = text + contentStrLetter;
       }
       text = text ?? "";
@@ -506,7 +502,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
         const wordBoxSuperStr = wordBoxSuper[0] + " " + wordBoxSuper[1] + " " + wordBoxSuper[2] + " " + wordBoxSuper[3];
 
-        const textSuper = wordStr.slice(letterArr.length, wordStr.length);
+        const textSuper = letterArrSuper.map((x) => x[2]).join('');
 
         const wordXMLSuper = wordXML.replace(/(\d+) (\d+) (\d+) (\d+)/, wordBoxSuperStr).replace(/id\=['"]([^'"]*)['"]/i, "id=\"$1a\"") + "<sup>" + textSuper + "</sup>" + "</span>";
 
@@ -545,6 +541,8 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
     let lineAscHeightCalc = quantile(lineAscHeightArr, 0.5);
     const lineXHeightCalc = quantile(lineXHeightArr, 0.5);
 
+    const lineXHeightFinal = lineXHeightCalc && Math.abs(lineXHeightTess - lineXHeightCalc) > 2 ? lineXHeightCalc : lineXHeightTess;
+
     // When Tesseract font size metrics are significantly different from those calculated here, replace them.
     if(lineAscHeightCalc && lineXHeightCalc) {
       if(Math.abs(lineXHeightTess - lineXHeightCalc) > 2){
@@ -559,6 +557,51 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
         match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
       }
     }
+
+
+    // Normalize character metrics collected earlier, add to page-level object
+    // This needs to happen after the corrected line x-height is calculated (as Tesseract's x-height calculation is often wrong for caps/small caps fonts)
+    if (lineXHeightFinal) {
+      for(const [family, obj] of Object.entries(fontMetricsLine)){
+        for(const [style, obj2] of Object.entries(obj)){
+          if (Object.keys(obj2["width"]).length == 0) continue;
+          if(!fontMetricsPage[family]){
+            fontMetricsPage[family] = {};
+          }
+          if(!fontMetricsPage[family][style]){
+            fontMetricsPage[family][style] = new fontMetrics();
+          }
+        }  
+      }
+
+      function unionSingleFontMetrics(fontMetricsA, fontMetricsB, xHeight){
+        // If one of the inputs is undefined, return early with the only valid object
+        if(fontMetricsA && !fontMetricsB){
+          return;
+        } else if (!fontMetricsA && fontMetricsB){
+          fontMetricsA = structuredClone(fontMetricsB);
+        } 
+      
+        if(fontMetricsB?.obs) fontMetricsA.obs = fontMetricsA.obs + fontMetricsB.obs;
+      
+        for (const [prop, obj] of Object.entries(fontMetricsB)) {
+          for (const [key, value] of Object.entries(obj)) {
+            if(!fontMetricsA[prop][key]){
+              fontMetricsA[prop][key] = [];
+            }
+            const valueNorm = value.map((x) => x / xHeight).filter((x) => x);
+            Array.prototype.push.apply(fontMetricsA[prop][key], valueNorm);
+          }  
+        }
+        return(fontMetricsA);
+      }
+
+      for(const [family, obj] of Object.entries(fontMetricsPage)){
+        for(const [style, obj2] of Object.entries(obj)){
+          unionSingleFontMetrics(fontMetricsPage?.[family]?.[style], fontMetricsLine?.[family]?.[style], lineXHeightFinal);
+        }  
+      }
+    }  
 
     return (match);
   }
@@ -694,9 +737,9 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
   const xmlOut = hocrString;
   const dimsOut = pageDims;
 
-  fontMetricsObj["message"] = charMode ? "" : "char_warning";
+  fontMetricsPage["message"] = charMode ? "" : "char_warning";
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, charMetricsPage]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsPage]);
 
 }
 
@@ -1246,6 +1289,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
   const dimsOut = pageDims;
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, {}]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
 
 }

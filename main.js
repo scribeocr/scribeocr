@@ -551,7 +551,7 @@ function setCurrentHOCR(x) {
     if (!globalThis.ocrAll[currentLabel]) {
       globalThis.ocrAll[currentLabel] = Array(globalThis.imageAll["native"].length);
       for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-        globalThis.ocrAll[currentLabel][i] = {hocr:null, charMetrics:{}};
+        globalThis.ocrAll[currentLabel][i] = {hocr:null};
       }
     }
     // globalThis.ocrAll[currentLabel]["hocr"] = globalThis.hocrCurrent;
@@ -562,7 +562,7 @@ function setCurrentHOCR(x) {
   if (!globalThis.ocrAll[x]) {
     globalThis.ocrAll[x] = Array(globalThis.imageAll["native"].length);
     for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-      globalThis.ocrAll[x][i] = {hocr:null, charMetrics:{}};
+      globalThis.ocrAll[x][i] = {hocr:null};
     }
   }
 
@@ -793,7 +793,7 @@ function createGroundTruthClick() {
   if (!globalThis.ocrAll["Ground Truth"]) {
     globalThis.ocrAll["Ground Truth"] = Array(globalThis.imageAll["native"].length);
     for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-      globalThis.ocrAll["Ground Truth"][i] = {hocr:null, charMetrics:{}};
+      globalThis.ocrAll["Ground Truth"][i] = {hocr:null};
     }
   }
 
@@ -3176,7 +3176,6 @@ convertPageWorker.onmessage = function (e) {
   // while the recognition job is running.
   if (argsObj["engine"] && argsObj["mode"] == "full") {
     globalThis.ocrAll[argsObj["engine"]][n]["hocr"] = e.data[0][0] || "<div class='ocr_page'></div>";
-    globalThis.ocrAll[argsObj["engine"]][n]["charMetrics"] = e.data[0][6];
     if (oemCurrent) {
       globalThis.hocrCurrent[n] = e.data[0][0] || "<div class='ocr_page'></div>";
     }
