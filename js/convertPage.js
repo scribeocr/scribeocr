@@ -534,27 +534,31 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
       match = match.replaceAll(wordRegex, convertWord);
     }
 
-    // Note that not all of these numbers are directly comparable to the Tesseract version
-    // For example, lineAscHeightCalc is the median height of an ascender,
-    // while x_ascenders from Tesseract is [ascender height] - [x height]
-    const lineAllHeightCalc = Math.max(...lineAllHeightArr);
-    let lineAscHeightCalc = quantile(lineAscHeightArr, 0.5);
-    const lineXHeightCalc = quantile(lineXHeightArr, 0.5);
+    let lineXHeightFinal;
 
-    const lineXHeightFinal = lineXHeightCalc && Math.abs(lineXHeightTess - lineXHeightCalc) > 2 ? lineXHeightCalc : lineXHeightTess;
+    if (lineXHeightTess) {
+      // Note that not all of these numbers are directly comparable to the Tesseract version
+      // For example, lineAscHeightCalc is the median height of an ascender,
+      // while x_ascenders from Tesseract is [ascender height] - [x height]
+      const lineAllHeightCalc = Math.max(...lineAllHeightArr);
+      let lineAscHeightCalc = quantile(lineAscHeightArr, 0.5);
+      const lineXHeightCalc = quantile(lineXHeightArr, 0.5);
 
-    // When Tesseract font size metrics are significantly different from those calculated here, replace them.
-    if(lineAscHeightCalc && lineXHeightCalc) {
-      if(Math.abs(lineXHeightTess - lineXHeightCalc) > 2){
-        match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
-        match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "$1" + (lineAscHeightCalc - lineXHeightCalc).toString());
-        match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
-      }
-    } else if (lineAscHeightCalc){
-      if(Math.abs((lineXHeightTess + lineAscHeightTess) - lineAscHeightCalc) > 2){
-        match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
-        match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "");
-        match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
+      lineXHeightFinal = lineXHeightCalc && Math.abs(lineXHeightTess - lineXHeightCalc) > 2 ? lineXHeightCalc : lineXHeightTess;
+
+      // When Tesseract font size metrics are significantly different from those calculated here, replace them.
+      if(lineAscHeightCalc && lineXHeightCalc) {
+        if(Math.abs(lineXHeightTess - lineXHeightCalc) > 2){
+          match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
+          match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "$1" + (lineAscHeightCalc - lineXHeightCalc).toString());
+          match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
+        }
+      } else if (lineAscHeightCalc){
+        if(Math.abs((lineXHeightTess + lineAscHeightTess) - lineAscHeightCalc) > 2){
+          match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
+          match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "");
+          match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
+        }
       }
     }
 

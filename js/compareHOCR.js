@@ -130,9 +130,9 @@ const calcLineFontSize = function(xmlElem) {
   
   
   
-let drawWordRender = async function(word, offsetX = 0, lineFontSize = null, altText = null, debugCanvas = null){
+let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText = null, debugCanvas = null){
 
-  lineFontSize = lineFontSize || calcLineFontSize(word);
+  lineFontSize = lineFontSize || calcLineFontSize(word) || 10;
 
   let styleStr = word.getAttribute('style') ?? "";
   // let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i)?.[1];
@@ -317,6 +317,8 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 0;
 
   const lineFontSize = calcLineFontSize(wordsA[0]);
+
+  if (!lineFontSize) return [1,1];
 
   // The font/style from the first word is used for the purposes of font metrics
   let styleStr = wordsA[0].getAttribute('style') ?? "";

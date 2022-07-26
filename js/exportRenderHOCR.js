@@ -1,8 +1,8 @@
 
 export function renderHOCR(hocrCurrent, fontMetricsObj) {
 
-  let minValue = parseInt(document.getElementById('pdfPageMin').value);
-  let maxValue = parseInt(document.getElementById('pdfPageMax').value);
+  let minValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMin')).value);
+  let maxValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMax')).value);
 
   const exportParser = new DOMParser();
   let firstPageStr;
@@ -57,7 +57,7 @@ export function renderHOCR(hocrCurrent, fontMetricsObj) {
 
   let hocrBlob = new Blob([hocrInt], { type: 'text/plain' });
 
-  let fileName = document.getElementById("downloadFileName").value.replace(/\.\w{1,4}$/, "") + ".hocr";
+  let fileName = /** @type {HTMLInputElement} */(document.getElementById("downloadFileName")).value.replace(/\.\w{1,4}$/, "") + ".hocr";
 
   saveAs(hocrBlob, fileName);
 }

@@ -24,16 +24,33 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
 
   if(type == "normal" && globalThis.fontVariants.sans_g && /sans/i.test(font.names.fontFamily.en)) {
     const glyphI = workingFont.charToGlyph("g");
-    glyphI.path = JSON.parse(glyphAlts.sans_g_single);
+    glyphI.path = JSON.parse(glyphAlts.sans_normal_g_single);
   }
   if(type == "normal" && globalThis.fontVariants.sans_1 && /sans/i.test(font.names.fontFamily.en)) {
     const glyphI = workingFont.charToGlyph("1");
-    glyphI.path = JSON.parse(glyphAlts.sans_1_base);
+    glyphI.path = JSON.parse(glyphAlts.sans_normal_1_base);
   }
   if(type == "italic" && globalThis.fontVariants.serif_italic_y && /libre/i.test(font.names.fontFamily.en)) {
     const glyphI = workingFont.charToGlyph("y");
-    glyphI.path = JSON.parse(glyphAlts.serif_min_y);
+    glyphI.path = JSON.parse(glyphAlts.serif_italic_y_min);
   }
+  if(type == "italic" && globalThis.fontVariants.serif_open_k && /libre/i.test(font.names.fontFamily.en)) {
+    const glyphI = workingFont.charToGlyph("k");
+    glyphI.path = JSON.parse(glyphAlts.serif_italic_k_open);
+  }
+  if(type == "italic" && globalThis.fontVariants.serif_pointy_vw && /libre/i.test(font.names.fontFamily.en)) {
+    const glyphI1 = workingFont.charToGlyph("v");
+    glyphI1.path = JSON.parse(glyphAlts.serif_italic_v_pointed);
+    const glyphI2 = workingFont.charToGlyph("w");
+    glyphI2.path = JSON.parse(glyphAlts.serif_italic_w_pointed);
+  }
+  if(type == "italic" && globalThis.fontVariants.serif_stem_sans_pq && /libre/i.test(font.names.fontFamily.en)) {
+    const glyphI1 = workingFont.charToGlyph("p");
+    glyphI1.path = JSON.parse(glyphAlts.serif_italic_p_sans_stem);
+    const glyphI2 = workingFont.charToGlyph("q");
+    glyphI2.path = JSON.parse(glyphAlts.serif_italic_q_sans_stem);
+  }
+
 
   let oGlyph = workingFont.charToGlyph("o").getMetrics();
   let xHeight = oGlyph.yMax - oGlyph.yMin;
@@ -146,7 +163,7 @@ export async function optimizeFont(font, auxFont, fontMetricsObj, type = "normal
     }
 
     // Do not adjust advance for italic "f".
-    if (key == "102" && type == "italic") continue;
+    // if (key == "102" && type == "italic") continue;
 
 
     glyphIMetrics = glyphI.getMetrics();
@@ -422,14 +439,14 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
   const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
 
   if (charGoodCt == 0 && charErrorCt > 0) {
-    document.getElementById("charInfoError").setAttribute("style", "");
+    document.getElementById("charInfoError")?.setAttribute("style", "");
     return;
   } else if (charGoodCt == 0 && charWarnCt > 0) {
 
     if (Object.keys(fontMetricsObj).length > 0) {
       optimizeFontElem.disabled = false;
     } else {
-      document.getElementById("charInfoAlert").setAttribute("style", "");
+      document.getElementById("charInfoAlert")?.setAttribute("style", "");
     }
   } else {
     optimizeFontElem.disabled = false;
@@ -592,9 +609,20 @@ const base_1_regex = new RegExp(base_1.reduce((x,y) => x + '|' + y), 'i');
 const single_g = ["Arial", "Comic", "DejaVu", "Helvetica", "Impact", "Tahoma", "Verdana"];
 const single_g_regex = new RegExp(single_g.reduce((x,y) => x + '|' + y), 'i');
 
-// Fonts where cursive "y" has an open counter where the lowest point is to the left of the tail
+// Fonts where italic "y" has an open counter where the lowest point is to the left of the tail
 const min_y = ["Bookman", "Georgia"];
 const min_y_regex = new RegExp(min_y.reduce((x,y) => x + '|' + y), 'i');
+
+// Fonts where italic "k" has a closed loop
+const closed_k = ["Century_Schoolbook"];
+const closed_k_regex = new RegExp(closed_k.reduce((x,y) => x + '|' + y), 'i');
+
+// Fonts where italic "v" and "w" is rounded (rather than pointy)
+const rounded_vw = ["Bookman", "Century_Schoolbook", "Georgia"];
+const rounded_vw_regex = new RegExp(rounded_vw.reduce((x,y) => x + '|' + y), 'i');
+
+const serif_stem_serif_pq = ["Bookman", "Century_Schoolbook", "Courier", "Georgia", "Times"];
+const serif_stem_serif_pq_regex = new RegExp(serif_stem_serif_pq.reduce((x,y) => x + '|' + y), 'i');
 
 // While the majority of glyphs can be approximated by applying geometric transformations to a single sans and serif font,
 // there are some exceptions (e.g. the lowercase "g" has 2 distinct variations).
@@ -608,6 +636,16 @@ export function identifyFontVariants(fontScores) {
   variants["sans_1"] = base_1_regex.test(sans_1);
   const min_y = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["y"]);
   variants["serif_italic_y"] = min_y_regex.test(min_y);
+  const closed_k = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["y"]);
+  variants["serif_open_k"] = !closed_k_regex.test(closed_k);
+
+  const rounded_v = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["v"]);
+  const rounded_w = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["w"]);
+  variants["serif_pointy_vw"] = !(rounded_vw_regex.test(rounded_v) || rounded_vw_regex.test(rounded_w));
+
+  const serif_italic_p = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["p"]);
+  const serif_italic_q = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["q"]);
+  variants["serif_stem_sans_pq"] = !(serif_stem_serif_pq_regex.test(serif_italic_p) || serif_stem_serif_pq_regex.test(serif_italic_q));
 
   return variants;
 }

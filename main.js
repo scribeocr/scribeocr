@@ -225,11 +225,11 @@ const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.g
 // If evaluate option is enabled, show tab and widen navbar to fit everything on the same row
 enableAdvancedRecognitionElem.addEventListener('click', () => {
   if (enableAdvancedRecognitionElem.checked) {
-    document.getElementById("advancedRecognitionOptions").setAttribute("style", "");
-    document.getElementById("basicRecognitionOptions").setAttribute("style", "display:none");
+    document.getElementById("advancedRecognitionOptions")?.setAttribute("style", "");
+    document.getElementById("basicRecognitionOptions")?.setAttribute("style", "display:none");
   } else {
-    document.getElementById("advancedRecognitionOptions").setAttribute("style", "display:none");
-    document.getElementById("basicRecognitionOptions").setAttribute("style", "");
+    document.getElementById("advancedRecognitionOptions")?.setAttribute("style", "display:none");
+    document.getElementById("basicRecognitionOptions")?.setAttribute("style", "");
   }
 });
 
@@ -239,20 +239,20 @@ const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('
 // If evaluate option is enabled, show tab and widen navbar to fit everything on the same row
 enableEvalElem.addEventListener('click', () => {
   if (enableEvalElem.checked) {
-    document.getElementById("nav-tab-container").setAttribute("class", "col-8 col-xl-7");
-    document.getElementById("nav-eval-tab").setAttribute("style", "");
+    document.getElementById("nav-tab-container")?.setAttribute("class", "col-8 col-xl-7");
+    document.getElementById("nav-eval-tab")?.setAttribute("style", "");
   } else {
-    document.getElementById("nav-tab-container").setAttribute("class", "col-8 col-xl-6");
-    document.getElementById("nav-eval-tab").setAttribute("style", "display:none");
+    document.getElementById("nav-tab-container")?.setAttribute("class", "col-8 col-xl-6");
+    document.getElementById("nav-eval-tab")?.setAttribute("style", "display:none");
   }
 });
 
 const enableEnginesElem = /** @type {HTMLInputElement} */(document.getElementById('enableExtraEngines'));
 enableEnginesElem.addEventListener('click', () => {
   if (enableEnginesElem.checked) {
-    document.getElementById("engineCol").setAttribute("style", "");
+    document.getElementById("engineCol")?.setAttribute("style", "");
   } else {
-    document.getElementById("engineCol").setAttribute("style", "display:none");
+    document.getElementById("engineCol")?.setAttribute("style", "display:none");
   }
 });
 
@@ -277,8 +277,8 @@ uploadOCRDataElem.addEventListener('show.bs.collapse', function () {
 })
 
 
-document.getElementById('fontMinus').addEventListener('click', () => { changeWordFontSize('minus') });
-document.getElementById('fontPlus').addEventListener('click', () => { changeWordFontSize('plus') });
+document.getElementById('fontMinus')?.addEventListener('click', () => { changeWordFontSize('minus') });
+document.getElementById('fontPlus')?.addEventListener('click', () => { changeWordFontSize('plus') });
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 fontSizeElem.addEventListener('change', (event) => { changeWordFontSize(fontSizeElem.value) });
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -297,21 +297,21 @@ const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
-document.getElementById('editBaseline').addEventListener('click', adjustBaseline);
+document.getElementById('editBaseline')?.addEventListener('click', adjustBaseline);
 
 const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
 rangeBaselineElem.addEventListener('input', (event) => { adjustBaselineRange(rangeBaselineElem.value) });
 rangeBaselineElem.addEventListener('mouseup', (event) => { adjustBaselineRangeChange(rangeBaselineElem.value) });
 
-document.getElementById('deleteWord').addEventListener('click', deleteSelectedWords);
+document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedWords);
 
-document.getElementById('addWord').addEventListener('click', addWordClick);
-document.getElementById('reset').addEventListener('click', clearFiles);
+document.getElementById('addWord')?.addEventListener('click', addWordClick);
+document.getElementById('reset')?.addEventListener('click', clearFiles);
 
-document.getElementById('zoomMinus').addEventListener('click', () => { changeZoom('minus') });
+document.getElementById('zoomMinus')?.addEventListener('click', () => { changeZoom('minus') });
 const zoomInputElem = /** @type {HTMLInputElement} */(document.getElementById('zoomInput'));
 zoomInputElem.addEventListener('change', (event) => { changeZoom(zoomInputElem.value) });
-document.getElementById('zoomPlus').addEventListener('click', () => { changeZoom('plus') });
+document.getElementById('zoomPlus')?.addEventListener('click', () => { changeZoom('plus') });
 
 // const displayFontElem = /** @type {HTMLInputElement} */(document.getElementById('displayFont'));
 // displayFontElem.addEventListener('change', (event) => { changeDisplayFont(displayFontElem.value) });
@@ -333,7 +333,7 @@ const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getEleme
 autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
 autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
 showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
-document.getElementById('showBoundingBoxes').addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
+document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
 
 const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
 rangeLeftMarginElem.addEventListener('input', () => { adjustMarginRange(rangeLeftMarginElem.value) });
@@ -347,22 +347,22 @@ displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.classNam
 
 const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
 downloadElem.addEventListener('click', handleDownload);
-document.getElementById('pdfPagesLabel').addEventListener('click', updatePdfPagesLabel);
+document.getElementById('pdfPagesLabel')?.addEventListener('click', updatePdfPagesLabel);
 
-document.getElementById('formatLabelOptionPDF').addEventListener('click', () => { setFormatLabel("pdf") });
-document.getElementById('formatLabelOptionHOCR').addEventListener('click', () => { setFormatLabel("hocr") });
-document.getElementById('formatLabelOptionText').addEventListener('click', () => { setFormatLabel("text") });
+document.getElementById('formatLabelOptionPDF')?.addEventListener('click', () => { setFormatLabel("pdf") });
+document.getElementById('formatLabelOptionHOCR')?.addEventListener('click', () => { setFormatLabel("hocr") });
+document.getElementById('formatLabelOptionText')?.addEventListener('click', () => { setFormatLabel("text") });
 
-document.getElementById('oemLabelOptionLstm').addEventListener('click', () => { setOemLabel("lstm") });
-document.getElementById('oemLabelOptionLegacy').addEventListener('click', () => { setOemLabel("legacy") });
-document.getElementById('oemLabelOptionCombined').addEventListener('click', () => { setOemLabel("combined") });
+document.getElementById('oemLabelOptionLstm')?.addEventListener('click', () => { setOemLabel("lstm") });
+document.getElementById('oemLabelOptionLegacy')?.addEventListener('click', () => { setOemLabel("legacy") });
+document.getElementById('oemLabelOptionCombined')?.addEventListener('click', () => { setOemLabel("combined") });
 
 
-document.getElementById('psmLabelOption3').addEventListener('click', () => { setPsmLabel("3") });
-document.getElementById('psmLabelOption4').addEventListener('click', () => { setPsmLabel("4") });
+document.getElementById('psmLabelOption3')?.addEventListener('click', () => { setPsmLabel("3") });
+document.getElementById('psmLabelOption4')?.addEventListener('click', () => { setPsmLabel("4") });
 
-document.getElementById('buildLabelOptionDefault').addEventListener('click', () => { setBuildLabel("default") });
-document.getElementById('buildLabelOptionVanilla').addEventListener('click', () => { setBuildLabel("vanilla") });
+document.getElementById('buildLabelOptionDefault')?.addEventListener('click', () => { setBuildLabel("default") });
+document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', () => { setBuildLabel("vanilla") });
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', showDebugImages);
@@ -474,54 +474,63 @@ function updatePdfPagesLabel() {
 
 }
 
+const formatLabelSVGElem = /** @type {HTMLElement} */(document.getElementById("formatLabelSVG"));
+const formatLabelTextElem = /** @type {HTMLElement} */(document.getElementById("formatLabelText"));
 
 function setFormatLabel(x) {
   if (x.toLowerCase() == "pdf") {
-    document.getElementById("formatLabelSVG").innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+    
+    formatLabelSVGElem.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
   <path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.266.266 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.71 12.71 0 0 1 1.01-.193 11.744 11.744 0 0 1-.51-.858 20.801 20.801 0 0 1-.5 1.05zm2.446.45c.15.163.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.876 3.876 0 0 0-.612-.053zM8.078 7.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>`
 
-    document.getElementById("formatLabelText").innerHTML = "PDF";
+  formatLabelTextElem.innerHTML = "PDF";
     downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
   } else if (x.toLowerCase() == "hocr") {
-    document.getElementById("formatLabelSVG").innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`
+    formatLabelSVGElem.innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`
 
-    document.getElementById("formatLabelText").innerHTML = "HOCR";
+    formatLabelTextElem.innerHTML = "HOCR";
     downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".hocr";
   } else if (x.toLowerCase() == "text") {
-    document.getElementById("formatLabelSVG").innerHTML = String.raw`  <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
+    formatLabelSVGElem.innerHTML = String.raw`  <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
   <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>`
 
-    document.getElementById("formatLabelText").innerHTML = "Text";
+  formatLabelTextElem.innerHTML = "Text";
     downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
 
   }
 }
 
+const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById("oemLabelText"));
+
 function setOemLabel(x) {
   if (x.toLowerCase() == "lstm") {
-    document.getElementById("oemLabelText").innerHTML = "LSTM";
+    oemLabelTextElem.innerHTML = "LSTM";
   } else if (x.toLowerCase() == "legacy") {
-    document.getElementById("oemLabelText").innerHTML = "Legacy";
+    oemLabelTextElem.innerHTML = "Legacy";
   } else if (x.toLowerCase() == "combined") {
-    document.getElementById("oemLabelText").innerHTML = "Combined";
+    oemLabelTextElem.innerHTML = "Combined";
   }
 }
+
+const psmLabelTextElem = /** @type {HTMLElement} */(document.getElementById("psmLabelText"));
 
 function setPsmLabel(x) {
   if (x == "3") {
-    document.getElementById("psmLabelText").innerHTML = "Automatic";
+    psmLabelTextElem.innerHTML = "Automatic";
   } else if (x == "4") {
-    document.getElementById("psmLabelText").innerHTML = "Single Column";
+    psmLabelTextElem.innerHTML = "Single Column";
   } else if (x == "8") {
-    document.getElementById("psmLabelText").innerHTML = "Single Word";
+    psmLabelTextElem.innerHTML = "Single Word";
   }
 }
 
+const buildLabelTextElem = /** @type {HTMLElement} */(document.getElementById("buildLabelText"));
+
 function setBuildLabel(x) {
   if (x.toLowerCase() == "default") {
-    document.getElementById("buildLabelText").innerHTML = "Default";
+    buildLabelTextElem.innerHTML = "Default";
   } else if (x.toLowerCase() == "vanilla") {
-    document.getElementById("buildLabelText").innerHTML = "Vanilla";
+    buildLabelTextElem.innerHTML = "Vanilla";
   }
 }
 
@@ -616,7 +625,7 @@ function adjustMarginRangeChange(value) {
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
-document.getElementById('navBar').addEventListener('click', function (e) {
+document.getElementById('navBar')?.addEventListener('click', function (e) {
   newWordInit = true;
   canvas.__eventListeners = {};
 }, true)
@@ -624,19 +633,19 @@ document.getElementById('navBar').addEventListener('click', function (e) {
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
-document.getElementById('nav-import').addEventListener('hidden.bs.collapse', function (e) {
+document.getElementById('nav-import')?.addEventListener('hidden.bs.collapse', function (e) {
   if (e.target.id != "nav-import") return;
   hideProgress("import-progress-collapse");
 })
 
-document.getElementById('nav-recognize').addEventListener('hidden.bs.collapse', function (e) {
+document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', function (e) {
   if (e.target.id != "nav-recognize") return;
   hideProgress("import-eval-progress-collapse");
   // hideProgress("render-recognize-progress-collapse");
   hideProgress("recognize-recognize-progress-collapse");
 })
 
-document.getElementById('nav-download').addEventListener('hidden.bs.collapse', function (e) {
+document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', function (e) {
   if (e.target.id != "nav-download") return;
   // hideProgress("render-download-progress-collapse");
   // hideProgress("binary-download-progress-collapse");
@@ -664,8 +673,8 @@ function adjustPaddingRow(e) {
 }
 
 for (const [key, value] of Object.entries(tabHeightObj)) {
-  document.getElementById(key).addEventListener('show.bs.collapse', adjustPaddingRow);
-  document.getElementById(key).addEventListener('hide.bs.collapse', adjustPaddingRow);
+  document.getElementById(key)?.addEventListener('show.bs.collapse', adjustPaddingRow);
+  document.getElementById(key)?.addEventListener('hide.bs.collapse', adjustPaddingRow);
 }
 
 
@@ -721,9 +730,9 @@ async function createTesseractScheduler(workerN, config = null) {
   const allConfig = config || getTesseractConfigs();
 
   // SIMD support can be manually disabled for debugging purposes.
-  const disableSIMD = document.getElementById("disableSIMD").checked;
+  const disableSIMD = document?.getElementById("disableSIMD")?.checked;
 
-  const buildLabel = document.getElementById("buildLabelText").innerHTML;
+  const buildLabel = document?.getElementById("buildLabelText")?.innerHTML;
   const buildVersion = buildLabel == "Default" ? "" : "-" + buildLabel.toLowerCase();
 
   let workerOptions;
@@ -759,8 +768,8 @@ async function createTesseractScheduler(workerN, config = null) {
 
 function getTesseractConfigs() {
   // Get current settings as specified by user
-  const oemConfig = document.getElementById("oemLabelText").innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
-  const psmConfig = document.getElementById("psmLabelText").innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
+  const oemConfig = document.getElementById("oemLabelText")?.innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
+  const psmConfig = document.getElementById("psmLabelText")?.innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
 
   const allConfig = {
     tessedit_ocr_engine_mode: oemConfig,
@@ -818,6 +827,7 @@ function createGroundTruthClick() {
 globalThis.evalStatsConfig = {};
 
 globalThis.evalStats = [];
+
 async function compareGroundTruthClick(n) {
 
   // When a document/recognition is still loading only the page statistics can be calculated
@@ -1348,7 +1358,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true,
           
           // If the angle is not already known, we wait until recognition finishes so we know the angle
           //await convertPage([y.data.hocr, x, false, argsObj]);
-          // If the angle is >0.25 degree, we rerun with the known angle (which results in the image being rotated in pre-processing step)
+          // If the page gradient (rise/run) >maxGradient, we rerun with the known angle (which results in the image being rotated in pre-processing step)
           if (/Page Gradient/.test(y.data.debug)) {
 
             const rotateRadians = parseFloat(y.data.debug.match(/Page Gradient\: ([\-\d\.]+)/)?.[1]);
@@ -3170,7 +3180,7 @@ convertPageWorker.onmessage = function (e) {
     }
   }
 
-  const oemCurrent = !argsObj["engine"] || argsObj["mode"] != "full" || argsObj["engine"] == document.getElementById("displayLabelText").innerHTML ? true : false;
+  const oemCurrent = !argsObj["engine"] || argsObj["mode"] != "full" || argsObj["engine"] == document.getElementById("displayLabelText")?.innerHTML ? true : false;
 
   // If an OEM engine is specified, save to the appropriate object within ocrAll,
   // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
@@ -3291,7 +3301,7 @@ async function handleDownload() {
       globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
     }
   }
-  let download_type = document.getElementById('formatLabelText').textContent.toLowerCase();
+  let download_type = formatLabelTextElem?.textContent?.toLowerCase();
 
   // If recognition is currently running, wait for it to finish.
   await globalThis.state.recognizeAllPromise;
@@ -3312,7 +3322,7 @@ async function handleDownload() {
 
     // The progress bar is incremented by 1 when each page of the text overlay is completed (within hocrToPDF).
     // When images are inserted into the pdf the progress is also incremented after each image is rendered. 
-    const maxValueProgress = addOverlayCheckboxElem.checked ? maxValue + 1 : (maxValue+1) * 2;
+    const maxValueProgress = (addOverlayCheckboxElem.checked || displayModeElem.value == "ebook") ? maxValue + 1 : (maxValue+1) * 2;
 
     const downloadProgress = initializeProgress("generate-download-progress-collapse", maxValueProgress);
     await sleep(0);
