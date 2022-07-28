@@ -1203,26 +1203,30 @@ async function showDebugImages() {
 
   const imgArr = globalThis.debugImg.Combined[currentPage.n];
 
-  let top = 0;
+  let top = 5;
   let leftMax = 150;
 
   for (let i=0; i<imgArr.length; i++) {
     const img1 = imgArr[i][0];
     const img2 = imgArr[i][1];
+    const chosen = imgArr[i][3] < imgArr[i][2] ? 1 : 0;
 
     const imgElem1 = document.createElement('img');
     await loadImage(img1, imgElem1);
     const imgElem2 = document.createElement('img');
     await loadImage(img2, imgElem2);
 
-    const imgFab1 = new fabric.Image(imgElem1, {left: 0, top: top});
+    const imgFab1 = new fabric.Image(imgElem1, {left: 5, top: top});
     const imgFab2 = new fabric.Image(imgElem2, {left: imgElem1.width + 10, top: top});
 
+    const chosenRect = new fabric.Rect({left: chosen * (imgElem1.width + 4) + 3, top: top-3, width: imgElem1.width+6, height: imgElem1.height+6, fill: "#3269a8"});
+
+    canvasDebug.add(chosenRect);
     canvasDebug.add(imgFab1);
     canvasDebug.add(imgFab2);
 
     top += imgElem1.height + 10;
-    leftMax = Math.max(leftMax, imgElem1.width + imgElem2.width + 10);
+    leftMax = Math.max(leftMax, imgElem1.width + imgElem2.width + 15);
   }
 
   canvasDebug.setWidth(leftMax);
