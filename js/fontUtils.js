@@ -4,8 +4,6 @@
 // To make sure what the user sees on the canvas matches the final pdf output,
 // all fonts should have an identical OpenType.js and FontFace version.
 
-import { createSmallCapsFont } from "./fontOptimize.js";
-
 // Sans/serif lookup for common font families
 // Should be added to if additional fonts are encountered
 // Fonts that should not be added (both Sans and Serif variants):
@@ -70,6 +68,8 @@ export async function loadFontFamily(fontFamily) {
   // Font data can either be stored in an array or found through a URL
   const sourceItalic = globalThis.fontObjRaw[familyStr]["italic"] || fontFiles[familyStr + "-italic"];
   const sourceNormal = globalThis.fontObjRaw[familyStr]["normal"] || fontFiles[familyStr];
+  const sourceSmallCaps = globalThis.fontObjRaw[familyStr]["small-caps"] || fontFiles[familyStr + "-small-caps"];
+
 
   globalThis.fontObj[familyStr]["italic"] = loadFont(familyStr + "-italic", sourceItalic, true).then(async (x) => {
     await loadFontBrowser(familyStr, "italic", sourceItalic, true);
@@ -79,13 +79,18 @@ export async function loadFontFamily(fontFamily) {
     await loadFontBrowser(familyStr, "normal", sourceNormal, true);
     return x;
   });
-  
-  // Most fonts do not include small caps variants, so we create our own using the normal variant as a starting point. 
-  globalThis.fontObj[familyStr]["small-caps"] = createSmallCapsFont(globalThis.fontObj[familyStr]["normal"], heightSmallCaps).then(async (x) => {
-    globalThis.fontObjRaw[familyStr]["small-caps"] = x.toArrayBuffer();
-    loadFontBrowser(familyStr, "small-caps", globalThis.fontObjRaw[familyStr]["small-caps"], true);
-    return (x);
+  globalThis.fontObj[familyStr]["small-caps"] = loadFont(familyStr, sourceSmallCaps, true).then(async (x) => {
+    await loadFontBrowser(familyStr, "small-caps", sourceSmallCaps, true);
+    return x;
   });
+
+  // Most fonts do not include small caps variants, so we create our own using the normal variant as a starting point. 
+  // globalThis.fontObj[familyStr]["small-caps"] = createSmallCapsFont(sourceNormal, heightSmallCaps).then(async (x) => {
+  // globalThis.fontObj[familyStr]["small-caps"] = globalThis.optimizeFontScheduler.addJob("createSmallCapsFont", {fontData: sourceNormal, heightSmallCaps: heightSmallCaps}).then(async (x) => {
+  //   globalThis.fontObjRaw[familyStr]["small-caps"] = x.fontData;
+  //   loadFontBrowser(familyStr, "small-caps", globalThis.fontObjRaw[familyStr]["small-caps"], true);
+  //   return await loadFont(familyStr, globalThis.fontObjRaw[familyStr]["small-caps"], true);
+  // });
 
   await Promise.allSettled([globalThis.fontObj[familyStr]["normal"], globalThis.fontObj[familyStr]["italic"], globalThis.fontObj[familyStr]["small-caps"]]);
 }
@@ -138,6 +143,17 @@ export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = fa
 
 }
 
+// function createSmallCapsFont(fontData, heightSmallCaps) {
+
+//   return new Promise(function (resolve, reject) {
+//     let id = globalThis.optimizeFontWorker.promiseId++;
+//     globalThis.optimizeFontWorker.promises[id] = { resolve: resolve };
+
+//     globalThis.optimizeFontWorker.postMessage({fontData: fontData, heightSmallCaps: heightSmallCaps, func: "createSmallCapsFont", id: id});
+
+//   });
+
+// }
 
 // Load font as opentype.js object, call loadFontBrowser to load as FontFace
 export async function loadFont(font, src, overwrite = false) {
@@ -176,10 +192,10 @@ export async function loadFont(font, src, overwrite = false) {
 
 // Object containing location of various font files
 var fontFiles = new Object;
-fontFiles["Libre Baskerville"] = "./fonts/LibreBaskerville-Regular.woff";
-fontFiles["Libre Baskerville-italic"] = "./fonts/LibreBaskerville-Italic.woff";
-fontFiles["Libre Baskerville-small-caps"] = "./fonts/LibreBaskerville-Regular.woff";
+fontFiles["Libre Baskerville"] = "/fonts/LibreBaskerville-Regular.woff";
+fontFiles["Libre Baskerville-italic"] = "/fonts/LibreBaskerville-Italic.woff";
+fontFiles["Libre Baskerville-small-caps"] = "/fonts/LibreBaskerville-SmallCaps.woff";
 
-fontFiles["Open Sans"] = "./fonts/OpenSans-Regular.woff";
-fontFiles["Open Sans-italic"] = "./fonts/OpenSans-Italic.woff";
-fontFiles["Open Sans-small-caps"] = "./fonts/OpenSans-Regular.woff";
+fontFiles["Open Sans"] = "/fonts/OpenSans-Regular.woff";
+fontFiles["Open Sans-italic"] = "/fonts/OpenSans-Italic.woff";
+fontFiles["Open Sans-small-caps"] = "/fonts/OpenSans-SmallCaps.woff";

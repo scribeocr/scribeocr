@@ -358,7 +358,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       if(wordSup) {
         wordText = word.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
       } else if(wordDropCap) {
-        wordText = word.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").replace(/\<\/span\>\s*/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+        wordText = word.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
       } else {
         wordText = word.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
       }      

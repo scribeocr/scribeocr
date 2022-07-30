@@ -518,12 +518,22 @@ export async function evalWords(wordsA, wordsB, n, view = false){
 // but are implausible from a language perspective (e.g. "1%" being misidentified as "l%")
 function penalizeWord(wordStr) {
   let penalty = 0;
+  // Penalize non-numbers followed by "%"
   // This potentially penalizes valid URLs
   if (/[^0-9]%/.test(wordStr)) penalty += 0.05;
 
+  // Penalize "ii" (virtually always a false positive)
+  // If this penalty becomes an issue, a whitelist of dictionary words containing "ii" can be added
+  if (/ii/.test(wordStr)) penalty += 0.05;
+
+  // Penalize digit between two letters
+  // This usually indicates a letter is being misidentified as "0" or "1"
+  if (/\d[a-z]\d/i.test(wordStr)) penalty += 0.05;
+
+  // Penalize "]" at the start of word (followed by at least one other character)
   // Motivated by "J" being misidentified as "]"
   // (Overlap can be fairly strong of no actual "]" characters are present due to font optimization)
-  if (/^\]/.test(wordStr)) penalty += 0.05;
+  if (/^\]./.test(wordStr)) penalty += 0.05;
 
   return penalty;
 }
