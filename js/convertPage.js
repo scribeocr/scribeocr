@@ -1,5 +1,8 @@
 
 import { renderPageQueue } from "../main.js";
+import { getRandomAlphanum } from "./miscUtils.js";
+
+var parser = new DOMParser();
 
 export async function initConvertPageWorker() {
 

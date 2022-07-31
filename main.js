@@ -1182,7 +1182,9 @@ async function recognizePages(single = false, config = null, saveMetrics = true,
       const rotateDegrees = rotate && Math.abs(globalThis.pageMetricsObj["angleAll"][x]) > 0.05 && !globalThis.imageAll["nativeRotated"][x] ? globalThis.pageMetricsObj["angleAll"][x] * -1 || 0 : 0;
       const rotateRadians = rotateDegrees * (Math.PI / 180);
 
-      const inputImage = await globalThis.imageAll["native"][x];
+      // When the image has not been loaded into an element yet, use the raw source string.
+      // We still use imageAll["native"] when it exists as this will have rotation applied (if applicable) while imageAll["nativeSrc"] will not.
+      const inputSrc = globalThis.imageAll["native"][x] ? (await globalThis.imageAll["native"][x]).src : globalThis.imageAll["nativeSrc"][x];
 
       const maxGradient = angleKnown ? "100" : "0.01";
 
@@ -1194,7 +1196,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true,
 
       const saveBinaryImageArg = !globalThis.imageAll["binary"][x] || autoRotateCheckboxElem.checked && !globalThis.imageAll["binaryRotated"][x] && rotateRadians != 0 ? "true" : "false";
 
-      return scheduler.addJob('recognize', inputImage.src, {angle: rotateRadians}, {max_page_gradient_recognize: maxGradient, debug_file: "/debug.txt", scribe_save_binary_rotated_image : saveBinaryImageArg, 
+      return scheduler.addJob('recognize', inputSrc, {angle: rotateRadians}, {max_page_gradient_recognize: maxGradient, debug_file: "/debug.txt", scribe_save_binary_rotated_image : saveBinaryImageArg, 
         scribe_save_original_rotated_image: saveColorImageArg }).then(async (y) => {
 
         parseDebugInfo(y.data.debug);
@@ -1245,7 +1247,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true,
             globalThis.pageMetricsObj["angleAll"][x] = rotateDegrees * -1;
 
             //const inputImage = await globalThis.imageAll["native"][x];
-            return scheduler.addJob('recognize', inputImage.src, {angle: rotateRadians}, {scribe_save_binary_rotated_image : saveBinaryImageArg, 
+            return scheduler.addJob('recognize', inputSrc, {angle: rotateRadians}, {scribe_save_binary_rotated_image : saveBinaryImageArg, 
               scribe_save_original_rotated_image: saveColorImageArg}).then(async (y) => {
 
               parseDebugInfo(y.data.debug);
@@ -2187,7 +2189,7 @@ async function importFiles() {
   // Global object that contains arrays with page images or related properties. 
   globalThis.imageAll = {
     // Unedited images uploaded by user (unused when user provides a PDF).
-    nativeRaw: Array(pageCount),
+    nativeSrc: Array(pageCount),
     // Native images.  When the user uploads images directly, this contains whatever they uploaded.
     // When a user uploads a pdf, this will contain the images rendered by muPDF (either grayscale or color depending on setting).
     native: Array(pageCount),
@@ -2236,24 +2238,28 @@ async function importFiles() {
       const imageNi = imageN + 1;
       imageN = imageN + 1;
 
-      const image = document.createElement('img');
+      // const image = document.createElement('img');
 
       // Render to screen after first image is loaded
-      if (firstImg) {
-        image.onload = function () {
-          renderPageQueue(0);
-        }
-        firstImg = false;
-      }
+      // if (firstImg) {
+      //   image.onload = function () {
+      //     renderPageQueue(0);
+      //   }
+      //   firstImg = false;
+      // }
 
       const reader = new FileReader();
       reader.addEventListener("load", () => {
-        image.src = reader.result;
-
-        globalThis.imageAll["nativeRaw"][imageNi] = image;
-        globalThis.imageAll["native"][imageNi] = globalThis.imageAll["nativeRaw"][imageNi];
+        // image.src = reader.result;
+        globalThis.imageAll["nativeSrc"][imageNi] = reader.result;
+        // globalThis.imageAll["nativeRaw"][imageNi] = image;
+        // globalThis.imageAll["native"][imageNi] = globalThis.imageAll["nativeRaw"][imageNi];
 
         updateDataProgress();
+
+        if(imageNi == 0) {
+          renderPageQueue(0);
+        }
 
       }, false);
 
@@ -2352,11 +2358,16 @@ async function renderPDFImageCache(pagesArr, rotate = null, progress = null) {
 
     if (n < 0 || n >= globalThis.imageAll.native.length) return;
 
-    // In imageMode, if the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image. 
-    if(inputDataModes.imageMode && rotate == false && globalThis.imageAll["nativeRotated"][n] == true) {
-      // globalThis.imageAll["nativeColor"][n] = "color";
-      globalThis.imageAll["nativeRotated"][n] = false;
-      globalThis.imageAll["native"][n] = globalThis.imageAll["nativeRaw"][n];
+    if (inputDataModes.imageMode) {
+      // Load image if either (1) it has never been loaded in the first place, or
+      // (2) the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image. 
+      if ((!globalThis.imageAll["native"][n] &&  globalThis.imageAll["nativeSrc"][n]) || (rotate == false && globalThis.imageAll["nativeRotated"][n] == true)) {
+        globalThis.imageAll["native"][n] = new Promise(async function (resolve, reject) {
+          const image = document.createElement('img');
+          await loadImage(globalThis.imageAll["nativeSrc"][n], image);
+          resolve(image);
+        });
+      } 
     }
 
     // In pdfMode, determine whether an original/unedited version of the image needs to be obtained.
@@ -2482,6 +2493,8 @@ globalThis.state = {
 //var backgroundOpts = {};
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null) {
+
+  renderPDFImageCache([n]);
 
   // Return if data is not loaded yet
   const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null) || inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined");
@@ -2622,51 +2635,39 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   }
 
   let renderNum;
-  if (mode == "screen") {
-    // Clear canvas if objects (anything but the background) exists
-    if (canvas.getObjects().length) {
-      canvas.clear()
-      canvas.__eventListeners = {};
-    }
-
-    if (imgDims != null) {
-      let zoomFactor = Math.min(parseFloat(/** @type {HTMLInputElement} */(document.getElementById('zoomInput')).value) / imgDims[1], 1);
-      canvas.setHeight(imgDims[0] * zoomFactor);
-      canvas.setWidth(imgDims[1] * zoomFactor);
-      canvas.setZoom(zoomFactor);
-    }
-
-    currentPage.renderStatus = 0;
-
-    // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
-    // (whether by quickly changing pages or on the same page).
-    // TODO: Find a better solution. 
-    currentPage.renderNum = currentPage.renderNum + 1;
-    renderNum = currentPage.renderNum;
-
-    //const colorMode = colorModeElem.value;
-
-    renderPDFImageCache([n]);
-    const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
-    currentPage.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
-    if (currentPage.n == n && currentPage.renderNum == renderNum) {
-      currentPage.renderStatus = currentPage.renderStatus + 1;
-      selectDisplayMode(displayModeElem.value);
-    } else {
-      globalThis.state.promiseResolve();
-      return;
-    }
-
-  } else {
-    globalThis.doc.addPage({ size: [canvasDims[1], canvasDims[0]], margin: 0 });
-
-    if (displayModeElem.value != "ebook") {
-
-      const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
-      globalThis.doc.image(backgroundImage.src, (currentPage.leftAdjX || 0), 0, { align: 'left', valign: 'top' });
-
-    }
+  // Clear canvas if objects (anything but the background) exists
+  if (canvas.getObjects().length) {
+    canvas.clear()
+    canvas.__eventListeners = {};
   }
+
+  if (imgDims != null) {
+    let zoomFactor = Math.min(parseFloat(/** @type {HTMLInputElement} */(document.getElementById('zoomInput')).value) / imgDims[1], 1);
+    canvas.setHeight(imgDims[0] * zoomFactor);
+    canvas.setWidth(imgDims[1] * zoomFactor);
+    canvas.setZoom(zoomFactor);
+  }
+
+  currentPage.renderStatus = 0;
+
+  // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
+  // (whether by quickly changing pages or on the same page).
+  // TODO: Find a better solution. 
+  currentPage.renderNum = currentPage.renderNum + 1;
+  renderNum = currentPage.renderNum;
+
+  //const colorMode = colorModeElem.value;
+  
+  const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
+  currentPage.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
+  if (currentPage.n == n && currentPage.renderNum == renderNum) {
+    currentPage.renderStatus = currentPage.renderStatus + 1;
+    selectDisplayMode(displayModeElem.value);
+  } else {
+    globalThis.state.promiseResolve();
+    return;
+  }
+
 
   if (mode == "screen" && currentPage.n == n && inputDataModes.xmlMode[n]) {
     await renderPage(canvas, null, currentPage.xmlDoc, "screen", globalSettings.defaultFont, lineMode, imgDims, canvasDims, globalThis.pageMetricsObj["angleAll"][n], inputDataModes.pdfMode, globalThis.fontObj, currentPage.leftAdjX);
