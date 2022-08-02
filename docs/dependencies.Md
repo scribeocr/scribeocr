@@ -18,26 +18,6 @@ The fabric.js files come from the FabricJS (custom build)[http://fabricjs.com/bu
 -Remove SVG export
 -window.fabric
 
-## PDFKit
-1. Site: https://pdfkit.org/
-1. Git: https://github.com/foliojs/pdfkit
-1. License: MIT
-
-The pdfkit.standalone.js files used at present come from a forked version of the "standalone" version of PDFKit.  The differences are:
-
-1. A regex quantifier is changed from greedy to lazy
-   1. https://github.com/foliojs/pdfkit/pull/1349
-1. The non-default embedded "standard fonts" are removed to reduce file size
-   1. The original standalone build is 2.6MB (1.7MB minified)
-   1. Removing non-default embedded fonts reduces to 2.1MB (1.1MB minified)
-1. Removing various unused features from the PDFDocument class further reduces size
-   1. Removed PDFSecurity, AnnotationsMixin, OutlineMixin, MarkingsMixin, AcroFormMixin, AttachmentsMixin
-   1. This further reduces size to 1.8MB (0.9MB minified)
-  
-Even after these changes PDFKit is still an extremely large dependency, so file size could likely be reduced much further.
-
-Alternatively, given the minimal feature set needed, a PDF renderer could be written from scratch or taken from another project.  The [Tesseract PDF Renderer](https://github.com/tesseract-ocr/tesseract/blob/60fd2b4abaa9c5c5c42d32db57576bc95d28a78a/src/api/pdfrenderer.cpp) can be used for reference. 
-
 
 ## MuPDF
 1. Site: https://mupdf.com/
@@ -78,6 +58,25 @@ PDF.js is a library for reading PDF documents.  It was replaced with MuPDF.  On 
 First, while PDF.js does utilize a worker for some operations, it runs some costly operations on the main thread.  This makes it unable to render pages ahead of the user's current position without impacting the UI (and having a smooth UI is the motivation for rendering ahead to begin with).  According to one [Git Issue](https://github.com/mozilla/pdf.js/issues/10319) a user was able to move more work off the main thread using the still experimental OffscreenCanvas feature, so this may change in the future. 
 
 Second, the inability of PDF.js to run *entirely* in a web worker means it cannot scale to render pages in parallel.  As this project will frequntly encounter documents hundreds of pages long, which must be fully rendered to PNG before OCR can occur, this is a significant limitation. 
+
+
+## PDFKit
+1. Site: https://pdfkit.org/
+1. Git: https://github.com/foliojs/pdfkit
+1. License: MIT
+
+The pdfkit.standalone.js files previously used in this project came from a forked version of the "standalone" version of PDFKit.  The differences are:
+
+1. A regex quantifier is changed from greedy to lazy
+   1. https://github.com/foliojs/pdfkit/pull/1349
+1. The non-default embedded "standard fonts" are removed to reduce file size
+   1. The original standalone build is 2.6MB (1.7MB minified)
+   1. Removing non-default embedded fonts reduces to 2.1MB (1.1MB minified)
+1. Removing various unused features from the PDFDocument class further reduces size
+   1. Removed PDFSecurity, AnnotationsMixin, OutlineMixin, MarkingsMixin, AcroFormMixin, AttachmentsMixin
+   1. This further reduces size to 1.8MB (0.9MB minified)
+  
+Even after these changes PDFKit was still an extremely large dependency. 
 
 
 ## jsPDF
