@@ -3,6 +3,8 @@ import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 
 import { getFontSize, calcCharSpacing } from "./textUtils.js";
 
+import { renderPDFImageCache } from "../main.js";
+
 // Function for converting from bufferArray to hex (string)
 // Taken from https://stackoverflow.com/questions/40031688/javascript-arraybuffer-to-hex
 const byteToHex = [];
@@ -146,7 +148,15 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
   // Add pages
   for(let i=minpage;i<=maxpage;i++) {
     const angle = rotate ? (globalThis.pageMetricsObj["angleAll"][i] || 0) : 0;
-    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], globalThis.pageMetricsObj.dimsAll[i], dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle));
+    let dims = globalThis.pageMetricsObj.dimsAll[i];
+
+    // In the fringe case where images are uploaded but no recognition data is present, dimensions come from the images. 
+    if (inputDataModes.imageMode && !dims) {
+      await renderPDFImageCache([i]);
+      const backgroundImage = await globalThis.imageAll["native"][i];
+      dims = [backgroundImage.height, backgroundImage.width];
+    }
+    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle));
     if (progress) progress.increment();
   }
 
@@ -178,7 +188,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     outputDims = inputDims;
   }
 
-  const lines = hocrStr.match(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/g);
+  const lines = hocrStr?.match(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/g);
 
   // Start 2nd object: Page
   let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims[1]) + " " + String(outputDims[0]) + "]";

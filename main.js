@@ -2349,7 +2349,7 @@ export async function displayImage(n, image, binary = false) {
 // This function contains 2 distinct image rendering steps:
 // 1. Pages are rendered from .pdf to .png [either color or grayscale] using muPDF
 // 1. Existing .png images are processed (currently rotation and/or thresholding) using Tesseract/Leptonica
-async function renderPDFImageCache(pagesArr, rotate = null, progress = null) {
+export async function renderPDFImageCache(pagesArr, rotate = null, progress = null) {
 
   const colorMode = colorModeElem.value;
   const colorName = colorMode == "binary" ? "binary" : "native";
