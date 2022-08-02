@@ -2447,7 +2447,7 @@ async function renderPDFImageCache(pagesArr, rotate = null, progress = null) {
       // Wait for non-rotated version before replacing with promise
       const inputImage = await Promise.resolve(globalThis.imageAll["native"][n]);
 
-      const bs = await getBinaryScheduler();
+      const bs = await initSchedulerIfNeeded("binaryScheduler");
 
       return bs.addJob("threshold", inputImage.src, { angle: angleArg }, { debug_file: "/debug.txt", max_page_gradient_recognize: "100", scribe_save_binary_rotated_image : saveBinaryImageArg, scribe_save_original_rotated_image: saveColorImageArg});
 
@@ -2775,16 +2775,6 @@ async function optimizeFontClick(value) {
   }
 
   renderPageQueue(currentPage.n);
-}
-
-async function getBinaryScheduler() {
-  // Initialize scheduler if one does not already exist
-  if(!globalThis.binaryScheduler) {
-    const n = Math.min(Math.ceil(globalThis.imageAll["native"].length / 4), 4);
-    console.log("Creating new Tesseract scheduler with " + n + " workers.")
-    globalThis.binaryScheduler = createTesseractScheduler(n);
-  }
-  return(globalThis.binaryScheduler)
 }
 
 window["binarySchedulerInit"] = async function () {
