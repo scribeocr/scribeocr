@@ -3142,8 +3142,11 @@ async function handleDownload() {
         await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked, downloadProgress);
         const imgArr1 = colorModeElem.value == "binary" ? await Promise.all(imageAll.binary): await Promise.all(imageAll.native);
         const imgArr = imgArr1.map((x) => x.src);
-
-        content = await w.overlayTextImage([pdfOverlay, imgArr, minValue, maxValue, dimsLimit[1], dimsLimit[0]]);
+        await w.overlayTextImageStart([]);
+        for (let i=minValue; i < maxValue+1; i++) {
+          await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit[1], dimsLimit[0]]);
+        }
+        content = await w.overlayTextImageEnd([]);
       } 
 
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });

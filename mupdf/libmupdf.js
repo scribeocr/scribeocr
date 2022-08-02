@@ -4665,6 +4665,12 @@ var _doDrawPageAsPNGGray = Module["_doDrawPageAsPNGGray"] = createExportWrapper(
 
 var _overlayPDFText = Module["_overlayPDFText"] = createExportWrapper("overlayPDFText");
 
+var _overlayPDFTextImageStart = Module["_overlayPDFTextImageStart"] = createExportWrapper("overlayPDFTextImageStart");
+
+var _overlayPDFTextImageAddPage = Module["_overlayPDFTextImageAddPage"] = createExportWrapper("overlayPDFTextImageAddPage");
+
+var _overlayPDFTextImageEnd = Module["_overlayPDFTextImageEnd"] = createExportWrapper("overlayPDFTextImageEnd");
+
 var _overlayPDFTextImage = Module["_overlayPDFTextImage"] = createExportWrapper("overlayPDFTextImage");
 
 var _getLastDrawData = Module["_getLastDrawData"] = createExportWrapper("getLastDrawData");
@@ -4873,28 +4879,6 @@ function invoke_viiiii(index, a1, a2, a3, a4, a5) {
  }
 }
 
-function invoke_viiff(index, a1, a2, a3, a4) {
- var sp = stackSave();
- try {
-  wasmTable.get(index)(a1, a2, a3, a4);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_viiiifi(index, a1, a2, a3, a4, a5, a6) {
- var sp = stackSave();
- try {
-  wasmTable.get(index)(a1, a2, a3, a4, a5, a6);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
 function invoke_viiii(index, a1, a2, a3, a4) {
  var sp = stackSave();
  try {
@@ -4954,6 +4938,17 @@ function invoke_viiiiiifi(index, a1, a2, a3, a4, a5, a6, a7, a8) {
  var sp = stackSave();
  try {
   wasmTable.get(index)(a1, a2, a3, a4, a5, a6, a7, a8);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_viiiifi(index, a1, a2, a3, a4, a5, a6) {
+ var sp = stackSave();
+ try {
+  wasmTable.get(index)(a1, a2, a3, a4, a5, a6);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
@@ -5053,6 +5048,17 @@ function invoke_viiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
  var sp = stackSave();
  try {
   wasmTable.get(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_viiff(index, a1, a2, a3, a4) {
+ var sp = stackSave();
+ try {
+  wasmTable.get(index)(a1, a2, a3, a4);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;

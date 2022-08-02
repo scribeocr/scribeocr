@@ -92,6 +92,9 @@ Module.onRuntimeInitialized = function () {
 	mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number']);
   	mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number']);
 	mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
+	mupdf.overlayPDFTextImageStart = Module.cwrap('overlayPDFTextImageStart', 'null', ['number']);
+	mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number']);
+	mupdf.overlayPDFTextImageEnd = Module.cwrap('overlayPDFTextImageEnd', 'null', ['number']);
 	mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number']);
 	mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
 	mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
@@ -111,11 +114,29 @@ mupdf.overlayText = function (doc1, doc2, minpage, maxpage, pagewidth, pageheigh
 	// Module.FS_createDataFile("/", "test_1.pdf", data, 1, 1, 1);
 	// mupdf.writeDocument();
 	mupdf.overlayPDFText(doc1, doc2, minpage, maxpage, pagewidth, pageheight);
-	let content = FS.readFile("/download.pdf");
+	const content = FS.readFile("/download.pdf");
 
 	FS.unlink("/download.pdf");
 	// FS.unlink("/test_2.pdf");
 	return content;
+}
+
+mupdf.overlayTextImageStart = function(doc) {
+	mupdf.overlayPDFTextImageStart();
+}
+
+// doc is ignored (the active document is always the first argument, although not used here)
+mupdf.overlayTextImageAddPage = function (doc, doc1, image, i, pagewidth, pageheight) {
+	const imgData = new Uint8Array(atob(image.split(',')[1])
+	.split('')
+	.map(c => c.charCodeAt(0)));
+	Module.FS_createDataFile("/", String(i) + ".png", imgData, 1, 1, 1);
+
+	mupdf.overlayPDFTextImageAddPage(doc1, i, pagewidth, pageheight);
+	// mupdf.overlayPDFTextImage(doc1, i, i, pagewidth, pageheight);
+
+	FS.unlink(String(i) + ".png");
+
 }
 
 // doc is ignored (the active document is always the first argument, although not used here)
@@ -138,6 +159,13 @@ mupdf.overlayTextImage = function (doc, doc1, imageArr, minpage, maxpage, pagewi
 
 	FS.unlink("/download.pdf");
 	// FS.unlink("/test_2.pdf");
+	return content;
+}
+
+mupdf.overlayTextImageEnd = function(doc) {
+	mupdf.overlayPDFTextImageEnd();
+	const content = FS.readFile("/download.pdf");
+	FS.unlink("/download.pdf");
 	return content;
 }
 
@@ -223,7 +251,9 @@ onmessage = function (event) {
 		let result = mupdf[func](...args);
 		if (result instanceof ArrayBuffer)
 			postMessage(["RESULT", id, result], [result]);
-		else
+		else if (result?.buffer instanceof ArrayBuffer) {
+			postMessage(["RESULT", id, result], [result.buffer]);
+		} else
 			postMessage(["RESULT", id, result]);
 	} catch (error) {
 		postMessage(["ERROR", id, {name: error.name, message: error.message}]);

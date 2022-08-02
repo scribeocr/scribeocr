@@ -94,6 +94,9 @@ export async function initMuPDFWorker() {
 		mupdf.search = wrap("search");
 		mupdf.drawPageAsPNG = wrap("drawPageAsPNG");
 		mupdf.overlayText = wrap("overlayText");
+		mupdf.overlayTextImageStart = wrap("overlayTextImageStart");
+		mupdf.overlayTextImageAddPage = wrap("overlayTextImageAddPage");
+		mupdf.overlayTextImageEnd = wrap("overlayTextImageEnd");
 		mupdf.overlayTextImage = wrap("overlayTextImage");
 		mupdf.terminate = function () { worker.terminate(); }
 	})
