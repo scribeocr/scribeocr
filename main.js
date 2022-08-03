@@ -187,18 +187,23 @@ globalThis.ctxComp1 = canvasAlt.getContext('2d');
 globalThis.canvasComp2 = new fabric.Canvas('f');
 globalThis.ctxComp2 = canvasAlt.getContext('2d');
 
+globalThis.canvasComp0 = new fabric.Canvas('h');
+globalThis.ctxComp0 = canvasAlt.getContext('2d');
+
 globalThis.canvasDebug = new fabric.Canvas('g');
 globalThis.ctxDebug = canvasAlt.getContext('2d');
 
 
 // // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
 canvasAlt.overlayVpt = false;
+globalThis.canvasComp0.overlayVpt = false;
 globalThis.canvasComp1.overlayVpt = false;
 globalThis.canvasComp2.overlayVpt = false;
 globalThis.canvasDebug.overlayVpt = false;
 
 // // Turn off (some) automatic rendering of canvas
 canvasAlt.renderOnAddRemove = false;
+canvasComp0.renderOnAddRemove = false;
 canvasComp1.renderOnAddRemove = false;
 canvasComp2.renderOnAddRemove = false;
 canvasDebug.renderOnAddRemove = false;
@@ -1077,26 +1082,31 @@ async function showDebugImages() {
   let leftMax = 150;
 
   for (let i=0; i<imgArr.length; i++) {
-    const img1 = imgArr[i][0];
-    const img2 = imgArr[i][1];
-    const chosen = imgArr[i][3] < imgArr[i][2] ? 1 : 0;
+    const img0 = imgArr[i][0];
+    const img1 = imgArr[i][1];
+    const img2 = imgArr[i][2];
+    const chosen = imgArr[i][4] < imgArr[i][3] ? 1 : 0;
 
+    const imgElem0 = document.createElement('img');
+    await loadImage(img0, imgElem0);
     const imgElem1 = document.createElement('img');
     await loadImage(img1, imgElem1);
     const imgElem2 = document.createElement('img');
     await loadImage(img2, imgElem2);
 
-    const imgFab1 = new fabric.Image(imgElem1, {left: 5, top: top});
-    const imgFab2 = new fabric.Image(imgElem2, {left: imgElem1.width + 10, top: top});
+    const imgFab0 = new fabric.Image(imgElem0, {left: 5, top: top});
+    const imgFab1 = new fabric.Image(imgElem1, {left: 5 + imgElem0.width + 10, top: top});
+    const imgFab2 = new fabric.Image(imgElem2, {left: 5 + imgElem0.width + 10 + imgElem1.width + 10, top: top});
 
-    const chosenRect = new fabric.Rect({left: chosen * (imgElem1.width + 4) + 3, top: top-3, width: imgElem1.width+6, height: imgElem1.height+6, fill: "#3269a8"});
+    const chosenRect = new fabric.Rect({left: 5 + imgElem0.width + 10 + chosen * (imgElem1.width + 10) - 3, top: top-3, width: imgElem1.width+6, height: imgElem1.height+6, fill: "#3269a8"});
 
     canvasDebug.add(chosenRect);
+    canvasDebug.add(imgFab0);
     canvasDebug.add(imgFab1);
     canvasDebug.add(imgFab2);
 
     top += imgElem1.height + 10;
-    leftMax = Math.max(leftMax, imgElem1.width + imgElem2.width + 15);
+    leftMax = Math.max(leftMax, imgElem0.width + imgElem1.width + imgElem2.width + 30);
   }
 
   canvasDebug.setWidth(leftMax);

@@ -11,6 +11,58 @@ export function searchHOCR(regexStr, regexFlags){
     }
     return(res)
   }
+
+
+
+export function downloadImage(img, filename) {
+  const imgStr = typeof(img) == "string" ? img : img.src;
+  const imgData = new Uint8Array(atob(imgStr.split(',')[1])
+        .split('')
+        .map(c => c.charCodeAt(0)));
+
+  const imgBlob = new Blob([imgData], { type: 'application/octet-stream' });
+
+  saveAs(imgBlob , filename);
+}
+
+// Utility function for downloading all images
+export async function downloadImageAll(filename_base, type = "binary") {
+  for (let i=0; i < globalThis.imageAll[type].length; i++) {
+    const img = await globalThis.imageAll[type][i];
+    const fileType = img.src.match(/^data\:image\/([a-z]+)/)?.[1];
+    if (!["png", "jpeg"].includes(fileType)) {
+      console.log("Filetype " + fileType + " is not jpeg/png; skipping.")
+      continue;
+    }
+    const fileName = filename_base + "_" + String(i) + "." + fileType;
+    console.log("Downloading file " + String(i) + " as " + fileName);
+    downloadImage(img, fileName);
+    // Not all files will be downloaded without a delay between downloads
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+export async function downloadImageDebug(filename_base, type = "Combined") {
+  for (let i=0; i < globalThis.debugImg[type].length; i++) {
+    for (let j=0; j < globalThis.debugImg[type][i].length; j++) {
+      const wordFileName = globalThis.debugImg[type][i][j][5].replace(/[^a-z0-9]/ig, "") + "_" + globalThis.debugImg[type][i][j][6].replace(/[^a-z0-9]/ig, "");
+      for (let k=0; k < 2; k++) {
+        const img = await globalThis.debugImg[type][i][j][k];
+        const fileType = img.match(/^data\:image\/([a-z]+)/)?.[1];
+        if (!["png", "jpeg"].includes(fileType)) {
+          console.log("Filetype " + fileType + " is not jpeg/png; skipping.")
+          continue;
+        }
+        const fileName = filename_base + "_" + String(i) + "_" + String(j) + "_" + String(k) + "_" + wordFileName + "." + fileType;
+        console.log("Downloading file " + String(i) + " as " + fileName);
+        downloadImage(img, fileName);
+        // Not all files will be downloaded without a delay between downloads
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
+  }
+}
+
   
 
 // function subsetFont (font) {

@@ -79,11 +79,14 @@ let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, v
   canvasAlt.renderAll();
 
   if (view) {
+    globalThis.canvasComp0.setHeight(img.height);
+    globalThis.canvasComp0.setWidth(img.width);
     globalThis.canvasComp1.setHeight(img.height);
     globalThis.canvasComp1.setWidth(img.width);
     globalThis.canvasComp2.setHeight(img.height);
     globalThis.canvasComp2.setWidth(img.width);
 
+    canvasComp0.add(img);
     canvasComp1.add(img);
     canvasComp2.add(img);
   }
@@ -381,6 +384,7 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   if (view) {
     // document.getElementById("e").setAttribute("style", "");
     // document.getElementById("f").setAttribute("style", "");
+    canvasComp0.clear();
     canvasComp1.clear();
     canvasComp2.clear();
   }
@@ -528,7 +532,7 @@ function penalizeWord(wordStr) {
 
   // Penalize digit between two letters
   // This usually indicates a letter is being misidentified as "0" or "1"
-  if (/\d[a-z]\d/i.test(wordStr)) penalty += 0.05;
+  if (/[a-z]\d[a-z]/i.test(wordStr)) penalty += 0.05;
 
   // Penalize "]" at the start of word (followed by at least one other character)
   // Motivated by "J" being misidentified as "]"
@@ -780,7 +784,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                     // hocrBError = (await evalWord(hocrAWord, n, hocrBWord.innerHTML)) + penalizeWord(hocrBWord.innerHTML);
 
                     if(debugLabel) {
-                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL(), hocrAError, hocrBError]);
+                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp0.toDataURL(), globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL(), hocrAError, hocrBError, hocrAWord.innerHTML, hocrBWord.innerHTML]);
                       globalThis.debugLog += "Legacy Word: " + hocrAWord.innerHTML + " [Error: " + String(hocrAError) + "]\n";
                       globalThis.debugLog += "LSTM Word: " + hocrBWord.innerHTML + " [Error: " + String(hocrBError) + "]\n";  
                     }
@@ -811,7 +815,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
 
 
                     if(debugLabel) {
-                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL(), hocrAError, hocrBError]);
+                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp0.toDataURL(), globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL(), hocrAError, hocrBError, wordsAArr.map((x) => x.innerHTML).join(" "), wordsBArr.map((x) => x.innerHTML).join(" ")]);
                       globalThis.debugLog += "Legacy Word: " + wordsAArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrAError) + "]\n";
                       globalThis.debugLog += "LSTM Word: " + wordsBArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrBError) + "]\n";
                     }
