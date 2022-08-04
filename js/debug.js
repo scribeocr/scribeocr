@@ -34,7 +34,7 @@ export async function downloadImageAll(filename_base, type = "binary") {
       console.log("Filetype " + fileType + " is not jpeg/png; skipping.")
       continue;
     }
-    const fileName = filename_base + "_" + String(i) + "." + fileType;
+    const fileName = filename_base + "_" + String(i).padStart(3, "0") + "." + fileType;
     console.log("Downloading file " + String(i) + " as " + fileName);
     downloadImage(img, fileName);
     // Not all files will be downloaded without a delay between downloads

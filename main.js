@@ -785,12 +785,14 @@ function getTesseractConfigs() {
     hocr_char_boxes: '1',
     // The Tesseract LSTM engine frequently identifies a bar character "|"
     // This is virtually always a false positive (usually "I").
-    tessedit_char_blacklist: "|ﬁﬂéï",
+    tessedit_char_blacklist: "|éï",
     debug_file: "/debug.txt",
     max_page_gradient_recognize: "100",
-    hocr_font_info: "1"
+    hocr_font_info: "1",
+    // classify_enable_learning: "0",
+    // classify_enable_adaptive_matcher: "0",
+    // tessedit_enable_doc_dict: "0"
   };
-
   return (allConfig);
 }
 
@@ -1196,7 +1198,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true,
       // We still use imageAll["native"] when it exists as this will have rotation applied (if applicable) while imageAll["nativeSrc"] will not.
       const inputSrc = globalThis.imageAll["native"][x] ? (await globalThis.imageAll["native"][x]).src : globalThis.imageAll["nativeSrc"][x];
 
-      const maxGradient = angleKnown ? "100" : "0.01";
+      const maxGradient = angleKnown ? "100" : "0.005";
 
       // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
       const saveNativeImage = autoRotateCheckboxElem.checked && !globalThis.imageAll["nativeRotated"][x] && rotateRadians != 0;

@@ -879,6 +879,9 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
 
                         hocrAWord.replaceWith(...wordsBArrRep);
                         k = k + wordsBArrRep.length - 1;
+
+                        // Move to next hocrAWord
+                        break;
                       }
                       
                     }
