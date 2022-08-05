@@ -4,6 +4,7 @@ import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 import { getFontSize, calcCharSpacing } from "./textUtils.js";
 
 import { renderPDFImageCache } from "../main.js";
+import { replaceLigatures } from "./miscUtils.js";
 
 // Function for converting from bufferArray to hex (string)
 // Taken from https://stackoverflow.com/questions/40031688/javascript-arraybuffer-to-hex
@@ -372,6 +373,9 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       } else {
         wordText = word.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
       }      
+
+      // Ligatures are not in the encoding dictionary so would not be displayed correctly
+      wordText = replaceLigatures(wordText);
 
       const titleStrWord = word.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
       const wordBox = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
