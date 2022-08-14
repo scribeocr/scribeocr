@@ -12,3 +12,18 @@ The upshot appears to be that orientation is specified `0112 0003 0000 0001
 3. `0000 0001` specifies length of 1
 4. `000X` specifies an orientation value of `X` (for example, `0003` indicates the image is flipped upside down)
 
+
+The following is an example of how the above data looks in a Uint8Array (which uses decimal rather than hex). 
+
+```
+40: 1
+41: 18
+42: 0
+43: 3
+44: 0
+45: 0
+46: 0
+47: 1
+48: 0
+49: 5
+```
