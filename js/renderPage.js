@@ -1,5 +1,5 @@
 
-import { getFontSize, calcWordWidth, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
+import { getFontSize, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
 import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
 import { round3 } from "./miscUtils.js"
 
@@ -53,11 +53,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       ascHeight = parseFloat(ascHeight[1]);
       descHeight = parseFloat(descHeight[1]);
       let xHeight = letterHeight - ascHeight - descHeight;
-      lineFontSize = getFontSize(defaultFont, xHeight, "o");
+      lineFontSize = await getFontSize(defaultFont, "normal", xHeight, "o");
     } else if (letterHeight != null) {
       letterHeight = parseFloat(letterHeight[1]);
       descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-      lineFontSize = getFontSize(defaultFont, letterHeight - descHeight, "A");
+      lineFontSize = await getFontSize(defaultFont, "normal", letterHeight - descHeight, "A");
     }
 
     // If none of the above conditions are met (not enough info to calculate font size), the font size from the previous line is reused.
@@ -138,14 +138,14 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         wordFontSize = parseFloat(fontSizeStr[1]);
       } else if (wordSup) {
         // All superscripts are assumed to be numbers for now
-        wordFontSize = getFontSize(defaultFont, box_height, "1");
+        wordFontSize = await getFontSize(defaultFont, "normal", box_height, "1");
       } else if (wordDropCap) {
         // Note: In addition to being taller, drop caps are often narrower than other glyphs.
         // Unfortunately, while Fabric JS (canvas library) currently supports horizontally scaling glyphs,
         // pdfkit (pdf library) does not.  This feature should be added to Scribe if pdfkit supports it
         // in the future.
         // https://github.com/foliojs/pdfkit/issues/1032
-        wordFontSize = getFontSize(defaultFont, box_height, wordText.slice(0, 1));
+        wordFontSize = await getFontSize(defaultFont, "normal", box_height, wordText.slice(0, 1));
       } else {
         wordFontSize = lineFontSize;
       }
@@ -330,7 +330,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
               this.text = textInt;
             }
 
-            const wordWidth = await calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
+            const wordWidth = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle))["width"];
             if (this.text.length > 1) {
               const kerning = (this.boxWidth - wordWidth) / (this.text.length - 1);
               this.charSpacing = kerning * 1000 / this.fontSize;
@@ -369,7 +369,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           if (opt.action == "scaleX") {
             const textboxWidth = opt.target.calcTextWidth()
             const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
-            const widthCalc = (textboxWidth - wordMetrics[1]) * opt.target.scaleX;
+            const widthCalc = (textboxWidth - wordMetrics["leftSideBearing"]) * opt.target.scaleX;
 
             let rightNow = opt.target.left + widthCalc;
             let rightOrig = opt.target.leftOrig + opt.target.boxWidth;
@@ -389,7 +389,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             }
 
             opt.target.leftOrig = opt.target.left;
-            opt.target.boxWidth = Math.round(rightNow - opt.target.left - wordMetrics[1]);
+            opt.target.boxWidth = Math.round(rightNow - opt.target.left - wordMetrics["leftSideBearing"]);
 
           }
         });

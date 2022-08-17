@@ -254,11 +254,11 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       ascHeight = parseFloat(ascHeight[1]);
       descHeight = parseFloat(descHeight[1]);
       let xHeight = letterHeight - ascHeight - descHeight;
-      lineFontSize = getFontSize(globalThis.globalSettings.defaultFont, xHeight, "o");
+      lineFontSize = await getFontSize(globalThis.globalSettings.defaultFont, "normal", xHeight, "o");
     } else if (letterHeight != null) {
       letterHeight = parseFloat(letterHeight[1]);
       descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-      lineFontSize = getFontSize(globalThis.globalSettings.defaultFont, letterHeight - descHeight, "A");
+      lineFontSize = await getFontSize(globalThis.globalSettings.defaultFont, "normal", letterHeight - descHeight, "A");
     }
     // Calculate desc part of font 
     ctx.font = 1000 + 'px ' + globalThis.globalSettings.defaultFont;
@@ -389,9 +389,9 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
         wordFontSize = parseFloat(fontSizeStr[1]);
       } else if (wordSup) {
         // All superscripts are assumed to be numbers for now
-        wordFontSize = getFontSize(wordFontFamily, wordBox[3] - wordBox[1], "1");
+        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
       } else if (wordDropCap) {
-        wordFontSize = getFontSize(wordFontFamily, wordBox[3] - wordBox[1], wordText.slice(0, 1));
+        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
       } else {
         wordFontSize = lineFontSize;
       }

@@ -15,7 +15,7 @@ import { renderHOCR } from './js/exportRenderHOCR.js';
 import { renderPage } from './js/renderPage.js';
 import { coords } from './js/coordinates.js';
 
-import { getFontSize, calcWordWidth, calcWordMetrics } from "./js/textUtils.js"
+import { getFontSize, calcWordMetrics } from "./js/textUtils.js"
 
 import { calculateOverallFontMetrics, parseDebugInfo } from "./js/fontStatistics.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
@@ -1654,9 +1654,9 @@ function addWordClick() {
 
     if (letterHeight && ascHeight && descHeight) {
       let xHeight = letterHeight - ascHeight - descHeight;
-      fontSize = getFontSize(globalSettings.defaultFont, xHeight, "o", ctx);
+      fontSize = await getFontSize(globalSettings.defaultFont, "normal", xHeight, "o");
     } else if (letterHeight) {
-      fontSize = getFontSize(globalSettings.defaultFont, letterHeight, "A", ctx);
+      fontSize = await getFontSize(globalSettings.defaultFont, "normal", letterHeight, "A");
     }
 
     ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
@@ -1714,7 +1714,7 @@ function addWordClick() {
           textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
           this.text = textInt;
         }
-        const wordWidth = await calcWordWidth(this.text, this.fontFamily, this.fontSize, this.fontStyle);
+        const wordWidth = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle))["width"];
         if (this.text.length > 1) {
           const kerning = round3((this.boxWidth - wordWidth) / (this.text.length - 1));
           this.charSpacing = kerning * 1000 / this.fontSize;
@@ -1751,7 +1751,7 @@ function addWordClick() {
       if (opt.action == "scaleX") {
         const textboxWidth = opt.target.calcTextWidth()
         const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
-        const widthCalc = (textboxWidth - wordMetrics[1]) * opt.target.scaleX;
+        const widthCalc = (textboxWidth - wordMetrics["leftSideBearing"]) * opt.target.scaleX;
 
         let rightNow = opt.target.left + widthCalc;
         let rightOrig = opt.target.leftOrig + opt.target.boxWidth;
@@ -1770,7 +1770,7 @@ function addWordClick() {
         }
 
         opt.target.leftOrig = opt.target.left;
-        opt.target.boxWidth = Math.round(rightNow - opt.target.left - wordMetrics[1]);
+        opt.target.boxWidth = Math.round(rightNow - opt.target.left - wordMetrics["leftSideBearing"]);
 
       }
     });

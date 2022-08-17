@@ -97,7 +97,7 @@ let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, v
   
 
 // Calculates line font size from xml element (either ocr_line or ocrx_word) 
-const calcLineFontSize = function(xmlElem) {
+const calcLineFontSize = async function(xmlElem) {
 
   if(xmlElem.className == "ocrx_word") {
     xmlElem = xmlElem.parentElement;
@@ -120,11 +120,11 @@ const calcLineFontSize = function(xmlElem) {
     ascHeight = parseFloat(ascHeight[1]);
     descHeight = parseFloat(descHeight[1]);
     let xHeight = letterHeight - ascHeight - descHeight;
-    lineFontSize = getFontSize(globalSettings.defaultFont, xHeight, "o");
+    lineFontSize = await getFontSize(globalSettings.defaultFont, "normal", xHeight, "o");
   } else if (letterHeight != null) {
     letterHeight = parseFloat(letterHeight[1]);
     descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-    lineFontSize = getFontSize(globalSettings.defaultFont, letterHeight - descHeight, "A");
+    lineFontSize = await getFontSize(globalSettings.defaultFont, "normal", letterHeight - descHeight, "A");
   }
 
   return(lineFontSize);
@@ -135,7 +135,7 @@ const calcLineFontSize = function(xmlElem) {
   
 let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText = null, debugCanvas = null){
 
-  lineFontSize = lineFontSize || calcLineFontSize(word) || 10;
+  lineFontSize = lineFontSize || (await calcLineFontSize(word)) || 10;
 
   let styleStr = word.getAttribute('style') ?? "";
   // let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i)?.[1];
@@ -319,7 +319,7 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   const cosAngle = Math.cos(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 0;
 
-  const lineFontSize = calcLineFontSize(wordsA[0]);
+  const lineFontSize = await calcLineFontSize(wordsA[0]);
 
   if (!lineFontSize) return [1,1];
 

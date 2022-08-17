@@ -1,16 +1,23 @@
 
 
 
-export function getFontSize(font, charHeight, compChar = "o"){
-  window.ctx.font = '1000px ' + font;
-  // The Tesseract x-height numbers are actually closer to the height of a letter "o"
-  let xMetrics = window.ctx.measureText(compChar);
-  return(Math.round(1000 * (charHeight / (xMetrics.actualBoundingBoxAscent + xMetrics.actualBoundingBoxDescent))));
-}
+export async function getFontSize(fontFamily, fontStyle, charHeightActual, compChar = "o"){
 
+  if (/small caps$/i.test(fontFamily)) {
+    fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
+    fontStyle = "small-caps";
+  }
+  const fontObjI = await window.fontObj[fontFamily][fontStyle];
+
+  const charMetrics = fontObjI.charToGlyph(compChar).getMetrics();
+  const charHeight = (charMetrics.yMax - charMetrics.yMin) * (1 / fontObjI.unitsPerEm);
+
+  return Math.round(charHeightActual / charHeight);
+
+}
 
 export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "normal"){
-  window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
+  // window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
 
   if (/small caps$/i.test(fontFamily)) {
     fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
@@ -19,65 +26,37 @@ export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle 
 
   // Calculate font glyph metrics for precise positioning
   const fontObjI = await window.fontObj[fontFamily][fontStyle];
-  const wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
-  const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0,1)).getMetrics();
 
-  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing * (fontSize / fontObjI.unitsPerEm);
-  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObjI.unitsPerEm);
-
-  const wordWidth1 = window.ctx.measureText(wordText).width;
-  const wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;
-  return([wordWidth,wordLeftBearing]);
-
-}
-
-
-export async function calcWordWidth(wordText, fontFamily, fontSize, fontStyle = "normal"){
-  window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
-
-  if (/small caps$/i.test(fontFamily)) {
-    fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
-    fontStyle = "small-caps";
+  let wordWidth1 = 0;
+  const wordTextArr = wordText.split("");
+  for (let i=0; i<wordTextArr.length; i++) {
+    const charI = wordTextArr[i];
+    const charJ = wordTextArr[i+1];
+    wordWidth1 += fontObjI.charToGlyph(charI).advanceWidth;
+    if (charJ) wordWidth1 += fontObjI.getKerningValue(fontObjI.charToGlyph(charI),fontObjI.charToGlyph(charJ));
   }
 
-  // Calculate font glyph metrics for precise positioning
-  const fontObjI = await window.fontObj[fontFamily][fontStyle];
   const wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
   const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0,1)).getMetrics();
 
-  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing * (fontSize / fontObjI.unitsPerEm);
-  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObjI.unitsPerEm);
+  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing;
+  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing;
 
-  const wordWidth1 = window.ctx.measureText(wordText).width;
-  const wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;
-  return(wordWidth);
+  // const wordWidth1 = window.ctx.measureText(wordText).width;
+  const wordWidth = (wordWidth1 - wordRightBearing - wordLeftBearing) * (fontSize / fontObjI.unitsPerEm);
+
+  return {"width": wordWidth, "leftSideBearing": wordLeftBearing}
 
 }
 
-// Calculates kerning value given a word, its actual width (as measured from the scanned image), and 
+// Calculates char spacing required for the specified word to be rendered at a width of actualWidth
 export async function calcCharSpacing(wordText, fontFamily, fontStyle, fontSize, actualWidth) {
   if(wordText.length < 2) return 0;
 
-  const fontObjI = await globalThis.fontObj[fontFamily][fontStyle];
+  const wordWidth = (await calcWordMetrics(wordText, fontFamily, fontSize, fontStyle))["width"];
 
-  if (fontStyle == "small-caps") {
-    ctx.font = fontSize + 'px ' + fontFamily + " Small Caps";
-  } else {
-    ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
-  }
+  const charSpacing = Math.round((actualWidth - wordWidth) / (wordText.length - 1)*1e3)/1e3;
 
-  // Calculate font glyph metrics for precise positioning
-  let wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
-  let wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
-
-  let wordLeftBearing = wordFirstGlyphMetrics.xMin * (fontSize / fontObjI.unitsPerEm);
-  let wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (fontSize / fontObjI.unitsPerEm);
-
-
-  let wordWidth1 = ctx.measureText(wordText).width;
-  let wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;
-  const kerning = Math.round((actualWidth - wordWidth) / (wordText.length - 1)*1e3)/1e3;
-
-  return kerning;
+  return charSpacing;
 
 }

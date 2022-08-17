@@ -4,7 +4,7 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { calcWordWidth, calcWordMetrics } from "./textUtils.js"
+import { calcWordMetrics } from "./textUtils.js"
 import { renderPageQueue } from "../main.js"
 
 
@@ -129,7 +129,7 @@ export async function changeWordFontSize(fontSize){
     document.getElementById("fontSize").value = fontSize;
     wordI.fontSize = fontSize;
     if(wordI.text.length > 1){
-      const wordWidth = await calcWordWidth(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
+      const wordWidth = (await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle))["width"];
       const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
       wordI.charSpacing = kerning * 1000 / wordI.fontSize;
     }
@@ -189,7 +189,7 @@ export async function changeWordFont(fontName){
     wordI.fontFamily = fontNameCanvas;
     wordI.defaultFontFamily = fontName == "Default" ? true : false;
     if(wordI.text.length > 1){
-      const wordWidth = await calcWordWidth(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
+      const wordWidth = (await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle))["width"];
       const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
       wordI.charSpacing = kerning * 1000 / wordI.fontSize;
     }
