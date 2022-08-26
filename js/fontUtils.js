@@ -66,23 +66,23 @@ export async function loadFontFamily(fontFamily) {
   }
 
   // Font data can either be stored in an array or found through a URL
-  const sourceItalic = globalThis.fontObjRaw[familyStr]["italic"] || fontFiles[familyStr + "-italic"];
-  const sourceNormal = globalThis.fontObjRaw[familyStr]["normal"] || fontFiles[familyStr];
-  const sourceSmallCaps = globalThis.fontObjRaw[familyStr]["small-caps"] || fontFiles[familyStr + "-small-caps"];
+  const sourceItalic = globalThis.fontObjRaw[familyStr]["italic"] || relToAbsPath("../fonts/" + fontFiles[familyStr + "-italic"]);
+  const sourceNormal = globalThis.fontObjRaw[familyStr]["normal"] || relToAbsPath("../fonts/" + fontFiles[familyStr]);
+  const sourceSmallCaps = globalThis.fontObjRaw[familyStr]["small-caps"] || relToAbsPath("../fonts/" + fontFiles[familyStr + "-small-caps"]);
 
 
   globalThis.fontObj[familyStr]["italic"] = loadFont(familyStr + "-italic", sourceItalic, true).then(async (x) => {
-    await loadFontBrowser(familyStr, "italic", sourceItalic, true);
+    if (globalThis.document) await loadFontBrowser(familyStr, "italic", sourceItalic, true);
     return x;
-  });
+  }, (x) => console.log(x));
   globalThis.fontObj[familyStr]["normal"] = loadFont(familyStr, sourceNormal, true).then(async (x) => {
-    await loadFontBrowser(familyStr, "normal", sourceNormal, true);
+    if (globalThis.document) await loadFontBrowser(familyStr, "normal", sourceNormal, true);
     return x;
-  });
+  }, (x) => console.log(x));
   globalThis.fontObj[familyStr]["small-caps"] = loadFont(familyStr, sourceSmallCaps, true).then(async (x) => {
-    await loadFontBrowser(familyStr, "small-caps", sourceSmallCaps, true);
+    if (globalThis.document) await loadFontBrowser(familyStr, "small-caps", sourceSmallCaps, true);
     return x;
-  });
+  }, (x) => console.log(x));
 
   // Most fonts do not include small caps variants, so we create our own using the normal variant as a starting point. 
   // globalThis.fontObj[familyStr]["small-caps"] = createSmallCapsFont(sourceNormal, heightSmallCaps).then(async (x) => {
@@ -191,11 +191,14 @@ export async function loadFont(font, src, overwrite = false) {
 }
 
 // Object containing location of various font files
-var fontFiles = new Object;
-fontFiles["Libre Baskerville"] = "/fonts/LibreBaskerville-Regular.woff";
-fontFiles["Libre Baskerville-italic"] = "/fonts/LibreBaskerville-Italic.woff";
-fontFiles["Libre Baskerville-small-caps"] = "/fonts/LibreBaskerville-SmallCaps.woff";
+export const fontFiles = {"Libre Baskerville": "LibreBaskerville-Regular.woff",
+"Libre Baskerville-italic": "LibreBaskerville-Italic.woff",
+"Libre Baskerville-small-caps": "LibreBaskerville-SmallCaps.woff",
+"Open Sans": "OpenSans-Regular.woff",
+"Open Sans-italic": "OpenSans-Italic.woff",
+"Open Sans-small-caps": "OpenSans-SmallCaps.woff"};
 
-fontFiles["Open Sans"] = "/fonts/OpenSans-Regular.woff";
-fontFiles["Open Sans-italic"] = "/fonts/OpenSans-Italic.woff";
-fontFiles["Open Sans-small-caps"] = "/fonts/OpenSans-SmallCaps.woff";
+export function relToAbsPath(fileName) {
+  const url = new URL(fileName, import.meta.url);
+  return url.protocol == "file:" ? url.host + url.pathname : url.href;
+}

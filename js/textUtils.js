@@ -7,7 +7,7 @@ export async function getFontSize(fontFamily, fontStyle, charHeightActual, compC
     fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
     fontStyle = "small-caps";
   }
-  const fontObjI = await window.fontObj[fontFamily][fontStyle];
+  const fontObjI = await globalThis.fontObj[fontFamily][fontStyle];
 
   const charMetrics = fontObjI.charToGlyph(compChar).getMetrics();
   const charHeight = (charMetrics.yMax - charMetrics.yMin) * (1 / fontObjI.unitsPerEm);
@@ -25,7 +25,7 @@ export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle 
   }
 
   // Calculate font glyph metrics for precise positioning
-  const fontObjI = await window.fontObj[fontFamily][fontStyle];
+  const fontObjI = await globalThis.fontObj[fontFamily][fontStyle];
 
   let wordWidth1 = 0;
   const wordTextArr = wordText.split("");

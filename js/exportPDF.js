@@ -1,9 +1,8 @@
 
 import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 
-import { getFontSize, calcCharSpacing } from "./textUtils.js";
+import { getFontSize, calcCharSpacing, calcWordMetrics } from "./textUtils.js";
 
-import { renderPDFImageCache } from "../main.js";
 import { replaceLigatures } from "./miscUtils.js";
 
 // Function for converting from bufferArray to hex (string)
@@ -89,7 +88,7 @@ function createFontObj(font, firstObjIndex){
 // This is different than wordRegex in the convertPage.js file, as here we assume that the xml is already at the word-level (no character-level elements).
 const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)/, "ig");
 
-export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", rotate = false, dimsLimit = [-1,-1], progress = null) {
+export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", rotate = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
   // Get count of various objects inserted into pdf
   let fontCount = 0;
@@ -151,13 +150,7 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
     const angle = rotate ? (globalThis.pageMetricsObj["angleAll"][i] || 0) : 0;
     let dims = globalThis.pageMetricsObj.dimsAll[i];
 
-    // In the fringe case where images are uploaded but no recognition data is present, dimensions come from the images. 
-    if (inputDataModes.imageMode && !dims) {
-      await renderPDFImageCache([i]);
-      const backgroundImage = await globalThis.imageAll["native"][i];
-      dims = [backgroundImage.height, backgroundImage.width];
-    }
-    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle));
+    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, confThreshHigh, confThreshMed));
     if (progress) progress.increment();
   }
 
@@ -183,7 +176,7 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
 
 }
 
-async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle) {
+async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, confThreshHigh = 85, confThreshMed = 75) {
 
   if (outputDims[0] < 1) {
     outputDims = inputDims;
@@ -260,9 +253,6 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
       lineFontSize = await getFontSize(globalThis.globalSettings.defaultFont, "normal", letterHeight - descHeight, "A");
     }
-    // Calculate desc part of font 
-    ctx.font = 1000 + 'px ' + globalThis.globalSettings.defaultFont;
-    const oMetrics = ctx.measureText("o");
 
     const words = line.match(wordRegex);
     const word = words[0];
@@ -282,9 +272,6 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     } else {
       fontStyle = "normal";
     }
-
-    const confThreshHigh = document.getElementById("confThreshHigh").value != "" ? parseInt(document.getElementById("confThreshHigh").value) : 85;
-    const confThreshMed = document.getElementById("confThreshMed").value != "" ? parseInt(document.getElementById("confThreshMed").value) : 75;
 
     let fillColor = "0 0 0 rg";
     if (textMode == "proof") {
@@ -345,7 +332,8 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     const lineLeftAdj = wordBox[0] - wordLeftBearing + angleAdjXLine;
     const lineTopAdj = linebox[3] + baseline[1] + angleAdjYLine;
 
-    textStream += String(lineLeftAdj - lineOrigin[0]) + " " + String(lineOrigin[1] - lineTopAdj) + " Td\n";
+    textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
+
     lineOrigin[0] = lineLeftAdj;
     lineOrigin[1] = lineTopAdj;
 
@@ -451,13 +439,15 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
         // Actual space (# of pixels in image) between end of last word's bounding box and start of this word's bounding box
         const wordSpace = wordBox[0] - wordBoxLast[2];
 
-        if (fontStyleLast == "small-caps") {
-          ctx.font = fontSizeLast + 'px ' + wordFontFamilyLast + " Small Caps";
-        } else {
-          ctx.font = fontStyleLast + " " + fontSizeLast + 'px ' + wordFontFamilyLast;
-        }
+        // if (fontStyleLast == "small-caps") {
+        //   ctx.font = fontSizeLast + 'px ' + wordFontFamilyLast + " Small Caps";
+        // } else {
+        //   ctx.font = fontStyleLast + " " + fontSizeLast + 'px ' + wordFontFamilyLast;
+        // }
 
-        const spaceWidth = ctx.measureText(" ").width;
+        // const spaceWidth = ctx.measureText(" ").width;
+
+        const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).width;
 
         // When the angle is significant, words need to be spaced differently due to rotation.
         let angleSpaceAdjXWord = 0;

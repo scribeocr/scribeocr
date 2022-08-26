@@ -48,7 +48,7 @@ function determineSansSerif(fontName) {
 // [1] Page number
 // [2] Abbyy mode
 // [3] Object with arbitrary values to pass through to result
-onmessage = function (e) {
+addEventListener('message', e => {
   const func = e.data[0];
 
   const hocrStr = e.data[1][0];
@@ -64,7 +64,7 @@ onmessage = function (e) {
   }
   workerResult.push(n, argsObj, e.data[e.data.length - 1]);
   postMessage(workerResult);
-}
+});
 
 function fontMetrics(){
   this.width = {};

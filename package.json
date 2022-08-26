@@ -6,6 +6,7 @@
   "directories": {
     "lib": "lib"
   },
+  "type": "module",
   "devDependencies": {
     "@types/node": "^18.0.6",
     "cy-verify-downloads": "^0.1.2",
@@ -24,5 +25,8 @@
   "bugs": {
     "url": "https://github.com/Balearica/scribeocr/issues"
   },
-  "homepage": "https://github.com/Balearica/scribeocr#readme"
+  "homepage": "https://github.com/Balearica/scribeocr#readme",
+  "dependencies": {
+    "web-worker": "^1.2.0"
+  }
 }

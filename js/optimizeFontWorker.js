@@ -1,9 +1,4 @@
 
-var window = {};
-importScripts('../lib/opentype.js');
-importScripts('../fonts/glyphs.js');
-
-
 function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
 }
@@ -337,8 +332,20 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
 
 }
 
-onmessage = async function (e) {
+addEventListener('message', async (e) => {
 
+  // Defining "window" is needed due to bad browser/node detection in Opentype.js
+  // Can hopefully remove in future version
+  if (typeof process === "undefined") {
+    globalThis.window = {};
+  } else {
+    await import("../node/require.js");
+  }
+
+  await import('../lib/opentype.js');
+  const { glyphAlts } = await import('../fonts/glyphs.js');
+  globalThis.glyphAlts = glyphAlts;
+  
   const fontData = e.data[1].fontData;
   const fontMetrics = e.data[1].fontMetrics;
   const style = e.data[1].style;
@@ -357,4 +364,4 @@ onmessage = async function (e) {
     return postMessage({ fontData: fontBuffer, kerningPairs: font.kerningPairs, id: e.data[2] }, [fontBuffer]);
   }
 
-};
+});

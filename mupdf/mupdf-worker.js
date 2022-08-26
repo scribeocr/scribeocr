@@ -20,8 +20,6 @@
 // Artifex Software, Inc., 1305 Grant Avenue - Suite 200, Novato,
 // CA 94945, U.S.A., +1(415)492-9861, for further information.
 
-// Import the WASM module
-importScripts("libmupdf.js");
 
 // Copied from https://gist.github.com/jonleighton/958841
 function arrayBufferToBase64(arrayBuffer) {
@@ -80,35 +78,48 @@ function arrayBufferToBase64(arrayBuffer) {
 let mupdf = {};
 let ready = false;
 
-Module.onRuntimeInitialized = function () {
-	Module.ccall('initContext');
-	mupdf.openDocumentFromBuffer = Module.cwrap('openDocumentFromBuffer', 'number', ['string', 'number', 'number']);
-	mupdf.freeDocument = Module.cwrap('freeDocument', 'null', ['number']);
-	mupdf.documentTitle = Module.cwrap('documentTitle', 'string', ['number']);
-	mupdf.countPages = Module.cwrap('countPages', 'number', ['number']);
-	mupdf.pageWidth = Module.cwrap('pageWidth', 'number', ['number', 'number', 'number']);
-	mupdf.pageHeight = Module.cwrap('pageHeight', 'number', ['number', 'number', 'number']);
-	mupdf.pageLinksJSON = Module.cwrap('pageLinks', 'string', ['number', 'number', 'number']);
-	mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number']);
-  	mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number']);
-	mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
-	mupdf.overlayPDFTextImageStart = Module.cwrap('overlayPDFTextImageStart', 'null', ['number']);
-	mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number']);
-	mupdf.overlayPDFTextImageEnd = Module.cwrap('overlayPDFTextImageEnd', 'null', ['number']);
-	mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number']);
-	mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
-	mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
-	mupdf.pageTextJSON = Module.cwrap('pageText', 'string', ['number', 'number', 'number']);
-	mupdf.searchJSON = Module.cwrap('search', 'string', ['number', 'number', 'number', 'string']);
-	mupdf.loadOutline = Module.cwrap('loadOutline', 'number', ['number']);
-	mupdf.freeOutline = Module.cwrap('freeOutline', null, ['number']);
-	mupdf.outlineTitle = Module.cwrap('outlineTitle', 'string', ['number']);
-	mupdf.outlinePage = Module.cwrap('outlinePage', 'number', ['number', 'number']);
-	mupdf.outlineDown = Module.cwrap('outlineDown', 'number', ['number']);
-	mupdf.outlineNext = Module.cwrap('outlineNext', 'number', ['number']);
-	postMessage("READY");
-	ready = true;
-};
+
+(async () => {
+
+  if (typeof process !== "undefined") {
+    await import("../node/require.js");
+  }
+
+  const {Module, FS} = await import("../mupdf/libmupdf.js");
+
+  globalThis.Module = Module;
+  globalThis.FS = FS;
+
+  Module.onRuntimeInitialized = function () {
+    Module.ccall('initContext');
+    mupdf.openDocumentFromBuffer = Module.cwrap('openDocumentFromBuffer', 'number', ['string', 'number', 'number']);
+    mupdf.freeDocument = Module.cwrap('freeDocument', 'null', ['number']);
+    mupdf.documentTitle = Module.cwrap('documentTitle', 'string', ['number']);
+    mupdf.countPages = Module.cwrap('countPages', 'number', ['number']);
+    mupdf.pageWidth = Module.cwrap('pageWidth', 'number', ['number', 'number', 'number']);
+    mupdf.pageHeight = Module.cwrap('pageHeight', 'number', ['number', 'number', 'number']);
+    mupdf.pageLinksJSON = Module.cwrap('pageLinks', 'string', ['number', 'number', 'number']);
+    mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number']);
+      mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number']);
+    mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
+    mupdf.overlayPDFTextImageStart = Module.cwrap('overlayPDFTextImageStart', 'null', ['number']);
+    mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number']);
+    mupdf.overlayPDFTextImageEnd = Module.cwrap('overlayPDFTextImageEnd', 'null', ['number']);
+    mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number']);
+    mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
+    mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
+    mupdf.pageTextJSON = Module.cwrap('pageText', 'string', ['number', 'number', 'number']);
+    mupdf.searchJSON = Module.cwrap('search', 'string', ['number', 'number', 'number', 'string']);
+    mupdf.loadOutline = Module.cwrap('loadOutline', 'number', ['number']);
+    mupdf.freeOutline = Module.cwrap('freeOutline', null, ['number']);
+    mupdf.outlineTitle = Module.cwrap('outlineTitle', 'string', ['number']);
+    mupdf.outlinePage = Module.cwrap('outlinePage', 'number', ['number', 'number']);
+    mupdf.outlineDown = Module.cwrap('outlineDown', 'number', ['number']);
+    mupdf.outlineNext = Module.cwrap('outlineNext', 'number', ['number']);
+    postMessage("READY");
+    ready = true;
+  };
+
 
 mupdf.overlayText = function (doc1, doc2, minpage, maxpage, pagewidth, pageheight) {
 	// Module.FS_createDataFile("/", "test_1.pdf", data, 1, 1, 1);
@@ -240,8 +251,10 @@ mupdf.pageText = function (doc, page, dpi) {
 mupdf.search = function (doc, page, dpi, needle) {
 	return JSON.parse(mupdf.searchJSON(doc, page, dpi, needle));
 }
+})().catch((x) => {throw x});
 
-onmessage = function (event) {
+addEventListener('message', (event) => {
+
 	let [ func, args, id ] = event.data;
 	if (!ready) {
 		postMessage(["ERROR", id, {name: "NotReadyError", message: "WASM module is not ready yet"}]);
@@ -258,4 +271,4 @@ onmessage = function (event) {
 	} catch (error) {
 		postMessage(["ERROR", id, {name: error.name, message: error.message}]);
 	}
-}
+});

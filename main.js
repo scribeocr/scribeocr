@@ -29,7 +29,7 @@ import {
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
-import { initOptimizeFontWorker } from "./js/optimizeFont.js";
+import { optimizeFont3, initOptimizeFontWorker } from "./js/optimizeFont.js";
 
 import { evalWords, compareHOCR } from "./js/compareHOCR.js";
 
@@ -2774,20 +2774,11 @@ async function optimizeFontClick(value) {
     }
   }
 
-  // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
-  // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font. 
-  const metricsFontFamilies = Object.keys(globalThis.fontMetricsObj);
-  // const multiFontMode = metricsFontFamilies.includes("Libre Baskerville") || metricsFontFamilies.includes("Open Sans");
-  const optFontFamilies = globalSettings.multiFontMode ? metricsFontFamilies.filter((x) => !["Default","message"].includes(x)) : [globalSettings.defaultFont];
-
-  if (value) {
-    await Promise.allSettled(optFontFamilies.map(async (family) => { return optimizeFont2(family)}));
-  } else {
-    await Promise.allSettled(optFontFamilies.map(async (family) => { return loadFontFamily(family)}));
-  }
+  await optimizeFont3(value);
 
   renderPageQueue(currentPage.n);
 }
+
 
 window["binarySchedulerInit"] = async function () {
   // Workers take a non-trivial amount of time to started so a tradeoff exists with how many to use.
@@ -2816,7 +2807,7 @@ window["muPDFSchedulerInit"] = async function () {
 async function initSchedulerIfNeeded(x) {
 
   if(!window[x]){
-    window[x] = window[x + "Init"]();
+    window[x] = window[x + "Init"]().catch((x) => console.log(x));
   }
   return(window[x]);
 }
@@ -2841,59 +2832,16 @@ globalThis.saveAs = function(blob, name, opts) {
   }));
 }
 
-
-// TODO: Rework storage of optimized vs. non-optimized fonts to be more organized
-// var fontDataOptimized, fontDataOptimizedItalic, fontDataOptimizedSmallCaps;
-
-var fontDataOptimized = {};
 // Object containing location of various font files
-var fontFiles = new Object;
-fontFiles["Libre Baskerville"] = "/fonts/LibreBaskerville-Regular.woff";
-fontFiles["Libre Baskerville-italic"] = "/fonts/LibreBaskerville-Italic.woff";
-fontFiles["Libre Baskerville-small-caps"] = "/fonts/LibreBaskerville-SmallCaps.woff";
+// var fontFiles = new Object;
+// fontFiles["Libre Baskerville"] = "/fonts/LibreBaskerville-Regular.woff";
+// fontFiles["Libre Baskerville-italic"] = "/fonts/LibreBaskerville-Italic.woff";
+// fontFiles["Libre Baskerville-small-caps"] = "/fonts/LibreBaskerville-SmallCaps.woff";
 
-fontFiles["Open Sans"] = "/fonts/OpenSans-Regular.woff";
-fontFiles["Open Sans-italic"] = "/fonts/OpenSans-Italic.woff";
-fontFiles["Open Sans-small-caps"] = "/fonts/OpenSans-SmallCaps.woff";
+// fontFiles["Open Sans"] = "/fonts/OpenSans-Regular.woff";
+// fontFiles["Open Sans-italic"] = "/fonts/OpenSans-Italic.woff";
+// fontFiles["Open Sans-small-caps"] = "/fonts/OpenSans-SmallCaps.woff";
 
-export async function optimizeFont2(fontFamily) {
-
-  const fontMetricI = globalSettings.multiFontMode ? globalThis.fontMetricsObj[fontFamily] : globalThis.fontMetricsObj["Default"];
-  
-  if(!fontMetricI) return;
-
-  if(!fontDataOptimized[fontFamily]) fontDataOptimized[fontFamily] = {};
-
-  await Promise.allSettled(["normal", "italic", "small-caps"].map(async (style) => {
-    // Optimize font if there are metrics to do so
-    if (fontMetricI[style]) {
-
-      let fontSrc;
-      if(style == "small-caps") {
-        // fontSrc = globalThis.fontObjRaw[fontFamily]["small-caps"];
-        fontSrc = fontFiles[fontFamily + "-small-caps"];
-      } else if (style == "italic") {
-        fontSrc = fontFiles[fontFamily + "-italic"];
-      } else {
-        fontSrc = fontFiles[fontFamily];
-      }
-
-      const fontOptObj = await globalThis.optimizeFontScheduler.addJob("optimizeFont", {fontData: fontSrc, fontMetrics: fontMetricI[style], style: style});
-
-      fontDataOptimized[fontFamily][style] = fontOptObj.fontData;
-  
-      globalThis.fontObj[fontFamily][style] = loadFont(fontFamily, fontDataOptimized[fontFamily][style], true).then((x) => {
-        // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
-        x.kerningPairs = fontOptObj.kerningPairs;
-        return(x);
-      });
-
-      return loadFontBrowser(fontFamily, style, fontDataOptimized[fontFamily][style], true);
-    }
-
-  }));
-
-}
 
 async function initOptimizeFontScheduler(workers = 3) {
   globalThis.optimizeFontScheduler = await Tesseract.createScheduler();
@@ -2959,32 +2907,20 @@ async function updateDataProgress(mainData = true, combMode = false) {
       } else {
         // Buttons are enabled from calculateOverallFontMetrics function in this case
         globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+        if (globalThis.fontMetricsObj.message == "char_error") {
+          document.getElementById("charInfoError")?.setAttribute("style", "");
+        } else if (globalThis.fontMetricsObj.message == "char_warning") {
+          document.getElementById("charInfoAlert")?.setAttribute("style", "");
+        } else {
+          optimizeFontElem.disabled = false;
+          optimizeFontElem.checked = true;
+          await optimizeFontClick(optimizeFontElem.checked);
+  
+        }
       }
 
       calculateOverallPageMetrics();
 
-      // Enable font optimization (if possible) by default
-      if(optimizeFontElem.disabled == false){
-        let defaultFontObs = 0;
-        let namedFontObs = 0;
-        if (globalThis.fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + globalThis.fontMetricsObj["Default"]?.obs};
-        if (globalThis.fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Libre Baskerville"]?.obs};
-        if (globalThis.fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + globalThis.fontMetricsObj["Open Sans"]?.obs};
-  
-        globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
-
-        // Change default font to whatever named font appears more
-        if (globalSettings.multiFontMode) {
-          if ((globalThis.fontMetricsObj["Libre Baskerville"]?.obs || 0) > (globalThis.fontMetricsObj["Open Sans"]?.obs || 0)) {
-            globalSettings.defaultFont = "Libre Baskerville";
-          } else {
-            globalSettings.defaultFont = "Open Sans";
-          }
-        }
-  
-        optimizeFontElem.checked = true;
-        await optimizeFontClick(optimizeFontElem.checked);
-      }
     }
     if (!globalThis.state.importDone) {
       globalThis.state.importDone = true;
@@ -3088,6 +3024,17 @@ async function handleDownload() {
     const maxValue = parseInt(pdfPageMaxElem.value)-1;
     const pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue);
 
+    // In the fringe case where images are uploaded but no recognition data is present, dimensions come from the images. 
+    if (inputDataModes.imageMode) {
+      for (let i=minValue; i<=maxValue; i++){
+        if (!globalThis.pageMetricsObj.dimsAll[i]) {
+          await renderPDFImageCache([i]);
+          const backgroundImage = await globalThis.imageAll["native"][i];
+          globalThis.pageMetricsObj.dimsAll[i] = [backgroundImage.height, backgroundImage.width];
+        }
+      }
+    }
+
     let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
     let dimsLimit = [-1,-1];
     if (standardizeSizeMode) {
@@ -3107,6 +3054,10 @@ async function handleDownload() {
     const fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
     let pdfBlob;
 
+    const confThreshHigh = document.getElementById("confThreshHigh").value != "" ? parseInt(document.getElementById("confThreshHigh").value) : 85;
+    const confThreshMed = document.getElementById("confThreshMed").value != "" ? parseInt(document.getElementById("confThreshMed").value) : 75;
+
+
     // For proof or ocr mode the text layer needs to be combined with a background layer
     if (displayModeElem.value != "ebook") {
 
@@ -3120,7 +3071,7 @@ async function handleDownload() {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images. 
-      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, [-1,-1], downloadProgress);
+      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, [-1,-1], downloadProgress, confThreshHigh, confThreshMed);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -3154,7 +3105,7 @@ async function handleDownload() {
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 	    
     } else {
-      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, autoRotateCheckboxElem.checked, dimsLimit, downloadProgress);
+      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, autoRotateCheckboxElem.checked, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
       pdfBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
     }
     saveAs(pdfBlob, fileName);

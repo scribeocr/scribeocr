@@ -28,20 +28,13 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
 
   let fontMetricsObj = {};
 
-  const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
-
   if (charGoodCt == 0 && charErrorCt > 0) {
-    document.getElementById("charInfoError")?.setAttribute("style", "");
-    return;
-  } else if (charGoodCt == 0 && charWarnCt > 0) {
+    return {"message": "char_error"};
 
-    if (Object.keys(fontMetricsObj).length > 0) {
-      optimizeFontElem.disabled = false;
-    } else {
-      document.getElementById("charInfoAlert")?.setAttribute("style", "");
-    }
+  } else if (charGoodCt == 0 && charWarnCt > 0) {
+    return {"message": "char_warning"};
+
   } else {
-    optimizeFontElem.disabled = false;
 
     // TODO: This reduce-based implementation is extremely inefficient due to allocating a ton of arrays. Should be replaced with implementation that pushes to single array. 
     fontMetricsObj = fontMetricObjsMessage.filter((x) => !["char_error", "char_warning"].includes(x?.message)).reduce((x,y) => unionFontMetrics(x,y));
@@ -58,6 +51,23 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
     }
 
     fontMetricsOut = identifyFontVariants(globalThis.fontScores, fontMetricsOut);
+
+    let defaultFontObs = 0;
+    let namedFontObs = 0;
+    if (fontMetricsOut["Default"]?.obs) {defaultFontObs = defaultFontObs + fontMetricsOut["Default"]?.obs};
+    if (fontMetricsOut["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + fontMetricsOut["Libre Baskerville"]?.obs};
+    if (fontMetricsOut["Open Sans"]?.obs) {namedFontObs = namedFontObs + fontMetricsOut["Open Sans"]?.obs};
+
+    globalThis.globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
+
+    // Change default font to whatever named font appears more
+    if (globalThis.globalSettings.multiFontMode) {
+      if ((fontMetricsOut["Libre Baskerville"]?.obs || 0) > (fontMetricsOut["Open Sans"]?.obs || 0)) {
+        globalThis.globalSettings.defaultFont = "Libre Baskerville";
+      } else {
+        globalThis.globalSettings.defaultFont = "Open Sans";
+      }
+    }
 
     return (fontMetricsOut);
   }

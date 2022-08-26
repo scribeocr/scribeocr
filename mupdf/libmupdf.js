@@ -1,4 +1,4 @@
-var Module = typeof Module !== "undefined" ? Module : {};
+export var Module = typeof Module !== "undefined" ? Module : {};
 
 Module.noExitRuntime = true;
 
@@ -869,6 +869,14 @@ wasmBinaryFile = "libmupdf.wasm";
 if (!isDataURI(wasmBinaryFile)) {
  wasmBinaryFile = locateFile(wasmBinaryFile);
 }
+
+function relToAbsPath(fileName) {
+    const url = new URL(fileName, import.meta.url);
+    return url.protocol == "file:" ? url.host + url.pathname : url.href;
+  }
+
+wasmBinaryFile = relToAbsPath("./libmupdf.wasm");
+
 
 function getBinary(file) {
  try {
@@ -1927,7 +1935,7 @@ var ERRNO_CODES = {
  ESTRPIPE: 135
 };
 
-var FS = {
+export var FS = {
  root: null,
  mounts: [],
  devices: {},

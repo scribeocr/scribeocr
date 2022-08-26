@@ -23,14 +23,18 @@
 "use strict";
 
 //import { arrayBufferToBase64 } from "./js/miscUtils.js";
-
+// import Worker from 'web-worker';
 
 export async function initMuPDFWorker() {
 
 	return new Promise((resolve, reject) => {
 		let mupdf = {};
-		let worker = new Worker("mupdf/mupdf-worker.js");
-
+		const url = new URL('./mupdf-worker.js', import.meta.url).href;
+		let worker = globalThis.document ? new Worker(url) : new Worker(url, { type: 'module' });
+		
+		worker.onerror = function (error) {
+			throw error;
+		}
 
 		worker.onmessage = function (event) {
 			worker.promises = {};
