@@ -88,7 +88,7 @@ function createFontObj(font, firstObjIndex){
 // This is different than wordRegex in the convertPage.js file, as here we assume that the xml is already at the word-level (no character-level elements).
 const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)/, "ig");
 
-export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", rotate = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
+export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
   // Get count of various objects inserted into pdf
   let fontCount = 0;
@@ -147,10 +147,10 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
 
   // Add pages
   for(let i=minpage;i<=maxpage;i++) {
-    const angle = rotate ? (globalThis.pageMetricsObj["angleAll"][i] || 0) : 0;
+    const angle = globalThis.pageMetricsObj["angleAll"][i] || 0;
     let dims = globalThis.pageMetricsObj.dimsAll[i];
 
-    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, confThreshHigh, confThreshMed));
+    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
     if (progress) progress.increment();
   }
 
@@ -176,7 +176,7 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
 
 }
 
-async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, confThreshHigh = 85, confThreshMed = 75) {
+async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75) {
 
   if (outputDims[0] < 1) {
     outputDims = inputDims;
@@ -292,7 +292,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
 
     let angleAdjXLine = 0;
     let angleAdjYLine = 0;
-    if (Math.abs(angle ?? 0) > 0.05) {
+    if (rotateBackground && Math.abs(angle ?? 0) > 0.05) {
 
       const x = linebox[0];
       const y = linebox[3] + baseline[1];
@@ -332,7 +332,11 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     const lineLeftAdj = wordBox[0] - wordLeftBearing + angleAdjXLine;
     const lineTopAdj = linebox[3] + baseline[1] + angleAdjYLine;
 
-    textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
+    if (rotateText) {
+      textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
+    } else {
+      textStream += String(0) + " " + String(0) + " " + String(0) + " " + String(0) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
+    }
 
     lineOrigin[0] = lineLeftAdj;
     lineOrigin[1] = lineTopAdj;
@@ -417,7 +421,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
 
       const sinAngle = 0;
       const angleAdjYLine = 0;
-      let angleAdjYSup = sinAngle * (wordBox[0] - linebox[0]) * -1;
+      let angleAdjYSup = rotateText ? sinAngle * (wordBox[0] - linebox[0]) * -1 : 0;
   
       let ts = 0;
       if (wordSup) {
@@ -451,7 +455,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
 
         // When the angle is significant, words need to be spaced differently due to rotation.
         let angleSpaceAdjXWord = 0;
-        if(Math.abs(angle) >= 1) {
+        if(rotateText && Math.abs(angle) >= 1) {
           angleSpaceAdjXWord = ((wordBox[0] - wordBoxLast[0]) / cosAngle - (wordBox[0] - wordBoxLast[0]));
         }
       

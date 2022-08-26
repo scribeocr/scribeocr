@@ -171,7 +171,7 @@ async function main() {
     globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
     await optimizeFont3(true);
 
-    const pdfStr = await hocrToPDF(0, -1, "proof", true);
+    const pdfStr = await hocrToPDF(0, -1, "proof", true, false);
     fs.writeFile("debug1.pdf", pdfStr, (err) => console.log(err));
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);

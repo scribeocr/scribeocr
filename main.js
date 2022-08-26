@@ -3062,7 +3062,10 @@ async function handleDownload() {
     if (displayModeElem.value != "ebook") {
 
       const insertInputPDF = globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked;
-      const rotateText = !insertInputPDF && autoRotateCheckboxElem.checked;
+      
+      const rotateBackground = !insertInputPDF && autoRotateCheckboxElem.checked;
+
+      const rotateText = !rotateBackground;
 
       // Currently makes a pdf with all pages, regardless of what the user requests 
       // (as the mupdf part of the code expects both the background and overlay pdf to have corresponding page numbers)
@@ -3071,7 +3074,7 @@ async function handleDownload() {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images. 
-      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, [-1,-1], downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, rotateBackground, [-1,-1], downloadProgress, confThreshHigh, confThreshMed);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -3105,7 +3108,7 @@ async function handleDownload() {
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 	    
     } else {
-      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, autoRotateCheckboxElem.checked, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
       pdfBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
     }
     saveAs(pdfBlob, fileName);
