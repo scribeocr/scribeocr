@@ -1,6 +1,7 @@
 // Code for adding visualization to OCR output
 
 import fs from "fs";
+import path from "path";
 import Worker from 'web-worker';
 globalThis.Worker = Worker;
 import { createRequire } from "module";
@@ -33,6 +34,9 @@ const args = process.argv.slice(2);
 async function main() {
     let hocrStrFirst = fs.readFileSync(args[1], 'utf8');
     if (!hocrStrFirst) throw "Could not read file: " + args[0];
+
+    const outputDir = args[2] || "./";
+    const outputPath = path.basename(args[0].replace(/\.pdf$/i, "_vis.pdf"));
 
     loadFontFamily("Open Sans");
     loadFontFamily("Libre Baskerville");
@@ -109,7 +113,8 @@ async function main() {
 
     globalThis.hocrCurrent = Array(pageCount);
 
-    const worker = new Worker('../js/convertPageWorker.js', { type: 'module' });
+    const url = new URL('../js/convertPageWorker.js', import.meta.url);
+    const worker = new Worker(url, { type: 'module' });
 
     worker.onmessage = async function (event) {
         const n = event.data[1];
@@ -172,12 +177,11 @@ async function main() {
     await optimizeFont3(true);
 
     const pdfStr = await hocrToPDF(0, -1, "proof", true, false);
-    fs.writeFile("debug1.pdf", pdfStr, (err) => console.log(err));
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
     const content = await w.overlayText([pdfOverlay, 0, -1, -1, -1]);
-    fs.writeFile("debug2.pdf", content, (err) => console.log(err));
+    fs.writeFile(outputPath, content, (err) => console.log(err));
 
 }
 
