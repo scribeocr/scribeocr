@@ -2,6 +2,7 @@
 
 import fs from "fs";
 import path from "path";
+import util from "util";
 import Worker from 'web-worker';
 globalThis.Worker = Worker;
 import { createRequire } from "module";
@@ -23,7 +24,7 @@ globalThis.self = globalThis;
 await import('../lib/opentype.js');
 
 globalThis.globalSettings = {
-    simdSupport: false,
+    simdSupport: false, // This should be edited for any code that actually uses Tesseract
     defaultFont: "Libre Baskerville"
   }
 
@@ -36,7 +37,7 @@ async function main() {
     if (!hocrStrFirst) throw "Could not read file: " + args[0];
 
     const outputDir = args[2] || "./";
-    const outputPath = path.basename(args[0].replace(/\.pdf$/i, "_vis.pdf"));
+    const outputPath = outputDir + "/" + path.basename(args[0]).replace(/\.pdf$/i, "_vis.pdf");
 
     loadFontFamily("Open Sans");
     loadFontFamily("Libre Baskerville");
@@ -181,7 +182,11 @@ async function main() {
     const pdfEnc = enc.encode(pdfStr);
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
     const content = await w.overlayText([pdfOverlay, 0, -1, -1, -1]);
-    fs.writeFile(outputPath, content, (err) => console.log(err));
+    const writeFile = util.promisify(fs.writeFile);
+
+    await writeFile(outputPath, content);
+    process.exit(0);
+
 
 }
 
