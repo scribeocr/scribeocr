@@ -36,16 +36,23 @@ async function main() {
     let hocrStrFirst = fs.readFileSync(args[1], 'utf8');
     if (!hocrStrFirst) throw "Could not read file: " + args[0];
 
+    const backgroundArg = args[0];
     const outputDir = args[2] || "./";
-    const outputPath = outputDir + "/" + path.basename(args[0]).replace(/\.pdf$/i, "_vis.pdf");
+    const outputPath = outputDir + "/" + path.basename(backgroundArg).replace(/\.\w{1,5}$/i, "_vis.pdf");
 
     loadFontFamily("Open Sans");
     loadFontFamily("Libre Baskerville");
+
+    const backgroundPDF = /pdf$/i.test(backgroundArg);
+
   
     const w = await initMuPDFWorker();
     const fileData = await fs.readFileSync(args[0]);
-    const pdfDoc = await w.openDocument(fileData, "file.pdf");
-    w["pdfDoc"] = pdfDoc;  
+
+    if (backgroundPDF) {
+      const pdfDoc = await w.openDocument(fileData, "file.pdf");
+      w["pdfDoc"] = pdfDoc;    
+    }
 
     globalThis.pageMetricsObj = {};
     globalThis.pageMetricsObj["angleAll"] = [];
@@ -100,11 +107,11 @@ async function main() {
     }
 
     pageCountHOCR = hocrArrPages.length;
-    pageCountImage = await w.countPages([fileData]);
+    pageCountImage = backgroundPDF ? await w.countPages([fileData]) : 1;
     if (pageCountHOCR != pageCountImage) {
         console.log('Detected ' + pageCountHOCR + ' pages in OCR but ' + pageCountImage + " images.")
     }
-    pageCount = pageCountImage ?? pageCountHOCR
+    pageCount = pageCountImage ?? pageCountHOCR;
 
 
     globalThis.hocrCurrentRaw = Array(pageCount);
@@ -181,7 +188,7 @@ async function main() {
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
-    const content = await w.overlayText([pdfOverlay, 0, -1, -1, -1]);
+    const content = backgroundPDF ? await w.overlayText([pdfOverlay, 0, -1, -1, -1]) : await w.overlayTextImage([pdfOverlay, [fileData], 0, -1, -1, -1]);
     const writeFile = util.promisify(fs.writeFile);
 
     await writeFile(outputPath, content);

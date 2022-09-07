@@ -154,9 +154,15 @@ mupdf.overlayTextImageAddPage = function (doc, doc1, image, i, pagewidth, pagehe
 mupdf.overlayTextImage = function (doc, doc1, imageArr, minpage, maxpage, pagewidth, pageheight) {
 	for(let i=0;i<imageArr.length;i++) {
 		const pageNum = i + minpage;
-		const imgData = new Uint8Array(atob(imageArr[i].split(',')[1])
-        .split('')
-        .map(c => c.charCodeAt(0)));
+		let imgData;
+		if (typeof imageArr[i] == "string") {
+			imgData = new Uint8Array(atob(imageArr[i].split(',')[1])
+			.split('')
+			.map(c => c.charCodeAt(0)));
+		} else {
+			// If not a string, imageArr is assumed to contain a buffer already
+			imgData = imageArr[i];
+		}
 		Module.FS_createDataFile("/", String(pageNum) + ".png", imgData, 1, 1, 1);
 	}
 
