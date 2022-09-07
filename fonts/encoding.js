@@ -12,10 +12,108 @@ export const win1252Chars = [" ", "!", "\"", "#", "$", "%", "&", "'", "(", ")", 
 
 // Mapping between character names and Windows octal encodings
 // Parsed from Appendix D of PDF 1.7 spec
-// Excludes ASCII characters (as these are inserted into PDFs without an escape sequence)
-// Additionally, special characters in PDF (parentheses) are escaped to avoid an extra step
+// ASCII characters are either "replaced" by themselves or escaped with backslashes in the case
+// of special characters to maintain readability in the PDF. 
+// Non-ASCII characters are replaced by encodings. 
+const encodingASCII = {"A":"A",
+"B":"B",
+"C":"C",
+"D":"D",
+"E":"E",
+"F":"F",
+"G":"G",
+"H":"H",
+"I":"I",
+"J":"J",
+"K":"K",
+"L":"L",
+"M":"M",
+"N":"N",
+"O":"O",
+"P":"P",
+"Q":"Q",
+"R":"R",
+"S":"S",
+"T":"T",
+"U":"U",
+"V":"V",
+"W":"W",
+"X":"X",
+"Y":"Y",
+"Z":"Z",
+"a":"a",
+"&":"&",
+"^":"^",
+"~":"~",
+"*":"*",
+"@":"@",
+"b":"b",
+"\\":"\\\\",
+"|":"|",
+"{":"{",
+"}":"}",
+"[":"[",
+"]":"]",
+"c":"c",
+":":":",
+",":",",
+"d":"d",
+"$":"$",
+"e":"e",
+"8":"8",
+"=":"=",
+"!":"!",
+"f":"f",
+"5":"5",
+"4":"4",
+"g":"g",
+"`":"`",
+">":">",
+"h":"h",
+"-":"-",
+"i":"i",
+"j":"j",
+"k":"k",
+"l":"l",
+"<":"<",
+"m":"m",
+"n":"n",
+"9":"9",
+"#":"#",
+"o":"o",
+"1":"1",
+"p":"p",
+"(":"\\(",
+")":"\\)",
+"%":"%",
+".":".",
+"+":"+",
+"q":"q",
+"?":"?",
+"\"":"\"",
+"'":"'",
+"r":"r",
+"s":"s",
+";":";",
+"7":"7",
+"6":"6",
+"/":"/",
+" ":" ",
+"t":"t",
+"3":"3",
+"2":"2",
+"u":"u",
+"_":"_",
+"v":"v",
+"w":"w",
+"x":"x",
+"y":"y",
+"z":"z",
+"0":"0"
+}
 
-export const winEncodingLookup = {"Æ":"\\306",
+
+export const encodingNonASCII = {"Æ":"\\306",
 "Á":"\\301",
 "Â":"\\302",
 "Ä":"\\304",
@@ -141,14 +239,7 @@ export const winEncodingLookup = {"Æ":"\\306",
 "\\":"\\\\"
 }
 
-export function escapeTextPDF(text) {
-    // If the text contains all ASCII characters, then no escaping is needed
-    if (!/[^\x00-\x7F]/i.test(text)) return text;
-
-    const textArr = text.split("");
-    for (let i=0;i<textArr.length;i++){
-        textArr[i] = winEncodingLookup[textArr[i]] || textArr[i];
-    }
-
-    return textArr.join("");
+export const winEncodingLookup = {
+    ...encodingASCII,
+    ...encodingNonASCII
 }

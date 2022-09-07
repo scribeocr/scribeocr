@@ -4,6 +4,7 @@ import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 import { getFontSize, calcCharSpacing, calcWordMetrics } from "./textUtils.js";
 
 import { replaceLigatures } from "./miscUtils.js";
+import { loadFontBrowser } from "./fontUtils.js";
 
 // Function for converting from bufferArray to hex (string)
 // Taken from https://stackoverflow.com/questions/40031688/javascript-arraybuffer-to-hex
@@ -335,7 +336,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     if (rotateText) {
       textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
     } else {
-      textStream += String(0) + " " + String(0) + " " + String(0) + " " + String(0) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
+      textStream += String(1) + " " + String(0) + " " + String(0) + " " + String(1) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
     }
 
     lineOrigin[0] = lineLeftAdj;
@@ -512,10 +513,15 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       const wordTextArr = wordText.split("");
       const wordTextCodeArr = wordTextArr.map((x) => String(font.charToGlyph(x).index));
       for(let i=0; i<wordTextArr.length; i++) {
-        const kern = i + 1 < wordTextArr.length ? font.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (-1000 / font.unitsPerEm) || 0 : 0;
-        const letter = winEncodingLookup[wordTextArr[i]] || wordTextArr[i];
-        textStream += "(" + letter + ") " + String(kern) + " ";
-
+        const letter = winEncodingLookup[wordTextArr[i]];
+        if (letter) {
+          const kern = i + 1 < wordTextArr.length ? font.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (-1000 / font.unitsPerEm) || 0 : 0;
+          textStream += "(" + letter + ") " + String(kern) + " ";
+        } else {
+          // When the character is not in winEncodingLookup a space is inserted, with extra space to match the width of the missing character
+          const kern = (font.charToGlyph(wordTextArr[i]).advanceWidth - font.charToGlyph(" ").advanceWidth) * (-1000 / font.unitsPerEm) || 0;
+          textStream += "(" + " " + ") " + String(kern) + " ";
+        }
       }
   
     }
