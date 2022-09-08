@@ -1070,11 +1070,19 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // as this will cause the value of `lineAllHeight` to be very low, and the font size will be extremely small. 
     // While this may seem like a fringe case, it frequently happens for tables as Abbyy make a new "<line>" element for 
     // each individual cell. 
-    // Therefore, as a quick fix, whenever the lineAllHeight value is small/dubious it is replaced by the median for the page (so far). 
-    if(lineAllHeight < 10 && !lineAscHeight && !lineXHeight && lineAllHeightPageArr.length > 0) {
-      const lineAllHeightMedian = quantile(lineAllHeightPageArr, 0.5);
-      if(lineAllHeightMedian > lineAllHeight) {
-        lineAllHeight = lineAllHeightMedian;
+    // Additionally, sometimes all letters may be skipped (for the purposes of calculating statistics), in which case
+    // the lineAllHeight will be -Infinity.
+    // Therefore, as a quick fix, whenever the lineAllHeight value is small/dubious it is replaced by the median for the page (so far),
+    // and 10 when the median cannot be calculated. 
+    // TODO: Refine this logic to reduce or eliminate the case where lineAllHeight = 10
+    if(lineAllHeight < 10 && !lineAscHeight && !lineXHeight) {
+      if (lineAllHeightPageArr.length > 0) {
+        const lineAllHeightMedian = quantile(lineAllHeightPageArr, 0.5);
+        if(lineAllHeightMedian > lineAllHeight) {
+          lineAllHeight = lineAllHeightMedian;
+        }  
+      } else {
+        lineAllHeight = 10;
       }
     } else {
       lineAllHeightPageArr.push(lineAllHeight);
@@ -1169,7 +1177,16 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
     // const baselinePoint = baselineFirst[1] - lineBoxArrCalc[3] - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]) || 0;
 
-    let xmlOut = "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
+    let xmlOut = "";
+
+    // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
+    // In this case the original line-level bounding box from Abbyy is used
+    if (isFinite(lineBoxArrCalc[0])) {
+      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
+    } else {
+      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArr[2] + " " + lineBoxArr[3] + " " + lineBoxArr[4] + " " + lineBoxArr[5];
+    }
+
     xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
 
     // Calculate character size metrics (x_size, x_ascenders, x_descenders)
@@ -1206,9 +1223,10 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
     xmlOut = xmlOut + "\">";
 
-
+    let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
       if (text[i].trim() == "") { continue };
+      lettersKept++;
       let bboxesI = bboxes[i];
       const bboxesILeft = Math.min(...bboxesI.map(x => x[0]).filter(x => x > 0));
 
@@ -1261,6 +1279,10 @@ function convertPageAbbyy(xmlPage, pageNum) {
       }
 
     }
+
+    // If there are no letters in the line, drop the entire line element
+    if (lettersKept == 0) return (["", 0]);
+
     xmlOut = xmlOut + "</span>"
     return ([xmlOut, baselineSlope]);
   }

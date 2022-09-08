@@ -516,11 +516,11 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
         const letter = winEncodingLookup[wordTextArr[i]];
         if (letter) {
           const kern = i + 1 < wordTextArr.length ? font.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (-1000 / font.unitsPerEm) || 0 : 0;
-          textStream += "(" + letter + ") " + String(kern) + " ";
+          textStream += "(" + letter + ") " + String(Math.round(kern * 1e6) / 1e6) + " ";
         } else {
           // When the character is not in winEncodingLookup a space is inserted, with extra space to match the width of the missing character
           const kern = (font.charToGlyph(wordTextArr[i]).advanceWidth - font.charToGlyph(" ").advanceWidth) * (-1000 / font.unitsPerEm) || 0;
-          textStream += "(" + " " + ") " + String(kern) + " ";
+          textStream += "(" + " " + ") " + String(Math.round(kern * 1e6) / 1e6) + " ";
         }
       }
   
