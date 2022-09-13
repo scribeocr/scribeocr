@@ -183,7 +183,8 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     outputDims = inputDims;
   }
 
-  const lines = hocrStr?.match(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/g);
+  // Note: Text may contain nested elements (e.g. `<span class="ocr_dropcap">`) so it cannot be assumed that `</span></span>` indicates the end of the line
+  const lines = hocrStr?.split(/(?=<span class\=[\"\']ocr_line)/g)?.slice(1);
 
   // Start 2nd object: Page
   let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims[1]) + " " + String(outputDims[0]) + "]";
@@ -257,7 +258,16 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
 
     const words = line.match(wordRegex);
     const word = words[0];
-    const wordText = word.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+    const wordSup = /\<sup\>/i.test(word);
+    const wordDropCap = /\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word);
+    let wordText;
+    if(wordSup) {
+      wordText = word.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+    } else if(wordDropCap) {
+      wordText = word.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+    } else {
+      wordText = word.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+    }      
 
     const titleStrWord = word.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
     const wordBox = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
@@ -324,13 +334,32 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     // Reset baseline to line baseline
     textStream += "0 Ts\n";
 
+    let wordFontSize;
+    let fontSizeStr = styleStr?.match(/font\-size\:\s*(\d+)/i);
+    if (fontSizeStr != null) {
+      wordFontSize = parseFloat(fontSizeStr[1]);
+    } else if (wordSup) {
+      // All superscripts are assumed to be numbers for now
+      wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
+    } else if (wordDropCap) {
+      wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
+    } else {
+      wordFontSize = lineFontSize;
+    }
+
+    let tz = 100;
+    if (wordDropCap) {
+      const wordWidthActual = wordBox[2] - wordBox[0];
+      const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).width;
+      tz = (wordWidthActual / wordWidthFont) * 100;
+    }
 
     const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
     
-    const wordLeftBearing = wordFirstGlyphMetrics.xMin * (lineFontSize / fontObjI.unitsPerEm);
+    const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
 
     // Move to next line
-    const lineLeftAdj = wordBox[0] - wordLeftBearing + angleAdjXLine;
+    const lineLeftAdj = wordBox[0] - wordLeftBearing * (tz / 100) + angleAdjXLine;
     const lineTopAdj = linebox[3] + baseline[1] + angleAdjYLine;
 
     if (rotateText) {
@@ -352,6 +381,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     let fontStyleLast = fontStyle;
     let fontSizeLast = lineFontSize;
     let tsCurrent = 0;
+    let tzCurrent = 100;
 
     for(let j=0;j<words.length;j++){
       const word = words[j];
@@ -433,6 +463,13 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
         ts = 0;
       }
 
+      let tz = 100;
+      if (wordDropCap) {
+        const wordWidthActual = wordBox[2] - wordBox[0];
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamilyLast, wordFontSize, fontStyle)).width;
+        tz = (wordWidthActual / wordWidthFont) * 100;
+      }
+
       const font = await globalThis.fontObj[wordFontFamily][fontStyle];
       const pdfFont = pdfFonts[wordFontFamily][fontStyle];
 
@@ -442,33 +479,30 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       // Add space character between words
       if(j > 0) {
         // Actual space (# of pixels in image) between end of last word's bounding box and start of this word's bounding box
-        const wordSpace = wordBox[0] - wordBoxLast[2];
-
-        // if (fontStyleLast == "small-caps") {
-        //   ctx.font = fontSizeLast + 'px ' + wordFontFamilyLast + " Small Caps";
-        // } else {
-        //   ctx.font = fontStyleLast + " " + fontSizeLast + 'px ' + wordFontFamilyLast;
-        // }
-
-        // const spaceWidth = ctx.measureText(" ").width;
-
-        const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).width;
+        const wordSpaceActual = wordBox[0] - wordBoxLast[2];
 
         // When the angle is significant, words need to be spaced differently due to rotation.
-        let angleSpaceAdjXWord = 0;
+        let angleAdj = 0;
         if(rotateText && Math.abs(angle) >= 1) {
-          angleSpaceAdjXWord = ((wordBox[0] - wordBoxLast[0]) / cosAngle - (wordBox[0] - wordBoxLast[0]));
+          angleAdj = ((wordBox[0] - wordBoxLast[0]) / cosAngle - (wordBox[0] - wordBoxLast[0]));
         }
-      
-        // Ad-hoc adjustment needed to replicate wordSpace
+        
+        const wordSpaceActualAdj = wordSpaceActual + angleAdj;
+
         // The space between words determined by:
         // (1) The right bearing of the last word, (2) the left bearing of the current word, (3) the width of the space character between words,
         // (4) the current character spacing value (applied twice--both before and after the space character).
-        const wordSpaceExtra = wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj;
+        const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).width;
+        const wordSpaceExpected = (spaceWidth + charSpacing * 2 + wordRightBearingLast) * (tzCurrent / 100) + wordLeftBearing;
+      
+        // Ad-hoc adjustment needed to replicate wordSpace
+        // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
+        const wordSpaceExtra = (wordSpaceActualAdj - wordSpaceExpected + spacingAdj) * (100 / tzCurrent);
+
 
         // if (wordText == "—") debugger;
   
-        textStream += "( ) " + String(wordSpaceExtra * (-1000 / fontSizeLast));
+        textStream += "( ) " + String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6);
 
       }
       wordBoxLast = wordBox;
@@ -481,7 +515,8 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       // In general, we assume that (given our adjustments to character spacing) the rendered word has the same width as the image of that word.
       // However, this assumption does not hold for single-character words, as there is no space between character to adjust. 
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space. 
-      if(wordText.length == 1) {
+      // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
+      if(wordText.length == 1 && !wordDropCap) {
         spacingAdj = (wordBox[2] - wordBox[0]) - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / font.unitsPerEm));
       } else {
         spacingAdj = 0;
@@ -503,6 +538,10 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       if (ts != tsCurrent) {
         textStream += String(ts) + " Ts\n";
         tsCurrent = ts;
+      }
+      if (tz != tzCurrent) {
+        textStream += String(tz) + " Tz\n";
+        tzCurrent = tz;
       }
 
       textStream += String(Math.round(charSpacing*1e3)/1e3) + " Tc\n";

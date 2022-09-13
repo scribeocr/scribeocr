@@ -132,24 +132,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         wordDropCap = false;
       }
 
-      let wordFontSize;
-      let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i);
-      if (fontSizeStr != null) {
-        wordFontSize = parseFloat(fontSizeStr[1]);
-      } else if (wordSup) {
-        // All superscripts are assumed to be numbers for now
-        wordFontSize = await getFontSize(defaultFont, "normal", box_height, "1");
-      } else if (wordDropCap) {
-        // Note: In addition to being taller, drop caps are often narrower than other glyphs.
-        // Unfortunately, while Fabric JS (canvas library) currently supports horizontally scaling glyphs,
-        // pdfkit (pdf library) does not.  This feature should be added to Scribe if pdfkit supports it
-        // in the future.
-        // https://github.com/foliojs/pdfkit/issues/1032
-        wordFontSize = await getFontSize(defaultFont, "normal", box_height, wordText.slice(0, 1));
-      } else {
-        wordFontSize = lineFontSize;
-      }
-
       let fontStyle;
       if (/italic/i.test(styleStr)) {
         fontStyle = "italic";
@@ -168,6 +150,23 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       } else {
         wordFontFamily = wordFontFamily.trim();
         defaultFontFamily = false;
+      }
+
+      let wordFontSize;
+      let scaleX = 1;
+      let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i);
+      if (fontSizeStr != null) {
+        wordFontSize = parseFloat(fontSizeStr[1]);
+      } else if (wordSup) {
+        // All superscripts are assumed to be numbers for now
+        wordFontSize = await getFontSize(defaultFont, "normal", box_height, "1");
+      } else if (wordDropCap) {
+        wordFontSize = await getFontSize(defaultFont, "normal", box_height, wordText.slice(0, 1));
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).width;
+        scaleX = (box_width / wordWidthFont);
+  
+      } else {
+        wordFontSize = lineFontSize;
       }
 
 
@@ -213,7 +212,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         fill_arg = fillColorHex
       }
 
-      const kerning = await calcCharSpacing(wordText, wordFontFamily, fontStyle, wordFontSize, box_width);
+      const charSpacing = await calcCharSpacing(wordText, wordFontFamily, fontStyle, wordFontSize, box_width);
 
       const fontObjI = await fontObj[wordFontFamily][fontStyle];
       let wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
@@ -288,10 +287,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           wordID: word_id,
           line: i,
           boxWidth: box_width,
+          scaleX: scaleX,
           defaultFontFamily: defaultFontFamily,
           //fontFamily: 'times',
           opacity: opacity_arg,
-          charSpacing: kerning * 1000 / wordFontSize,
+          charSpacing: charSpacing * 1000 / wordFontSize,
           fontSize: wordFontSize,
           showTextBoxBorder: showBoundingBoxesElem.checked
         });
@@ -332,8 +332,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
             const wordWidth = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle))["width"];
             if (this.text.length > 1) {
-              const kerning = (this.boxWidth - wordWidth) / (this.text.length - 1);
-              this.charSpacing = kerning * 1000 / this.fontSize;
+              const charSpacing = (this.boxWidth - wordWidth) / (this.text.length - 1);
+              this.charSpacing = charSpacing * 1000 / this.fontSize;
             }
             updateHOCRWord(this.wordID, this.text)
           }
