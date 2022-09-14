@@ -34,31 +34,31 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
 
   if (type == "normal" && fontMetricsObj.variants?.sans_g && /sans/i.test(workingFont.names.fontFamily.en)) {
     const glyphI = workingFont.charToGlyph("g");
-    glyphI.path = JSON.parse(glyphAlts.sans_normal_g_single);
+    glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_g_single);
   }
   if (type == "normal" && fontMetricsObj.variants?.sans_1 && /sans/i.test(workingFont.names.fontFamily.en)) {
     const glyphI = workingFont.charToGlyph("1");
-    glyphI.path = JSON.parse(glyphAlts.sans_normal_1_base);
+    glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_1_base);
   }
   if (type == "italic" && fontMetricsObj.variants?.serif_italic_y && /libre/i.test(workingFont.names.fontFamily.en)) {
     const glyphI = workingFont.charToGlyph("y");
-    glyphI.path = JSON.parse(glyphAlts.serif_italic_y_min);
+    glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_y_min);
   }
   if (type == "italic" && fontMetricsObj.variants?.serif_open_k && /libre/i.test(workingFont.names.fontFamily.en)) {
     const glyphI = workingFont.charToGlyph("k");
-    glyphI.path = JSON.parse(glyphAlts.serif_italic_k_open);
+    glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_k_open);
   }
   if (type == "italic" && fontMetricsObj.variants?.serif_pointy_vw && /libre/i.test(workingFont.names.fontFamily.en)) {
     const glyphI1 = workingFont.charToGlyph("v");
-    glyphI1.path = JSON.parse(glyphAlts.serif_italic_v_pointed);
+    glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_v_pointed);
     const glyphI2 = workingFont.charToGlyph("w");
-    glyphI2.path = JSON.parse(glyphAlts.serif_italic_w_pointed);
+    glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_w_pointed);
   }
   if (type == "italic" && fontMetricsObj.variants?.serif_stem_sans_pq && /libre/i.test(workingFont.names.fontFamily.en)) {
     const glyphI1 = workingFont.charToGlyph("p");
-    glyphI1.path = JSON.parse(glyphAlts.serif_italic_p_sans_stem);
+    glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_p_sans_stem);
     const glyphI2 = workingFont.charToGlyph("q");
-    glyphI2.path = JSON.parse(glyphAlts.serif_italic_q_sans_stem);
+    glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_q_sans_stem);
   }
 
 
@@ -187,28 +187,28 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
 
   }
 
-  // Adjust height for capital letters
-  const capsMult = xHeight * fontMetricsObj["heightCaps"] / fontAscHeight;
-  for (const key of [...Array(26).keys()].map((x) => x + 65)) {
-
-    const charLit = String.fromCharCode(key);
-
-    let glyphI = workingFont.charToGlyph(charLit);
-
-    for (let j = 0; j < glyphI.path.commands.length; j++) {
-      let pointJ = glyphI.path.commands[j];
-      if (pointJ.y != null) {
-        pointJ.y = Math.round(pointJ.y * capsMult);
+  // Adjust height for capital letters (if heightCaps is believable)
+  if (fontMetricsObj["heightCaps"] >= 1.1) {
+    const capsMult = xHeight * fontMetricsObj["heightCaps"] / fontAscHeight;
+    for (const key of [...Array(26).keys()].map((x) => x + 65)) {
+  
+      const charLit = String.fromCharCode(key);
+  
+      let glyphI = workingFont.charToGlyph(charLit);
+  
+      for (let j = 0; j < glyphI.path.commands.length; j++) {
+        let pointJ = glyphI.path.commands[j];
+        if (pointJ.y != null) {
+          pointJ.y = Math.round(pointJ.y * capsMult);
+        }
+        if (pointJ.y1 != null) {
+          pointJ.y1 = Math.round(pointJ.y1 * capsMult);
+        }
+        if (pointJ.y2 != null) {
+          pointJ.y2 = Math.round(pointJ.y2 * capsMult);
+        }
       }
-      if (pointJ.y1 != null) {
-        pointJ.y1 = Math.round(pointJ.y1 * capsMult);
-      }
-      if (pointJ.y2 != null) {
-        pointJ.y2 = Math.round(pointJ.y2 * capsMult);
-      }
-
-    }
-
+    }  
   }
 
   const upperAscCodes = upperAsc.map((x) => String(x.charCodeAt(0)));

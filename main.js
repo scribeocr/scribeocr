@@ -708,7 +708,7 @@ function initializeProgress(id, maxValue, initValue = 0) {
 
   const progressObj = {"elem": progressBar, "value": initValue, "maxValue": maxValue, "increment": async function() {
     this.value++;
-    if ((this.value + 1) % 5 == 0 || (this.value + 1) == this.maxValue) {
+    if ((this.value) % 5 == 0 || this.value == this.maxValue) {
       this.elem.setAttribute("aria-valuenow", (this.value + 1).toString());
       this.elem.setAttribute("style", "width: " + ((this.value + 1) / maxValue * 100) + "%");
       await sleep(0);
