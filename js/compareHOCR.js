@@ -138,6 +138,16 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
   lineFontSize = lineFontSize || (await calcLineFontSize(word)) || 10;
 
   let styleStr = word.getAttribute('style') ?? "";
+
+  let fontStyle;
+  if (/italic/i.test(styleStr)) {
+    fontStyle = "italic";
+  } else if (/small\-caps/i.test(styleStr)) {
+    fontStyle = "small-caps";
+  } else {
+    fontStyle = "normal";
+  }
+
   // let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i)?.[1];
   // const wordFontSize = parseFloat(fontSizeStr) || lineFontSize;
   let wordText, wordSup, wordDropCap;
@@ -168,14 +178,14 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
     wordFontSize = parseFloat(fontSizeStr[1]);
   } else if (wordSup) {
     // All superscripts are assumed to be numbers for now
-    wordFontSize = getFontSize(globalSettings.defaultFont, wordBox[3] - wordBox[1], "1");
+    wordFontSize = getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], "1");
   } else if (wordDropCap) {
     // Note: In addition to being taller, drop caps are often narrower than other glyphs.
     // Unfortunately, while Fabric JS (canvas library) currently supports horizontally scaling glyphs,
     // pdfkit (pdf library) does not.  This feature should be added to Scribe if pdfkit supports it
     // in the future.
     // https://github.com/foliojs/pdfkit/issues/1032
-    wordFontSize = getFontSize(globalSettings.defaultFont, wordBox[3] - wordBox[1], wordText.slice(0, 1));
+    wordFontSize = getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], wordText.slice(0, 1));
   } else {
     wordFontSize = lineFontSize;
   }
@@ -187,15 +197,6 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
 
   ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
   const oMetrics = ctx.measureText("o");
-
-  let fontStyle;
-  if (/italic/i.test(styleStr)) {
-    fontStyle = "italic";
-  } else if (/small\-caps/i.test(styleStr)) {
-    fontStyle = "small-caps";
-  } else {
-    fontStyle = "normal";
-  }
 
   let wordFontFamily = styleStr.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/)?.[1];
   let defaultFontFamily;

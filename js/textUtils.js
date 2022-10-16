@@ -42,10 +42,10 @@ export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle 
   const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing;
   const wordRightBearing = wordLastGlyphMetrics.rightSideBearing;
 
-  // const wordWidth1 = window.ctx.measureText(wordText).width;
-  const wordWidth = (wordWidth1 - wordRightBearing - wordLeftBearing) * (fontSize / fontObjI.unitsPerEm);
+  const wordWidthPx = (wordWidth1 - wordRightBearing - wordLeftBearing) * (fontSize / fontObjI.unitsPerEm);
+  const wordLeftBearingPx = wordLeftBearing * (fontSize / fontObjI.unitsPerEm);
 
-  return {"width": wordWidth, "leftSideBearing": wordLeftBearing}
+  return {"width": wordWidthPx, "leftSideBearing": wordLeftBearingPx}
 
 }
 

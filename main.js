@@ -37,7 +37,7 @@ import { hocrToPDF } from "./js/exportPDF.js";
 
 // Third party libraries
 import { simd } from "./lib/wasm-feature-detect.js";
-import Tesseract from './tess/tesseract.es6.js';
+import Tesseract from './tess/tesseract.esm.min.js';
 
 // Debugging functions
 import { searchHOCR } from "./js/debug.js"
@@ -63,6 +63,9 @@ fabric.enableGLFiltering = false;
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
+
+// Threshold (in radians) under which page angle is considered to be effectively 0.
+let angleThresh = 0.0008726646;
 
 
 // Disable objectCaching (significant improvement to render time)
@@ -746,7 +749,7 @@ async function createTesseractScheduler(workerN, config = null) {
   let workerOptions;
   if (globalSettings.simdSupport && !disableSIMD) {
     console.log("Using Tesseract with SIMD support (fast LSTM performance).")
-    workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '-sse.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang"};
+    workerOptions = { corePath: './tess/tesseract-core-simd' + buildVersion + '.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang"};
   } else {
     console.log("Using Tesseract without SIMD support (slow LSTM performance).")
     workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang" };
@@ -756,8 +759,7 @@ async function createTesseractScheduler(workerN, config = null) {
 
   scheduler["workers"] = [];
   for (let i = 0; i < workerN; i++) {
-    const w = Tesseract.createWorker(workerOptions);
-    await w.load();
+    const w = await Tesseract.createWorker(workerOptions);
     await w.loadLanguage('eng');
     await w.initialize('eng', allConfig.tessedit_ocr_engine_mode);
     await w.setParameters(allConfig);
@@ -1198,110 +1200,51 @@ async function recognizePages(single = false, config = null, saveMetrics = true,
       // We still use imageAll["native"] when it exists as this will have rotation applied (if applicable) while imageAll["nativeSrc"] will not.
       const inputSrc = globalThis.imageAll["native"][x] ? (await globalThis.imageAll["native"][x]).src : globalThis.imageAll["nativeSrc"][x];
 
-      const maxGradient = angleKnown ? "100" : "0.005";
-
       // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
-      const saveNativeImage = autoRotateCheckboxElem.checked && !globalThis.imageAll["nativeRotated"][x] && rotateRadians != 0;
-      // const saveGreyImageArg = saveNativeImage && colorModeElem.value == "gray" ? "true" : "false";
-      // const saveColorImageArg = saveNativeImage && colorModeElem.value == "color" ? "true" : "false";
-      const saveColorImageArg = saveNativeImage ? "true" : "false";
+      const saveNativeImage = autoRotateCheckboxElem.checked && !globalThis.imageAll["nativeRotated"][x] && (!angleKnown || Math.abs(rotateRadians) > angleThresh);
 
-      const saveBinaryImageArg = !globalThis.imageAll["binary"][x] || autoRotateCheckboxElem.checked && !globalThis.imageAll["binaryRotated"][x] && rotateRadians != 0 ? "true" : "false";
+      const saveBinaryImageArg = !globalThis.imageAll["binary"][x] || autoRotateCheckboxElem.checked && !globalThis.imageAll["binaryRotated"][x] && (!angleKnown || Math.abs(rotateRadians) > angleThresh) ? true : false;
 
-      return scheduler.addJob('recognize', inputSrc, {angle: rotateRadians}, {max_page_gradient_recognize: maxGradient, debug_file: "/debug.txt", scribe_save_binary_rotated_image : saveBinaryImageArg, 
-        scribe_save_original_rotated_image: saveColorImageArg }).then(async (y) => {
+      return scheduler.addJob('recognize', inputSrc, {rotateRadians: rotateRadians, rotateAuto: !angleKnown}, {imageBinary : saveBinaryImageArg, 
+        imageColor: saveNativeImage, debug: true}).then(async (y) => {      
 
         parseDebugInfo(y.data.debug);
 
-        if(saveBinaryImageArg == "true") {
-          const image = document.createElement('img');
-          image.src = y.data.imageBinary;
-          globalThis.imageAll["binary"][x] = image;
-  
-          globalThis.imageAll["binaryRotated"][x] = Math.abs(rotateDegrees) > 0.05;
+        if (!angleKnown) globalThis.pageMetricsObj["angleAll"][x] = y.data.rotateRadians * (180 / Math.PI) * -1;
+
+        // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
+        // but no significant rotation was actually detected. 
+        if(saveBinaryImageArg) {
+          globalThis.imageAll["binaryRotated"][x] = Math.abs(y.data.rotateRadians) > angleThresh;
+          if (globalThis.imageAll["binaryRotated"][x] || !globalThis.imageAll["binary"][x]) {
+            const image = document.createElement('img');
+            image.src = y.data.imageBinary;
+            globalThis.imageAll["binary"][x] = image;  
+          }
         }
 
         if(saveNativeImage) {
-          const image = document.createElement('img');
-          image.src = y.data.imageOriginal;
-          globalThis.imageAll["native"][x] = image;
-          globalThis.imageAll["nativeRotated"][x] = Math.abs(rotateDegrees) > 0.05;  
+          globalThis.imageAll["nativeRotated"][x] = Math.abs(y.data.rotateRadians) > angleThresh;
+          if (globalThis.imageAll["nativeRotated"][x]) {
+            const image = document.createElement('img');
+            image.src = y.data.imageColor;
+            globalThis.imageAll["native"][x] = image;
+          }
         }
     
         globalThis.hocrCurrentRaw[x] = y.data.hocr;
 
-        // If the angle is already known, run once async
-        if (angleKnown) {
-          const argsObj = {
-            "engine": oemText,
-            "angle": globalThis.pageMetricsObj["angleAll"][x],
-            "mode": mode,
-            "saveMetrics": saveMetrics
-          }
-
-          // We wait for updateDataProgress because this is the function responsible for triggering the calculation of full-document metrics + font optimization
-          // once the document is finished processing. 
-          return globalThis.convertPageScheduler.addJob("convertPage", [y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
-        } else {
-          
-          // If the angle is not already known, we wait until recognition finishes so we know the angle
-          // If the page gradient (rise/run) >maxGradient, we rerun with the known angle (which results in the image being rotated in pre-processing step)
-          if (/Page Gradient/.test(y.data.debug)) {
-
-            const rotateRadians = parseFloat(y.data.debug.match(/Page Gradient\: ([\-\d\.]+)/)?.[1]);
-            const rotateDegrees = rotateRadians * (180 / Math.PI);
-
-            // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
-            const saveNativeImage = autoRotateCheckboxElem.checked && !globalThis.imageAll["nativeRotated"][x] && rotateRadians != 0;
-            const saveColorImageArg = saveNativeImage ? "true" : "false";
-            const saveBinaryImageArg = !globalThis.imageAll["binary"][x] || autoRotateCheckboxElem.checked && !globalThis.imageAll["binaryRotated"][x] && rotateRadians != 0 ? "true" : "false";
-
-            globalThis.pageMetricsObj["angleAll"][x] = rotateDegrees * -1;
-
-            //const inputImage = await globalThis.imageAll["native"][x];
-            return scheduler.addJob('recognize', inputSrc, {angle: rotateRadians}, {scribe_save_binary_rotated_image : saveBinaryImageArg, 
-              scribe_save_original_rotated_image: saveColorImageArg}).then(async (y) => {
-
-              parseDebugInfo(y.data.debug);
-
-              if(saveBinaryImageArg == "true") {
-                const image = document.createElement('img');
-                image.src = y.data.imageBinary;
-                globalThis.imageAll["binary"][x] = image;
-        
-                globalThis.imageAll["binaryRotated"][x] = Math.abs(rotateDegrees) > 0.05;
-              }
-      
-              if(saveNativeImage) {
-                const image = document.createElement('img');
-                image.src = y.data.imageOriginal;
-                globalThis.imageAll["native"][x] = image;
-                // globalThis.imageAll["nativeColor"][x] = saveGreyImageArg == "true" ? "gray" : "color";
-                globalThis.imageAll["nativeRotated"][x] = Math.abs(rotateDegrees) > 0.05;  
-              }
-      
-              globalThis.hocrCurrentRaw[x] = y.data.hocr;
-              const argsObj = {
-                "engine": oemText,
-                "angle": globalThis.pageMetricsObj["angleAll"][x],
-                "mode": mode,
-                "saveMetrics": saveMetrics
-              }
-
-              return globalThis.convertPageScheduler.addJob("convertPage", [y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
-            });
-          } else {
-
-            parseDebugInfo(y.data.debug);
-
-            const argsObj = {
-              "engine": oemText,
-              "mode": mode,
-              "saveMetrics": saveMetrics
-            }
-            return globalThis.convertPageScheduler.addJob("convertPage", [y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
-          }
+        const argsObj = {
+          "engine": oemText,
+          "angle": globalThis.pageMetricsObj["angleAll"][x],
+          "mode": mode,
+          "saveMetrics": saveMetrics
         }
+
+        // We wait for updateDataProgress because this is the function responsible for triggering the calculation of full-document metrics + font optimization
+        // once the document is finished processing. 
+        return globalThis.convertPageScheduler.addJob("convertPage", [y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
+
       })
 
     }));
@@ -2449,10 +2392,8 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
     // If no preference is specified for rotation, default to true
     const angleArg = rotate != false ? globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180) * -1 || 0 : 0;
 
-    const saveBinaryImageArg = "true";
-    // const saveGreyImageArg = colorModeElem.value == "gray" ? "true" : "false";
-    // const saveColorImageArg = colorModeElem.value == "color" ? "true" : "false";  
-    const saveColorImageArg = rotateNative ? "true" : "false";  
+    const saveBinaryImageArg = true;
+    const saveColorImageArg = rotateNative;
 
     const resPromise = (async () => {
 
@@ -2461,22 +2402,22 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
 
       const bs = await initSchedulerIfNeeded("binaryScheduler");
 
-      return bs.addJob("threshold", inputImage.src, { angle: angleArg }, { debug_file: "/debug.txt", max_page_gradient_recognize: "100", scribe_save_binary_rotated_image : saveBinaryImageArg, scribe_save_original_rotated_image: saveColorImageArg});
+      return bs.addJob('recognize', inputImage.src, {rotateRadians: angleArg}, {imageBinary : saveBinaryImageArg, imageColor: saveColorImageArg, debug: true, text: false, hocr: false, tsv: false, blocks: false})    
 
     })();
 
-    if(saveColorImageArg == "true"){
+    if(saveColorImageArg){
       globalThis.imageAll["nativeRotated"][n] = Boolean(angleArg);
       globalThis.imageAll["native"][n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
-        await loadImage(res.data.imageOriginal, image);
+        await loadImage(res.data.imageColor, image);
         // displayImage(n, image, false);
         if (progress && saveBinaryImageArg != "true") progress.increment();
         return(image);
       });  
     }
 
-    if(saveBinaryImageArg == "true") {
+    if(saveBinaryImageArg) {
       globalThis.imageAll["binaryRotated"][n] = Boolean(angleArg);
       globalThis.imageAll["binary"][n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
