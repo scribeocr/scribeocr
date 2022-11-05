@@ -498,9 +498,6 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
         // Ad-hoc adjustment needed to replicate wordSpace
         // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
         const wordSpaceExtra = (wordSpaceActualAdj - wordSpaceExpected + spacingAdj) * (100 / tzCurrent);
-
-
-        // if (wordText == "—") debugger;
   
         textStream += "( ) " + String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6);
 

@@ -139,7 +139,7 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
       let pointJ = glyphI.path.commands[j];
       if (pointJ.x != null) {
         //pointJ.x = Math.round((pointJ.x - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
-        if (singleStemClassB.includes(charLit)) {
+        if (singleStemClassB.includes(charLit) && type != "italic") {
           if (Math.abs(pointJ.x - glyphICenter) > glyphIWidthQuarter) {
             pointJ.x = Math.round((pointJ.x - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
           }
@@ -150,7 +150,7 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
       }
       if (pointJ.x1 != null) {
         //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
-        if (singleStemClassB.includes(charLit)) {
+        if (singleStemClassB.includes(charLit) && type != "italic") {
           if (Math.abs(pointJ.x1 - glyphICenter) > glyphIWidthQuarter) {
             pointJ.x1 = Math.round((pointJ.x1 - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
           }
@@ -160,7 +160,7 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
       }
       if (pointJ.x2 != null) {
         //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
-        if (singleStemClassB.includes(charLit)) {
+        if (singleStemClassB.includes(charLit) && type != "italic") {
           if (Math.abs(pointJ.x2 - glyphICenter) > glyphIWidthQuarter) {
             pointJ.x2 = Math.round((pointJ.x2 - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
           }
