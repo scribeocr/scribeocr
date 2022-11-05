@@ -1181,7 +1181,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
     // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
     // In this case the original line-level bounding box from Abbyy is used
-    if (isFinite(lineBoxArrCalc[0])) {
+    if (isFinite(lineBoxArrCalc[0]) && isFinite(lineBoxArrCalc[1]) && isFinite(lineBoxArrCalc[2]) && isFinite(lineBoxArrCalc[3])) {
       xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
     } else {
       xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArr[2] + " " + lineBoxArr[3] + " " + lineBoxArr[4] + " " + lineBoxArr[5];
@@ -1226,7 +1226,6 @@ function convertPageAbbyy(xmlPage, pageNum) {
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
       if (text[i].trim() == "") { continue };
-      lettersKept++;
       let bboxesI = bboxes[i];
       const bboxesILeft = Math.min(...bboxesI.map(x => x[0]).filter(x => x > 0));
 
@@ -1277,6 +1276,8 @@ function convertPageAbbyy(xmlPage, pageNum) {
       } else {
         xmlOut = xmlOut + text[i] + "</span>";
       }
+
+      lettersKept++;
 
     }
 
