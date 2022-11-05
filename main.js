@@ -575,7 +575,6 @@ function setCurrentHOCR(x) {
         globalThis.ocrAll[currentLabel][i] = {hocr:null};
       }
     }
-    // globalThis.ocrAll[currentLabel]["hocr"] = globalThis.hocrCurrent;
     for(let i=0;i<globalThis.hocrCurrent.length;i++) {
       globalThis.ocrAll[currentLabel][i]["hocr"] = JSON.parse(JSON.stringify(globalThis.hocrCurrent[i]));
     }
@@ -587,7 +586,6 @@ function setCurrentHOCR(x) {
     }
   }
 
-  //globalThis.hocrCurrent = globalThis.ocrAll[x]["hocr"];
   globalThis.hocrCurrent = globalThis.ocrAll[x].map((y) => y["hocr"]);
 
   displayLabelTextElem.innerHTML = x;
@@ -653,14 +651,11 @@ document.getElementById('nav-import')?.addEventListener('hidden.bs.collapse', fu
 document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', function (e) {
   if (e.target.id != "nav-recognize") return;
   hideProgress("import-eval-progress-collapse");
-  // hideProgress("render-recognize-progress-collapse");
   hideProgress("recognize-recognize-progress-collapse");
 })
 
 document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', function (e) {
   if (e.target.id != "nav-download") return;
-  // hideProgress("render-download-progress-collapse");
-  // hideProgress("binary-download-progress-collapse");
   hideProgress("generate-download-progress-collapse");
 })
 
@@ -2466,7 +2461,6 @@ globalThis.state = {
   importDone : false
 }
 
-//var backgroundOpts = {};
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMode = false, dimsLimit = null) {
 
@@ -2794,17 +2788,6 @@ globalThis.saveAs = function(blob, name, opts) {
   }));
 }
 
-// Object containing location of various font files
-// var fontFiles = new Object;
-// fontFiles["Libre Baskerville"] = "/fonts/LibreBaskerville-Regular.woff";
-// fontFiles["Libre Baskerville-italic"] = "/fonts/LibreBaskerville-Italic.woff";
-// fontFiles["Libre Baskerville-small-caps"] = "/fonts/LibreBaskerville-SmallCaps.woff";
-
-// fontFiles["Open Sans"] = "/fonts/OpenSans-Regular.woff";
-// fontFiles["Open Sans-italic"] = "/fonts/OpenSans-Italic.woff";
-// fontFiles["Open Sans-small-caps"] = "/fonts/OpenSans-SmallCaps.woff";
-
-
 async function initOptimizeFontScheduler(workers = 3) {
   globalThis.optimizeFontScheduler = await Tesseract.createScheduler();
   globalThis.optimizeFontScheduler["workers"] = new Array(workers); 
@@ -3008,9 +2991,14 @@ async function handleDownload() {
       }
     }
 
-    // The progress bar is incremented by 1 when each page of the text overlay is completed (within hocrToPDF).
-    // When images are inserted into the pdf the progress is also incremented after each image is rendered. 
-    const maxValueProgress = (addOverlayCheckboxElem.checked || displayModeElem.value == "ebook") ? maxValue + 1 : (maxValue+1) * 2;
+    // Depending on the number of steps involved, the progress bar may be incremented when:
+    // (1) Image is rendered, (2) pdf text is generated, (3) text/image pdfs are combined. 
+    let maxValueProgress = maxValue + 1;
+    if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
+      maxValueProgress = maxValueProgress * 2;
+    } else if (displayModeElem.value != "ebook") {
+      maxValueProgress = maxValueProgress * 3;
+    }
 
     const downloadProgress = initializeProgress("generate-download-progress-collapse", maxValueProgress);
     await sleep(0);
@@ -3057,6 +3045,11 @@ async function handleDownload() {
       if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
         content = await w.overlayText([pdfOverlay, minValue, maxValue, dimsLimit[1], dimsLimit[0]]);
 
+        // Unfortunately there currently is not a real way to track progress using the w.overlayText function, as pages are incremented using C++ (webassembly). 
+        for (let i=minValue; i < maxValue+1; i++) {
+          downloadProgress.increment();
+        }
+
       // If the input is a series of images, those images need to be inserted into a new pdf
       } else {
         await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked, downloadProgress);
@@ -3065,6 +3058,7 @@ async function handleDownload() {
         await w.overlayTextImageStart([]);
         for (let i=minValue; i < maxValue+1; i++) {
           await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit[1], dimsLimit[0]]);
+          downloadProgress.increment();
         }
         content = await w.overlayTextImageEnd([]);
       } 
