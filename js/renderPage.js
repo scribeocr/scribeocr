@@ -162,7 +162,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         wordFontSize = await getFontSize(defaultFont, "normal", box_height, "1");
       } else if (wordDropCap) {
         wordFontSize = await getFontSize(defaultFont, "normal", box_height, wordText.slice(0, 1));
-        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).width;
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
         scaleX = (box_width / wordWidthFont);
   
       } else {
@@ -286,7 +286,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           fontStyle: fontStyleCanvas,
           wordID: word_id,
           line: i,
-          boxWidth: box_width,
+          visualWidth: box_width,
           scaleX: scaleX,
           defaultFontFamily: defaultFontFamily,
           //fontFamily: 'times',
@@ -330,9 +330,9 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
               this.text = textInt;
             }
 
-            const wordWidth = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle))["width"];
+            const visualWidthNew = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle)).visualWidth;
             if (this.text.length > 1) {
-              const charSpacing = (this.boxWidth - wordWidth) / (this.text.length - 1);
+              const charSpacing = (this.visualWidth - visualWidthNew) / (this.text.length - 1);
               this.charSpacing = charSpacing * 1000 / this.fontSize;
             }
             updateHOCRWord(this.wordID, this.text)
@@ -367,18 +367,19 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           // inspect action and check if the value is what you are looking for
           console.log("Event: " + opt.action);
           if (opt.action == "scaleX") {
-            const textboxWidth = opt.target.calcTextWidth()
+            const textboxWidth = opt.target.calcTextWidth();
+
             const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
-            const widthCalc = (textboxWidth - wordMetrics["leftSideBearing"]) * opt.target.scaleX;
+            const visualWidthNew = (textboxWidth - wordMetrics["leftSideBearing"] - wordMetrics["rightSideBearing"]) * opt.target.scaleX;
 
-            let rightNow = opt.target.left + widthCalc;
-            let rightOrig = opt.target.leftOrig + opt.target.boxWidth;
+            let visualRightNew = opt.target.left + visualWidthNew;
+            let visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
 
-            updateHOCRBoundingBoxWord(opt.target.wordID, Math.round(opt.target.left - opt.target.leftOrig), Math.round(rightNow - rightOrig));
+            updateHOCRBoundingBoxWord(opt.target.wordID, Math.round(opt.target.left - opt.target.leftOrig), Math.round(visualRightNew - visualRightOrig));
             if (opt.target.text.length > 1) {
 
 
-              const widthDelta = widthCalc - opt.target.boxWidth;
+              const widthDelta = visualWidthNew - opt.target.visualWidth;
               if (widthDelta != 0) {
                 const charSpacingDelta = (widthDelta / (opt.target.text.length - 1)) * 1000 / opt.target.fontSize;
                 opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
@@ -387,10 +388,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
               }
 
             }
-
             opt.target.leftOrig = opt.target.left;
-            opt.target.boxWidth = Math.round(rightNow - opt.target.left - wordMetrics["leftSideBearing"]);
-
+            opt.target.visualWidth = visualWidthNew;
           }
         });
 

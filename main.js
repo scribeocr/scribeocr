@@ -81,7 +81,7 @@ fabric.IText.prototype.toObject = (function (toObject) {
       fill_proof: this.fill_proof,
       fill_ebook: this.fill_ebook,
       wordID: this.wordID,
-      boxWidth: this.boxWidth,
+      visualWidth: this.visualWidth,
       defaultFontFamily: this.defaultFontFamily
     });
   };
@@ -113,11 +113,18 @@ fabric.IText.prototype._render = function (ctx) {
   }
 }
 
-
-// Object that keeps track of what type of input data is present
+/**
+ * @typedef inputDataModes
+ * @type {object}
+ * @property {Boolean[]} xmlMode - an ID.
+ * @property {Boolean} pdfMode - an ID.
+ * @property {Boolean} imageMode - an ID.
+ * @property {Boolean} resumeMode - an ID.
+ */
+/** @type {inputDataModes} */
 globalThis.inputDataModes = {
   // true if OCR data exists (whether from upload or built-in engine)
-  xmlMode: undefined,
+  xmlMode: [],
   // true if user uploaded pdf
   pdfMode: false,
   // true if user uploaded image files (.png, .jpeg)
@@ -1632,7 +1639,7 @@ function addWordClick() {
       fontStyle: "normal",
       wordID: wordIDNew,
       //line: i,
-      boxWidth: rect.width,
+      visualWidth: rect.width,
       defaultFontFamily: true,
       opacity: 1,
       //charSpacing: kerning * 1000 / wordFontSize
@@ -1653,9 +1660,9 @@ function addWordClick() {
           textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
           this.text = textInt;
         }
-        const wordWidth = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle))["width"];
+        const wordWidth = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle))["visualWidth"];
         if (this.text.length > 1) {
-          const kerning = round3((this.boxWidth - wordWidth) / (this.text.length - 1));
+          const kerning = round3((this.visualWidth - wordWidth) / (this.text.length - 1));
           this.charSpacing = kerning * 1000 / this.fontSize;
         }
         updateHOCRWord(this.wordID, this.text)
@@ -1688,31 +1695,31 @@ function addWordClick() {
     textbox.on('modified', async (opt) => {
       // inspect action and check if the value is what you are looking for
       if (opt.action == "scaleX") {
-        const textboxWidth = opt.target.calcTextWidth()
+        const textboxWidth = opt.target.calcTextWidth();
+
         const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
-        const widthCalc = (textboxWidth - wordMetrics["leftSideBearing"]) * opt.target.scaleX;
+        const visualWidthNew = (textboxWidth - wordMetrics["leftSideBearing"] - wordMetrics["rightSideBearing"]) * opt.target.scaleX;
 
-        let rightNow = opt.target.left + widthCalc;
-        let rightOrig = opt.target.leftOrig + opt.target.boxWidth;
+        let visualRightNew = opt.target.left + visualWidthNew;
+        let visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
 
-        updateHOCRBoundingBoxWord(opt.target.wordID, Math.round(opt.target.left - opt.target.leftOrig), Math.round(rightNow - rightOrig));
+        updateHOCRBoundingBoxWord(opt.target.wordID, Math.round(opt.target.left - opt.target.leftOrig), Math.round(visualRightNew - visualRightOrig));
         if (opt.target.text.length > 1) {
 
 
-          const widthDelta = widthCalc - opt.target.boxWidth;
+          const widthDelta = visualWidthNew - opt.target.visualWidth;
           if (widthDelta != 0) {
             const charSpacingDelta = (widthDelta / (opt.target.text.length - 1)) * 1000 / opt.target.fontSize;
             opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
             opt.target.scaleX = 1;
+
           }
 
         }
-
         opt.target.leftOrig = opt.target.left;
-        opt.target.boxWidth = Math.round(rightNow - opt.target.left - wordMetrics["leftSideBearing"]);
-
+        opt.target.visualWidth = visualWidthNew;
       }
-    });
+});
 
     canvas.remove(rect);
     canvas.add(textbox);
@@ -1939,7 +1946,7 @@ async function importFiles() {
 
   const curFiles = uploaderElem.files;
 
-  if (curFiles.length == 0) return;
+  if (!curFiles || curFiles.length == 0) return;
 
   globalThis.state.importDone = false;
 
@@ -1964,6 +1971,7 @@ async function importFiles() {
     // TODO: Investigate whether other file formats are supported (without additional changes)
     // Tesseract.js definitely supports more formats, so if the .pdfs we make also support a format,
     // then we should be able to expand the list of supported types without issue. 
+    // Update: It looks like .bmp does not work. 
     if (["png", "jpeg", "jpg"].includes(fileExt)) {
       imageFilesAll.push(file);
       // All .gz files are assumed to be OCR data (xml) since all other file types can be compressed already

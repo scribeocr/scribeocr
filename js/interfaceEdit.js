@@ -60,11 +60,11 @@ export async function toggleStyleSelectedWords(style){
 
     const wordMetricsNew = await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
     if(wordI.text.length > 1){
-      const wordWidth = wordMetricsNew[0];
-      const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
+      const visualWidthNew = wordMetricsNew["visualWidth"];
+      const kerning = (wordI.visualWidth - visualWidthNew) / (wordI.text.length - 1);
       wordI.charSpacing = kerning * 1000 / wordI.fontSize;
     }
-    wordI.left = wordI.left - (wordMetricsNew[1] - wordMetricsOrig[1])
+    wordI.left = wordI.left - (wordMetricsNew["leftSideBearing"] - wordMetricsOrig["leftSideBearing"])
 
   }
   window.canvas.renderAll();
@@ -129,8 +129,8 @@ export async function changeWordFontSize(fontSize){
     document.getElementById("fontSize").value = fontSize;
     wordI.fontSize = fontSize;
     if(wordI.text.length > 1){
-      const wordWidth = (await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle))["width"];
-      const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
+      const visualWidthNew = (await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle))["visualWidth"];
+      const kerning = (wordI.visualWidth - visualWidthNew) / (wordI.text.length - 1);
       wordI.charSpacing = kerning * 1000 / wordI.fontSize;
     }
 
@@ -189,8 +189,8 @@ export async function changeWordFont(fontName){
     wordI.fontFamily = fontNameCanvas;
     wordI.defaultFontFamily = fontName == "Default" ? true : false;
     if(wordI.text.length > 1){
-      const wordWidth = (await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle))["width"];
-      const kerning = (wordI.boxWidth - wordWidth) / (wordI.text.length - 1);
+      const visualWidthNew = (await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle))["visualWidth"];
+      const kerning = (wordI.visualWidth - visualWidthNew) / (wordI.text.length - 1);
       wordI.charSpacing = kerning * 1000 / wordI.fontSize;
     }
 

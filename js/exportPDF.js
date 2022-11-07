@@ -350,7 +350,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     let tz = 100;
     if (wordDropCap) {
       const wordWidthActual = wordBox[2] - wordBox[0];
-      const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).width;
+      const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
       tz = (wordWidthActual / wordWidthFont) * 100;
     }
 
@@ -466,7 +466,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       let tz = 100;
       if (wordDropCap) {
         const wordWidthActual = wordBox[2] - wordBox[0];
-        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamilyLast, wordFontSize, fontStyle)).width;
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamilyLast, wordFontSize, fontStyle)).visualWidth;
         tz = (wordWidthActual / wordWidthFont) * 100;
       }
 
@@ -492,7 +492,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
         // The space between words determined by:
         // (1) The right bearing of the last word, (2) the left bearing of the current word, (3) the width of the space character between words,
         // (4) the current character spacing value (applied twice--both before and after the space character).
-        const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).width;
+        const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).visualWidth;
         const wordSpaceExpected = (spaceWidth + charSpacing * 2 + wordRightBearingLast) * (tzCurrent / 100) + wordLeftBearing;
       
         // Ad-hoc adjustment needed to replicate wordSpace

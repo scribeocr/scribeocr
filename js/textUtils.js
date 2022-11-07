@@ -16,8 +16,18 @@ export async function getFontSize(fontFamily, fontStyle, charHeightActual, compC
 
 }
 
+/**
+ * @typedef WordMetrics
+ * @type {object}
+ * @property {number} visualWidth - Width of printed characters in px (does not include left/right bearings).
+ * @property {number} leftSideBearing - Width of left bearing in px.
+ * @property {number} rightSideBearing - Width of right bearing in px.
+ */
+/**  
+ * @async 
+ * @return {Promise<WordMetrics>} 
+ */
 export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "normal"){
-  // window.ctx.font = fontStyle + " " + fontSize + 'px ' + fontFamily;
 
   if (/small caps$/i.test(fontFamily)) {
     fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
@@ -44,8 +54,9 @@ export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle 
 
   const wordWidthPx = (wordWidth1 - wordRightBearing - wordLeftBearing) * (fontSize / fontObjI.unitsPerEm);
   const wordLeftBearingPx = wordLeftBearing * (fontSize / fontObjI.unitsPerEm);
+  const wordRightBearingPx = wordRightBearing * (fontSize / fontObjI.unitsPerEm);
 
-  return {"width": wordWidthPx, "leftSideBearing": wordLeftBearingPx}
+  return {"visualWidth": wordWidthPx, "leftSideBearing": wordLeftBearingPx, "rightSideBearing": wordRightBearingPx}
 
 }
 
@@ -53,7 +64,7 @@ export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle 
 export async function calcCharSpacing(wordText, fontFamily, fontStyle, fontSize, actualWidth) {
   if(wordText.length < 2) return 0;
 
-  const wordWidth = (await calcWordMetrics(wordText, fontFamily, fontSize, fontStyle))["width"];
+  const wordWidth = (await calcWordMetrics(wordText, fontFamily, fontSize, fontStyle))["visualWidth"];
 
   const charSpacing = Math.round((actualWidth - wordWidth) / (wordText.length - 1)*1e3)/1e3;
 
