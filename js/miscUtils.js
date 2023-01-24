@@ -24,7 +24,7 @@ export function getRandomAlphanum(num){
     }
     outArr[i] = String.fromCharCode(intI);
   }
-  return(outArr);
+  return outArr.join('');
 }
 
 

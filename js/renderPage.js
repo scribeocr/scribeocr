@@ -20,6 +20,17 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
   let ctx = canvas.getContext('2d');
 
+  const layoutMode = true;
+
+  // objectCaching slows down page render speeds, and is generally not needed.
+  // The exception is when working in layoutMode, where users draw semi-transparent rectangles
+  // that overlap with many of the other elements, which requires objectCaching to run smoothly. 
+  if (layoutMode) {
+    fabric.Object.prototype.objectCaching = true;
+  } else {
+    fabric.Object.prototype.objectCaching = false;
+  }
+
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
@@ -397,6 +408,84 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         // TODO: A prototype for the texboxes should be created instead of adding to each one
 
         canvas.add(textbox);
+
+    }
+  }
+
+  if (layoutMode) {
+    for (const [id, obj] of Object.entries(globalThis.layout[currentPage.n]["boxes"])) {
+
+      const origX = obj["coords"][0];
+      const origY = obj["coords"][1];
+      const width = obj["coords"][2] - obj["coords"][0];
+      const height = obj["coords"][3] - obj["coords"][1];
+
+      const rect = new fabric.Rect({
+        left: origX,
+        top: origY,
+        width: width,
+        height: height,
+        originX: 'left',
+        originY: 'top',
+        angle: 0,
+        fill: 'rgba(255,0,0,0.5)',
+        transparentCorners: false,
+        lockMovementX: false,
+        lockMovementY: false,
+        id: id,
+        scribeType: "layoutRect"
+        // preserveObjectStacking: true
+      });
+      rect.hasControls = true;
+      rect.setControlsVisibility({bl:true,br:true,mb:true,ml:true,mr:true,mt:true,tl:true,tr:true,mtr:false});
+  
+      const textbox = new fabric.IText(String(obj["priority"]), {
+        left: Math.round(origX + width * 0.5),
+        top: Math.round(origY + height * 0.5),
+        originX: "center",
+        originY: "center",
+        textBackgroundColor: 'rgb(255,255,255)',
+        fontSize: 150,
+        id: id,
+        scribeType: "layoutTextbox"
+  
+      });      
+  
+      textbox.hasControls = true;
+      textbox.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
+  
+  
+      rect.on({'moving': onChange})
+      rect.on({'scaling': onChange})
+  
+      function onChange(obj) {
+        const target = obj.transform.target;
+  
+        // Adjust location of textbox
+        textbox.left = (target.aCoords.tl.x + target.aCoords.br.x) * 0.5;
+        textbox.top = (target.aCoords.tl.y + target.aCoords.br.y) * 0.5;        
+        textbox.setCoords();
+      }
+  
+      rect.on({"mouseup": updateLayoutBoxes})
+  
+      function updateLayoutBoxes(obj) {
+        const target = obj.target;
+        const id = target.id;
+  
+        globalThis.layout[currentPage.n]["boxes"][id]["coords"] = [target.aCoords.tl.x, target.aCoords.tl.y, target.aCoords.br.x, target.aCoords.br.y];
+      }
+  
+      textbox.on('editing:exited', async function (obj) {
+        if (this.hasStateChanged) {
+          const id = this.id;
+          globalThis.layout[currentPage.n]["boxes"][id]["priority"] = parseInt(this.text);
+        }
+      });
+      
+      canvas.add(rect);
+      canvas.add(textbox);
+  
 
     }
   }

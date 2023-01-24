@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width">
   <link rel="stylesheet" href="./css/bootstrap.min.css">
   <style type="text/css">
-
     :root {
       --bs-primary: #287bb5;
       --bs-blue: #287bb5;
@@ -37,7 +36,7 @@
     }
 
     /* Subtract height of border from padding */
-    .nav-tabs .nav-link{
+    .nav-tabs .nav-link {
       padding-bottom: calc(1rem - 3px) !important;
     }
 
@@ -55,7 +54,10 @@
       box-shadow: 0 0 0 0.1rem rgb(82 125 168 / 50%) !important;
     }
 
-    .btn-check:checked+.btn-secondary, .btn-secondary.active, .btn-secondary:active, .show>.btn-secondary.dropdown-toggle {
+    .btn-check:checked+.btn-secondary,
+    .btn-secondary.active,
+    .btn-secondary:active,
+    .show>.btn-secondary.dropdown-toggle {
       color: #000;
       background-color: #dddddd;
       border-color: #dddddd;
@@ -127,16 +129,25 @@
           <div class="col-8 col-xl-6" id="nav-tab-container">
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
 
-              <a class="nav-link collapsed" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import" type="button" role="tab" aria-controls="nav-import">Import</a>
-              <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse" data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
-              <a class="nav-link collapsed" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval" type="button" role="tab" aria-controls="nav-eval" style="display:none">Evaluate</a>
+              <a class="nav-link collapsed" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import"
+                type="button" role="tab" aria-controls="nav-import">Import</a>
+              <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse"
+                data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
+              <a class="nav-link collapsed" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval"
+                type="button" role="tab" aria-controls="nav-eval" style="display:none">Evaluate</a>
 
-              <a class="nav-link collapsed" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view" type="button" role="tab" aria-controls="nav-view">View</a>
-              <a class="nav-link collapsed" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit" type="button" role="tab" aria-controls="nav-edit">Edit</a>
+              <a class="nav-link collapsed" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view"
+                type="button" role="tab" aria-controls="nav-view">View</a>
+              <a class="nav-link collapsed" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit"
+                type="button" role="tab" aria-controls="nav-edit">Edit</a>
+              <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout"
+                type="button" role="tab" aria-controls="nav-layout" style="display:none">Layout</a>
 
               <!-- <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout" type="button" role="tab" aria-controls="nav-layout">Layout</a> -->
-              <a class="nav-link collapsed" id="nav-download-tab" data-bs-toggle="collapse" data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</a>
-              <a class="nav-link collapsed" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about" type="button" role="tab" aria-controls="nav-about">Info</a>
+              <a class="nav-link collapsed" id="nav-download-tab" data-bs-toggle="collapse"
+                data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</a>
+              <a class="nav-link collapsed" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about"
+                type="button" role="tab" aria-controls="nav-about">Info</a>
 
             </div>
           </div>
@@ -146,13 +157,60 @@
             <button class="btn btn-info btn-sm" id="next">Next</button>
             <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
             Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
-            <span>Page: <input type="text" id="pageNum" name="pageNum" autocomplete="off" style="width:3em"> / <span id="pageCount"></span></span>
+            <span>Page: <input type="text" id="pageNum" name="pageNum" autocomplete="off" style="width:3em"> / <span
+                id="pageCount"></span></span>
           </div>
         </div>
 
-
         <div class="tab-content" id="nav-tabContent">
-          <div class="collapse" id="nav-edit" role="tabpanel" aria-labelledby="nav-edit-tab" data-bs-parent="#user-controls">
+          <div class="collapse" id="nav-layout" role="tabpanel" aria-labelledby="nav-layout-tab"
+            data-bs-parent="#user-controls">
+            <div class="row" style="padding:0.4rem;">
+              <div class="col col-2">
+                <div class="form-group mb-2">
+                  <button type="button" id="addLayoutBox" class="btn btn-secondary btn-sm"
+                    style="width:100%;text-align:left" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-bounding-box-circles" viewBox="0 0 16 16">
+                      <path
+                        d="M2 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM0 2a2 2 0 0 1 3.937-.5h8.126A2 2 0 1 1 14.5 3.937v8.126a2 2 0 1 1-2.437 2.437H3.937A2 2 0 1 1 1.5 12.063V3.937A2 2 0 0 1 0 2zm2.5 1.937v8.126c.703.18 1.256.734 1.437 1.437h8.126a2.004 2.004 0 0 1 1.437-1.437V3.937A2.004 2.004 0 0 1 12.063 2.5H3.937A2.004 2.004 0 0 1 2.5 3.937zM14 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM2 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm12 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />
+                    </svg> Add Layout Box</button>
+                </div>
+                <div class="form-group">
+                  <button type="button" id="deleteLayoutBox" class="btn btn-secondary btn-sm"
+                    style="width:100%;text-align:left" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-trash3" viewBox="0 0 16 16">
+                      <path
+                        d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z" />
+                    </svg> Delete Layout Box</button>
+                </div>
+              </div>
+              <div class="col col-2">
+                <div class="form-group mb-2">
+                  <button type="button" id="setDefaultLayout" class="btn btn-secondary btn-sm"
+                    style="width:100%;text-align:left" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-diagram-3-fill" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd"
+                        d="M6 3.5A1.5 1.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5v1A1.5 1.5 0 0 1 8.5 6v1H14a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V8h-5v.5a.5.5 0 0 1-1 0V8h-5v.5a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 2 7h5.5V6A1.5 1.5 0 0 1 6 4.5v-1zm-6 8A1.5 1.5 0 0 1 1.5 10h1A1.5 1.5 0 0 1 4 11.5v1A1.5 1.5 0 0 1 2.5 14h-1A1.5 1.5 0 0 1 0 12.5v-1zm6 0A1.5 1.5 0 0 1 7.5 10h1a1.5 1.5 0 0 1 1.5 1.5v1A1.5 1.5 0 0 1 8.5 14h-1A1.5 1.5 0 0 1 6 12.5v-1zm6 0a1.5 1.5 0 0 1 1.5-1.5h1a1.5 1.5 0 0 1 1.5 1.5v1a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5v-1z" />
+                    </svg> Set Default</button>
+                </div>
+                <div class="form-group">
+                  <button type="button" id="revertLayout" class="btn btn-secondary btn-sm"
+                    style="width:100%;text-align:left" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z" />
+                      <path
+                        d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z" />
+                    </svg> Revert All Edits</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="collapse" id="nav-edit" role="tabpanel" aria-labelledby="nav-edit-tab"
+            data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
               <div class="col col-2">
                 <label for="wordFont">Font</label>
@@ -171,19 +229,26 @@
                 <label></label>
                 <div class="mb-2 row">
                   <div class="form-group">
-                    <button type="button" id="styleItalic" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" data-bs-toggle="button" disabled>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-type-italic" viewBox="0 0 16 16">
-                        <path d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z" />
+                    <button type="button" id="styleItalic" class="btn btn-secondary btn-sm"
+                      style="min-width:100%;text-align:left" data-bs-toggle="button" disabled>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-type-italic" viewBox="0 0 16 16">
+                        <path
+                          d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z" />
                       </svg> Italic</button>
                   </div>
                 </div>
                 <div class="row">
                   <div class="form-group">
-                    <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" data-bs-toggle="button" disabled>
-                      <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type" fill="currentColor">
+                    <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm"
+                      style="min-width:100%;text-align:left" data-bs-toggle="button" disabled>
+                      <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type"
+                        fill="currentColor">
                         <g>
-                          <path id="svg_1" d="m2.244,13.081l0.943,-2.803l3.473,0l0.944,2.803l1.256,0l-3.32,-9.331l-1.218,0l-3.322,9.331l1.244,0zm2.7,-7.923l1.396,4.156l-2.83,0l1.4,-4.156l0.034,0z" />
-                          <path id="svg_2" d="m2.244,13.081l0.943,-2.803l3.473,0l0.944,2.803l1.256,0l-3.32,-9.331l-1.218,0l-3.322,9.331l1.244,0zm2.7,-7.923l1.396,4.156l-2.83,0l1.4,-4.156l0.034,0z" />
+                          <path id="svg_1"
+                            d="m2.244,13.081l0.943,-2.803l3.473,0l0.944,2.803l1.256,0l-3.32,-9.331l-1.218,0l-3.322,9.331l1.244,0zm2.7,-7.923l1.396,4.156l-2.83,0l1.4,-4.156l0.034,0z" />
+                          <path id="svg_2"
+                            d="m2.244,13.081l0.943,-2.803l3.473,0l0.944,2.803l1.256,0l-3.32,-9.331l-1.218,0l-3.322,9.331l1.244,0zm2.7,-7.923l1.396,4.156l-2.83,0l1.4,-4.156l0.034,0z" />
                           <path stroke="null" id="svg_3"
                             d="m10.10862,13.081l0.77225,-2.29546l2.84414,0l0.77307,2.29546l1.02857,0l-2.71884,-7.64143l-0.99746,0l-2.72048,7.64143l1.01875,0zm2.21111,-6.48837l1.14322,3.40347l-2.31757,0l1.1465,-3.40347l0.02784,0z" />
                         </g>
@@ -192,11 +257,13 @@
                 </div>
               </div>
               <div class="col col-1" style="padding-left:0.25rem;">
-                  <label></label>
+                <label></label>
                 <div class="mb-2 row">
                   <div class="form-group">
-                    <button type="button" id="styleSuper" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" data-bs-toggle="button">
-                      <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type" fill="currentColor">
+                    <button type="button" id="styleSuper" class="btn btn-secondary btn-sm"
+                      style="min-width:100%;text-align:left" data-bs-toggle="button">
+                      <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type"
+                        fill="currentColor">
                         <g>
                           <path stroke="null" id="svg_3"
                             d="m-0.55033,3.9216zm4.15639,2.67132l0,-0.0815c0,-0.79945 0.56919,-1.51224 1.54717,-1.51224c0.87448,0 1.51871,0.56919 1.51871,1.43074c0,0.80722 -0.54332,1.42427 -1.04395,1.97406l-3.43973,3.81099l0,0.96245l6.18349,0l0,-1.28068l-4.04514,0l0,-0.08926l2.28582,-2.56912c0.84085,-0.93658 1.6002,-1.7231 1.6002,-2.93651c-0.00129,-1.46567 -1.1953,-2.56395 -3.02577,-2.56395c-2.03486,0 -3.05293,1.37641 -3.05293,2.78128l0,0.07374l1.47214,0z" />
@@ -208,27 +275,30 @@
                 </div>
               </div>
               <div class="col col-2">
-                  <label></label>
+                <label></label>
                 <div class="row">
                   <div class="form-group">
-                    <button type="button" id="deleteWord" class="btn btn-secondary btn-sm" style="width:100%;text-align:left"
-                      disabled>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3"
-                        viewBox="0 0 16 16">
+                    <button type="button" id="deleteWord" class="btn btn-secondary btn-sm"
+                      style="width:100%;text-align:left" disabled>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-trash3" viewBox="0 0 16 16">
                         <path
                           d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z" />
                       </svg> Delete Word</button>
                   </div>
                   <div class="form-group" style="margin-top:0.5rem;">
                     <div class="btn-group" style="width:100%;">
-                      <button type="button" id="recognizeWord" class="btn btn-secondary btn-sm" style="width:100%;text-align:left">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye"
-                          viewBox="0 0 16 16">
+                      <button type="button" id="recognizeWord" class="btn btn-secondary btn-sm"
+                        style="width:100%;text-align:left">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                          class="bi bi-eye" viewBox="0 0 16 16">
                           <path
                             d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
-                          <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
+                          <path
+                            d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
                         </svg> Recognize Word</button>
-                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <button type="button" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split"
+                        data-bs-toggle="dropdown" aria-expanded="false">
                         <span class="visually-hidden">Toggle Dropdown</span>
                       </button>
                       <ul class="dropdown-menu">
@@ -244,542 +314,616 @@
                 <label></label>
                 <div class="row">
                   <div class="form-group">
-                    <button type="button" id="editBaseline" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" disabled>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-align-middle" viewBox="0 0 16 16">
-                        <path d="M6 13a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v10zM1 8a.5.5 0 0 0 .5.5H6v-1H1.5A.5.5 0 0 0 1 8zm14 0a.5.5 0 0 1-.5.5H10v-1h4.5a.5.5 0 0 1 .5.5z" />
+                    <button type="button" id="editBaseline" class="btn btn-secondary btn-sm"
+                      style="min-width:100%;text-align:left" disabled>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-align-middle" viewBox="0 0 16 16">
+                        <path
+                          d="M6 13a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v10zM1 8a.5.5 0 0 0 .5.5H6v-1H1.5A.5.5 0 0 0 1 8zm14 0a.5.5 0 0 1-.5.5H10v-1h4.5a.5.5 0 0 1 .5.5z" />
                       </svg> Adjust Baseline</button>
                   </div>
                 </div>
                 <div class="collapse" id="collapseRange">
                   <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                    <input type="range" class="form-range" id="rangeBaseline" max="200" >
+                    <input type="range" class="form-range" id="rangeBaseline" max="200">
                   </div>
-                </div>
-                  <div class="row">
-                    <div class="form-group" style="margin-top:0.5rem">
-                      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#editOptions"
-                        style="min-width:100%;text-align:left">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear"
-                          viewBox="0 0 16 16">
-                          <path
-                            d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
-                          <path
-                            d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
-                        </svg> Options</button>
-                    </div>
-                    <div class="collapse" id="editOptions">
-                      <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                        <div class="form-check form-switch">
-                          <label><input class="form-check-input" type="checkbox" id="smartQuotes" checked> Smart Quotes</label>
-                          <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Automatically replace straight quotes with curly quotes based on context." data-bs-placement="right">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)" class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
-                            </svg>
-                          </a>          
-                          <label><input class="form-check-input" type="checkbox" id="optimizeFont" checked> Optimize Fonts</label>
-                          <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Automatically adjusts font metrics to better match the scanned text." data-bs-placement="right">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)" class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
-                            </svg>
-                          </a>          
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="collapse" id="nav-import" role="tabpanel" aria-labelledby="nav-import-tab" data-bs-parent="#user-controls">
-            <div class="row" style="padding:0.4rem;">
-              <div class="col col-4">
-                <div class="form-group">
-                  <label for="uploader">Import Files</label>
-                  <a href="#" id="my_tooltip" data-bs-custom-class="ttWide" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Accepts image files (.png, .jpeg, or .pdf) along with (optionally) OCR files (.hocr or Abbyy .xml).
-All files are sorted in alphabetic order." data-bs-placement="right">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)" class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
-                    </svg>
-                  </a>
-
-                  <input type="file" id="uploader" class="form-control btn-sm" autocomplete="off" label="Import Files" multiple>
-                </div>
-              </div>
-              <div class="col col-2">
-                <label for="reset">Reset All (Files + Edits)</label><br>
-                <button type="button" id="reset" class="btn btn-secondary btn-sm">Reset</button>
-              </div>
-              <div class="col col-2">
-              </div>
-            </div>
-            <div class="collapse" id="import-progress-collapse">
-              <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
-                <div class="col col-2" style="padding-left:0">
-                  <div>Loading Files</div>
-                </div>
-                <div class="col col-7">
-                  <div class="progress" style="margin: 0.25rem;">
-                    <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="collapse" id="nav-recognize" role="tabpanel" aria-labelledby="nav-recognize-tab" data-bs-parent="#user-controls">
-            <div class="row" style="padding:0.4rem;">
-              <div class="col col-2" style="padding-right:0.25rem;">
-                <label></label>
-                <button type="button" id="recognizeAll" class="btn btn-info btn-sm" style="min-width:100%;" disabled>Recognize Text</button>
-              </div>
-              <div class="col col-2" id="basicRecognitionOptions">
-                <div style="display:inline-block">
-                  <t>Speed</t>
-                </div>
-                <div style="float:right;">
-                  <t>Quality</t>
                 </div>
                 <div class="row">
-                  <div class="form-group">
-                    <input type="range" class="form-range" min="0" max="1" step="1" id="ocrQuality" style="padding-top:0.35rem">                  
-                  </div>
-                </div>
-              </div>
-              <div class="col col-2" style="display:none" id="advancedRecognitionOptions">
-                <div>
-                  <label>Options</label>
-                </div>
-                <div class="row">
-                  <div class="form-group">
-                    <div class="dropdown">
-                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="oem" data-bs-toggle="dropdown" style="width:100%;text-align:left">
-                        <div style="display:inline"> Engine: </div>
-                        <div id="oemLabelText" style="display:inline">LSTM</div>
-                      </button>
-                      <ul class="dropdown-menu">
-                        <li><a id="oemLabelOptionLstm" class="dropdown-item" href="#">Tesseract LSTM</a></li>
-                        <li><a id="oemLabelOptionLegacy" class="dropdown-item" href="#">Tesseract Legacy</a></li>
-                        <li><a id="oemLabelOptionCombined" class="dropdown-item" href="#">LSTM + Legacy Combined</a></li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <div class="row" style="padding-top:0.4rem;">
-                  <div class="form-group">
-                    <div class="form-group">
-                      <div class="dropdown">
-                        <button class="btn btn-secondary dropdown btn-sm" type="button" id="psm" data-bs-toggle="dropdown" style="width:100%;text-align:left">
-                          <div style="display:inline"> Segment: </div>
-                          <div id="psmLabelText" style="display:inline">Automatic</div>
-                        </button>
-                        <ul class="dropdown-menu">
-                          <li><a id="psmLabelOption3" class="dropdown-item" href="#">Automatic</a></li>
-                          <li><a id="psmLabelOption4" class="dropdown-item" href="#">Single Column</a></li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col col-2" id="engineCol" style="display:none">
-                <label>Alternative Builds</label>
-                <div class="row">
-                  <div class="form-group">
-                    <div class="dropdown">
-                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="build" data-bs-toggle="dropdown"
-                        style="width:100%;text-align:left">
-                        <div style="display:inline"> Build: </div>
-                        <div id="buildLabelText" style="display:inline">Default</div>
-                      </button>
-                      <ul class="dropdown-menu">
-                        <li><a id="buildLabelOptionDefault" class="dropdown-item" href="#">Scribe Tesseract</a></li>
-                        <li><a id="buildLabelOptionVanilla" class="dropdown-item" href="#">Vanilla Tesseract</a></li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="collapse" id="recognize-recognize-progress-collapse">
-              <div class="row" style="padding-top:0.4rem;margin:0.4rem 0.4rem 0.4rem 0.4rem;border-top:1px solid #dadada;">
-                <div class="col col-2" style="padding-left:0">
-                  <div>Recognizing Text</div>
-                </div>
-                <div class="col col-7">
-                  <div class="progress" style="margin: 0.25rem;">
-                    <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="collapse" id="nav-eval" role="tabpanel" aria-labelledby="nav-eval-tab"
-            data-bs-parent="#user-controls">
-            <div class="row">
-              <div class="col col-3">
-                <label>Active OCR Data</label>
-                <div class="row">
-                  <div class="form-group">
-                    <div class="dropdown">
-                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="oem" data-bs-toggle="dropdown"
-                        style="width:100%;text-align:left">
-                        <div id="displayLabelText" style="display:inline-block"> </div>
-                      </button>
-                      <ul id="displayLabelOptions" class="dropdown-menu">
-                      </ul>
-                    </div>
-                    <div class="row" style="padding-top:0.4rem">
-                      <div class="form-group">
-                        <button type="button" id="uploadOCRLabel" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
-                          href="#uploadOCRData" style="min-width:100%;text-align:left">Upload OCR Data</button>
-                      </div>
-                      <div class="collapse" id="uploadOCRData">
-                        <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                          <!-- <label for="downloadFormat">OCR Name</label> -->
-                          <div class="input-group">
-                            <span class="input-group-text btn-sm" id="basic-addon1" style="width:40%">Name</span>
-                            <input type="text" id="uploadOCRName" class="form-control btn-sm">
-                          </div>
-                          <div class="input-group" style="padding-top:0.4rem">
-                            <input type="file" id="uploadOCRFile" class="form-control btn-sm" label="Import Files" multiple>
-                          </div>
-                          <div style="padding-top:0.4rem;width:100%">
-                            <button type="button" id="uploadOCRButton" class="btn btn-info btn-sm" style="width:100%"
-                              disabled>Upload</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col col-2">
-                <label>Evaluation</label>
-                <div class="form-group">
-                  <button type="button" id="createGroundTruth" class="btn btn-info btn-sm" style="width:100%" disabled>Set Ground
-                    Truth</button>
-                </div>
-                <div class="row" style="padding-top:0.4rem">
-                  <div class="form-group">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#evalOptions"
+                  <div class="form-group" style="margin-top:0.5rem">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#editOptions"
                       style="min-width:100%;text-align:left">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear"
-                        viewBox="0 0 16 16">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-gear" viewBox="0 0 16 16">
                         <path
                           d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
                         <path
                           d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
-                      </svg> Evaluation Options</button>
+                      </svg> Options</button>
                   </div>
-                  <div class="collapse" id="evalOptions">
+                  <div class="collapse" id="editOptions">
                     <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
                       <div class="form-check form-switch">
-                        <label><input class="form-check-input" type="checkbox" id="ignorePunct"> Ignore Punctuation</label>
-                        <label><input class="form-check-input" type="checkbox" id="ignoreCap"> Ignore Capitalization</label>
-                        <label><input class="form-check-input" type="checkbox" id="ignoreExtra"> Ignore Extra Words</label>
+                        <label><input class="form-check-input" type="checkbox" id="smartQuotes" checked> Smart
+                          Quotes</label>
+                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
+                          data-bs-original-title="Automatically replace straight quotes with curly quotes based on context."
+                          data-bs-placement="right">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)"
+                            class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                            <path
+                              d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                          </svg>
+                        </a>
+                        <label><input class="form-check-input" type="checkbox" id="optimizeFont" checked> Optimize
+                          Fonts</label>
+                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
+                          data-bs-original-title="Automatically adjusts font metrics to better match the scanned text."
+                          data-bs-placement="right">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)"
+                            class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                            <path
+                              d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                          </svg>
+                        </a>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-3">
-                <div class="row">
-                  <div class="col-6">
-                    <div style="padding-left:0.25rem;padding-right:0.25rem">Metric</div>
-                  </div>
-                  <div class="col-3">
-                    <div>Page</div>
-                  </div>
-                  <div class="col-3">
-                    <div>Doc</div>
-                  </div>
-                </div>
-                  <!-- <div class="form-group"> -->
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#metric"
-                      style="min-width:100%;text-align:left">
-                      <div class="row">
-                        <div class="col-6">
-                          <div>Word Error Rate</div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricWERPage"></div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricWERDoc"></div>
-                        </div>
-                      </div>
-                    </button>
-                  <!-- </div> -->
-                  <div class="collapse" id="metric">
-                    <div class="card card-body" style="padding:0.5rem;width:100%;margin-top:0.4rem">
-                      <div class="row">
-                        <div class="col-6">
-                          <div>Total Words</div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricTotalWordsPage"></div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricTotalWordsDoc"></div>
-                        </div>
-                      </div>
-                      <div class="row">
-                        <div class="col-6">
-                          <div>Correct Words</div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricCorrectWordsPage"></div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricCorrectWordsDoc"></div>
-                        </div>
-                      </div>
-                      <div class="row">
-                        <div class="col-6">
-                          <div>Incorrect Words</div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricIncorrectWordsPage"></div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricIncorrectWordsDoc"></div>
-                        </div>
-                      </div>
-                      <div class="row">
-                        <div class="col-6">
-                          <div>Missed Words</div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricMissedWordsPage"></div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricMissedWordsDoc"></div>
-                        </div>
-                      </div>
-                      <div class="row">
-                        <div class="col-6">
-                          <div>Extra Words</div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricExtraWordsPage"></div>
-                        </div>
-                        <div class="col-3">
-                          <div id="metricExtraWordsDoc"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-              </div>
-            </div>
-            <div class="collapse" id="import-eval-progress-collapse">
-              <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
-                <div class="col col-2" style="padding-left:0">
-                  <div>Loading Files</div>
-                </div>
-                <div class="col col-7">
-                  <div class="progress" style="margin: 0.25rem;">
-                    <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0"
-                      aria-valuemax="100"></div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="collapse" id="nav-view" role="tabpanel" aria-labelledby="nav-view-tab" data-bs-parent="#user-controls">
-            <div class="row" style="padding:0.4rem;">
-              <div class="col col-3">
-                <label for="displayMode">Display Mode</label>
-                <select id="displayMode" class="form-control btn-sm" size="1">
-                  <option selected value="proof" selected>Proofread Mode (Image + Colored Text)</option>
-                  <option value="invis">OCR Mode (Image + Invisible Text)</option>
-                  <option value="ebook">Ebook Mode (No Image + Black Text)</option>
-                </select>
-                <label for="colorMode">Image Color Depth</label>
-                <select id="colorMode" class="form-control btn-sm" size="1">
-                  <option selected="color" selected>Color</option>
-                  <option selected value="gray">Grayscale</option>
-                  <option value="binary">Binary</option>
-                </select>
+        </div>
+        <div class="collapse" id="nav-import" role="tabpanel" aria-labelledby="nav-import-tab"
+          data-bs-parent="#user-controls">
+          <div class="row" style="padding:0.4rem;">
+            <div class="col col-4">
+              <div class="form-group">
+                <label for="uploader">Import Files</label>
+                <a href="#" id="my_tooltip" data-bs-custom-class="ttWide" class="d-inline-block"
+                  data-bs-toggle="tooltip" title="" data-bs-original-title="Accepts image files (.png, .jpeg, or .pdf) along with (optionally) OCR files (.hocr or Abbyy .xml).
+All files are sorted in alphabetic order." data-bs-placement="right">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)"
+                    class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                    <path
+                      d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                  </svg>
+                </a>
+
+                <input type="file" id="uploader" class="form-control btn-sm" autocomplete="off" label="Import Files"
+                  multiple>
               </div>
-              <div class="col col-2">
-                <label for="zoomInput">Max Width</label>
-                <div class="input-group btn-group-sm">
-                  <button class="btn btn-secondary" id="zoomMinus">-</button>
-                  <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
-                  Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
-                  <input type="text" id="zoomInput" value="1000" style="width:4em">
-                  <button class="btn btn-secondary" id="zoomPlus">+</button>
+            </div>
+            <div class="col col-2">
+              <label for="reset">Reset All (Files + Edits)</label><br>
+              <button type="button" id="reset" class="btn btn-secondary btn-sm">Reset</button>
+            </div>
+            <!-- <div class="col col-2">
+              <label>Options</label><br>
+              <div class="form-check form-switch">
+                <label><input class="form-check-input" type="checkbox" id="extractTextCheckbox"> Extract Text from PDF</label><br>
+              </div>
+            </div> -->
+          </div>
+          <div class="collapse" id="import-progress-collapse">
+            <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
+              <div class="col col-2" style="padding-left:0">
+                <div>Loading Files</div>
+              </div>
+              <div class="col col-7">
+                <div class="progress" style="margin: 0.25rem;">
+                  <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
+                    aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
               </div>
-              <div class="col col-3">
-                <label>Options</label>
-                <div class="form-check form-switch">
-                  <label><input class="form-check-input" type="checkbox" id="autoRotateCheckbox" checked> Auto-Rotate Image</label><br>
-                  <label><input class="form-check-input" type="checkbox" id="autoMarginCheckbox"> Auto-Standardize Left Margin</label><br>
-                </div>
+            </div>
+          </div>
+        </div>
+        <div class="collapse" id="nav-recognize" role="tabpanel" aria-labelledby="nav-recognize-tab"
+          data-bs-parent="#user-controls">
+          <div class="row" style="padding:0.4rem;">
+            <div class="col col-2" style="padding-right:0.25rem;">
+              <label></label>
+              <button type="button" id="recognizeAll" class="btn btn-info btn-sm" style="min-width:100%;"
+                disabled>Recognize Text</button>
+            </div>
+            <div class="col col-2" id="basicRecognitionOptions">
+              <div style="display:inline-block">
+                <t>Speed</t>
+              </div>
+              <div style="float:right;">
+                <t>Quality</t>
+              </div>
+              <div class="row">
                 <div class="form-group">
-                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#adjustMargin" style="min-width:100%;text-align:left">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-align-center" viewBox="0 0 16 16">
-                      <path d="M8 1a.5.5 0 0 1 .5.5V6h-1V1.5A.5.5 0 0 1 8 1zm0 14a.5.5 0 0 1-.5-.5V10h1v4.5a.5.5 0 0 1-.5.5zM2 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7z" />
-                    </svg> Adjust Margin</button>
+                  <input type="range" class="form-range" min="0" max="1" step="1" id="ocrQuality"
+                    style="padding-top:0.35rem">
                 </div>
-                <div class="collapse" id="adjustMargin">
-                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                    <input type="range" class="form-range" id="rangeLeftMargin" max="400" value="200">
+              </div>
+            </div>
+            <div class="col col-2" style="display:none" id="advancedRecognitionOptions">
+              <div>
+                <label>Options</label>
+              </div>
+              <div class="row">
+                <div class="form-group">
+                  <div class="dropdown">
+                    <button class="btn btn-secondary dropdown btn-sm" type="button" id="oem" data-bs-toggle="dropdown"
+                      style="width:100%;text-align:left">
+                      <div style="display:inline"> Engine: </div>
+                      <div id="oemLabelText" style="display:inline">LSTM</div>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><a id="oemLabelOptionLstm" class="dropdown-item" href="#">Tesseract LSTM</a></li>
+                      <li><a id="oemLabelOptionLegacy" class="dropdown-item" href="#">Tesseract Legacy</a></li>
+                      <li><a id="oemLabelOptionCombined" class="dropdown-item" href="#">LSTM + Legacy Combined</a></li>
+                    </ul>
                   </div>
                 </div>
               </div>
-              <!-- <div class="col col-2">
+              <div class="row" style="padding-top:0.4rem;">
+                <div class="form-group">
+                  <div class="form-group">
+                    <div class="dropdown">
+                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="psm" data-bs-toggle="dropdown"
+                        style="width:100%;text-align:left">
+                        <div style="display:inline"> Segment: </div>
+                        <div id="psmLabelText" style="display:inline">Automatic</div>
+                      </button>
+                      <ul class="dropdown-menu">
+                        <li><a id="psmLabelOption3" class="dropdown-item" href="#">Automatic</a></li>
+                        <li><a id="psmLabelOption4" class="dropdown-item" href="#">Single Column</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col col-2" id="engineCol" style="display:none">
+              <label>Alternative Builds</label>
+              <div class="row">
+                <div class="form-group">
+                  <div class="dropdown">
+                    <button class="btn btn-secondary dropdown btn-sm" type="button" id="build" data-bs-toggle="dropdown"
+                      style="width:100%;text-align:left">
+                      <div style="display:inline"> Build: </div>
+                      <div id="buildLabelText" style="display:inline">Default</div>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><a id="buildLabelOptionDefault" class="dropdown-item" href="#">Scribe Tesseract</a></li>
+                      <li><a id="buildLabelOptionVanilla" class="dropdown-item" href="#">Vanilla Tesseract</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="collapse" id="recognize-recognize-progress-collapse">
+            <div class="row"
+              style="padding-top:0.4rem;margin:0.4rem 0.4rem 0.4rem 0.4rem;border-top:1px solid #dadada;">
+              <div class="col col-2" style="padding-left:0">
+                <div>Recognizing Text</div>
+              </div>
+              <div class="col col-7">
+                <div class="progress" style="margin: 0.25rem;">
+                  <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
+                    aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="collapse" id="nav-eval" role="tabpanel" aria-labelledby="nav-eval-tab"
+          data-bs-parent="#user-controls">
+          <div class="row">
+            <div class="col col-3">
+              <label>Active OCR Data</label>
+              <div class="row">
+                <div class="form-group">
+                  <div class="dropdown">
+                    <button class="btn btn-secondary dropdown btn-sm" type="button" id="oem" data-bs-toggle="dropdown"
+                      style="width:100%;text-align:left">
+                      <div id="displayLabelText" style="display:inline-block"> </div>
+                    </button>
+                    <ul id="displayLabelOptions" class="dropdown-menu">
+                    </ul>
+                  </div>
+                  <div class="row" style="padding-top:0.4rem">
+                    <div class="form-group">
+                      <button type="button" id="uploadOCRLabel" class="btn btn-secondary btn-sm"
+                        data-bs-toggle="collapse" href="#uploadOCRData" style="min-width:100%;text-align:left">Upload
+                        OCR Data</button>
+                    </div>
+                    <div class="collapse" id="uploadOCRData">
+                      <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                        <!-- <label for="downloadFormat">OCR Name</label> -->
+                        <div class="input-group">
+                          <span class="input-group-text btn-sm" id="basic-addon1" style="width:40%">Name</span>
+                          <input type="text" id="uploadOCRName" class="form-control btn-sm">
+                        </div>
+                        <div class="input-group" style="padding-top:0.4rem">
+                          <input type="file" id="uploadOCRFile" class="form-control btn-sm" label="Import Files"
+                            multiple>
+                        </div>
+                        <div style="padding-top:0.4rem;width:100%">
+                          <button type="button" id="uploadOCRButton" class="btn btn-info btn-sm" style="width:100%"
+                            disabled>Upload</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col col-2">
+              <label>Evaluation</label>
+              <div class="form-group">
+                <button type="button" id="createGroundTruth" class="btn btn-info btn-sm" style="width:100%" disabled>Set
+                  Ground
+                  Truth</button>
+              </div>
+              <div class="row" style="padding-top:0.4rem">
+                <div class="form-group">
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#evalOptions"
+                    style="min-width:100%;text-align:left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-gear" viewBox="0 0 16 16">
+                      <path
+                        d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
+                      <path
+                        d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
+                    </svg> Evaluation Options</button>
+                </div>
+                <div class="collapse" id="evalOptions">
+                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                    <div class="form-check form-switch">
+                      <label><input class="form-check-input" type="checkbox" id="ignorePunct"> Ignore
+                        Punctuation</label>
+                      <label><input class="form-check-input" type="checkbox" id="ignoreCap"> Ignore
+                        Capitalization</label>
+                      <label><input class="form-check-input" type="checkbox" id="ignoreExtra"> Ignore Extra
+                        Words</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="row">
+                <div class="col-6">
+                  <div style="padding-left:0.25rem;padding-right:0.25rem">Metric</div>
+                </div>
+                <div class="col-3">
+                  <div>Page</div>
+                </div>
+                <div class="col-3">
+                  <div>Doc</div>
+                </div>
+              </div>
+              <!-- <div class="form-group"> -->
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#metric"
+                style="min-width:100%;text-align:left">
+                <div class="row">
+                  <div class="col-6">
+                    <div>Word Error Rate</div>
+                  </div>
+                  <div class="col-3">
+                    <div id="metricWERPage"></div>
+                  </div>
+                  <div class="col-3">
+                    <div id="metricWERDoc"></div>
+                  </div>
+                </div>
+              </button>
+              <!-- </div> -->
+              <div class="collapse" id="metric">
+                <div class="card card-body" style="padding:0.5rem;width:100%;margin-top:0.4rem">
+                  <div class="row">
+                    <div class="col-6">
+                      <div>Total Words</div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricTotalWordsPage"></div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricTotalWordsDoc"></div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-6">
+                      <div>Correct Words</div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricCorrectWordsPage"></div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricCorrectWordsDoc"></div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-6">
+                      <div>Incorrect Words</div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricIncorrectWordsPage"></div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricIncorrectWordsDoc"></div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-6">
+                      <div>Missed Words</div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricMissedWordsPage"></div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricMissedWordsDoc"></div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-6">
+                      <div>Extra Words</div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricExtraWordsPage"></div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricExtraWordsDoc"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="collapse" id="import-eval-progress-collapse">
+            <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
+              <div class="col col-2" style="padding-left:0">
+                <div>Loading Files</div>
+              </div>
+              <div class="col col-7">
+                <div class="progress" style="margin: 0.25rem;">
+                  <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
+                    aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="collapse" id="nav-view" role="tabpanel" aria-labelledby="nav-view-tab"
+          data-bs-parent="#user-controls">
+          <div class="row" style="padding:0.4rem;">
+            <div class="col col-3">
+              <label for="displayMode">Display Mode</label>
+              <select id="displayMode" class="form-control btn-sm" size="1">
+                <option selected value="proof" selected>Proofread Mode (Image + Colored Text)</option>
+                <option value="invis">OCR Mode (Image + Invisible Text)</option>
+                <option value="ebook">Ebook Mode (No Image + Black Text)</option>
+              </select>
+              <label for="colorMode">Image Color Depth</label>
+              <select id="colorMode" class="form-control btn-sm" size="1">
+                <option selected="color" selected>Color</option>
+                <option selected value="gray">Grayscale</option>
+                <option value="binary">Binary</option>
+              </select>
+            </div>
+            <div class="col col-2">
+              <label for="zoomInput">Max Width</label>
+              <div class="input-group btn-group-sm">
+                <button class="btn btn-secondary" id="zoomMinus">-</button>
+                <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
+                  Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
+                <input type="text" id="zoomInput" value="1000" style="width:4em">
+                <button class="btn btn-secondary" id="zoomPlus">+</button>
+              </div>
+            </div>
+            <div class="col col-3">
+              <label>Options</label>
+              <div class="form-check form-switch">
+                <label><input class="form-check-input" type="checkbox" id="autoRotateCheckbox" checked> Auto-Rotate
+                  Image</label><br>
+                <label><input class="form-check-input" type="checkbox" id="autoMarginCheckbox"> Auto-Standardize Left
+                  Margin</label><br>
+              </div>
+              <div class="form-group">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#adjustMargin"
+                  style="min-width:100%;text-align:left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-align-center" viewBox="0 0 16 16">
+                    <path
+                      d="M8 1a.5.5 0 0 1 .5.5V6h-1V1.5A.5.5 0 0 1 8 1zm0 14a.5.5 0 0 1-.5-.5V10h1v4.5a.5.5 0 0 1-.5.5zM2 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7z" />
+                  </svg> Adjust Margin</button>
+              </div>
+              <div class="collapse" id="adjustMargin">
+                <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                  <input type="range" class="form-range" id="rangeLeftMargin" max="400" value="200">
+                </div>
+              </div>
+            </div>
+            <!-- <div class="col col-2">
                 <label></label>
                 <div class="form-check form-switch">
                   <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show Margin</label><br>
                   <label><input class="form-check-input" type="checkbox" id="showBoundingBoxes"> Show Bounding Boxes</label>
                 </div>
               </div> -->
-            </div>
           </div>
-          <div class="collapse" id="nav-download" role="tabpanel" aria-labelledby="nav-download-tab" data-bs-parent="#user-controls">
-            <div class="row" style="padding:0.4rem;">
-              <div class="col col-3">
-                <label for="downloadFormat">File Name</label>
-                <div class="input-group">
-                  <input type="text" id="downloadFileName" class="form-control btn-sm">
-                </div>
-
-                <div style="padding-top:0.4rem;">
-                  <button type="button" id="download" class="btn btn-info btn-sm" disabled>Download</button>
-                </div>
-              </div>
-              <div class="col col-2">
-                <label>Options</label>
-                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Only HOCR files can be re-imported later for additional edits."
-                  data-bs-placement="right">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)" class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
-                  </svg>
-                </a>
-                <div class="row">
-                  <div class="form-group">
-                    <div class="dropdown">
-                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadFormat" data-bs-toggle="dropdown" style="width:100%;text-align:left">
-                        <svg id="formatLabelSVG" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-pdf" viewBox="0 0 16 16">
-                          <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
-                          <path d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.701 19.701 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.716 5.716 0 0 1-.911-.95 11.642 11.642 0 0 0-1.997.406 11.311 11.311 0 0 1-1.021 1.51c-.29.35-.608.655-.926.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.27.27 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.647 12.647 0 0 1 1.01-.193 11.666 11.666 0 0 1-.51-.858 20.741 20.741 0 0 1-.5 1.05zm2.446.45c.15.162.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.881 3.881 0 0 0-.612-.053zM8.078 5.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>
-                        </svg>
-                        <div style="display:inline"> Format: </div>
-                        <div id="formatLabelText" style="display:inline">PDF</div>
-                      </button>
-                      <ul class="dropdown-menu">
-                        <li><a id="formatLabelOptionPDF" class="dropdown-item" href="#">PDF</a></li>
-                        <li><a id="formatLabelOptionHOCR" class="dropdown-item" href="#">HOCR</a></li>
-                        <li><a id="formatLabelOptionText" class="dropdown-item" href="#">Text</a></li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <div class="row" style="padding-top:0.4rem;">
-                  <div class="form-group">
-                    <button data-bs-toggle="collapse" id="pdfPagesLabel" data-bs-target="#collapsePages" type="button" class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-files" viewBox="0 0 16 16">
-                        <path d="M13 0H6a2 2 0 0 0-2 2 2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2 2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm0 13V4a2 2 0 0 0-2-2H5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1zM3 4a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4z"/>
-                      </svg>
-                      <div id="pdfPagesLabelText" style="display:inline"> Pages: All</div>
-                    </button>
-
-                  </div>
-                </div>
-                <div class="collapse" id="collapsePages">
-                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                    <div class="row" style="--bs-gutter-x:0">
-                      <div class="col-5">
-                        <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%">
-                      </div>
-                      <div class="col-2" style="text-align:center"> to </div>
-                      <div class="col-5">
-                        <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col col-3">
-                <label>PDF Options</label>
-                <div class="form-check form-switch">
-                  <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
-                  <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page Size</label>
-                  <label><input class="form-check-input" type="checkbox" id="addOverlayCheckbox" disabled> Add Text to Import PDF</label>
-                </div>
+        </div>
+        <div class="collapse" id="nav-download" role="tabpanel" aria-labelledby="nav-download-tab"
+          data-bs-parent="#user-controls">
+          <div class="row" style="padding:0.4rem;">
+            <div class="col col-3">
+              <label for="downloadFormat">File Name</label>
+              <div class="input-group">
+                <input type="text" id="downloadFileName" class="form-control btn-sm">
               </div>
 
-            </div>
-            <div class="collapse" id="generate-download-progress-collapse">
-              <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
-                <div class="col col-2" style="padding-left:0">
-                  <div>Generating PDF</div>
-                </div>
-                <div class="col col-7">
-                  <div class="progress" style="margin: 0.25rem;">
-                    <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                  </div>
-                </div>
+              <div style="padding-top:0.4rem;">
+                <button type="button" id="download" class="btn btn-info btn-sm" disabled>Download</button>
               </div>
             </div>
-          </div>
-          <div class="collapse" id="nav-about" role="tabpanel" aria-labelledby="nav-about-tab" data-bs-parent="#user-controls">
-            <div class="row" style="padding:0.4rem;">
-              <div class="col col-3">
-                <div class="row">
-                  <a href="https://github.com/Balearica/scribeocr" target="_blank" class="text-decoration-none" style="color:#287bb5">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-git" viewBox="0 0 16 16">
-                      <path d="M15.698 7.287 8.712.302a1.03 1.03 0 0 0-1.457 0l-1.45 1.45 1.84 1.84a1.223 1.223 0 0 1 1.55 1.56l1.773 1.774a1.224 1.224 0 0 1 1.267 2.025 1.226 1.226 0 0 1-2.002-1.334L8.58 5.963v4.353a1.226 1.226 0 1 1-1.008-.036V5.887a1.226 1.226 0 0 1-.666-1.608L5.093 2.465l-4.79 4.79a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.031 1.031 0 0 0 0-1.457"/>
-                    </svg> View Code
-                  </a>
-                </div>
-                <div class="row">
-                  <a href="https://docs.scribeocr.com" target="_blank" class="text-decoration-none" style="color:#287bb5">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-book-fill" viewBox="0 0 16 16">
-                      <path d="M8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
-                    </svg> View Documentation
-                  </a>
-                </div>
-
-              </div>
-              <div class="col col-3">
+            <div class="col col-2">
+              <label>Options</label>
+              <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
+                data-bs-original-title="Only HOCR files can be re-imported later for additional edits."
+                data-bs-placement="right">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)"
+                  class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                  <path
+                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                </svg>
+              </a>
+              <div class="row">
                 <div class="form-group">
-                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#optionalFeatures"
-                    style="min-width:100%;text-align:left">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive"
-                      viewBox="0 0 16 16">
-                      <path
-                        d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z" />
-                    </svg> Optional Features</button>
+                  <div class="dropdown">
+                    <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadFormat"
+                      data-bs-toggle="dropdown" style="width:100%;text-align:left">
+                      <svg id="formatLabelSVG" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                        fill="currentColor" class="bi bi-file-pdf" viewBox="0 0 16 16">
+                        <path
+                          d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" />
+                        <path
+                          d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.701 19.701 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.716 5.716 0 0 1-.911-.95 11.642 11.642 0 0 0-1.997.406 11.311 11.311 0 0 1-1.021 1.51c-.29.35-.608.655-.926.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.27.27 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.647 12.647 0 0 1 1.01-.193 11.666 11.666 0 0 1-.51-.858 20.741 20.741 0 0 1-.5 1.05zm2.446.45c.15.162.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.881 3.881 0 0 0-.612-.053zM8.078 5.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z" />
+                      </svg>
+                      <div style="display:inline"> Format: </div>
+                      <div id="formatLabelText" style="display:inline">PDF</div>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><a id="formatLabelOptionPDF" class="dropdown-item" href="#">PDF</a></li>
+                      <li><a id="formatLabelOptionHOCR" class="dropdown-item" href="#">HOCR</a></li>
+                      <li><a id="formatLabelOptionText" class="dropdown-item" href="#">Text</a></li>
+                    </ul>
+                  </div>
                 </div>
-                <div class="collapse" id="optionalFeatures">
-                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                    <div class="form-check form-switch">
-                      <label><input class="form-check-input" type="checkbox" id="enableAdvancedRecognition"> Advanced Recognition Options</label>
+              </div>
+              <div class="row" style="padding-top:0.4rem;">
+                <div class="form-group">
+                  <button data-bs-toggle="collapse" id="pdfPagesLabel" data-bs-target="#collapsePages" type="button"
+                    class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-files" viewBox="0 0 16 16">
+                      <path
+                        d="M13 0H6a2 2 0 0 0-2 2 2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2 2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm0 13V4a2 2 0 0 0-2-2H5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1zM3 4a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4z" />
+                    </svg>
+                    <div id="pdfPagesLabelText" style="display:inline"> Pages: All</div>
+                  </button>
+
+                </div>
+              </div>
+              <div class="collapse" id="collapsePages">
+                <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                  <div class="row" style="--bs-gutter-x:0">
+                    <div class="col-5">
+                      <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%">
                     </div>
-                    <div class="form-check form-switch">
-                      <label><input class="form-check-input" type="checkbox" id="enableEval"> Evaluate Accuracy</label>
+                    <div class="col-2" style="text-align:center"> to </div>
+                    <div class="col-5">
+                      <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%">
                     </div>
                   </div>
                 </div>
-                <div class="form-group" style="margin-top:0.4rem">
-                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#advancedOptions" style="min-width:100%;text-align:left">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear-fill" viewBox="0 0 16 16">
-                      <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
-                    </svg> Advanced Options</button>
+              </div>
+            </div>
+            <div class="col col-3">
+              <label>PDF Options</label>
+              <div class="form-check form-switch">
+                <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
+                <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page
+                  Size</label>
+                <label><input class="form-check-input" type="checkbox" id="addOverlayCheckbox" disabled> Add Text to
+                  Import PDF</label>
+              </div>
+            </div>
+
+          </div>
+          <div class="collapse" id="generate-download-progress-collapse">
+            <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
+              <div class="col col-2" style="padding-left:0">
+                <div>Generating PDF</div>
+              </div>
+              <div class="col col-7">
+                <div class="progress" style="margin: 0.25rem;">
+                  <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
+                    aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
-                <div class="collapse" id="advancedOptions">
-                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                    <div class="form-check form-switch">
-                      <label><input class="form-check-input" type="checkbox" id="enableExtraEngines"> Vanilla Engine Builds</label>
-                    </div>
-                    <label for="displayFont">Confidence Thresholds <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
-                    data-bs-original-title="Determines which words are printed as green/yellow/red in proofreading mode.  (Tesseract Only)" data-bs-placement="right">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)" class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
-                    </svg>
-                  </a></label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="collapse" id="nav-about" role="tabpanel" aria-labelledby="nav-about-tab"
+          data-bs-parent="#user-controls">
+          <div class="row" style="padding:0.4rem;">
+            <div class="col col-3">
+              <div class="row">
+                <a href="https://github.com/Balearica/scribeocr" target="_blank" class="text-decoration-none"
+                  style="color:#287bb5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-git"
+                    viewBox="0 0 16 16">
+                    <path
+                      d="M15.698 7.287 8.712.302a1.03 1.03 0 0 0-1.457 0l-1.45 1.45 1.84 1.84a1.223 1.223 0 0 1 1.55 1.56l1.773 1.774a1.224 1.224 0 0 1 1.267 2.025 1.226 1.226 0 0 1-2.002-1.334L8.58 5.963v4.353a1.226 1.226 0 1 1-1.008-.036V5.887a1.226 1.226 0 0 1-.666-1.608L5.093 2.465l-4.79 4.79a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.031 1.031 0 0 0 0-1.457" />
+                  </svg> View Code
+                </a>
+              </div>
+              <div class="row">
+                <a href="https://docs.scribeocr.com" target="_blank" class="text-decoration-none" style="color:#287bb5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-book-fill" viewBox="0 0 16 16">
+                    <path
+                      d="M8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z" />
+                  </svg> View Documentation
+                </a>
+              </div>
+
+            </div>
+            <div class="col col-3">
+              <div class="form-group">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
+                  href="#optionalFeatures" style="min-width:100%;text-align:left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-archive" viewBox="0 0 16 16">
+                    <path
+                      d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z" />
+                  </svg> Optional Features</button>
+              </div>
+              <div class="collapse" id="optionalFeatures">
+                <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                  <div class="form-check form-switch">
+                    <label><input class="form-check-input" type="checkbox" id="enableAdvancedRecognition"> Advanced
+                      Recognition Options</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <label><input class="form-check-input" type="checkbox" id="enableEval"> Evaluate Accuracy</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <label><input class="form-check-input" type="checkbox" id="enableLayout"> Edit Layout</label>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group" style="margin-top:0.4rem">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#advancedOptions"
+                  style="min-width:100%;text-align:left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-gear-fill" viewBox="0 0 16 16">
+                    <path
+                      d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z" />
+                  </svg> Advanced Options</button>
+              </div>
+              <div class="collapse" id="advancedOptions">
+                <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                  <div class="form-check form-switch">
+                    <label><input class="form-check-input" type="checkbox" id="enableExtraEngines"> Vanilla Engine
+                      Builds</label>
+                  </div>
+                  <label for="displayFont">Confidence Thresholds <a href="#" class="d-inline-block"
+                      data-bs-toggle="tooltip" title=""
+                      data-bs-original-title="Determines which words are printed as green/yellow/red in proofreading mode.  (Tesseract Only)"
+                      data-bs-placement="right">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)"
+                        class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                        <path
+                          d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                      </svg>
+                    </a></label>
                   <div class="row">
                     <!-- <label for="staticEmail" class="col-sm-2 col-form-label">High</label> -->
                     <div class="col col-4">
@@ -792,48 +936,57 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   <div class="row">
                     <!-- <label for="staticEmail" class="col-sm-2 col-form-label">High</label> -->
                     <div class="col col-4">
-                      <input class="form-control btn-sm" type="text" id="confThreshHigh" name="pageNum" size="3" autocomplete="off" disabled>
+                      <input class="form-control btn-sm" type="text" id="confThreshHigh" name="pageNum" size="3"
+                        autocomplete="off" disabled>
                     </div>
                     <div class="col col-4">
-                      <input class="form-control btn-sm" type="text" id="confThreshMed" name="pageNum" size="3" autocomplete="off" disabled>
+                      <input class="form-control btn-sm" type="text" id="confThreshMed" name="pageNum" size="3"
+                        autocomplete="off" disabled>
                     </div>
                   </div>
                   <div class="form-check form-switch" style="margin-top:0.4rem">
-                    <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show Margin</label><br>
-                    <label><input class="form-check-input" type="checkbox" id="showBoundingBoxes"> Show Bounding Boxes</label>
+                    <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show
+                      Margin</label><br>
+                    <label><input class="form-check-input" type="checkbox" id="showBoundingBoxes"> Show Bounding
+                      Boxes</label>
+                      <label><input class="form-check-input" type="checkbox" id="extractTextCheckbox"> Extract Text from PDF</label><br>
                   </div>
                 </div>
-                </div>
               </div>
-              <div class="col col-3">
-                <div class="form-group">
-                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugInfo" style="min-width:100%;text-align:left">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-screwdriver"
-                      viewBox="0 0 16 16">
-                      <path
-                        d="M0 .995.995 0l3.064 2.19a.995.995 0 0 1 .417.809v.07c0 .264.105.517.291.704l5.677 5.676.909-.303a.995.995 0 0 1 1.018.24l3.338 3.339a.995.995 0 0 1 0 1.406L14.13 15.71a.995.995 0 0 1-1.406 0l-3.337-3.34a.995.995 0 0 1-.24-1.018l.302-.909-5.676-5.677a.995.995 0 0 0-.704-.291H3a.995.995 0 0 1-.81-.417L0 .995Zm11.293 9.595a.497.497 0 1 0-.703.703l2.984 2.984a.497.497 0 0 0 .703-.703l-2.984-2.984Z" />
-                    </svg> Debugging</button>
-                </div>
-                <div class="collapse" id="debugInfo">
-                  <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                    <div>SIMD Support: <div id="debugEngineVersion" style="display:inline"></div></div>
-                    <div class="form-check form-switch">
-                      <label><input class="form-check-input" type="checkbox" id="disableSIMD"> Use Slow (Non-SIMD) Engine</label>
-                      <label><input class="form-check-input" type="checkbox" id="showConflicts"> Show Word Comparisons</label>
-                    </div>  
+            </div>
+            <div class="col col-3">
+              <div class="form-group">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugInfo"
+                  style="min-width:100%;text-align:left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-screwdriver" viewBox="0 0 16 16">
+                    <path
+                      d="M0 .995.995 0l3.064 2.19a.995.995 0 0 1 .417.809v.07c0 .264.105.517.291.704l5.677 5.676.909-.303a.995.995 0 0 1 1.018.24l3.338 3.339a.995.995 0 0 1 0 1.406L14.13 15.71a.995.995 0 0 1-1.406 0l-3.337-3.34a.995.995 0 0 1-.24-1.018l.302-.909-5.676-5.677a.995.995 0 0 0-.704-.291H3a.995.995 0 0 1-.81-.417L0 .995Zm11.293 9.595a.497.497 0 1 0-.703.703l2.984 2.984a.497.497 0 0 0 .703-.703l-2.984-2.984Z" />
+                  </svg> Debugging</button>
+              </div>
+              <div class="collapse" id="debugInfo">
+                <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                  <div>SIMD Support: <div id="debugEngineVersion" style="display:inline"></div>
+                  </div>
+                  <div class="form-check form-switch">
+                    <label><input class="form-check-input" type="checkbox" id="disableSIMD"> Use Slow (Non-SIMD)
+                      Engine</label>
+                    <label><input class="form-check-input" type="checkbox" id="showConflicts"> Show Word
+                      Comparisons</label>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="row">
-            <div id="alertDiv">
-            </div>  
+        </div>
+        <div class="row">
+          <div id="alertDiv">
           </div>
         </div>
-
       </div>
+
     </div>
+  </div>
 
 
   </div>

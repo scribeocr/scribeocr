@@ -48,7 +48,6 @@ export async function initMuPDFWorker() {
 						// await insertImageCache(n, result);
 						worker.promises[id].resolve(result);
 						delete worker.promises[id];
-						//await displayImage(n, imageAll[n]);
 					} else {
 						worker.promises[id].resolve(result);
 						delete worker.promises[id];
@@ -94,7 +93,9 @@ export async function initMuPDFWorker() {
 		mupdf.pageWidth = wrap("pageWidth");
 		mupdf.pageHeight = wrap("pageHeight");
 		mupdf.pageLinks = wrap("pageLinks");
-		mupdf.pageText = wrap("pageText");
+		mupdf.pageTextJSON = wrap("pageTextJSON");
+		mupdf.pageTextHTML = wrap("pageTextHTML");
+		mupdf.pageTextXML = wrap("pageTextXML");
 		mupdf.search = wrap("search");
 		mupdf.drawPageAsPNG = wrap("drawPageAsPNG");
 		mupdf.overlayText = wrap("overlayText");

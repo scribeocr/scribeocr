@@ -1,5 +1,5 @@
 
-import { renderPageQueue } from "../main.js";
+import { renderPageQueue, displayPage } from "../main.js";
 import { getRandomAlphanum } from "./miscUtils.js";
 
 var parser = new DOMParser();
@@ -63,7 +63,7 @@ export async function initConvertPageWorker() {
 		  
 			// If this is the page the user has open, render it to the canvas
 			if (n == currentPage.n && oemCurrent) {
-			  renderPageQueue(currentPage.n);
+				displayPage(currentPage.n);
 			}
 		  
             worker.promises[event.data[event.data.length - 1]].resolve(event.data);
@@ -85,6 +85,7 @@ export async function initConvertPageWorker() {
 
 		obj.convertPage = wrap("convertPage");
 		obj.convertPageAbbyy = wrap("convertPageAbbyy");
+		obj.convertPageStext = wrap("convertPageStext");
 	})
 };
 
@@ -181,7 +182,7 @@ function combineData(hocrString){
 	
 			// Replace id (which is likely duplicative) with unique id
 			let wordChosenID = word.getAttribute('id');
-			let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+			let wordIDNew = wordChosenID + getRandomAlphanum(3);
 			wordNew.setAttribute("id", wordIDNew)
 	
 			// Add to page XML
@@ -196,7 +197,7 @@ function combineData(hocrString){
 		} else {
 		  // Replace id (which is likely duplicative) with unique id
 		  let lineChosenID = lineNew.getAttribute('id');
-		  let lineIDNew = lineChosenID + getRandomAlphanum(3).join('');
+		  let lineIDNew = lineChosenID + getRandomAlphanum(3);
 		  lineNew.setAttribute("id", lineIDNew);
 	
 		  for (let i = 0; i < wordsNew.length; i++) {
@@ -204,7 +205,7 @@ function combineData(hocrString){
 	
 			// Replace id (which is likely duplicative) with unique id
 			let wordChosenID = wordNew.getAttribute('id');
-			let wordIDNew = wordChosenID + getRandomAlphanum(3).join('');
+			let wordIDNew = wordChosenID + getRandomAlphanum(3);
 			wordNew.setAttribute("id", wordIDNew)
 		  }
 	

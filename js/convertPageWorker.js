@@ -59,6 +59,8 @@ addEventListener('message', e => {
   let workerResult;
   if (func == "convertPageAbbyy") {
     workerResult = [convertPageAbbyy(hocrStr, n)];
+  } else if (func == "convertPageStext") {
+    workerResult = [convertPageStext(hocrStr, n)];
   } else {
     workerResult = [convertPage(hocrStr, argsObj["angle"], argsObj["engine"], argsObj["pageDims"])];
   }
@@ -793,29 +795,11 @@ function convertPageAbbyy(xmlPage, pageNum) {
     let baselineSlopeArr = new Array();
     let baselineFirst = new Array();
 
-    let fontFamily = "Default";
     const xmlLinePreChar = xmlLine.match(/^[\s\S]*?(?=\<charParams)/)?.[0];
     const xmlLineFormatting = xmlLinePreChar?.match(/\<formatting[^\>]+/)?.[0];
     const fontName = xmlLineFormatting?.match(/ff\=['"]([^'"]*)/)?.[1];
 
-    // Font support is currently limited to 1 font for Sans and 1 font for Serif.
-    if(fontName){
-      // First, test to see if "sans" or "serif" is in the name of the font
-      if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
-        fontFamily = "Open Sans";
-      } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
-        fontFamily = "Libre Baskerville";
-
-      // If not, check against a list of known sans/serif fonts.
-      // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
-      } else if (serifFontsRegex.test(fontName)) {
-        fontFamily = "Libre Baskerville";
-      } else if (sansFontsRegex.test(fontName)) {
-        fontFamily = "Open Sans";
-      } else if (fontName != "Default Metrics Font") {
-        console.log("Unidentified font in XML import: " + fontName);
-      }
-    }
+    let fontFamily = determineSansSerif(fontName);
 
     let dropCap = false;
     let dropCapMatch = xmlLine.match(abbyyDropCapRegex);
@@ -1298,6 +1282,527 @@ function convertPageAbbyy(xmlPage, pageNum) {
   let angleRisePage = new Array();
   for (let i = 0; i < lineStrArr.length; i++) {
     const lineInt = convertLineAbbyy(lineStrArr[i], i, pageNum);
+    if (lineInt[0] == "") continue;
+    angleRisePage.push(lineInt[1]);
+    xmlOut = xmlOut + lineInt[0];
+  }
+  xmlOut = xmlOut + "</div>";
+
+  let angleRiseMedian = mean50(angleRisePage);
+
+  const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI) || 0;
+
+
+  let lineLeftAdj = new Array;
+  for (let i = 0; i < lineLeft.length; i++) {
+    lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
+  }
+  let leftOut = quantile(lineLeft, 0.2);
+  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut || 0;
+  // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
+  if (lineLeft.length < 5) {
+    leftOut = null;
+  }
+
+  const dimsOut = pageDims;
+
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
+
+}
+
+const stextLineBoxRegex = new RegExp(/\<line bbox\=[\'\"]\>/, "i");
+const stextSplitRegex = new RegExp(/(?:\<char[^\>]*?c=[\'\"]\s+[\'\"]\/\>)|(?:\<\/font\>\s*(?=\<font))/, "ig");
+// The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
+const stextCharRegex = new RegExp(/(\<font[^\>]+\>\s*)?\<char quad=[\'\"](\s*[\d\.]+)(\s*[\d\.]+)(?:\s*[\d\.]+)(?:\s*[\d\.]+)(?:\s*[\d\.]+)(?:\s*[\d\.]+)(\s*[\d\.]+)(\s*[\d\.]+)[^\>]*?y=[\'\"]([\d\.]+)[\'\"][^\>]*?c=[\'\"]([^\'\"]+)[\'\"]\s*\/\>/, "ig");
+
+
+// Conversion function for "stext" (or "structured text" output from mupdf)
+// This format is more similar to Abbyy XML and is based on that parsing code.
+// The following features were removed (compared with Abbyy XML):
+// - Drop cap detection
+// - Superscript detection
+function convertPageStext(xmlPage, pageNum) {
+
+  let pageDims = xmlPage.match(/<page .+?width=[\'\"]([\d\.]+)[\'\"] height=[\'\"]([\d\.]+)[\'\"]/);
+  pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
+
+  const fontMetricsObj = {};
+
+  let lineLeft = new Array;
+  let lineTop = new Array;
+
+  let lineAllHeightPageArr = [];
+
+  let pageAscHeightArr = [];
+
+  function convertLineStext(xmlLine, lineNum, pageNum = 1) {
+    let widthPxObjLine = new Object;
+    let heightPxObjLine = new Object;
+    let cutPxObjLine = new Object;
+    let kerningPxObjLine = new Object;
+
+    const stylesLine = {};
+
+    // Unlike Tesseract HOCR, Abbyy XML does not provide accurate metrics for determining font size, so they are calculated here.
+    // Strangely, while Abbyy XML does provide a "baseline" attribute, it is often wildly incorrect (sometimes falling outside of the bounding box entirely).
+    // One guess as to why is that coordinates calculated pre-dewarping are used along with a baseline calculated post-dewarping.
+    // Regardless of the reason, baseline is recalculated here.
+    let lineAscHeightArr = new Array();
+    let lineXHeightArr = new Array();
+    let lineAllHeightArr = new Array();
+    let baselineHeightArr = new Array();
+    let baselineSlopeArr = new Array();
+    let baselineFirst = new Array();
+
+    const xmlLinePreChar = xmlLine.match(/^[\s\S]*?(?=\<char)/)?.[0];
+    if (!xmlLinePreChar) { return ("") };
+
+    const xmlLineFormatting = xmlLinePreChar?.match(/\<font[^\>]+/)?.[0];
+    const fontName = xmlLineFormatting?.match(/name\=['"]([^'"]*)/)?.[1];
+    const fontSize = parseFloat(xmlLineFormatting?.match(/size\=['"]([^'"]*)/)?.[1]);
+
+    let fontFamily = determineSansSerif(fontName);
+
+    // Currently no method of detecting drop caps for stext
+    let dropCap = false;
+    // let dropCapMatch = xmlLine.match(abbyyDropCapRegex);
+    // if (dropCapMatch != null && parseInt(dropCapMatch[1]) > 0) {
+    //   dropCap = true;
+    // }
+
+    let lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=[\'\"](\s*[\d\.]+)(\s*[\d\.]+)?(\s*[\d\.]+)?(\s*[\d\.]+)?/g)][0].slice(1, 5).map(function (x) { return parseFloat(x) })
+
+    if (lineBoxArr == null) { return ("") };
+    lineBoxArr = [...lineBoxArr].map(function (x) { return parseInt(x) });
+    // Only calculate baselines from lines 200px+.
+    // This avoids short "lines" (e.g. page numbers) that often report wild values.
+    if ((lineBoxArr[4] - lineBoxArr[2]) >= 200) {
+      //angleRisePage.push(baseline[0]);
+      lineLeft.push(lineBoxArr[2]);
+      lineTop.push(lineBoxArr[3]);
+    }
+
+    // These regex remove blank characters that occur next to changes in formatting to avoid making too many words.
+    // stext is confirmed to (at least sometimes) change formatting before a space character rather than after
+    xmlLine = xmlLine.replaceAll(/(\<\/font\>\s*\<font[^\>]*\>\s*)\<char[^\>]*?c=[\'\"]\s+[\'\"]\/\>/ig, "$1");
+    xmlLine = xmlLine.replaceAll(/\<char[^\>]*?c=[\'\"]\s+[\'\"]\/\>(\s*\<\/font\>\s*\<font[^\>]*\>\s*)/ig, "$1");
+
+    // Remove spaces that are the first characters of words
+    xmlLine = xmlLine.replaceAll(/(<font[^\>]*\>\s*)\<char[^\>]*?c=[\'\"]\s+[\'\"]\/\>/ig, "$1");
+
+    // Unlike Tesseract, stext does not have a native "word" unit (it provides only lines and letters).
+    // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
+    let wordStrArr = xmlLine.split(stextSplitRegex);
+
+
+    if (wordStrArr.length == 0) return (["", 0]);
+
+
+    let bboxes = Array(wordStrArr.length);
+    let cuts = Array(wordStrArr.length);
+    let text = Array(wordStrArr.length);
+    text = text.fill("");
+    let styleArr = Array(wordStrArr.length);
+    styleArr = styleArr.fill("normal");
+    let wordSusp = Array(wordStrArr.length);
+    wordSusp.fill(false);
+
+
+    for (let i = 0; i < wordStrArr.length; i++) {
+      let wordStr = wordStrArr[i];
+      let letterArr = [...wordStr.matchAll(stextCharRegex)];
+      if (letterArr.length == 0) continue;
+      if (typeof (letterArr[0][1]) != "undefined") {
+        if (dropCap && i == 0) {
+          styleArr[i] = "dropcap";
+        // } else if (/superscript\=[\'\"](1|true)/i.test(letterArr[0][1])) {
+        //   styleArr[i] = "sup";
+        } else if (/italic/i.test(letterArr[0][1])) {
+          styleArr[i] = "italic";
+          stylesLine["italic"] = true;
+        } else if (/small\W?cap/i.test(letterArr[0][1])) {
+          styleArr[i] = "small-caps";
+          stylesLine["small-caps"] = true;
+        } else {
+          styleArr[i] = "normal";
+          stylesLine["normal"] = true;
+        }
+      } else {
+        if (i > 0) {
+          if (styleArr[i - 1] == "dropcap") {
+            styleArr[i] = "normal";
+          } else {
+            styleArr[i] = styleArr[i - 1];
+          }
+        }
+      }
+
+      bboxes[i] = new Array();
+      cuts[i] = new Array();
+
+      for (let j = 0; j < letterArr.length; j++) {
+
+        bboxes[i][j] = [];
+        bboxes[i][j].push(parseInt(letterArr[j][2]));
+        bboxes[i][j].push(parseInt(letterArr[j][3]));
+        bboxes[i][j].push(parseInt(letterArr[j][4]));
+        bboxes[i][j].push(parseInt(letterArr[j][5]));
+        // The 5th element is the y coordinate of the baseline, which is not in the Abbyy version
+        bboxes[i][j].push(parseInt(letterArr[j][6]));
+
+        // All text in stext is considered correct/high confidence
+        let letterSusp = false;
+        // if (letterArr[j][6] == "1" || letterArr[j][6] == "true") {
+        //   letterSusp = true;
+        //   wordSusp[i] = true;
+        // }
+
+        // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines
+        if (letterArr[j][7] == "¬" && i+1 == wordStrArr.length && j+1 == letterArr.length && i > 2) {
+          letterArr[j][7] = "-";
+        } else if (["’","&apos;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
+          letterArr[j][7] = "‘";
+        } else if (["”","&quot;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
+          letterArr[j][7] = "“";
+        } else if (["‘","&apos;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
+          letterArr[j][7] = "’";
+        } else if (["“","&quot;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
+          letterArr[j][7] = "”";
+        }
+
+        let contentStrLetter = letterArr[j][7];
+        text[i] = text[i] + contentStrLetter;
+
+        lineAllHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
+
+        const ascChar = ascCharArr.includes(contentStrLetter);
+        const xChar = xCharArr.includes(contentStrLetter);
+
+        // Record height for different types of characters (used for calculating font size)
+        // Only full sized characters are included (no superscripts)
+        if (styleArr[i] != "sup") {
+          if (ascChar) {
+            lineAscHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
+          } else if (xChar) {
+            lineXHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
+          }
+        }
+
+        // Unlike for Abbyy and Tesseract (which both have actual bounding boxes that correspond to pixels), stext uses the same bounding boxes for all characters.
+        // In other words, "." and "A" will have the same bounding box if written in the same font/font size. 
+        // This means we cannot use character bounding boxes to determine the height of individual characters. 
+
+        // if ((ascChar || xChar) && !letterSusp && !(dropCap && i == 0)) {
+        if (!letterSusp && !(dropCap && i == 0)) {
+
+
+          // To calculate the slope of the baseline (and therefore image angle) the position of each glyph that starts (approximately) on the
+          // baseline is compared to the first such glyph.  This is less precise than a true "best fit" approach, but hopefully with enough data
+          // points it will all average out.
+          if (baselineFirst.length == 0) {
+            baselineFirst.push(bboxes[i][j][0], bboxes[i][j][4]);
+          } else {
+
+            baselineSlopeArr.push((bboxes[i][j][4] - baselineFirst[1]) / (bboxes[i][j][0] - baselineFirst[0]));
+
+          }
+        }
+
+        // Add character metrics to appropriate arrays (for font optimization)
+        // This step is skipped for superscripts + drop caps
+        if(["sup","dropcap"].includes(styleArr[i])) continue;
+
+        const charUnicode = String(contentStrLetter.charCodeAt(0));
+        const charWidth = bboxes[i][j][2] - bboxes[i][j][0];
+        const charHeight = bboxes[i][j][3] - bboxes[i][j][1];
+
+        if (!widthPxObjLine[styleArr[i]]) {
+          widthPxObjLine[styleArr[i]] = new Array();
+          heightPxObjLine[styleArr[i]] = new Array();
+        }
+
+        if (widthPxObjLine[styleArr[i]][charUnicode] == null) {
+          widthPxObjLine[styleArr[i]][charUnicode] = new Array();
+          heightPxObjLine[styleArr[i]][charUnicode] = new Array();
+        }
+        widthPxObjLine[styleArr[i]][charUnicode].push(charWidth);
+        heightPxObjLine[styleArr[i]][charUnicode].push(charHeight);
+
+        if (j == 0) {
+          cuts[i][j] = 0;
+
+        // This condition avoids errors caused by skipping letters (e.g. when the x coordinate is "0")
+        } else if(bboxes[i][j]?.[0] && bboxes[i][j - 1]?.[2]){
+          cuts[i][j] = bboxes[i][j][0] - bboxes[i][j - 1][2];
+
+          const bigramUnicode = letterArr[j - 1][7].charCodeAt(0) + "," + letterArr[j][7].charCodeAt(0);
+          // Quick fix so it runs--need to figure out how to calculate x-height from Abbyy XML
+          const cuts_ex = cuts[i][j];
+
+          if (!cutPxObjLine[styleArr[i]]) {
+            cutPxObjLine[styleArr[i]] = new Array();
+          }
+
+          if (cutPxObjLine[styleArr[i]][charUnicode] == null) {
+            cutPxObjLine[styleArr[i]][charUnicode] = new Array();
+          }
+          cutPxObjLine[styleArr[i]][charUnicode].push(cuts_ex);
+
+          if (!kerningPxObjLine[styleArr[i]]) {
+            kerningPxObjLine[styleArr[i]] = new Array();
+          }
+
+          if (kerningPxObjLine[styleArr[i]][bigramUnicode] == null) {
+            kerningPxObjLine[styleArr[i]][bigramUnicode] = new Array();
+          }
+          kerningPxObjLine[styleArr[i]][bigramUnicode].push(cuts_ex);
+        }
+      }
+    }
+
+    let lineAllHeight = Math.max(...lineAllHeightArr);
+    let lineAscHeight = quantile(lineAscHeightArr, 0.75);
+    const lineXHeight = quantile(lineXHeightArr, 0.5);
+
+    // The above calculations fail for lines without any alphanumeric characters (e.g. a line that only contains a dash),
+    // as this will cause the value of `lineAllHeight` to be very low, and the font size will be extremely small. 
+    // While this may seem like a fringe case, it frequently happens for tables as Abbyy make a new "<line>" element for 
+    // each individual cell. 
+    // Additionally, sometimes all letters may be skipped (for the purposes of calculating statistics), in which case
+    // the lineAllHeight will be -Infinity.
+    // Therefore, as a quick fix, whenever the lineAllHeight value is small/dubious it is replaced by the median for the page (so far),
+    // and 10 when the median cannot be calculated. 
+    // TODO: Refine this logic to reduce or eliminate the case where lineAllHeight = 10
+    if(lineAllHeight < 10 && !lineAscHeight && !lineXHeight) {
+      if (lineAllHeightPageArr.length > 0) {
+        const lineAllHeightMedian = quantile(lineAllHeightPageArr, 0.5);
+        if(lineAllHeightMedian > lineAllHeight) {
+          lineAllHeight = lineAllHeightMedian;
+        }  
+      } else {
+        lineAllHeight = 10;
+      }
+    } else {
+      lineAllHeightPageArr.push(lineAllHeight);
+    }
+
+
+    if(!fontMetricsObj[fontFamily]){
+      fontMetricsObj[fontFamily] = {};
+    }
+    for(const [style, value] of Object.entries(stylesLine)){
+      if(!fontMetricsObj[fontFamily][style]){
+        fontMetricsObj[fontFamily][style] = new fontMetrics();
+      }
+    }
+
+    if (lineXHeight != null) {
+      for (const [style, obj] of Object.entries(widthPxObjLine)) {
+        for (const [key, value] of Object.entries(obj)) {
+          if (parseInt(key) < 33) { continue };
+
+          if (fontMetricsObj[fontFamily][style]["width"][key] == null) {
+            fontMetricsObj[fontFamily][style]["width"][key] = new Array();
+          }
+          for (let k = 0; k < value.length; k++) {
+            fontMetricsObj[fontFamily][style]["width"][key].push(value[k] / lineXHeight);
+            fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
+          }
+        }
+      }
+
+      for (const [style, obj] of Object.entries(heightPxObjLine)) {
+        for (const [key, value] of Object.entries(obj)) {
+          if (parseInt(key) < 33) { continue };
+
+          if (fontMetricsObj[fontFamily][style]["height"][key] == null) {
+            fontMetricsObj[fontFamily][style]["height"][key] = new Array();
+          }
+          for (let k = 0; k < value.length; k++) {
+            fontMetricsObj[fontFamily][style]["height"][key].push(value[k] / lineXHeight);
+          }
+        }
+      }
+
+
+      for (const [style, obj] of Object.entries(cutPxObjLine)) {
+        for (const [key, value] of Object.entries(obj)) {
+          if (parseInt(key) < 33) { continue };
+
+          if (fontMetricsObj[fontFamily][style]["advance"][key] == null) {
+            fontMetricsObj[fontFamily][style]["advance"][key] = new Array();
+          }
+          for (let k = 0; k < value.length; k++) {
+            fontMetricsObj[fontFamily][style]["advance"][key].push(value[k] / lineXHeight);
+          }
+        }
+      }
+
+      for (const [style, obj] of Object.entries(kerningPxObjLine)) {
+        for (const [key, value] of Object.entries(obj)) {
+          if (parseInt(key) < 33) { continue };
+
+          if (fontMetricsObj[fontFamily][style]["kerning"][key] == null) {
+            fontMetricsObj[fontFamily][style]["kerning"][key] = new Array();
+          }
+          for (let k = 0; k < value.length; k++) {
+            fontMetricsObj[fontFamily][style]["kerning"][key].push(value[k] / lineXHeight);
+          }
+        }
+      }
+
+    }
+
+    // NOTE: This section can probably be deleted for stext as it seems specific to Abbyy
+    // While Abbyy XML already provides line bounding boxes, these have been observed to be (at times)
+    // completely different than a bounding box calculated from a union of all letters in the line.
+    // Therefore, the line bounding boxes are recaclculated here.
+    let lineBoxArrCalc = new Array(4);
+    // reduce((acc, val) => acc.concat(val), []) is used as a drop-in replacement for flat() with significantly better performance
+    lineBoxArrCalc[0] = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[0]).filter(x => x > 0));
+    lineBoxArrCalc[1] = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[1]).filter(x => x > 0));
+    lineBoxArrCalc[2] = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[2]).filter(x => x > 0));
+    lineBoxArrCalc[3] = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map(x => x[3]).filter(x => x > 0));
+
+    const baselineSlope = quantile(baselineSlopeArr, 0.5) || 0;
+
+    // baselinePoint should be the offset between the bottom of the line bounding box, and the baseline at the leftmost point
+    let baselinePoint = baselineFirst[1] - lineBoxArrCalc[3];
+    if(baselineSlope < 0) {
+      baselinePoint = baselinePoint - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]);
+    }
+    baselinePoint = baselinePoint || 0;
+
+    let xmlOut = "";
+
+    // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
+    // In this case the original line-level bounding box from Abbyy is used
+    if (isFinite(lineBoxArrCalc[0]) && isFinite(lineBoxArrCalc[1]) && isFinite(lineBoxArrCalc[2]) && isFinite(lineBoxArrCalc[3])) {
+      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
+    } else {
+      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArr[2] + " " + lineBoxArr[3] + " " + lineBoxArr[4] + " " + lineBoxArr[5];
+    }
+
+    xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
+
+    // Calculate character size metrics (x_size, x_ascenders, x_descenders)
+    // Ideally we would be able to calculate all 3 directly, however given this is not always possible,
+    // different calculations are used based on the data available.
+
+    // If no ascenders exist on the line but x-height is known, set ascender height using the median ascender height / x-height ratio for the page so far,
+    // and 1.5x the x-height as a last resort. 
+    if (lineXHeight && !(lineAscHeight && (styleArr.includes("small-caps") || (lineAscHeight > lineXHeight * 1.1) && (lineAscHeight < lineXHeight * 2)))) {
+      if(pageAscHeightArr.length >= 3) {
+        lineAscHeight = lineXHeight * quantile(pageAscHeightArr, 0.5);
+      } else {
+        lineAscHeight = Math.round(lineXHeight * 1.5);
+      }
+    } else if(lineXHeight) {
+      pageAscHeightArr.push(lineAscHeight / lineXHeight);
+    }
+
+    xmlOut = xmlOut + "; x_size " + fontSize * 0.6;
+    // Add character height (misleadingly called "x_size" in Tesseract hocr)
+    // TODO: Using lineAllHeight currently produces significantly oversized text for stext.  
+    // Applying ad-hoc adjustment here--should be fixed to be correct in the future.
+    // The core issues are:
+    // (1) The bounding boxes in stext correspond to the theoretical bounding boxes of the font.
+    // These are virtually always larger than the physical bounding boxes of the characters
+    // (which is what calculations downstream from this think x_size represents).
+    // (2) There is no "x_descenders" statistic (we cannot calculate using bounding boxes as all bounding boxes are identical for given font/font size).
+    // In this case the downstream calculations assume there are no descenders, which is a good assumption for Abbyy (should not be changed altogether),
+    // however leads to an even larger font size in this case. 
+    // xmlOut = xmlOut + "; x_size " + Math.round(lineAllHeight * 0.4);
+    // If x-height exists, calculate x_ascenders (in addition to x_descenders)
+    // In general, x-height must be a plausible value (to avoid obviously misidentified characters from determining font size).
+    // This restriction is not applied for lines with small caps. 
+    // if (lineAscHeight && lineXHeight) {
+    //   xmlOut = xmlOut + "; x_ascenders " + (lineAscHeight - lineXHeight) + "; x_descenders " + (lineAllHeight - lineAscHeight);
+    //   // Otherwise, add only x_descenders
+    // } else if (lineAscHeight) {
+    //   xmlOut = xmlOut + "; x_descenders " + (lineAllHeight - lineAscHeight);
+    // }
+
+
+
+    xmlOut = xmlOut + "\">";
+
+    let lettersKept = 0;
+    for (let i = 0; i < text.length; i++) {
+      if (text[i].trim() == "") { continue };
+      let bboxesI = bboxes[i];
+
+      const bboxesILeft = Math.min(...bboxesI.map(x => x[0]).filter(x => x > 0));
+
+      // Abbyy XML can strangely give coordinates of 0 (this has been observed for some but not all superscripts), so these must be filtered out,
+      // and it cannot be assumed that the rightmost letter has the maximum x coordinate.
+      // TODO: Figure out why this happens and whether these glyphs should be dropped completely.
+      const bboxesIRight = Math.max(...bboxesI.map(x => x[2]).filter(x => x > 0));
+
+      const bboxesITop = Math.min(...bboxesI.map(x => x[1]).filter(x => x > 0));
+      const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]).filter(x => x > 0));
+
+      if (!isFinite(bboxesITop) || !isFinite(bboxesIBottom)) {
+        continue;
+      }
+
+      xmlOut = xmlOut + "<span class='ocrx_word' id='word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1) + "' title='bbox " + bboxesILeft + " " + bboxesITop + " " + bboxesIRight + " " + bboxesIBottom;
+      if (wordSusp[i]) {
+        xmlOut = xmlOut + ";x_wconf 0";
+      } else {
+        xmlOut = xmlOut + ";x_wconf 100";
+      }
+      xmlOut = xmlOut + "\'"
+
+      // Add "style" attribute (if applicable)
+      if(["italic","small-caps"].includes(styleArr[i]) || fontFamily != "Default") {
+        xmlOut = xmlOut + " style='"
+
+        if (styleArr[i] == "italic") {
+          xmlOut = xmlOut + "font-style:italic" ;
+        } else if (styleArr[i] == "small-caps") {
+          xmlOut = xmlOut + "font-variant:small-caps";
+        } 
+
+        if (fontFamily != "Default") {
+          xmlOut = xmlOut + "font-family:" + fontFamily;
+        }
+
+        xmlOut = xmlOut + "'>"
+      } else {
+        xmlOut = xmlOut + ">"
+      }
+
+      // Add word text, along with any formatting that uses nested elements rather than attributes
+      if (styleArr[i] == "sup") {
+        xmlOut = xmlOut + "<sup>" + text[i] + "</sup>" + "</span>";
+      } else if (styleArr[i] == "dropcap") {
+        xmlOut = xmlOut + "<span class='ocr_dropcap'>" + text[i] + "</span>" + "</span>";
+      } else {
+        xmlOut = xmlOut + text[i] + "</span>";
+      }
+
+      lettersKept++;
+
+    }
+
+    // If there are no letters in the line, drop the entire line element
+    if (lettersKept == 0) return (["", 0]);
+
+    xmlOut = xmlOut + "</span>"
+    return ([xmlOut, baselineSlope]);
+  }
+
+
+  let lineStrArr = xmlPage.split(/\<\/line\>/);
+
+  let xmlOut = "<div class='ocr_page'";
+
+  xmlOut = xmlOut + " title='bbox 0 0 " + pageDims[1] + " " + pageDims[0] + "'>";
+
+  let angleRisePage = new Array();
+  for (let i = 0; i < lineStrArr.length; i++) {
+    const lineInt = convertLineStext(lineStrArr[i], i, pageNum);
     if (lineInt[0] == "") continue;
     angleRisePage.push(lineInt[1]);
     xmlOut = xmlOut + lineInt[0];

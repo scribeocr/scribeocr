@@ -90,6 +90,8 @@ let ready = false;
   globalThis.Module = Module;
   globalThis.FS = FS;
 
+  let wasm_pageText;
+
   Module.onRuntimeInitialized = function () {
     Module.ccall('initContext');
     mupdf.openDocumentFromBuffer = Module.cwrap('openDocumentFromBuffer', 'number', ['string', 'number', 'number']);
@@ -108,7 +110,7 @@ let ready = false;
     mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number']);
     mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
     mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
-    mupdf.pageTextJSON = Module.cwrap('pageText', 'string', ['number', 'number', 'number']);
+    wasm_pageText = Module.cwrap('pageText', 'string', ['number', 'number', 'number', 'number']);
     mupdf.searchJSON = Module.cwrap('search', 'string', ['number', 'number', 'number', 'string']);
     mupdf.loadOutline = Module.cwrap('loadOutline', 'number', ['number']);
     mupdf.freeOutline = Module.cwrap('freeOutline', null, ['number']);
@@ -250,8 +252,16 @@ mupdf.pageLinks = function (doc, page, dpi) {
 	return JSON.parse(mupdf.pageLinksJSON(doc, page, dpi));
 }
 
-mupdf.pageText = function (doc, page, dpi) {
-	return JSON.parse(mupdf.pageTextJSON(doc, page, dpi));
+mupdf.pageTextJSON = function (doc, page, dpi) {
+	return JSON.parse(wasm_pageText(doc, page, dpi, 0));
+}
+
+mupdf.pageTextHTML = function (doc, page, dpi) {
+	return wasm_pageText(doc, page, dpi, 1);
+}
+
+mupdf.pageTextXML = function (doc, page, dpi) {
+	return wasm_pageText(doc, page, dpi, 2);
 }
 
 mupdf.search = function (doc, page, dpi, needle) {

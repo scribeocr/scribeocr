@@ -544,6 +544,64 @@ function penalizeWord(wordStr) {
 }
 
 
+// Returns the proportion of boxA's area contained in boxB
+function calcOverlap(boxA, boxB) {
+  const left = Math.max(boxA[0], boxB[0]);
+  const top = Math.max(boxA[1], boxB[1]);
+  const right = Math.min(boxA[2], boxB[2]);
+  const bottom = Math.min(boxA[3], boxB[3]);
+
+  const width = right - left;
+  const height = bottom - top;
+
+  if (width < 0 || height < 0) return 0;
+
+  const areaA = (boxA[3] - boxA[1]) * (boxA[2] - boxA[0]);
+  // const areaB = (boxB[3] - boxB[1]) * (boxB[2] - boxB[0]);
+  const area = width * height;
+  
+  return area / areaA;
+}
+
+export function reorderHOCR(hocrStrA, layoutObj) {
+
+  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return hocrStrA;
+
+
+  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
+  const hocrALines = hocrA.getElementsByClassName("ocr_line");
+
+  const hocrNew = hocrA.firstChild.cloneNode(false);
+
+  const priorityArr = Array(hocrALines.length);
+  // 10 assumed to be lowest priority
+  priorityArr.fill(10);
+
+  for (let i = 0; i < hocrALines.length; i++) {
+    const hocrALine = hocrALines[i];
+    const titleStrLineA = hocrALine.getAttribute('title');
+    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+
+    for (const [id, obj] of Object.entries(layoutObj.boxes)) {
+      const overlap = calcOverlap(lineBoxA, obj["coords"]);
+      if (overlap > 0.5) {
+        priorityArr[i] = obj["priority"];
+      } 
+    }
+  }
+
+  for (let i = 0; i <= 10; i++) {
+    for (let j = 0; j < priorityArr.length; j++) {
+      if (priorityArr[j] == i) {
+        hocrNew.appendChild(hocrALines[j].cloneNode(true));
+      }
+    }
+  }
+
+  return hocrNew.outerHTML;
+
+}
+
 export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, debugLabel = "") {
 
   if (debugLabel && !globalThis.debugLog) globalThis.debugLog = "";
