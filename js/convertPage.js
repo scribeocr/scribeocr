@@ -23,7 +23,8 @@ export async function initConvertPageWorker() {
 			  const lines = currentPage.xmlDoc?.getElementsByClassName("ocr_line");
 			  if(lines && lines.length > 0) {
 				combineData(event.data[0][0]);
-				renderPageQueue(currentPage.n, 'screen', false)
+				renderPageQueue(currentPage.n, 'screen', false);
+				worker.promises[event.data[event.data.length - 1]].resolve(event.data);
 				return;
 			  }
 			}
