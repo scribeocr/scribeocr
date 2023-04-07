@@ -280,6 +280,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         // let wordFontFamilyCanvas = wordFontFamily;
         // let fontStyleCanvas = fontStyle;
 
+        const textBackgroundColor = globalThis.find.search && wordText.includes(globalThis.find.search) ? '#4278f550' : '';
+
         let textbox = new fabric.IText(wordText, {
           left: left,
           //top: y,
@@ -300,6 +302,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           visualWidth: box_width,
           scaleX: scaleX,
           defaultFontFamily: defaultFontFamily,
+          textBackgroundColor: textBackgroundColor,
           //fontFamily: 'times',
           opacity: opacity_arg,
           charSpacing: charSpacing * 1000 / wordFontSize,

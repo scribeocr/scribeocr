@@ -370,6 +370,48 @@
                   </div>
                 </div>
               </div>
+              <div class="col col-2">
+                <label></label>
+                <div class="row">
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
+                    href="#editFindCollapse" style="min-width:100%;text-align:left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-search" viewBox="0 0 16 16">
+                      <path
+                        d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                    </svg> Find</button>
+                  <div class="collapse" id="editFindCollapse" style="padding:0">
+                    <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                      <input type="text" id="editFind" name="find" size="2" style="width:100%" autocomplete="off">
+
+                      <div class="" role="group" aria-label="First group">
+                        <div class="row">
+                          <div class="col col-6">
+                            <span><span id="matchCurrent">0</span>/<span id="matchCount">0</span></span>
+                          </div>
+                          <div class="col col-6">
+                            <div class="btn-group" style="width:100%">
+                              <button id="prevMatch" type="button" class="btn btn-secondary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                  class="bi bi-chevron-up" viewBox="0 0 16 16">
+                                  <path fill-rule="evenodd"
+                                    d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z" />
+                                </svg></button>
+                              <button id="nextMatch" type="button" class="btn btn-secondary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                  class="bi bi-chevron-down" viewBox="0 0 16 16">
+                                  <path fill-rule="evenodd"
+                                    d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z" />
+                                </svg></button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -949,7 +991,8 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                       Margin</label><br>
                     <label><input class="form-check-input" type="checkbox" id="showBoundingBoxes"> Show Bounding
                       Boxes</label>
-                      <label><input class="form-check-input" type="checkbox" id="extractTextCheckbox"> Extract Text from PDF</label><br>
+                    <label><input class="form-check-input" type="checkbox" id="extractTextCheckbox"> Extract Text from
+                      PDF</label><br>
                   </div>
                 </div>
               </div>

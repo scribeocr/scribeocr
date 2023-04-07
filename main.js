@@ -20,7 +20,7 @@ import { getFontSize, calcWordMetrics } from "./js/textUtils.js"
 import { calculateOverallFontMetrics, parseDebugInfo } from "./js/fontStatistics.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
-import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatures } from "./js/miscUtils.js";
+import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatures, occurrences } from "./js/miscUtils.js";
 
 import {
   deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, changeWordFont, toggleSuperSelectedWords,
@@ -485,6 +485,179 @@ pageNumElem.addEventListener('keyup', function (event) {
     displayPage(parseInt(pageNumElem.value) - 1);
   }
 });
+
+const matchCountElem = /** @type {HTMLInputElement} */(document.getElementById('matchCount'));
+const matchCurrentElem = /** @type {HTMLInputElement} */(document.getElementById('matchCurrent'));
+const prevMatchElem = /** @type {HTMLInputElement} */(document.getElementById('prevMatch'));
+const nextMatchElem = /** @type {HTMLInputElement} */(document.getElementById('nextMatch'));
+prevMatchElem.addEventListener('click', () => prevMatchClick());
+nextMatchElem.addEventListener('click', () => nextMatchClick());
+
+function prevMatchClick() {
+  if (currentPage.n == 0) return;
+  const lastPage = find.matches.slice(0, currentPage.n)?.findLastIndex((x) => x > 0);
+  if (lastPage > -1) displayPage(lastPage);
+}
+
+function nextMatchClick() {
+  const nextPageOffset = find.matches.slice(currentPage.n + 1)?.findIndex((x) => x > 0);
+  if (nextPageOffset > -1) displayPage(currentPage.n + nextPageOffset + 1);
+}
+
+
+
+const editFindElem = /** @type {HTMLInputElement} */(document.getElementById('editFind'));
+editFindElem.addEventListener('keyup', function (event) {
+  if (event.keyCode === 13) {
+    const val = editFindElem.value.trim();
+    findTextClick(val);
+  }
+});
+
+function findTextClick(text) {
+  find.search = text.trim();
+  // Start by highlighting the matches in the current page
+  highlightCurrentPage(text);
+  if (find.search) {
+    // TODO: If extractTextAll takes any non-trivial amount of time to run,
+    // this should use a promise so it cannot be run twice if the user presses enter twice.  
+    if (!find.init) {
+      extractTextAll();
+      find.init = true;
+    }
+    findAllMatches(find.search);
+    
+  } else {
+    find.matches = [];
+    find.total = 0;
+  }
+
+  matchCurrentElem.textContent = calcMatchNumber(currentPage.n);
+  matchCountElem.textContent = String(find.total);
+}
+
+globalThis.find = {
+  text: [],
+  search: "",
+  matches: [],
+  init: false,
+  total: 0
+}
+
+// Highlight words that include substring in the current page
+function highlightCurrentPage(text) {
+  const selectedObjects = window.canvas.getObjects();
+  const selectedN = selectedObjects.length;
+  for(let i=0; i<selectedN; i++){
+    // Using the presence of a wordID property to indicate this object represents an OCR word
+    if (selectedObjects[i]?.wordID) {
+      const textI = selectedObjects[i]["text"];
+      if (text.trim() && textI.toLowerCase().includes(text.toLowerCase())) {
+        selectedObjects[i].textBackgroundColor = '#4278f550';
+        selectedObjects[i].dirty = true;
+      } else if (selectedObjects[i].textBackgroundColor) {
+        selectedObjects[i].textBackgroundColor = "";
+        selectedObjects[i].dirty = true;
+      }
+    }
+  }
+
+  canvas.renderAll();
+
+}
+
+function findAllMatches(text) {
+  let total = 0;
+  const matches = [];
+  const maxValue = parseInt(pageCountElem.textContent);
+  for (let i=0; i<maxValue; i++) {
+    const n = occurrences(globalThis.find.text[i], text);
+    matches[i] = n;
+    total = total + n;
+  }
+  globalThis.find.matches = matches;
+  globalThis.find.total = total;
+}
+
+const exportParser = new DOMParser();
+
+// Updates data used for "Find" feature on current page
+// Should be called after any edits are made, before moving to a different page
+function updateFindStats() {
+  // Re-extract text from XML
+  extractTextPage(currentPage.n);
+
+  if (find.search) {
+    // Count matches in current page
+    globalThis.find.matches[currentPage.n] = occurrences(globalThis.find.text[currentPage.n], globalThis.find.search);
+    // Calculate total number of matches
+    globalThis.find.total = globalThis.find.matches.reduce((partialSum, a) => partialSum + a, 0);
+
+    matchCurrentElem.textContent = calcMatchNumber(currentPage.n);
+    matchCountElem.textContent = String(find.total);
+  
+  }
+
+}
+
+function extractTextPage(g) {
+  find.text[g] = "";
+  // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
+  if (!hocrCurrent[g] || hocrCurrent[g]?.length < 50) return;
+
+  
+  const pageXML = exportParser.parseFromString(hocrCurrent[g], "text/xml");
+  const lines = pageXML.getElementsByClassName("ocr_line");
+  for (let h = 0; h < lines.length; h++) {
+    if (h > 0) {
+      find.text[g] = find.text[g] + "\n";
+    }
+
+    const line = lines[h];
+    const words = line.getElementsByClassName("ocrx_word");
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      if (i > 0) {
+        find.text[g] = find.text[g] + " ";
+      }
+      find.text[g] = find.text[g] + word.textContent;
+
+    }
+  }
+
+}
+
+// Extract text from XML for every page
+// We do this once (and then perform incremental updates) to avoid having to parse XML
+// with every search. 
+function extractTextAll() {
+
+    const maxValue = parseInt(pageCountElem.textContent);
+  
+    for (let g = 0; g < maxValue; g++) {
+      extractTextPage(g);
+    }
+  
+}
+
+// Returns string showing index of match(es) found on current page. 
+function calcMatchNumber(n) {
+  const matchN = find?.matches?.[n];
+  if (!matchN) {
+    return "-";
+  }
+  // Sum of matches on all previous pages
+  const matchPrev = find.matches.slice(0,n).reduce((a, b) => a + b, 0)
+
+  if (matchN == 1) {
+    return String(matchPrev + 1);
+  } else {
+    return String(matchPrev + 1) + "-" + String(matchPrev + 1 + (matchN - 1));
+  }
+
+}
+
 
 
 function updatePdfPagesLabel() {
@@ -1821,6 +1994,8 @@ function addWordClick() {
 
     let top = lineBoxChosen[3] + baselineChosen[1] + fontDesc + angleAdjY;
 
+    const textBackgroundColor = globalThis.find.search && wordText.includes(globalThis.find.search) ? '#4278f550' : '';
+
     let textbox = new fabric.IText(wordText, {
       left: rect.left,
       top: top,
@@ -1835,6 +2010,7 @@ function addWordClick() {
       fontFamily: globalSettings.defaultFont,
       fontStyle: "normal",
       wordID: wordIDNew,
+      textBackgroundColor: textBackgroundColor,
       //line: i,
       visualWidth: rect.width,
       defaultFontFamily: true,
@@ -2882,12 +3058,33 @@ export async function displayPage(n) {
     return;
   }
 
+  // The following is a quick fix for a bug, there may be a better way to do this. 
+  // Without this block of code, if the user is editing a word and then changes the page,
+  // the changes are applied to the word with the same ID on the next page. 
+  // Simply running `canvas.discardActiveObject()` does not fix, as that function
+  // does not wait for all code triggered by events to finish running.
+  // Therefore, if the page is changed while an object is selected, we deselect all objects
+  // and then wait for an arbitrary amount of time for any event-related code to run. 
+  if (canvas.getActiveObject()) {
+    console.log("Deselecting active object before changing pages.")
+    canvas.discardActiveObject();
+    await sleep(10);
+  }
+
   working = true;
+
+  // Save contents of current page. 
+  // TODO: Figure out if this step has any meaningful performance overhead. 
+  // If so, it could be skipped in cases where no edits were made to the current page. 
   if (inputDataModes.xmlMode[currentPage.n]) {
     if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
       globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+
+      updateFindStats();
     }
   }
+
+  matchCurrentElem.textContent = calcMatchNumber(n);
 
   currentPage.n = n;
   pageNumElem.value = (currentPage.n + 1).toString();
