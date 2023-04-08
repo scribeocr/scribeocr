@@ -24,7 +24,7 @@ import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatur
 
 import {
   deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, changeWordFont, toggleSuperSelectedWords,
-  updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord
+  updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord, updateWordCanvas
 } from "./js/interfaceEdit.js";
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
@@ -2036,6 +2036,7 @@ function addWordClick() {
       textBackgroundColor: textBackgroundColor,
       //line: i,
       visualWidth: rect.width,
+      visualLeft: rect.left,
       defaultFontFamily: true,
       opacity: 1,
       //charSpacing: kerning * 1000 / wordFontSize
@@ -2056,11 +2057,7 @@ function addWordClick() {
           textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
           this.text = textInt;
         }
-        const wordWidth = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle))["visualWidth"];
-        if (this.text.length > 1) {
-          const kerning = round3((this.visualWidth - wordWidth) / (this.text.length - 1));
-          this.charSpacing = kerning * 1000 / this.fontSize;
-        }
+        await updateWordCanvas(this);
         updateHOCRWord(this.wordID, this.text)
       }
     });

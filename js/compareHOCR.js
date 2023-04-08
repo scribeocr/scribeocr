@@ -799,7 +799,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                   // This "ii" pattern is automatically discarded, regardless of the overlap metrics, 
                   // because the overlap metrics often fail in this case. 
                   // E.g. the letter "ö" (o with umlaut) may overlap better with "ii" than "o". 
-                  const replaceII = /[a-hj-z]ii[a-hj-z]/.test(hocrAWord.innerHTML);
+                  const replaceII = /[a-hj-z]ii[a-hj-z]/i.test(hocrAWord.innerHTML);
 
                   let replaceMetrics = false;
 

@@ -1,6 +1,6 @@
 
 import { getFontSize, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
-import { updateHOCRBoundingBoxWord, updateHOCRWord } from "./interfaceEdit.js";
+import { updateHOCRBoundingBoxWord, updateHOCRWord, updateWordCanvas } from "./interfaceEdit.js";
 import { round3 } from "./miscUtils.js"
 
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
@@ -273,7 +273,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           top = linebox[3] + baseline[1] + fontDesc + angleAdjYLine;
         }
 
-        const left = box[0] - wordLeftBearing + angleAdjXWord + leftAdjX;
+        const visualLeft = box[0] + angleAdjXWord + leftAdjX;
+        const left = visualLeft - wordLeftBearing;
 
         let wordFontFamilyCanvas = fontStyle == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
         let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;
@@ -299,7 +300,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           fontStyle: fontStyleCanvas,
           wordID: word_id,
           line: i,
-          visualWidth: box_width,
+          visualWidth: box_width, // TODO: Is this incorrect when rotation exists? 
+          visualLeft: visualLeft,
           scaleX: scaleX,
           defaultFontFamily: defaultFontFamily,
           textBackgroundColor: textBackgroundColor,
@@ -344,11 +346,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
               this.text = textInt;
             }
 
-            const visualWidthNew = (await calcWordMetrics(this.text, this.fontFamily, this.fontSize, this.fontStyle)).visualWidth;
-            if (this.text.length > 1) {
-              const charSpacing = (this.visualWidth - visualWidthNew) / (this.text.length - 1);
-              this.charSpacing = charSpacing * 1000 / this.fontSize;
-            }
+            await updateWordCanvas(this);
             updateHOCRWord(this.wordID, this.text)
           }
         });
