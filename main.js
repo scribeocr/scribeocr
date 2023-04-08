@@ -1299,22 +1299,20 @@ async function showDebugImages() {
     const imgFab1 = new fabric.Image(imgElem1, {left: 5 + imgElem0.width + 10, top: top});
     const imgFab2 = new fabric.Image(imgElem2, {left: 5 + imgElem0.width + 10 + imgElem1.width + 10, top: top});
 
-    let textbox1 = new fabric.Text("Raw: " + String(Math.round((imgArr[i]["errorRawA"])*1e6)/1e6) + "\nAdj: " + String(Math.round((imgArr[i]["errorAdjA"])*1e6)/1e6), {
+    let textbox1 = new fabric.Text(String(Math.round((imgArr[i]["errorAdjA"])*1e3)/1e3) + " [" + String(Math.round((imgArr[i]["errorRawA"])*1e3)/1e3) + "]", {
       left: 5 + imgElem0.width + 10,
       top: top,
       fill: "black",
-      fontSize: 10,
-      fontFamily: "Courier New"
+      fontSize: 10
     });
 
     canvasDebug.add(textbox1);
 
-    let textbox2 = new fabric.Text("Raw: " + String(Math.round((imgArr[i]["errorRawB"])*1e6)/1e6) + "\nAdj: " + String(Math.round((imgArr[i]["errorAdjB"])*1e6)/1e6), {
+    let textbox2 = new fabric.Text(String(Math.round((imgArr[i]["errorAdjB"])*1e3)/1e3) + " [" + String(Math.round((imgArr[i]["errorRawB"])*1e3)/1e3) + "]", {
       left: 5 + imgElem0.width + 10 + imgElem1.width + 10,
       top: top,
       fill: "black",
-      fontSize: 10,
-      fontFamily: "Courier New"
+      fontSize: 10
     });
 
     const chosenRect = new fabric.Rect({left: 5 + imgElem0.width + 10 + chosen * (imgElem1.width + 10) - 3, top: top-3, width: imgElem1.width+6, height: imgElem1.height+6, fill: "#3269a8"});

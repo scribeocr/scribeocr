@@ -193,7 +193,11 @@ export async function updateWordCanvas(wordI) {
 
   // Re-calculate left position given potentially new left bearing
   const wordMetrics = await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
-  wordI.left = wordI.visualLeft - wordMetrics["leftSideBearing"];
+
+  // When the user selects multiple words at the same time, the left coordinate becomes relative to the "group"
+  const groupOffset = wordI?.group?.ownMatrixCache?.value[4] || 0;
+
+  wordI.left = wordI.visualLeft - wordMetrics["leftSideBearing"] - groupOffset;
 
   // Re-calculate character spacing (if the word has multiple letters)
   if(wordI.text.length > 1){
