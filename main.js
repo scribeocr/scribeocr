@@ -1280,10 +1280,13 @@ async function showDebugImages() {
   let leftMax = 150;
 
   for (let i=0; i<imgArr.length; i++) {
-    const img0 = imgArr[i][0];
-    const img1 = imgArr[i][1];
-    const img2 = imgArr[i][2];
-    const chosen = imgArr[i][4] < imgArr[i][3] ? 1 : 0;
+
+    const img0 = imgArr[i]["imageRaw"];
+    const img1 = imgArr[i]["imageA"];
+    const img2 = imgArr[i]["imageB"];
+
+    // Whether "B" option is chosen
+    const chosen = imgArr[i]["errorAdjB"] < imgArr[i]["errorAdjA"] ? 1 : 0;
 
     const imgElem0 = document.createElement('img');
     await loadImage(img0, imgElem0);
@@ -1296,12 +1299,32 @@ async function showDebugImages() {
     const imgFab1 = new fabric.Image(imgElem1, {left: 5 + imgElem0.width + 10, top: top});
     const imgFab2 = new fabric.Image(imgElem2, {left: 5 + imgElem0.width + 10 + imgElem1.width + 10, top: top});
 
+    let textbox1 = new fabric.Text("Raw: " + String(Math.round((imgArr[i]["errorRawA"])*1e6)/1e6) + "\nAdj: " + String(Math.round((imgArr[i]["errorAdjA"])*1e6)/1e6), {
+      left: 5 + imgElem0.width + 10,
+      top: top,
+      fill: "black",
+      fontSize: 10,
+      fontFamily: "Courier New"
+    });
+
+    canvasDebug.add(textbox1);
+
+    let textbox2 = new fabric.Text("Raw: " + String(Math.round((imgArr[i]["errorRawB"])*1e6)/1e6) + "\nAdj: " + String(Math.round((imgArr[i]["errorAdjB"])*1e6)/1e6), {
+      left: 5 + imgElem0.width + 10 + imgElem1.width + 10,
+      top: top,
+      fill: "black",
+      fontSize: 10,
+      fontFamily: "Courier New"
+    });
+
     const chosenRect = new fabric.Rect({left: 5 + imgElem0.width + 10 + chosen * (imgElem1.width + 10) - 3, top: top-3, width: imgElem1.width+6, height: imgElem1.height+6, fill: "#3269a8"});
 
     canvasDebug.add(chosenRect);
     canvasDebug.add(imgFab0);
     canvasDebug.add(imgFab1);
     canvasDebug.add(imgFab2);
+    canvasDebug.add(textbox1);
+    canvasDebug.add(textbox2);
 
     top += imgElem1.height + 10;
     leftMax = Math.max(leftMax, imgElem0.width + imgElem1.width + imgElem2.width + 30);

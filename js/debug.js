@@ -45,9 +45,10 @@ export async function downloadImageAll(filename_base, type = "binary") {
 export async function downloadImageDebug(filename_base, type = "Combined") {
   for (let i=0; i < globalThis.debugImg[type].length; i++) {
     for (let j=0; j < globalThis.debugImg[type][i].length; j++) {
-      const wordFileName = globalThis.debugImg[type][i][j][5].replace(/[^a-z0-9]/ig, "") + "_" + globalThis.debugImg[type][i][j][6].replace(/[^a-z0-9]/ig, "");
+      const wordFileName = globalThis.debugImg[type][i][j]["textA"].replace(/[^a-z0-9]/ig, "") + "_" + globalThis.debugImg[type][i][j]["textB"].replace(/[^a-z0-9]/ig, "");
       for (let k=0; k < 2; k++) {
-        const img = await globalThis.debugImg[type][i][j][k];
+        const name = ["imageRaw", "imageA", "imageB"][k];
+        const img = await globalThis.debugImg[type][i][j][name];
         const fileType = img.match(/^data\:image\/([a-z]+)/)?.[1];
         if (!["png", "jpeg"].includes(fileType)) {
           console.log("Filetype " + fileType + " is not jpeg/png; skipping.")

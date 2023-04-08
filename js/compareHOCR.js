@@ -489,30 +489,6 @@ export async function evalWords(wordsA, wordsB, n, view = false){
     }
   }
 
-  if (view) {
-    let textbox1 = new fabric.IText(String(Math.round((diffA/totalA)*1e6)/1e6), {
-      left: 0,
-      top: 0,
-      fill: "black",
-      fontSize: 10
-    });
-
-    canvasComp1.add(textbox1);
-
-    let textbox2 = new fabric.IText(String(Math.round((diffB/totalB)*1e6)/1e6), {
-      left: 0,
-      top: 0,
-      fill: "black",
-      fontSize: 10
-    });
-
-    canvasComp2.add(textbox2);
-
-    canvasComp2.renderAll();
-    canvasComp1.renderAll();
-
-  }
-
   return [diffA/totalA, diffB/totalB];
 
 }
@@ -812,12 +788,18 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
 
                   const replaceItalic = false;
 
-
+                  // Automatically reject words that contain a number between two letters.
                   // Tesseract Legacy commonly identifies letters as numbers (usually 1).
                   // This does not just happen with "l"--in test documents "r" and "i" were also misidentified as "1" multiple times. 
                   const replaceNum = /[a-z]\d[a-z]/i.test(hocrAWord.innerHTML);
 
-                  const replaceII = /[a-z]ii|ii[a-z]/.test(hocrAWord.innerHTML);
+                  // Automatically reject words where "ii" is between two non-"i" letters
+                  // Tesseract Legacy commonly recognizes "ii" when the (actual) letter contains an accent, 
+                  // while Tesseract LSTM usually recognizes the correct letter, sans the accent. 
+                  // This "ii" pattern is automatically discarded, regardless of the overlap metrics, 
+                  // because the overlap metrics often fail in this case. 
+                  // E.g. the letter "ö" (o with umlaut) may overlap better with "ii" than "o". 
+                  const replaceII = /[a-hj-z]ii[a-hj-z]/.test(hocrAWord.innerHTML);
 
                   let replaceMetrics = false;
 
@@ -839,11 +821,37 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                     hocrAError = hocrError[0] + penalizeWord(hocrAWord.innerHTML);
                     hocrBError = hocrError[1] + penalizeWord(hocrBWord.innerHTML);
 
+                    // Apply ad-hoc penalties
+                    hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
+
                     // hocrAError = (await evalWord(hocrAWord, n, null)) + penalizeWord(hocrAWord.innerHTML);
                     // hocrBError = (await evalWord(hocrAWord, n, hocrBWord.innerHTML)) + penalizeWord(hocrBWord.innerHTML);
 
                     if(debugLabel) {
-                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp0.toDataURL(), globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL(), hocrAError, hocrBError, hocrAWord.innerHTML, hocrBWord.innerHTML]);
+
+                      const debugObj = {
+                        // Raw image
+                        imageRaw: globalThis.canvasComp0.toDataURL(),
+                        // Image + OCR "A" overlay
+                        imageA: globalThis.canvasComp1.toDataURL(),
+                        // Image + OCR "B" overlay
+                        imageB: globalThis.canvasComp2.toDataURL(),
+                        // Raw (pixel overlap) error metric "A"
+                        errorRawA: hocrError[0],
+                        // Raw (pixel overlap) error metric "B"
+                        errorRawB: hocrError[1],
+                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "A"
+                        errorAdjA: hocrAError,
+                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "B"
+                        errorAdjB: hocrBError,
+                        // OCR text "A"
+                        textA: hocrAWord.innerHTML,
+                        // OCR text "B"
+                        textB: hocrBWord.innerHTML
+                      }
+
+                      globalThis.debugImg[debugLabel][n].push(debugObj);
+
                       globalThis.debugLog += "Legacy Word: " + hocrAWord.innerHTML + " [Error: " + String(hocrAError) + "]\n";
                       globalThis.debugLog += "LSTM Word: " + hocrBWord.innerHTML + " [Error: " + String(hocrBError) + "]\n";  
                     }
@@ -872,25 +880,47 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                       }
                     }
 
+                    // Apply ad-hoc penalties
+                    hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
 
                     if(debugLabel) {
-                      globalThis.debugImg[debugLabel][n].push([globalThis.canvasComp0.toDataURL(), globalThis.canvasComp1.toDataURL(), globalThis.canvasComp2.toDataURL(), hocrAError, hocrBError, wordsAArr.map((x) => x.innerHTML).join(" "), wordsBArr.map((x) => x.innerHTML).join(" ")]);
+
+                      const debugObj = {
+                        // Raw image
+                        imageRaw: globalThis.canvasComp0.toDataURL(),
+                        // Image + OCR "A" overlay
+                        imageA: globalThis.canvasComp1.toDataURL(),
+                        // Image + OCR "B" overlay
+                        imageB: globalThis.canvasComp2.toDataURL(),
+                        // Raw (pixel overlap) error metric "A"
+                        errorRawA: hocrError[0],
+                        // Raw (pixel overlap) error metric "B"
+                        errorRawB: hocrError[1],
+                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "A"
+                        errorAdjA: hocrAError,
+                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "B"
+                        errorAdjB: hocrBError,
+                        // OCR text "A"
+                        textA: wordsAArr.map((x) => x.innerHTML).join(" "),
+                        // OCR text "B"
+                        textB: wordsBArr.map((x) => x.innerHTML).join(" ")
+                      }
+
+                      globalThis.debugImg[debugLabel][n].push(debugObj);
+
                       globalThis.debugLog += "Legacy Word: " + wordsAArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrAError) + "]\n";
                       globalThis.debugLog += "LSTM Word: " + wordsBArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrBError) + "]\n";
                     }
   
                   }
-                  
+                              
                   if(hocrBError < hocrAError) {
-                    replaceMetrics = true;
-                  }
-
-                  const replaceAny = replaceItalic || replaceNum || replaceII || replaceMetrics;
-            
-                  if(replaceAny) {
                     const skip = ["eg","ie"].includes(hocrAWord.innerHTML.replace(/\W/g,""));
+                    if (skip) globalThis.debugLog += "Skipping word replacement\n";
+
                     if(!skip){
                       if(oneToOne){
+                        globalThis.debugLog += "Replacing word " + hocrAWord.innerHTML + " with word " + hocrBWord.innerHTML + "\n";
                         hocrAWord.innerHTML = hocrBWord.innerHTML;
 
                         let styleStrA = hocrAWord.getAttribute("style") ?? "";
