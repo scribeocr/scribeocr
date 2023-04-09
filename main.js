@@ -806,13 +806,13 @@ function changeZoom(value) {
   let currentValue = parseFloat(zoomInputElem.value);
 
   if (value == "minus") {
-    value = currentValue - 50;
+    value = currentValue - 500;
   } else if (value == "plus") {
-    value = currentValue + 50;
+    value = currentValue + 500;
   }
 
   // Set min/max values to avoid typos causing unexpected issues
-  value = Math.max(value, 300);
+  value = Math.max(value, 500);
   value = Math.min(value, 5000);
 
   zoomInputElem.value = value;
@@ -2745,7 +2745,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
 
   await Promise.allSettled(pagesArr.map((n) => {
 
-    if (n < 0 || n >= globalThis.imageAll.native.length) return;
+    if (!globalThis.imageAll.native || n < 0 || n >= globalThis.imageAll.native.length) return;
 
     if (inputDataModes.imageMode) {
       // Load image if either (1) it has never been loaded in the first place, or
@@ -2879,9 +2879,10 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   renderPDFImageCache([n]);
 
   // Return if data is not loaded yet
+  const noInput = !inputDataModes.xmlMode[n] && !inputDataModes.imageMode;
   const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null) || inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined");
   const xmlMissing = globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string";
-  if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n]) {
+  if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n] || noInput) {
     console.log("Exiting renderPageQueue early");
     return;
   }
