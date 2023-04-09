@@ -110,11 +110,16 @@ export function replaceLigatures(x) {
  * @see Unit Test https://jsfiddle.net/Victornpb/5axuh96u/
  * @see https://stackoverflow.com/a/7924240/938822
  */
-export function occurrences(string, subString, allowOverlapping) {
+export function occurrences(string, subString, allowOverlapping, caseSensitive = false) {
 
   string += "";
   subString += "";
   if (subString.length <= 0) return (string.length + 1);
+
+  if (!caseSensitive) {
+    string = string.toLowerCase();
+    subString = subString.toLowerCase();
+  } 
 
   var n = 0,
       pos = 0,

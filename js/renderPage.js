@@ -281,7 +281,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         // let wordFontFamilyCanvas = wordFontFamily;
         // let fontStyleCanvas = fontStyle;
 
-        const textBackgroundColor = globalThis.find.search && wordText.includes(globalThis.find.search) ? '#4278f550' : '';
+        const textBackgroundColor = globalThis.find.search && wordText.toLowerCase().includes(globalThis.find.search?.toLowerCase()) ? '#4278f550' : '';
 
         let textbox = new fabric.IText(wordText, {
           left: left,
