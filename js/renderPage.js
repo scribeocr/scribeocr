@@ -351,24 +351,87 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           }
         });
         textbox.on('selected', function () {
-          const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
-          if (!this.defaultFontFamily && Object.keys(globalThis.fontObj).includes(fontFamily)) {
-            wordFontElem.value = fontFamily;
-          }
-          fontSizeElem.value = this.fontSize;
-          if(this.wordSup != styleSuperElem.classList.contains("active")) {
-            styleSuperButton.toggle();
-          }
-          const italic = this.fontStyle == "italic";
-          if(italic != styleItalicElem.classList.contains("active")) {
-            styleItalicButton.toggle();
-          }
-          const smallCaps = /Small Caps/i.test(this.fontFamily);
-          if(smallCaps != styleSmallCapsElem.classList.contains("active")) {
-            styleSmallCapsButton.toggle();
+          // If multiple words are selected in a group, all the words in the group need to be considered when setting the UI
+          if (this.group) {
+            if (!this.group.style) {
+              let fontFamilyGroup = null;
+              let fontSizeGroup = null;
+              let supGroup = null;
+              let italicGroup = null;
+              let smallCapsGroup = null;
+              let singleFontFamily = true;
+              let singleFontSize = true;
+              for (let i=0; i<this.group._objects.length; i++) {
+                const wordI = this.group._objects[i];
+                // If there is no wordID then this object must be something other than a word
+                if (!wordI.wordID) continue;
+    
+                // Font style and font size consider all words in the group
+                if (fontFamilyGroup == null) {
+                  fontFamilyGroup = wordI.fontFamily.replace(/ Small Caps/, "");
+                } else {
+                  if (wordI.fontFamily.replace(/ Small Caps/, "") != fontFamilyGroup) {
+                    singleFontFamily = false;
+                  }
+                }
+    
+                if (fontSizeGroup == null) {
+                  fontSizeGroup = wordI.fontSize;
+                } else {
+                  if (wordI.fontSize != fontSizeGroup) {
+                    singleFontSize = false;
+                  }
+                }
+    
+                // Style toggles only consider the first word in the group
+                if (supGroup == null) supGroup = wordI.wordSup;
+                if (italicGroup == null) italicGroup = wordI.fontStyle == "italic";
+                if (smallCapsGroup == null) smallCapsGroup = /Small Caps/i.test(wordI.fontFamily);
+              }
+    
+              this.group.style = {
+                fontFamily: singleFontFamily ? fontFamilyGroup : "",
+                fontSize: singleFontSize ? fontSizeGroup : "",
+                sup: supGroup,
+                italic: italicGroup ,
+                smallCaps: smallCapsGroup
+              }
+    
+              wordFontElem.value = this.group.style.fontFamily;
+              fontSizeElem.value = this.group.style.fontSize;
+    
+              if(this.group.style.sup != styleSuperElem.classList.contains("active")) {
+                styleSuperButton.toggle();
+              }
+              if(this.group.style.italic != styleItalicElem.classList.contains("active")) {
+                styleItalicButton.toggle();
+              }
+              if(this.group.style.smallCaps != styleSmallCapsElem.classList.contains("active")) {
+                styleSmallCapsButton.toggle();
+              }  
+            }
+    
+          // If only one word is selected, we can just use the values for that one word
+          } else {
+            const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
+            if (!this.defaultFontFamily && Object.keys(globalThis.fontObj).includes(fontFamily)) {
+              wordFontElem.value = fontFamily;
+            }
+            fontSizeElem.value = this.fontSize;
+            if(this.wordSup != styleSuperElem.classList.contains("active")) {
+              styleSuperButton.toggle();
+            }
+            const italic = this.fontStyle == "italic";
+            if(italic != styleItalicElem.classList.contains("active")) {
+              styleItalicButton.toggle();
+            }
+            const smallCaps = /Small Caps/i.test(this.fontFamily);
+            if(smallCaps != styleSmallCapsElem.classList.contains("active")) {
+              styleSmallCapsButton.toggle();
+            }  
           }
         });
-        textbox.on('deselected', function () {
+            textbox.on('deselected', function () {
           console.log("Event: deselected");
           wordFontElem.value = "Default";
           //document.getElementById("collapseRange").setAttribute("class", "collapse");
