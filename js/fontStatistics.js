@@ -8,6 +8,38 @@ import { quantile, round6 } from "./miscUtils.js";
 
 import { determineSansSerif } from "./fontUtils.js";
 
+// Checks whether `multiFontMode` should be enabled or disabled. 
+// Usually (including when the built-in OCR engine is used) we will have metrics for individual font families, 
+// which are used to optimize the appropriate fonts ("multiFontMode" is `true` in this case). 
+// However, it is possible for the user to upload input data with character-level positioning information
+// but no font identification information for most or all words.  
+// If this is encountered the "default" metric is applied to the default font ("multiFontMode" is `false` in this case). 
+export function checkMultiFontMode(fontMetricsObj) {
+  let defaultFontObs = 0;
+  let namedFontObs = 0;
+  if (fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + fontMetricsObj["Default"]?.obs};
+  if (fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + fontMetricsObj["Libre Baskerville"]?.obs};
+  if (fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + fontMetricsObj["Open Sans"]?.obs};
+  
+  return namedFontObs > defaultFontObs ? true : false;
+
+}
+
+// Automatically sets the default font to whatever font is most common per globalThis.fontMetricsObj
+export function setDefaultFontAuto() {
+  const multiFontMode = checkMultiFontMode(globalThis.fontMetricsObj);
+
+  // Change default font to whatever named font appears more
+  if (multiFontMode) {
+    if ((globalThis.fontMetricsObj["Libre Baskerville"]?.obs || 0) > (globalThis.fontMetricsObj["Open Sans"]?.obs || 0)) {
+      globalThis.globalSettings.defaultFont = "Libre Baskerville";
+    } else {
+      globalThis.globalSettings.defaultFont = "Open Sans";
+    }
+  }
+
+}
+
 // Calculations that are run after all files (both image and OCR) have been loaded.
 export function calculateOverallFontMetrics(fontMetricObjsMessage) {
 
@@ -51,23 +83,6 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
     }
 
     fontMetricsOut = identifyFontVariants(globalThis.fontScores, fontMetricsOut);
-
-    let defaultFontObs = 0;
-    let namedFontObs = 0;
-    if (fontMetricsOut["Default"]?.obs) {defaultFontObs = defaultFontObs + fontMetricsOut["Default"]?.obs};
-    if (fontMetricsOut["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + fontMetricsOut["Libre Baskerville"]?.obs};
-    if (fontMetricsOut["Open Sans"]?.obs) {namedFontObs = namedFontObs + fontMetricsOut["Open Sans"]?.obs};
-
-    globalThis.globalSettings.multiFontMode = namedFontObs > defaultFontObs ? true : false;
-
-    // Change default font to whatever named font appears more
-    if (globalThis.globalSettings.multiFontMode) {
-      if ((fontMetricsOut["Libre Baskerville"]?.obs || 0) > (fontMetricsOut["Open Sans"]?.obs || 0)) {
-        globalThis.globalSettings.defaultFont = "Libre Baskerville";
-      } else {
-        globalThis.globalSettings.defaultFont = "Open Sans";
-      }
-    }
 
     return (fontMetricsOut);
   }

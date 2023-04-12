@@ -11,7 +11,7 @@ import { initMuPDFWorker } from "../mupdf/mupdf-async.js";
 import { hocrToPDF } from "../js/exportPDF.js";
 import { loadFontFamily } from "../js/fontUtils.js";
 import { initOptimizeFontWorker, optimizeFont3 } from "../js/optimizeFont.js";
-import { calculateOverallFontMetrics } from "../js/fontStatistics.js";
+import { calculateOverallFontMetrics, setDefaultFontAuto } from "../js/fontStatistics.js";
 
 globalThis.window = {};
 const { default: Tesseract } = await import('../tess/tesseract.es6.js');
@@ -182,6 +182,7 @@ async function main() {
     }
 
     globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
+    setDefaultFontAuto();
     await optimizeFont3(true);
 
     const pdfStr = await hocrToPDF(0, -1, "proof", true, false);

@@ -1,4 +1,5 @@
 
+import { checkMultiFontMode } from "./fontStatistics.js";
 import { fontFiles, relToAbsPath, loadFontFamily, loadFont, loadFontBrowser } from "./fontUtils.js";
 
 export async function initOptimizeFontWorker() {
@@ -82,7 +83,9 @@ export async function optimizeFont3(value) {
 	// When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
 	// Otherwise, the "default" metric is applied to whatever font the user has selected as the default font. 
 	const metricsFontFamilies = Object.keys(globalThis.fontMetricsObj);
-	// const multiFontMode = metricsFontFamilies.includes("Libre Baskerville") || metricsFontFamilies.includes("Open Sans");
+
+	globalSettings.multiFontMode = checkMultiFontMode(globalThis.fontMetricsObj);
+
 	const optFontFamilies = globalSettings.multiFontMode ? metricsFontFamilies.filter((x) => !["Default", "message"].includes(x)) : [globalSettings.defaultFont];
 
 	if (value) {

@@ -17,7 +17,7 @@ import { coords } from './js/coordinates.js';
 
 import { getFontSize, calcWordMetrics } from "./js/textUtils.js"
 
-import { calculateOverallFontMetrics, parseDebugInfo } from "./js/fontStatistics.js";
+import { calculateOverallFontMetrics, parseDebugInfo, setDefaultFontAuto } from "./js/fontStatistics.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatures, occurrences } from "./js/miscUtils.js";
@@ -699,6 +699,9 @@ function setFormatLabel(x) {
   formatLabelTextElem.innerHTML = "PDF";
     downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
   } else if (x.toLowerCase() == "hocr") {
+    document.getElementById("textOptions").setAttribute("style", "display:none");
+    document.getElementById("pdfOptions").setAttribute("style", "display:none");
+
     formatLabelSVGElem.innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`
 
     formatLabelTextElem.innerHTML = "HOCR";
@@ -2303,6 +2306,11 @@ async function importOCRFiles() {
           let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
           let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
           globalThis.fontMetricsObj = JSON.parse(contentStr);
+
+          setDefaultFontAuto();
+          optimizeFontElem.disabled = false;
+          optimizeFontElem.checked = true;  
+          await optimizeFont3(true);
         }
       }
 
@@ -2622,6 +2630,10 @@ async function importFiles() {
           let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
           globalThis.fontMetricsObj = JSON.parse(contentStr);
 
+          setDefaultFontAuto();
+          optimizeFontElem.disabled = false;
+          optimizeFontElem.checked = true;  
+          await optimizeFont3(true);
         }
 
         hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
@@ -3331,7 +3343,7 @@ async function updateDataProgress(mainData = true, combMode = false) {
     if(inputDataModes.xmlMode[0] && mainData) {
       // If resuming from a previous editing session font stats are already calculated
       if (inputDataModes.resumeMode) {
-        optimizeFontElem.disabled = false;
+        // This logic is handled elsewhere for resumeMode
       } else {
         // Buttons are enabled from calculateOverallFontMetrics function in this case
         globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
@@ -3345,8 +3357,6 @@ async function updateDataProgress(mainData = true, combMode = false) {
         } else if (!globalThis.inputDataModes.extractTextMode) {
           optimizeFontElem.disabled = false;
           optimizeFontElem.checked = true;
-          await optimizeFontClick(optimizeFontElem.checked);
-  
         }
       }
 
