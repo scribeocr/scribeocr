@@ -884,7 +884,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                 </div>
               </div>
             </div>
-            <div class="col col-3">
+            <div id="pdfOptions" class="col col-3">
               <label>PDF Options</label>
               <div class="form-check form-switch">
                 <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
@@ -892,6 +892,12 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   Size</label>
                 <label><input class="form-check-input" type="checkbox" id="addOverlayCheckbox" disabled> Add Text to
                   Import PDF</label>
+              </div>
+            </div>
+            <div id="textOptions" class="col col-3" style="display:none">
+              <label>Text Options</label>
+              <div class="form-check form-switch">
+                <label><input class="form-check-input" type="checkbox" id="reflowCheckbox"> Reflow Text</label>
               </div>
             </div>
 
