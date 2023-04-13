@@ -89,7 +89,7 @@ function createFontObj(font, firstObjIndex){
 // This is different than wordRegex in the convertPage.js file, as here we assume that the xml is already at the word-level (no character-level elements).
 const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)/, "ig");
 
-export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
+export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
   // Get count of various objects inserted into pdf
   let fontCount = 0;
@@ -101,7 +101,7 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
   const fontObjCount = fontCount * 3;
 
   if (maxpage == -1) {
-    maxpage = globalThis.hocrCurrent.length - 1;
+    maxpage = hocrArr.length - 1;
   }
 
   let pdfOut = "%PDF-1.7\n%¥±ë\n\n"
@@ -151,7 +151,7 @@ export async function hocrToPDF(minpage = 0, maxpage = -1, textMode = "ebook", r
     const angle = globalThis.pageMetricsObj["angleAll"][i] || 0;
     let dims = globalThis.pageMetricsObj.dimsAll[i];
 
-    pdfOut += (await hocrPageToPDF( globalThis.hocrCurrent[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
+    pdfOut += (await hocrPageToPDF( hocrArr[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
     if (progress) progress.increment();
   }
 

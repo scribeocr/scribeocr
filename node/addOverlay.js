@@ -185,7 +185,7 @@ async function main() {
     setDefaultFontAuto();
     await optimizeFont3(true);
 
-    const pdfStr = await hocrToPDF(0, -1, "proof", true, false);
+    const pdfStr = await hocrToPDF(globalThis.hocrCurrent, 0, -1, "proof", true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");

@@ -539,7 +539,7 @@ function calcOverlap(boxA, boxB) {
   return area / areaA;
 }
 
-export function reorderHOCR(hocrStrA, layoutObj) {
+export function reorderHOCR(hocrStrA, layoutObj, applyExclude = true) {
 
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return hocrStrA;
 
@@ -550,7 +550,8 @@ export function reorderHOCR(hocrStrA, layoutObj) {
   const hocrNew = hocrA.firstChild.cloneNode(false);
 
   const priorityArr = Array(hocrALines.length);
-  // 10 assumed to be lowest priority
+
+  // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
   priorityArr.fill(10);
 
   for (let i = 0; i < hocrALines.length; i++) {
@@ -561,7 +562,12 @@ export function reorderHOCR(hocrStrA, layoutObj) {
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
       const overlap = calcOverlap(lineBoxA, obj["coords"]);
       if (overlap > 0.5) {
-        priorityArr[i] = obj["priority"];
+        if (obj["type"] == "order") {
+          priorityArr[i] = obj["priority"];
+        } else if (obj["type"] == "exclude" && applyExclude) {
+          // Priority "11" is used to remove lines
+          priorityArr[i] = 11;
+        }
       } 
     }
   }
@@ -575,6 +581,75 @@ export function reorderHOCR(hocrStrA, layoutObj) {
   }
 
   return hocrNew.outerHTML;
+
+}
+
+
+export function getExcludedText() {
+
+  for (let i=0; i<=globalThis.hocrCurrent.length; i++){
+    const textArr = getExcludedTextPage(globalThis.hocrCurrent[i], globalThis.layout[i]);
+
+    if (textArr.length > 0) {
+      textArr.map((x) => console.log(x + " [Page " + String(i) + "]"));
+    }
+  }
+
+}
+
+// Get array of text that will be excluded from exports due to "exclude" layout boxes. 
+// This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point. 
+export function getExcludedTextPage(hocrStrA, layoutObj, applyExclude = true) {
+
+  const excludedArr = [];
+
+  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return excludedArr;
+
+
+  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
+  const hocrALines = hocrA.getElementsByClassName("ocr_line");
+
+  const hocrNew = hocrA.firstChild.cloneNode(false);
+
+  const priorityArr = Array(hocrALines.length);
+
+  // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
+  priorityArr.fill(10);
+
+  for (let i = 0; i < hocrALines.length; i++) {
+    const hocrALine = hocrALines[i];
+    const titleStrLineA = hocrALine.getAttribute('title');
+    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+
+    for (const [id, obj] of Object.entries(layoutObj.boxes)) {
+      const overlap = calcOverlap(lineBoxA, obj["coords"]);
+      if (overlap > 0.5) {
+        if (obj["type"] == "order") {
+          priorityArr[i] = obj["priority"];
+        } else if (obj["type"] == "exclude" && applyExclude) {
+          const words = hocrALine.getElementsByClassName("ocrx_word");
+          let text = "";
+          for (let i=0; i<words.length; i++) {
+            const word = words[i];
+            let wordText;
+            if (/\<sup\>/i.test(word.innerHTML)) {
+              wordText = word.innerHTML.replace(/^\s*\<sup\>/i, "");
+              wordText = wordText.replace(/\<\/sup\>\s*$/i, "");
+            } else if (/\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word.innerHTML)) {
+              wordText = word.innerHTML.replace(/^\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "");
+              wordText = wordText.replace(/\<\/span\>\s*$/i, "");
+            } else {
+              wordText = word.childNodes[0].nodeValue;
+            }
+            text += wordText + " ";
+          }
+          excludedArr.push(text)
+        }
+      } 
+    }
+  }
+
+  return excludedArr;
 
 }
 

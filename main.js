@@ -22,16 +22,21 @@ import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatures, occurrences } from "./js/miscUtils.js";
 
+// Functions for various UI tabs
 import {
   deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, changeWordFont, toggleSuperSelectedWords,
   updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord, updateWordCanvas
 } from "./js/interfaceEdit.js";
 
+import {
+  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick
+} from "./js/interfaceLayout.js"
+
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
 import { optimizeFont3, initOptimizeFontWorker } from "./js/optimizeFont.js";
 
-import { evalWords, compareHOCR, reorderHOCR } from "./js/compareHOCR.js";
+import { evalWords, compareHOCR, reorderHOCR, getExcludedText } from "./js/compareHOCR.js";
 
 import { hocrToPDF } from "./js/exportPDF.js";
 
@@ -438,6 +443,16 @@ setDefaultLayoutElem.addEventListener('click', () => setDefaultLayoutClick());
 
 const revertLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('revertLayout'));
 revertLayoutElem.addEventListener('click', () => revertLayoutClick());
+
+const setLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeOrder'));
+const setLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeExclude'));
+setLayoutBoxTypeOrderElem.addEventListener('click', () => setLayoutBoxTypeClick("order"));
+setLayoutBoxTypeExcludeElem.addEventListener('click', () => setLayoutBoxTypeClick("exclude"));
+
+const showExcludedTextElem = /** @type {HTMLInputElement} */(document.getElementById('showExcludedText'));
+showExcludedTextElem.addEventListener('click', () => getExcludedText());
+
+
 
 function displayModeClick(x) {
 
@@ -1557,184 +1572,6 @@ function recognizeAreaClick(wordMode = false) {
     canvas.__eventListeners = {}
   }, { once: true });
 
-}
-
-
-function addLayoutBoxClick() {
-
-  canvas.__eventListeners = {}
-
-  let init = false;
-
-  let rect;
-  let id;
-  let textbox;
-
-  canvas.on('mouse:down', function (o) {
-
-    // Unique ID of layout box, used to map canvas objects to under-the-hood data structures
-    id = getRandomAlphanum(10);
-
-    let pointer = canvas.getPointer(o.e);
-    origX = pointer.x;
-    origY = pointer.y;
-    rect = new fabric.Rect({
-      left: origX,
-      top: origY,
-      originX: 'left',
-      originY: 'top',
-      angle: 0,
-      fill: 'rgba(255,0,0,0.5)',
-      transparentCorners: false,
-      lockMovementX: false,
-      lockMovementY: false,
-      id: id,
-      scribeType: "layoutRect"
-      // preserveObjectStacking: true
-    });
-    rect.hasControls = true;
-    rect.setControlsVisibility({bl:true,br:true,mb:true,ml:true,mr:true,mt:true,tl:true,tr:true,mtr:false});
-
-    textbox = new fabric.IText("1", {
-      left: origX,
-      top: origY,
-      originX: "center",
-      originY: "center",
-      textBackgroundColor: 'rgb(255,255,255)',
-      fontSize: 150,
-      id: id,
-      scribeType: "layoutTextbox"
-
-    });
-
-    textbox.hasControls = true;
-    textbox.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
-
-
-    rect.on({'moving': onChange})
-    rect.on({'scaling': onChange})
-
-    function onChange(obj) {
-      const target = obj.transform.target;
-
-      // Adjust location of textbox
-      textbox.left = (target.aCoords.tl.x + target.aCoords.br.x) * 0.5;
-      textbox.top = (target.aCoords.tl.y + target.aCoords.br.y) * 0.5;        
-      textbox.setCoords();
-    }
-
-    rect.on({"mouseup": updateLayoutBoxes})
-
-    function updateLayoutBoxes(obj) {
-      const target = obj.target;
-      const id = target.id;
-
-      globalThis.layout[currentPage.n]["boxes"][id]["coords"] = [target.aCoords.tl.x, target.aCoords.tl.y, target.aCoords.br.x, target.aCoords.br.y];
-      globalThis.layout[currentPage.n]["default"] = false;
-    }
-
-    textbox.on('editing:exited', async function (obj) {
-      if (this.hasStateChanged) {
-        const id = this.id;
-        globalThis.layout[currentPage.n]["boxes"][id]["priority"] = parseInt(this.text);
-        globalThis.layout[currentPage.n]["default"] = false;
-      }
-    });
-    
-    canvas.add(rect);
-    canvas.add(textbox);
-
-    
-    // canvas.add(rect);
-    canvas.renderAll();
-
-    canvas.on('mouse:move', function (o) {
-
-      let pointer = canvas.getPointer(o.e);
-
-      if (origX > pointer.x) {
-        rect.set({ left: Math.abs(pointer.x) });
-
-      }
-      if (origY > pointer.y) {
-        rect.set({ top: Math.abs(pointer.y) });
-
-      }
-
-      rect.set({ width: Math.abs(origX - pointer.x) });
-      rect.set({ height: Math.abs(origY - pointer.y) });
-
-      textbox.left = rect.left + rect.width * 0.5;
-      textbox.top = rect.top + rect.height * 0.5;        
-    
-      canvas.renderAll();
-      
-    });
-
-  });
-
-  canvas.on('mouse:up:before', async function (o) {
-
-    canvas.__eventListeners = {}
-
-    // Immediately select rectangle (showing controls for easy resizing)
-    canvas.on('mouse:up', async function (o) {
-      if (!init) {
-        canvas.setActiveObject(rect);
-        canvas.__eventListeners = {}
-        globalThis.layout[currentPage.n]["boxes"][id] = {priority: parseInt(textbox.text),
-          coords: [rect.aCoords.tl.x, rect.aCoords.tl.y, rect.aCoords.br.x, rect.aCoords.br.y]};    
-        init = true;
-      }
-    });
-
-  });
-
-}
-
-function deleteLayoutBoxClick() {
-  const selectedObjects = window.canvas.getActiveObjects();
-  const selectedN = selectedObjects.length;
-  const delIds = [];
-  for(let i=0; i<selectedN; i++){
-    if (["layoutRect","layoutTextbox"].includes(selectedObjects[i]["scribeType"])) {
-      const id = selectedObjects[i]["id"];
-      delIds.push(id);
-      delete globalThis.layout[currentPage.n]["boxes"][id];
-      window.canvas.remove(selectedObjects[i]);
-    }
-  }
-
-  if (delIds.length > 0) {
-    globalThis.layout[currentPage.n]["default"] = false;
-
-    const allObjects = window.canvas.getObjects();
-    const n = allObjects.length; 
-    // Delete any remaining objects that exist with the same id
-    // This causes the textbox to be deleted when the user only has the rectangle selected (and vice versa)
-    for (let i=0; i<n; i++) {
-      if (delIds.includes(allObjects[i]["id"])) {
-        window.canvas.remove(allObjects[i]);
-      }
-    }
-  }
-  canvas.renderAll();
-}
-
-function setDefaultLayoutClick() {
-  globalThis.layout[currentPage.n]["default"] = true;
-  globalThis.defaultLayout = structuredClone(globalThis.layout[currentPage.n]["boxes"]);
-  for (let i=0; i<globalThis.layout.length; i++) {
-    if (globalThis.layout[i]["default"]) {
-      globalThis.layout[i]["boxes"] = structuredClone(globalThis.defaultLayout);
-    }
-  }
-}
-
-function revertLayoutClick() {
-  globalThis.layout[currentPage.n]["default"] = true;
-  globalThis.layout[currentPage.n]["boxes"] = structuredClone(globalThis.defaultLayout);
-  displayPage(currentPage.n);
 }
 
 var newWordInit = true;
@@ -3465,13 +3302,14 @@ async function handleDownload() {
   const maxValue = parseInt(pdfPageMaxElem.value)-1;
   const pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue);
 
-  // Reorder HOCR elements according to layout boxes
-  for (let i=minValue; i<=maxValue; i++){
-    globalThis.hocrCurrent[i] = reorderHOCR(globalThis.hocrCurrent[i], globalThis.layout[i]);
-  }
+  let hocrDownload = [];
 
-  // Reload re-ordered current page
-  globalThis.currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[currentPage.n], "text/xml");
+  if (download_type != "hocr") {
+    // Reorder HOCR elements according to layout boxes
+    for (let i=minValue; i<=maxValue; i++){
+      hocrDownload.push(reorderHOCR(globalThis.hocrCurrent[i], globalThis.layout[i]));
+    }
+  }
 
   if (download_type == "pdf") {
 
@@ -3530,7 +3368,7 @@ async function handleDownload() {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images. 
-      const pdfStr = await hocrToPDF(0,-1,displayModeElem.value, rotateText, rotateBackground, [-1,-1], downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(hocrDownload, 0,-1,displayModeElem.value, rotateText, rotateBackground, [-1,-1], downloadProgress, confThreshHigh, confThreshMed);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -3570,14 +3408,14 @@ async function handleDownload() {
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 	    
     } else {
-      const pdfStr = await hocrToPDF(minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
       pdfBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
     }
     saveAs(pdfBlob, fileName);
   } else if (download_type == "hocr") {
     renderHOCR(globalThis.hocrCurrent, globalThis.fontMetricsObj)
   } else if (download_type == "text") {
-    renderText(globalThis.hocrCurrent)
+    renderText(hocrDownload)
   }
 
   downloadElem.disabled = false;
