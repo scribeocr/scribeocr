@@ -11,11 +11,14 @@ export function renderText(hocrCurrent) {
   let maxValue = parseInt(pdfPageMaxElem.value);
 
   const removeLineBreaks = document.getElementById("reflowCheckbox").checked;
+  const breaksBetweenPages = document.getElementById("pageBreaksCheckbox").checked;
+
+  let endsEarlyPrev = false;
+  let startsLatePrev = false;
+  let lastCharEndingPunct = false;
 
   for (let g = (minValue - 1); g < maxValue; g++) {
-    if (g > 0) {
-      textStr = textStr + "\n\n";
-    }
+
     // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
     if (!hocrCurrent[g] || hocrCurrent[g]?.length < 50) continue;
     const pageXML = exportParser.parseFromString(hocrCurrent[g], "text/xml");
@@ -40,12 +43,6 @@ export function renderText(hocrCurrent) {
         const line = lines[h];
 
         const titleStrLine = line.getAttribute('title');
-        // const baselineStr = titleStrLine?.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-        
-
-        // if (titleStrLine == null) continue;
-        
-        // const baseline = baselineStr.slice(1, 5).map(function (x) { return parseFloat(x); });
 
         const lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
 
@@ -56,7 +53,7 @@ export function renderText(hocrCurrent) {
         const sinAngle = Math.sin(angle * (Math.PI / 180));
         const cosAngle = Math.cos(angle * (Math.PI / 180));
   
-        const x1Rot = lineBox[1] * cosAngle - sinAngle * lineBox[3];
+        const x1Rot = lineBox[0] * cosAngle - sinAngle * lineBox[3];
         const x2Rot = lineBox[2] * cosAngle - sinAngle * lineBox[3];
   
         lineLeftArr.push(x1Rot);
@@ -79,11 +76,18 @@ export function renderText(hocrCurrent) {
     }
 
     for (let h = 0; h < lines.length; h++) {
+
+      // Flag lines that end early (with >=10% of the line empty)
+      const endsEarly = lineRightArr[h] < (lineRightMedian - lineWidthMedian * 0.1);
+      // Flag lines that start late (with >=20% of the line empty)
+      // This is intended to capture floating elements (such as titles and page numbers) and not lines that are indented. 
+      const startsLate = lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.2)
+
+      // Add spaces or page breaks between lines
       if (h > 0) {
-        // If the removeLineBreaks option is enabled, we attempt to combine lines that belong together
         if (removeLineBreaks) {
           // Add a line break if the previous line ended early
-          if (lineRightMedian && lineWidthMedian && lineRightArr[h-1] < (lineRightMedian - lineWidthMedian * 0.1)) {
+          if (endsEarlyPrev || startsLatePrev) {
             textStr = textStr + "\n";
           
           // Add a line break if there is blank space added between lines
@@ -100,10 +104,24 @@ export function renderText(hocrCurrent) {
           } else {
             textStr = textStr + " ";
           }
+
+        } else {
+          textStr = textStr + "\n";
+        }
+      } else if (g > 0) {
+        if (removeLineBreaks && breaksBetweenPages) {
+          if (endsEarlyPrev || startsLatePrev || lastCharEndingPunct) {
+            textStr = textStr + "\n";
+          } else {
+            textStr = textStr + " ";
+          }
         } else {
           textStr = textStr + "\n";
         }
       }
+
+      endsEarlyPrev = endsEarly;
+      startsLatePrev = startsLate;
 
       const line = lines[h];
       const words = line.getElementsByClassName("ocrx_word");
@@ -114,6 +132,11 @@ export function renderText(hocrCurrent) {
           textStr = textStr + " ";
         }
         textStr = textStr + word.textContent;
+
+        // If this is the last word on the page, check if it contains ending punctuation
+        if ((h+1) == lines.length && (i+1) == words.length) {
+          lastCharEndingPunct = /[?.!]/.test(word.textContent);
+        }
 
       }
     }

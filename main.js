@@ -501,6 +501,20 @@ pageNumElem.addEventListener('keyup', function (event) {
   }
 });
 
+const reflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('reflowCheckbox'));
+const pageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
+
+// If "Reflow Text" is turned off, then pages will automatically have line breaks between them
+reflowCheckboxElem.addEventListener('click', (event) => {
+  if (event.target.checked) {
+    pageBreaksCheckboxElem.disabled = false;
+  } else {
+    pageBreaksCheckboxElem.disabled = true;
+    pageBreaksCheckboxElem.checked = true;
+  }
+});
+
+
 const matchCountElem = /** @type {HTMLInputElement} */(document.getElementById('matchCount'));
 const matchCurrentElem = /** @type {HTMLInputElement} */(document.getElementById('matchCurrent'));
 const prevMatchElem = /** @type {HTMLInputElement} */(document.getElementById('prevMatch'));
