@@ -1,6 +1,6 @@
 import { quantile } from "./miscUtils.js";
 
-export function renderText(hocrCurrent) {
+export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
 
   let textStr = "";
   const exportParser = new DOMParser();
@@ -10,12 +10,11 @@ export function renderText(hocrCurrent) {
   let minValue = parseInt(pdfPageMinElem.value);
   let maxValue = parseInt(pdfPageMaxElem.value);
 
-  const removeLineBreaks = document.getElementById("reflowCheckbox").checked;
-  const breaksBetweenPages = document.getElementById("pageBreaksCheckbox").checked;
-
   let endsEarlyPrev = false;
   let startsLatePrev = false;
   let lastCharEndingPunct = false;
+
+  let newLine = false;
 
   for (let g = (minValue - 1); g < maxValue; g++) {
 
@@ -88,35 +87,28 @@ export function renderText(hocrCurrent) {
         if (removeLineBreaks) {
           // Add a line break if the previous line ended early
           if (endsEarlyPrev || startsLatePrev) {
-            textStr = textStr + "\n";
+            newLine = true;
           
           // Add a line break if there is blank space added between lines
           } else if (lineSpaceMedian && lineSpaceArr[h-1] > (2 * lineSpaceMedian)) {
-            textStr = textStr + "\n";
+            newLine = true;
 
           // Add a line break if this line is indented
           // Requires (1) line to start to the right of the median line (by 2.5% of the median width) and
           // (2) line to start to the right of the previous line and the next line. 
           } else if (lineLeftMedian && (h + 1) < lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025) && lineLeftArr[h] > lineLeftArr[h-1] && lineLeftArr[h] > lineLeftArr[h+1]) {
-            textStr = textStr + "\n";
-
-          // Otherwise, do not add a newline
-          } else {
-            textStr = textStr + " ";
-          }
-
+            newLine = true;
+          } 
         } else {
-          textStr = textStr + "\n";
+          newLine = true;
         }
       } else if (g > 0) {
-        if (removeLineBreaks && breaksBetweenPages) {
+        if (removeLineBreaks && !breaksBetweenPages) {
           if (endsEarlyPrev || startsLatePrev || lastCharEndingPunct) {
-            textStr = textStr + "\n";
-          } else {
-            textStr = textStr + " ";
-          }
+            newLine = true;
+          } 
         } else {
-          textStr = textStr + "\n";
+          newLine = true;
         }
       }
 
@@ -126,12 +118,50 @@ export function renderText(hocrCurrent) {
       const line = lines[h];
       const words = line.getElementsByClassName("ocrx_word");
 
+      let fontStylePrev = "";
+
       for (let i = 0; i < words.length; i++) {
         const word = words[i];
-        if (i > 0) {
-          textStr = textStr + " ";
+
+        if (docxMode) {
+          let styleStr = word.getAttribute('style') ?? "";
+
+          let fontStyle;
+          if (/italic/i.test(styleStr)) {
+            fontStyle = "<w:i/>";
+          } else if (/small\-caps/i.test(styleStr)) {
+            fontStyle = "<w:smallCaps/>";
+          } else {
+            fontStyle = "";
+          }
+
+          if (newLine || fontStyle != fontStylePrev || (h == 0 && g == 0 && i == 0)) {
+            const styleStr = fontStyle == "" ? "" : "<w:rPr>" + fontStyle + "</w:rPr>";
+
+            if (h == 0 && g == 0 && i == 0) {
+              textStr = textStr + "<w:p><w:r>" + styleStr + "<w:t>";
+            } else if (newLine) {
+              textStr = textStr + "</w:t></w:r></w:p><w:p><w:r>" + styleStr + "<w:t xml:space=\"preserve\">";
+            } else {
+              textStr = textStr + " </w:t></w:r><w:r>" + styleStr + "<w:t xml:space=\"preserve\">";
+            }
+          } else {
+            textStr = textStr + " ";
+          }
+  
+        } else {
+          if (newLine) {
+            textStr = textStr + "\n";
+          } else if (h > 0 || g > 0 || i > 0) {
+            textStr = textStr + " ";
+          }
         }
+
+        newLine = false;
+
         textStr = textStr + word.textContent;
+
+  
 
         // If this is the last word on the page, check if it contains ending punctuation
         if ((h+1) == lines.length && (i+1) == words.length) {
@@ -142,10 +172,12 @@ export function renderText(hocrCurrent) {
     }
   }
 
-  const textBlob = new Blob([textStr], { type: 'text/plain' });
-  const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-  let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
+  return textStr;
 
-  saveAs(textBlob, fileName);
+  // const textBlob = new Blob([textStr], { type: 'text/plain' });
+  // const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
+  // let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
+
+  // saveAs(textBlob, fileName);
 
 }

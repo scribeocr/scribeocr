@@ -882,6 +882,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                       <li><a id="formatLabelOptionPDF" class="dropdown-item" href="#">PDF</a></li>
                       <li><a id="formatLabelOptionHOCR" class="dropdown-item" href="#">HOCR</a></li>
                       <li><a id="formatLabelOptionText" class="dropdown-item" href="#">Text</a></li>
+                      <li><a id="formatLabelOptionDocx" class="dropdown-item" href="#">Docx</a></li>
                     </ul>
                   </div>
                 </div>
@@ -931,7 +932,13 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                 <label><input class="form-check-input" type="checkbox" id="pageBreaksCheckbox" checked disabled> Breaks Between Pages</label>
               </div>
             </div>
-
+            <div id="docxOptions" class="col col-3" style="display:none">
+              <label>Docx Options</label>
+              <div class="form-check form-switch">
+                <label><input class="form-check-input" type="checkbox" id="docxReflowCheckbox" checked> Reflow Text</label><br/>
+                <label><input class="form-check-input" type="checkbox" id="docxPageBreaksCheckbox" checked> Breaks Between Pages</label>
+              </div>
+            </div>
           </div>
           <div class="collapse" id="generate-download-progress-collapse">
             <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
@@ -941,7 +948,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
               <div class="col col-7">
                 <div class="progress" style="margin: 0.25rem;">
                   <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
-                    aria-valuemin="0" aria-valuemax="100"></div>
+                    aria-valuemin="0" aria-valuemax="100"></div>docxPageBreaksCheckbox
                 </div>
               </div>
             </div>
