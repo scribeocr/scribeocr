@@ -2841,7 +2841,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
   renderPDFImageCache([n]);
 
   // Return if data is not loaded yet
-  const noInput = !inputDataModes.xmlMode[n] && !inputDataModes.imageMode;
+  const noInput = !inputDataModes.xmlMode[n] && !(inputDataModes.imageMode || inputDataModes.pdfMode);
   const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null) || inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined");
   const xmlMissing = globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string";
   if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n] || noInput) {
