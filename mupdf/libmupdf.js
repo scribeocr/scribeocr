@@ -477,30 +477,31 @@ var ALLOC_STACK = 1;
 var UTF8Decoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf8") : undefined;
 
 function UTF8ArrayToString(heap, idx, maxBytesToRead) {
+ idx >>>= 0;
  var endIdx = idx + maxBytesToRead;
  var endPtr = idx;
- while (heap[endPtr] && !(endPtr >= endIdx)) ++endPtr;
+ while (heap[endPtr >>> 0] && !(endPtr >= endIdx)) ++endPtr;
  if (endPtr - idx > 16 && heap.subarray && UTF8Decoder) {
-  return UTF8Decoder.decode(heap.subarray(idx, endPtr));
+  return UTF8Decoder.decode(heap.subarray(idx >>> 0, endPtr >>> 0));
  } else {
   var str = "";
   while (idx < endPtr) {
-   var u0 = heap[idx++];
+   var u0 = heap[idx++ >>> 0];
    if (!(u0 & 128)) {
     str += String.fromCharCode(u0);
     continue;
    }
-   var u1 = heap[idx++] & 63;
+   var u1 = heap[idx++ >>> 0] & 63;
    if ((u0 & 224) == 192) {
     str += String.fromCharCode((u0 & 31) << 6 | u1);
     continue;
    }
-   var u2 = heap[idx++] & 63;
+   var u2 = heap[idx++ >>> 0] & 63;
    if ((u0 & 240) == 224) {
     u0 = (u0 & 15) << 12 | u1 << 6 | u2;
    } else {
     if ((u0 & 248) != 240) warnOnce("Invalid UTF-8 leading byte 0x" + u0.toString(16) + " encountered when deserializing a UTF-8 string on the asm.js/wasm heap to a JS string!");
-    u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | heap[idx++] & 63;
+    u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | heap[idx++ >>> 0] & 63;
    }
    if (u0 < 65536) {
     str += String.fromCharCode(u0);
@@ -514,10 +515,12 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
 }
 
 function UTF8ToString(ptr, maxBytesToRead) {
+ ptr >>>= 0;
  return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : "";
 }
 
 function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
+ outIdx >>>= 0;
  if (!(maxBytesToWrite > 0)) return 0;
  var startIdx = outIdx;
  var endIdx = outIdx + maxBytesToWrite - 1;
@@ -529,26 +532,26 @@ function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
   }
   if (u <= 127) {
    if (outIdx >= endIdx) break;
-   heap[outIdx++] = u;
+   heap[outIdx++ >>> 0] = u;
   } else if (u <= 2047) {
    if (outIdx + 1 >= endIdx) break;
-   heap[outIdx++] = 192 | u >> 6;
-   heap[outIdx++] = 128 | u & 63;
+   heap[outIdx++ >>> 0] = 192 | u >> 6;
+   heap[outIdx++ >>> 0] = 128 | u & 63;
   } else if (u <= 65535) {
    if (outIdx + 2 >= endIdx) break;
-   heap[outIdx++] = 224 | u >> 12;
-   heap[outIdx++] = 128 | u >> 6 & 63;
-   heap[outIdx++] = 128 | u & 63;
+   heap[outIdx++ >>> 0] = 224 | u >> 12;
+   heap[outIdx++ >>> 0] = 128 | u >> 6 & 63;
+   heap[outIdx++ >>> 0] = 128 | u & 63;
   } else {
    if (outIdx + 3 >= endIdx) break;
    if (u >= 2097152) warnOnce("Invalid Unicode code point 0x" + u.toString(16) + " encountered when serializing a JS string to an UTF-8 string on the asm.js/wasm heap! (Valid unicode code points should be in range 0-0x1FFFFF).");
-   heap[outIdx++] = 240 | u >> 18;
-   heap[outIdx++] = 128 | u >> 12 & 63;
-   heap[outIdx++] = 128 | u >> 6 & 63;
-   heap[outIdx++] = 128 | u & 63;
+   heap[outIdx++ >>> 0] = 240 | u >> 18;
+   heap[outIdx++ >>> 0] = 128 | u >> 12 & 63;
+   heap[outIdx++ >>> 0] = 128 | u >> 6 & 63;
+   heap[outIdx++ >>> 0] = 128 | u & 63;
   }
  }
- heap[outIdx] = 0;
+ heap[outIdx >>> 0] = 0;
  return outIdx - startIdx;
 }
 
@@ -578,15 +581,15 @@ function allocateUTF8(str) {
 
 function writeArrayToMemory(array, buffer) {
  assert(array.length >= 0, "writeArrayToMemory array must have a length (should be an array or typed array)");
- HEAP8.set(array, buffer);
+ HEAP8.set(array, buffer >>> 0);
 }
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
  for (var i = 0; i < str.length; ++i) {
   assert(str.charCodeAt(i) === str.charCodeAt(i) & 255);
-  HEAP8[buffer++ >> 0] = str.charCodeAt(i);
+  HEAP8[buffer++ >>> 0] = str.charCodeAt(i);
  }
- if (!dontAddNull) HEAP8[buffer >> 0] = 0;
+ if (!dontAddNull) HEAP8[buffer >>> 0] = 0;
 }
 
 function alignUp(x, multiple) {
@@ -636,20 +639,20 @@ var wasmTable;
 function writeStackCookie() {
  var max = _emscripten_stack_get_end();
  assert((max & 3) == 0);
- HEAPU32[(max >> 2) + 1] = 34821223;
- HEAPU32[(max >> 2) + 2] = 2310721022;
- HEAP32[0] = 1668509029;
+ HEAPU32[(max >> 2) + 1 >>> 0] = 34821223;
+ HEAPU32[(max >> 2) + 2 >>> 0] = 2310721022;
+ HEAP32[0 >>> 0] = 1668509029;
 }
 
 function checkStackCookie() {
  if (ABORT) return;
  var max = _emscripten_stack_get_end();
- var cookie1 = HEAPU32[(max >> 2) + 1];
- var cookie2 = HEAPU32[(max >> 2) + 2];
+ var cookie1 = HEAPU32[(max >> 2) + 1 >>> 0];
+ var cookie2 = HEAPU32[(max >> 2) + 2 >>> 0];
  if (cookie1 != 34821223 || cookie2 != 2310721022) {
   abort("Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x2135467, but received 0x" + cookie2.toString(16) + " " + cookie1.toString(16));
  }
- if (HEAP32[0] !== 1668509029) abort("Runtime error: The application has corrupted its heap memory area (address zero)!");
+ if (HEAP32[0 >>> 0] !== 1668509029) abort("Runtime error: The application has corrupted its heap memory area (address zero)!");
 }
 
 (function() {
@@ -857,6 +860,11 @@ if (!isDataURI(wasmBinaryFile)) {
  wasmBinaryFile = locateFile(wasmBinaryFile);
 }
 
+function relToAbsPath(fileName) {
+const url = new URL(fileName, import.meta.url);
+	return url.protocol == "file:" ? url.host + url.pathname : url.href;
+}
+wasmBinaryFile = relToAbsPath("./libmupdf.wasm");
 function getBinary() {
  try {
   if (wasmBinary) {
@@ -1015,21 +1023,21 @@ function stackTrace() {
 }
 
 function _gmtime_r(time, tmPtr) {
- var date = new Date(HEAP32[time >> 2] * 1e3);
- HEAP32[tmPtr >> 2] = date.getUTCSeconds();
- HEAP32[tmPtr + 4 >> 2] = date.getUTCMinutes();
- HEAP32[tmPtr + 8 >> 2] = date.getUTCHours();
- HEAP32[tmPtr + 12 >> 2] = date.getUTCDate();
- HEAP32[tmPtr + 16 >> 2] = date.getUTCMonth();
- HEAP32[tmPtr + 20 >> 2] = date.getUTCFullYear() - 1900;
- HEAP32[tmPtr + 24 >> 2] = date.getUTCDay();
- HEAP32[tmPtr + 36 >> 2] = 0;
- HEAP32[tmPtr + 32 >> 2] = 0;
+ var date = new Date(HEAP32[time >>> 2] * 1e3);
+ HEAP32[tmPtr >>> 2] = date.getUTCSeconds();
+ HEAP32[tmPtr + 4 >>> 2] = date.getUTCMinutes();
+ HEAP32[tmPtr + 8 >>> 2] = date.getUTCHours();
+ HEAP32[tmPtr + 12 >>> 2] = date.getUTCDate();
+ HEAP32[tmPtr + 16 >>> 2] = date.getUTCMonth();
+ HEAP32[tmPtr + 20 >>> 2] = date.getUTCFullYear() - 1900;
+ HEAP32[tmPtr + 24 >>> 2] = date.getUTCDay();
+ HEAP32[tmPtr + 36 >>> 2] = 0;
+ HEAP32[tmPtr + 32 >>> 2] = 0;
  var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
  var yday = (date.getTime() - start) / (1e3 * 60 * 60 * 24) | 0;
- HEAP32[tmPtr + 28 >> 2] = yday;
+ HEAP32[tmPtr + 28 >>> 2] = yday;
  if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
- HEAP32[tmPtr + 40 >> 2] = _gmtime_r.GMTString;
+ HEAP32[tmPtr + 40 >>> 2] = _gmtime_r.GMTString;
  return tmPtr;
 }
 
@@ -1038,7 +1046,7 @@ function ___gmtime_r(a0, a1) {
 }
 
 function setErrNo(value) {
- HEAP32[___errno_location() >> 2] = value;
+ HEAP32[___errno_location() >>> 2] = value;
  return value;
 }
 
@@ -1323,7 +1331,7 @@ var TTY = {
 function mmapAlloc(size) {
  var alignedSize = alignMemory(size, 16384);
  var ptr = _malloc(alignedSize);
- while (size < alignedSize) HEAP8[ptr + size++] = 0;
+ while (size < alignedSize) HEAP8[ptr + size++ >>> 0] = 0;
  return ptr;
 }
 
@@ -1422,6 +1430,7 @@ var MEMFS = {
   return new Uint8Array(node.contents);
  },
  expandFileStorage: function(node, newCapacity) {
+  newCapacity >>>= 0;
   var prevCapacity = node.contents ? node.contents.length : 0;
   if (prevCapacity >= newCapacity) return;
   var CAPACITY_DOUBLING_MAX = 1024 * 1024;
@@ -1433,6 +1442,7 @@ var MEMFS = {
   return;
  },
  resizeFileStorage: function(node, newSize) {
+  newSize >>>= 0;
   if (node.usedBytes == newSize) return;
   if (newSize == 0) {
    node.contents = null;
@@ -1633,7 +1643,8 @@ var MEMFS = {
     if (!ptr) {
      throw new FS.ErrnoError(48);
     }
-    HEAP8.set(contents, ptr);
+    ptr >>>= 0;
+    HEAP8.set(contents, ptr >>> 0);
    }
    return {
     ptr: ptr,
@@ -2826,6 +2837,7 @@ export var FS = {
   return stream.position;
  },
  read: function(stream, buffer, offset, length, position) {
+  offset >>>= 0;
   if (length < 0 || position < 0) {
    throw new FS.ErrnoError(28);
   }
@@ -2852,6 +2864,7 @@ export var FS = {
   return bytesRead;
  },
  write: function(stream, buffer, offset, length, position, canOwn) {
+  offset >>>= 0;
   if (length < 0 || position < 0) {
    throw new FS.ErrnoError(28);
   }
@@ -2904,6 +2917,7 @@ export var FS = {
   stream.stream_ops.allocate(stream, offset, length);
  },
  mmap: function(stream, address, length, position, prot, flags) {
+  address >>>= 0;
   if ((prot & 2) !== 0 && (flags & 2) === 0 && (stream.flags & 2097155) !== 2) {
    throw new FS.ErrnoError(2);
   }
@@ -2916,6 +2930,7 @@ export var FS = {
   return stream.stream_ops.mmap(stream, address, length, position, prot, flags);
  },
  msync: function(stream, buffer, offset, length, mmapFlags) {
+  offset >>>= 0;
   if (!stream || !stream.stream_ops.msync) {
    return 0;
   }
@@ -3592,27 +3607,27 @@ var SYSCALLS = {
    }
    throw e;
   }
-  HEAP32[buf >> 2] = stat.dev;
-  HEAP32[buf + 4 >> 2] = 0;
-  HEAP32[buf + 8 >> 2] = stat.ino;
-  HEAP32[buf + 12 >> 2] = stat.mode;
-  HEAP32[buf + 16 >> 2] = stat.nlink;
-  HEAP32[buf + 20 >> 2] = stat.uid;
-  HEAP32[buf + 24 >> 2] = stat.gid;
-  HEAP32[buf + 28 >> 2] = stat.rdev;
-  HEAP32[buf + 32 >> 2] = 0;
+  HEAP32[buf >>> 2] = stat.dev;
+  HEAP32[buf + 4 >>> 2] = 0;
+  HEAP32[buf + 8 >>> 2] = stat.ino;
+  HEAP32[buf + 12 >>> 2] = stat.mode;
+  HEAP32[buf + 16 >>> 2] = stat.nlink;
+  HEAP32[buf + 20 >>> 2] = stat.uid;
+  HEAP32[buf + 24 >>> 2] = stat.gid;
+  HEAP32[buf + 28 >>> 2] = stat.rdev;
+  HEAP32[buf + 32 >>> 2] = 0;
   tempI64 = [ stat.size >>> 0, (tempDouble = stat.size, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
-  HEAP32[buf + 40 >> 2] = tempI64[0], HEAP32[buf + 44 >> 2] = tempI64[1];
-  HEAP32[buf + 48 >> 2] = 4096;
-  HEAP32[buf + 52 >> 2] = stat.blocks;
-  HEAP32[buf + 56 >> 2] = stat.atime.getTime() / 1e3 | 0;
-  HEAP32[buf + 60 >> 2] = 0;
-  HEAP32[buf + 64 >> 2] = stat.mtime.getTime() / 1e3 | 0;
-  HEAP32[buf + 68 >> 2] = 0;
-  HEAP32[buf + 72 >> 2] = stat.ctime.getTime() / 1e3 | 0;
-  HEAP32[buf + 76 >> 2] = 0;
+  HEAP32[buf + 40 >>> 2] = tempI64[0], HEAP32[buf + 44 >>> 2] = tempI64[1];
+  HEAP32[buf + 48 >>> 2] = 4096;
+  HEAP32[buf + 52 >>> 2] = stat.blocks;
+  HEAP32[buf + 56 >>> 2] = stat.atime.getTime() / 1e3 | 0;
+  HEAP32[buf + 60 >>> 2] = 0;
+  HEAP32[buf + 64 >>> 2] = stat.mtime.getTime() / 1e3 | 0;
+  HEAP32[buf + 68 >>> 2] = 0;
+  HEAP32[buf + 72 >>> 2] = stat.ctime.getTime() / 1e3 | 0;
+  HEAP32[buf + 76 >>> 2] = 0;
   tempI64 = [ stat.ino >>> 0, (tempDouble = stat.ino, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
-  HEAP32[buf + 80 >> 2] = tempI64[0], HEAP32[buf + 84 >> 2] = tempI64[1];
+  HEAP32[buf + 80 >>> 2] = tempI64[0], HEAP32[buf + 84 >>> 2] = tempI64[1];
   return 0;
  },
  doMsync: function(addr, stream, len, flags, offset) {
@@ -3644,9 +3659,9 @@ var SYSCALLS = {
   if (bufsize <= 0) return -28;
   var ret = FS.readlink(path);
   var len = Math.min(bufsize, lengthBytesUTF8(ret));
-  var endChar = HEAP8[buf + len];
+  var endChar = HEAP8[buf + len >>> 0];
   stringToUTF8(ret, buf, bufsize + 1);
-  HEAP8[buf + len] = endChar;
+  HEAP8[buf + len >>> 0] = endChar;
   return len;
  },
  doAccess: function(path, amode) {
@@ -3678,8 +3693,8 @@ var SYSCALLS = {
  doReadv: function(stream, iov, iovcnt, offset) {
   var ret = 0;
   for (var i = 0; i < iovcnt; i++) {
-   var ptr = HEAP32[iov + i * 8 >> 2];
-   var len = HEAP32[iov + (i * 8 + 4) >> 2];
+   var ptr = HEAP32[iov + i * 8 >>> 2];
+   var len = HEAP32[iov + (i * 8 + 4) >>> 2];
    var curr = FS.read(stream, HEAP8, ptr, len, offset);
    if (curr < 0) return -1;
    ret += curr;
@@ -3690,8 +3705,8 @@ var SYSCALLS = {
  doWritev: function(stream, iov, iovcnt, offset) {
   var ret = 0;
   for (var i = 0; i < iovcnt; i++) {
-   var ptr = HEAP32[iov + i * 8 >> 2];
-   var len = HEAP32[iov + (i * 8 + 4) >> 2];
+   var ptr = HEAP32[iov + i * 8 >>> 2];
+   var len = HEAP32[iov + (i * 8 + 4) >>> 2];
    var curr = FS.write(stream, HEAP8, ptr, len, offset);
    if (curr < 0) return -1;
    ret += curr;
@@ -3702,7 +3717,7 @@ var SYSCALLS = {
  get: function() {
   assert(SYSCALLS.varargs != undefined);
   SYSCALLS.varargs += 4;
-  var ret = HEAP32[SYSCALLS.varargs - 4 >> 2];
+  var ret = HEAP32[SYSCALLS.varargs - 4 >>> 2];
   return ret;
  },
  getStr: function(ptr) {
@@ -3754,7 +3769,7 @@ function ___sys_fcntl64(fd, cmd, varargs) {
    {
     var arg = SYSCALLS.get();
     var offset = 0;
-    HEAP16[arg + offset >> 1] = 2;
+    HEAP16[arg + offset >>> 1] = 2;
     return 0;
    }
 
@@ -3819,7 +3834,7 @@ function ___sys_ioctl(fd, op, varargs) {
    {
     if (!stream.tty) return -59;
     var argp = SYSCALLS.get();
-    HEAP32[argp >> 2] = 0;
+    HEAP32[argp >>> 2] = 0;
     return 0;
    }
 
@@ -3916,7 +3931,7 @@ function _emscripten_longjmp(a0, a1) {
 }
 
 function _emscripten_memcpy_big(dest, src, num) {
- HEAPU8.copyWithin(dest, src, src + num);
+ HEAPU8.copyWithin(dest >>> 0, src >>> 0, src + num >>> 0);
 }
 
 function _emscripten_get_heap_size() {
@@ -3937,7 +3952,7 @@ function _emscripten_resize_heap(requestedSize) {
  requestedSize = requestedSize >>> 0;
  var oldSize = _emscripten_get_heap_size();
  assert(requestedSize > oldSize);
- var maxHeapSize = 2147483648;
+ var maxHeapSize = 4294967296;
  if (requestedSize > maxHeapSize) {
   err("Cannot enlarge memory, asked to go up to " + requestedSize + " bytes, but the limit is " + maxHeapSize + " bytes!");
   return false;
@@ -3991,7 +4006,7 @@ function _environ_get(__environ, environ_buf) {
   var bufSize = 0;
   getEnvStrings().forEach(function(string, i) {
    var ptr = environ_buf + bufSize;
-   HEAP32[__environ + i * 4 >> 2] = ptr;
+   HEAP32[__environ + i * 4 >>> 2] = ptr;
    writeAsciiToMemory(string, ptr);
    bufSize += string.length + 1;
   });
@@ -4005,12 +4020,12 @@ function _environ_get(__environ, environ_buf) {
 function _environ_sizes_get(penviron_count, penviron_buf_size) {
  try {
   var strings = getEnvStrings();
-  HEAP32[penviron_count >> 2] = strings.length;
+  HEAP32[penviron_count >>> 2] = strings.length;
   var bufSize = 0;
   strings.forEach(function(string) {
    bufSize += string.length + 1;
   });
-  HEAP32[penviron_buf_size >> 2] = bufSize;
+  HEAP32[penviron_buf_size >>> 2] = bufSize;
   return 0;
  } catch (e) {
   if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
@@ -4037,7 +4052,7 @@ function _fd_read(fd, iov, iovcnt, pnum) {
  try {
   var stream = SYSCALLS.getStreamFromFD(fd);
   var num = SYSCALLS.doReadv(stream, iov, iovcnt);
-  HEAP32[pnum >> 2] = num;
+  HEAP32[pnum >>> 2] = num;
   return 0;
  } catch (e) {
   if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
@@ -4056,7 +4071,7 @@ function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
   }
   FS.llseek(stream, offset, whence);
   tempI64 = [ stream.position >>> 0, (tempDouble = stream.position, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], 
-  HEAP32[newOffset >> 2] = tempI64[0], HEAP32[newOffset + 4 >> 2] = tempI64[1];
+  HEAP32[newOffset >>> 2] = tempI64[0], HEAP32[newOffset + 4 >>> 2] = tempI64[1];
   if (stream.getdents && offset === 0 && whence === 0) stream.getdents = null;
   return 0;
  } catch (e) {
@@ -4069,7 +4084,7 @@ function _fd_write(fd, iov, iovcnt, pnum) {
  try {
   var stream = SYSCALLS.getStreamFromFD(fd);
   var num = SYSCALLS.doWritev(stream, iov, iovcnt);
-  HEAP32[pnum >> 2] = num;
+  HEAP32[pnum >>> 2] = num;
   return 0;
  } catch (e) {
   if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
@@ -4123,18 +4138,18 @@ function __addDays(date, days) {
 }
 
 function _strftime(s, maxsize, format, tm) {
- var tm_zone = HEAP32[tm + 40 >> 2];
+ var tm_zone = HEAP32[tm + 40 >>> 2];
  var date = {
-  tm_sec: HEAP32[tm >> 2],
-  tm_min: HEAP32[tm + 4 >> 2],
-  tm_hour: HEAP32[tm + 8 >> 2],
-  tm_mday: HEAP32[tm + 12 >> 2],
-  tm_mon: HEAP32[tm + 16 >> 2],
-  tm_year: HEAP32[tm + 20 >> 2],
-  tm_wday: HEAP32[tm + 24 >> 2],
-  tm_yday: HEAP32[tm + 28 >> 2],
-  tm_isdst: HEAP32[tm + 32 >> 2],
-  tm_gmtoff: HEAP32[tm + 36 >> 2],
+  tm_sec: HEAP32[tm >>> 2],
+  tm_min: HEAP32[tm + 4 >>> 2],
+  tm_hour: HEAP32[tm + 8 >>> 2],
+  tm_mday: HEAP32[tm + 12 >>> 2],
+  tm_mon: HEAP32[tm + 16 >>> 2],
+  tm_year: HEAP32[tm + 20 >>> 2],
+  tm_wday: HEAP32[tm + 24 >>> 2],
+  tm_yday: HEAP32[tm + 28 >>> 2],
+  tm_isdst: HEAP32[tm + 32 >>> 2],
+  tm_gmtoff: HEAP32[tm + 36 >>> 2],
   tm_zone: tm_zone ? UTF8ToString(tm_zone) : ""
  };
  var pattern = UTF8ToString(format);
@@ -4383,7 +4398,7 @@ function _strftime(s, maxsize, format, tm) {
 function _time(ptr) {
  var ret = Date.now() / 1e3 | 0;
  if (ptr) {
-  HEAP32[ptr >> 2] = ret;
+  HEAP32[ptr >>> 2] = ret;
  }
  return ret;
 }
@@ -4397,8 +4412,8 @@ function _tzset() {
  var winterOffset = winter.getTimezoneOffset();
  var summerOffset = summer.getTimezoneOffset();
  var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
- HEAP32[__get_timezone() >> 2] = stdTimezoneOffset * 60;
- HEAP32[__get_daylight() >> 2] = Number(winterOffset != summerOffset);
+ HEAP32[__get_timezone() >>> 2] = stdTimezoneOffset * 60;
+ HEAP32[__get_daylight() >>> 2] = Number(winterOffset != summerOffset);
  function extractZone(date) {
   var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
   return match ? match[1] : "GMT";
@@ -4408,22 +4423,22 @@ function _tzset() {
  var winterNamePtr = allocateUTF8(winterName);
  var summerNamePtr = allocateUTF8(summerName);
  if (summerOffset < winterOffset) {
-  HEAP32[__get_tzname() >> 2] = winterNamePtr;
-  HEAP32[__get_tzname() + 4 >> 2] = summerNamePtr;
+  HEAP32[__get_tzname() >>> 2] = winterNamePtr;
+  HEAP32[__get_tzname() + 4 >>> 2] = summerNamePtr;
  } else {
-  HEAP32[__get_tzname() >> 2] = summerNamePtr;
-  HEAP32[__get_tzname() + 4 >> 2] = winterNamePtr;
+  HEAP32[__get_tzname() >>> 2] = summerNamePtr;
+  HEAP32[__get_tzname() + 4 >>> 2] = winterNamePtr;
  }
 }
 
 function _timegm(tmPtr) {
  _tzset();
- var time = Date.UTC(HEAP32[tmPtr + 20 >> 2] + 1900, HEAP32[tmPtr + 16 >> 2], HEAP32[tmPtr + 12 >> 2], HEAP32[tmPtr + 8 >> 2], HEAP32[tmPtr + 4 >> 2], HEAP32[tmPtr >> 2], 0);
+ var time = Date.UTC(HEAP32[tmPtr + 20 >>> 2] + 1900, HEAP32[tmPtr + 16 >>> 2], HEAP32[tmPtr + 12 >>> 2], HEAP32[tmPtr + 8 >>> 2], HEAP32[tmPtr + 4 >>> 2], HEAP32[tmPtr >>> 2], 0);
  var date = new Date(time);
- HEAP32[tmPtr + 24 >> 2] = date.getUTCDay();
+ HEAP32[tmPtr + 24 >>> 2] = date.getUTCDay();
  var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
  var yday = (date.getTime() - start) / (1e3 * 60 * 60 * 24) | 0;
- HEAP32[tmPtr + 28 >> 2] = yday;
+ HEAP32[tmPtr + 28 >>> 2] = yday;
  return date.getTime() / 1e3 | 0;
 }
 
@@ -4435,11 +4450,11 @@ function readAsmConstArgs(sigPtr, buf) {
  readAsmConstArgsArray.length = 0;
  var ch;
  buf >>= 2;
- while (ch = HEAPU8[sigPtr++]) {
+ while (ch = HEAPU8[sigPtr++ >>> 0]) {
   assert(ch === 100 || ch === 102 || ch === 105);
   var double = ch < 105;
   if (double && buf & 1) buf++;
-  readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+  readAsmConstArgsArray.push(double ? HEAPF64[buf++ >>> 1] : HEAP32[buf >>> 0]);
   ++buf;
  }
  return readAsmConstArgsArray;
