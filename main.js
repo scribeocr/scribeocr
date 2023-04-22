@@ -2456,7 +2456,7 @@ async function importFiles() {
       // For reasons that are unclear, a small number of pages have been rendered into massive files
       // so a hard-cap on resolution must be imposed.
       const pageWidth1 = pageDims1.map((x) => x[0]);
-      const pageDPI = pageWidth1.map((x) => Math.round(300 * 2000 / Math.max(x, 2000)));
+      const pageDPI = pageWidth1.map((x) => 300 * 2000 / Math.max(x, 2000));
 
       console.log("DPI " + String(pageDPI));
 
@@ -2750,7 +2750,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
         const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
         const imgWidthPdf = await ms.addJob('pageWidth', [n + 1, 300]);
         if (imgWidthPdf != imgWidthXml) {
-          dpi = Math.round(300 * (imgWidthXml / imgWidthPdf));
+          dpi = 300 * (imgWidthXml / imgWidthPdf);
         }
 
         const useColor = colorMode == "color" ? true : false;
