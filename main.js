@@ -9,6 +9,8 @@ globalThis.d = function () {
   debugger;
 }
 
+import { importOCR, convertOCR } from "./js/importOCR.js";
+
 import { renderText } from './js/exportRenderText.js';
 import { renderHOCR } from './js/exportRenderHOCR.js';
 import { writeDocx } from './js/exportWriteDocx.js';
@@ -319,7 +321,7 @@ const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementByI
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
 
 const uploadOCRButtonElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRButton'));
-uploadOCRButtonElem.addEventListener('click', importOCRFiles);
+uploadOCRButtonElem.addEventListener('click', importOCRFilesSupp);
 
 const uploadOCRLabelElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRLabel'));
 const uploadOCRDataElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRData'));
@@ -813,7 +815,7 @@ function setBuildLabel(x) {
 }
 
 
-function addDisplayLabel(x) {
+export function addDisplayLabel(x) {
   // Exit early if option already exists
   const existingOptions = displayLabelOptionsElem.children;
   for (let i = 0; i < existingOptions.length; i++) {
@@ -826,7 +828,7 @@ function addDisplayLabel(x) {
 }
 
 globalThis.ocrAll = {};
-function setCurrentHOCR(x) {
+export function setCurrentHOCR(x) {
   const currentLabel = displayLabelTextElem.innerHTML.trim();
   if (!x.trim() || x == currentLabel) return;
 
@@ -951,7 +953,7 @@ for (const [key, value] of Object.entries(tabHeightObj)) {
 }
 
 
-function toggleEditButtons(disable = true) {
+export function toggleEditButtons(disable = true) {
   let editButtons = ["styleItalic", "styleSmallCaps", "styleSuper", "editBaseline", "deleteWord", "addWord"];
   for (let i = 0; i < editButtons.length; i++) {
     const editButtonElem = /** @type {HTMLInputElement} */(document.getElementById(editButtons[i]));
@@ -2129,98 +2131,28 @@ async function clearFiles() {
 clearFiles();
 
 
-// TODO: See if this can be easily combined with the main import function, since most of it is copy/paste from that
-async function importOCRFiles() {
+// Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
+async function importOCRFilesSupp() {
   // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
   const ocrName = uploadOCRNameElem.value;
   const hocrFilesAll = uploadOCRFileElem.files;
 
-  if (hocrFilesAll.length == 0) return;
+  if (!hocrFilesAll || hocrFilesAll.length == 0) return;
 
   displayLabelTextElem.disabled = true;
-
-  const mainData = false;
-
-  if (mainData) {
-
-    globalThis.pageMetricsObj["angleAll"] = [];
-    globalThis.pageMetricsObj["dimsAll"] = [];
-    globalThis.pageMetricsObj["leftAll"] = [];
-    globalThis.pageMetricsObj["angleAdjAll"] = [];
-    globalThis.pageMetricsObj["manAdjAll"] = [];
-  }
 
   // In the case of 1 HOCR file
   const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
 
-  let hocrStrStart = "";
-  let hocrStrEnd = "";
-  let abbyyMode, hocrStrPages, hocrArrPages, pageCount, pageCountImage, pageCountHOCR;
+  const ocrData = await importOCR(Array.from(hocrFilesAll), false);
 
-  //displayLabelTextElem.innerHTML = ocrName;
+  globalThis.hocrCurrentRaw = ocrData.hocrRaw;
 
-  if (singleHOCRMode) {
-    const singleHOCRMode = true;
-    let hocrStrAll = await readOcrFile(hocrFilesAll[0]);
+  const pageCountHOCR = ocrData.hocrRaw.length;
 
-    // Check whether input is Abbyy XML
-    const node2 = hocrStrAll.match(/\>([^\>]+)/)[1];
-    abbyyMode = /abbyy/i.test(node2) ? true : false;
-    stextMode = /\<document name/.test(node2) ? true : false;
-
-    if (abbyyMode) {
-
-      // hocrStrPages = hocrStrAll.replace(/[\s\S]*?(?=\<page)/i, "");
-      // hocrArrPages = hocrStrPages.split(/(?=\<page)/);
-
-      hocrArrPages = hocrStrAll.split(/(?=\<page)/).slice(1);
-    } else if (stextMode) {
-      hocrArrPages = hocrStrAll.split(/(?=\<page)/).slice(1);
-    } else {
-
-      if(mainData) {
-        // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-        inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
-
-        if (inputDataModes.resumeMode) {
-          let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
-          globalThis.fontMetricsObj = JSON.parse(contentStr);
-
-          setDefaultFontAuto();
-          optimizeFontElem.disabled = false;
-          optimizeFontElem.checked = true;  
-          await optimizeFont3(true);
-        }
-      }
-
-      hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
-      hocrStrEnd = hocrStrAll.match(/\<\/body\>[\s\S]*$/)[0];
-      hocrStrPages = hocrStrAll.replace(/[\s\S]*?\<body\>/, "");
-      hocrStrPages = hocrStrPages.replace(/\<\/body\>[\s\S]*$/, "");
-      hocrStrPages = hocrStrPages.trim();
-
-      hocrArrPages = hocrStrPages.split(/(?=\<div class\=[\'\"]ocr_page[\'\"])/);
-    }
-
-    pageCountHOCR = hocrArrPages.length;
-    globalThis.hocrCurrentRaw = Array(pageCountHOCR);
-    for (let i = 0; i < pageCountHOCR; i++) {
-      globalThis.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
-    }
-
-  } else {
-    const singleHOCRMode = false;
-    pageCountHOCR = hocrFilesAll.length;
-
-    // Check whether input is Abbyy XML using the first file
-    let hocrStrFirst = await readOcrFile(hocrFilesAll[0]);
-    const node2 = hocrStrFirst.match(/\>([^\>]+)/)[1];
-    abbyyMode = /abbyy/i.test(node2) ? true : false;
-  }
 
   // Enable confidence threshold input boxes (only used for Tesseract)
-  if (!abbyyMode && !stextMode && confThreshHighElem.disabled) {
+  if (!ocrData.abbyyMode && !ocrData.stextMode && confThreshHighElem.disabled) {
     confThreshHighElem.disabled = false;
     confThreshMedElem.disabled = false;
     confThreshHighElem.value = "85";
@@ -2230,7 +2162,7 @@ async function importOCRFiles() {
   // If both OCR data and image data are present, confirm they have the same number of pages
   if (globalThis.imageAll["native"]) {
     if (globalThis.imageAll["native"].length != pageCountHOCR) {
-      const warningHTML = "Page mismatch detected. Image data has " + pageCountImage + " pages while OCR data has " + pageCountHOCR + " pages.";
+      const warningHTML = "Page mismatch detected. Image data has " + globalThis.imageAll["native"].length + " pages while OCR data has " + pageCountHOCR + " pages.";
       insertAlertMessage(warningHTML, false);
     }
   }
@@ -2239,24 +2171,8 @@ async function importOCRFiles() {
   convertPageScheduler["activeProgress"] = initializeProgress("import-eval-progress-collapse", pageCountHOCR);
 
   toggleEditButtons(false);
-  for (let i = 0; i < pageCountHOCR; i++) {
 
-    // Process HOCR using web worker, reading from file first if that has not been done already
-    if (singleHOCRMode) {
-      let func = "convertPage";
-      if (abbyyMode) {
-        func = "convertPageAbbyy";
-      } else if (stextMode) {
-        func = "convertPageStext";
-      }
-
-      globalThis.convertPageScheduler.addJob(func, [globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(async () => {updateDataProgress(mainData)});
-    } else {
-      const hocrFile = hocrFilesAll[i];
-      readOcrFile(hocrFile).then((x) => globalThis.convertPageScheduler.addJob("convertPage", [x, i, undefined]).then(async () => {updateDataProgress(mainData)}));
-    }
-
-  }
+  convertOCR(ocrData.hocrRaw, false, ocrData.abbyyMode, ocrData.stextMode);
 
   uploadOCRNameElem.value = '';
   uploadOCRFileElem.value = '';
@@ -2270,7 +2186,7 @@ async function importOCRFiles() {
 
 // Show new warning or error message to the user. 
 // TODO: Probably some better way to do this than parsing from text
-function insertAlertMessage(innerHTML, error = true) {
+export function insertAlertMessage(innerHTML, error = true) {
   const warningSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
   <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
   <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
@@ -2415,13 +2331,6 @@ async function importFiles() {
   imageFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
   hocrFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
 
-  // Check that input makes sense.  Valid options are:
-  // (1) N HOCR files and 0 image files
-  // (1) N HOCR files and N image files
-  // (1) 1 HOCR file and N image files
-  if (hocrFilesAll.length > 1 && inputDataModes.imageMode && hocrFilesAll.length != imageFilesAll.length) {
-    throw new Error('Detected ' + hocrFilesAll.length + ' hocr files but ' + imageFilesAll.length + " image files.")
-  }
 
   // Set default download name
   let downloadFileName = pdfFilesAll.length > 0 ? pdfFilesAll[0].name : curFiles[0].name;
@@ -2429,13 +2338,8 @@ async function importFiles() {
   downloadFileName = downloadFileName + ".pdf";
   downloadFileNameElem.value = downloadFileName;
 
-  // In the case of 1 HOCR file
-  const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
-
-  //let pageCount, hocrCurrentRaw, abbyyMode;
-  let hocrStrStart = "";
-  let hocrStrEnd = "";
-  let abbyyMode, stextMode, hocrStrPages, hocrArrPages, pageCount, pageCountImage, pageCountHOCR;
+  let pageCount, pageCountImage, stextMode;
+  let abbyyMode = false;
 
   if (inputDataModes.pdfMode) {
 
@@ -2483,66 +2387,22 @@ async function importFiles() {
     addDisplayLabel("User Upload");
     displayLabelTextElem.innerHTML = "User Upload";
 
-    if (singleHOCRMode) {
-      const singleHOCRMode = true;
-      let hocrStrAll = await readOcrFile(hocrFilesAll[0]);
+    const ocrData = await importOCR(Array.from(hocrFilesAll), true);
 
-      // Check whether input is Abbyy XML
-      const node2 = hocrStrAll.match(/\>([^\>]+)/)[1];
-      abbyyMode = /abbyy/i.test(node2) ? true : false;
-      stextMode = /\<document name/.test(node2) ? true : false;
+    globalThis.hocrCurrentRaw = ocrData.hocrRaw;
 
-      if (abbyyMode) {
-
-        // hocrStrPages = hocrStrAll.replace(/[\s\S]*?(?=\<page)/i, "");
-        // hocrArrPages = hocrStrPages.split(/(?=\<page)/);
-
-        hocrArrPages = hocrStrAll.split(/(?=\<page)/).slice(1);
-      } else if (stextMode) {
-        hocrArrPages = hocrStrAll.split(/(?=\<page)/).slice(1);
-      } else {
-
-        // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-        inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
-
-        if (inputDataModes.resumeMode) {
-          let fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-          let contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
-          globalThis.fontMetricsObj = JSON.parse(contentStr);
-
-          setDefaultFontAuto();
-          optimizeFontElem.disabled = false;
-          optimizeFontElem.checked = true;  
-          await optimizeFont3(true);
-        }
-
-        hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
-        hocrStrEnd = hocrStrAll.match(/\<\/body\>[\s\S]*$/)[0];
-        hocrStrPages = hocrStrAll.replace(/[\s\S]*?\<body\>/, "");
-        hocrStrPages = hocrStrPages.replace(/\<\/body\>[\s\S]*$/, "");
-        hocrStrPages = hocrStrPages.trim();
-
-        hocrArrPages = hocrStrPages.split(/(?=\<div class\=[\'\"]ocr_page[\'\"])/);
-      }
-
-      pageCountHOCR = hocrArrPages.length;
-      if (inputDataModes.imageMode && hocrArrPages.length != imageFilesAll.length) {
-        throw new Error('Detected ' + hocrArrPages.length + ' pages in OCR but ' + imageFilesAll.length + " image files.")
-      }
-      globalThis.hocrCurrentRaw = Array(pageCountHOCR);
-      for (let i = 0; i < pageCountHOCR; i++) {
-        globalThis.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
-      }
-
-    } else {
-      const singleHOCRMode = false;
-      pageCountHOCR = hocrFilesAll.length;
-
-      // Check whether input is Abbyy XML using the first file
-      let hocrStrFirst = await readOcrFile(hocrFilesAll[0]);
-      const node2 = hocrStrFirst.match(/\>([^\>]+)/)[1];
-      abbyyMode = /abbyy/i.test(node2) ? true : false;
+    // Restore font metrics and optimize font from previous session (if applicable)
+    if (ocrData.fontMetricsObj) {
+      globalThis.fontMetricsObj = ocrData.fontMetricsObj;
+      setDefaultFontAuto();
+      optimizeFontElem.disabled = false;
+      optimizeFontElem.checked = true;
+      await optimizeFont3(true);
     }
+
+    // stext may be imported or extracted from an input PDF
+    stextMode = stextMode || ocrData.stextMode;
+    abbyyMode = ocrData.abbyyMode;
 
     // Enable confidence threshold input boxes (only used for Tesseract)
     if (!abbyyMode && !stextMode) {
@@ -2553,6 +2413,8 @@ async function importFiles() {
     }
 
   }
+
+  const pageCountHOCR = globalThis.hocrCurrentRaw?.length;
 
   // If both OCR data and image data are present, confirm they have the same number of pages
   if (xmlModeImport && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
@@ -2605,8 +2467,6 @@ async function importFiles() {
   }
 
   let imageN = -1;
-  let hocrN = -1;
-  let firstImg = true;
 
   loadCountHOCR = 0;
 
@@ -2639,25 +2499,14 @@ async function importFiles() {
       reader.readAsDataURL(imageFilesAll[i]);
 
     }
-
-    if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
-      toggleEditButtons(false);
-      // Process HOCR using web worker, reading from file first if that has not been done already
-      if (singleHOCRMode || globalThis.inputDataModes.extractTextMode) {
-        let func = "convertPage";
-        if (abbyyMode) {
-          func = "convertPageAbbyy";
-        } else if (stextMode) {
-          func = "convertPageStext";
-        }
-          globalThis.convertPageScheduler.addJob(func, [globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(async () => {updateDataProgress()});
-      } else {
-        const hocrFile = hocrFilesAll[i];
-        readOcrFile(hocrFile).then((x) => globalThis.convertPageScheduler.addJob("convertPage", [x, i, undefined]).then(async () => {updateDataProgress()}));
-      }
-    }
-
   }
+
+  if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
+    toggleEditButtons(false);
+    // Process HOCR using web worker, reading from file first if that has not been done already
+    convertOCR(globalThis.hocrCurrentRaw, true, abbyyMode, stextMode || false);
+  }
+
 
   // Enable downloads now for pdf imports if no HOCR data exists
   if (inputDataModes.pdfMode && !xmlModeImport) {
@@ -3034,6 +2883,7 @@ var working = false;
 export async function displayPage(n) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered. 
   if (isNaN(n) || n < 0 || n > (globalThis.hocrCurrent.length - 1) || working) {
+    console.log("Exiting from displayPage early.");
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
     pageNumElem.value = (currentPage.n + 1).toString();
     return;
@@ -3193,7 +3043,7 @@ initConvertPageScheduler();
 // Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
 // Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
 // as well as after every image is loaded (not including .pdfs). 
-async function updateDataProgress(mainData = true, combMode = false) {
+export async function updateDataProgress(mainData = true, combMode = false) {
 
   let activeProgress = convertPageScheduler["activeProgress"].elem;
 
@@ -3237,6 +3087,7 @@ async function updateDataProgress(mainData = true, combMode = false) {
         } else if (!globalThis.inputDataModes.extractTextMode) {
           optimizeFontElem.disabled = false;
           optimizeFontElem.checked = true;
+          await optimizeFont3(true);
         }
       }
 
@@ -3367,7 +3218,7 @@ async function handleDownload() {
       }
     }
 
-    let standardizeSizeMode = document.getElementById("standardizeCheckbox").checked;
+    let standardizeSizeMode = standardizeCheckboxElem.checked;
     let dimsLimit = [-1,-1];
     if (standardizeSizeMode) {
       for (let i = minValue; i <= maxValue; i++) {
@@ -3391,10 +3242,9 @@ async function handleDownload() {
     const fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
     let pdfBlob;
 
-    const confThreshHigh = document.getElementById("confThreshHigh").value != "" ? parseInt(document.getElementById("confThreshHigh").value) : 85;
-    const confThreshMed = document.getElementById("confThreshMed").value != "" ? parseInt(document.getElementById("confThreshMed").value) : 75;
-
-
+    const confThreshHigh = parseInt(confThreshHighElem.value) || 85;
+    const confThreshMed = parseInt(confThreshMedElem.value) || 75;
+  
     // For proof or ocr mode the text layer needs to be combined with a background layer
     if (displayModeElem.value != "ebook") {
 
