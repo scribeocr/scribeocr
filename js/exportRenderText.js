@@ -159,9 +159,14 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
         newLine = false;
 
-        textStr = textStr + word.textContent;
-
-  
+        // DOCX is an XML format, so any escaped XML characters need to continue being escaped.
+        if (docxMode) {
+          // TODO: For now we just delete superscript tags.
+          // Eventually this should be added to Word exports properly. 
+          textStr = textStr + word.innerHTML.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "");
+        } else {
+          textStr = textStr + word.textContent;
+        }
 
         // If this is the last word on the page, check if it contains ending punctuation
         if ((h+1) == lines.length && (i+1) == words.length) {
