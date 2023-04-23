@@ -15,13 +15,13 @@ const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('
 const styleItalicButton = new bootstrap.Button(styleItalicElem);
 const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
-
+const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
 export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFont, lineMode = false, imgDims, canvasDims, angle, pdfMode, fontObj, leftAdjX) {
 
   let ctx = canvas.getContext('2d');
 
-  const layoutMode = true;
+  const layoutMode = enableLayoutElem.checked;
 
   // objectCaching slows down page render speeds, and is generally not needed.
   // The exception is when working in layoutMode, where users draw semi-transparent rectangles

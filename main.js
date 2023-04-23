@@ -77,11 +77,6 @@ let angleThresh = 0.0008726646;
 
 
 // Edit canvas.js object defaults
-// Disable objectCaching (significant improvement to page render time)
-// TODO: Disabling objectCaching speeds up page render times significantly.
-// However, this creates performance issues/stuttering when adding layout boxes. 
-// Should find workaround that works in both scenarios. 
-// fabric.Object.prototype.objectCaching = false;
 // Disable movement for all fabric objects
 fabric.Object.prototype.hasControls = false;
 fabric.Object.prototype.lockMovementX = true;
@@ -3198,11 +3193,13 @@ async function handleDownload() {
 
   let hocrDownload = [];
 
-  if (download_type != "hocr") {
+  if (download_type != "hocr" && enableLayoutElem.checked) {
     // Reorder HOCR elements according to layout boxes
     for (let i=minValue; i<=maxValue; i++){
       hocrDownload.push(reorderHOCR(globalThis.hocrCurrent[i], globalThis.layout[i]));
     }
+  } else {
+    hocrDownload = globalThis.hocrCurrent;
   }
 
   if (download_type == "pdf") {
