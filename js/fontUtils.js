@@ -8,7 +8,7 @@
 // Should be added to if additional fonts are encountered
 // Fonts that should not be added (both Sans and Serif variants):
 // DejaVu
-const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
+const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times", "Liberation Mono"];
 const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
