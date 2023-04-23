@@ -179,10 +179,4 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
   return textStr;
 
-  // const textBlob = new Blob([textStr], { type: 'text/plain' });
-  // const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-  // let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
-
-  // saveAs(textBlob, fileName);
-
 }

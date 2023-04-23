@@ -66,8 +66,8 @@ let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, v
   const angleAdjXWord = Math.abs(globalThis.pageMetricsObj.angleAll[n]) >= 1 ? angleAdjXLine + (1 - cosAngle) * (wordBoxUnion[0] - linebox[0]) : angleAdjXLine;
 
   // If provided, we crop to the dimensions of the font (fontAsc and fontDesc) rather than the image bounding box.
-  const height = fontAsc + fontDesc || wordBoxUnion[3] - wordBoxUnion[1] + 1;
-  const cropY = linebox[3] + baseline[1] - fontAsc + angleAdjYLine-1 || linebox[1];
+  const height =  fontAsc && fontDesc ? fontAsc + fontDesc : wordBoxUnion[3] - wordBoxUnion[1] + 1;
+  const cropY = fontAsc ? linebox[3] + baseline[1] - fontAsc + angleAdjYLine-1 : linebox[1];
 
   const imgElem = await globalThis.imageAll["binary"][n];
   const img = new fabric.Image(imgElem, {left: 0, top: 0, cropX: wordBoxUnion[0]+angleAdjXWord-1, cropY: cropY, width: wordBoxUnion[2] - wordBoxUnion[0] + 1, height: height});
@@ -178,14 +178,14 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
     wordFontSize = parseFloat(fontSizeStr[1]);
   } else if (wordSup) {
     // All superscripts are assumed to be numbers for now
-    wordFontSize = getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], "1");
+    wordFontSize = await getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], "1");
   } else if (wordDropCap) {
     // Note: In addition to being taller, drop caps are often narrower than other glyphs.
     // Unfortunately, while Fabric JS (canvas library) currently supports horizontally scaling glyphs,
     // pdfkit (pdf library) does not.  This feature should be added to Scribe if pdfkit supports it
     // in the future.
     // https://github.com/foliojs/pdfkit/issues/1032
-    wordFontSize = getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], wordText.slice(0, 1));
+    wordFontSize = await getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], wordText.slice(0, 1));
   } else {
     wordFontSize = lineFontSize;
   }

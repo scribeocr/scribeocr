@@ -8,10 +8,13 @@ import { docxStrings, documentStart, documentEnd } from "./docxFiles.js";
 
 import { renderText } from "./exportRenderText.js";
   
+const docxReflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxReflowCheckbox'));
+const docxPageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
+
 export async function writeDocx(hocrCurrent) {
 
-  const removeLineBreaks = document.getElementById("docxReflowCheckbox").checked;
-  const breaksBetweenPages = document.getElementById("docxPageBreaksCheckbox").checked;
+  const removeLineBreaks = docxReflowCheckboxElem.checked;
+  const breaksBetweenPages = docxPageBreaksCheckboxElem.checked;
 
   const zipFileWriter = new BlobWriter();
   const zipWriter = new ZipWriter(zipFileWriter);

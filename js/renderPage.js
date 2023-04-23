@@ -196,13 +196,10 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
       let fillColorHex;
       if (wordConf > confThreshHigh) {
-        // fillColorRGB = "rgb(0,255,125)"
         fillColorHex = "#00ff7b";
       } else if (wordConf > confThreshMed) {
-        // fillColorRGB = "rgb(255,200,0)"
         fillColorHex = "#ffc800";
       } else {
-        // fillColorRGB = "rgb(255,0,0)"
         fillColorHex = "#ff0000";
       }
 
@@ -279,8 +276,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
         let wordFontFamilyCanvas = fontStyle == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
         let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;
-        // let wordFontFamilyCanvas = wordFontFamily;
-        // let fontStyleCanvas = fontStyle;
 
         const textBackgroundColor = globalThis.find.search && wordText.toLowerCase().includes(globalThis.find.search?.toLowerCase()) ? '#4278f550' : '';
 

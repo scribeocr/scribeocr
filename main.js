@@ -150,7 +150,19 @@ globalThis.globalSettings = {
   defaultFont: "Libre Baskerville"
 }
 
-// Object for data currently being displayed on the canvas
+
+
+/**
+ * @typedef currentPage
+ * @type {Object}
+ * @property {Number} n - an ID.
+ * @property {any} backgroundImage - an ID.
+ * @property {Object} backgroundOpts - an ID.
+ * @property {Number} leftAdjX - an ID.
+ * @property {Number} renderStatus - an ID.
+ * @property {XMLDocument} xmlDoc - an ID.
+ */
+/** @type {currentPage} */
 globalThis.currentPage = {
   n: 0,
   backgroundImage: null,
@@ -189,16 +201,18 @@ globalThis.runOnLoad = function () {
   loadFontFamily("Open Sans");
   loadFontFamily("Libre Baskerville");
 
+  const debugEngineVersionElem = /** @type {HTMLInputElement} */(document.getElementById('debugEngineVersion'));
+
   // Detect whether SIMD instructions are supported
   simd().then(async function (x) {
     globalSettings.simdSupport = x;
     // Show error message if SIMD support is not present
     if (x) {
-      document.getElementById("debugEngineVersion").innerText = "Enabled";
+      debugEngineVersionElem.innerText = "Enabled";
     } else {
       const warningHTML = `Fast (SIMD-enabled) version of Tesseract not supported on your device. Tesseract LSTM recognition may be slow. <a href="http://docs.scribeocr.com/faq.html#what-devices-support-the-built-in-ocr-engine" target="_blank" class="alert-link">Learn more.</a>`;
       insertAlertMessage(warningHTML, false);
-      document.getElementById("debugEngineVersion").innerText = "Disabled";
+      debugEngineVersionElem.innerText = "Disabled";
     }
   });
 
@@ -242,8 +256,11 @@ const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pag
 globalThis.bsCollapse = new bootstrap.Collapse(document.getElementById("collapseRange"), { toggle: false });
 
 // Add various event listners to HTML elements
-document.getElementById('next').addEventListener('click', () => displayPage(currentPage.n + 1));
-document.getElementById('prev').addEventListener('click', () => displayPage(currentPage.n - 1));
+const nextElem = /** @type {HTMLInputElement} */(document.getElementById('next'));
+const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev'));
+
+nextElem.addEventListener('click', () => displayPage(currentPage.n + 1));
+prevElem.addEventListener('click', () => displayPage(currentPage.n - 1));
 
 const uploaderElem = /** @type {HTMLInputElement} */(document.getElementById('uploader'));
 uploaderElem.addEventListener('change', importFiles);
@@ -577,6 +594,18 @@ function findTextClick(text) {
   matchCountElem.textContent = String(find.total);
 }
 
+
+/**
+ * @typedef find
+ * @type {object}
+ * @property {string[]} text - Array with text contents of each page
+ * @property {string} search - Search string
+ * @property {number[]} matches - Array with number of matches on each page
+ * @property {boolean} init - Whether find object has been initiated
+ * @property {number} total - Total number of matches
+
+ */
+/** @type {find} */
 globalThis.find = {
   text: [],
   search: "",
@@ -610,7 +639,7 @@ function highlightCurrentPage(text) {
 function findAllMatches(text) {
   let total = 0;
   const matches = [];
-  const maxValue = parseInt(pageCountElem.textContent);
+  const maxValue = globalThis.imageAll.nativeSrc.length;
   for (let i=0; i<maxValue; i++) {
     const n = occurrences(globalThis.find.text[i], text);
     matches[i] = n;
@@ -644,10 +673,10 @@ function updateFindStats() {
 function extractTextPage(g) {
   find.text[g] = "";
   // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
-  if (!hocrCurrent[g] || hocrCurrent[g]?.length < 50) return;
+  if (!globalThis.hocrCurrent[g] || globalThis.hocrCurrent[g]?.length < 50) return;
 
   
-  const pageXML = exportParser.parseFromString(hocrCurrent[g], "text/xml");
+  const pageXML = exportParser.parseFromString(globalThis.hocrCurrent[g], "text/xml");
   const lines = pageXML.getElementsByClassName("ocr_line");
   for (let h = 0; h < lines.length; h++) {
     if (h > 0) {
@@ -674,7 +703,7 @@ function extractTextPage(g) {
 // with every search. 
 function extractTextAll() {
 
-    const maxValue = parseInt(pageCountElem.textContent);
+    const maxValue = globalThis.hocrCurrent.length;
   
     for (let g = 0; g < maxValue; g++) {
       extractTextPage(g);
@@ -705,7 +734,7 @@ function updatePdfPagesLabel() {
 
   let minValue = parseInt(pdfPageMinElem.value) || null;
   let maxValue = parseInt(pdfPageMaxElem.value) || null;
-  let pageCount = parseInt(pageCountElem.textContent) || null;
+  let pageCount = globalThis.imageAll.nativeSrc.length;
 
   minValue = Math.max(minValue, 1);
   maxValue = Math.min(maxValue, pageCount);
@@ -727,13 +756,16 @@ function updatePdfPagesLabel() {
 
 const formatLabelSVGElem = /** @type {HTMLElement} */(document.getElementById("formatLabelSVG"));
 const formatLabelTextElem = /** @type {HTMLElement} */(document.getElementById("formatLabelText"));
+const textOptionsElem = /** @type {HTMLElement} */(document.getElementById("textOptions"));
+const pdfOptionsElem = /** @type {HTMLElement} */(document.getElementById("pdfOptions"));
+const docxOptionsElem = /** @type {HTMLElement} */(document.getElementById("docxOptions"));
 
 function setFormatLabel(x) {
   if (x.toLowerCase() == "pdf") {
 
-    document.getElementById("textOptions").setAttribute("style", "display:none");
-    document.getElementById("pdfOptions").setAttribute("style", "");
-    document.getElementById("docxOptions").setAttribute("style", "display:none");
+    textOptionsElem.setAttribute("style", "display:none");
+    pdfOptionsElem.setAttribute("style", "");
+    docxOptionsElem.setAttribute("style", "display:none");
     
     formatLabelSVGElem.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
   <path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.266.266 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.71 12.71 0 0 1 1.01-.193 11.744 11.744 0 0 1-.51-.858 20.801 20.801 0 0 1-.5 1.05zm2.446.45c.15.163.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.876 3.876 0 0 0-.612-.053zM8.078 7.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>`
@@ -741,9 +773,9 @@ function setFormatLabel(x) {
   formatLabelTextElem.innerHTML = "PDF";
     downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
   } else if (x.toLowerCase() == "hocr") {
-    document.getElementById("textOptions").setAttribute("style", "display:none");
-    document.getElementById("pdfOptions").setAttribute("style", "display:none");
-    document.getElementById("docxOptions").setAttribute("style", "display:none");
+    textOptionsElem.setAttribute("style", "display:none");
+    pdfOptionsElem.setAttribute("style", "display:none");
+    docxOptionsElem.setAttribute("style", "display:none");
 
     formatLabelSVGElem.innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`
 
@@ -751,9 +783,9 @@ function setFormatLabel(x) {
     downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".hocr";
   } else if (x.toLowerCase() == "text") {
 
-    document.getElementById("textOptions").setAttribute("style", "");
-    document.getElementById("pdfOptions").setAttribute("style", "display:none");
-    document.getElementById("docxOptions").setAttribute("style", "display:none");
+    textOptionsElem.setAttribute("style", "");
+    pdfOptionsElem.setAttribute("style", "display:none");
+    docxOptionsElem.setAttribute("style", "display:none");
 
     formatLabelSVGElem.innerHTML = String.raw`  <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
   <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>`
@@ -763,9 +795,9 @@ function setFormatLabel(x) {
 
   } else if (x.toLowerCase() == "docx") {
 
-    document.getElementById("textOptions").setAttribute("style", "display:none");
-    document.getElementById("pdfOptions").setAttribute("style", "display:none");
-    document.getElementById("docxOptions").setAttribute("style", "");
+    textOptionsElem.setAttribute("style", "display:none");
+    pdfOptionsElem.setAttribute("style", "display:none");
+    docxOptionsElem.setAttribute("style", "");
 
     formatLabelSVGElem.innerHTML = String.raw`   <path fill-rule="evenodd" d="M14 4.5V11h-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5Zm-6.839 9.688v-.522a1.54 1.54 0 0 0-.117-.641.861.861 0 0 0-.322-.387.862.862 0 0 0-.469-.129.868.868 0 0 0-.471.13.868.868 0 0 0-.32.386 1.54 1.54 0 0 0-.117.641v.522c0 .256.04.47.117.641a.868.868 0 0 0 .32.387.883.883 0 0 0 .471.126.877.877 0 0 0 .469-.126.861.861 0 0 0 .322-.386 1.55 1.55 0 0 0 .117-.642Zm.803-.516v.513c0 .375-.068.7-.205.973a1.47 1.47 0 0 1-.589.627c-.254.144-.56.216-.917.216a1.86 1.86 0 0 1-.92-.216 1.463 1.463 0 0 1-.589-.627 2.151 2.151 0 0 1-.205-.973v-.513c0-.379.069-.704.205-.975.137-.274.333-.483.59-.627.257-.147.564-.22.92-.22.357 0 .662.073.916.22.256.146.452.356.59.63.136.271.204.595.204.972ZM1 15.925v-3.999h1.459c.406 0 .741.078 1.005.235.264.156.46.382.589.68.13.296.196.655.196 1.074 0 .422-.065.784-.196 1.084-.131.301-.33.53-.595.689-.264.158-.597.237-.999.237H1Zm1.354-3.354H1.79v2.707h.563c.185 0 .346-.028.483-.082a.8.8 0 0 0 .334-.252c.088-.114.153-.254.196-.422a2.3 2.3 0 0 0 .068-.592c0-.3-.04-.552-.118-.753a.89.89 0 0 0-.354-.454c-.158-.102-.361-.152-.61-.152Zm6.756 1.116c0-.248.034-.46.103-.633a.868.868 0 0 1 .301-.398.814.814 0 0 1 .475-.138c.15 0 .283.032.398.097a.7.7 0 0 1 .273.26.85.85 0 0 1 .12.381h.765v-.073a1.33 1.33 0 0 0-.466-.964 1.44 1.44 0 0 0-.49-.272 1.836 1.836 0 0 0-.606-.097c-.355 0-.66.074-.911.223-.25.148-.44.359-.571.633-.131.273-.197.6-.197.978v.498c0 .379.065.704.194.976.13.271.321.48.571.627.25.144.555.216.914.216.293 0 .555-.054.785-.164.23-.11.414-.26.551-.454a1.27 1.27 0 0 0 .226-.674v-.076h-.765a.8.8 0 0 1-.117.364.699.699 0 0 1-.273.248.874.874 0 0 1-.401.088.845.845 0 0 1-.478-.131.834.834 0 0 1-.298-.393 1.7 1.7 0 0 1-.103-.627v-.495Zm5.092-1.76h.894l-1.275 2.006 1.254 1.992h-.908l-.85-1.415h-.035l-.852 1.415h-.862l1.24-2.015-1.228-1.984h.932l.832 1.439h.035l.823-1.439Z"/>`
 
@@ -1037,7 +1069,7 @@ async function createTesseractScheduler(workerN, config = null) {
 
 function getTesseractConfigs() {
   // Get current settings as specified by user
-  const oemConfig = document.getElementById("oemLabelText")?.innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
+  const oemConfig = oemLabelTextElem.innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
   const psmConfig = document.getElementById("psmLabelText")?.innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
 
   const allConfig = {
@@ -1126,18 +1158,32 @@ async function compareGroundTruthClick(n) {
   globalThis.hocrCurrent[n] = res[0].documentElement.outerHTML;
   globalThis.evalStats[n] = res[1];
 
+  const metricTotalWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsPage'));
+  const metricCorrectWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectWordsPage'));
+  const metricIncorrectWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectWordsPage'));
+  const metricMissedWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricMissedWordsPage'));
+  const metricExtraWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricExtraWordsPage'));
+  const metricWERPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERPage'));
+
   // Display metrics for current page
-  document.getElementById("metricTotalWordsPage").innerHTML = globalThis.evalStats[n][0];
-  document.getElementById("metricCorrectWordsPage").innerHTML = globalThis.evalStats[n][1];
-  document.getElementById("metricIncorrectWordsPage").innerHTML = globalThis.evalStats[n][2];
-  document.getElementById("metricMissedWordsPage").innerHTML = globalThis.evalStats[n][3];
-  document.getElementById("metricExtraWordsPage").innerHTML = globalThis.evalStats[n][4];
+  metricTotalWordsPageElem.innerHTML = globalThis.evalStats[n][0];
+  metricCorrectWordsPageElem.innerHTML = globalThis.evalStats[n][1];
+  metricIncorrectWordsPageElem.innerHTML = globalThis.evalStats[n][2];
+  metricMissedWordsPageElem.innerHTML = globalThis.evalStats[n][3];
+  metricExtraWordsPageElem.innerHTML = globalThis.evalStats[n][4];
 
   if (evalStatsConfigNew["ignoreExtra"]) {
-    document.getElementById("metricWERPage").innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
+    metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
   } else {
-    document.getElementById("metricWERPage").innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3] + globalThis.evalStats[n][4]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
+    metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3] + globalThis.evalStats[n][4]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
   }
+
+  const metricTotalWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsDoc'));
+  const metricCorrectWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectWordsDoc'));
+  const metricIncorrectWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectWordsDoc'));
+  const metricMissedWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricMissedWordsDoc'));
+  const metricExtraWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricExtraWordsDoc'));
+  const metricWERDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERDoc'));
 
   // Calculate and display metrics for full document
   if (!loadMode) {
@@ -1150,24 +1196,24 @@ async function compareGroundTruthClick(n) {
       evalStatsDoc[4] = evalStatsDoc[4] + globalThis.evalStats[i][4];
     }
 
-    document.getElementById("metricTotalWordsDoc").innerHTML = evalStatsDoc[0].toString();
-    document.getElementById("metricCorrectWordsDoc").innerHTML = evalStatsDoc[1].toString();
-    document.getElementById("metricIncorrectWordsDoc").innerHTML = evalStatsDoc[2].toString();
-    document.getElementById("metricMissedWordsDoc").innerHTML = evalStatsDoc[3].toString();
-    document.getElementById("metricExtraWordsDoc").innerHTML = evalStatsDoc[4].toString();
+    metricTotalWordsDocElem.innerHTML = evalStatsDoc[0].toString();
+    metricCorrectWordsDocElem.innerHTML = evalStatsDoc[1].toString();
+    metricIncorrectWordsDocElem.innerHTML = evalStatsDoc[2].toString();
+    metricMissedWordsDocElem.innerHTML = evalStatsDoc[3].toString();
+    metricExtraWordsDocElem.innerHTML = evalStatsDoc[4].toString();
 
     if (evalStatsConfigNew["ignoreExtra"]) {
-      document.getElementById("metricWERDoc").innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3]) / evalStatsDoc[0]) * 100) / 100).toString();
+      metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3]) / evalStatsDoc[0]) * 100) / 100).toString();
     } else {
-      document.getElementById("metricWERDoc").innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3] + evalStatsDoc[4]) / evalStatsDoc[0]) * 100) / 100).toString();
+      metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3] + evalStatsDoc[4]) / evalStatsDoc[0]) * 100) / 100).toString();
     }
   } else {
-    document.getElementById("metricTotalWordsDoc").innerHTML = '';
-    document.getElementById("metricCorrectWordsDoc").innerHTML = '';
-    document.getElementById("metricIncorrectWordsDoc").innerHTML = '';
-    document.getElementById("metricMissedWordsDoc").innerHTML = '';
-    document.getElementById("metricExtraWordsDoc").innerHTML = '';
-    document.getElementById("metricWERDoc").innerHTML = '';
+    metricTotalWordsDocElem.innerHTML = '';
+    metricCorrectWordsDocElem.innerHTML = '';
+    metricIncorrectWordsDocElem.innerHTML = '';
+    metricMissedWordsDocElem.innerHTML = '';
+    metricExtraWordsDocElem.innerHTML = '';
+    metricWERDocElem.innerHTML = '';
   }
 
   currentPage.xmlDoc = parser.parseFromString(globalThis.hocrCurrent[n], "text/xml");
@@ -1217,7 +1263,7 @@ async function recognizeArea(imageCoords, wordMode = false) {
 
   const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n]) > 0.05 ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : 0;
 
-  const oemText = "Tesseract " + document.getElementById("oemLabelText").innerHTML;
+  const oemText = "Tesseract " + oemLabelTextElem.innerHTML;
 
   const argsObj = {
     "mode": "area",
@@ -1250,7 +1296,7 @@ async function recognizeAll() {
   // User can select engine directly using advanced options, or indirectly using basic options. 
   let oemMode;
   if(enableAdvancedRecognitionElem.checked) {
-    oemMode = document.getElementById("oemLabelText").innerHTML;
+    oemMode = oemLabelTextElem.innerHTML;
   } else {
     if(ocrQualityElem.value == "1") {
       oemMode = "combined";
@@ -2082,7 +2128,7 @@ async function clearFiles() {
   globalThis.layout = [];
   globalThis.fontMetricsObj = {};
   globalThis.pageMetricsObj = {};
-  fontMetricObjsMessage = [];
+  globalThis.fontMetricObjsMessage = [];
 
   if (globalThis.binaryScheduler) {
     const bs = await globalThis.binaryScheduler;
@@ -2923,7 +2969,7 @@ export async function displayPage(n) {
   showDebugImages();
 
   // Render background images 1 page ahead and behind
-  const nMax = parseInt(pageCountElem.textContent);
+  const nMax = globalThis.imageAll.nativeSrc.length;
   if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {
     let cacheArr = [...Array(cachePages).keys()].map(i => i + currentPage.n + 1).filter(x => x < nMax && x >= 0);
     if (cacheArr.length > 0) {

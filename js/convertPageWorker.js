@@ -618,7 +618,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
   hocrString = hocrString.replaceAll(lineRegex, convertLine);
 
 
-  let angleRiseMedian = mean50(angleRisePage);
+  let angleRiseMedian = mean50(angleRisePage) || 0;
 
 
   let lineLeftAdj = new Array;
@@ -1288,9 +1288,9 @@ function convertPageAbbyy(xmlPage, pageNum) {
   }
   xmlOut = xmlOut + "</div>";
 
-  let angleRiseMedian = mean50(angleRisePage);
+  let angleRiseMedian = mean50(angleRisePage) || 0;
 
-  const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI) || 0;
+  const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI);
 
 
   let lineLeftAdj = new Array;
@@ -1298,7 +1298,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
     lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
   }
   let leftOut = quantile(lineLeft, 0.2);
-  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut || 0;
+  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut;
   // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
   if (lineLeft.length < 5) {
     leftOut = null;
@@ -1809,9 +1809,9 @@ function convertPageStext(xmlPage, pageNum) {
   }
   xmlOut = xmlOut + "</div>";
 
-  let angleRiseMedian = mean50(angleRisePage);
+  let angleRiseMedian = mean50(angleRisePage) || 0;
 
-  const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI) || 0;
+  const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI);
 
 
   let lineLeftAdj = new Array;
@@ -1819,7 +1819,7 @@ function convertPageStext(xmlPage, pageNum) {
     lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
   }
   let leftOut = quantile(lineLeft, 0.2);
-  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut || 0;
+  let leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut;
   // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
   if (lineLeft.length < 5) {
     leftOut = null;
