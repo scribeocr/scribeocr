@@ -89,10 +89,10 @@ function updateHOCRFontWord(word_id, value){
     // If set to "Default" the font-family style will be omitted (so the document default style is inherited)
     let styleStr = it.singleNodeValue.getAttribute("style");
     if(styleStr == null && value != "Default"){
-      styleStr = "font-family:'" + value + "'";
+      styleStr = "font-family:" + value;
     } else if(styleStr != null && value != "Default"){
       styleStr = styleStr.replace(/font\-family[^;]*(;|$)/i,"").replace(";$", "");
-      styleStr = styleStr + ";font-family:'" + value + "'";
+      styleStr = styleStr + ";font-family:" + value;
     } else if(styleStr != null && value == "Default"){
       styleStr = styleStr.replace(/font\-family[^;]*(;|$)/i,"").replace(";$", "");
     } else {

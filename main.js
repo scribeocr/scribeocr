@@ -3128,6 +3128,7 @@ export async function updateDataProgress(mainData = true, combMode = false) {
         } else if (!globalThis.inputDataModes.extractTextMode) {
           optimizeFontElem.disabled = false;
           optimizeFontElem.checked = true;
+          setDefaultFontAuto();
           await optimizeFont3(true);
         }
       }
@@ -3273,7 +3274,7 @@ async function handleDownload() {
     // Depending on the number of steps involved, the progress bar may be incremented when:
     // (1) Image is rendered, (2) pdf text is generated, (3) text/image pdfs are combined. 
     let maxValueProgress = maxValue + 1;
-    if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
+    if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked && displayModeElem.value != "ebook") {
       maxValueProgress = maxValueProgress * 2;
     } else if (displayModeElem.value != "ebook") {
       maxValueProgress = maxValueProgress * 3;
