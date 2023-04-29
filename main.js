@@ -27,7 +27,7 @@ import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, replaceLigatur
 
 // Functions for various UI tabs
 import {
-  deleteSelectedWords, toggleStyleSelectedWords, changeWordFontSize, changeWordFont, toggleSuperSelectedWords,
+  deleteSelectedWords, changeWordFontStyle, changeWordFontSize, changeWordFontFamily, toggleSuperSelectedWords,
   updateHOCRWord, adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateHOCRBoundingBoxWord, updateWordCanvas
 } from "./js/interfaceEdit.js";
 
@@ -350,14 +350,14 @@ document.getElementById('fontPlus')?.addEventListener('click', () => { changeWor
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 fontSizeElem.addEventListener('change', (event) => { changeWordFontSize(fontSizeElem.value) });
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
-wordFontElem.addEventListener('change', (event) => { changeWordFont(wordFontElem.value) });
+wordFontElem.addEventListener('change', (event) => { changeWordFontFamily(wordFontElem.value) });
 
 const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
 const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
 const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
-styleItalicElem.addEventListener('click', () => { toggleStyleSelectedWords('italic') });
-styleSmallCapsElem.addEventListener('click', () => { toggleStyleSelectedWords('small-caps') });
+styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic') });
+styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('small-caps') });
 styleSuperElem.addEventListener('click', toggleSuperSelectedWords);
 
 const styleItalicButton = new bootstrap.Button(styleItalicElem);
@@ -1963,11 +1963,14 @@ function addWordClick() {
       fill_ebook: 'black',
       fontFamily: globalSettings.defaultFont,
       fontStyle: "normal",
+      fontFamilyLookup: globalSettings.defaultFont,
+      fontStyleLookup: "normal",
       wordID: wordIDNew,
       textBackgroundColor: textBackgroundColor,
       //line: i,
       visualWidth: rect.width,
       visualLeft: rect.left,
+      visualBaseline: rect.bottom,
       defaultFontFamily: true,
       opacity: 1,
       //charSpacing: kerning * 1000 / wordFontSize

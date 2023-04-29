@@ -33,7 +33,7 @@ function deleteHOCRWord(word_id){
 }
 
 
-export async function toggleStyleSelectedWords(style){
+export async function changeWordFontStyle(style){
   style = style.toLowerCase()
 
   const selectedObjects = window.canvas.getActiveObjects();
@@ -48,6 +48,8 @@ export async function toggleStyleSelectedWords(style){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
     updateHOCRStyleWord(wordIDI, newValueStr);
+
+    wordI.fontStyleLookup = newValueStr;
 
     if(enable && style == "small-caps"){
         wordI.fontFamily = wordI.fontFamily.replace(/\s+small caps$/i, "") + " Small Caps";
@@ -166,7 +168,7 @@ export function updateHOCRBoundingBoxWord(word_id, leftDelta, rightDelta){
   }
 }
 
-export async function changeWordFont(fontName){
+export async function changeWordFontFamily(fontName){
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
   let fontNameCanvas = fontName == "Default" ? globalSettings.defaultFont : fontName;
@@ -178,6 +180,7 @@ export async function changeWordFont(fontName){
     updateHOCRFontWord(wordIDI, fontName);
     wordI.fontFamily = fontNameCanvas;
     wordI.defaultFontFamily = fontName == "Default" ? true : false;
+    wordI.fontFamilyLookup = fontName,
 
     await updateWordCanvas(wordI);
 
@@ -191,15 +194,28 @@ export async function changeWordFont(fontName){
 // the position and character spacing need to be re-calculated so they still overlay with the background image. 
 export async function updateWordCanvas(wordI) {
 
-  // Re-calculate left position given potentially new left bearing
-  const wordMetrics = await calcWordMetrics(wordI.text, wordI.fontFamily, wordI.fontSize, wordI.fontStyle);
+  // 1. Re-calculate left position given potentially new left bearing
+  const wordMetrics = await calcWordMetrics(wordI.text, wordI.fontFamilyLookup, wordI.fontSize, wordI.fontStyleLookup);
 
-  // When the user selects multiple words at the same time, the left coordinate becomes relative to the "group"
-  const groupOffset = wordI?.group?.ownMatrixCache?.value[4] || 0;
+  // When the user selects multiple words at the same time, the coordinates becomes relative to the "group"
+  const groupOffsetLeft = wordI?.group?.ownMatrixCache?.value[4] || 0;
 
-  wordI.left = wordI.visualLeft - wordMetrics["leftSideBearing"] - groupOffset;
+  wordI.left = wordI.visualLeft - wordMetrics["leftSideBearing"] - groupOffsetLeft;
 
-  // Re-calculate character spacing (if the word has multiple letters)
+  // 2. Re-calculate vertical position given potentially new descender metric
+  const groupOffsetTop = wordI?.group?.ownMatrixCache?.value[5] || 0;
+
+  ctx.font = 1000 + 'px ' + globalThis.defaultFont;
+  const oMetrics = ctx.measureText("o");
+
+  const fontObjI = await globalThis.fontObj[wordI.fontFamilyLookup][wordI.fontStyleLookup];
+  let fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
+
+  let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordI.fontSize / 1000);
+
+  wordI.top = wordI.visualBaseline + fontDesc - groupOffsetTop;
+
+  // 3. Re-calculate character spacing (if the word has multiple letters)
   if(wordI.text.length > 1){
     const visualWidthNew = wordMetrics["visualWidth"];
     const kerning = (wordI.visualWidth - visualWidthNew) / (wordI.text.length - 1);

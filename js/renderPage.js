@@ -190,9 +190,11 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
       let word_id = word.getAttribute('id');
 
-
-      const confThreshHigh = document.getElementById("confThreshHigh").value != "" ? parseInt(document.getElementById("confThreshHigh").value) : 85;
-      const confThreshMed = document.getElementById("confThreshMed").value != "" ? parseInt(document.getElementById("confThreshMed").value) : 75;
+      const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
+      const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
+      
+      const confThreshHigh = confThreshHighElem.value != "" ? parseInt(confThreshHighElem.value) : 85;
+      const confThreshMed = confThreshMedElem.value != "" ? parseInt(confThreshMedElem.value) : 75;
 
       let fillColorHex;
       if (wordConf > confThreshHigh) {
@@ -203,7 +205,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         fillColorHex = "#ff0000";
       }
 
-      const displayMode = document.getElementById('displayMode').value;
+      const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
+      const displayMode = displayModeElem.value;
 
       let opacity_arg, fill_arg;
       // Set current text color and opacity based on display mode selected
@@ -238,7 +241,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
 
         let baselineWord;
-        let top;
+        let visualBaseline;
         if (wordSup || wordDropCap) {
 
           baselineWord = box[3];
@@ -265,11 +268,13 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
       
           }
 
-          top = box[3] + fontDesc + angleAdjYWord;
+          visualBaseline = box[3] + angleAdjYWord;
       
         } else {
-          top = linebox[3] + baseline[1] + fontDesc + angleAdjYLine;
+          visualBaseline = linebox[3] + baseline[1] + angleAdjYLine;
         }
+
+        const top = visualBaseline + fontDesc;
 
         const visualLeft = box[0] + angleAdjXWord + leftAdjX;
         const left = visualLeft - wordLeftBearing;
@@ -294,10 +299,15 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           fill_eval: fillColorHexMatch,
           fontFamily: wordFontFamilyCanvas,
           fontStyle: fontStyleCanvas,
+
+          // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
+          fontFamilyLookup: wordFontFamily,
+          fontStyleLookup: fontStyle,
           wordID: word_id,
           line: i,
           visualWidth: box_width, // TODO: Is this incorrect when rotation exists? 
           visualLeft: visualLeft,
+          visualBaseline: visualBaseline,
           scaleX: scaleX,
           defaultFontFamily: defaultFontFamily,
           textBackgroundColor: textBackgroundColor,
