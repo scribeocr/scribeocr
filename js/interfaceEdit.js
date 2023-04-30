@@ -118,7 +118,14 @@ export async function changeWordFontSize(fontSize){
 
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
+
     const wordI = selectedObjects[i];
+
+    // If multiple words are selected, the change in font size only applies to the non-superscript words.
+    // Without this behavior, selecting a large area and standardizing the font size would result in
+    // the superscripted text becoming the same size as the non-superscript text. 
+    if (selectedN > 1 && wordI.wordSup) continue;
+
     const wordIDI = wordI.wordID;
     updateHOCRFontSizeWord(wordIDI, fontSize);
     document.getElementById("fontSize").value = fontSize;
