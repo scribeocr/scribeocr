@@ -115,8 +115,8 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
   pdfOut += "]\n/Count " + String(maxpage - minpage + 1) + ">>\nendobj\n\n";
 
   // Add fonts
-  // TODO: At present all fonts are added to every .pdf.
-  // A future version should only add the fonts that are actually used. 
+  // All fonts are added at this step. 
+  // The fonts that are not used will be removed by muPDF later.
   let fontI = 0;
   let pdfFonts = {};
   let pdfFontsStr = "";

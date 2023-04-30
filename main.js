@@ -3349,7 +3349,27 @@ async function handleDownload() {
 	    
     } else {
       const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
-      pdfBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
+
+      // The PDF is still run through muPDF, even thought in eBook mode no background layer is added.
+      // This is because muPDF cleans up the PDF we made in the previous step, including:
+      // (1) Removing fonts that are not used (significantly reduces file size)
+      // (2) Compresses PDF (significantly reduces file size)
+      // (3) Fixes minor errors
+      //      Being slightly outside of the PDF specification often does not impact readability,
+      //      however certain picky programs (e.g. Adobe Acrobat) will throw warning messages.
+      const enc = new TextEncoder();
+      const pdfEnc = enc.encode(pdfStr);
+
+      await initSchedulerIfNeeded("muPDFScheduler");
+
+      const w = globalThis.muPDFScheduler["workers"][0];
+
+      // The file name is only used to detect the ".pdf" extension
+      const pdf = await w.openDocument(pdfEnc.buffer, "document.pdf");
+
+      const content = await w.write([pdf, minValue, maxValue, dimsLimit[1], dimsLimit[0]]);
+
+      pdfBlob = new Blob([content], { type: 'application/octet-stream' });
     }
     saveAs(pdfBlob, fileName);
   } else if (download_type == "hocr") {

@@ -4684,6 +4684,8 @@ var _overlayPDFTextImageEnd = Module["_overlayPDFTextImageEnd"] = createExportWr
 
 var _overlayPDFTextImage = Module["_overlayPDFTextImage"] = createExportWrapper("overlayPDFTextImage");
 
+var _writePDF = Module["_writePDF"] = createExportWrapper("writePDF");
+
 var _getLastDrawData = Module["_getLastDrawData"] = createExportWrapper("getLastDrawData");
 
 var _getLastDrawSize = Module["_getLastDrawSize"] = createExportWrapper("getLastDrawSize");

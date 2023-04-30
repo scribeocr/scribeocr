@@ -108,6 +108,7 @@ let ready = false;
     mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number']);
     mupdf.overlayPDFTextImageEnd = Module.cwrap('overlayPDFTextImageEnd', 'null', ['number']);
     mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number']);
+	mupdf.writePDF = Module.cwrap('writePDF', 'null', ['number', 'number', 'number', 'number']);
     mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
     mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
     wasm_pageText = Module.cwrap('pageText', 'string', ['number', 'number', 'number', 'number']);
@@ -187,6 +188,16 @@ mupdf.overlayTextImageEnd = function(doc) {
 	FS.unlink("/download.pdf");
 	return content;
 }
+
+mupdf.write = function (doc, doc1, minpage, maxpage, pagewidth, pageheight) {
+
+	mupdf.writePDF(doc1, minpage, maxpage, pagewidth, pageheight);
+	let content = FS.readFile("/download.pdf");
+
+	FS.unlink("/download.pdf");
+	return content;
+}
+
 
 mupdf.openDocument = function (data, magic) {
 	let n = data.byteLength;
