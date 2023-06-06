@@ -1370,7 +1370,7 @@ function convertPageStext(xmlPage, pageNum) {
     //   dropCap = true;
     // }
 
-    let lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=[\'\"](\s*[\d\.\-]+)(\s*[\d\.\-]+)?(\s*[\d\.\-]+)?(\s*[\d\.\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseFloat(x) })
+    let lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=[\'\"](\s*[\d\.\-]+)(\s*[\d\.\-]+)?(\s*[\d\.\-]+)?(\s*[\d\.\-]+)?/g)][0].slice(1, 5).map(function (x) { return Math.max(parseFloat(x),0) })
 
     if (lineBoxArr == null) { return ("") };
     lineBoxArr = [...lineBoxArr].map(function (x) { return parseInt(x) });
