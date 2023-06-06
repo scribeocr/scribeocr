@@ -1313,7 +1313,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
 const stextLineBoxRegex = new RegExp(/\<line bbox\=[\'\"]\>/, "i");
 const stextSplitRegex = new RegExp(/(?:\<char[^\>]*?c=[\'\"]\s+[\'\"]\/\>)|(?:\<\/font\>\s*(?=\<font))/, "ig");
 // The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
-const stextCharRegex = new RegExp(/(\<font[^\>]+\>\s*)?\<char quad=[\'\"](\s*[\d\.]+)(\s*[\d\.]+)(?:\s*[\d\.]+)(?:\s*[\d\.]+)(?:\s*[\d\.]+)(?:\s*[\d\.]+)(\s*[\d\.]+)(\s*[\d\.]+)[^\>]*?y=[\'\"]([\d\.]+)[\'\"][^\>]*?c=[\'\"]([^\'\"]+)[\'\"]\s*\/\>/, "ig");
+const stextCharRegex = new RegExp(/(\<font[^\>]+\>\s*)?\<char quad=[\'\"](\s*[\d\.\-]+)(\s*[\d\.\-]+)(?:\s*[\d\.\-]+)(?:\s*[\d\.\-]+)(?:\s*[\d\.\-]+)(?:\s*[\d\.\-]+)(\s*[\d\.\-]+)(\s*[\d\.\-]+)[^\>]*?y=[\'\"]([\d\.\-]+)[\'\"][^\>]*?c=[\'\"]([^\'\"]+)[\'\"]\s*\/\>/, "ig");
 
 
 // Conversion function for "stext" (or "structured text" output from mupdf)
@@ -1323,7 +1323,7 @@ const stextCharRegex = new RegExp(/(\<font[^\>]+\>\s*)?\<char quad=[\'\"](\s*[\d
 // - Superscript detection
 function convertPageStext(xmlPage, pageNum) {
 
-  let pageDims = xmlPage.match(/<page .+?width=[\'\"]([\d\.]+)[\'\"] height=[\'\"]([\d\.]+)[\'\"]/);
+  let pageDims = xmlPage.match(/<page .+?width=[\'\"]([\d\.\-]+)[\'\"] height=[\'\"]([\d\.\-]+)[\'\"]/);
   pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
 
   const fontMetricsObj = {};
@@ -1370,7 +1370,7 @@ function convertPageStext(xmlPage, pageNum) {
     //   dropCap = true;
     // }
 
-    let lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=[\'\"](\s*[\d\.]+)(\s*[\d\.]+)?(\s*[\d\.]+)?(\s*[\d\.]+)?/g)][0].slice(1, 5).map(function (x) { return parseFloat(x) })
+    let lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=[\'\"](\s*[\d\.\-]+)(\s*[\d\.\-]+)?(\s*[\d\.\-]+)?(\s*[\d\.\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseFloat(x) })
 
     if (lineBoxArr == null) { return ("") };
     lineBoxArr = [...lineBoxArr].map(function (x) { return parseInt(x) });
