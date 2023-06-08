@@ -1443,13 +1443,14 @@ function convertPageStext(xmlPage, pageNum) {
 
       for (let j = 0; j < letterArr.length; j++) {
 
+        // Math.round(parseFloat(x)) is used rather than parseInt because parseInt returns NaN for numbers without a leading digit--e.g. ".1"
         bboxes[i][j] = [];
-        bboxes[i][j].push(parseInt(letterArr[j][2]));
-        bboxes[i][j].push(parseInt(letterArr[j][3]));
-        bboxes[i][j].push(parseInt(letterArr[j][4]));
-        bboxes[i][j].push(parseInt(letterArr[j][5]));
+        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][2])));
+        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][3])));
+        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][4])));
+        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][5])));
         // The 5th element is the y coordinate of the baseline, which is not in the Abbyy version
-        bboxes[i][j].push(parseInt(letterArr[j][6]));
+        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][6])));
 
         // All text in stext is considered correct/high confidence
         let letterSusp = false;
