@@ -1211,17 +1211,18 @@ function convertPageAbbyy(xmlPage, pageNum) {
     for (let i = 0; i < text.length; i++) {
       if (text[i].trim() == "") { continue };
       let bboxesI = bboxes[i];
-      const bboxesILeft = Math.min(...bboxesI.map(x => x[0]).filter(x => x > 0));
 
-      // Abbyy XML can strangely give coordinates of 0 (this has been observed for some but not all superscripts), so these must be filtered out,
-      // and it cannot be assumed that the rightmost letter has the maximum x coordinate.
+      // Abbyy-specific fix:
+      // Only values > 0 are considered, since Abbyy has been observed to frequently return incorrect "0" coordinates.
+      // This frequently (but not always) occurs with superscripts.
+      // If this filter leaves no remaining left/right/top/bottom coordinates, the word is skipped entirely.
       // TODO: Figure out why this happens and whether these glyphs should be dropped completely.
+      const bboxesILeft = Math.min(...bboxesI.map(x => x[0]).filter(x => x > 0));
       const bboxesIRight = Math.max(...bboxesI.map(x => x[2]).filter(x => x > 0));
-
       const bboxesITop = Math.min(...bboxesI.map(x => x[1]).filter(x => x > 0));
       const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]).filter(x => x > 0));
 
-      if (!isFinite(bboxesITop) || !isFinite(bboxesIBottom)) {
+      if (!isFinite(bboxesITop) || !isFinite(bboxesIBottom) || !isFinite(bboxesILeft) || !isFinite(bboxesIRight)) {
         continue;
       }
 
@@ -1732,19 +1733,10 @@ function convertPageStext(xmlPage, pageNum) {
       if (text[i].trim() == "") { continue };
       let bboxesI = bboxes[i];
 
-      const bboxesILeft = Math.min(...bboxesI.map(x => x[0]).filter(x => x > 0));
-
-      // Abbyy XML can strangely give coordinates of 0 (this has been observed for some but not all superscripts), so these must be filtered out,
-      // and it cannot be assumed that the rightmost letter has the maximum x coordinate.
-      // TODO: Figure out why this happens and whether these glyphs should be dropped completely.
-      const bboxesIRight = Math.max(...bboxesI.map(x => x[2]).filter(x => x > 0));
-
-      const bboxesITop = Math.min(...bboxesI.map(x => x[1]).filter(x => x > 0));
-      const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]).filter(x => x > 0));
-
-      if (!isFinite(bboxesITop) || !isFinite(bboxesIBottom)) {
-        continue;
-      }
+      const bboxesILeft = Math.min(...bboxesI.map(x => x[0]));
+      const bboxesIRight = Math.max(...bboxesI.map(x => x[2]));
+      const bboxesITop = Math.min(...bboxesI.map(x => x[1]));
+      const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]));
 
       xmlOut = xmlOut + "<span class='ocrx_word' id='word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1) + "' title='bbox " + bboxesILeft + " " + bboxesITop + " " + bboxesIRight + " " + bboxesIBottom;
       if (wordSusp[i]) {
