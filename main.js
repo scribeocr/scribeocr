@@ -2430,6 +2430,7 @@ async function importFiles() {
   if (inputDataModes.pdfMode) {
 
     globalThis.pdfFile = pdfFilesAll[0];
+    globalThis.inputFileNames = [globalThis.pdfFile.name];
 
     // Initialize scheduler
     await initSchedulerIfNeeded("muPDFScheduler");

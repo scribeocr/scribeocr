@@ -187,7 +187,7 @@ export async function writeXlsx(hocrCurrent) {
     const extraCols = [];
     if (addFilenameMode) {
       if (inputDataModes.pdfMode) {
-        extraCols.push(globalThis.pdfFile);
+        extraCols.push(globalThis.inputFileNames[0]);
       } else {
         extraCols.push(globalThis.inputFileNames[i]);
       }
