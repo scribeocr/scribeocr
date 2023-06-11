@@ -883,6 +883,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                       <li><a id="formatLabelOptionHOCR" class="dropdown-item" href="#">HOCR</a></li>
                       <li><a id="formatLabelOptionText" class="dropdown-item" href="#">Text</a></li>
                       <li><a id="formatLabelOptionDocx" class="dropdown-item" href="#">Docx</a></li>
+                      <li><a id="formatLabelOptionXlsx" class="dropdown-item" href="#" style="display:none">Xlsx</a></li>
                     </ul>
                   </div>
                 </div>
@@ -937,6 +938,13 @@ All files are sorted in alphabetic order." data-bs-placement="right">
               <div class="form-check form-switch">
                 <label><input class="form-check-input" type="checkbox" id="docxReflowCheckbox" checked> Reflow Text</label><br/>
                 <label><input class="form-check-input" type="checkbox" id="docxPageBreaksCheckbox" checked> Breaks Between Pages</label>
+              </div>
+            </div>
+            <div id="xlsxOptions" class="col col-3" style="display:none">
+              <label>Xlsx Options</label>
+              <div class="form-check form-switch">
+                <label><input class="form-check-input" type="checkbox" id="xlsxFilenameColumn" checked> Add Filename Column</label>
+                <label><input class="form-check-input" type="checkbox" id="xlsxPageNumberColumn" checked> Add Page Number Column</label>
               </div>
             </div>
           </div>
@@ -1000,6 +1008,9 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                   </div>
                   <div class="form-check form-switch">
                     <label><input class="form-check-input" type="checkbox" id="enableLayout"> Edit Layout</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <label><input class="form-check-input" type="checkbox" id="enableXlsxExport"> Xlsx Export</label>
                   </div>
                 </div>
               </div>

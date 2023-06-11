@@ -21,7 +21,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
   let ctx = canvas.getContext('2d');
 
-  const layoutMode = enableLayoutElem.checked;
+  const layoutMode = globalThis.layoutMode || false;
 
   // objectCaching slows down page render speeds, and is generally not needed.
   // The exception is when working in layoutMode, where users draw semi-transparent rectangles

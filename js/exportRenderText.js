@@ -139,7 +139,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
             const styleStr = fontStyle == "" ? "" : "<w:rPr>" + fontStyle + "</w:rPr>";
 
             if (h == 0 && g == 0 && i == 0) {
-              textStr = textStr + "<w:p><w:r>" + styleStr + "<w:t>";
+              textStr = textStr + "<w:p><w:r>" + styleStr + "<w:t xml:space=\"preserve\">";
             } else if (newLine) {
               textStr = textStr + "</w:t></w:r></w:p><w:p><w:r>" + styleStr + "<w:t xml:space=\"preserve\">";
             } else {

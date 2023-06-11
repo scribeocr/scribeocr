@@ -521,7 +521,7 @@ function penalizeWord(wordStr) {
 
 
 // Returns the proportion of boxA's area contained in boxB
-function calcOverlap(boxA, boxB) {
+export function calcOverlap(boxA, boxB) {
   const left = Math.max(boxA[0], boxB[0]);
   const top = Math.max(boxA[1], boxB[1]);
   const right = Math.min(boxA[2], boxB[2]);
