@@ -106,6 +106,11 @@
     .form-check-input:checked {
       background-color: var(--bs-info);
     }
+
+    .dataPreview table, th, td {
+      border:1px solid black;
+    }
+
   </style>
   <meta charset="utf-8" />
   <script src="./lib/bootstrap.bundle.min.js"></script>
@@ -255,6 +260,24 @@
                     <li><a class="dropdown-item" id="setLayoutBoxTypeExclude">Exclude</a></li>
                   </ul>
                 </div>
+                <div class="btn-group mb-2" style="width:100%;">
+                  <button type="button" id="setLayoutBoxInclusionRule" class="btn btn-secondary btn-sm dropdown-toggle"
+                    data-bs-toggle="dropdown" aria-expanded="false" style="width:100%;text-align:left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-back" viewBox="0 0 16 16">
+                      <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2z"/>
+                    </svg> Set Box Inclusion Rule</button>
+                  <!-- <button type="button" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="visually-hidden">Toggle Dropdown</span> -->
+                  </button>
+                  <ul class="dropdown-menu">
+                    <!-- <li><a class="dropdown-item" id="recognizeNumber">Recognize Number</a></li> -->
+                    <li><a class="dropdown-item" id="setLayoutBoxInclusionRuleMajority">Majority</a></li>
+                    <li><a class="dropdown-item" id="setLayoutBoxInclusionRuleLeft">Left</a></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="col col-2">
                 <button type="button" id="showExcludedText" class="btn btn-secondary btn-sm"
                   style="width:100%;text-align:left">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -262,7 +285,6 @@
                     <path
                       d="M4 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm2.625.547a3 3 0 0 0-5.584.953H.5a.5.5 0 0 0 0 1h.541A3 3 0 0 0 7 8a1 1 0 0 1 2 0 3 3 0 0 0 5.959.5h.541a.5.5 0 0 0 0-1h-.541a3 3 0 0 0-5.584-.953A1.993 1.993 0 0 0 8 6c-.532 0-1.016.208-1.375.547zM14 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
                   </svg> Show Excluded Text</button>
-
               </div>
 
             </div>
@@ -1119,6 +1141,7 @@ All files are sorted in alphabetic order." data-bs-placement="right">
           <div class="container">
             <div class="col">
               <canvas id="c" style="border-style:solid;" width="450" height="600"></canvas>
+              <table id="dataPreview" class="dataPreview" style="display:none"></table>
               <canvas id="d" style="display:none"></canvas>
               <canvas id="e" style="display:none"></canvas>
               <canvas id="h" style="display:none"></canvas>

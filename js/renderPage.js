@@ -1,7 +1,7 @@
 
 import { getFontSize, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
 import { updateHOCRBoundingBoxWord, updateHOCRWord, updateWordCanvas } from "./interfaceEdit.js";
-import { renderLayoutBoxes } from "./interfaceLayout.js";
+import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
 import { round3 } from "./miscUtils.js"
 
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
@@ -485,6 +485,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
   if (layoutMode) {
 
     renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]));
+
+    updateDataPreview();
 
   }
 

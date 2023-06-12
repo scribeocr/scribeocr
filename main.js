@@ -14,7 +14,7 @@ import { importOCR, convertOCR } from "./js/importOCR.js";
 import { renderText } from './js/exportRenderText.js';
 import { renderHOCR } from './js/exportRenderHOCR.js';
 import { writeDocx } from './js/exportWriteDocx.js';
-import { writeXlsx } from './js/exportWriteXlsx.js';
+import { writeXlsx } from './js/exportWriteTabular.js';
 
 import { renderPage } from './js/renderPage.js';
 import { coords } from './js/coordinates.js';
@@ -33,7 +33,7 @@ import {
 } from "./js/interfaceEdit.js";
 
 import {
-  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick
+  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, updateDataPreview
 } from "./js/interfaceLayout.js"
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
@@ -323,8 +323,10 @@ enableXlsxExportElem.addEventListener('click', () => {
     // Adding layouts is required for xlsx exports
     if (!enableLayoutElem.checked) enableLayoutElem.click();
     document.getElementById("formatLabelOptionXlsx")?.setAttribute("style", "");
+    updateDataPreview();
   } else {
     document.getElementById("formatLabelOptionXlsx")?.setAttribute("style", "display:none");
+    updateDataPreview();
   }
 });
 
@@ -478,6 +480,11 @@ const setLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getEl
 const setLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeExclude'));
 setLayoutBoxTypeOrderElem.addEventListener('click', () => setLayoutBoxTypeClick("order"));
 setLayoutBoxTypeExcludeElem.addEventListener('click', () => setLayoutBoxTypeClick("exclude"));
+
+const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
+const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
+setLayoutBoxInclusionRuleMajorityElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick("majority"));
+setLayoutBoxInclusionRuleLeftElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick("left"));
 
 const showExcludedTextElem = /** @type {HTMLInputElement} */(document.getElementById('showExcludedText'));
 showExcludedTextElem.addEventListener('click', () => getExcludedText());

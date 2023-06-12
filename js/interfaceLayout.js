@@ -2,6 +2,8 @@ import { getRandomAlphanum } from "./miscUtils.js";
 
 import { displayPage } from "../main.js";
 
+import { createCells } from "./exportWriteTabular.js";
+
 export function addLayoutBoxClick() {
 
     canvas.__eventListeners = {}
@@ -38,7 +40,10 @@ export function addLayoutBoxClick() {
         rect.hasControls = true;
         rect.setControlsVisibility({ bl: true, br: true, mb: true, ml: true, mr: true, mt: true, tl: true, tr: true, mtr: false });
 
-        textbox = new fabric.IText("1", {
+        // Maximum priority for boxes that already exist
+        const maxPriority = Math.max(...Object.values(globalThis.layout[currentPage.n].boxes).map(x => x.priority), 0);
+
+        textbox = new fabric.IText(String(maxPriority + 1), {
             left: origX,
             top: origY,
             originX: "center",
@@ -74,6 +79,7 @@ export function addLayoutBoxClick() {
 
             globalThis.layout[currentPage.n]["boxes"][id]["coords"] = [target.aCoords.tl.x, target.aCoords.tl.y, target.aCoords.br.x, target.aCoords.br.y];
             globalThis.layout[currentPage.n]["default"] = false;
+            updateDataPreview();
         }
 
         textbox.on('editing:exited', async function (obj) {
@@ -81,6 +87,7 @@ export function addLayoutBoxClick() {
                 const id = this.id;
                 globalThis.layout[currentPage.n]["boxes"][id]["priority"] = parseInt(this.text);
                 globalThis.layout[currentPage.n]["default"] = false;
+                updateDataPreview();
             }
         });
 
@@ -128,9 +135,11 @@ export function addLayoutBoxClick() {
                 globalThis.layout[currentPage.n]["boxes"][id] = {
                     priority: parseInt(textbox.text),
                     coords: [rect.aCoords.tl.x, rect.aCoords.tl.y, rect.aCoords.br.x, rect.aCoords.br.y],
-                    type: "order"
+                    type: "order",
+                    inclusionRule: "majority"
                 };
                 init = true;
+                updateDataPreview();
             }
         });
 
@@ -188,6 +197,7 @@ export function deleteLayoutBoxes(ids, deleteData = true, renderAll = true) {
     }
 
     if (renderAll) canvas.renderAll();
+    updateDataPreview()
 
 }
 
@@ -205,6 +215,7 @@ export function revertLayoutClick() {
     globalThis.layout[currentPage.n]["default"] = true;
     globalThis.layout[currentPage.n]["boxes"] = structuredClone(globalThis.defaultLayout);
     displayPage(currentPage.n);
+    updateDataPreview();
 }
 
 
@@ -228,6 +239,27 @@ export function setLayoutBoxTypeClick(type) {
     deleteLayoutBoxes(idsChange, false, false);
 
     renderLayoutBoxes(idsChange);
+
+}
+
+export function setLayoutBoxInclusionRuleClick(rule) {
+
+    const ids = getSelectedLayoutBoxIds();
+
+    if (ids.length == 0) return;
+
+    const idsChange = [];
+
+    for (let i=0; i<ids.length; i++) {
+        if (globalThis.layout[currentPage.n]["boxes"][ids[i]].inclusionRule != rule) {
+            idsChange.push(ids[i]);
+            globalThis.layout[currentPage.n]["boxes"][ids[i]].inclusionRule = rule;
+        }
+    }
+
+    if (idsChange.length > 0) updateDataPreview();
+
+    return;
 
 }
 
@@ -320,9 +352,40 @@ function renderLayoutBox(id) {
       const id = target.id;
 
       globalThis.layout[currentPage.n]["boxes"][id]["coords"] = [target.aCoords.tl.x, target.aCoords.tl.y, target.aCoords.br.x, target.aCoords.br.y];
+      updateDataPreview();
     }
     
     canvas.add(rect);
     if (obj["type"] == "order") canvas.add(textbox);
 
+}
+
+// Update tabular data preview table
+// Should be run (1) on edits (to either OCR data or layout), (2) when a new page is rendered,
+// or (3) when settings are changed to enable/disable tabular export mode.
+export function updateDataPreview() {
+    if (!globalThis.inputFileNames) return;
+
+    const dataPreviewElem = document.getElementById("dataPreview");
+    if (document.getElementById("enableXlsxExport").checked) {
+        dataPreviewElem.setAttribute("style", "");
+    } else {
+        dataPreviewElem.setAttribute("style", "display:none");
+        return;
+    }
+
+    const addFilenameMode = document.getElementById("xlsxFilenameColumn").checked;
+    const addPageNumberColumnMode = document.getElementById("xlsxPageNumberColumn").checked;
+  
+    const extraCols = [];
+    if (addFilenameMode) {
+      if (inputDataModes.pdfMode) {
+        extraCols.push(globalThis.inputFileNames[0]);
+      } else {
+        extraCols.push(globalThis.inputFileNames[currentPage.n]);
+      }
+    }
+    if (addPageNumberColumnMode) extraCols.push(String(currentPage.n+1));
+
+    dataPreviewElem.innerHTML = createCells(currentPage.xmlDoc?.documentElement.outerHTML, globalThis.layout[currentPage.n], extraCols, 0, false, true).content;
 }

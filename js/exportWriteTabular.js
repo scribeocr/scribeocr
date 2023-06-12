@@ -10,7 +10,8 @@ import { calcOverlap } from "./compareHOCR.js";
 
 const parser = new DOMParser();
 
-export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0) {
+export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
+
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return {content: "", rows: 0};
 
   const hocrA = parser.parseFromString(hocrStrA, "text/xml");
@@ -28,8 +29,11 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0) {
     const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
     lineBoxArr[i] = lineBoxA;
 
+    const lineBoxALeft = [lineBoxA[0], lineBoxA[1], lineBoxA[0] + 1, lineBoxA[3]];
+
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
-      const overlap = calcOverlap(lineBoxA, obj["coords"]);
+       
+      const overlap = obj.inclusionRule == "left" ? calcOverlap(lineBoxALeft, obj["coords"]) : calcOverlap(lineBoxA, obj["coords"]);
       if (overlap > 0.5) {
         if (obj["type"] == "order") {
           priorityArr[i] = obj["priority"];
@@ -99,19 +103,39 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0) {
 
   let textStr = "";
   for (let i = 0; i < rowIndex; i++) {
-    textStr += "<row r=\"" + String(startRow+i+1) + "\">";
+    if (xlsxMode) {
+      textStr += "<row r=\"" + String(startRow+i+1) + "\">";
+    } else if (htmlMode) {
+      textStr += "<tr>"
+    }
 
     for (let j = 0; j < extraCols.length; j++) {
       // Escape special characters for XML
       const colTxt = extraCols[j].replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&apos;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      textStr += "<c r=\"" + letters[j] + String(startRow+i+1) + "\" t=\"inlineStr\"><is><r><t xml:space=\"preserve\">" + colTxt + "</t></r></is></c>";
+      if (xlsxMode) {
+        textStr += "<c r=\"" + letters[j] + String(startRow+i+1) + "\" t=\"inlineStr\"><is><r><t xml:space=\"preserve\">" + colTxt + "</t></r></is></c>";
+      } else if (htmlMode) {
+        textStr += "<td>" + colTxt + "</td>"
+      }
     }
 
     for (let j = 0; j < colArrBox.length; j++) {
       const lines = dataObj[String(i) + "," + String(j)];
-      if (!lines || lines.length == 0) continue;
 
-      textStr += "<c r=\"" + letters[j+extraCols.length] + String(startRow+i+1) + "\" t=\"inlineStr\"><is>";
+      // In xlsx, empty cells are omitted entirely.  For other formats they are included.
+      if (!lines || lines.length == 0) {
+        if (htmlMode) {
+          textStr += "<td/>"
+        }
+        continue;
+      }
+
+      if (xlsxMode) {
+        textStr += "<c r=\"" + letters[j+extraCols.length] + String(startRow+i+1) + "\" t=\"inlineStr\"><is>";
+      } else if (htmlMode) {
+        textStr += "<td>";
+      }
+      
       for (let k = 0; k < lines.length; k++) {
         const line = lines[k];
 
@@ -122,8 +146,7 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0) {
         for (let l = 0; l < words.length; l++) {
           const word = words[l];
   
-          const docxMode = true;
-          if (docxMode) {
+          if (xlsxMode) {
             let styleStr = word.getAttribute('style') ?? "";
   
             let fontStyle;
@@ -148,10 +171,12 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0) {
             } else {
               textStr = textStr + " ";
             }
-          } 
+          } else {
+            textStr = textStr + " ";
+          }
     
           // DOCX is an XML format, so any escaped XML characters need to continue being escaped.
-          if (docxMode) {
+          if (xlsxMode) {
             // TODO: For now we just delete superscript tags.
             // Eventually this should be added to Word exports properly. 
             textStr = textStr + word.innerHTML.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "");
@@ -161,10 +186,19 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0) {
         }
       }
 
-      textStr += "</t></r></is></c>"
+      if (xlsxMode) {
+        textStr += "</t></r></is></c>";
+      } else if (htmlMode) {
+        textStr += "</td>";
+      }
 
     }
-    textStr += "</row>";
+
+    if (xlsxMode) {
+      textStr += "</row>";
+    } else if (htmlMode) {
+      textStr += "</tr>";
+    }
   }
 
   return {content: textStr, rows: rowIndex}
