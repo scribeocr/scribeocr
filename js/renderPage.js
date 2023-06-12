@@ -486,8 +486,8 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
     renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]));
 
-    updateDataPreview();
-
   }
+
+  updateDataPreview();
 
 }

@@ -572,6 +572,7 @@ const nextMatchElem = /** @type {HTMLInputElement} */(document.getElementById('n
 prevMatchElem.addEventListener('click', () => prevMatchClick());
 nextMatchElem.addEventListener('click', () => nextMatchClick());
 
+
 function prevMatchClick() {
   if (currentPage.n == 0) return;
   const lastPage = find.matches.slice(0, currentPage.n)?.findLastIndex((x) => x > 0);
@@ -845,6 +846,11 @@ function setFormatLabel(x) {
 
   }
 }
+
+const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
+const xlsxPageNumberColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxPageNumberColumn'));
+xlsxFilenameColumnElem.addEventListener('click', updateDataPreview);
+xlsxPageNumberColumnElem.addEventListener('click', updateDataPreview);
 
 const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById("oemLabelText"));
 

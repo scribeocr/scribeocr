@@ -31,7 +31,9 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
 
     const lineBoxALeft = [lineBoxA[0], lineBoxA[1], lineBoxA[0] + 1, lineBoxA[3]];
 
-    for (const [id, obj] of Object.entries(layoutObj.boxes)) {
+    // It is possible for a single line to match the inclusion criteria for multiple boxes.
+    // To make the results predictable, we sort by priority, and use the first match identified.
+    for (const obj of Object.values(layoutObj.boxes).sort((a,b) => a.priority - b.priority)) {
        
       const overlap = obj.inclusionRule == "left" ? calcOverlap(lineBoxALeft, obj["coords"]) : calcOverlap(lineBoxA, obj["coords"]);
       if (overlap > 0.5) {
@@ -41,6 +43,7 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
           // Priority "11" is used to remove lines
           priorityArr[i] = 11;
         }
+        break;
       } 
     }
   }
