@@ -6,6 +6,8 @@ import { createCells } from "./exportWriteTabular.js";
 
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
 
+const strokeWidth = 5;
+
 export function addLayoutBoxClick() {
 
     canvas.__eventListeners = {}
@@ -38,7 +40,7 @@ export function addLayoutBoxClick() {
             id: id,
             scribeType: "layoutRect",
             stroke: "rgba(0,0,255,0.75)",
-            strokeWidth: 5
+            strokeWidth: strokeWidth
             // preserveObjectStacking: true
         });
         rect.hasControls = true;
@@ -359,7 +361,7 @@ function renderLayoutBox(id) {
       id: id,
       scribeType: "layoutRect",
       stroke: "rgba(0,0,255,0.75)",
-      strokeWidth: 5
+      strokeWidth: strokeWidth
       // preserveObjectStacking: true
     });
     rect.hasControls = true;
@@ -458,13 +460,20 @@ function renderLayoutBox(id) {
     rect.on({"mouseup": updateLayoutBoxes})
 
     function updateLayoutBoxes(obj) {
-      const target = obj.target;
-      const id = target.id;
+        const target = obj.target;
+        const id = target.id;
 
-      globalThis.layout[currentPage.n]["boxes"][id]["coords"] = [target.aCoords.tl.x, target.aCoords.tl.y, target.aCoords.br.x, target.aCoords.br.y];
-      updateDataPreview();
+        if (target.group && !target?.group?.ownMatrixCache) target.group.calcOwnMatrix();
+
+        // When the user selects multiple words at the same time, the coordinates becomes relative to the "group"
+        const groupOffsetLeft = target?.group?.ownMatrixCache?.value[4] || 0;
+        const groupOffsetTop = target?.group?.ownMatrixCache?.value[5] || 0;
+
+        // Stroke impacts the right/bottom coordinates, so needs to be subtraced
+        globalThis.layout[currentPage.n]["boxes"][id]["coords"] = [target.aCoords.tl.x + groupOffsetLeft, target.aCoords.tl.y + groupOffsetTop, target.aCoords.br.x + groupOffsetLeft - strokeWidth, target.aCoords.br.y + groupOffsetTop - strokeWidth];
+        updateDataPreview();
     }
-    
+
     canvas.add(rect);
     if (obj["type"] == "order") canvas.add(textbox);
 
