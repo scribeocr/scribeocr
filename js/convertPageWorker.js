@@ -7,6 +7,28 @@ function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
 }
 
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
+}
+
+function getRandomAlphanum(num){
+  let outArr = new Array(num);
+  for(let i=0;i<num;i++){
+    let intI = getRandomInt(1,62);
+    if(intI <= 10){
+      intI = intI + 47;
+    } else if(intI <= 36){
+      intI = intI - 10 + 64;
+    } else {
+      intI = intI - 36 + 96;
+    }
+    outArr[i] = String.fromCharCode(intI);
+  }
+  return outArr.join('');
+}
+
 // Sans/serif lookup for common font families
 // Should be added to if additional fonts are encountered
 const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
@@ -747,7 +769,7 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
   fontMetricsPage["message"] = charMode ? "" : "char_warning";
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsPage]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsPage, {}]);
 
 }
 
@@ -764,8 +786,10 @@ function convertPageAbbyy(xmlPage, pageNum) {
   pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
 
   if (!/\<charParams/i.test(xmlPage)) {
-    return (["", pageDims, null, null, null, new Object, new Object, new Object, new Object, new Object, "char_error"])
+    return (["", pageDims, null, null, null, {message: "char_error"}, {}]);
   }
+
+  const boxes = convertTableLayoutAbbyy(xmlPage);
 
   const fontMetricsObj = {};
 
@@ -1307,7 +1331,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
   const dimsOut = pageDims;
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, boxes]);
 
 }
 
@@ -1820,6 +1844,65 @@ function convertPageStext(xmlPage, pageNum) {
 
   const dimsOut = pageDims;
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj]);
+  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, {}]);
+
+}
+
+function convertTableLayoutAbbyy(xmlPage) {
+
+  // Note: This assumes that block elements are not nested within table block elements
+  // Not sure if this is true or not
+  const tableRegex = new RegExp(/<block blockType\=[\"\']Table[\s\S]+?(?:\<\/block\>\s*)/, "ig");
+
+  let tables = xmlPage.match(tableRegex);
+
+  if (!tables) return {};
+
+  const boxes = {};
+
+  for (let i=0; i < tables.length; i++) {
+    const table = tables[i];
+    const tableCoords = table.match(/<block blockType=[\'\"]Table[\'\"][^>]*?l=[\'\"](\d+)[\'\"] t=[\'\"](\d+)[\'\"] r=[\'\"](\d+)[\'\"] b=[\'\"](\d+)[\'\"]/i).slice(1, 5).map(function (x) { return parseInt(x) });
+
+    let leftLast = tableCoords[0];
+
+    const rows = table.match(/<row[\s\S]+?(?:\<\/row\>\s*)/g);
+
+    // Columns widths are calculated using the cells in a single row.
+    // The first row is used unless it contains cells spanning multiple columns,
+    // in which case the second row is used. 
+    const firstRow = rows[1] && /colSpan/.test(rows[0]) ? rows[1] : rows[0];
+
+    const firstRowCells = firstRow.match(/<cell[\s\S]+?(?:\<\/cell\>\s*)/ig);
+
+    for (let j=0; j < firstRowCells.length; j++) {
+      const cell = firstRowCells[j];
+      const cellWidth = parseInt(cell.match(/width=[\'\"](\d+)[\'\"]/)?.[1]);
+
+      const id = getRandomAlphanum(10);
+
+      const cellLeft = leftLast;
+      const cellRight = leftLast + cellWidth;
+
+      leftLast = cellRight;
+
+      const priority = Object.keys(boxes).length + 1;
+
+      boxes[id] = {
+        priority: priority,
+        coords: [cellLeft, tableCoords[1], cellRight, tableCoords[3]],
+        type: "dataColumn",
+        table: i,
+        inclusionRule: "majority"
+      };
+    }
+
+    if (Math.abs(leftLast - tableCoords[2]) > 10) {
+      console.log("Table width does not match sum of rows: " + String(tableCoords[2]) + " vs " + String(leftLast));
+    }
+
+  }
+
+  return boxes;
 
 }

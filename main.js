@@ -33,7 +33,7 @@ import {
 } from "./js/interfaceEdit.js";
 
 import {
-  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, updateDataPreview
+  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching
 } from "./js/interfaceLayout.js"
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
@@ -478,13 +478,20 @@ revertLayoutElem.addEventListener('click', () => revertLayoutClick());
 
 const setLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeOrder'));
 const setLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeExclude'));
+const setLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeDataColumn'));
+
 setLayoutBoxTypeOrderElem.addEventListener('click', () => setLayoutBoxTypeClick("order"));
 setLayoutBoxTypeExcludeElem.addEventListener('click', () => setLayoutBoxTypeClick("exclude"));
+setLayoutBoxTypeDataColumnElem.addEventListener('click', () => setLayoutBoxTypeClick("dataColumn"));
 
 const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
 const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
 setLayoutBoxInclusionRuleMajorityElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick("majority"));
 setLayoutBoxInclusionRuleLeftElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick("left"));
+
+const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
+setLayoutBoxTableElem.addEventListener('change', (event) => { setLayoutBoxTable(setLayoutBoxTableElem.value) });
+
 
 const showExcludedTextElem = /** @type {HTMLInputElement} */(document.getElementById('showExcludedText'));
 showExcludedTextElem.addEventListener('click', () => getExcludedText());
@@ -756,7 +763,7 @@ function updatePdfPagesLabel() {
 
   let minValue = parseInt(pdfPageMinElem.value) || null;
   let maxValue = parseInt(pdfPageMaxElem.value) || null;
-  let pageCount = globalThis.imageAll.nativeSrc.length;
+  let pageCount = globalThis.imageAll.nativeSrc?.length;
 
   minValue = Math.max(minValue, 1);
   maxValue = Math.min(maxValue, pageCount);
@@ -1024,14 +1031,21 @@ for (const [key, value] of Object.entries(tabHeightObj)) {
   document.getElementById(key)?.addEventListener('hide.bs.collapse', adjustPaddingRow);
 }
 
-document.getElementById("nav-layout")?.addEventListener('show.bs.collapse', () => {
+document.getElementById("nav-layout")?.addEventListener('show.bs.collapse', (e) => {
+  if (e.target.id != "nav-layout") return;
   globalThis.layoutMode = true;
-  renderPageQueue(currentPage.n);
+
+  if (!globalThis.layout[currentPage.n]) return;
+  if (!fabric.Object.prototype.objectCaching) enableObjectCaching();
+
+  renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]));
+  
 });
 
-document.getElementById("nav-layout")?.addEventListener('hide.bs.collapse', () => {
+document.getElementById("nav-layout")?.addEventListener('hide.bs.collapse', (e) => {
+  if (e.target.id != "nav-layout") return;
   globalThis.layoutMode = false;
-  renderPageQueue(currentPage.n);
+  clearLayoutBoxes();
 });
 
 

@@ -4,6 +4,8 @@ import { displayPage } from "../main.js";
 
 import { createCells } from "./exportWriteTabular.js";
 
+const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
+
 export function addLayoutBoxClick() {
 
     canvas.__eventListeners = {}
@@ -34,7 +36,9 @@ export function addLayoutBoxClick() {
             lockMovementX: false,
             lockMovementY: false,
             id: id,
-            scribeType: "layoutRect"
+            scribeType: "layoutRect",
+            stroke: "rgba(0,0,255,0.75)",
+            strokeWidth: 5
             // preserveObjectStacking: true
         });
         rect.hasControls = true;
@@ -201,6 +205,29 @@ export function deleteLayoutBoxes(ids, deleteData = true, renderAll = true) {
 
 }
 
+
+// Removes all layout boxes from the canvas, is called when the user minimizes the "Layout" UI tab.
+// This is far more performant than re-rendering the page from scratch.
+export function clearLayoutBoxes() {
+    const allObjects = window.canvas.getObjects();
+    const n = allObjects.length;
+    for (let i = 0; i < n; i++) {
+        if (["layoutRect", "layoutTextbox"].includes(allObjects[i]["scribeType"])) {
+            window.canvas.remove(allObjects[i]);
+        }
+    }
+    canvas.renderAll();
+}
+
+export function enableObjectCaching() {
+    fabric.Object.prototype.objectCaching = true;
+    const allObjects = window.canvas.getObjects();
+    const n = allObjects.length;
+    for (let i = 0; i < n; i++) {
+        allObjects[i].objectCaching = true;
+    }
+}
+
 export function setDefaultLayoutClick() {
     globalThis.layout[currentPage.n]["default"] = true;
     globalThis.defaultLayout = structuredClone(globalThis.layout[currentPage.n]["boxes"]);
@@ -241,6 +268,30 @@ export function setLayoutBoxTypeClick(type) {
     renderLayoutBoxes(idsChange);
 
 }
+
+export function setLayoutBoxTable(table) {
+
+    const ids = getSelectedLayoutBoxIds();
+
+    if (ids.length == 0) return;
+
+    const idsChange = [];
+
+    for (let i=0; i<ids.length; i++) {
+        if (globalThis.layout[currentPage.n]["boxes"][ids[i]].table != parseInt(table) - 1) {
+            idsChange.push(ids[i]);
+            globalThis.layout[currentPage.n]["boxes"][ids[i]].table = parseInt(table) - 1;
+        }
+    }
+
+    if (idsChange.length == 0) return;
+
+    deleteLayoutBoxes(idsChange, false, false);
+
+    renderLayoutBoxes(idsChange);
+
+}
+
 
 export function setLayoutBoxInclusionRuleClick(rule) {
 
@@ -283,8 +334,15 @@ function renderLayoutBox(id) {
     const width = obj["coords"][2] - obj["coords"][0];
     const height = obj["coords"][3] - obj["coords"][1];
 
-    // "Order" boxes are blue, "exclude" boxes are red
-    const fill = obj["type"] == "order" ? 'rgba(0,0,255,0.25)' : 'rgba(255,0,0,0.25)';
+    const colors = ["rgba(24,166,217,0.5)", "rgba(73,104,115,0.5)", "rgba(52,217,169,0.5)", "rgba(222,117,109,0.5)", "rgba(194,95,118,0.5)"];
+
+    // "Order" boxes are blue, "exclude" boxes are red, data columns are different colors for each table
+    let fill = 'rgba(255,0,0,0.25)';
+    if (obj["type"] == "order") {
+        fill = 'rgba(0,0,255,0.25)';
+    } else if (obj["type"] == "dataColumn") {
+        fill = colors[obj["table"] % colors.length]
+    }
 
     const rect = new fabric.Rect({
       left: origX,
@@ -299,11 +357,63 @@ function renderLayoutBox(id) {
       lockMovementX: false,
       lockMovementY: false,
       id: id,
-      scribeType: "layoutRect"
+      scribeType: "layoutRect",
+      stroke: "rgba(0,0,255,0.75)",
+      strokeWidth: 5
       // preserveObjectStacking: true
     });
     rect.hasControls = true;
     rect.setControlsVisibility({bl:true,br:true,mb:true,ml:true,mr:true,mt:true,tl:true,tr:true,mtr:false});
+
+    rect.on('selected', function () {
+        if (this.group) {
+            let tableGroup = null;
+            let singleTableGroup = true;
+            for (let i=0; i<this.group._objects.length; i++) {
+                const objI = this.group._objects[i];
+
+                if (!(objI["id"] && objI["scribeType"] == "layoutRect")) continue;
+
+                const obj = globalThis.layout[currentPage.n]["boxes"][objI.id];
+
+                if (!obj) continue;
+
+                if (obj["type"] == "dataColumn") {
+                    if (tableGroup == null) {
+                        tableGroup = obj["table"];
+                    } else {
+                        if (tableGroup != obj["table"]) {
+                            singleTableGroup = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (tableGroup != null) {
+                setLayoutBoxTableElem.disabled = false;
+                if (singleTableGroup) {
+                    setLayoutBoxTableElem.value = String(tableGroup + 1)
+                }
+            }
+
+        } else {
+            const obj = globalThis.layout[currentPage.n]["boxes"][this.id];
+
+            if (obj["type"] == "dataColumn") {
+                setLayoutBoxTableElem.disabled = false;
+                setLayoutBoxTableElem.value = String(obj["table"] + 1)
+            }
+    
+        }
+
+    });
+
+    rect.on('deselected', function () {
+        setLayoutBoxTableElem.disabled = true;
+        setLayoutBoxTableElem.value = "";
+    });
+  
 
     // "Order" boxes include a textbox for displaying and editing the priority of that box
     let textbox;

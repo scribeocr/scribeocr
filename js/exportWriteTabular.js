@@ -11,8 +11,30 @@ import { calcOverlap } from "./compareHOCR.js";
 const parser = new DOMParser();
 
 export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
-
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return {content: "", rows: 0};
+
+  const tableIndexes = [...new Set(Object.values(layoutObj.boxes).map(x => x.table))];
+
+  if (tableIndexes.length == 0) return {content: "", rows: 0};
+
+  let textStr = "";
+  let rowIndex = startRow;
+  let rowCount = 0;
+  for (const i of tableIndexes) {
+    // Filter layout boxes to specific table (and implicitly to only dataColumn boxes)
+    const boxesArg = Object.values(layoutObj.boxes).filter(x => x.table == i);
+    const cellsSingle = createCellsSingle(hocrStrA, boxesArg, extraCols, rowIndex, xlsxMode, htmlMode);
+    textStr += cellsSingle.content;
+    rowIndex += cellsSingle.rows;
+    rowCount += cellsSingle.rows;
+  }
+
+  return {content: textStr, rows: rowCount}
+
+}
+
+// Convert a single table into HTML or Excel XML rows
+function createCellsSingle(hocrStrA, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
 
   const hocrA = parser.parseFromString(hocrStrA, "text/xml");
   const hocrALines = hocrA.getElementsByClassName("ocr_line");
@@ -20,8 +42,11 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
   const priorityArr = Array(hocrALines.length);
   const lineBoxArr = Array(hocrALines.length);
 
-  // Unlike when exporting to text, anything not in a rectangle is excluded (priority 11) by default
-  priorityArr.fill(11);
+  // Sort boxes by left bound.
+  const boxesArr = Object.values(boxes).sort((a,b) => a.coords[0] - b.coords[0]);
+
+  // Unlike when exporting to text, anything not in a rectangle is excluded by default
+  priorityArr.fill(boxesArr.length+1);
 
   for (let i = 0; i < hocrALines.length; i++) {
     const hocrALine = hocrALines[i];
@@ -32,17 +57,13 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
     const lineBoxALeft = [lineBoxA[0], lineBoxA[1], lineBoxA[0] + 1, lineBoxA[3]];
 
     // It is possible for a single line to match the inclusion criteria for multiple boxes.
-    // To make the results predictable, we sort by priority, and use the first match identified.
-    for (const obj of Object.values(layoutObj.boxes).sort((a,b) => a.priority - b.priority)) {
+    // Only the first (leftmost) match is used.
+    for (let j=0; j < boxesArr.length; j++) {
+      const obj = boxesArr[j];
        
       const overlap = obj.inclusionRule == "left" ? calcOverlap(lineBoxALeft, obj["coords"]) : calcOverlap(lineBoxA, obj["coords"]);
       if (overlap > 0.5) {
-        if (obj["type"] == "order") {
-          priorityArr[i] = obj["priority"];
-        } else if (obj["type"] == "exclude") {
-          // Priority "11" is used to remove lines
-          priorityArr[i] = 11;
-        }
+        priorityArr[i] = j;
         break;
       } 
     }
@@ -52,7 +73,7 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
   let lastCol = -1;
   const colArrHocr = [];
   const colArrBox = [];
-  for (let i = 0; i <= 10; i++) {
+  for (let i = 0; i <= boxesArr.length; i++) {
     for (let j = 0; j < priorityArr.length; j++) {
       if (priorityArr[j] == i) {
         if (i != lastCol) {
@@ -114,10 +135,14 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
 
     for (let j = 0; j < extraCols.length; j++) {
       // Escape special characters for XML
-      const colTxt = extraCols[j].replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&apos;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      let colTxt = extraCols[j].replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&apos;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       if (xlsxMode) {
         textStr += "<c r=\"" + letters[j] + String(startRow+i+1) + "\" t=\"inlineStr\"><is><r><t xml:space=\"preserve\">" + colTxt + "</t></r></is></c>";
       } else if (htmlMode) {
+        // When generating an HTML preview, file names are abbreviated for readability
+        if (previewMode && colTxt.length > 13) {
+          colTxt = colTxt.slice(0,20) + "...";
+        }
         textStr += "<td>" + colTxt + "</td>"
       }
     }
