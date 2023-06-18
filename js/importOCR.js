@@ -8,10 +8,10 @@ import { readOcrFile } from "./miscUtils.js";
  * Currently supports .hocr (used by Tesseract), Abbyy .xml, and stext (an intermediate data format used by mupdf).
  *
  * @param {File[]} hocrFilesAll - Array of OCR files
- * @param {boolean} extractFontData - Whether to extract font metrics data (if it exists). 
+ * @param {boolean} extractSuppData - Whether to extract font metrics and layout data (if it exists). 
  */
 
-export async function importOCR(hocrFilesAll, extractFontData = true) {
+export async function importOCR(hocrFilesAll, extractSuppData = true) {
 
     hocrFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
 
@@ -23,7 +23,7 @@ export async function importOCR(hocrFilesAll, extractFontData = true) {
     let abbyyMode = false;
     let stextMode = false;
 
-    let hocrStrPages, hocrArrPages, pageCountHOCR, hocrRaw, fontMetricsObj;
+    let hocrStrPages, hocrArrPages, pageCountHOCR, hocrRaw, fontMetricsObj, layoutObj;
 
     if (singleHOCRMode) {
         const singleHOCRMode = true;
@@ -44,7 +44,7 @@ export async function importOCR(hocrFilesAll, extractFontData = true) {
             hocrArrPages = hocrStrAll.split(/(?=\<page)/).slice(1);
         } else {
 
-            if (extractFontData) {
+            if (extractSuppData) {
 
                 // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
                 inputDataModes.resumeMode = /\<meta name\=[\"\']font-metrics[\"\']/i.test(hocrStrAll);
@@ -55,6 +55,17 @@ export async function importOCR(hocrFilesAll, extractFontData = true) {
                     fontMetricsObj = JSON.parse(contentStr);
 
                 }
+
+                // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
+                const layoutDataExists = /\<meta name\=[\"\']layout[\"\']/i.test(hocrStrAll);
+
+                if (layoutDataExists) {
+                    let layoutStr = hocrStrAll.match(/\<meta name\=[\"\']layout[\"\'][^\<]+/i)[0];
+                    let contentStr = layoutStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
+                    layoutObj = JSON.parse(contentStr);
+
+                }
+
             }
 
             hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
@@ -89,7 +100,7 @@ export async function importOCR(hocrFilesAll, extractFontData = true) {
     }
 
 
-    return { hocrRaw: hocrRaw, fontMetricsObj: fontMetricsObj, abbyyMode: abbyyMode, stextMode: stextMode };
+    return { hocrRaw: hocrRaw, fontMetricsObj: fontMetricsObj, layoutObj: layoutObj, abbyyMode: abbyyMode, stextMode: stextMode };
 
 
 }

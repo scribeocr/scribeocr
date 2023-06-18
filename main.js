@@ -2497,6 +2497,7 @@ async function importFiles() {
     pageCountImage = imageFilesAll.length;
   }
 
+  let existingLayout = false;
   if (xmlModeImport) {
 
     addDisplayLabel("User Upload");
@@ -2513,6 +2514,12 @@ async function importFiles() {
       optimizeFontElem.disabled = false;
       optimizeFontElem.checked = true;
       await optimizeFont3(true);
+    }
+
+    // Restore layout data from previous session (if applicable)
+    if (ocrData.layoutObj) {
+      globalThis.layout = ocrData.layoutObj;
+      existingLayout = true;
     }
 
     // stext may be imported or extracted from an input PDF
@@ -2543,13 +2550,15 @@ async function importFiles() {
 
   globalThis.hocrCurrent = Array(pageCount);
   globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw || Array(pageCount);
-  globalThis.layout = Array(pageCount);
   globalThis.defaultLayout = {};
 
-  for(let i=0;i<globalThis.layout.length;i++) {
-    globalThis.layout[i] = {default: true, boxes: {}};
+  if (!existingLayout) {
+    globalThis.layout = Array(pageCount);
+    for(let i=0;i<globalThis.layout.length;i++) {
+      globalThis.layout[i] = {default: true, boxes: {}};
+    }  
   }
-
+  
   // Global object that contains arrays with page images or related properties. 
   globalThis.imageAll = {
     // Unedited images uploaded by user (unused when user provides a PDF).

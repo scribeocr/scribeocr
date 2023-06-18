@@ -58,7 +58,8 @@ export async function initConvertPageWorker() {
 			globalThis.pageMetricsObj["leftAll"][n] = event.data[0][3];
 			globalThis.pageMetricsObj["angleAdjAll"][n] = event.data[0][4];
 
-			globalThis.layout[n].boxes = event.data[0][6];
+			// Layout boxes are only overwritten if none exist yet for the page
+			if (Object.keys(globalThis.layout[n].boxes).length == 0) globalThis.layout[n].boxes = event.data[0][6];
 		  
 			if(argsObj["saveMetrics"] ?? true){
 			  fontMetricObjsMessage[n] = event.data[0][5];

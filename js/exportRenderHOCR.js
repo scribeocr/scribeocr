@@ -39,8 +39,13 @@ export function renderHOCR(hocrCurrent, fontMetricsObj) {
 
   let exportXML = exportParser.parseFromString(firstPageStr, "text/xml");
 
+  // Add font metrics data
   let fontXML = exportParser.parseFromString("<meta name='font-metrics' content='" + JSON.stringify(fontMetricsObj) + "'></meta>", "text/xml");
   exportXML.getElementsByTagName("head")[0].appendChild(fontXML.firstChild);
+
+  // Add layout box data
+  const layoutXML = exportParser.parseFromString("<meta name='layout' content='" + JSON.stringify(globalThis.layout) + "'></meta>", "text/xml");
+  exportXML.getElementsByTagName("head")[0].appendChild(layoutXML.firstChild);
 
   // TODO: Consider how empty pages are handled (e.g. what happens when the first page is empty)
   for (let i = minValue; i < maxValue; i++) {
