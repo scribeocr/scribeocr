@@ -392,9 +392,9 @@ function renderLayoutBox(id) {
                 }
             }
 
-            if (tableGroup != null) {
+            if (tableGroup !== null) {
                 setLayoutBoxTableElem.disabled = false;
-                if (singleTableGroup) {
+                if (singleTableGroup && isFinite(tableGroup)) {
                     setLayoutBoxTableElem.value = String(tableGroup + 1)
                 }
             }
@@ -404,7 +404,7 @@ function renderLayoutBox(id) {
 
             if (obj["type"] == "dataColumn") {
                 setLayoutBoxTableElem.disabled = false;
-                setLayoutBoxTableElem.value = String(obj["table"] + 1)
+                if (isFinite(obj["table"])) setLayoutBoxTableElem.value = String(obj["table"] + 1);
             }
     
         }

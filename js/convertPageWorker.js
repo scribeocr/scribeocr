@@ -1861,6 +1861,8 @@ function convertTableLayoutAbbyy(xmlPage) {
   const boxes = {};
 
   for (let i=0; i < tables.length; i++) {
+    let tableBoxes = {};
+
     const table = tables[i];
     const tableCoords = table.match(/<block blockType=[\'\"]Table[\'\"][^>]*?l=[\'\"](\d+)[\'\"] t=[\'\"](\d+)[\'\"] r=[\'\"](\d+)[\'\"] b=[\'\"](\d+)[\'\"]/i).slice(1, 5).map(function (x) { return parseInt(x) });
 
@@ -1886,9 +1888,9 @@ function convertTableLayoutAbbyy(xmlPage) {
 
       leftLast = cellRight;
 
-      const priority = Object.keys(boxes).length + 1;
+      const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
 
-      boxes[id] = {
+      tableBoxes[id] = {
         priority: priority,
         coords: [cellLeft, tableCoords[1], cellRight, tableCoords[3]],
         type: "dataColumn",
@@ -1897,9 +1899,88 @@ function convertTableLayoutAbbyy(xmlPage) {
       };
     }
 
+    // Abbyy sometimes provides column widths that are incorrect
+    // If the column widths do not add up to the table width, the column widths are re-caculated from scratch.
     if (Math.abs(leftLast - tableCoords[2]) > 10) {
-      console.log("Table width does not match sum of rows: " + String(tableCoords[2]) + " vs " + String(leftLast));
+
+      let colLeftArr = [];
+      let colRightArr = [];
+
+      let colsWithData = 0;
+      for (let j=0; j < rows.length; j++) {
+        const cells = rows[j].match(/<cell[\s\S]+?(?:\<\/cell\>\s*)/ig);
+        for (let k=0; k < cells.length; k++) {
+          // Extract coordinates for every element in the cell with coordinates
+          const coordsArrStr = cells[k].match(/l=[\'\"](\d+)[\'\"] t=[\'\"](\d+)[\'\"] r=[\'\"](\d+)[\'\"] b=[\'\"](\d+)[\'\"]/ig);
+          if (!coordsArrStr) continue;
+          const coordsArr = coordsArrStr.map(x => x.match(/\d+/g).map(y => parseInt(y)))
+          const cellLeft = Math.min(...coordsArr.map(x => x[0]));
+          const cellRight = Math.max(...coordsArr.map(x => x[2]));
+          if (!colLeftArr[k]) {
+            colLeftArr[k] = [];
+            colRightArr[k] = [];
+            colsWithData++;
+          }
+          colLeftArr[k].push(cellLeft);
+          colRightArr[k].push(cellRight);
+        }
+      }
+
+      // Columns that contain no data are removed
+      colLeftArr = colLeftArr.filter(x => x);
+      colRightArr = colRightArr.filter(x => x);
+
+      // Calculate the minimum left bound of each column
+      const colLeftMin = colLeftArr.map(x => Math.min(...x));
+      
+      // Calculate the max right bound of each column, after removing observations past the minimum left bound of the next column.
+      // This filter is intended to remove cells that span multiple rows.
+      const colRightMax = [];
+      for (let j=0; j < colRightArr.length; j++) {
+        const colRightArrJ = j + 1 == colRightArr.length ? colRightArr[j] : colRightArr[j].filter(x => x < colLeftMin[j+1]);
+        colRightMax.push(Math.max(...colRightArrJ)); 
+      }
+
+      // Re-create boxes
+      tableBoxes = {};
+      for (let j=0; j < colLeftArr.length; j++) {
+
+        let cellLeft;
+        if (j == 0) {
+          cellLeft = tableCoords[0];
+        } else if (!isFinite(colRightMax[j-1])) {
+          cellLeft = Math.round(colLeftMin[j]);
+        } else {
+          cellLeft = Math.round((colLeftMin[j] + colRightMax[j-1]) / 2);
+        }
+
+        let cellRight;
+        if (j + 1 == colLeftArr.length) {
+          cellRight = tableCoords[2];
+        } else if (!isFinite(colRightMax[j])) {
+          cellRight = colLeftMin[j+1];
+        } else {
+          cellRight = Math.round((colLeftMin[j+1] + colRightMax[j]) / 2);
+        }
+  
+        const id = getRandomAlphanum(10);
+  
+        const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
+  
+        tableBoxes[id] = {
+          priority: priority,
+          coords: [cellLeft, tableCoords[1], cellRight, tableCoords[3]],
+          type: "dataColumn",
+          table: i,
+          inclusionRule: "majority"
+        };
+      }
+
+      console.log("Table width does not match sum of rows (" + String(tableCoords[2]) + " vs " + String(leftLast) + "), calculated new layout boxes using column contents.");
+
     }
+
+    Object.assign(boxes, tableBoxes);
 
   }
 
