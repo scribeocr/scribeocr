@@ -1529,7 +1529,7 @@ async function recognizePages(single = false, config = null, saveMetrics = true,
       convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
   
       globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);  
-    globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
+      globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
       globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);  
     }
   

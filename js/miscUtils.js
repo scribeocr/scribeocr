@@ -60,7 +60,9 @@ export function sleep(ms) { return new Promise((r) =>
 
 // Reads OCR files, which may be compressed as .gz or uncompressed
 export function readOcrFile(file){
-  if(/\.gz$/i.test(file.name)){
+  if (typeof file === 'string') {
+    return file;
+  } else if(/\.gz$/i.test(file.name)){
     return(readTextFileGz(file));
   } else {
     return(readTextFile(file))
