@@ -52,6 +52,9 @@ import Tesseract from './tess/tesseract.esm.min.js';
 import { searchHOCR } from "./js/debug.js"
 import { initConvertPageWorker } from './js/convertPage.js';
 
+// Load default settings
+import { setDefaults } from "./js/setDefaults.js";
+
 globalThis.searchHOCR = searchHOCR;
 
 
@@ -274,6 +277,18 @@ createGroundTruthElem.addEventListener('click', createGroundTruthClick);
 
 const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 
+const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
+
+export function enableRecognitionClick() {
+  if (enableRecognitionElem.checked) {
+    document.getElementById("nav-recognize-tab")?.setAttribute("style", "");
+  } else {
+    document.getElementById("nav-recognize-tab")?.setAttribute("style", "display:none");
+  }
+}
+
+enableRecognitionElem.addEventListener('click', enableRecognitionClick);
+
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 
@@ -317,8 +332,7 @@ enableLayoutElem.addEventListener('click', () => {
 
 const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
-// If layout option is enabled, show tab and widen navbar to fit everything on the same row
-enableXlsxExportElem.addEventListener('click', () => {
+export function enableXlsxExportClick() {
   if (enableXlsxExportElem.checked) {
     // Adding layouts is required for xlsx exports
     if (!enableLayoutElem.checked) enableLayoutElem.click();
@@ -328,7 +342,10 @@ enableXlsxExportElem.addEventListener('click', () => {
     document.getElementById("formatLabelOptionXlsx")?.setAttribute("style", "display:none");
     updateDataPreview();
   }
-});
+}
+
+enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
+
 
 const enableEnginesElem = /** @type {HTMLInputElement} */(document.getElementById('enableExtraEngines'));
 enableEnginesElem.addEventListener('click', () => {
@@ -790,7 +807,7 @@ const pdfOptionsElem = /** @type {HTMLElement} */(document.getElementById("pdfOp
 const docxOptionsElem = /** @type {HTMLElement} */(document.getElementById("docxOptions"));
 const xlsxOptionsElem = /** @type {HTMLElement} */(document.getElementById("xlsxOptions"));
 
-function setFormatLabel(x) {
+export function setFormatLabel(x) {
   if (x.toLowerCase() == "pdf") {
 
     textOptionsElem.setAttribute("style", "display:none");
@@ -3476,3 +3493,7 @@ async function handleDownload() {
   downloadElem.disabled = false;
   downloadElem.addEventListener('click', handleDownload);
 }
+
+
+// Set default settings
+setDefaults();
