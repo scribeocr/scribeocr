@@ -165,6 +165,7 @@ globalThis.globalSettings = {
  * @property {Number} leftAdjX - an ID.
  * @property {Number} renderStatus - an ID.
  * @property {XMLDocument} xmlDoc - an ID.
+ * @property {number} renderNum - an ID.
  */
 /** @type {currentPage} */
 globalThis.currentPage = {
@@ -173,7 +174,8 @@ globalThis.currentPage = {
   backgroundOpts: {},
   leftAdjX: 0,
   renderStatus: 0,
-  xmlDoc: null
+  xmlDoc: null,
+  renderNum: 0
 }
 
 
@@ -2357,7 +2359,7 @@ async function importFiles() {
 
   if (!curFiles || curFiles.length == 0) return;
 
-  globalThis.state.importDone = false;
+  globalThis.state.downloadReady = false;
 
   globalThis.pageMetricsObj = {};
   globalThis.pageMetricsObj["angleAll"] = [];
@@ -2652,7 +2654,7 @@ async function importFiles() {
   // Enable downloads now for pdf imports if no HOCR data exists
   if (inputDataModes.pdfMode && !xmlModeImport) {
     downloadElem.disabled = false;
-    globalThis.state.importDone = true;
+    globalThis.state.downloadReady = true;
   }
 
   pageNumElem.value = "1";
@@ -2813,16 +2815,24 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
 
 }
 
-currentPage.renderNum = 0;
-
-// Global object containing information regarding the application's state
-// (E.g. is a page currently rendering, is recognition currently running, etc.)
+/**
+ * Global object containing information regarding the application's state
+ *  (E.g. is a page currently rendering, is recognition currently running, etc.)
+ * @typedef state
+ * @type {object}
+ * @property {Promise<boolean>} pageRendering 
+ * @property {number} renderIt 
+ * @property {any} promiseResolve 
+ * @property {Promise<boolean>} recognizeAllPromise 
+ * @property {boolean} downloadReady - whether download feature can be enabled yet
+ */
+/** @type {state} */
 globalThis.state = {
   pageRendering : Promise.resolve(true),
   renderIt : 0,
   promiseResolve : undefined,
   recognizeAllPromise : Promise.resolve(true),
-  importDone : false
+  downloadReady : false
 }
 
 // Function that handles page-level info for rendering to canvas and pdf
@@ -2830,11 +2840,17 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
 
   renderPDFImageCache([n]);
 
-  // Return if data is not loaded yet
+  // Return early if there is not enough data to render a page yet
+  // (1) No data has been imported
   const noInput = !inputDataModes.xmlMode[n] && !(inputDataModes.imageMode || inputDataModes.pdfMode);
-  const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null) || inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined");
-  const xmlMissing = globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string";
-  if (imageMissing && (inputDataModes.imageMode || inputDataModes.pdfMode) || xmlMissing && inputDataModes.xmlMode[n] || noInput) {
+  // (2) XML data should exist but does not (yet)
+  const xmlMissing = inputDataModes.xmlMode[n] && (globalThis.hocrCurrent.length == 0 || typeof (globalThis.hocrCurrent[n]) != "string" || globalThis.pageMetricsObj["dimsAll"][n] === undefined);
+  // (3) Image data should exist but does not (yet)
+  const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null);
+  // (4) PDF data should exist but does not (yet)
+  const pdfMissing = inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined" || globalThis.pageMetricsObj["dimsAll"][n] === undefined);
+
+  if (noInput || xmlMissing || imageMissing || pdfMissing) {
     console.log("Exiting renderPageQueue early");
     return;
   }
@@ -2864,14 +2880,19 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true, lineMo
     currentPage.xmlDoc = null;
   }
 
-  // Determine image size and canvas size
-  let imgDims = null;
-  let canvasDims = null;
-
-  imgDims = new Array(2);
-  canvasDims = new Array(2);
+  // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
+  const imgDims = new Array(2);
+  if (inputDataModes.xmlMode[n] || inputDataModes.pdfMode) {
+    imgDims[1] = globalThis.pageMetricsObj["dimsAll"][n][1];
+    imgDims[0] = globalThis.pageMetricsObj["dimsAll"][n][0];
+  } else {
+    const backgroundImage = await globalThis.imageAll["native"][n];
+    imgDims[1] = backgroundImage.width;
+    imgDims[0] = backgroundImage.height;
+  }
 
   // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
+  const canvasDims = new Array(2);
   if (inputDataModes.xmlMode[n] || inputDataModes.pdfMode) {
     imgDims[1] = globalThis.pageMetricsObj["dimsAll"][n][1];
     imgDims[0] = globalThis.pageMetricsObj["dimsAll"][n][0];
@@ -3236,8 +3257,8 @@ export async function updateDataProgress(mainData = true, combMode = false) {
       calculateOverallPageMetrics();
 
     }
-    if (!globalThis.state.importDone) {
-      globalThis.state.importDone = true;
+    if (!globalThis.state.downloadReady) {
+      globalThis.state.downloadReady = true;
       downloadElem.disabled = false;
     }
     
@@ -3432,7 +3453,7 @@ async function handleDownload() {
       // If the input is a series of images, those images need to be inserted into a new pdf
       } else {
         await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked, downloadProgress);
-        const imgArr1 = colorModeElem.value == "binary" ? await Promise.all(imageAll.binary): await Promise.all(imageAll.native);
+        const imgArr1 = colorModeElem.value == "binary" ? await Promise.all(globalThis.imageAll.binary): await Promise.all(globalThis.imageAll.native);
         const imgArr = imgArr1.map((x) => x.src);
         await w.overlayTextImageStart([]);
         for (let i=minValue; i < maxValue+1; i++) {
