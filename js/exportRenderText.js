@@ -1,9 +1,9 @@
 import { quantile } from "./miscUtils.js";
+import { ocr } from "./ocrObjects.js";
 
 export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
 
   let textStr = "";
-  const exportParser = new DOMParser();
 
   const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
   const pdfPageMaxElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
@@ -18,10 +18,9 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
   for (let g = (minValue - 1); g < maxValue; g++) {
 
-    // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
-    if (!hocrCurrent[g] || hocrCurrent[g]?.length < 50) continue;
-    const pageXML = exportParser.parseFromString(hocrCurrent[g], "text/xml");
-    const lines = pageXML.getElementsByClassName("ocr_line");
+    if (!hocrCurrent[g]) continue;
+
+    const pageObj = hocrCurrent[g];
 
     const lineLeftArr = [];
     const lineRightArr = [];
@@ -38,12 +37,10 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
       let y2Prev = null;
 
-      for (let h = 0; h < lines.length; h++) {
-        const line = lines[h];
+      for (let h = 0; h < pageObj.lines.length; h++) {
+        const lineObj = pageObj.lines[h];
 
-        const titleStrLine = line.getAttribute('title');
-
-        const lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+        const lineBox = lineObj.bbox;
 
         if (h > 0) {
           lineSpaceArr.push(lineBox[3] - y2Prev);
@@ -74,7 +71,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
     }
 
-    for (let h = 0; h < lines.length; h++) {
+    for (let h = 0; h < pageObj.lines.length; h++) {
 
       // Flag lines that end early (with >=10% of the line empty)
       const endsEarly = lineRightArr[h] < (lineRightMedian - lineWidthMedian * 0.1);
@@ -96,7 +93,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
           // Add a line break if this line is indented
           // Requires (1) line to start to the right of the median line (by 2.5% of the median width) and
           // (2) line to start to the right of the previous line and the next line. 
-          } else if (lineLeftMedian && (h + 1) < lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025) && lineLeftArr[h] > lineLeftArr[h-1] && lineLeftArr[h] > lineLeftArr[h+1]) {
+          } else if (lineLeftMedian && (h + 1) < pageObj.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025) && lineLeftArr[h] > lineLeftArr[h-1] && lineLeftArr[h] > lineLeftArr[h+1]) {
             newLine = true;
           } 
         } else {
@@ -115,21 +112,19 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
       endsEarlyPrev = endsEarly;
       startsLatePrev = startsLate;
 
-      const line = lines[h];
-      const words = line.getElementsByClassName("ocrx_word");
+      const lineObj = pageObj.lines[h];
 
       let fontStylePrev = "";
 
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i];
+      for (let i = 0; i < lineObj.words.length; i++) {
+        const wordObj = lineObj.words[i];
 
         if (docxMode) {
-          let styleStr = word.getAttribute('style') ?? "";
 
           let fontStyle;
-          if (/italic/i.test(styleStr)) {
+          if (wordObj.style == "italic") {
             fontStyle = "<w:i/>";
-          } else if (/small\-caps/i.test(styleStr)) {
+          } else if (wordObj.style == "small-caps") {
             fontStyle = "<w:smallCaps/>";
           } else {
             fontStyle = "";
@@ -161,16 +156,15 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
         // DOCX is an XML format, so any escaped XML characters need to continue being escaped.
         if (docxMode) {
-          // TODO: For now we just delete superscript tags.
-          // Eventually this should be added to Word exports properly. 
-          textStr = textStr + word.innerHTML.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "");
+          // TODO: Figure out how to properly export superscripts to Word
+          textStr = textStr + ocr.escapeXml(wordObj.text);
         } else {
-          textStr = textStr + word.textContent;
+          textStr = textStr + wordObj.text;
         }
 
         // If this is the last word on the page, check if it contains ending punctuation
-        if ((h+1) == lines.length && (i+1) == words.length) {
-          lastCharEndingPunct = /[?.!]/.test(word.textContent);
+        if ((h+1) == pageObj.lines.length && (i+1) == lineObj.words.length) {
+          lastCharEndingPunct = /[?.!]/.test(wordObj.text);
         }
 
       }

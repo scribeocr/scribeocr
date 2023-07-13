@@ -8,9 +8,12 @@ import {  xlsxStrings, sheetStart, sheetEnd } from "./xlsxFiles.js";
 
 import { calcOverlap } from "./compareHOCR.js";
 
-const parser = new DOMParser();
+import { ocr } from "./ocrObjects.js";
 
-export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
+/**
+ * @param {ocrPage} pageObj
+ */
+export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return {content: "", rows: 0};
 
   const tableIndexes = [...new Set(Object.values(layoutObj.boxes).map(x => x.table))];
@@ -23,7 +26,7 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
   for (const i of tableIndexes) {
     // Filter layout boxes to specific table (and implicitly to only dataColumn boxes)
     const boxesArg = Object.values(layoutObj.boxes).filter(x => x.table == i);
-    const cellsSingle = createCellsSingle(hocrStrA, boxesArg, extraCols, rowIndex, xlsxMode, htmlMode);
+    const cellsSingle = createCellsSingle(pageObj, boxesArg, extraCols, rowIndex, xlsxMode, htmlMode);
     textStr += cellsSingle.content;
     rowIndex += cellsSingle.rows;
     rowCount += cellsSingle.rows;
@@ -33,14 +36,16 @@ export function createCells(hocrStrA, layoutObj, extraCols = [], startRow = 0, x
 
 }
 
-// Convert a single table into HTML or Excel XML rows
-function createCellsSingle(hocrStrA, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
 
-  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
-  const hocrALines = hocrA.getElementsByClassName("ocr_line");
+/**
+ * Convert a single table into HTML or Excel XML rows
+ * @param {ocrPage} pageObj
+ */
+function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
 
-  const priorityArr = Array(hocrALines.length);
-  const lineBoxArr = Array(hocrALines.length);
+
+  const priorityArr = Array(pageObj.lines.length);
+  const lineBoxArr = Array(pageObj.lines.length);
 
   // Sort boxes by left bound.
   const boxesArr = Object.values(boxes).sort((a,b) => a.coords[0] - b.coords[0]);
@@ -48,20 +53,18 @@ function createCellsSingle(hocrStrA, boxes, extraCols = [], startRow = 0, xlsxMo
   // Unlike when exporting to text, anything not in a rectangle is excluded by default
   priorityArr.fill(boxesArr.length+1);
 
-  for (let i = 0; i < hocrALines.length; i++) {
-    const hocrALine = hocrALines[i];
-    const titleStrLineA = hocrALine.getAttribute('title');
-    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-    lineBoxArr[i] = lineBoxA;
+  for (let i = 0; i < pageObj.lines.length; i++) {
+    const lineObj = pageObj.lines[i];
+    lineBoxArr[i] = lineObj.bbox;
 
-    const lineBoxALeft = [lineBoxA[0], lineBoxA[1], lineBoxA[0] + 1, lineBoxA[3]];
+    const lineBoxALeft = [lineObj.bbox[0], lineObj.bbox[1], lineObj.bbox[0] + 1, lineObj.bbox[3]];
 
     // It is possible for a single line to match the inclusion criteria for multiple boxes.
     // Only the first (leftmost) match is used.
     for (let j=0; j < boxesArr.length; j++) {
       const obj = boxesArr[j];
        
-      const overlap = obj.inclusionRule == "left" ? calcOverlap(lineBoxALeft, obj["coords"]) : calcOverlap(lineBoxA, obj["coords"]);
+      const overlap = obj.inclusionRule == "left" ? calcOverlap(lineBoxALeft, obj["coords"]) : calcOverlap(lineObj.bbox, obj["coords"]);
       if (overlap > 0.5) {
         priorityArr[i] = j;
         break;
@@ -81,7 +84,7 @@ function createCellsSingle(hocrStrA, boxes, extraCols = [], startRow = 0, xlsxMo
           colArrBox.push([]);
           lastCol = i;
         }
-        colArrHocr[colArrHocr.length-1].push(hocrALines[j].cloneNode(true));
+        colArrHocr[colArrHocr.length-1].push(pageObj.lines[j]);
         colArrBox[colArrBox.length-1].push(lineBoxArr[j]);
       }
     }
@@ -135,7 +138,7 @@ function createCellsSingle(hocrStrA, boxes, extraCols = [], startRow = 0, xlsxMo
 
     for (let j = 0; j < extraCols.length; j++) {
       // Escape special characters for XML
-      let colTxt = extraCols[j].replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&apos;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      let colTxt = ocr.escapeXml(extraCols[j]);
       if (xlsxMode) {
         textStr += "<c r=\"" + letters[j] + String(startRow+i+1) + "\" t=\"inlineStr\"><is><r><t xml:space=\"preserve\">" + colTxt + "</t></r></is></c>";
       } else if (htmlMode) {
@@ -165,22 +168,21 @@ function createCellsSingle(hocrStrA, boxes, extraCols = [], startRow = 0, xlsxMo
       }
       
       for (let k = 0; k < lines.length; k++) {
-        const line = lines[k];
+        const lineObj = lines[k];
 
-        const words = line.getElementsByClassName("ocrx_word");
+        // const words = line.getElementsByClassName("ocrx_word");
 
         let fontStylePrev = "";
   
-        for (let l = 0; l < words.length; l++) {
-          const word = words[l];
+        for (let l = 0; l < lineObj.words.length; l++) {
+          const wordObj = lineObj.words[l];
   
           if (xlsxMode) {
-            let styleStr = word.getAttribute('style') ?? "";
   
             let fontStyle;
-            if (/italic/i.test(styleStr)) {
+            if (wordObj.style === "italic") {
               fontStyle = "<i/>";
-            } else if (/small\-caps/i.test(styleStr)) {
+            } else if (wordObj.style === "small-caps") {
               fontStyle = "<smallCaps/>";
             } else {
               fontStyle = "";
@@ -207,9 +209,9 @@ function createCellsSingle(hocrStrA, boxes, extraCols = [], startRow = 0, xlsxMo
           if (xlsxMode) {
             // TODO: For now we just delete superscript tags.
             // Eventually this should be added to Word exports properly. 
-            textStr = textStr + word.innerHTML.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "");
+            textStr = textStr + ocr.escapeXml(wordObj.text);
           } else {
-            textStr = textStr + word.textContent;
+            textStr = textStr + wordObj.text;
           }
         }
       }

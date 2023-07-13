@@ -3,8 +3,9 @@ import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 
 import { getFontSize, calcCharSpacing, calcWordMetrics } from "./textUtils.js";
 
-import { replaceLigatures } from "./miscUtils.js";
 import { loadFontBrowser } from "./fontUtils.js";
+
+import { ocr } from "./ocrObjects.js";
 
 // Function for converting from bufferArray to hex (string)
 // Taken from https://stackoverflow.com/questions/40031688/javascript-arraybuffer-to-hex
@@ -151,7 +152,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
     const angle = globalThis.pageMetricsObj["angleAll"][i] || 0;
     let dims = globalThis.pageMetricsObj.dimsAll[i];
 
-    pdfOut += (await hocrPageToPDF( hocrArr[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
+    pdfOut += (await ocrPageToPDF( hocrArr[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
     if (progress) progress.increment();
   }
 
@@ -177,14 +178,18 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
 
 }
 
-async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75) {
+/**
+ * @param {ocrPage} pageObj - ...
+ */
+async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75) {
 
   if (outputDims[0] < 1) {
     outputDims = inputDims;
   }
 
   // Note: Text may contain nested elements (e.g. `<span class="ocr_dropcap">`) so it cannot be assumed that `</span></span>` indicates the end of the line
-  const lines = hocrStr?.split(/(?=<span class\=[\"\']ocr_line)/g)?.slice(1);
+  // const lines = hocrStr?.split(/(?=<span class\=[\"\']ocr_line)/g)?.slice(1);
+  const lines = pageObj.lines;
 
   // Start 2nd object: Page
   let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims[1]) + " " + String(outputDims[0]) + "]";
@@ -213,9 +218,6 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
 
   let lineFontSize = 10;
 
-  // textStream += "1 0 0 rg\n";
-
-
   // Locations are often specified using an offset against the leftmost point of the current line.
   let lineOrigin = [0,0];
 
@@ -228,77 +230,30 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
 
     const line = lines[i];
 
-    const titleStrLine = line.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+    const baseline = line.baseline;
+    const linebox = line.bbox;
 
-    let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-    if (baseline != null) {
-      baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
-    } else {
-      baseline = [0, 0];
-    }
+    lineFontSize = (await ocr.calcLineFontSize(line)) || lineFontSize;
 
-    const linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
-
-    // If possible (native Tesseract HOCR) get font size using x-height.
-    // If not possible (Abbyy XML) get font size using ascender height.
-    let letterHeight = titleStrLine.match(/x_size\s+([\d\.\-]+)/);
-    let ascHeight = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/);
-    let descHeight = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/);
-    if (letterHeight != null && ascHeight != null && descHeight != null) {
-      letterHeight = parseFloat(letterHeight[1]);
-      ascHeight = parseFloat(ascHeight[1]);
-      descHeight = parseFloat(descHeight[1]);
-      let xHeight = letterHeight - ascHeight - descHeight;
-      lineFontSize = await getFontSize(globalThis.globalSettings.defaultFont, "normal", xHeight, "o");
-    } else if (letterHeight != null) {
-      letterHeight = parseFloat(letterHeight[1]);
-      descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-      lineFontSize = await getFontSize(globalThis.globalSettings.defaultFont, "normal", letterHeight - descHeight, "A");
-    }
-
-    const words = line.match(wordRegex);
+    const words = line.words;
     const word = words[0];
-    const wordSup = /\<sup\>/i.test(word);
-    const wordDropCap = /\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word);
-    let wordText;
-    if(wordSup) {
-      wordText = word.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
-    } else if(wordDropCap) {
-      wordText = word.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
-    } else {
-      wordText = word.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
-    }      
+    const wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
 
-    const titleStrWord = word.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
-    const wordBox = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+    const wordBox = word.bbox;
 
-    const styleStr = word.match(/style\=[\'\"]([^\'\"]+)/)?.[1];
-    let wordFontFamily = styleStr?.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/)?.[1] || globalThis.globalSettings.defaultFont;
-
-    let fontStyle;
-    if (/italic/i.test(styleStr)) {
-      fontStyle = "italic";
-    } else if (/small\-caps/i.test(styleStr)) {
-      fontStyle = "small-caps";
-    } else {
-      fontStyle = "normal";
-    }
+    const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;;
+    const fontStyle = word.style;
 
     let fillColor = "0 0 0 rg";
     if (textMode == "proof") {
-      let confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/);
-      let wordConf = 0;
-      if (confMatch != null) {
-        wordConf = parseInt(confMatch[1]);
-      }
-      if (wordConf > confThreshHigh) {
+
+      if (word.conf > confThreshHigh) {
         fillColor = "0 1 0.5 rg";
-      } else if (wordConf > confThreshMed) {
+      } else if (word.conf > confThreshMed) {
         fillColor = "1 0.8 0 rg";
       } else {
         fillColor = "1 0 0 rg";
       }
-  
     }
 
     let angleAdjXLine = 0;
@@ -334,21 +289,20 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     // Reset baseline to line baseline
     textStream += "0 Ts\n";
 
-    let wordFontSize;
-    let fontSizeStr = styleStr?.match(/font\-size\:\s*(\d+)/i);
-    if (fontSizeStr != null) {
-      wordFontSize = parseFloat(fontSizeStr[1]);
-    } else if (wordSup) {
-      // All superscripts are assumed to be numbers for now
-      wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
-    } else if (wordDropCap) {
-      wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
-    } else {
-      wordFontSize = lineFontSize;
+    let wordFontSize = word.size;
+    if (!wordFontSize) {
+      if (word.sup) {
+        // All superscripts are assumed to be numbers for now
+        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
+      } else if (word.dropcap) {
+        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
+      } else {
+        wordFontSize = lineFontSize;
+      }
     }
 
     let tz = 100;
-    if (wordDropCap) {
+    if (word.dropcap) {
       const wordWidthActual = wordBox[2] - wordBox[0];
       const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
       tz = (wordWidthActual / wordWidthFont) * 100;
@@ -386,56 +340,39 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
     for(let j=0;j<words.length;j++){
       const word = words[j];
 
-      const wordSup = /\<sup\>/i.test(word);
-      const wordDropCap = /\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word);
       let wordText;
-      if(wordSup) {
-        wordText = word.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
-      } else if(wordDropCap) {
-        wordText = word.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+      if(word.sup) {
+        wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+      } else if(word.dropcap) {
+        wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
       } else {
-        wordText = word.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+        wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
       }      
 
       // Ligatures are not in the encoding dictionary so would not be displayed correctly
-      wordText = replaceLigatures(wordText);
+      wordText = ocr.replaceLigatures(wordText);
 
-      const titleStrWord = word.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
-      const wordBox = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+      const wordBox = word.bbox;
 
-      const styleStr = word.match(/style\=[\'\"]([^\'\"]+)/)?.[1];
-      let wordFontFamily = styleStr?.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/)?.[1] || globalThis.globalSettings.defaultFont;
+      const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;;
+      const fontStyle = word.style;
 
-      let wordFontSize;
-      let fontSizeStr = styleStr?.match(/font\-size\:\s*(\d+)/i);
-      if (fontSizeStr != null) {
-        wordFontSize = parseFloat(fontSizeStr[1]);
-      } else if (wordSup) {
-        // All superscripts are assumed to be numbers for now
-        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
-      } else if (wordDropCap) {
-        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
-      } else {
-        wordFontSize = lineFontSize;
-      }
-
-      let fontStyle;
-      if (/italic/i.test(styleStr)) {
-        fontStyle = "italic";
-      } else if (/small\-caps/i.test(styleStr)) {
-        fontStyle = "small-caps";
-      } else {
-        fontStyle = "normal";
+      let wordFontSize = word.size;
+      if (!wordFontSize) {
+        if (word.sup) {
+          // All superscripts are assumed to be numbers for now
+          wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
+        } else if (word.dropcap) {
+          wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
+        } else {
+          wordFontSize = lineFontSize;
+        }
       }
 
       let fillColor = "0 0 0 rg";
       if (textMode == "proof") {
         
-        let confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/);
-        let wordConf = 0;
-        if (confMatch != null) {
-          wordConf = parseInt(confMatch[1]);
-        }
+        const wordConf = word.conf;
   
         if (wordConf > confThreshHigh) {
           fillColor = "0 1 0.5 rg";
@@ -445,9 +382,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
           fillColor = "1 0 0 rg";
         }  
       } else if (textMode == "eval") {
-        const compStatus = word.match(/compStatus\=[\'\"]([^\'\"]+)/)?.[1] ?? "";
-        const matchTruth = compStatus == "1";
-        fillColor = matchTruth ? "0 1 0.5 rg" : "1 0 0 rg";
+        fillColor = word.matchTruth ? "0 1 0.5 rg" : "1 0 0 rg";
       }
 
       const sinAngle = 0;
@@ -455,16 +390,16 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       let angleAdjYSup = rotateText ? sinAngle * (wordBox[0] - linebox[0]) * -1 : 0;
   
       let ts = 0;
-      if (wordSup) {
+      if (word.sup) {
         ts = (angleAdjYLine + (wordBox[3] - (linebox[3] + baseline[1])) + angleAdjYSup) * -1;
-      } else if(wordDropCap) {
+      } else if(word.dropcap) {
         ts = (linebox[3] + baseline[1]) - wordBox[3] + angleAdjYLine + angleAdjYSup;
       } else {
         ts = 0;
       }
 
       let tz = 100;
-      if (wordDropCap) {
+      if (word.dropcap) {
         const wordWidthActual = wordBox[2] - wordBox[0];
         const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamilyLast, wordFontSize, fontStyle)).visualWidth;
         tz = (wordWidthActual / wordWidthFont) * 100;
@@ -513,7 +448,7 @@ async function hocrPageToPDF(hocrStr, inputDims, outputDims, firstObjIndex, pare
       // However, this assumption does not hold for single-character words, as there is no space between character to adjust. 
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space. 
       // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
-      if(wordText.length == 1 && !wordDropCap) {
+      if(wordText.length == 1 && !word.dropcap) {
         spacingAdj = (wordBox[2] - wordBox[0]) - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / font.unitsPerEm));
       } else {
         spacingAdj = 0;

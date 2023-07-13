@@ -98,11 +98,6 @@ export function round6(x){
     return(Math.round(x*1e6)/1e6);
 }
 
-export function replaceLigatures(x) {
-  return x.replace(/ﬂ/g, "fl").replace(/ﬁ/g, "fi").replace(/ﬀ/g, "ff").replace(/ﬃ/g, "ffi").replace(/ﬄ/g, "ffl");
-}
-
-
 /** Function that count occurrences of a substring in a string;
  * @param {String} string               The string
  * @param {String} subString            The sub string to search for

@@ -1,7 +1,126 @@
 
 // Functions from other modules
-// The following functions are copy/pasted from other files due to issues with import/module support for workers. 
-// They should be replaced with import statements once all browsers support this or an alternative is found. 
+// The following functions are copy/pasted from other files due to Node.js not supporting import statements within workers.
+// They should be replaced with import statements once support for imports in workers is universal or an alternative is found. 
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#browser_compatibility
+
+/**
+ * @param {ocrLine} line
+ * @param {string} text
+ * @param {Array<number>} bbox
+ * @param {string} id
+ */
+function ocrWord(line, text, bbox, id) {
+    /** @type {boolean} */ 
+    this.sup = false;
+    /** @type {boolean} */ 
+    this.dropcap = false;
+    /** @type {string} */ 
+    this.text = text;
+    /** @type {string} */ 
+    this.style = "normal";
+    /** @type {?string} */ 
+    this.font = null;
+    /** @type {?number} */ 
+    this.size = null;
+    /** @type {number} */ 
+    this.conf = 0;
+    /** @type {Array<number>} */ 
+    this.bbox = bbox;
+    /** @type {boolean} */ 
+    this.matchTruth = false;
+    /** @type {string} */ 
+    this.id = id;
+    /** @type {ocrLine} */ 
+    this.line = line;
+}
+
+/**
+ * @param {ocrPage} page
+ * @param {Array<number>} bbox
+ * @param {Array<number>} baseline
+ * @param {number} letterHeight
+ * @param {?number} ascHeight
+ * @param {?number} descHeight
+ */
+function ocrLine(page, bbox, baseline, letterHeight, ascHeight, descHeight) {
+    /** @type {Array<number>} */ 
+    this.bbox = bbox;
+    /** @type {Array<number>} */ 
+    this.baseline = baseline;
+    /** @type {number} */ 
+    this.letterHeight = letterHeight;
+    /** @type {?number} */ 
+    this.ascHeight = ascHeight;
+    /** @type {?number} */ 
+    this.descHeight = descHeight;
+    /** @type {Array<ocrWord>} */ 
+    this.words = [];
+    /** @type {ocrPage} */ 
+    this.page = page;
+    /** @type {?number} */ 
+    this._size = null;
+}
+
+/**
+ * @param {number} n
+ * @param {Array<number>} dims
+ */
+function ocrPage(n, dims) {
+  /** @type {number} */ 
+    this.n = n;
+    /** @type {Array<number>} */ 
+    this.dims = dims;
+    /** @type {number} */ 
+    this.angle = 0;
+    /** @type {?number} */ 
+    this.left = null;
+     /** @type {number} */ 
+    this.leftAdj = 0;
+    /** @type {Array<ocrLine>} */ 
+    this.lines = [];
+}
+
+
+// Re-calculate bbox for line
+function calcLineBbox(line) {
+    const wordBoxArr = line.words.map(x => x.bbox);
+    const lineBoxNew = new Array(4);
+    lineBoxNew[0] = Math.min(...wordBoxArr.map(x => x[0]));
+    lineBoxNew[1] = Math.min(...wordBoxArr.map(x => x[1]));
+    lineBoxNew[2] = Math.max(...wordBoxArr.map(x => x[2]));
+    lineBoxNew[3] = Math.max(...wordBoxArr.map(x => x[3]));
+    line.bbox = lineBoxNew;
+}
+
+
+function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
+  
+    const bboxOut = [...bbox];
+
+    const x = bboxOut[0] - shiftX / 2;
+    const y = bboxOut[3] - (bboxOut[3] - bboxOut[1]) / 3 - shiftY / 2;
+    
+    bboxOut[0] = bbox[0] - shiftX;
+    bboxOut[2] = bbox[2] - shiftX;
+    bboxOut[1] = bbox[1] - shiftY;
+    bboxOut[3] = bbox[3] - shiftY;
+
+    const angleAdjYInt = (1 - cosAngle) * y - sinAngle * bboxOut[0];
+
+    const xRot = x * cosAngle - sinAngle * y;
+
+    const angleAdjXInt = x - xRot;
+
+    bboxOut[0] = Math.round(bboxOut[0] - angleAdjXInt);
+    bboxOut[2] = Math.round(bboxOut[2] - angleAdjXInt);
+    bboxOut[1] = Math.round(bboxOut[1] - angleAdjYInt);
+    bboxOut[3] = Math.round(bboxOut[3] - angleAdjYInt);
+
+    return bboxOut;
+}
+
+
 
 function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
@@ -84,7 +203,7 @@ addEventListener('message', e => {
   } else if (func == "convertPageStext") {
     workerResult = [convertPageStext(hocrStr, n)];
   } else {
-    workerResult = [convertPage(hocrStr, argsObj["angle"], argsObj["engine"], argsObj["pageDims"])];
+    workerResult = [convertPageHocr(hocrStr, n, argsObj["pageDims"], argsObj["angle"], argsObj["engine"])];
   }
   workerResult.push(n, argsObj, e.data[e.data.length - 1]);
   postMessage(workerResult);
@@ -98,6 +217,53 @@ function fontMetrics(){
   this.kerning = {};
   this.obs = 0;
 }
+
+function calcLineBbox(line) {
+  const wordBoxArr = line.words.map(x => x.bbox);
+  const lineBoxNew = new Array(4);
+  lineBoxNew[0] = Math.min(...wordBoxArr.map(x => x[0]));
+  lineBoxNew[1] = Math.min(...wordBoxArr.map(x => x[1]));
+  lineBoxNew[2] = Math.max(...wordBoxArr.map(x => x[2]));
+  lineBoxNew[3] = Math.max(...wordBoxArr.map(x => x[3]));
+  line.bbox = lineBoxNew;
+}
+
+
+function rotateLine(line, angle) {
+
+  const lineboxOrig = [...line.bbox];
+
+  const sinAngle = Math.sin(angle * (Math.PI / 180));
+  const cosAngle = Math.cos(angle * (Math.PI / 180));
+
+  const shiftX = sinAngle * (line.page.dims[0] * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((line.page.dims[1] - shiftX) * 0.5) || 0;
+
+  // Add preprocessing angle to baseline angle
+  const baseline = line.baseline;
+  const baselineAngleRadXML = Math.atan(baseline[0]);
+  const baselineAngleRadAdj = angle * (Math.PI / 180);
+  const baselineAngleRadTotal = Math.tan(baselineAngleRadXML + baselineAngleRadAdj);
+
+  for (let i=0; i<line.words.length; i++) {
+      const word = line.words[i];
+      word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
+  }
+
+  // Re-calculate bbox for entire line using words
+  calcLineBbox(line);
+
+  const lineBoxNew = [...line.bbox];
+
+  const baselineOffsetAdj = baselineAngleRadAdj <= 0 ? 0 : lineboxOrig[3] - lineBoxNew[3];
+  const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
+
+  line.baseline[0] = baselineAngleRadTotal;
+  line.baseline[1] = baselineOffsetTotal;
+
+}
+
+
 
 // Includes all capital letters except for "J" and "Q"
 const ascCharArr = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "b", "d", "h", "k", "l", "t", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -126,15 +292,16 @@ const mean50 = arr => {
   ;
 };
 
-
-function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null) {
+/**
+ * @param {string} hocrString
+ * @param {number} n
+ * @param {number} rotateAngle
+ * @param {?string} engine
+ * @param {Array<number>} pageDims
+ */
+function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null) {
 
   rotateAngle = rotateAngle || 0;
-
-  // let widthObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
-  // let heightObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
-  // let cutObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
-  // let kerningObjPage = { "normal": {}, "small-caps": {}, "italic": {}};
 
   const fontMetricsPage = {};
 
@@ -147,11 +314,14 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
   if(!pageDims) {
     let pageElement = hocrString.match(/<div class=[\"\']ocr_page[\"\'][^\>]+/i);
     if (pageElement != null) {
-      pageElement = pageElement[0];
-      pageDims = pageElement.match(/bbox \d+ \d+ (\d+) (\d+)/i);
-      pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
+      const pageDimsMatch = pageElement[0].match(/bbox \d+ \d+ (\d+) (\d+)/i);
+      if (pageDimsMatch != null) {
+        pageDims = [parseInt(pageDimsMatch[2]), parseInt(pageDimsMatch[1])];
+      }
     }  
   }
+
+  const pageObj = new ocrPage(n, pageDims);
 
   // Test whether character-level data (class="ocrx_cinfo" in Tesseract) is present.
   const charMode = /ocrx_cinfo/.test(hocrString) ? true : false;
@@ -172,7 +342,9 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
   }
 
 
-  const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)(?:<\/em>\s*)?(?:\<\/span\>\s*){1}/, "ig");
+  const wordRegexCharLevel = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)(?:<\/em>\s*)?(?:\<\/span\>\s*){1}/, "ig");
+  const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)/, "ig");
+
   const charRegex = new RegExp(/<span class\=[\"\']ocrx_cinfo[\"\'] title=\'([^\'\"]+)[\"\']\>([^\<]*)\<\/span\>/, "ig");
   const charBboxRegex = new RegExp(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/, "g");
   const wordElementRegex = new RegExp(/<span class\=[\"\']ocrx_word[^\>]+\>/, "i");
@@ -196,6 +368,9 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
   hocrString = hocrString.replace(/(class=\')ocr_textfloat/ig, "$1ocr_line");
   hocrString = hocrString.replace(/(class=\')ocr_header/ig, "$1ocr_line");
 
+  /**
+   * @param {string} match
+   */
   function convertLine(match) {
     let titleStrLine = match.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
     if (!titleStrLine) return;
@@ -211,12 +386,12 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
     let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) })
 
     // The baseline can be missing in the case of vertical text (textangle present instead)
-    let baseline = [...titleStrLine.matchAll(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/g)][0];
-    if (baseline == null) {
-      return ("");
-    } else {
-      baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x) });
-    }
+    const baselineMatch = [...titleStrLine.matchAll(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/g)][0];
+
+    if (!baselineMatch) return "";
+
+    const baseline = baselineMatch.slice(1, 5).map(function (x) { return parseFloat(x) });
+
     // Only calculate baselines from lines 200px+.
     // This avoids short "lines" (e.g. page numbers) that often report wild values.
     if ((linebox[2] - linebox[0]) >= 200) {
@@ -227,10 +402,17 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
     // Line font size metrics as reported by Tesseract.
     // As these are frequently not correct (as Tesseract calculates them before character recognition),
-    // we calculate them as well and compare and compare. 
-    let lineAllHeightTess = parseFloat(titleStrLine.match(/x_size\s+([\d\.\-]+)/)[1]);
-    let lineAscHeightTess = parseFloat(titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/)?.[1]);
-    let lineDescHeightTess = parseFloat(titleStrLine.match(/x_descenders\s+([\d\.\-]+)/)?.[1]);
+    // so they may be replaced later by versions we calculate.
+    const lineAllHeightTessStr = titleStrLine.match(/x_size\s+([\d\.\-]+)/)?.[1];
+    const lineAscHeightTessStr = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/)?.[1];
+    const lineDescHeightTessStr = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/)?.[1];
+
+    let lineAllHeightTess = (lineAllHeightTessStr ? parseFloat(lineAllHeightTessStr) : null) || 10;
+    let lineAscHeightTess = lineAscHeightTessStr ? parseFloat(lineAscHeightTessStr) : null;
+    let lineDescHeightTess = lineDescHeightTessStr ? parseFloat(lineDescHeightTessStr) : null;
+
+    const lineObj = new ocrLine(pageObj, linebox, baseline, lineAllHeightTess, lineAscHeightTess, lineDescHeightTess);
+
 
     // The only known scenario where letterHeight, ascHeight, and descHeight are not all defined
     // is when Abbyy data is loaded, HOCR is exported, and then that HOCR is re-imported.
@@ -243,8 +425,18 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
     let heightSmallCapsLine = [];
 
-    function convertWord(match) {
+  /**
+   * @param {string} match
+   */
+    function convertWordCharLevel(match) {
       let text = "";
+
+      const titleStrWord = match.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+      const confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/);
+      let wordConf = 0;
+      if (confMatch != null) {
+        wordConf = parseInt(confMatch[1]);
+      }
 
       let italic = /<\/em>\s*<\/span>/.test(match);
 
@@ -254,7 +446,6 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
 
       let fontFamily = determineSansSerif(fontName);
 
-      //let it = match.matchAll(/<span class\=[\"\']ocrx_cinfo[\"\'] title=\'([^\'\"]+)[\"\']\>([^\<]*)\<\/span\>/ig);
       let it = match.matchAll(charRegex);
       let letterArr = [...it];
       // let bboxes = Array(letterArr.length);
@@ -479,7 +670,6 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
             }
           }
         }
-        if (contentStrLetter.length > 1) console.log(contentStrLetter);
         text = text + contentStrLetter;
       }
       text = text ?? "";
@@ -499,64 +689,143 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
           wordBoxCore[2] = Math.max(...bboxesCore.map(x => x[2]));
           wordBoxCore[3] = Math.max(...bboxesCore.map(x => x[3]));
 
-          const wordBoxCoreStr = wordBoxCore[0] + " " + wordBoxCore[1] + " " + wordBoxCore[2] + " " + wordBoxCore[3];
-
           wordXMLCore = wordXML;
+
+          const wordObjCore = new ocrWord(lineObj, text, wordBoxCore, wordID);
 
           if(smallCaps || italic || fontFamily != "Default"){
             wordXMLCore = wordXMLCore.slice(0, -1) + " style='";
             if (smallCaps) {
-              wordXMLCore = wordXMLCore + "font-variant:small-caps;";
+              wordObjCore.style = "small-caps";
             } else if (italic) {
-              wordXMLCore = wordXMLCore + "font-variant:italic;";
+              wordObjCore.style = "italic";
             }
             if (fontFamily != "Default") {
-              wordXMLCore = wordXMLCore + "font-family:" + fontFamily;
+              wordObjCore.font = fontFamily;
             }
-            wordXMLCore = wordXMLCore + "'>";
           }
-    
-          wordXMLCore = wordXMLCore.replace(/(\d+) (\d+) (\d+) (\d+)/, wordBoxCoreStr) + text + "</span>";
+
+          wordObjCore.conf = wordConf;
+
+          lineObj.words.push(wordObjCore);
+
         }
 
-        const bboxesSuper = letterArrSuper.map(x => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5));
+        const bboxesSuper = letterArrSuper.map(x => x[1].match(/(\d+) (\d+) (\d+) (\d+)/)?.slice(1, 5).map((y) => parseInt(y)));
         let wordBoxSuper = new Array(4);
         wordBoxSuper[0] = Math.min(...bboxesSuper.map(x => x[0]));
         wordBoxSuper[1] = Math.min(...bboxesSuper.map(x => x[1]));
         wordBoxSuper[2] = Math.max(...bboxesSuper.map(x => x[2]));
         wordBoxSuper[3] = Math.max(...bboxesSuper.map(x => x[3]));
 
-        const wordBoxSuperStr = wordBoxSuper[0] + " " + wordBoxSuper[1] + " " + wordBoxSuper[2] + " " + wordBoxSuper[3];
-
         const textSuper = letterArrSuper.map((x) => x[2]).join('');
 
-        const wordXMLSuper = wordXML.replace(/(\d+) (\d+) (\d+) (\d+)/, wordBoxSuperStr).replace(/id\=['"]([^'"]*)['"]/i, "id=\"$1a\"") + "<sup>" + textSuper + "</sup>" + "</span>";
+        const wordObjSup = new ocrWord(lineObj, textSuper, wordBoxSuper, wordID + "a");
 
-        return wordXMLCore + wordXMLSuper;
+        wordObjSup.conf = wordConf;
+
+        lineObj.words.push(wordObjSup);
+
+        return "";
 
 
       } else {
         if (text == "") return ("");
 
+        const bboxesCore = letterArr.map(x => x[1].match(/(\d+) (\d+) (\d+) (\d+)/)?.slice(1, 5).map((y) => parseInt(y)));
+        let wordBoxCore = new Array(4);
+        wordBoxCore[0] = Math.min(...bboxesCore.map(x => x[0]));
+        wordBoxCore[1] = Math.min(...bboxesCore.map(x => x[1]));
+        wordBoxCore[2] = Math.max(...bboxesCore.map(x => x[2]));
+        wordBoxCore[3] = Math.max(...bboxesCore.map(x => x[3]));
+
+        const wordObj = new ocrWord(lineObj, text, wordBoxCore, wordID + "a");
+
         if(smallCaps || italic || fontFamily != "Default"){
           wordXML = wordXML.slice(0, -1) + " style='";
           if (smallCaps) {
-            wordXML = wordXML + "font-variant:small-caps;";
+            wordObj.style = "small-caps";
           } else if (italic) {
-            wordXML = wordXML + "font-variant:italic;";
+            wordObj.style = "italic";
           }
           if (fontFamily != "Default") {
-            wordXML = wordXML + "font-family:" + fontFamily;
+            wordObj.font = fontFamily;
           }
-          wordXML = wordXML + "'>";
         }
+        
+        wordObj.conf = wordConf;
 
-        return (wordXML + text + "</span>");
+        lineObj.words.push(wordObj);
+
+        return "";
+      }
+    }
+
+    /**
+     * @param {string} match
+     */
+    function convertWord(match) {
+
+      const wordID = match.match(/id\=['"]([^'"]*)['"]/i)?.[1];
+
+      const wordSup = /\<sup\>/i.test(match);
+      const wordDropCap = /\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(match);
+
+      let wordText;
+      if(wordSup) {
+        wordText = match.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+      } else if(wordDropCap) {
+        wordText = match.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+      } else {
+        wordText = match.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+      }      
+
+      if (!wordText) {
+        return "";
       }
 
+      const titleStrWord = match.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
+
+      if (!titleStrWord) {
+        console.log("Unable to process word, skipping: " + match);
+        return "";
+      }
+
+      const wordBox = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+  
+      const fontName = match.match(/^[^\>]+?x_font\s*([\w\-]+)/)?.[1];
+
+      let fontFamily = determineSansSerif(fontName);
+  
+      const styleStr = match.match(/style\=[\'\"]([^\'\"]+)/)?.[1];
+
+      let fontStyle = "normal";
+      if (styleStr && /italic/i.test(styleStr)) {
+        fontStyle = "italic";
+      } else if (styleStr && /small\-caps/i.test(styleStr)) {
+        fontStyle = "small-caps";
+      } 
+  
+      const confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/)?.[1] || "0";
+      const wordConf = parseInt(confMatch) || 0;
+
+      const wordObj = new ocrWord(lineObj, wordText, wordBox, wordID + "a");
+      wordObj.style = fontStyle;
+      if (fontFamily != "Default") {
+        wordObj.font = fontFamily;
+      }
+
+      wordObj.conf = wordConf;
+
+      lineObj.words.push(wordObj);
+
+      return "";
 
     }
+
     if (charMode) {
+      match = match.replaceAll(wordRegexCharLevel, convertWordCharLevel);
+    } else {
       match = match.replaceAll(wordRegex, convertWord);
     }
 
@@ -575,15 +844,15 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
       // When Tesseract font size metrics are significantly different from those calculated here, replace them.
       if(lineAscHeightCalc && lineXHeightCalc) {
         if(Math.abs(lineXHeightTess - lineXHeightCalc) > 2){
-          match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
-          match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "$1" + (lineAscHeightCalc - lineXHeightCalc).toString());
-          match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
+          lineObj.letterHeight = lineAllHeightCalc;
+          lineObj.ascHeight = lineAscHeightCalc - lineXHeightCalc;
+          lineObj.descHeight = lineAllHeightCalc - lineAscHeightCalc;
         }
       } else if (lineAscHeightCalc){
         if(Math.abs((lineXHeightTess + lineAscHeightTess) - lineAscHeightCalc) > 2){
-          match = match.replace(/(x_size\s+)([\d\.\-]+)/, "$1" + lineAllHeightCalc.toString());
-          match = match.replace(/(x_ascenders\s+)([\d\.\-]+)/, "");
-          match = match.replace(/(x_descenders\s+)([\d\.\-]+)/, "$1" + (lineAllHeightCalc - lineAscHeightCalc).toString());  
+          lineObj.letterHeight = lineAllHeightCalc;
+          lineObj.ascHeight = null;
+          lineObj.descHeight = lineAllHeightCalc - lineAscHeightCalc;
         }
       }
     }
@@ -633,9 +902,10 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
       }
     }  
 
-    return (match);
-  }
+    pageObj.lines.push(lineObj);
 
+    return "";
+  }
 
   hocrString = hocrString.replaceAll(lineRegex, convertLine);
 
@@ -648,7 +918,8 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
     lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
   }
 
-  let angleOut = Math.abs(rotateAngle) > 0.05 ? rotateAngle : Math.asin(angleRiseMedian) * (180 / Math.PI);
+  pageObj.angle = Math.abs(rotateAngle) > 0.05 ? rotateAngle : Math.asin(angleRiseMedian) * (180 / Math.PI);
+
   const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
   const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
 
@@ -660,116 +931,22 @@ function convertPage(hocrString, rotateAngle = 0, engine = null, pageDims = null
     leftOut = null;
   }
 
+  pageObj.left = leftOut;
+  pageObj.leftAdj = leftAdjOut;
 
   // Transform bounding boxes if rotation is specified.
   // This option is used when an image is rotated before it is sent to Tesseract,
   // however the HOCR needs to be applied to the original image. 
   if (Math.abs(rotateAngle) > 0.05) {
 
-    // const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
-    const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
-
-    // const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
-    const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
-
-    function rotateLine(lineStr) {
-
-      // Add preprocessing angle to baseline angle
-      const baseline = [...lineStr.matchAll(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/g)][0]?.slice(1, 5)?.map(function (x) { return parseFloat(x) });
-      const baselineAngleRadXML = Math.atan(baseline[0]);
-      const baselineAngleRadAdj = rotateAngle * (Math.PI / 180);
-      const baselineAngleRadTotal = Math.tan(baselineAngleRadXML + baselineAngleRadAdj);
-
-      // lineStr = lineStr.replace(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/, "baseline " + String(baselineAngleRadTotal) + " $2");
-
-      const wordBoxArr = [];
-
-      // Rotate word bounding boxes
-      function rotateBoundingBox(boxStr) {
-
-        const prefixStr = boxStr.match(/bbox(?:es)?/);
-  
-        let box = [...boxStr.matchAll(charBboxRegex)][0].slice(1, 5).map(function (x) { return parseInt(x) });
-  
-        const x = box[0] - shiftX / 2;
-        const y = box[3] - (box[3] - box[1]) / 3 - shiftY / 2;
-
-     
-        box[0] = box[0] - shiftX;
-        box[2] = box[2] - shiftX;
-        box[1] = box[1] - shiftY;
-        box[3] = box[3] - shiftY;
-
-        // const baselineY = box[3] - (box[3] - box[1]) / 3;
-
-
-        const angleAdjYInt = (1 - cosAngle) * y - sinAngle * box[0];
-        // const angleAdjXInt = sinAngle * (baselineY - angleAdjYInt * 0.5);
-
-
-        const xRot = x * cosAngle - sinAngle * y;
-        const yRot = x * sinAngle + cosAngle * y;
-  
-        const angleAdjXInt = x - xRot;
-  
-
-        // const angleAdjXInt = (1-cosAngle) * box[0] + sinAngle * (baselineY - angleAdjYInt)
-  
-        //const angleAdjXInt = sinAngle * (box[3] - (box[3] - box[1]) / 3);
-        //const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
-  
-        box[0] = box[0] - angleAdjXInt;
-        box[2] = box[2] - angleAdjXInt;
-        box[1] = box[1] - angleAdjYInt;
-        box[3] = box[3] - angleAdjYInt;
-  
-        box = box.map((x) => Math.round(x));
-
-        wordBoxArr.push(box);
-  
-        return prefixStr + " " + box[0] + " " + box[1] + " " + box[2] + " " + box[3];
-  
-      }
-
-      lineStr = lineStr.replaceAll(charBboxRegex, rotateBoundingBox);
-
-      // Recalculate line bounding box
-      let lineBoxNew = new Array(4);
-      lineBoxNew[0] = Math.min(...wordBoxArr.map(x => x[0]));
-      lineBoxNew[1] = Math.min(...wordBoxArr.map(x => x[1]));
-      lineBoxNew[2] = Math.max(...wordBoxArr.map(x => x[2]));
-      lineBoxNew[3] = Math.max(...wordBoxArr.map(x => x[3]));
-
-      const titleStrLine = lineStr.match(/title\=[\'\"]([^\'\"]+)/)?.[1];
-      const linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x) });
-
-      // const baselineOffsetAdj = baselineAngleRadAdj <= 0 ? 0 : baselineAngleRadAdj * (linebox[2] - linebox[0]);
-      const baselineOffsetAdj = baselineAngleRadAdj <= 0 ? 0 : linebox[3] - lineBoxNew[3];
-      const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
-
-      lineStr = lineStr.replace(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/, "baseline " + String(baselineAngleRadTotal) + " " + String(baselineOffsetTotal));
-
-
-      const lineBoxStr = lineBoxNew[0] + " " + lineBoxNew[1] + " " + lineBoxNew[2] + " " + lineBoxNew[3];
-
-      lineStr = lineStr.replace(/(\d+) (\d+) (\d+) (\d+)/, lineBoxStr);
-
-      
-
-      return lineStr;
-
+    for (let i=0; i<pageObj.lines.length; i++) {
+      rotateLine(pageObj.lines[i], rotateAngle);
     }
-
-    hocrString = hocrString.replaceAll(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){2}/g, rotateLine);
-
   }
-
-  const xmlOut = hocrString;
-  const dimsOut = pageDims;
 
   fontMetricsPage["message"] = charMode ? "" : "char_warning";
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsPage, {}]);
+  return ([pageObj, fontMetricsPage, {}]);
 
 }
 
@@ -790,6 +967,8 @@ function convertPageAbbyy(xmlPage, pageNum) {
   }
 
   const boxes = convertTableLayoutAbbyy(xmlPage);
+
+  const pageObj = new ocrPage(pageNum, pageDims);
 
   const fontMetricsObj = {};
 
@@ -1187,15 +1366,14 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
     let xmlOut = "";
 
+
+    // In general, the bounding box calculated here from the individual word boundign boxes is used.
     // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
     // In this case the original line-level bounding box from Abbyy is used
-    if (isFinite(lineBoxArrCalc[0]) && isFinite(lineBoxArrCalc[1]) && isFinite(lineBoxArrCalc[2]) && isFinite(lineBoxArrCalc[3])) {
-      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
-    } else {
-      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArr[2] + " " + lineBoxArr[3] + " " + lineBoxArr[4] + " " + lineBoxArr[5];
-    }
+    const lineBoxArrOut = isFinite(lineBoxArrCalc[0]) && isFinite(lineBoxArrCalc[1]) && isFinite(lineBoxArrCalc[2]) && isFinite(lineBoxArrCalc[3]) ? lineBoxArrCalc : lineBoxArr.slice(2,6);
 
-    xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
+    const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
+
 
     // Calculate character size metrics (x_size, x_ascenders, x_descenders)
     // Ideally we would be able to calculate all 3 directly, however given this is not always possible,
@@ -1213,21 +1391,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
       pageAscHeightArr.push(lineAscHeight / lineXHeight);
     }
 
-    // Add character height (misleadingly called "x_size" in Tesseract hocr)
-    xmlOut = xmlOut + "; x_size " + lineAllHeight;
-    // If x-height exists, calculate x_ascenders (in addition to x_descenders)
-    // In general, x-height must be a plausible value (to avoid obviously misidentified characters from determining font size).
-    // This restriction is not applied for lines with small caps. 
-    if (lineAscHeight && lineXHeight) {
-      xmlOut = xmlOut + "; x_ascenders " + (lineAscHeight - lineXHeight) + "; x_descenders " + (lineAllHeight - lineAscHeight);
-      // Otherwise, add only x_descenders
-    } else if (lineAscHeight) {
-      // console.log("Rejecting xheight: " + lineXHeight, + " " + lineAscHeight + " on page " + pageNum);
-      // console.log(text);
-      xmlOut = xmlOut + "; x_descenders " + (lineAllHeight - lineAscHeight);
-    }
-
-
+    const lineObj = new ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAllHeight, lineAscHeight - lineXHeight, lineAllHeight - lineAscHeight);
 
     xmlOut = xmlOut + "\">";
 
@@ -1250,41 +1414,28 @@ function convertPageAbbyy(xmlPage, pageNum) {
         continue;
       }
 
-      xmlOut = xmlOut + "<span class='ocrx_word' id='word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1) + "' title='bbox " + bboxesILeft + " " + bboxesITop + " " + bboxesIRight + " " + bboxesIBottom;
-      if (wordSusp[i]) {
-        xmlOut = xmlOut + ";x_wconf 0";
-      } else {
-        xmlOut = xmlOut + ";x_wconf 100";
-      }
-      xmlOut = xmlOut + "\'"
+      const id = "word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1);
 
-      // Add "style" attribute (if applicable)
-      if(["italic","small-caps"].includes(styleArr[i]) || fontFamily != "Default") {
-        xmlOut = xmlOut + " style='"
+      const wordObj = new ocrWord(lineObj, text[i], [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
+      wordObj.conf = wordSusp[i] ? 0 : 100;
 
-        if (styleArr[i] == "italic") {
-          xmlOut = xmlOut + "font-style:italic" ;
-        } else if (styleArr[i] == "small-caps") {
-          xmlOut = xmlOut + "font-variant:small-caps";
-        } 
+      if (styleArr[i] == "italic") {
+        wordObj.style = "italic";
+      } else if (styleArr[i] == "small-caps") {
+        wordObj.style = "small-caps";
+      } 
 
-        if (fontFamily != "Default") {
-          xmlOut = xmlOut + "font-family:" + fontFamily;
-        }
-
-        xmlOut = xmlOut + "'>"
-      } else {
-        xmlOut = xmlOut + ">"
+      if (fontFamily != "Default") {
+        wordObj.font = fontFamily;
       }
 
-      // Add word text, along with any formatting that uses nested elements rather than attributes
       if (styleArr[i] == "sup") {
-        xmlOut = xmlOut + "<sup>" + text[i] + "</sup>" + "</span>";
+        wordObj.sup = true;
       } else if (styleArr[i] == "dropcap") {
-        xmlOut = xmlOut + "<span class='ocr_dropcap'>" + text[i] + "</span>" + "</span>";
-      } else {
-        xmlOut = xmlOut + text[i] + "</span>";
+        wordObj.dropcap = true;
       }
+
+      lineObj.words.push(wordObj);
 
       lettersKept++;
 
@@ -1293,30 +1444,28 @@ function convertPageAbbyy(xmlPage, pageNum) {
     // If there are no letters in the line, drop the entire line element
     if (lettersKept == 0) return (["", 0]);
 
-    xmlOut = xmlOut + "</span>"
+    pageObj.lines.push(lineObj);
+
     return ([xmlOut, baselineSlope]);
   }
 
 
   let lineStrArr = xmlPage.split(/\<\/line\>/);
 
-  let xmlOut = "<div class='ocr_page'";
-
-  xmlOut = xmlOut + " title='bbox 0 0 " + pageDims[1] + " " + pageDims[0] + "'>";
+  let xmlOut = "";
 
   let angleRisePage = new Array();
   for (let i = 0; i < lineStrArr.length; i++) {
     const lineInt = convertLineAbbyy(lineStrArr[i], i, pageNum);
     if (lineInt[0] == "") continue;
     angleRisePage.push(lineInt[1]);
-    xmlOut = xmlOut + lineInt[0];
   }
-  xmlOut = xmlOut + "</div>";
 
   let angleRiseMedian = mean50(angleRisePage) || 0;
 
   const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI);
 
+  pageObj.angle = angleOut;
 
   let lineLeftAdj = new Array;
   for (let i = 0; i < lineLeft.length; i++) {
@@ -1329,9 +1478,10 @@ function convertPageAbbyy(xmlPage, pageNum) {
     leftOut = null;
   }
 
-  const dimsOut = pageDims;
+  pageObj.left = leftOut;
+  pageObj.leftAdj = leftAdjOut;
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, boxes]);
+  return ([pageObj, fontMetricsObj, boxes]);
 
 }
 
@@ -1346,10 +1496,15 @@ const stextCharRegex = new RegExp(/(\<font[^\>]+\>\s*)?\<char quad=[\'\"](\s*[\d
 // The following features were removed (compared with Abbyy XML):
 // - Drop cap detection
 // - Superscript detection
+
+/**
+ * @param {string} xmlPage
+ * @param {number} pageNum
+ */
 function convertPageStext(xmlPage, pageNum) {
 
-  let pageDims = xmlPage.match(/<page .+?width=[\'\"]([\d\.\-]+)[\'\"] height=[\'\"]([\d\.\-]+)[\'\"]/);
-  pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
+  const pageDimsMatch = xmlPage.match(/<page .+?width=[\'\"]([\d\.\-]+)[\'\"] height=[\'\"]([\d\.\-]+)[\'\"]/);
+  const pageDims = [parseInt(pageDimsMatch[2]), parseInt(pageDimsMatch[1])];
 
   const fontMetricsObj = {};
 
@@ -1360,6 +1515,13 @@ function convertPageStext(xmlPage, pageNum) {
 
   let pageAscHeightArr = [];
 
+  const pageObj = new ocrPage(pageNum, pageDims);
+
+  /**
+   * @param {string} xmlLine
+   * @param {number} lineNum
+   * @param {number} pageNum
+   */
   function convertLineStext(xmlLine, lineNum, pageNum = 1) {
     let widthPxObjLine = new Object;
     let heightPxObjLine = new Object;
@@ -1429,8 +1591,6 @@ function convertPageStext(xmlPage, pageNum) {
     text = text.fill("");
     let styleArr = Array(wordStrArr.length);
     styleArr = styleArr.fill("normal");
-    let wordSusp = Array(wordStrArr.length);
-    wordSusp.fill(false);
 
 
     for (let i = 0; i < wordStrArr.length; i++) {
@@ -1478,11 +1638,6 @@ function convertPageStext(xmlPage, pageNum) {
 
         // All text in stext is considered correct/high confidence
         let letterSusp = false;
-        // if (letterArr[j][6] == "1" || letterArr[j][6] == "true") {
-        //   letterSusp = true;
-        //   wordSusp[i] = true;
-        // }
-
         // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines
         if (letterArr[j][7] == "¬" && i+1 == wordStrArr.length && j+1 == letterArr.length && i > 2) {
           letterArr[j][7] = "-";
@@ -1703,55 +1858,14 @@ function convertPageStext(xmlPage, pageNum) {
 
     // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
     // In this case the original line-level bounding box from Abbyy is used
-    if (isFinite(lineBoxArrCalc[0]) && isFinite(lineBoxArrCalc[1]) && isFinite(lineBoxArrCalc[2]) && isFinite(lineBoxArrCalc[3])) {
-      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArrCalc[0] + " " + lineBoxArrCalc[1] + " " + lineBoxArrCalc[2] + " " + lineBoxArrCalc[3];
-    } else {
-      xmlOut += "<span class='ocr_line' title=\"bbox " + lineBoxArr[2] + " " + lineBoxArr[3] + " " + lineBoxArr[4] + " " + lineBoxArr[5];
-    }
+    const lineBoxOut = isFinite(lineBoxArrCalc[0]) && isFinite(lineBoxArrCalc[1]) && isFinite(lineBoxArrCalc[2]) && isFinite(lineBoxArrCalc[3]) ? lineBoxArrCalc : lineBoxArr.slice(2,6);
 
-    xmlOut = xmlOut + "; baseline " + round6(baselineSlope) + " " + Math.round(baselinePoint);
+    const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
 
-    // Calculate character size metrics (x_size, x_ascenders, x_descenders)
-    // Ideally we would be able to calculate all 3 directly, however given this is not always possible,
-    // different calculations are used based on the data available.
+    // TODO: This is very back-of-the-napkin, should figure out how to be more precise.
+    const letterHeightOut = fontSize * 0.6;
 
-    // If no ascenders exist on the line but x-height is known, set ascender height using the median ascender height / x-height ratio for the page so far,
-    // and 1.5x the x-height as a last resort. 
-    if (lineXHeight && !(lineAscHeight && (styleArr.includes("small-caps") || (lineAscHeight > lineXHeight * 1.1) && (lineAscHeight < lineXHeight * 2)))) {
-      if(pageAscHeightArr.length >= 3) {
-        lineAscHeight = lineXHeight * quantile(pageAscHeightArr, 0.5);
-      } else {
-        lineAscHeight = Math.round(lineXHeight * 1.5);
-      }
-    } else if(lineXHeight) {
-      pageAscHeightArr.push(lineAscHeight / lineXHeight);
-    }
-
-    xmlOut = xmlOut + "; x_size " + fontSize * 0.6;
-    // Add character height (misleadingly called "x_size" in Tesseract hocr)
-    // TODO: Using lineAllHeight currently produces significantly oversized text for stext.  
-    // Applying ad-hoc adjustment here--should be fixed to be correct in the future.
-    // The core issues are:
-    // (1) The bounding boxes in stext correspond to the theoretical bounding boxes of the font.
-    // These are virtually always larger than the physical bounding boxes of the characters
-    // (which is what calculations downstream from this think x_size represents).
-    // (2) There is no "x_descenders" statistic (we cannot calculate using bounding boxes as all bounding boxes are identical for given font/font size).
-    // In this case the downstream calculations assume there are no descenders, which is a good assumption for Abbyy (should not be changed altogether),
-    // however leads to an even larger font size in this case. 
-    // xmlOut = xmlOut + "; x_size " + Math.round(lineAllHeight * 0.4);
-    // If x-height exists, calculate x_ascenders (in addition to x_descenders)
-    // In general, x-height must be a plausible value (to avoid obviously misidentified characters from determining font size).
-    // This restriction is not applied for lines with small caps. 
-    // if (lineAscHeight && lineXHeight) {
-    //   xmlOut = xmlOut + "; x_ascenders " + (lineAscHeight - lineXHeight) + "; x_descenders " + (lineAllHeight - lineAscHeight);
-    //   // Otherwise, add only x_descenders
-    // } else if (lineAscHeight) {
-    //   xmlOut = xmlOut + "; x_descenders " + (lineAllHeight - lineAscHeight);
-    // }
-
-
-
-    xmlOut = xmlOut + "\">";
+    const lineObj = new ocrLine(pageObj, lineBoxOut, baselineOut, letterHeightOut, null, null);
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
@@ -1763,41 +1877,33 @@ function convertPageStext(xmlPage, pageNum) {
       const bboxesITop = Math.min(...bboxesI.map(x => x[1]));
       const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]));
 
+      const id = "word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1);
+
       xmlOut = xmlOut + "<span class='ocrx_word' id='word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1) + "' title='bbox " + bboxesILeft + " " + bboxesITop + " " + bboxesIRight + " " + bboxesIBottom;
-      if (wordSusp[i]) {
-        xmlOut = xmlOut + ";x_wconf 0";
-      } else {
-        xmlOut = xmlOut + ";x_wconf 100";
-      }
-      xmlOut = xmlOut + "\'"
 
-      // Add "style" attribute (if applicable)
-      if(["italic","small-caps"].includes(styleArr[i]) || fontFamily != "Default") {
-        xmlOut = xmlOut + " style='"
+      const wordObj = new ocrWord(lineObj, text[i], [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
 
-        if (styleArr[i] == "italic") {
-          xmlOut = xmlOut + "font-style:italic" ;
-        } else if (styleArr[i] == "small-caps") {
-          xmlOut = xmlOut + "font-variant:small-caps";
-        } 
+      // There is no confidence information in stext.
+      // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
+      wordObj.conf = 100;
 
-        if (fontFamily != "Default") {
-          xmlOut = xmlOut + "font-family:" + fontFamily;
-        }
+      if (styleArr[i] == "italic") {
+        wordObj.style = "italic";
+      } else if (styleArr[i] == "small-caps") {
+        wordObj.style = "small-caps";
+      } 
 
-        xmlOut = xmlOut + "'>"
-      } else {
-        xmlOut = xmlOut + ">"
+      if (fontFamily != "Default") {
+        wordObj.font = fontFamily;
       }
 
-      // Add word text, along with any formatting that uses nested elements rather than attributes
       if (styleArr[i] == "sup") {
-        xmlOut = xmlOut + "<sup>" + text[i] + "</sup>" + "</span>";
+        wordObj.sup = true;
       } else if (styleArr[i] == "dropcap") {
-        xmlOut = xmlOut + "<span class='ocr_dropcap'>" + text[i] + "</span>" + "</span>";
-      } else {
-        xmlOut = xmlOut + text[i] + "</span>";
+        wordObj.dropcap = true;
       }
+
+      lineObj.words.push(wordObj);
 
       lettersKept++;
 
@@ -1806,7 +1912,7 @@ function convertPageStext(xmlPage, pageNum) {
     // If there are no letters in the line, drop the entire line element
     if (lettersKept == 0) return (["", 0]);
 
-    xmlOut = xmlOut + "</span>"
+    pageObj.lines.push(lineObj);
     return ([xmlOut, baselineSlope]);
   }
 
@@ -1815,8 +1921,6 @@ function convertPageStext(xmlPage, pageNum) {
 
   let xmlOut = "<div class='ocr_page'";
 
-  xmlOut = xmlOut + " title='bbox 0 0 " + pageDims[1] + " " + pageDims[0] + "'>";
-
   let angleRisePage = new Array();
   for (let i = 0; i < lineStrArr.length; i++) {
     const lineInt = convertLineStext(lineStrArr[i], i, pageNum);
@@ -1824,7 +1928,6 @@ function convertPageStext(xmlPage, pageNum) {
     angleRisePage.push(lineInt[1]);
     xmlOut = xmlOut + lineInt[0];
   }
-  xmlOut = xmlOut + "</div>";
 
   let angleRiseMedian = mean50(angleRisePage) || 0;
 
@@ -1842,12 +1945,17 @@ function convertPageStext(xmlPage, pageNum) {
     leftOut = null;
   }
 
-  const dimsOut = pageDims;
+  pageObj.angle = angleOut;
+  pageObj.left = leftOut;
+  pageObj.leftAdj = leftAdjOut;
 
-  return ([xmlOut, dimsOut, angleOut, leftOut, leftAdjOut, fontMetricsObj, {}]);
+  return ([pageObj, fontMetricsObj, {}]);
 
 }
 
+/**
+ * @param {string} xmlPage
+ */
 function convertTableLayoutAbbyy(xmlPage) {
 
   // Note: This assumes that block elements are not nested within table block elements
@@ -1864,18 +1972,24 @@ function convertTableLayoutAbbyy(xmlPage) {
     let tableBoxes = {};
 
     const table = tables[i];
-    const tableCoords = table.match(/<block blockType=[\'\"]Table[\'\"][^>]*?l=[\'\"](\d+)[\'\"] t=[\'\"](\d+)[\'\"] r=[\'\"](\d+)[\'\"] b=[\'\"](\d+)[\'\"]/i).slice(1, 5).map(function (x) { return parseInt(x) });
+    const tableCoords = table.match(/<block blockType=[\'\"]Table[\'\"][^>]*?l=[\'\"](\d+)[\'\"] t=[\'\"](\d+)[\'\"] r=[\'\"](\d+)[\'\"] b=[\'\"](\d+)[\'\"]/i)?.slice(1, 5).map(function (x) { return parseInt(x) });
 
-    let leftLast = tableCoords[0];
+    let leftLast = tableCoords?.[0];
 
     const rows = table.match(/<row[\s\S]+?(?:\<\/row\>\s*)/g);
 
     // Columns widths are calculated using the cells in a single row.
     // The first row is used unless it contains cells spanning multiple columns,
     // in which case the second row is used. 
-    const firstRow = rows[1] && /colSpan/.test(rows[0]) ? rows[1] : rows[0];
+    const firstRow = rows?.[1] && /colSpan/.test(rows[0]) ? rows[1] : rows?.[0];
 
-    const firstRowCells = firstRow.match(/<cell[\s\S]+?(?:\<\/cell\>\s*)/ig);
+    const firstRowCells = firstRow?.match(/<cell[\s\S]+?(?:\<\/cell\>\s*)/ig);
+
+    if (leftLast == null || leftLast == undefined || !firstRowCells) {
+      console.warn("Failed to parse table:");
+      console.warn(table);
+      continue;
+    }
 
     for (let j=0; j < firstRowCells.length; j++) {
       const cell = firstRowCells[j];

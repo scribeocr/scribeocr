@@ -1,5 +1,6 @@
-import { round3, replaceLigatures } from "./miscUtils.js";
+import { round3 } from "./miscUtils.js";
 import { getFontSize } from "./textUtils.js"
+import { ocr } from "./ocrObjects.js";
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
 
@@ -11,8 +12,13 @@ const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById(
 // Long-term should see if there is a way to get types to work with fabric.js
 var fabric = globalThis.fabric;
 
-var parser = new DOMParser();
-
+/**
+ * @param {Array<ocrWord>} words
+ * @param {number} n
+ * @param {?number} fontAsc
+ * @param {?number} fontDesc
+ * @param {boolean} view
+ */
 let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, view = false) {
 
   const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * (Math.PI / 180));
@@ -22,8 +28,7 @@ let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, v
   const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
   const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
 
-  const wordsTitleStr = words.map((x) => x.getAttribute("title"));
-  const wordsBox = wordsTitleStr.map((x) => [...x.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); }));
+  const wordsBox = words.map(x => x.bbox);
 
   // Union of all bounding boxes
   let wordBoxUnion = new Array(4);
@@ -33,16 +38,8 @@ let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, v
   wordBoxUnion[3] = Math.max(...wordsBox.map(x => x[3]));
 
   // All words are assumed to be on the same line
-  let titleStrLine = words[0].parentElement.getAttribute('title');
-
-  let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-  let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-  if (baseline != null) {
-    baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
-  } else {
-    baseline = [0, 0];
-  }
-  
+  const linebox = words[0].line.bbox;
+  const baseline = words[0].line.baseline;
 
   let angleAdjXLine = 0;
   let angleAdjYLine = 0;
@@ -95,100 +92,19 @@ let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, v
 
 }
   
-
-// Calculates line font size from xml element (either ocr_line or ocrx_word) 
-const calcLineFontSize = async function(xmlElem) {
-
-  if(xmlElem.className == "ocrx_word") {
-    xmlElem = xmlElem.parentElement;
-  }
-
-  if(xmlElem.className != "ocr_line") {
-    throw new Error('xmlElem or its parent must be ocr_line element.');
-  }
-
-  // Get line font size.  We assume all the words are on the same line.
-  let titleStrLine = xmlElem.getAttribute('title');
-  let lineFontSize;
-  // If possible (native Tesseract HOCR) get font size using x-height.
-  // If not possible (Abbyy XML) get font size using ascender height.
-  let letterHeight = titleStrLine.match(/x_size\s+([\d\.\-]+)/);
-  let ascHeight = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/);
-  let descHeight = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/);
-  if (letterHeight != null && ascHeight != null && descHeight != null) {
-    letterHeight = parseFloat(letterHeight[1]);
-    ascHeight = parseFloat(ascHeight[1]);
-    descHeight = parseFloat(descHeight[1]);
-    let xHeight = letterHeight - ascHeight - descHeight;
-    lineFontSize = await getFontSize(globalSettings.defaultFont, "normal", xHeight, "o");
-  } else if (letterHeight != null) {
-    letterHeight = parseFloat(letterHeight[1]);
-    descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-    lineFontSize = await getFontSize(globalSettings.defaultFont, "normal", letterHeight - descHeight, "A");
-  }
-
-  return(lineFontSize);
-  
-}
-  
-  
-  
+/**
+ * @param {ocrWord} word
+ * @param {number} offsetX
+ * @param {number} lineFontSize
+ * @param {?string} altText
+ */
 let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText = null, debugCanvas = null){
 
-  lineFontSize = lineFontSize || (await calcLineFontSize(word)) || 10;
+  lineFontSize = lineFontSize || (await ocr.calcLineFontSize(word.line)) || 10;
 
-  let styleStr = word.getAttribute('style') ?? "";
+  const wordText = altText ? ocr.replaceLigatures(altText) : ocr.replaceLigatures(word.text);
 
-  let fontStyle;
-  if (/italic/i.test(styleStr)) {
-    fontStyle = "italic";
-  } else if (/small\-caps/i.test(styleStr)) {
-    fontStyle = "small-caps";
-  } else {
-    fontStyle = "normal";
-  }
-
-  // let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i)?.[1];
-  // const wordFontSize = parseFloat(fontSizeStr) || lineFontSize;
-  let wordText, wordSup, wordDropCap;
-  if (/\<sup\>/i.test(word.innerHTML)) {
-    wordText = word.innerHTML.replace(/^\s*\<sup\>/i, "");
-    wordText = wordText.replace(/\<\/sup\>\s*$/i, "");
-    wordSup = true;
-    wordDropCap = false;
-  } else if (/\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word.innerHTML)) {
-    wordText = word.innerHTML.replace(/^\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "");
-    wordText = wordText.replace(/\<\/span\>\s*$/i, "");
-    wordSup = false;
-    wordDropCap = true;
-  } else {
-    wordText = word.childNodes[0].nodeValue;
-    wordSup = false;
-    wordDropCap = false;
-  }
-
-  wordText = altText ? replaceLigatures(altText) : replaceLigatures(wordText);
-
-  const titleStr = word.getAttribute('title');
-  const wordBox = [...titleStr.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-
-  let wordFontSize;
-  let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i);
-  if (fontSizeStr != null) {
-    wordFontSize = parseFloat(fontSizeStr[1]);
-  } else if (wordSup) {
-    // All superscripts are assumed to be numbers for now
-    wordFontSize = await getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], "1");
-  } else if (wordDropCap) {
-    // Note: In addition to being taller, drop caps are often narrower than other glyphs.
-    // Unfortunately, while Fabric JS (canvas library) currently supports horizontally scaling glyphs,
-    // pdfkit (pdf library) does not.  This feature should be added to Scribe if pdfkit supports it
-    // in the future.
-    // https://github.com/foliojs/pdfkit/issues/1032
-    wordFontSize = await getFontSize(globalSettings.defaultFont, fontStyle, wordBox[3] - wordBox[1], wordText.slice(0, 1));
-  } else {
-    wordFontSize = lineFontSize;
-  }
+  const wordFontSize = (await ocr.calcWordFontSize(word)) || lineFontSize;
 
   if(!wordFontSize){
     console.log("Font size not found");
@@ -198,77 +114,45 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
   ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
   const oMetrics = ctx.measureText("o");
 
-  let wordFontFamily = styleStr.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/)?.[1];
-  let defaultFontFamily;
-  if (wordFontFamily == null) {
-    wordFontFamily = globalSettings.defaultFont;
-    defaultFontFamily = true;
-  } else {
-    wordFontFamily = wordFontFamily.trim();
-    defaultFontFamily = false;
-  }
+  const wordFontFamily = word.font || globalSettings.defaultFont;
 
-  if (fontStyle == "small-caps") {
+  if (word.style == "small-caps") {
     ctx.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
   } else {
-    ctx.font = fontStyle + " " + wordFontSize + 'px ' + wordFontFamily;
+    ctx.font = word.style + " " + wordFontSize + 'px ' + wordFontFamily;
   }
 
-  let missingKerning, kerning;
-  let kerningMatch = styleStr.match(/letter-spacing\:([\d\.\-]+)/);
-  if (kerningMatch == null) {
-    kerning = 0;
-    missingKerning = true;
-  } else {
-    kerning = parseFloat(kerningMatch[1]);
-    missingKerning = false;
-  }
-
-  const fontObjI = await globalThis.fontObj[wordFontFamily][fontStyle];
+  const fontObjI = await globalThis.fontObj[wordFontFamily][word.style];
 
   // Calculate font glyph metrics for precise positioning
-  let wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
-  let wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
+  const wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
+  const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
 
-  let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
-  let wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (wordFontSize / fontObjI.unitsPerEm);
+  const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
+  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (wordFontSize / fontObjI.unitsPerEm);
 
+  const wordWidth1 = ctx.measureText(wordText).width;
+  const wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;
 
-  let wordWidth1 = ctx.measureText(wordText).width;
-  let wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing + (wordText.length - 1) * kerning;
+  const boxWidth = word.bbox[2] - word.bbox[0];
 
-  let box_width = wordBox[2] - wordBox[0];
+  const kerning = wordText.length > 1 ? round3((boxWidth - wordWidth) / (wordText.length - 1)) : 0;
 
-  // If kerning is off, change the kerning value for both the canvas textbox and HOCR
-  if (wordText.length > 1 && Math.abs(box_width - wordWidth) > 1) {
-    kerning = round3(kerning + (box_width - wordWidth) / (wordText.length - 1));
-  }
+  const fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
+  const fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
 
-  let fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
-  let fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
-
-  let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-  let fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
+  const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
+  const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
 
   let top;
-  if (wordSup) {
+  if (word.sup) {
     let fontDescWord = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
 
-    let titleStrLine = word.parentElement.getAttribute('title');
+    const wordboxXMid = word.bbox[0] + (word.bbox[2] - word.bbox[0]) / 2;
 
-    let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-    let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-    if (baseline != null) {
-      baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
-    } else {
-      baseline = [0, 0];
-    }
+    const baselineY = word.line.bbox[3] + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox[0]);
 
-    const wordboxXMid = wordBox[0] + (wordBox[2] - wordBox[0]) / 2;
-
-    const baselineY = linebox[3] + baseline[1] + baseline[0] * (wordboxXMid - linebox[0]);
-
-    top = fontDesc + fontAsc + 1 - (baselineY - wordBox[3]) - (fontDesc - fontDescWord);  
+    top = fontDesc + fontAsc + 1 - (baselineY - word.bbox[3]) - (fontDesc - fontDescWord);  
   
   } else {
     top = fontDesc + fontAsc + 1;  
@@ -276,10 +160,8 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
 
   const left = 0 - wordLeftBearing + offsetX;
 
-  // const top = fontDesc + fontAsc + 1;  
-
-  let wordFontFamilyCanvas = fontStyle == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
-  let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;
+  let wordFontFamilyCanvas = word.style == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
+  let fontStyleCanvas = word.style == "small-caps" ? "normal" : word.style;
 
   let textbox = new fabric.IText(wordText, {
     left: 0,
@@ -314,47 +196,39 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
 
 }
   
-  
+/**
+ * @param {Array<ocrWord>} wordsA
+ * @param {Array<ocrWord>} wordsB
+ * @param {number} n
+ * @param {boolean} view
+ */
 export async function evalWords(wordsA, wordsB, n, view = false){
 
   const cosAngle = Math.cos(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 0;
 
-  const lineFontSize = await calcLineFontSize(wordsA[0]);
+  const lineFontSize = await ocr.calcLineFontSize(wordsA[0].line);
 
   if (!lineFontSize) return [1,1];
 
   // The font/style from the first word is used for the purposes of font metrics
-  let styleStr = wordsA[0].getAttribute('style') ?? "";
+  const fontStyle =  wordsA[0].style;
 
-  let fontStyle;
-  if (/italic/i.test(styleStr)) {
-    fontStyle = "italic";
-  } else if (/small\-caps/i.test(styleStr)) {
-    fontStyle = "small-caps";
-  } else {
-    fontStyle = "normal";
-  }
-
-  let wordFontFamily = styleStr.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/)?.[1] || globalSettings.defaultFont;
+  const wordFontFamily = wordsA[0].font || globalSettings.defaultFont;
 
   ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
   const oMetrics = ctx.measureText("o");
 
   const fontObjI = await globalThis.fontObj[wordFontFamily][fontStyle];
 
-  let fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
-  let fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
+  const fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
+  const fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
 
-  let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-  let fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
+  const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
+  const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
 
-
-  const wordsATitleStr = wordsA.map((x) => x.getAttribute("title"));
-  const wordsBTitleStr = wordsA.map((x) => x.getAttribute("title"));
-
-  const wordsABox = wordsATitleStr.map((x) => [...x.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); }));
-  const wordsBBox = wordsBTitleStr.map((x) => [...x.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); }));
+  const wordsABox = wordsA.map(x => x.bbox);
+  const wordsBBox = wordsB.map(x => x.bbox);
 
   const wordsAllBox = [...wordsABox,...wordsBBox];
 
@@ -366,19 +240,8 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   wordBoxUnion[3] = Math.max(...wordsAllBox.map(x => x[3]));
   
   // All words are assumed to be on the same line
-  let titleStrLine = wordsA[0].parentElement.getAttribute('title');
-
-  let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-  let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-  if (baseline != null) {
-    baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
-  } else {
-    baseline = [0, 0];
-  }
-
-  // const yRot = x * sinAngle + cosAngle * y;
-  // const angleAdjXIntLine = x - xRot;
-
+  const linebox = wordsA[0].line.bbox;
+  const baseline = wordsA[0].line.baseline;
 
   canvasAlt.clear();
 
@@ -404,15 +267,14 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   let y0;
   for (let i=0;i<wordsA.length;i++) {
     const word = wordsA[i];
-    const wordITitleStr = word.getAttribute('title');
-    const wordIBox = [...wordITitleStr.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+    const wordIBox = word.bbox;
     const baselineY = linebox[3] + baseline[1] + baseline[0] * (wordIBox[0] - linebox[0]);
     if (i == 0) {
       x0 = wordIBox[0];
       y0 = baselineY;
     } 
     const x = wordIBox[0];
-    const y = /\<sup\>/i.test(word.innerHTML) || /\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word.innerHTML) ? wordIBox[3] : baselineY;
+    const y = word.sup || word.dropcap ? wordIBox[3] : baselineY;
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
@@ -421,8 +283,6 @@ export async function evalWords(wordsA, wordsB, n, view = false){
 
   const imageDataExpectedA = ctxAlt.getImageData(0, 0, (wordBoxUnion[2] - wordBoxUnion[0] + 1), wordBoxUnion[3] - wordBoxUnion[1] + 1)["data"];
 
-  // if (/\<sup\>/i.test(wordsA[1]?.innerHTML)) debugger;
-
   canvasAlt.clear();
 
   debugCanvas = view ? canvasComp2 : null;
@@ -430,26 +290,19 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   // Draw the words in wordsB
   for (let i=0;i<wordsB.length;i++) {
 
-    // Nodes are cloned so editing does not impact the original
-    // Line needs to be cloned along with word since drawWordRender function references parentElement
-    const line = wordsB[i].parentElement.cloneNode(false);
-    line.appendChild(wordsB[i].cloneNode(true));
-
-    const word = line.firstChild;
-
-    // const word = wordsB[i].cloneNode(true);
+    // Clone object so editing does not impact the original
+    const word = structuredClone(wordsB[i]);
 
     // Set style to whatever it is for wordsA.  This is based on the assumption that "A" is Tesseract Legacy and "B" is Tesseract LSTM (which does not have useful style info).
-    word.setAttribute("style", styleStr);
-    const wordITitleStr = word.getAttribute('title');
-    const wordIBox = [...wordITitleStr.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-    const baselineY = linebox[3] + baseline[1] + baseline[0] * (wordIBox[0] - linebox[0]);
+    word.style = wordsA[0].style
+
+    const baselineY = linebox[3] + baseline[1] + baseline[0] * (word.bbox[0] - linebox[0]);
     if (i == 0) {
-      x0 = wordIBox[0];
+      x0 = word.bbox[0];
       y0 = baselineY;
     } 
-    const x = wordIBox[0];
-    const y = /\<sup\>/i.test(word.innerHTML) || /\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word.innerHTML) ? wordIBox[3] : baselineY;
+    const x = word.bbox[0];
+    const y = word.sup || word.dropcap ? word.bbox[3] : baselineY;
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
@@ -457,8 +310,6 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   }
 
   const imageDataExpectedB = ctxAlt.getImageData(0, 0, (wordBoxUnion[2] - wordBoxUnion[0] + 1), wordBoxUnion[3] - wordBoxUnion[1] + 1)["data"];
-
-  // if (/\<sup\>/i.test(wordsB[1]?.innerHTML)) debugger;
 
   canvasAlt.clear();
 
@@ -493,10 +344,12 @@ export async function evalWords(wordsA, wordsB, n, view = false){
 
 }
     
-  
-// Calculate penalty for word using a collection of ad-hoc heuristics.
-// This should supplement the word overlap strategy by penalizing patterns that may have plausible overlap
-// but are implausible from a language perspective (e.g. "1%" being misidentified as "l%")
+/**
+ * Calculate penalty for word using ad-hoc heuristics.
+ * Supplements word overlap strategy by penalizing patterns that may have plausible overlap
+ * but are implausible from a language perspective (e.g. "1%" being misidentified as "l%")
+ * @param {string} wordStr
+ */
 function penalizeWord(wordStr) {
   let penalty = 0;
   // Penalize non-numbers followed by "%"
@@ -539,15 +392,19 @@ export function calcOverlap(boxA, boxB) {
   return area / areaA;
 }
 
-export function reorderHOCR(hocrStrA, layoutObj, applyExclude = true) {
+/**
+ * @param {ocrPage} page
+ * @param {boolean} applyExclude
+ * @param {boolean} editInPlace
+ */
+export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = false) {
 
-  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return hocrStrA;
+  const pageInt = editInPlace ? page : structuredClone(page);
 
+  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return pageInt;
 
-  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
-  const hocrALines = hocrA.getElementsByClassName("ocr_line");
-
-  const hocrNew = hocrA.firstChild.cloneNode(false);
+  const hocrALines = pageInt.lines;
+  const linesNew = [];
 
   const priorityArr = Array(hocrALines.length);
 
@@ -556,8 +413,7 @@ export function reorderHOCR(hocrStrA, layoutObj, applyExclude = true) {
 
   for (let i = 0; i < hocrALines.length; i++) {
     const hocrALine = hocrALines[i];
-    const titleStrLineA = hocrALine.getAttribute('title');
-    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+    const lineBoxA = hocrALine.bbox;
 
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
       const overlap = calcOverlap(lineBoxA, obj["coords"]);
@@ -575,12 +431,14 @@ export function reorderHOCR(hocrStrA, layoutObj, applyExclude = true) {
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j < priorityArr.length; j++) {
       if (priorityArr[j] == i) {
-        hocrNew.appendChild(hocrALines[j].cloneNode(true));
+        linesNew.push(hocrALines[j]);
       }
     }
   }
 
-  return hocrNew.outerHTML;
+  pageInt.lines = linesNew;
+
+  return pageInt;
 
 }
 
@@ -599,49 +457,34 @@ export function getExcludedText() {
 
 // Get array of text that will be excluded from exports due to "exclude" layout boxes. 
 // This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point. 
-export function getExcludedTextPage(hocrStrA, layoutObj, applyExclude = true) {
+
+/**
+ * @param {ocrPage} pageA
+ */
+export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 
   const excludedArr = [];
 
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return excludedArr;
 
-
-  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
-  const hocrALines = hocrA.getElementsByClassName("ocr_line");
-
-  const hocrNew = hocrA.firstChild.cloneNode(false);
-
-  const priorityArr = Array(hocrALines.length);
+  const priorityArr = Array(pageA.lines.length);
 
   // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
   priorityArr.fill(10);
 
-  for (let i = 0; i < hocrALines.length; i++) {
-    const hocrALine = hocrALines[i];
-    const titleStrLineA = hocrALine.getAttribute('title');
-    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+  for (let i = 0; i < pageA.lines.length; i++) {
+    const lineA = pageA.lines[i];
 
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
-      const overlap = calcOverlap(lineBoxA, obj["coords"]);
+      const overlap = calcOverlap(lineA.bbox, obj["coords"]);
       if (overlap > 0.5) {
         if (obj["type"] == "order") {
           priorityArr[i] = obj["priority"];
         } else if (obj["type"] == "exclude" && applyExclude) {
-          const words = hocrALine.getElementsByClassName("ocrx_word");
+          const words = lineA.words;
           let text = "";
           for (let i=0; i<words.length; i++) {
-            const word = words[i];
-            let wordText;
-            if (/\<sup\>/i.test(word.innerHTML)) {
-              wordText = word.innerHTML.replace(/^\s*\<sup\>/i, "");
-              wordText = wordText.replace(/\<\/sup\>\s*$/i, "");
-            } else if (/\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word.innerHTML)) {
-              wordText = word.innerHTML.replace(/^\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "");
-              wordText = wordText.replace(/\<\/span\>\s*$/i, "");
-            } else {
-              wordText = word.childNodes[0].nodeValue;
-            }
-            text += wordText + " ";
+            text += words[i].text + " ";
           }
           excludedArr.push(text)
         }
@@ -653,39 +496,31 @@ export function getExcludedTextPage(hocrStrA, layoutObj, applyExclude = true) {
 
 }
 
-export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, debugLabel = "") {
+/**
+ * @param {ocrPage} pageA
+ * @param {ocrPage} pageB
+ * @param {string} mode
+ * @param {?number} n
+ * @param {string} debugLabel
+ */
+export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugLabel = "") {
+
+  const pageAInt = structuredClone(pageA);
 
   if (debugLabel && !globalThis.debugLog) globalThis.debugLog = "";
   if (debugLabel) globalThis.debugLog += "Comparing page " + String(n) + "\n";
-
-
-  hocrStrA = hocrStrA.replace(/compCount=['"]\d+['"]/g, "");
-  hocrStrA = hocrStrA.replace(/compStatus=['"]\d+['"]/g, "");
-
-  hocrStrB = hocrStrB.replace(/compCount=['"]\d+['"]/g, "");
-  hocrStrB = hocrStrB.replace(/compStatus=['"]\d+['"]/g, "");
-
-  const hocrA = parser.parseFromString(hocrStrA, "text/xml");
-  const hocrB = parser.parseFromString(hocrStrB, "text/xml");
-
-  const hocrALines = hocrA.getElementsByClassName("ocr_line");
-  const hocrBLines = hocrB.getElementsByClassName("ocr_line");
 
   const hocrAOverlap = {};
   const hocrBOverlap = {};
   const hocrBCorrect = {};
 
-  //let minLineB = 0;
-  for (let i = 0; i < hocrALines.length; i++) {
-    const hocrALine = hocrALines[i];
-    const titleStrLineA = hocrALine.getAttribute('title');
-    const lineBoxA = [...titleStrLineA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+  for (let i = 0; i < pageAInt.lines.length; i++) {
+    const lineA = pageAInt.lines[i];
+    const lineBoxA = lineA.bbox;
 
-    //for (let j = minLineB; j < hocrBLines.length; j++){
-    for (let j = 0; j < hocrBLines.length; j++) {
-      const hocrBLine = hocrBLines[j];
-      const titleStrLineB = hocrBLine.getAttribute('title');
-      const lineBoxB = [...titleStrLineB.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+    for (let j = 0; j < pageB.lines.length; j++) {
+      const lineB = pageB.lines[j];
+      const lineBoxB = lineB.bbox;
 
       // If top of line A is below bottom of line B, move to next line B
       if (lineBoxA[1] > lineBoxB[3]) {
@@ -695,33 +530,25 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
         // If top of line B is below bottom of line A, move to next line A
         // (We assume no match is possible for any B)
       } else if (lineBoxB[1] > lineBoxA[3]) {
-        //break;
         continue;
 
         // Otherwise, there is possible overlap
       } else {
 
         let minWordB = 0;
-        const hocrAWords = hocrALine.getElementsByClassName("ocrx_word");
-        const hocrBWords = hocrBLine.getElementsByClassName("ocrx_word");
 
-        for (let k = 0; k < hocrAWords.length; k++) {
-          const hocrAWord = hocrAWords[k];
-          const hocrAWordID = hocrAWord.getAttribute("id");
+        for (let k = 0; k < lineA.words.length; k++) {
+          const wordA = lineA.words[k];
+
+          wordA.matchTruth = false;
 
           // If option is set to ignore punctuation and the current "word" conly contains punctuation,
           // exit early with options that will result in the word being printed in green.
-          if (ignorePunctElem.checked && !hocrAWord.textContent.replace(/[\W_]/g, "")) {
-            hocrAWord.setAttribute("compCount", "1");
-            hocrAWord.setAttribute("compStatus", "1");
+          if (ignorePunctElem.checked && !wordA.text.replace(/[\W_]/g, "")) {
+            wordA.matchTruth = true;
           }
 
-
-          //if (j == minLineB) hocrAWord.setAttribute("compCount", "0");
-          hocrAWord.setAttribute("compCount", hocrAWord.getAttribute("compCount") || "0");
-
-          const titleStrWordA = hocrAWord.getAttribute('title');
-          const wordBoxA = [...titleStrWordA.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+          const wordBoxA = wordA.bbox;
 
           // Remove 10% from all sides of bounding box
           // This prevents small overlapping (around the edges) from triggering a comparison
@@ -737,12 +564,10 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
           wordBoxACore[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
 
 
-          for (let l = minWordB; l < hocrBWords.length; l++) {
+          for (let l = minWordB; l < lineB.words.length; l++) {
 
-            const hocrBWord = hocrBWords[l];
-            const hocrBWordID = hocrBWord.getAttribute("id");
-            const titleStrWordB = hocrBWord.getAttribute('title');
-            const wordBoxB = [...titleStrWordB.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+            const wordB = lineB.words[l];
+            const wordBoxB = wordB.bbox;
 
             // Remove 10% from all sides of ground truth bounding box
             // This prevents small overlapping (around the edges) from triggering a comparison
@@ -774,9 +599,8 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                 continue;
               }
 
-              hocrAWord.setAttribute("compCount", (parseInt(hocrAWord.getAttribute("compCount")) + 1).toString());
-              let wordTextA = replaceLigatures(hocrAWord.textContent);
-              let wordTextB = replaceLigatures(hocrBWord.textContent);
+              let wordTextA = ocr.replaceLigatures(wordA.text);
+              let wordTextB = ocr.replaceLigatures(wordB.text);
               if (ignorePunctElem.checked) {
                 // Punctuation next to numbers is not ignored, even if this setting is enabled, as punctuation differences are
                 // often/usually substantive in this context (e.g. "-$1,000" vs $1,000" or "$100" vs. "$1.00")
@@ -788,29 +612,24 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                 wordTextB = wordTextB.toLowerCase();
               }
 
-              hocrAOverlap[hocrAWordID] = 1;
-              hocrBOverlap[hocrBWordID] = 1;
+              hocrAOverlap[wordA.id] = 1;
+              hocrBOverlap[wordB.id] = 1;
 
               // TODO: Account for cases without 1-to-1 mapping between bounding boxes
               if (wordTextA == wordTextB) {
-                hocrAWord.setAttribute("compStatus", "1");
-                hocrBCorrect[hocrBWordID] = 1;
+                wordA.matchTruth = true;
+                hocrBCorrect[wordB.id] = 1;
 
                 if(mode == "comb") {
                   // If the words match, add 10 points to the confidence score
-                  const x_wconf = parseInt(titleStrWordA.match(/x_wconf\s+(\d+)/)?.[1]);
-                  hocrAWord.setAttribute("title", titleStrWordA.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(Math.max(x_wconf + 10, 100))));
+                  wordA.conf = Math.max(wordA.conf + 10, 100);
                 }
 
               } else {
 
                 if(mode == "comb") {
 
-                  hocrAWord.setAttribute("title", titleStrWordA.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(0)));
-
-                  // If the words do not match, set to low confidence
-                  hocrAWord.setAttribute("compStatus", hocrAWord.getAttribute("compStatus") || "0");
-
+                  wordA.conf = 0;
 
                   // Check if there is a 1-to-1 comparison between words (this is usually true)
                   const oneToOne = Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxA[2]) < (wordBoxA[2] - wordBoxA[0]) * 0.1;
@@ -822,31 +641,26 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                   // If there is no 1-to-1 comparison, check if a 2-to-1 comparison is possible using the next word in either dataset
                   if(!oneToOne){
                     if(wordBoxA[2] < wordBoxB[2]) {
-                      if(hocrAWord.nextSibling) {
-                        const titleStrWordANext = hocrAWord.nextSibling.getAttribute('title');
-                        // wordBoxB[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
-                        // wordBoxB[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
+                      const wordANext = lineA.words[k+1];
+                      if(wordANext) {
             
-                        // wordBoxB[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
-                        // wordBoxB[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
-            
-                        const wordBoxANext = [...titleStrWordANext.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+                        const wordBoxANext = wordANext.bbox;
                         if(Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxANext[2]) < (wordBoxANext[2] - wordBoxA[0]) * 0.1) {
                           twoToOne = true;
-                          wordsAArr.push(hocrAWord);
-                          wordsAArr.push(hocrAWord.nextSibling);
-                          wordsBArr.push(hocrBWord);
+                          wordsAArr.push(wordA);
+                          wordsAArr.push(wordANext);
+                          wordsBArr.push(wordB);
                         }
                       }
                     } else {
-                      if(hocrBWord.nextSibling) {
-                        const titleStrWordBNext = hocrBWord.nextSibling.getAttribute('title');
-                        const wordBoxBNext = [...titleStrWordBNext.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
+                      const wordBNext = lineB.words[l+1];
+                      if(wordBNext) {
+                        const wordBoxBNext = wordBNext.bbox;
                         if(Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxA[2] - wordBoxBNext[2]) < (wordBoxBNext[2] - wordBoxA[0]) * 0.1) {
                           twoToOne = true;
-                          wordsAArr.push(hocrAWord);
-                          wordsBArr.push(hocrBWord);
-                          wordsBArr.push(hocrBWord.nextSibling);
+                          wordsAArr.push(wordA);
+                          wordsBArr.push(wordB);
+                          wordsBArr.push(wordBNext);
                         }
                       }
                     }
@@ -866,7 +680,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                   // Automatically reject words that contain a number between two letters.
                   // Tesseract Legacy commonly identifies letters as numbers (usually 1).
                   // This does not just happen with "l"--in test documents "r" and "i" were also misidentified as "1" multiple times. 
-                  const replaceNum = /[a-z]\d[a-z]/i.test(hocrAWord.innerHTML);
+                  const replaceNum = /[a-z]\d[a-z]/i.test(wordA.text);
 
                   // Automatically reject words where "ii" is between two non-"i" letters
                   // Tesseract Legacy commonly recognizes "ii" when the (actual) letter contains an accent, 
@@ -874,7 +688,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                   // This "ii" pattern is automatically discarded, regardless of the overlap metrics, 
                   // because the overlap metrics often fail in this case. 
                   // E.g. the letter "ö" (o with umlaut) may overlap better with "ii" than "o". 
-                  const replaceII = /[a-hj-z]ii[a-hj-z]/i.test(hocrAWord.innerHTML);
+                  const replaceII = /[a-hj-z]ii[a-hj-z]/i.test(wordA.text);
 
                   let replaceMetrics = false;
 
@@ -885,22 +699,16 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                     // TODO: Figure out how to compare between small caps/non small-caps words (this is the only relevant style as it is the only style LSTM detects)
                     
                     // Clone hocrAWord and set text content equal to hocrBWord
-                    const line = hocrAWord.parentElement.cloneNode(false);
-                    line.appendChild(hocrAWord.cloneNode(true));
+                    const wordAClone = structuredClone(wordA);
+                    wordAClone.text = wordB.text;
               
-                    const word = line.firstChild;
-                    word.innerHTML = hocrBWord.innerHTML;
-
-                    const hocrError = await evalWords([hocrAWord], [word], n, Boolean(debugLabel));
+                    const hocrError = await evalWords([wordA], [wordAClone], n, Boolean(debugLabel));
               
-                    hocrAError = hocrError[0] + penalizeWord(hocrAWord.innerHTML);
-                    hocrBError = hocrError[1] + penalizeWord(hocrBWord.innerHTML);
+                    hocrAError = hocrError[0] + penalizeWord(wordA.text);
+                    hocrBError = hocrError[1] + penalizeWord(wordB.text);
 
                     // Apply ad-hoc penalties
                     hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
-
-                    // hocrAError = (await evalWord(hocrAWord, n, null)) + penalizeWord(hocrAWord.innerHTML);
-                    // hocrBError = (await evalWord(hocrAWord, n, hocrBWord.innerHTML)) + penalizeWord(hocrBWord.innerHTML);
 
                     if(debugLabel) {
 
@@ -920,23 +728,23 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                         // Adjusted (pixel overlap + ad-hoc penalties) error metric "B"
                         errorAdjB: hocrBError,
                         // OCR text "A"
-                        textA: hocrAWord.innerHTML,
+                        textA: wordA.text,
                         // OCR text "B"
-                        textB: hocrBWord.innerHTML
+                        textB: wordB.text
                       }
 
                       globalThis.debugImg[debugLabel][n].push(debugObj);
 
-                      globalThis.debugLog += "Legacy Word: " + hocrAWord.innerHTML + " [Error: " + String(hocrAError) + "]\n";
-                      globalThis.debugLog += "LSTM Word: " + hocrBWord.innerHTML + " [Error: " + String(hocrBError) + "]\n";  
+                      globalThis.debugLog += "Legacy Word: " + wordA.text + " [Error: " + String(hocrAError) + "]\n";
+                      globalThis.debugLog += "LSTM Word: " + wordB.text + " [Error: " + String(hocrBError) + "]\n";  
                     }
                   } else if (twoToOne) {
 
                     // const hocrError = [0.1,0.1];
                     const hocrError = await evalWords(wordsAArr, wordsBArr, n, Boolean(debugLabel));
 
-                    const wordsAText = wordsAArr.map((x) => x.innerHTML).join("");
-                    const wordsBText =  wordsBArr.map((x) => x.innerHTML).join("");
+                    const wordsAText = wordsAArr.map((x) => x.text).join("");
+                    const wordsBText =  wordsBArr.map((x) => x.text).join("");
 
                     // The option with more words has a small penalty added, as otherwise words incorrectly split will often score slightly better (due to more precise positioning)
                     hocrAError = hocrError[0] + (wordsAArr.length - 1) * 0.025 + penalizeWord(wordsAText);
@@ -949,7 +757,7 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                     //    TODO: It may be worth investigating if this issue can be improved in the engine. 
                     //  1. Punctuation characters should not be their own word (e.g. quotes should come before/after alphanumeric characters)
                     if (wordsAText == wordsBText) {
-                      if (wordsAArr.map((x) => /[a-z]/i.test(x.innerHTML)).filter((x) => !x).length > 0 || wordsBArr.map((x) => /[a-z]/i.test(x.innerHTML)).filter((x) => !x).length > 0) {
+                      if (wordsAArr.map((x) => /[a-z]/i.test(x.text)).filter((x) => !x).length > 0 || wordsBArr.map((x) => /[a-z]/i.test(x.text)).filter((x) => !x).length > 0) {
                         hocrAError = hocrAError + (wordsAArr.length - 1) * 0.05;
                         hocrBError = hocrBError + (wordsBArr.length - 1) * 0.05;    
                       }
@@ -976,72 +784,58 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
                         // Adjusted (pixel overlap + ad-hoc penalties) error metric "B"
                         errorAdjB: hocrBError,
                         // OCR text "A"
-                        textA: wordsAArr.map((x) => x.innerHTML).join(" "),
+                        textA: wordsAArr.map((x) => x.text).join(" "),
                         // OCR text "B"
-                        textB: wordsBArr.map((x) => x.innerHTML).join(" ")
+                        textB: wordsBArr.map((x) => x.text).join(" ")
                       }
 
                       globalThis.debugImg[debugLabel][n].push(debugObj);
 
-                      globalThis.debugLog += "Legacy Word: " + wordsAArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrAError) + "]\n";
-                      globalThis.debugLog += "LSTM Word: " + wordsBArr.map((x) => x.innerHTML).join(" ") + " [Error: " + String(hocrBError) + "]\n";
+                      globalThis.debugLog += "Legacy Word: " + wordsAArr.map((x) => x.text).join(" ") + " [Error: " + String(hocrAError) + "]\n";
+                      globalThis.debugLog += "LSTM Word: " + wordsBArr.map((x) => x.text).join(" ") + " [Error: " + String(hocrBError) + "]\n";
                     }
   
                   }
                               
                   if(hocrBError < hocrAError) {
-                    const skip = ["eg","ie"].includes(hocrAWord.innerHTML.replace(/\W/g,""));
+                    const skip = ["eg","ie"].includes(wordA.text.replace(/\W/g,""));
                     if (skip) globalThis.debugLog += "Skipping word replacement\n";
 
                     if(!skip){
                       if(oneToOne){
-                        globalThis.debugLog += "Replacing word " + hocrAWord.innerHTML + " with word " + hocrBWord.innerHTML + "\n";
-                        hocrAWord.innerHTML = hocrBWord.innerHTML;
+                        globalThis.debugLog += "Replacing word " + wordA.text + " with word " + wordB.text + "\n";
+                        wordA.text = wordB.text;
 
-                        let styleStrA = hocrAWord.getAttribute("style") ?? "";
-                        let styleStrB = hocrBWord.getAttribute("style") ?? "";
 
                         // Switch to small caps/non-small caps based on style of replacement word. 
                         // This is not relevant for italics as the LSTM engine does not detect italics. 
-                        if(/small-caps/.test(styleStrB) && !/small-caps/.test(styleStrA)) {
-                          styleStrA = styleStrA.replace(/font\-style[^;]*(;|$)/i,"").replace(/;$/, "");
-                          styleStrA = styleStrA.replace(/font\-variant[^;]*(;|$)/i,"").replace(/;$/, "");
-                          styleStrA = styleStrA + ";font-variant:small-caps";
-                          hocrAWord.setAttribute("style", styleStrA);
-                        } else if (!/small-caps/.test(styleStrB) && /small-caps/.test(styleStrA)) {
-                          styleStrA = styleStrA.replace(/font\-style[^;]*(;|$)/i,"").replace(/;$/, "");
-                          styleStrA = styleStrA.replace(/font\-variant[^;]*(;|$)/i,"").replace(/;$/, "");
-                          hocrAWord.setAttribute("style", styleStrA);
+                        if(wordB.style === "small-caps" && wordA.style !== "small-caps") {
+                          wordA.style = "small-caps";
+                        } else if (wordB.style !== "small-caps" && wordA.style === "small-caps") {
+                          wordA.style = "normal";
                         }
 
                       } else {
-                        const wordsBArrRep = wordsBArr.map((x) => x.cloneNode(true));
+                        const wordsBArrRep = wordsBArr.map((x) => structuredClone(x));
 
-                        const styleStrWordA = hocrAWord.getAttribute('style');
+                        // const styleStrWordA = hocrAWord.getAttribute('style');
 
                         for(let i=0;i<wordsBArrRep.length;i++) {
 
-                          // Use font variant from word A (assumed to be Tesseract Legacy)
-                          const fontVariant = styleStrWordA?.match(/font-variant\:\w+/)?.[0];
-                          if(fontVariant) {
-                            const styleStrWordB = wordsBArrRep[i].getAttribute('style')?.replace(/font-variant\:\w+/, "") || "";
-                            wordsBArrRep[i].setAttribute("style", styleStrWordB + ";" + fontVariant);
-                          }
-                          // Set confidence to 0
-                          const titleStrWord = wordsBArrRep[i].getAttribute('title');
-                          wordsBArrRep[i].setAttribute("title", titleStrWord.replace(/(x_wconf\s+)\d+/, "x_wconf " + String(0)));
+                          // Use style from word A (assumed to be Tesseract Legacy)
+                          wordsBArrRep[i].style = wordA.style;
 
-                          // Change ID so there are no duplicates
+                          // Set confidence to 0
+                          wordsBArrRep[i].conf = 0;
+
+                          // Change ID to prevent duplicates
                           wordsBArrRep[i].id = wordsBArrRep[i].id + "b";
 
                         }
 
-                        // Remove all "A" nodes except for the first one, which is replaced with the "B" nodes
-                        for (let i=1;i<wordsAArr.length;i++) {
-                          wordsAArr[i].remove();
-                        }
+                        // Replace "A" words with "B" words
+                        lineA.words.splice(k, wordsAArr.length, ...wordsBArrRep);
 
-                        hocrAWord.replaceWith(...wordsBArrRep);
                         k = k + wordsBArrRep.length - 1;
 
                         // Move to next hocrAWord
@@ -1061,17 +855,17 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
   }
 
   if (mode == "comb") {
-    return hocrA.documentElement.outerHTML;
+    return pageAInt;
   }
   
   // Note: These metrics leave open the door for some fringe edge cases.
   // For example,
 
   // Number of words in ground truth
-  const totalCountB = hocrB.getElementsByClassName("ocrx_word").length;
+  const totalCountB = ocr.getPageWords(pageB).length;
 
   // Number of words in candidate OCR
-  const totalCountA = hocrA.getElementsByClassName("ocrx_word").length;
+  const totalCountA = ocr.getPageWords(pageAInt).length;
 
   // Number of words in ground truth with any overlap with candidate OCR
   const overlapCountB = Object.keys(hocrBOverlap).length;
@@ -1087,5 +881,145 @@ export async function compareHOCR(hocrStrA, hocrStrB, mode = "stats", n = null, 
 
   const metricsRet = [totalCountB, correctCount, incorrectCount, (totalCountB - overlapCountB), (totalCountA - overlapCountA)];
 
-  return ([hocrA, metricsRet]);
+  return ([pageAInt, metricsRet]);
 }
+
+
+
+/**
+ * Adds lines from a new page to an existing page.
+ * Based on overlap between bounding boxes, lines may be added or combined with existing lines.
+ * @param {ocrPage} pageA - New page
+ * @param {ocrPage} pageB - Existing page
+ * @param {boolean} replaceFontSize - Whether font size stats in the new line(s) should be replaced by font size in previous line.
+ *  This option is used when the user manually adds a word, as the manually-drawn box will only roughly correspond to font size.
+ */
+export function combineData(pageA, pageB, replaceFontSize = false) {
+
+  const linesNew = pageA.lines;
+	const lines = pageB.lines;
+
+	for (let i = 0; i < linesNew.length; i++) {
+		const lineNew = linesNew[i];
+
+		const lineBoxNew = lineNew.bbox;
+
+		const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
+
+		// Identify the OCR line a bounding box is in (or closest line if no match exists)
+		let lineI = -1;
+		let match = false;
+		let newLastLine = false;
+		let lineBottomHOCR, line, lineMargin;
+		do {
+			lineI = lineI + 1;
+			line = lines[lineI];
+
+			const lineBox = line.bbox;
+			const baseline = line.baseline;
+
+			const lineBoxAdj = lineBox.slice();
+
+			// Adjust box such that top/bottom approximate those coordinates at the leftmost point.
+			if (baseline[0] < 0) {
+				lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+			} else {
+				lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
+			}
+
+			const boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * sinAngle;
+
+
+			// Calculate size of margin to apply when detecting overlap (~30% of total height applied to each side)
+			// This prevents a very small overlap from causing a word to be placed on an existing line
+			const lineHeight = lineBoxAdj[3] - lineBoxAdj[1];
+			lineMargin = Math.round(lineHeight * 0.30);
+
+			let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
+			lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
+
+			if ((lineTopHOCR + lineMargin) < lineBoxNew[3] && (lineBottomHOCR - lineMargin) >= lineBoxNew[1]) match = true;
+			if ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
+
+		} while ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 < lines.length);
+
+		let words = line.words;
+		let wordsNew = lineNew.words;
+
+		if (match) {
+			// Inserting wordNew seems to remove it from the wordsNew array
+			const wordsNewLen = wordsNew.length;
+			for (let i = 0; i < wordsNewLen; i++) {
+				let wordNew = wordsNew[0];
+				const wordBoxNew = wordNew.bbox;
+
+				// Identify closest word on existing line
+				let word, wordBox, wordIndex;
+				let j = 0;
+				do {
+					wordIndex = j;
+					word = words[j];
+					wordBox = word.bbox;
+					j = j + 1;
+				} while (wordBox[2] < wordBoxNew[0] && j < words.length);
+
+				// Replace id (which is likely duplicative) with unique id
+				wordNew.id = word.id + getRandomAlphanum(3);
+
+				// Add to page data
+				// Note: Words will appear correctly on the canvas (and in the pdf) regardless of whether they are in the right order.
+				// However, it is still important to get the order correct (this makes evaluation easier, improves copy/paste functionality in some pdf readers, etc.)
+				if (wordBoxNew[0] > wordBox[0]) {
+					words.splice(wordIndex+1, 0, wordNew);
+				} else {
+					words.splice(wordIndex, 0, wordNew);
+				}
+			}
+		} else {
+
+			for (let i = 0; i < wordsNew.length; i++) {
+				const wordNew = wordsNew[i];
+
+				// Replace id (which is likely duplicative) with unique id
+				wordNew.id = wordNew.id + getRandomAlphanum(3);
+			}
+
+      if (replaceFontSize) {
+
+        // If this is the first/last line on the page, assume the textbox height is the "A" height.
+        // This is done because when a first/last line is added manually, it is often page numbers,
+        // and is often not the same font size as other lines.
+        if (lineI == 0 || lineI + 1 == lines.length) {
+          lineNew.letterHeight = lineNew.bbox[3] - lineNew.bbox[1];
+          lineNew.ascHeight = null;
+          lineNew.descHeight = null;
+
+          // If the new line is between two existing lines, use metrics from nearby line to determine text size
+        } else {
+
+          // TODO: Selection of prevLine will need to be reworked when we work to support multi-column layouts.
+          const prevLine = lines[lineI-1];
+          lineNew.letterHeight = prevLine.letterHeight;
+          lineNew.ascHeight = prevLine.ascHeight;
+          lineNew.descHeight = prevLine.descHeight;
+
+          // If the previous line's font size is clearly incorrect, we instead revert to assuming the textbox height is the "A" height.
+          const lineHeight = lineNew.bbox[3] - lineNew.bbox[1];
+          if ((lineNew.letterHeight - (lineNew.descHeight || 0)) > lineHeight * 1.5) {
+            lineNew.letterHeight = lineNew.bbox[3] - lineNew.bbox[1];
+            lineNew.ascHeight = null;
+            lineNew.descHeight = null;
+          }
+        }
+      }
+
+			if (newLastLine) {
+				lines.splice(lineI+1, 0, lineNew);
+			} else {
+				lines.splice(lineI, 0, lineNew);
+			}
+		}
+	}
+
+}
+

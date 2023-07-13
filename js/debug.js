@@ -1,19 +1,3 @@
-
-
-export function searchHOCR(regexStr, regexFlags){
-    const re = new RegExp(regexStr, regexFlags);
-    const words = currentPage.xmlDoc.documentElement.getElementsByClassName("ocrx_word");
-    const res = [];
-    for(let i=0;i<words.length;i++){
-      if(re.test(words[i].textContent)){
-        res.push(words[i]);
-      }
-    }
-    return(res)
-  }
-
-
-
 export function downloadImage(img, filename) {
   const imgStr = typeof(img) == "string" ? img : img.src;
   const imgData = new Uint8Array(atob(imgStr.split(',')[1])

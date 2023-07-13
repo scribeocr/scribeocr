@@ -6,6 +6,7 @@
 
 import { calcWordMetrics } from "./textUtils.js"
 import { renderPageQueue } from "../main.js"
+import { ocr } from "./ocrObjects.js";
 
 
 export function deleteSelectedWords(){
@@ -13,25 +14,11 @@ export function deleteSelectedWords(){
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
     const wordIDI = selectedObjects[i].wordID;
-    deleteHOCRWord(wordIDI);
+    ocr.deletePageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
     window.canvas.remove(selectedObjects[i]);
     canvas.renderAll();
   }
 }
-
-function deleteHOCRWord(word_id){
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  if(it.singleNodeValue != null){
-    let lineNode = it.singleNodeValue.parentNode;
-    // If there are no other words on the line, remove the entire line.
-    if(lineNode.childElementCount == 1){
-      lineNode.parentNode.removeChild(lineNode);
-    } else {
-      lineNode.removeChild(it.singleNodeValue);
-    }
-  }
-}
-
 
 export async function changeWordFontStyle(style){
   style = style.toLowerCase()
@@ -47,7 +34,15 @@ export async function changeWordFontStyle(style){
   for(let i=0; i<selectedN; i++){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
-    updateHOCRStyleWord(wordIDI, newValueStr);
+
+    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+
+    if (!wordObj) {
+      console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
+      continue;
+    }
+
+    wordObj.style = newValueStr;
 
     wordI.fontStyleLookup = newValueStr;
 
@@ -64,47 +59,6 @@ export async function changeWordFontStyle(style){
   }
   window.canvas.renderAll();
 }
-
-function updateHOCRStyleWord(word_id, value){
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  if(it.singleNodeValue != null){
-
-    value = value.toLowerCase();
-
-    let styleStr = it.singleNodeValue.getAttribute("style") ?? "";
-    styleStr = styleStr.replace(/font\-style[^;]*(;|$)/i,"").replace(/;$/, "");
-    styleStr = styleStr.replace(/font\-variant[^;]*(;|$)/i,"").replace(/;$/, "");
-    if(value == "italic"){
-      styleStr = styleStr + ";font-style:italic";
-    } else if(value == "small-caps"){
-      styleStr = styleStr + ";font-variant:small-caps";
-    }
-
-    it.singleNodeValue.setAttribute("style", styleStr);
-  }
-}
-
-
-function updateHOCRFontWord(word_id, value){
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  if(it.singleNodeValue != null){
-    // If set to "Default" the font-family style will be omitted (so the document default style is inherited)
-    let styleStr = it.singleNodeValue.getAttribute("style");
-    if(styleStr == null && value != "Default"){
-      styleStr = "font-family:" + value;
-    } else if(styleStr != null && value != "Default"){
-      styleStr = styleStr.replace(/font\-family[^;]*(;|$)/i,"").replace(";$", "");
-      styleStr = styleStr + ";font-family:" + value;
-    } else if(styleStr != null && value == "Default"){
-      styleStr = styleStr.replace(/font\-family[^;]*(;|$)/i,"").replace(";$", "");
-    } else {
-      styleStr = "";
-    }
-
-    it.singleNodeValue.setAttribute("style", styleStr);
-  }
-}
-
 
 export async function changeWordFontSize(fontSize){
 
@@ -127,7 +81,16 @@ export async function changeWordFontSize(fontSize){
     if (selectedN > 1 && wordI.wordSup) continue;
 
     const wordIDI = wordI.wordID;
-    updateHOCRFontSizeWord(wordIDI, fontSize);
+
+    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+
+    if (!wordObj) {
+      console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
+      continue;
+    }
+
+    wordObj.size = fontSize;
+
     document.getElementById("fontSize").value = fontSize;
     wordI.fontSize = fontSize;
 
@@ -135,44 +98,6 @@ export async function changeWordFontSize(fontSize){
 
   }
   window.canvas.renderAll();
-}
-
-function updateHOCRFontSizeWord(word_id, value){
-  console.log(value);
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  if(it.singleNodeValue != null){
-    // If set to "Default" the font-family style will be omitted (so the document default style is inherited)
-    let styleStr = it.singleNodeValue.getAttribute("style");
-    if(styleStr == null && value != "Default"){
-      styleStr = "font-size:" + value + "px";
-    } else if(styleStr != null && value != "Default"){
-      styleStr = styleStr.replace(/font\-size[^;]*(;|$)/i,"").replace(/;(?=;|$)/, "");
-      styleStr = styleStr + ";font-size:" + value + "px";
-    } else if(styleStr != null && value == "Default"){
-      styleStr = styleStr.replace(/font\-size[^;]*(;|$)/i,"").replace(/;(?=;|$)/, "");
-    } else {
-      styleStr = "";
-    }
-
-    it.singleNodeValue.setAttribute("style", styleStr);
-  }
-}
-
-export function updateHOCRBoundingBoxWord(word_id, leftDelta, rightDelta){
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  if(it.singleNodeValue != null){
-
-    let titleStr = it.singleNodeValue.getAttribute("title");
-    let wordBox = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
-    titleStr = titleStr.replace(/bbox[^;]+/, "");
-
-    wordBox[0] = wordBox[0] + leftDelta;
-    wordBox[2] = wordBox[2] + rightDelta;
-
-    titleStr = "bbox " + wordBox.join(" ") + ";" + titleStr;
-
-    it.singleNodeValue.setAttribute("title", titleStr);
-  }
 }
 
 export async function changeWordFontFamily(fontName){
@@ -184,7 +109,20 @@ export async function changeWordFontFamily(fontName){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
     fontNameCanvas = /Small Caps$/.test(wordI.fontFamily) ? fontName + " Small Caps" : fontName;
-    updateHOCRFontWord(wordIDI, fontName);
+
+    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+
+    if (!wordObj) {
+      console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
+      continue;
+    }
+
+    if (fontName === "Default") {
+      wordObj.font = null;
+    } else {
+      wordObj.font = fontName;
+    }
+
     wordI.fontFamily = fontNameCanvas;
     wordI.defaultFontFamily = fontName == "Default" ? true : false;
     wordI.fontFamilyLookup = fontName,
@@ -239,39 +177,20 @@ export function toggleSuperSelectedWords(){
   for(let i=0; i<selectedN; i++){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
-    updateHOCRSuperWord(wordIDI, !wordI.wordSup);
+
+    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+
+    if (!wordObj) {
+      console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
+      continue;
+    }
+
+    wordI.wordSup = !wordI.wordSup;
+
   }
-  globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc.documentElement.outerHTML;
 
   renderPageQueue(currentPage.n);
 }
-
-function updateHOCRSuperWord(word_id, value){
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  if(it.singleNodeValue != null){
-    let inner = it.singleNodeValue.innerHTML;
-    console.log(inner);
-    if(/\<sup\>/i.test(inner) && !value){
-      inner = inner.replace(/^\s*\<sup\>/i, "");
-      inner = inner.replace(/\<\/sup\>\s*$/i, "");
-    } else if(value && !/\<sup\>/i.test(inner)){
-      inner = "<sup>" + inner + "</sup>";
-    }
-    console.log(inner);
-    it.singleNodeValue.innerHTML = inner;
-  }
-}
-
-
-// Function for updating the value of HOCR text for word with ID "word_id"
-// Assumes that IDs are unique.
-export function updateHOCRWord(word_id, new_text){
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + word_id + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  if(it.singleNodeValue != null){
-    it.singleNodeValue.firstChild.textContent = new_text;
-  }
-}
-
 
 var objectsLine;
 export function adjustBaseline(){
@@ -317,32 +236,23 @@ export function adjustBaselineRangeChange(value){
     const wordIDI = wordI.wordID;
 
     wordI.set('baselineAdj', value);
-    let it = currentPage.xmlDoc.evaluate("//span[@id='" + wordIDI + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-    if(it.singleNodeValue != null){
-      let titleStr = it.singleNodeValue.getAttribute("title");
-      let wordBox = [...titleStr.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
-      titleStr = titleStr.replace(/bbox[^;]+/, "");
 
-      wordBox[1] = wordBox[1] + valueChange;
-      wordBox[3] = wordBox[3] + valueChange;
+    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
 
-      titleStr = "bbox " + wordBox.join(" ") + ";" + titleStr;
-
-      it.singleNodeValue.setAttribute("title", titleStr);
+    if (!wordObj) {
+      console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
+      continue;
     }
+
+    // Adjust bbox for line
+    if (i === 0) {
+      wordObj.line.bbox[1] = wordObj.line.bbox[1] + valueChange;
+      wordObj.line.bbox[3] = wordObj.line.bbox[3] + valueChange;
+    }
+
+    wordObj.bbox[1] = wordObj.bbox[1] + valueChange;
+    wordObj.bbox[3] = wordObj.bbox[3] + valueChange;
+
   }
-
-  let it = currentPage.xmlDoc.evaluate("//span[@id='" + objectsLine[0].wordID + "']", currentPage.xmlDoc.documentElement, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null);
-  let line = it.singleNodeValue.parentElement;
-  let titleStrLine = line.getAttribute('title');
-
-  let lineBox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1,5).map(function (x) {return parseInt(x);});
-
-  lineBox[1] = lineBox[1] + valueChange;
-  lineBox[3] = lineBox[3] + valueChange;
-
-  titleStrLine = "bbox " + lineBox.join(" ") + ";" + titleStrLine;
-
-  line.setAttribute("title", titleStrLine);
 
 }

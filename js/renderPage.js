@@ -1,8 +1,9 @@
 
 import { getFontSize, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
-import { updateHOCRBoundingBoxWord, updateHOCRWord, updateWordCanvas } from "./interfaceEdit.js";
+import { updateWordCanvas } from "./interfaceEdit.js";
 import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
 import { round3 } from "./miscUtils.js"
+import { ocr } from "./ocrObjects.js";
 
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -17,7 +18,7 @@ const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
-export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFont, lineMode = false, imgDims, canvasDims, angle, pdfMode, fontObj, leftAdjX) {
+export async function renderPage(canvas, page, defaultFont, imgDims, angle, fontObj, leftAdjX) {
 
   let ctx = canvas.getContext('2d');
 
@@ -38,39 +39,15 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
   const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
   const shiftY = sinAngle * ((imgDims[1] - shiftX) * 0.5) || 0;
 
+  const lines = page.lines;
 
-  let lines = xmlDoc.getElementsByClassName("ocr_line");
-
-  let lineFontSize;
+  let lineFontSize = 10;
   for (let i = 0; i < lines.length; i++) {
-    let line = lines[i]
-    let titleStrLine = line.getAttribute('title');
+    let lineObj = lines[i]
 
-    let linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); });
-    let baseline = titleStrLine.match(/baseline(\s+[\d\.\-]+)(\s+[\d\.\-]+)/);
-    if (baseline != null) {
-      baseline = baseline.slice(1, 5).map(function (x) { return parseFloat(x); });
-    } else {
-      baseline = [0, 0];
-    }
-    let words = line.getElementsByClassName("ocrx_word");      
-
-    // If possible (native Tesseract HOCR) get font size using x-height.
-    // If not possible (Abbyy XML) get font size using ascender height.
-    let letterHeight = titleStrLine.match(/x_size\s+([\d\.\-]+)/);
-    let ascHeight = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/);
-    let descHeight = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/);
-    if (letterHeight != null && ascHeight != null && descHeight != null) {
-      letterHeight = parseFloat(letterHeight[1]);
-      ascHeight = parseFloat(ascHeight[1]);
-      descHeight = parseFloat(descHeight[1]);
-      let xHeight = letterHeight - ascHeight - descHeight;
-      lineFontSize = await getFontSize(defaultFont, "normal", xHeight, "o");
-    } else if (letterHeight != null) {
-      letterHeight = parseFloat(letterHeight[1]);
-      descHeight = descHeight != null ? parseFloat(descHeight[1]) : 0;
-      lineFontSize = await getFontSize(defaultFont, "normal", letterHeight - descHeight, "A");
-    }
+    const linebox = lineObj.bbox;
+    const baseline = lineObj.baseline;
+    lineFontSize = (await ocr.calcLineFontSize(lineObj)) ||  lineFontSize;
 
     // If none of the above conditions are met (not enough info to calculate font size), the font size from the previous line is reused.
     ctx.font = 1000 + 'px ' + defaultFont;
@@ -79,84 +56,39 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
     //const jMetrics = ctx.measureText("gjpqy");
     ctx.font = lineFontSize + 'px ' + defaultFont;
 
-    const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
-    let angleAdjXLine = 0;
-    let angleAdjYLine = 0;
-    if ((autoRotateCheckboxElem.checked) && Math.abs(angle ?? 0) > 0.05) {
 
-      const x = linebox[0];
-      const y = linebox[3] + baseline[1];
+    const angleAdjLine = ocr.calcLineAngleAdj(lineObj);
 
-      const xRot = x * cosAngle - sinAngle * y;
-      const yRot = x * sinAngle + cosAngle * y;
-
-      const angleAdjXInt = x - xRot;
-      // const angleAdjYInt = y - yRot;
-
-      // const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
-      const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
-
-      angleAdjXLine = angleAdjXInt + shiftX;
-      angleAdjYLine = angleAdjYInt + shiftY;
-
-    }
+    const words = lineObj.words;
 
     for (let j = 0; j < words.length; j++) {
-      let word = words[j];
 
-      let titleStr = word.getAttribute('title') ?? "";
-      let styleStr = word.getAttribute('style') ?? "";
+      const wordObj = words[j];
 
-      const compCount = word.getAttribute('compCount') ?? "";
-      const compStatus = word.getAttribute('compStatus') ?? "";
-      //const matchTruth = compCount == "1" && compStatus == "1";
-      const matchTruth = compStatus == "1";
-      const fillColorHexMatch = matchTruth ? "#00ff7b" : "#ff0000";
+      const fillColorHexMatch = wordObj.matchTruth ? "#00ff7b" : "#ff0000";
 
-      if (!word.childNodes[0]?.textContent.trim()) continue;
+      if (!wordObj.text) continue;
 
-      let box = [...titleStr.matchAll(/bbox(?:es)?(\s+[\d\-]+)(\s+[\d\-]+)?(\s+[\d\-]+)?(\s+[\d\-]+)?/g)][0].slice(1, 5).map(function (x) { return parseInt(x); })
+      const box = wordObj.bbox;
+
       let box_width = box[2] - box[0];
       let box_height = box[3] - box[1];
 
-      let angleAdjXWord = angleAdjXLine;
+      let angleAdjXWord = angleAdjLine.x;
       if((autoRotateCheckboxElem.checked) && Math.abs(angle) >= 1) {
 
         angleAdjXWord = angleAdjXWord + ((box[0] - linebox[0]) / cosAngle - (box[0] - linebox[0]));
 
       }
 
+      const wordText = wordObj.text;
+      const wordSup = wordObj.sup;
+      const wordDropCap = wordObj.dropcap;
+      const fontStyle = wordObj.style;
+      let wordFontFamily = wordObj.font;
 
-      let wordText, wordSup, wordDropCap;
-      if (/\<sup\>/i.test(word.innerHTML)) {
-        wordText = word.innerHTML.replace(/^\s*\<sup\>/i, "");
-        wordText = wordText.replace(/\<\/sup\>\s*$/i, "");
-        wordSup = true;
-        wordDropCap = false;
-      } else if (/\<span class\=[\'\"]ocr_dropcap[\'\"]\>/i.test(word.innerHTML)) {
-        wordText = word.innerHTML.replace(/^\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "");
-        wordText = wordText.replace(/\<\/span\>\s*$/i, "");
-        wordSup = false;
-        wordDropCap = true;
-      } else {
-        wordText = word.childNodes[0].nodeValue;
-        wordSup = false;
-        wordDropCap = false;
-      }
-
-      let fontStyle;
-      if (/italic/i.test(styleStr)) {
-        fontStyle = "italic";
-      } else if (/small\-caps/i.test(styleStr)) {
-        fontStyle = "small-caps";
-      } else {
-        fontStyle = "normal";
-      }
-
-
-      let wordFontFamily = styleStr.match(/font\-family\s{0,3}\:\s{0,3}[\'\"]?([^\'\";]+)/)?.[1];
       let defaultFontFamily;
-      if (wordFontFamily == null) {
+      if (wordFontFamily === null || wordFontFamily === undefined) {
         wordFontFamily = defaultFont;
         defaultFontFamily = true;
       } else {
@@ -164,31 +96,26 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
         defaultFontFamily = false;
       }
 
-      let wordFontSize;
+      let wordFontSize = wordObj.size;
       let scaleX = 1;
-      let fontSizeStr = styleStr.match(/font\-size\:\s*(\d+)/i);
-      if (fontSizeStr != null) {
-        wordFontSize = parseFloat(fontSizeStr[1]);
-      } else if (wordSup) {
-        // All superscripts are assumed to be numbers for now
-        wordFontSize = await getFontSize(defaultFont, "normal", box_height, "1");
-      } else if (wordDropCap) {
-        wordFontSize = await getFontSize(defaultFont, "normal", box_height, wordText.slice(0, 1));
-        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
-        scaleX = (box_width / wordWidthFont);
-  
-      } else {
-        wordFontSize = lineFontSize;
+      if (!wordFontSize) {
+        if (wordSup) {
+          // All superscripts are assumed to be numbers for now
+          wordFontSize = await getFontSize(defaultFont, "normal", box_height, "1");
+        } else if (wordDropCap) {
+          wordFontSize = await getFontSize(defaultFont, "normal", box_height, wordText.slice(0, 1));
+          const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
+          scaleX = (box_width / wordWidthFont);
+    
+        } else {
+          wordFontSize = lineFontSize;
+        }
       }
 
+      const wordConf = wordObj.conf;
 
-      let confMatch = titleStr.match(/(?:;|\s)x_wconf\s+(\d+)/);
-      let wordConf = 0;
-      if (confMatch != null) {
-        wordConf = parseInt(confMatch[1]);
-      }
 
-      let word_id = word.getAttribute('id');
+      const word_id = wordObj.id;
 
       const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
       const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
@@ -246,7 +173,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
           baselineWord = box[3];
 
-          let angleAdjYWord = angleAdjYLine;
+          let angleAdjYWord = angleAdjLine.y;
 
           // Recalculate the angle adjustments (given different x and y coordinates)
           if ((autoRotateCheckboxElem.checked) && Math.abs(angle ?? 0) > 0.05) {
@@ -271,7 +198,7 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           visualBaseline = box[3] + angleAdjYWord;
       
         } else {
-          visualBaseline = linebox[3] + baseline[1] + angleAdjYLine;
+          visualBaseline = linebox[3] + baseline[1] + angleAdjLine.y;
         }
 
         const top = visualBaseline + fontDesc;
@@ -340,7 +267,6 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
 
 
         textbox.on('editing:exited', async function () {
-          console.log("Event: editing:exited");
           if (this.hasStateChanged) {
             if (document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)) {
               let textInt = this.text;
@@ -353,7 +279,14 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             }
 
             await updateWordCanvas(this);
-            updateHOCRWord(this.wordID, this.text)
+
+            const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], this.wordID);
+
+            if (!wordObj) {
+              console.warn("Canvas element contains ID" + this.wordID + "that does not exist in OCR data.  Skipping word.");
+            } else {
+              wordObj.text = this.text;
+            }
           }
         });
         textbox.on('selected', function () {
@@ -438,15 +371,12 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
           }
         });
             textbox.on('deselected', function () {
-          console.log("Event: deselected");
           wordFontElem.value = "Default";
           //document.getElementById("collapseRange").setAttribute("class", "collapse");
           bsCollapse.hide();
           rangeBaselineElem.value = "100";
         });
         textbox.on('modified', async (opt) => {
-          // inspect action and check if the value is what you are looking for
-          console.log("Event: " + opt.action);
           if (opt.action == "scaleX") {
             const textboxWidth = opt.target.calcTextWidth();
 
@@ -456,7 +386,17 @@ export async function renderPage(canvas, doc, xmlDoc, mode = "screen", defaultFo
             let visualRightNew = opt.target.left + visualWidthNew;
             let visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
 
-            updateHOCRBoundingBoxWord(opt.target.wordID, Math.round(opt.target.left - opt.target.leftOrig), Math.round(visualRightNew - visualRightOrig));
+            const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], opt.target.wordID);
+    
+            if (!wordObj) {
+              console.warn("Canvas element contains ID" + opt.target.wordID + "that does not exist in OCR data.  Skipping word.");
+            } else {
+              const leftDelta = Math.round(opt.target.left - opt.target.leftOrig);
+              const rightDelta =  Math.round(visualRightNew - visualRightOrig);
+              wordObj.bbox[0] = wordObj.bbox[0] + leftDelta;
+              wordObj.bbox[2] = wordObj.bbox[2] + rightDelta;
+            }    
+
             if (opt.target.text.length > 1) {
 
 
