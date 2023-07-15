@@ -81,6 +81,21 @@ function ocrPage(n, dims) {
     this.lines = [];
 }
 
+/**
+ * Unescapes XML in a string
+ * @param {String} string
+ * @return {String} 
+ */
+function unescapeXml(string) {
+  return string.replace(/&amp;/, "&")
+      .replace(/&quot;/, "\"")
+      .replace(/&apos;/, "'")
+      .replace(/&lt;/, "<")
+      .replace(/&gt;/, ">")
+      .replace(/&gt;/, ">")
+      .replace(/&#39;/, "'")
+      .replace(/&#34;/, "\"")
+}
 
 // Re-calculate bbox for line
 function calcLineBbox(line) {
@@ -218,20 +233,7 @@ function fontMetrics(){
   this.obs = 0;
 }
 
-function calcLineBbox(line) {
-  const wordBoxArr = line.words.map(x => x.bbox);
-  const lineBoxNew = new Array(4);
-  lineBoxNew[0] = Math.min(...wordBoxArr.map(x => x[0]));
-  lineBoxNew[1] = Math.min(...wordBoxArr.map(x => x[1]));
-  lineBoxNew[2] = Math.max(...wordBoxArr.map(x => x[2]));
-  lineBoxNew[3] = Math.max(...wordBoxArr.map(x => x[3]));
-  line.bbox = lineBoxNew;
-}
-
-
 function rotateLine(line, angle) {
-
-  const lineboxOrig = [...line.bbox];
 
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
@@ -250,12 +252,15 @@ function rotateLine(line, angle) {
       word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
   }
 
-  // Re-calculate bbox for entire line using words
+  // Re-calculate line bbox by rotating original line bbox
+  const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
+
+  // Re-calculate line bbox by taking union of word bboxes
   calcLineBbox(line);
 
-  const lineBoxNew = [...line.bbox];
+  // Adjust baseline
+  const baselineOffsetAdj = lineBoxRot[3] - line.bbox[3];
 
-  const baselineOffsetAdj = baselineAngleRadAdj <= 0 ? 0 : lineboxOrig[3] - lineBoxNew[3];
   const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
 
   line.baseline[0] = baselineAngleRadTotal;
@@ -541,6 +546,9 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
           contentStrLetter = contentStrLetter.toLowerCase();
         } 
 
+        // Handle characters escaped in XML
+        contentStrLetter = unescapeXml(contentStrLetter);
+
         // Tesseract often misidentifies hyphens as other types of dashes. 
         if (contentStrLetter == "—" && charWidth < lineXHeightTess || contentStrLetter == "–" && charWidth < (lineXHeightTess * 0.85)) {
           // If the width of an en or em dash is shorter than it should be if correctly identified, and it is between two letters, it is replaced with a hyphen.
@@ -724,6 +732,8 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
 
         wordObjSup.conf = wordConf;
 
+        wordObjSup.sup = true;
+
         lineObj.words.push(wordObjSup);
 
         return "";
@@ -773,12 +783,14 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
 
       let wordText;
       if(wordSup) {
-        wordText = match.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+        wordText = match.replace(/\s*\<sup\>/i, "").replace(/\<\/sup\>\s*/i, "").match(/>([^>]*)</)?.[1];
       } else if(wordDropCap) {
-        wordText = match.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+        wordText = match.replace(/\s*<span class\=[\'\"]ocr_dropcap[\'\"]\>/i, "").match(/>([^>]*)</)?.[1];
       } else {
-        wordText = match.match(/>([^>]*)</)?.[1]?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
+        wordText = match.match(/>([^>]*)</)?.[1];
       }      
+
+      wordText = unescapeXml(wordText);
 
       if (!wordText) {
         return "";
@@ -1151,6 +1163,9 @@ function convertPageAbbyy(xmlPage, pageNum) {
         if (dropCapFix) {
           letterArr[j][7] = letterArr[j][7].toUpperCase();
         }
+
+        // Handle characters escaped in XML
+        letterArr[j][7] = unescapeXml(letterArr[j][7]);
 
         // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines
         if (letterArr[j][7] == "¬" && i+1 == wordStrArr1.length && j+1 == letterArr.length && i > 2) {

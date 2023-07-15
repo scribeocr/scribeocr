@@ -33,6 +33,8 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
     fabric.Object.prototype.objectCaching = false;
   }
 
+  const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
+
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
@@ -57,7 +59,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
     ctx.font = lineFontSize + 'px ' + defaultFont;
 
 
-    const angleAdjLine = ocr.calcLineAngleAdj(lineObj);
+    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
 
     const words = lineObj.words;
 
@@ -75,7 +77,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
       let box_height = box[3] - box[1];
 
       let angleAdjXWord = angleAdjLine.x;
-      if((autoRotateCheckboxElem.checked) && Math.abs(angle) >= 1) {
+      if(enableRotation && Math.abs(angle) >= 1) {
 
         angleAdjXWord = angleAdjXWord + ((box[0] - linebox[0]) / cosAngle - (box[0] - linebox[0]));
 
@@ -176,7 +178,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
           let angleAdjYWord = angleAdjLine.y;
 
           // Recalculate the angle adjustments (given different x and y coordinates)
-          if ((autoRotateCheckboxElem.checked) && Math.abs(angle ?? 0) > 0.05) {
+          if (enableRotation) {
 
             const x = box[0];
             const y = box[3];
