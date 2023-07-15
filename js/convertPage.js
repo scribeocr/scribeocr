@@ -57,6 +57,10 @@ export async function initConvertPageWorker() {
 		  
 			inputDataModes.xmlMode[n] = true;
 
+			globalThis.pageMetricsObj["angleAll"][n] = pageObj.angle;
+			globalThis.pageMetricsObj["leftAll"][n] = pageObj.left;
+			globalThis.pageMetricsObj["angleAdjAll"][n] = pageObj.angleAdj;
+
 			// Layout boxes are only overwritten if none exist yet for the page
 			if (Object.keys(globalThis.layout[n].boxes).length == 0) globalThis.layout[n].boxes = event.data[0][2];
 		  

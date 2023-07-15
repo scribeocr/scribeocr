@@ -73,6 +73,59 @@ const getPageWords = (page) => {
     return words;
 }
 
+/**
+ * @param {ocrLine} line
+ */
+const getLineText = (line) => {
+    let text = "";
+    for (let i=0; i<line.words.length; i++) {
+        text += line.words[i].text + " ";
+    }
+    return text;
+}
+
+/**
+ * @param {ocrPage} page
+ */
+const getPageText = (page) => {
+    let text = "";
+    for (let i=0; i<page.lines.length; i++) {
+        if (i < 0) text += "\n";
+        text += getLineText(page.lines[i]);
+    }
+    return text;
+}
+
+
+function extractTextPage(g) {
+    find.text[g] = "";
+    // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
+    if (!globalThis.hocrCurrent[g] || globalThis.hocrCurrent[g]?.length < 50) return;
+  
+    
+    const pageXML = exportParser.parseFromString(globalThis.hocrCurrent[g], "text/xml");
+    const lines = pageXML.getElementsByClassName("ocr_line");
+    for (let h = 0; h < lines.length; h++) {
+      if (h > 0) {
+        find.text[g] = find.text[g] + "\n";
+      }
+  
+      const line = lines[h];
+      const words = line.getElementsByClassName("ocrx_word");
+  
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (i > 0) {
+          find.text[g] = find.text[g] + " ";
+        }
+        find.text[g] = find.text[g] + word.textContent;
+  
+      }
+    }
+  
+  }
+  
+
 // Font size, unlike other characteristics (e.g. bbox and baseline), does not come purely from pixels on the input image. 
 // This is because different fonts will create different sized characters even when the nominal "font size" is identical. 
 // Therefore, the appropriate font size must be calculated using (1) the character stats from the input image and 
@@ -159,6 +212,7 @@ export const ocr = {
     calcLineAngleAdj : calcLineAngleAdj,
     getPageWord: getPageWord,
     getPageWords: getPageWords,
+    getPageText: getPageText,
     deletePageWord: deletePageWord,
     calcWordFontSize: calcWordFontSize,
     replaceLigatures: replaceLigatures,

@@ -695,13 +695,11 @@ function findAllMatches(text) {
   globalThis.find.total = total;
 }
 
-const exportParser = new DOMParser();
-
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
   // Re-extract text from XML
-  extractTextPage(currentPage.n);
+  find.text[currentPage.n] = ocr.getPageText(globalThis.hocrCurrent[currentPage.n]);
 
   if (find.search) {
     // Count matches in current page
@@ -716,34 +714,6 @@ function updateFindStats() {
 
 }
 
-function extractTextPage(g) {
-  find.text[g] = "";
-  // The exact text of empty pages can be changed depending on the parser, so any data <50 chars long is assumed to be an empty page
-  if (!globalThis.hocrCurrent[g] || globalThis.hocrCurrent[g]?.length < 50) return;
-
-  
-  const pageXML = exportParser.parseFromString(globalThis.hocrCurrent[g], "text/xml");
-  const lines = pageXML.getElementsByClassName("ocr_line");
-  for (let h = 0; h < lines.length; h++) {
-    if (h > 0) {
-      find.text[g] = find.text[g] + "\n";
-    }
-
-    const line = lines[h];
-    const words = line.getElementsByClassName("ocrx_word");
-
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      if (i > 0) {
-        find.text[g] = find.text[g] + " ";
-      }
-      find.text[g] = find.text[g] + word.textContent;
-
-    }
-  }
-
-}
-
 // Extract text from XML for every page
 // We do this once (and then perform incremental updates) to avoid having to parse XML
 // with every search. 
@@ -752,7 +722,7 @@ function extractTextAll() {
     const maxValue = globalThis.hocrCurrent.length;
   
     for (let g = 0; g < maxValue; g++) {
-      extractTextPage(g);
+      find.text[g] = ocr.getPageText(globalThis.hocrCurrent[g]);
     }
   
 }
@@ -2899,20 +2869,14 @@ export async function displayPage(n) {
 
   working = true;
 
-  // TODO: Most of the "save" step can be cut now, however we still need somewhere to put updateFindStats();. 
+  if (inputDataModes.xmlMode[currentPage.n]) {
+    // TODO: This is currently run whenever the page is changed.
+    // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
+    updateFindStats();
 
-  // Save contents of current page. 
-  // TODO: Figure out if this step has any meaningful performance overhead. 
-  // If so, it could be skipped in cases where no edits were made to the current page. 
-  // if (inputDataModes.xmlMode[currentPage.n]) {
-  //   if(currentPage.xmlDoc?.documentElement?.getElementsByTagName("parsererror")?.length == 0) {
-  //     globalThis.hocrCurrent[currentPage.n] = currentPage.xmlDoc?.documentElement.outerHTML;
+  }
 
-  //     updateFindStats();
-  //   }
-  // }
-
-  // matchCurrentElem.textContent = calcMatchNumber(n);
+  matchCurrentElem.textContent = calcMatchNumber(n);
 
   currentPage.n = n;
   pageNumElem.value = (currentPage.n + 1).toString();

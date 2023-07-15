@@ -1391,7 +1391,9 @@ function convertPageAbbyy(xmlPage, pageNum) {
       pageAscHeightArr.push(lineAscHeight / lineXHeight);
     }
 
-    const lineObj = new ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAllHeight, lineAscHeight - lineXHeight, lineAllHeight - lineAscHeight);
+    const lineAscOut = lineXHeight ? lineAscHeight - lineXHeight : null;
+
+    const lineObj = new ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAllHeight, lineAscOut, lineAllHeight - lineAscHeight);
 
     xmlOut = xmlOut + "\">";
 
