@@ -5,9 +5,32 @@ import { displayPage } from "../main.js";
 import { createCells } from "./exportWriteTabular.js";
 
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
+const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
+const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
+const setLayoutBoxInclusionLevelWordElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelWord'));
+const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
 
 const strokeWidth = 5;
 
+/**
+ * @param {number} priority
+ * @param {Array<number>} coords
+ */
+function layoutBox(priority, coords) {
+    /** @type {number} */ 
+    this.priority = priority;
+    /** @type {Array<number>} */ 
+    this.coords = coords;
+    /** @type {string} */ 
+    this.type = "order";
+    /** @type {?number} */ 
+    this.table = null;
+    /** @type {string} */ 
+    this.inclusionRule = "majority";
+    /** @type {string} */ 
+    this.inclusionLevel = "word";
+}
+  
 export function addLayoutBoxClick() {
 
     canvas.__eventListeners = {}
@@ -138,12 +161,7 @@ export function addLayoutBoxClick() {
             if (!init) {
                 canvas.setActiveObject(rect);
                 canvas.__eventListeners = {}
-                globalThis.layout[currentPage.n]["boxes"][id] = {
-                    priority: parseInt(textbox.text),
-                    coords: [rect.aCoords.tl.x, rect.aCoords.tl.y, rect.aCoords.br.x, rect.aCoords.br.y],
-                    type: "order",
-                    inclusionRule: "majority"
-                };
+                globalThis.layout[currentPage.n]["boxes"][id] = new layoutBox(parseInt(textbox.text), [rect.aCoords.tl.x, rect.aCoords.tl.y, rect.aCoords.br.x, rect.aCoords.br.y]);
                 init = true;
                 updateDataPreview();
             }
@@ -316,6 +334,28 @@ export function setLayoutBoxInclusionRuleClick(rule) {
 
 }
 
+export function setLayoutBoxInclusionLevelClick(rule) {
+
+    const ids = getSelectedLayoutBoxIds();
+
+    if (ids.length == 0) return;
+
+    const idsChange = [];
+
+    for (let i=0; i<ids.length; i++) {
+        if (globalThis.layout[currentPage.n]["boxes"][ids[i]].inclusionLevel != rule) {
+            idsChange.push(ids[i]);
+            globalThis.layout[currentPage.n]["boxes"][ids[i]].inclusionLevel = rule;
+        }
+    }
+
+    if (idsChange.length > 0) updateDataPreview();
+
+    return;
+
+}
+
+
 
 export function renderLayoutBoxes(ids, renderAll = true) {
     if (ids.length == 0) return;
@@ -371,6 +411,10 @@ function renderLayoutBox(id) {
         if (this.group) {
             let tableGroup = null;
             let singleTableGroup = true;
+            let inclusionRule = null;
+            let singleInclusionRule = true;
+            let inclusionLevel = null;
+            let singleInclusionLevel = true;
             for (let i=0; i<this.group._objects.length; i++) {
                 const objI = this.group._objects[i];
 
@@ -386,18 +430,59 @@ function renderLayoutBox(id) {
                     } else {
                         if (tableGroup != obj["table"]) {
                             singleTableGroup = false;
-                            break;
                         }
                     }
+                    if (inclusionRule == null) {
+                        inclusionRule = obj.inclusionRule;
+                    } else {
+                        if (inclusionRule != obj.inclusionRule) {
+                            singleInclusionRule = false;
+                        }
+                    }
+                    if (inclusionLevel == null) {
+                        inclusionLevel = obj.inclusionLevel;
+                    } else {
+                        if (inclusionLevel != obj.inclusionLevel) {
+                            singleInclusionLevel = false;
+                        }
+                    }
+
                 }
             }
 
             if (tableGroup !== null) {
                 setLayoutBoxTableElem.disabled = false;
                 if (singleTableGroup && isFinite(tableGroup)) {
-                    setLayoutBoxTableElem.value = String(tableGroup + 1)
+                    setLayoutBoxTableElem.value = String(tableGroup + 1);
                 }
             }
+
+            if (inclusionRule !== null) {
+                if (singleInclusionRule && inclusionRule == "left") {
+                    setLayoutBoxInclusionRuleLeftElem.checked = true;
+                    setLayoutBoxInclusionRuleMajorityElem.checked = false;
+                } else if (singleInclusionRule && inclusionRule == "majority") {
+                    setLayoutBoxInclusionRuleLeftElem.checked = false;
+                    setLayoutBoxInclusionRuleMajorityElem.checked = true;
+                } else {
+                    setLayoutBoxInclusionRuleLeftElem.checked = false;
+                    setLayoutBoxInclusionRuleMajorityElem.checked = false;
+                }
+            }
+
+            if (inclusionLevel !== null) {
+                if (singleInclusionLevel && inclusionLevel == "line") {
+                    setLayoutBoxInclusionLevelLineElem.checked = true;
+                    setLayoutBoxInclusionLevelWordElem.checked = false;
+                } else if (singleInclusionLevel && inclusionLevel == "word") {
+                    setLayoutBoxInclusionLevelLineElem.checked = false;
+                    setLayoutBoxInclusionLevelWordElem.checked = true;
+                } else {
+                    setLayoutBoxInclusionLevelLineElem.checked = false;
+                    setLayoutBoxInclusionLevelWordElem.checked = false;
+                }
+            }
+
 
         } else {
             const obj = globalThis.layout[currentPage.n]["boxes"][this.id];
@@ -405,6 +490,29 @@ function renderLayoutBox(id) {
             if (obj["type"] == "dataColumn") {
                 setLayoutBoxTableElem.disabled = false;
                 if (isFinite(obj["table"])) setLayoutBoxTableElem.value = String(obj["table"] + 1);
+
+                if (obj.inclusionRule == "left") {
+                    setLayoutBoxInclusionRuleLeftElem.checked = true;
+                    setLayoutBoxInclusionRuleMajorityElem.checked = false;
+                } else if (obj.inclusionRule == "majority") {
+                    setLayoutBoxInclusionRuleLeftElem.checked = false;
+                    setLayoutBoxInclusionRuleMajorityElem.checked = true;
+                } else {
+                    setLayoutBoxInclusionRuleLeftElem.checked = false;
+                    setLayoutBoxInclusionRuleMajorityElem.checked = false;
+                }
+
+                if (obj.inclusionLevel == "line") {
+                    setLayoutBoxInclusionLevelLineElem.checked = true;
+                    setLayoutBoxInclusionLevelWordElem.checked = false;
+                } else if (obj.inclusionLevel == "word") {
+                    setLayoutBoxInclusionLevelLineElem.checked = false;
+                    setLayoutBoxInclusionLevelWordElem.checked = true;
+                } else {
+                    setLayoutBoxInclusionLevelLineElem.checked = false;
+                    setLayoutBoxInclusionLevelWordElem.checked = false;
+                }
+
             }
     
         }

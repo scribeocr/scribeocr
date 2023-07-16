@@ -5,6 +5,25 @@
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#browser_compatibility
 
 /**
+ * @param {number} priority
+ * @param {Array<number>} coords
+ */
+function layoutBox(priority, coords) {
+  /** @type {number} */ 
+  this.priority = priority;
+  /** @type {Array<number>} */ 
+  this.coords = coords;
+  /** @type {string} */ 
+  this.type = "order";
+  /** @type {?number} */ 
+  this.table = null;
+  /** @type {string} */ 
+  this.inclusionRule = "majority";
+  /** @type {string} */ 
+  this.inclusionLevel = "word";
+}
+
+/**
  * @param {ocrLine} line
  * @param {string} text
  * @param {Array<number>} bbox
@@ -2021,13 +2040,10 @@ function convertTableLayoutAbbyy(xmlPage) {
 
       const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
 
-      tableBoxes[id] = {
-        priority: priority,
-        coords: [cellLeft, tableCoords[1], cellRight, tableCoords[3]],
-        type: "dataColumn",
-        table: i,
-        inclusionRule: "majority"
-      };
+      tableBoxes[id] = new layoutBox(priority, [cellLeft, tableCoords[1], cellRight, tableCoords[3]]);
+      tableBoxes[id].type = "dataColumn";
+      tableBoxes[id].table = i;
+
     }
 
     // Abbyy sometimes provides column widths that are incorrect
@@ -2098,13 +2114,9 @@ function convertTableLayoutAbbyy(xmlPage) {
   
         const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
   
-        tableBoxes[id] = {
-          priority: priority,
-          coords: [cellLeft, tableCoords[1], cellRight, tableCoords[3]],
-          type: "dataColumn",
-          table: i,
-          inclusionRule: "majority"
-        };
+        tableBoxes[id] = new layoutBox(priority, [cellLeft, tableCoords[1], cellRight, tableCoords[3]]);
+        tableBoxes[id].type = "dataColumn";
+        tableBoxes[id].table = i;
       }
 
       console.log("Table width does not match sum of rows (" + String(tableCoords[2]) + " vs " + String(leftLast) + "), calculated new layout boxes using column contents.");

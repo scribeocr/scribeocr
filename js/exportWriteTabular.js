@@ -36,66 +36,104 @@ export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xl
 
 }
 
-
+// TODO: Adapt this to work with a non-zero page angle.
 /**
  * Convert a single table into HTML or Excel XML rows
  * @param {ocrPage} pageObj
  */
 function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
 
-
-  const priorityArr = Array(pageObj.lines.length);
-  const lineBoxArr = Array(pageObj.lines.length);
+  const wordArr = [];
+  const boxArr = [];
+  const wordPriorityArr = [];
 
   // Sort boxes by left bound.
   const boxesArr = Object.values(boxes).sort((a,b) => a.coords[0] - b.coords[0]);
 
   // Unlike when exporting to text, anything not in a rectangle is excluded by default
-  priorityArr.fill(boxesArr.length+1);
+  // priorityArr.fill(boxesArr.length+1);
 
   for (let i = 0; i < pageObj.lines.length; i++) {
     const lineObj = pageObj.lines[i];
-    lineBoxArr[i] = lineObj.bbox;
 
+    // First, check for overlap with line-level boxes.
     const lineBoxALeft = [lineObj.bbox[0], lineObj.bbox[1], lineObj.bbox[0] + 1, lineObj.bbox[3]];
 
+    let boxFound = false;
     // It is possible for a single line to match the inclusion criteria for multiple boxes.
     // Only the first (leftmost) match is used.
     for (let j=0; j < boxesArr.length; j++) {
       const obj = boxesArr[j];
+
+      if (obj.inclusionLevel !== "line") continue;
        
       const overlap = obj.inclusionRule == "left" ? calcOverlap(lineBoxALeft, obj["coords"]) : calcOverlap(lineObj.bbox, obj["coords"]);
       if (overlap > 0.5) {
-        priorityArr[i] = j;
+        for (let k=0; k < lineObj.words.length; k++) {
+          const wordObj = lineObj.words[k];
+          wordArr.push(wordObj);
+          boxArr.push(lineObj.bbox);
+          wordPriorityArr.push(j);
+        }
+        boxFound = true;
         break;
       } 
     }
+
+    if (boxFound) continue;
+
+    // Second, check for overlap on the word-level boxes.
+    for (let k=0; k < lineObj.words.length; k++) {
+      const wordObj = lineObj.words[k];
+
+      for (let j=0; j < boxesArr.length; j++) {
+        const obj = boxesArr[j];
+  
+        if (obj.inclusionLevel !== "word") continue;
+
+        const wordBoxALeft = [wordObj.bbox[0], wordObj.bbox[1], wordObj.bbox[0] + 1, wordObj.bbox[3]];
+
+        const overlap = obj.inclusionRule == "left" ? calcOverlap(wordBoxALeft, obj["coords"]) : calcOverlap(wordObj.bbox, obj["coords"]);
+
+        if (overlap > 0.5) {
+          wordArr.push(wordObj);
+          boxArr.push(wordObj.bbox);
+          wordPriorityArr.push(j);
+          break;
+        }
+      }
+    }
+
   }
 
   // Split lines into separate arrays for each column
   let lastCol = -1;
-  const colArrHocr = [];
-  const colArrBox = [];
+  const colArr = [];
   for (let i = 0; i <= boxesArr.length; i++) {
-    for (let j = 0; j < priorityArr.length; j++) {
-      if (priorityArr[j] == i) {
+    for (let j = 0; j < wordPriorityArr.length; j++) {
+      if (wordPriorityArr[j] == i) {
         if (i != lastCol) {
-          colArrHocr.push([]);
-          colArrBox.push([]);
+          colArr.push([]);
           lastCol = i;
         }
-        colArrHocr[colArrHocr.length-1].push(pageObj.lines[j]);
-        colArrBox[colArrBox.length-1].push(lineBoxArr[j]);
+        colArr[colArr.length-1].push({word: wordArr[j], box: boxArr[j]});
       }
     }
   }
 
+  // For each array, sort all words by lower bound.
+  // The following steps assume that the words are ordered.
+  for (let i=0; i < colArr.length; i++) {
+    colArr[i].sort((a, b) => a.box[3] - b.box[3]);
+  }
+
+
   // Create rows
   let rowIndex = 0;
   // let lastBottom = 0;
-  const indexArr = Array(colArrBox.length);
+  const indexArr = Array(colArr.length);
   indexArr.fill(0);
-  const lengthArr = colArrBox.map(x => x.length);
+  const lengthArr = colArr.map(x => x.length);
 
   const dataObj = {};
 
@@ -107,16 +145,17 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
   // multiple HOCR "lines" may have the same visual baseline so belong in the same cell. 
   while (!indexArr.every((x, index) => x == lengthArr[index])) {
     
-    const compArrBox = indexArr.map((x, index) => colArrBox[index][x]);
-    compArrBox.sort((a, b) => a[3] - b[3])
-    const rowBox = [0, 0, 5000, compArrBox[0][3]];
+    // Identify highest unassigned word
+    const compArrBox = indexArr.map((x, index) => colArr[index][x]);
+    compArrBox.sort((a, b) => a.box[3] - b.box[3])
+    const rowBox = [0, 0, 5000, compArrBox[0].box[3]];
 
     for (let i = 0; i < indexArr.length; i++) {
-      for (let j = indexArr[i]; j < colArrBox[i].length; j++) {
-        const overlap = calcOverlap(colArrBox[i][j], rowBox);
+      for (let j = indexArr[i]; j < colArr[i].length; j++) {
+        const overlap = calcOverlap(colArr[i][j].box, rowBox);
         if (overlap > 0.5) {
           if (!dataObj[String(rowIndex) + "," + String(i)]) dataObj[String(rowIndex) + "," + String(i)] = [];
-          dataObj[String(rowIndex) + "," + String(i)].push(colArrHocr[i][j]);
+          dataObj[String(rowIndex) + "," + String(i)].push(colArr[i][j].word);
           indexArr[i]++;
         } else {
           break;
@@ -150,11 +189,11 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
       }
     }
 
-    for (let j = 0; j < colArrBox.length; j++) {
-      const lines = dataObj[String(i) + "," + String(j)];
+    for (let j = 0; j < colArr.length; j++) {
+      const words = dataObj[String(i) + "," + String(j)];
 
       // In xlsx, empty cells are omitted entirely.  For other formats they are included.
-      if (!lines || lines.length == 0) {
+      if (!words || words.length == 0) {
         if (htmlMode) {
           textStr += "<td/>"
         }
@@ -167,52 +206,44 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
         textStr += "<td>";
       }
       
-      for (let k = 0; k < lines.length; k++) {
-        const lineObj = lines[k];
-
-        // const words = line.getElementsByClassName("ocrx_word");
+      for (let k = 0; k < words.length; k++) {
+        const wordObj = words[k];
 
         let fontStylePrev = "";
   
-        for (let l = 0; l < lineObj.words.length; l++) {
-          const wordObj = lineObj.words[l];
-  
-          if (xlsxMode) {
-  
-            let fontStyle;
-            if (wordObj.style === "italic") {
-              fontStyle = "<i/>";
-            } else if (wordObj.style === "small-caps") {
-              fontStyle = "<smallCaps/>";
+        if (xlsxMode) {
+
+          let fontStyle;
+          if (wordObj.style === "italic") {
+            fontStyle = "<i/>";
+          } else if (wordObj.style === "small-caps") {
+            fontStyle = "<smallCaps/>";
+          } else {
+            fontStyle = "";
+          }
+
+          if (fontStyle != fontStylePrev || k == 0) {
+            const styleStr = fontStyle == "" ? "" : "<rPr>" + fontStyle + "</rPr>";
+
+            if (k == 0) {
+              textStr = textStr + "<r>" + styleStr + "<t xml:space=\"preserve\">";
             } else {
-              fontStyle = "";
-            }
-  
-            if (fontStyle != fontStylePrev || k == 0 || l == 0) {
-              const styleStr = fontStyle == "" ? "" : "<rPr>" + fontStyle + "</rPr>";
-  
-              if (k == 0 && l == 0) {
-                textStr = textStr + "<r>" + styleStr + "<t xml:space=\"preserve\">";
-              } else if (l == 0) {
-                textStr = textStr + "</t></r><r>" + styleStr + "<t xml:space=\"preserve\">";
-              } else {
-                textStr = textStr + " </t></r><r>" + styleStr + "<t xml:space=\"preserve\">";
-              }
-            } else {
-              textStr = textStr + " ";
+              textStr = textStr + " </t></r><r>" + styleStr + "<t xml:space=\"preserve\">";
             }
           } else {
             textStr = textStr + " ";
           }
-    
-          // DOCX is an XML format, so any escaped XML characters need to continue being escaped.
-          if (xlsxMode) {
-            // TODO: For now we just delete superscript tags.
-            // Eventually this should be added to Word exports properly. 
-            textStr = textStr + ocr.escapeXml(wordObj.text);
-          } else {
-            textStr = textStr + wordObj.text;
-          }
+        } else {
+          textStr = textStr + " ";
+        }
+  
+        // DOCX is an XML format, so any escaped XML characters need to continue being escaped.
+        if (xlsxMode) {
+          // TODO: For now we just delete superscript tags.
+          // Eventually this should be added to Word exports properly. 
+          textStr = textStr + ocr.escapeXml(wordObj.text);
+        } else {
+          textStr = textStr + wordObj.text;
         }
       }
 

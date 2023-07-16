@@ -187,11 +187,8 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
             const yRot = x * sinAngle + cosAngle * y;
       
             const angleAdjXInt = x - xRot;
-            // const angleAdjYInt = y - yRot;
-      
-            // const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
-            const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
-      
+            const angleAdjYInt = y - yRot;
+            
             angleAdjXWord = angleAdjXInt + shiftX;
             angleAdjYWord = angleAdjYInt + shiftY;
       

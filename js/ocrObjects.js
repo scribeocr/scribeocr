@@ -49,6 +49,7 @@ const getPageWord = (page, id) => {
 }
 
 
+// TODO: When all words on a line are deleted, this should also delete the line.
 /**
  * Delete word with id on a given page.
  * @param {ocrPage} page
@@ -210,9 +211,11 @@ function escapeXml(string) {
 export const ocr = {
     calcLineFontSize : calcLineFontSize,
     calcLineAngleAdj : calcLineAngleAdj,
+    calcLineBbox: calcLineBbox,
     getPageWord: getPageWord,
     getPageWords: getPageWords,
     getPageText: getPageText,
+    rotateLine: rotateLine,
     deletePageWord: deletePageWord,
     calcWordFontSize: calcWordFontSize,
     replaceLigatures: replaceLigatures,
@@ -258,8 +261,21 @@ function calcLineBbox(line) {
     line.bbox = lineBoxNew;
 }
 
-
+/**
+ * Rotates bounding box.
+ * Should not be used for lines--use `rotateLine` instead.
+ * @param {Array<number>} bbox
+ * @param {number} cosAngle
+ * @param {number} sinAngle
+ * @param {number} shiftX
+ * @param {number} shiftY
+ */
 export function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
+
+    // This math is technically only correct when the angle is 0, as that is the only time when
+    // the left/top/right/bottom bounds exactly match the corners of the rectangle the line was printed in.
+    // This is generally fine for words (as words are generally short),
+    // but results in significantly incorrect results for lines.
   
     const bboxOut = [...bbox];
 
@@ -284,3 +300,49 @@ export function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
 
     return bboxOut;
 }
+
+/**
+ * Rotates line bounding box (modifies in place).
+ * @param {ocrLine} line
+ * @param {number} angle
+ * @param {?Array<number>} dims
+ */
+function rotateLine(line, angle, dims = null) {
+
+    // If the angle is 0 (or very close) return early.
+    if (angle <= 0.05) return;
+
+    const dims1 = dims || line.page.dims[0];
+
+    const sinAngle = Math.sin(angle * (Math.PI / 180));
+    const cosAngle = Math.cos(angle * (Math.PI / 180));
+  
+    const shiftX = sinAngle * (dims1[0] * 0.5) * -1 || 0;
+    const shiftY = sinAngle * ((dims1[1] - shiftX) * 0.5) || 0;
+  
+    // Add preprocessing angle to baseline angle
+    const baseline = line.baseline;
+    const baselineAngleRadXML = Math.atan(baseline[0]);
+    const baselineAngleRadAdj = angle * (Math.PI / 180);
+    const baselineAngleRadTotal = Math.tan(baselineAngleRadXML + baselineAngleRadAdj);
+  
+    for (let i=0; i<line.words.length; i++) {
+        const word = line.words[i];
+        word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
+    }
+  
+    // Re-calculate line bbox by rotating original line bbox
+    const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
+  
+    // Re-calculate line bbox by taking union of word bboxes
+    calcLineBbox(line);
+  
+    // Adjust baseline
+    const baselineOffsetAdj = lineBoxRot[3] - line.bbox[3];
+  
+    const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
+  
+    line.baseline[0] = baselineAngleRadTotal;
+    line.baseline[1] = baselineOffsetTotal;
+  
+  }

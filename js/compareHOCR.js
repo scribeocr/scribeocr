@@ -1,5 +1,4 @@
-import { round3 } from "./miscUtils.js";
-import { getFontSize } from "./textUtils.js"
+import { round3, getRandomAlphanum } from "./miscUtils.js";
 import { ocr } from "./ocrObjects.js";
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
@@ -902,51 +901,101 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 	for (let i = 0; i < linesNew.length; i++) {
 		const lineNew = linesNew[i];
 
-		const lineBoxNew = lineNew.bbox;
+    if (lineNew.words.length == 0) continue;
 
-		const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
+    const lineNewRot = structuredClone(lineNew);
+    ocr.rotateLine(lineNewRot, globalThis.pageMetricsObj["angleAll"][currentPage.n], globalThis.pageMetricsObj["dimsAll"][currentPage.n]);
+
+
+
+		// const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
+    // const cosAngle = Math.cos(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
 
 		// Identify the OCR line a bounding box is in (or closest line if no match exists)
+    // (1) If the new line's bounding box has significant overlap with an existing line's bounding box, add to that line.
+    // (2) If the new line's bounding box has vertical overlap with 1+ existing line's bounding box, add to the closest such line.
+    // (3) Otherwise, create a new line.
 		let lineI = -1;
-		let match = false;
-		let newLastLine = false;
-		let lineBottomHOCR, line, lineMargin;
-		do {
-			lineI = lineI + 1;
-			line = lines[lineI];
 
-			const lineBox = line.bbox;
-			const baseline = line.baseline;
+    let match;
+    let matchXOverlap = 0;
+    let matchXDist = 1e6;
 
-			const lineBoxAdj = lineBox.slice();
+    let closestI = 0;
+    let closestMetric = 1e6;
+    let afterClosest = true;
+    let yDistMin = 1e6;
 
-			// Adjust box such that top/bottom approximate those coordinates at the leftmost point.
-			if (baseline[0] < 0) {
-				lineBoxAdj[1] = lineBoxAdj[1] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
-			} else {
-				lineBoxAdj[3] = lineBoxAdj[3] - (lineBoxAdj[2] - lineBoxAdj[0]) * baseline[0];
-			}
+		for (lineI=0; lineI<lines.length; lineI++) {
+			const line = lines[lineI];
 
-			const boxOffsetY = (lineBoxNew[0] + (lineBoxNew[2] - lineBoxNew[0]) / 2 - lineBoxAdj[0]) * sinAngle;
+      if (line.words.length == 0) continue;
+
+      const lineRot = structuredClone(line);
+
+      const left = Math.max(lineRot.bbox[0], lineNewRot.bbox[0]);
+      const top = Math.max(lineRot.bbox[1], lineNewRot.bbox[1]);
+      const right = Math.min(lineRot.bbox[2], lineNewRot.bbox[2]);
+      const bottom = Math.min(lineRot.bbox[3], lineNewRot.bbox[3]);
+    
+      const width = right - left;
+      const height = bottom - top;
+
+      const yOverlap = height < 0 ? 0 : height / (lineNewRot.bbox[3] - lineNewRot.bbox[1]);
+
+      // A majority of the new line must fall within the existing line to be considered a match
+      if (yOverlap >= 0.5) {
+
+        const xOverlap = width < 0 ? 0 : width / (lineNewRot.bbox[2] - lineNewRot.bbox[0]);
+        // If the lines overlap more horizontally than any previous comparison, make this line the new working hypothesis
+        if (xOverlap > matchXOverlap) {
+          matchXOverlap = xOverlap;
+          match = line;
+        // If this line has no horizontal overlap, but no other line has either, then we check the distance to the nearest line
+        } else if (xOverlap == 0 && matchXOverlap == 0) {
+          const xDist = Math.min(Math.abs(lineRot.bbox[2] - lineNewRot.bbox[0]), Math.abs(lineRot.bbox[0] - lineNewRot.bbox[2]));
+          // If this is the closest line (so far), make this line the new working hypothesis
+          if (xDist < matchXDist) {
+            matchXDist = xDist;
+            match = line;
+          }
+        }
+      // If no match has been identified, the closest non-matching line needs to be identified.
+      // This allows the new line to be inserted at a location that makes sense.
+      } else if (!match) {
+
+        // An ad-hoc distance metric is used, as the standard geometric distance would likely produce worse results for multi-column layouts.
+        // xDist is 0 when there is overlap between x coordinates, and otherwise equal to the distance between the x coordinates. 
+        // yDist is calculated similarly, however is weighted 3x more.  The sum of xMetric and yMetric represents the total distance/penalty.
+        const xOverlap = width < 0 ? 0 : width / (lineNewRot.bbox[2] - lineNewRot.bbox[0]);
+        const xDist = xOverlap > 0 ? 0 : Math.min(Math.abs(lineRot.bbox[2] - lineNewRot.bbox[0]), Math.abs(lineRot.bbox[0] - lineNewRot.bbox[2]));
+        const yDist = yOverlap > 0 ? 0 : Math.min(Math.abs(lineRot.bbox[3] - lineNewRot.bbox[1]), Math.abs(lineRot.bbox[1] - lineNewRot.bbox[3]));
+
+        if (yDist < yDistMin) yDistMin = yDist;
+
+        const totalMetric = xDist + yDist * 3;
+        if (totalMetric < closestMetric) {
+          closestMetric = totalMetric;
+          closestI = lineI;
+          afterClosest = lineNewRot[3] > lineRot[3];
+        }
+      }
+		}
+
+    // The selected match is rejected (and assumed to be in another column) if
+    // (1) the horizontal gap between matched lines >5% the width of the entire page and
+    // (2) the horizontal gap between matched lines is >2x the vertical gap to the nearest preceding/following line.
+    // This is intended to eliminate cases when new words are inserted into the wrong column and/or floating element
+    // (possibly on the other side of the page) just because vertical overlap exists.
+    if (match && matchXOverlap == 0 && matchXDist > 2 * yDistMin && pageB.dims[1] * 0.05 < matchXDist) match = undefined;
 
 
-			// Calculate size of margin to apply when detecting overlap (~30% of total height applied to each side)
-			// This prevents a very small overlap from causing a word to be placed on an existing line
-			const lineHeight = lineBoxAdj[3] - lineBoxAdj[1];
-			lineMargin = Math.round(lineHeight * 0.30);
-
-			let lineTopHOCR = lineBoxAdj[1] + boxOffsetY;
-			lineBottomHOCR = lineBoxAdj[3] + boxOffsetY;
-
-			if ((lineTopHOCR + lineMargin) < lineBoxNew[3] && (lineBottomHOCR - lineMargin) >= lineBoxNew[1]) match = true;
-			if ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 == lines.length) newLastLine = true;
-
-		} while ((lineBottomHOCR - lineMargin) < lineBoxNew[1] && lineI + 1 < lines.length);
-
-		let words = line.words;
-		let wordsNew = lineNew.words;
+		const wordsNew = lineNew.words;
 
 		if (match) {
+
+      const words = match.words;
+
 			// Inserting wordNew seems to remove it from the wordsNew array
 			const wordsNewLen = wordsNew.length;
 			for (let i = 0; i < wordsNewLen; i++) {
@@ -975,6 +1024,10 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 					words.splice(wordIndex, 0, wordNew);
 				}
 			}
+
+      // Recalculate bounding box for line
+      ocr.calcLineBbox(match);
+
 		} else {
 
 			for (let i = 0; i < wordsNew.length; i++) {
@@ -997,11 +1050,10 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
           // If the new line is between two existing lines, use metrics from nearby line to determine text size
         } else {
 
-          // TODO: Selection of prevLine will need to be reworked when we work to support multi-column layouts.
-          const prevLine = lines[lineI-1];
-          lineNew.letterHeight = prevLine.letterHeight;
-          lineNew.ascHeight = prevLine.ascHeight;
-          lineNew.descHeight = prevLine.descHeight;
+          const closestLine = lines[closestI];
+          lineNew.letterHeight = closestLine.letterHeight;
+          lineNew.ascHeight = closestLine.ascHeight;
+          lineNew.descHeight = closestLine.descHeight;
 
           // If the previous line's font size is clearly incorrect, we instead revert to assuming the textbox height is the "A" height.
           const lineHeight = lineNew.bbox[3] - lineNew.bbox[1];
@@ -1013,7 +1065,7 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
         }
       }
 
-			if (newLastLine) {
+			if (afterClosest) {
 				lines.splice(lineI+1, 0, lineNew);
 			} else {
 				lines.splice(lineI, 0, lineNew);
