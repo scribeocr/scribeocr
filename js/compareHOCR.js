@@ -290,7 +290,7 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   for (let i=0;i<wordsB.length;i++) {
 
     // Clone object so editing does not impact the original
-    const word = structuredClone(wordsB[i]);
+    const word = ocr.cloneWord(wordsB[i]);
 
     // Set style to whatever it is for wordsA.  This is based on the assumption that "A" is Tesseract Legacy and "B" is Tesseract LSTM (which does not have useful style info).
     word.style = wordsA[0].style
@@ -698,7 +698,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
                     // TODO: Figure out how to compare between small caps/non small-caps words (this is the only relevant style as it is the only style LSTM detects)
                     
                     // Clone hocrAWord and set text content equal to hocrBWord
-                    const wordAClone = structuredClone(wordA);
+                    const wordAClone = ocr.cloneWord(wordA);
                     wordAClone.text = wordB.text;
               
                     const hocrError = await evalWords([wordA], [wordAClone], n, Boolean(debugLabel));
@@ -815,7 +815,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
                         }
 
                       } else {
-                        const wordsBArrRep = wordsBArr.map((x) => structuredClone(x));
+                        const wordsBArrRep = wordsBArr.map((x) => ocr.cloneWord(x));
 
                         // const styleStrWordA = hocrAWord.getAttribute('style');
 
@@ -931,7 +931,8 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 
       if (line.words.length == 0) continue;
 
-      const lineRot = structuredClone(line);
+      const lineRot = ocr.cloneLine(line);
+      ocr.rotateLine(lineRot, globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1, globalThis.pageMetricsObj["dimsAll"][currentPage.n]);
 
       const left = Math.max(lineRot.bbox[0], lineNewRot.bbox[0]);
       const top = Math.max(lineRot.bbox[1], lineNewRot.bbox[1]);
@@ -996,10 +997,8 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 
       const words = match.words;
 
-			// Inserting wordNew seems to remove it from the wordsNew array
-			const wordsNewLen = wordsNew.length;
-			for (let i = 0; i < wordsNewLen; i++) {
-				let wordNew = wordsNew[0];
+			for (let i = 0; i < wordsNew.length; i++) {
+				let wordNew = wordsNew[i];
 				const wordBoxNew = wordNew.bbox;
 
 				// Identify closest word on existing line

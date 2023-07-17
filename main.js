@@ -1292,10 +1292,6 @@ async function recognizeArea(imageCoords, wordMode = false) {
 
   const allConfig = getTesseractConfigs();
 
-  if (wordMode) {
-    allConfig.tessedit_pageseg_mode = Tesseract.PSM["SINGLE_WORD"];
-  }
-
   // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
   if (!checkTesseractScheduler(globalThis.recognizeAreaScheduler, allConfig)) {
     if (globalThis.recognizeAreaScheduler) {
@@ -1304,11 +1300,18 @@ async function recognizeArea(imageCoords, wordMode = false) {
     }
     globalThis.recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
   }
-  allConfig.rectangle = { left, top, width, height };
+
+  // When a user is manually selecting words to recognize, they are assumed to be in the same block.
+  const psm = wordMode ? Tesseract.PSM["SINGLE_WORD"] : Tesseract.PSM["SINGLE_BLOCK"];
+
+  const extraConfig = {
+    rectangle: { left, top, width, height },
+    tessedit_pageseg_mode: psm
+  }
 
   const inputImage = await globalThis.imageAll["native"][currentPage.n];
 
-  const res = await recognizeAreaScheduler.addJob('recognize', inputImage.src, allConfig);
+  const res = await recognizeAreaScheduler.addJob('recognize', inputImage.src, extraConfig);
   let hocrString = res.data.hocr;
 
   const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n]) > 0.05 ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : 0;

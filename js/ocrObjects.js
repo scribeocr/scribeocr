@@ -216,6 +216,7 @@ export const ocr = {
     getPageWords: getPageWords,
     getPageText: getPageText,
     cloneLine: cloneLine,
+    cloneWord: cloneWord,
     rotateLine: rotateLine,
     deletePageWord: deletePageWord,
     calcWordFontSize: calcWordFontSize,
@@ -368,4 +369,21 @@ function cloneLine(line) {
         lineNew.words.push(wordNew);
     }
     return lineNew;
+}
+
+/**
+ * Clones word.  Does not clone line or page.
+ * Should be used rather than `structuredClone` for performance reasons.
+ * @param {ocrWord} word
+ */
+function cloneWord(word) {
+    const wordNew = new ocrWord(word.line, word.text, word.bbox.slice(), word.id);
+    wordNew.conf = word.conf;
+    wordNew.sup = word.sup;
+    wordNew.dropcap = word.dropcap;
+    wordNew.font = word.font;
+    wordNew.size = word.size;
+    wordNew.style = word.style;
+    wordNew.matchTruth = word.matchTruth;
+    return wordNew;
 }
