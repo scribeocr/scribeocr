@@ -215,6 +215,7 @@ export const ocr = {
     getPageWord: getPageWord,
     getPageWords: getPageWords,
     getPageText: getPageText,
+    cloneLine: cloneLine,
     rotateLine: rotateLine,
     deletePageWord: deletePageWord,
     calcWordFontSize: calcWordFontSize,
@@ -345,4 +346,26 @@ function rotateLine(line, angle, dims = null) {
     line.baseline[0] = baselineAngleRadTotal;
     line.baseline[1] = baselineOffsetTotal;
   
-  }
+}
+
+/**
+ * Clones line and included words.  Does not clone page.
+ * Should be used rather than `structuredClone` for performance reasons.
+ * @param {ocrLine} line
+ */
+function cloneLine(line) {
+    const lineNew = new ocrLine(line.page, line.bbox.slice(), line.baseline.slice(), line.letterHeight, line.ascHeight, line.descHeight);
+    for (let i=0; i<line.words.length; i++) {
+        const word = line.words[i];
+        const wordNew = new ocrWord(lineNew, word.text, word.bbox, word.id);
+        wordNew.conf = word.conf;
+        wordNew.sup = word.sup;
+        wordNew.dropcap = word.dropcap;
+        wordNew.font = word.font;
+        wordNew.size = word.size;
+        wordNew.style = word.style;
+        wordNew.matchTruth = word.matchTruth;
+        lineNew.words.push(wordNew);
+    }
+    return lineNew;
+}

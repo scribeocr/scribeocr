@@ -187,8 +187,11 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
             const yRot = x * sinAngle + cosAngle * y;
       
             const angleAdjXInt = x - xRot;
-            const angleAdjYInt = y - yRot;
-            
+            // const angleAdjYInt = y - yRot;
+      
+            // const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
+            const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
+      
             angleAdjXWord = angleAdjXInt + shiftX;
             angleAdjYWord = angleAdjYInt + shiftY;
       
@@ -214,6 +217,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
           left: left,
           //top: y,
           top: top,
+          selectable: !layoutMode,
           leftOrig: left,
           topOrig: top,
           baselineAdj: 0,
@@ -423,7 +427,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
 
   if (layoutMode) {
 
-    renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]));
+    renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]), false);
 
   }
 

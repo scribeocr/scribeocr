@@ -903,8 +903,8 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 
     if (lineNew.words.length == 0) continue;
 
-    const lineNewRot = structuredClone(lineNew);
-    ocr.rotateLine(lineNewRot, globalThis.pageMetricsObj["angleAll"][currentPage.n], globalThis.pageMetricsObj["dimsAll"][currentPage.n]);
+    const lineNewRot = ocr.cloneLine(lineNew);
+    ocr.rotateLine(lineNewRot, globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1, globalThis.pageMetricsObj["dimsAll"][currentPage.n]);
 
 
 

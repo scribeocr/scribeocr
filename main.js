@@ -33,7 +33,8 @@ import {
 } from "./js/interfaceEdit.js";
 
 import {
-  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick,setLayoutBoxInclusionLevelClick, updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching
+  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick,setLayoutBoxInclusionLevelClick, 
+  updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords
 } from "./js/interfaceLayout.js"
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
@@ -1023,6 +1024,8 @@ document.getElementById("nav-layout")?.addEventListener('show.bs.collapse', (e) 
   if (!globalThis.layout[currentPage.n]) return;
   if (!fabric.Object.prototype.objectCaching) enableObjectCaching();
 
+  toggleSelectableWords(false);
+
   renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]));
   
 });
@@ -1030,6 +1033,7 @@ document.getElementById("nav-layout")?.addEventListener('show.bs.collapse', (e) 
 document.getElementById("nav-layout")?.addEventListener('hide.bs.collapse', (e) => {
   if (e.target.id != "nav-layout") return;
   globalThis.layoutMode = false;
+  toggleSelectableWords(true);
   clearLayoutBoxes();
 });
 

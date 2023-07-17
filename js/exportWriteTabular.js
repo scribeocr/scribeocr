@@ -24,8 +24,8 @@ export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xl
   let rowIndex = startRow;
   let rowCount = 0;
   for (const i of tableIndexes) {
-    // Filter layout boxes to specific table (and implicitly to only dataColumn boxes)
-    const boxesArg = Object.values(layoutObj.boxes).filter(x => x.table == i);
+    // Filter layout boxes to specific table
+    const boxesArg = Object.values(layoutObj.boxes).filter(x => x.type === 'dataColumn' && x.table == i);
     const cellsSingle = createCellsSingle(pageObj, boxesArg, extraCols, rowIndex, xlsxMode, htmlMode);
     textStr += cellsSingle.content;
     rowIndex += cellsSingle.rows;
@@ -36,7 +36,7 @@ export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xl
 
 }
 
-// TODO: Adapt this to work with a non-zero page angle.
+// TODO: This currently creates junk rows with only punctuation, as those bounding boxes are so small they often do not overlap with other lines.
 /**
  * Convert a single table into HTML or Excel XML rows
  * @param {ocrPage} pageObj
@@ -54,7 +54,8 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
   // priorityArr.fill(boxesArr.length+1);
 
   for (let i = 0; i < pageObj.lines.length; i++) {
-    const lineObj = pageObj.lines[i];
+    const lineObj = ocr.cloneLine(pageObj.lines[i]);
+    ocr.rotateLine(lineObj, pageObj.angle * -1, pageObj.dims);
 
     // First, check for overlap with line-level boxes.
     const lineBoxALeft = [lineObj.bbox[0], lineObj.bbox[1], lineObj.bbox[0] + 1, lineObj.bbox[3]];
@@ -199,6 +200,9 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
         }
         continue;
       }
+
+      // Sort left to right so words are printed in the correct order
+      words.sort((a, b) => a.bbox[0] - b.bbox[0]);
 
       if (xlsxMode) {
         textStr += "<c r=\"" + letters[j+extraCols.length] + String(startRow+i+1) + "\" t=\"inlineStr\"><is>";

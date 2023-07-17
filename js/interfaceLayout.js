@@ -23,8 +23,8 @@ function layoutBox(priority, coords) {
     this.coords = coords;
     /** @type {string} */ 
     this.type = "order";
-    /** @type {?number} */ 
-    this.table = null;
+    /** @type {number} */ 
+    this.table = 0;
     /** @type {string} */ 
     this.inclusionRule = "majority";
     /** @type {string} */ 
@@ -41,6 +41,7 @@ export function addLayoutBoxClick() {
     let id;
     let textbox;
     let origX, origY;
+    let maxPriority = 1;
 
     canvas.on('mouse:down', function (o) {
 
@@ -66,65 +67,13 @@ export function addLayoutBoxClick() {
             strokeWidth: strokeWidth
             // preserveObjectStacking: true
         });
-        rect.hasControls = true;
         rect.setControlsVisibility({ bl: true, br: true, mb: true, ml: true, mr: true, mt: true, tl: true, tr: true, mtr: false });
 
         // Maximum priority for boxes that already exist
-        const maxPriority = Math.max(...Object.values(globalThis.layout[currentPage.n].boxes).map(x => x.priority), 0);
-
-        textbox = new fabric.IText(String(maxPriority + 1), {
-            left: origX,
-            top: origY,
-            originX: "center",
-            originY: "center",
-            textBackgroundColor: 'rgb(255,255,255)',
-            fontSize: 150,
-            id: id,
-            scribeType: "layoutTextbox"
-
-        });
-
-        textbox.hasControls = true;
-        textbox.setControlsVisibility({ bl: false, br: false, mb: false, ml: true, mr: true, mt: false, tl: false, tr: false, mtr: false });
-
-
-        rect.on({ 'moving': onChange })
-        rect.on({ 'scaling': onChange })
-
-        function onChange(obj) {
-            const target = obj.transform.target;
-
-            // Adjust location of textbox
-            textbox.left = (target.aCoords.tl.x + target.aCoords.br.x) * 0.5;
-            textbox.top = (target.aCoords.tl.y + target.aCoords.br.y) * 0.5;
-            textbox.setCoords();
-        }
-
-        rect.on({ "mouseup": updateLayoutBoxes })
-
-        function updateLayoutBoxes(obj) {
-            const target = obj.target;
-            const id = target.id;
-
-            globalThis.layout[currentPage.n]["boxes"][id]["coords"] = [target.aCoords.tl.x, target.aCoords.tl.y, target.aCoords.br.x, target.aCoords.br.y];
-            globalThis.layout[currentPage.n]["default"] = false;
-            updateDataPreview();
-        }
-
-        textbox.on('editing:exited', async function (obj) {
-            if (this.hasStateChanged) {
-                const id = this.id;
-                globalThis.layout[currentPage.n]["boxes"][id]["priority"] = parseInt(this.text);
-                globalThis.layout[currentPage.n]["default"] = false;
-                updateDataPreview();
-            }
-        });
+        maxPriority = Math.max(...Object.values(globalThis.layout[currentPage.n].boxes).map(x => x.priority), 0);
 
         canvas.add(rect);
-        canvas.add(textbox);
 
-
-        // canvas.add(rect);
         canvas.renderAll();
 
         canvas.on('mouse:move', function (o) {
@@ -143,9 +92,6 @@ export function addLayoutBoxClick() {
             rect.set({ width: Math.abs(origX - pointer.x) });
             rect.set({ height: Math.abs(origY - pointer.y) });
 
-            textbox.left = rect.left + rect.width * 0.5;
-            textbox.top = rect.top + rect.height * 0.5;
-
             canvas.renderAll();
 
         });
@@ -159,10 +105,19 @@ export function addLayoutBoxClick() {
         // Immediately select rectangle (showing controls for easy resizing)
         canvas.on('mouse:up', async function (o) {
             if (!init) {
-                canvas.setActiveObject(rect);
+
+                const pointer = canvas.getPointer(o.e);
+                
                 canvas.__eventListeners = {}
-                globalThis.layout[currentPage.n]["boxes"][id] = new layoutBox(parseInt(textbox.text), [rect.aCoords.tl.x, rect.aCoords.tl.y, rect.aCoords.br.x, rect.aCoords.br.y]);
+        
+                // Stroke impacts the right/bottom coordinates, so needs to be subtraced
+                const bbox = [Math.min(origX, pointer.x), Math.min(origY, pointer.y), Math.max(origX, pointer.x), Math.max(origY, pointer.y)];
+
+                globalThis.layout[currentPage.n]["boxes"][id] = new layoutBox(maxPriority + 1, bbox);
+                canvas.remove(rect);
+
                 init = true;
+                renderLayoutBox(id);
                 updateDataPreview();
             }
         });
@@ -247,6 +202,18 @@ export function enableObjectCaching() {
         allObjects[i].objectCaching = true;
     }
 }
+
+export function toggleSelectableWords(selectable = true) {
+    const allObjects = window.canvas.getObjects();
+    const n = allObjects.length;
+    for (let i = 0; i < n; i++) {
+        if (allObjects[i].wordID) {
+            allObjects[i].selectable = selectable;
+            allObjects[i].evented = selectable;
+        }
+    }
+}
+
 
 export function setDefaultLayoutClick() {
     globalThis.layout[currentPage.n]["default"] = true;
@@ -543,6 +510,7 @@ function renderLayoutBox(id) {
           textbox.hasControls = true;
           textbox.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
             
+          // Move the textbox whenever the rectangle moves
           function onChange(obj) {
             const target = obj.transform.target;
       
@@ -564,7 +532,8 @@ function renderLayoutBox(id) {
       
     }
 
-
+    // TODO: This runs far too often, even when nothing was edited.
+    // Figure out the correct event (or how to exit early).
     rect.on({"mouseup": updateLayoutBoxes})
 
     function updateLayoutBoxes(obj) {
