@@ -116,7 +116,6 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
  * @param {boolean} abbyyMode - true if the input is Abbyy .xml
  * @param {boolean} stextMode - true if the input is stext
  */
-
 export async function convertOCR(hocrRaw, mainData, abbyyMode, stextMode) {
     // For each page, process HOCR using web worker
     for (let i = 0; i < hocrRaw.length; i++) {

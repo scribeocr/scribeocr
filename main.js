@@ -19,9 +19,11 @@ import { writeXlsx } from './js/exportWriteTabular.js';
 import { renderPage } from './js/renderPage.js';
 import { coords } from './js/coordinates.js';
 
+import { recognizeAllPages } from "./js/recognize.js";
+
 import { getFontSize, calcWordMetrics } from "./js/textUtils.js"
 
-import { calculateOverallFontMetrics, parseDebugInfo, setDefaultFontAuto } from "./js/fontStatistics.js";
+import { calculateOverallFontMetrics, setDefaultFontAuto } from "./js/fontStatistics.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences } from "./js/miscUtils.js";
@@ -76,9 +78,6 @@ fabric.enableGLFiltering = false;
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 var leftGlobal;
-
-// Threshold (in radians) under which page angle is considered to be effectively 0.
-let angleThresh = 0.0008726646;
 
 
 // Edit canvas.js object defaults
@@ -472,10 +471,8 @@ showConflictsElem.addEventListener('input', showDebugImages);
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 recognizeAllElem.addEventListener('click', () => {
-  globalThis.state.recognizeAllPromise = recognizeAll();
+  globalThis.state.recognizeAllPromise = recognizeAllClick();
 });
-// const recognizePageElem = /** @type {HTMLInputElement} */(document.getElementById('recognizePage'));
-// recognizePageElem.addEventListener('click', () => {recognizePages(true)});
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
 recognizeAreaElem.addEventListener('click', () => recognizeAreaClick(false));
@@ -705,6 +702,12 @@ function findAllMatches(text) {
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
+  
+  if (!globalThis.hocrCurrent[currentPage.n]) {
+    find.text[currentPage.n] = "";
+    return;
+  }
+
   // Re-extract text from XML
   find.text[currentPage.n] = ocr.getPageText(globalThis.hocrCurrent[currentPage.n]);
 
@@ -1085,7 +1088,7 @@ function hideProgress(id) {
 }
 
 
-async function createTesseractScheduler(workerN, config = null) {
+export async function createTesseractScheduler(workerN, config = null) {
 
   const allConfig = config || getTesseractConfigs();
 
@@ -1125,7 +1128,7 @@ async function createTesseractScheduler(workerN, config = null) {
 
 }
 
-function getTesseractConfigs() {
+export function getTesseractConfigs() {
   // Get current settings as specified by user
   const oemConfig = oemLabelTextElem.innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
   const psmConfig = document.getElementById("psmLabelText")?.innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
@@ -1157,6 +1160,95 @@ function checkTesseractScheduler(scheduler, config = null) {
   return false;
 
 }
+
+
+async function recognizeAllClick() {
+
+  // User can select engine directly using advanced options, or indirectly using basic options. 
+  let oemMode;
+  if(enableAdvancedRecognitionElem.checked) {
+    oemMode = oemLabelTextElem.innerHTML;
+  } else {
+    if(ocrQualityElem.value == "1") {
+      oemMode = "combined";
+    } else {
+      oemMode = "legacy";
+      setOemLabel("legacy");
+    }
+  }
+
+  // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
+  if(oemMode == "legacy" || oemMode == "lstm") {
+    convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
+    await recognizeAllPages(oemMode == "legacy", false);
+
+  } else if (oemMode == "combined") {
+
+    loadCountHOCR = 0;
+    convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
+    globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
+
+    await recognizeAllPages(true, true);
+    await recognizeAllPages(false, true);
+  
+    // Whether user uploaded data will be compared against in addition to both Tesseract engines
+    const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
+
+    const debugMode = true;
+
+    if(debugMode) {
+      globalThis.debugImg = {};
+      globalThis.debugImg["Combined"] = new Array(globalThis.imageAll["native"].length);
+      for(let i=0; i < globalThis.imageAll["native"].length; i++) {
+        globalThis.debugImg["Combined"][i] = [];
+      }
+    }
+
+    if(userUploadMode) {
+      addDisplayLabel("Tesseract Combined");
+      setCurrentHOCR("Tesseract Combined");  
+      if (debugMode) {
+        globalThis.debugImg["Tesseract Combined"] = new Array(globalThis.imageAll["native"].length);
+        for(let i=0; i < globalThis.imageAll["native"].length; i++) {
+          globalThis.debugImg["Tesseract Combined"][i] = [];
+        }
+      }
+    }
+
+    addDisplayLabel("Combined");
+    setCurrentHOCR("Combined");      
+    
+    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+
+      const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
+
+      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", i, tessCombinedLabel);
+      globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
+
+      // If the user uploaded data, compare to that as well
+      if(userUploadMode) {
+        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", i, "Combined");
+        globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
+      }
+    }  
+  }
+
+  renderPageQueue(currentPage.n);
+
+  // Enable confidence threshold input boxes (only used for Tesseract)
+  confThreshHighElem.disabled = false;
+  confThreshMedElem.disabled = false;
+
+  // Set threshold values if not already set
+  confThreshHighElem.value = confThreshHighElem.value || "85";
+  confThreshMedElem.value = confThreshMedElem.value || "75";
+
+  toggleEditButtons(false);
+
+  return(true);
+
+}
+
 
 
 function createGroundTruthClick() {
@@ -1344,85 +1436,6 @@ function calcWordBaseline(wordbox, linebox, baseline) {
   
 }
 
-async function recognizeAll() {
-
-  // User can select engine directly using advanced options, or indirectly using basic options. 
-  let oemMode;
-  if(enableAdvancedRecognitionElem.checked) {
-    oemMode = oemLabelTextElem.innerHTML;
-  } else {
-    if(ocrQualityElem.value == "1") {
-      oemMode = "combined";
-    } else {
-      oemMode = "legacy";
-      setOemLabel("legacy");
-    }
-  }
-
-  // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
-  if(oemMode == "legacy" || oemMode == "lstm") {
-    await recognizePages(false, null, true);
-
-  } else if (oemMode == "combined") {
-
-    loadCountHOCR = 0;
-    convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
-    globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
-
-    const config = getTesseractConfigs();
-    config.tessedit_ocr_engine_mode = "0";
-    await recognizePages(false, config, true, true);
-    config.tessedit_ocr_engine_mode = "1";
-    await recognizePages(false, config, false, true);
-  
-    // Whether user uploaded data will be compared against in addition to both Tesseract engines
-    const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
-
-    const debugMode = true;
-
-    if(debugMode) {
-      globalThis.debugImg = {};
-      globalThis.debugImg["Combined"] = new Array(globalThis.imageAll["native"].length);
-      for(let i=0; i < globalThis.imageAll["native"].length; i++) {
-        globalThis.debugImg["Combined"][i] = [];
-      }
-    }
-
-    if(userUploadMode) {
-      addDisplayLabel("Tesseract Combined");
-      setCurrentHOCR("Tesseract Combined");  
-      if (debugMode) {
-        globalThis.debugImg["Tesseract Combined"] = new Array(globalThis.imageAll["native"].length);
-        for(let i=0; i < globalThis.imageAll["native"].length; i++) {
-          globalThis.debugImg["Tesseract Combined"][i] = [];
-        }
-      }
-    }
-
-    addDisplayLabel("Combined");
-    setCurrentHOCR("Combined");      
-    
-    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-
-      const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
-
-      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", i, tessCombinedLabel);
-      globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
-
-      // If the user uploaded data, compare to that as well
-      if(userUploadMode) {
-        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", i, "Combined");
-        globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
-      }
-    }  
-  }
-
-  renderPageQueue(currentPage.n);
-
-  return(true);
-
-}
-
 async function showDebugImages() {
 
   if (!showConflictsElem.checked) {
@@ -1496,159 +1509,6 @@ async function showDebugImages() {
   canvasDebug.renderAll();
 }
 
-
-async function recognizePages(single = false, config = null, saveMetrics = true, comb = false) {
-
-  const allConfig = config || getTesseractConfigs();
-  let scheduler;
-
-  if(!single){
-
-    // When running in Legacy + LSTM combined mode, recognizePages is run twice, so the progress bar is initialized outside this function.
-    if(!comb){
-      loadCountHOCR = 0;
-
-      convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
-  
-      globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);  
-      globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
-      globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);  
-    }
-  
-    // Render all pages to PNG
-    if (inputDataModes.pdfMode) {
-      await initSchedulerIfNeeded("muPDFScheduler");
-  
-      //muPDFScheduler["activeProgress"] = initializeProgress("render-recognize-progress-collapse", imageAll["native"].length, muPDFScheduler["pngRenderCount"]);
-      let time1 = Date.now();
-      await renderPDFImageCache([...Array(globalThis.imageAll["native"].length).keys()]);
-      let time2 = Date.now();
-      console.log("renderPDFImageCache runtime: " + (time2 - time1) / 1e3 + "s");
-    }
-
-    let workerN = Math.round((globalThis.navigator.hardwareConcurrency || 8) / 2);
-    // Use at most 6 workers.  While some systems could support many more workers in theory,
-    // browser-imposed memory limits make this problematic in reality.
-    workerN = Math.min(workerN, 6);
-    // Do not create more workers than there are pages
-    workerN = Math.min(workerN, Math.ceil(globalThis.imageAll["native"].length));
-  
-    console.log("Using " + workerN + " workers for OCR.")
-  
-  
-    scheduler = await createTesseractScheduler(workerN, allConfig);
-  } else {
-    
-    // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
-    if (!checkTesseractScheduler(globalThis.recognizeAreaScheduler, allConfig)) {
-      if (globalThis.recognizeAreaScheduler) {
-        await globalThis.recognizeAreaScheduler.terminate()
-        globalThis.recognizeAreaScheduler = null;
-      }
-      globalThis.recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
-    }
-
-    scheduler = recognizeAreaScheduler;
-  }
-
-  // OCR results from different engines are only saved separately when running recognition on an entire document. 
-  // Running recognition on a single page will simply overwrite whatever data is actively displayed. 
-  const oemText = "Tesseract " + (allConfig.tessedit_ocr_engine_mode == "1" ? "LSTM" : "Legacy");
-  if(!single) {
-    addDisplayLabel(oemText);
-    setCurrentHOCR(oemText);  
-  }
-  const mode = single ? "page" : "full";
-
-  let recognizeImages = async (pagesArr) => {
-    let time1 = Date.now();
-
-    const rets = await Promise.allSettled(pagesArr.map(async (x) => {
-
-      // Whether the binary image should be rotated
-      const rotate = true;
-      const angleKnown = typeof (globalThis.pageMetricsObj["angleAll"]?.[x]) == "number";
-
-      // Do not rotate an image that has already been rotated
-      const rotateDegrees = rotate && Math.abs(globalThis.pageMetricsObj["angleAll"][x]) > 0.05 && !globalThis.imageAll["nativeRotated"][x] ? globalThis.pageMetricsObj["angleAll"][x] * -1 || 0 : 0;
-      const rotateRadians = rotateDegrees * (Math.PI / 180);
-
-      // When the image has not been loaded into an element yet, use the raw source string.
-      // We still use imageAll["native"] when it exists as this will have rotation applied (if applicable) while imageAll["nativeSrc"] will not.
-      const inputSrc = globalThis.imageAll["native"][x] ? (await globalThis.imageAll["native"][x]).src : globalThis.imageAll["nativeSrc"][x];
-
-      // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
-      const saveNativeImage = autoRotateCheckboxElem.checked && !globalThis.imageAll["nativeRotated"][x] && (!angleKnown || Math.abs(rotateRadians) > angleThresh);
-
-      const saveBinaryImageArg = !globalThis.imageAll["binary"][x] || autoRotateCheckboxElem.checked && !globalThis.imageAll["binaryRotated"][x] && (!angleKnown || Math.abs(rotateRadians) > angleThresh) ? true : false;
-
-      return scheduler.addJob('recognize', inputSrc, {rotateRadians: rotateRadians, rotateAuto: !angleKnown}, {imageBinary : saveBinaryImageArg, 
-        imageColor: saveNativeImage, debug: true}).then(async (y) => {      
-
-        parseDebugInfo(y.data.debug);
-
-        if (!angleKnown) globalThis.pageMetricsObj["angleAll"][x] = y.data.rotateRadians * (180 / Math.PI) * -1;
-
-        if (x == 55) debugger;
-
-        // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
-        // but no significant rotation was actually detected. 
-        if(saveBinaryImageArg) {
-          globalThis.imageAll["binaryRotated"][x] = Math.abs(y.data.rotateRadians) > angleThresh;
-          if (globalThis.imageAll["binaryRotated"][x] || !globalThis.imageAll["binary"][x]) {
-            const image = document.createElement('img');
-            image.src = y.data.imageBinary;
-            globalThis.imageAll["binary"][x] = image;  
-          }
-        }
-
-        if(saveNativeImage) {
-          globalThis.imageAll["nativeRotated"][x] = Math.abs(y.data.rotateRadians) > angleThresh;
-          if (globalThis.imageAll["nativeRotated"][x]) {
-            const image = document.createElement('img');
-            image.src = y.data.imageColor;
-            globalThis.imageAll["native"][x] = image;
-          }
-        }
-    
-        globalThis.hocrCurrentRaw[x] = y.data.hocr;
-
-        const argsObj = {
-          "engine": oemText,
-          "angle": globalThis.pageMetricsObj["angleAll"][x],
-          "mode": mode,
-          "saveMetrics": saveMetrics
-        }
-
-        // We wait for updateDataProgress because this is the function responsible for triggering the calculation of full-document metrics + font optimization
-        // once the document is finished processing. 
-        return globalThis.convertPageScheduler.addJob("convertPage", [y.data.hocr, x, false, argsObj]).then(async () => {if(!single) await updateDataProgress(saveMetrics, comb)});
-
-      })
-
-    }));
-
-    if(!single) await scheduler.terminate();
-
-    let time2 = Date.now();
-    console.log("Runtime: " + (time2 - time1) / 1e3 + "s");
-  }
-
-  // Enable confidence threshold input boxes (only used for Tesseract)
-  confThreshHighElem.disabled = false;
-  confThreshMedElem.disabled = false;
-
-  // Set threshold values if not already set
-  confThreshHighElem.value = confThreshHighElem.value || "85";
-  confThreshMedElem.value = confThreshMedElem.value || "75";
-
-  toggleEditButtons(false);
-
-  const inputPages = single ? [currentPage.n] : [...Array(globalThis.imageAll["native"].length).keys()];
-
-  await recognizeImages(inputPages);
-
-}
 
 var rect1;
 function recognizeAreaClick(wordMode = false) {
