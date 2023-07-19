@@ -109,13 +109,20 @@ function ocrPage(n, dims) {
  */
 function unescapeXml(string) {
   return string.replace(/&amp;/, "&")
-      .replace(/&quot;/, "\"")
-      .replace(/&apos;/, "'")
-      .replace(/&lt;/, "<")
-      .replace(/&gt;/, ">")
-      .replace(/&gt;/, ">")
-      .replace(/&#39;/, "'")
-      .replace(/&#34;/, "\"")
+      .replace(/&quot;/g, "\"")
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&gt;/g, ">")
+      .replace(/&#39;/g, "'")
+      .replace(/&#34;/g, "\"")
+      .replace(/&#x2014;/g, "—")
+      .replace(/&#x8211;/g, "–")
+      .replace(/&#x201c;/g, "“")
+      .replace(/&#x201d;/g, "”")
+      .replace(/&#x2018;/g, "‘")
+      .replace(/&#x2019;/g, "’")
+      .replace(/&#xa7;/g, "§")
 }
 
 // Re-calculate bbox for line
@@ -1919,7 +1926,9 @@ function convertPageStext(xmlPage, pageNum) {
 
       xmlOut = xmlOut + "<span class='ocrx_word' id='word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1) + "' title='bbox " + bboxesILeft + " " + bboxesITop + " " + bboxesIRight + " " + bboxesIBottom;
 
-      const wordObj = new ocrWord(lineObj, text[i], [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
+      const wordText = unescapeXml(text[i]);
+
+      const wordObj = new ocrWord(lineObj, wordText, [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
 
       // There is no confidence information in stext.
       // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
