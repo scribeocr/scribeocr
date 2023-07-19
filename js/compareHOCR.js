@@ -1,5 +1,6 @@
 import { round3, getRandomAlphanum } from "./miscUtils.js";
 import { ocr } from "./ocrObjects.js";
+import { createTesseractScheduler } from "../main.js";
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
 
@@ -12,13 +13,28 @@ const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById(
 var fabric = globalThis.fabric;
 
 /**
+ * Crop the image data the area containing `words` and render to the `globalThis.canvasAlt` canvas.
  * @param {Array<ocrWord>} words
- * @param {number} n
- * @param {?number} fontAsc
- * @param {?number} fontDesc
  * @param {boolean} view
  */
-let drawWordActual = async function(words, n, fontAsc = null, fontDesc = null, view = false) {
+const drawWordActual = async function(words, view = false) {
+
+  const n = words[0].line.page.n;
+  // The font/style from the first word is used for the purposes of font metrics
+  const lineFontSize = await ocr.calcLineFontSize(words[0].line);
+  const fontStyle =  words[0].style;
+  const wordFontFamily = words[0].font || globalSettings.defaultFont;
+
+  ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
+  const oMetrics = ctx.measureText("o");
+
+  const fontObjI = await globalThis.fontObj[wordFontFamily][fontStyle];
+
+  const fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
+  const fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
+
+  const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
+  const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
 
   const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * (Math.PI / 180));
   const cosAngle = Math.cos(globalThis.pageMetricsObj.angleAll[n] * (Math.PI / 180));
@@ -210,22 +226,6 @@ export async function evalWords(wordsA, wordsB, n, view = false){
 
   if (!lineFontSize) return [1,1];
 
-  // The font/style from the first word is used for the purposes of font metrics
-  const fontStyle =  wordsA[0].style;
-
-  const wordFontFamily = wordsA[0].font || globalSettings.defaultFont;
-
-  ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
-  const oMetrics = ctx.measureText("o");
-
-  const fontObjI = await globalThis.fontObj[wordFontFamily][fontStyle];
-
-  const fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
-  const fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
-
-  const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-  const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-
   const wordsABox = wordsA.map(x => x.bbox);
   const wordsBBox = wordsB.map(x => x.bbox);
 
@@ -253,7 +253,7 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   }
 
   // Draw the actual words (from the user-provided image)
-  await drawWordActual([...wordsA, ...wordsB], n, fontAsc, fontDesc, true);
+  await drawWordActual([...wordsA, ...wordsB], true);
 
   const imageDataActual = ctxAlt.getImageData(0, 0, (wordBoxUnion[2] - wordBoxUnion[0] + 1), wordBoxUnion[3] - wordBoxUnion[1] + 1)["data"];
 
@@ -496,13 +496,16 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 }
 
 /**
+ * Checks words in pageA against words in pageB.
  * @param {ocrPage} pageA
  * @param {ocrPage} pageB
- * @param {string} mode
- * @param {?number} n
+ * @param {string} mode - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
+ *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created. 
  * @param {string} debugLabel
  */
-export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugLabel = "") {
+export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "", supplementComp = false) {
+
+  const n = pageA.n;
 
   const pageAInt = structuredClone(pageA);
 
@@ -513,6 +516,16 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
   const hocrBOverlap = {};
   const hocrBCorrect = {};
 
+  // Reset all comparison-related fields
+  ocr.getPageWords(pageAInt).map((x) => {
+    x.compTruth = false;
+    x.matchTruth = false;
+    x.conf = 0;
+  });
+
+  // TODO: This assumes that the lines are in a specific order, which may not always be the case. 
+  //    Add a sorting step or otherwise make more robust.
+  // TODO: Does this need to consider rotation?  It does not do so at present. 
   for (let i = 0; i < pageAInt.lines.length; i++) {
     const lineA = pageAInt.lines[i];
     const lineBoxA = lineA.bbox;
@@ -539,12 +552,15 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
         for (let k = 0; k < lineA.words.length; k++) {
           const wordA = lineA.words[k];
 
-          wordA.matchTruth = false;
-
+          // TODO: Despite the comment, this code does not actually return early.
+          //    Consider how to best handle this situation--if we just add a "continue" statement
+          //    some of the stats may not add up.
           // If option is set to ignore punctuation and the current "word" conly contains punctuation,
           // exit early with options that will result in the word being printed in green.
           if (ignorePunctElem.checked && !wordA.text.replace(/[\W_]/g, "")) {
+            wordA.compTruth = true;
             wordA.matchTruth = true;
+            wordA.conf = 100;
           }
 
           const wordBoxA = wordA.bbox;
@@ -616,19 +632,18 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
 
               // TODO: Account for cases without 1-to-1 mapping between bounding boxes
               if (wordTextA == wordTextB) {
+                wordA.compTruth = true;
                 wordA.matchTruth = true;
+                wordA.conf = 100;
                 hocrBCorrect[wordB.id] = 1;
-
-                if(mode == "comb") {
-                  // If the words match, add 10 points to the confidence score
-                  wordA.conf = Math.max(wordA.conf + 10, 100);
-                }
 
               } else {
 
                 if(mode == "comb") {
 
                   wordA.conf = 0;
+                  wordA.compTruth = true;
+                  wordA.matchTruth = false;
 
                   // Check if there is a 1-to-1 comparison between words (this is usually true)
                   const oneToOne = Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxA[2]) < (wordBoxA[2] - wordBoxA[0]) * 0.1;
@@ -649,6 +664,11 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
                           wordsAArr.push(wordA);
                           wordsAArr.push(wordANext);
                           wordsBArr.push(wordB);
+
+                          wordANext.conf = 0;
+                          wordANext.compTruth = true;
+                          wordANext.matchTruth = false;
+        
                         }
                       }
                     } else {
@@ -827,6 +847,9 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
                           // Set confidence to 0
                           wordsBArrRep[i].conf = 0;
 
+                          wordsBArrRep[i].compTruth = true;
+                          wordsBArrRep[i].matchTruth = false;
+
                           // Change ID to prevent duplicates
                           wordsBArrRep[i].id = wordsBArrRep[i].id + "b";
 
@@ -854,6 +877,23 @@ export async function compareHOCR(pageA, pageB, mode = "stats", n = null, debugL
   }
 
   if (mode == "comb") {
+
+    // If `supplementComp` is enabled, we run OCR for any words in pageA without an existing comparison in pageB.
+    // This ensures that every word has been checked.
+    // Unlike the comparisons above, this is strictly for confidence purposes--if conflicts are identified the text is not edited.
+    if (supplementComp) {
+      for (let i = 0; i < pageAInt.lines.length; i++) {
+        const line = pageAInt.lines[i];
+        for (let j = 0; j < line.words.length; j++) {
+          const word = line.words[j];
+          if (!word.compTruth) {
+            word.matchTruth = await checkWords([word], false);
+            word.conf = word.matchTruth ? 100 : 0;
+          }
+        }
+      }
+    }
+
     return pageAInt;
   }
   
@@ -1074,3 +1114,45 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 
 }
 
+/**
+ * @param {Array<ocrWord>} wordsA
+ * @param {boolean} view
+ */
+export async function checkWords(wordsA, view = false){
+
+  // Draw the actual words (from the user-provided image)
+  await drawWordActual(wordsA, true);
+
+  // Create new scheduler if one does not exist
+  if (!globalThis.recognizeAreaScheduler) globalThis.recognizeAreaScheduler = await createTesseractScheduler(1);
+
+  const extraConfig = {
+    tessedit_pageseg_mode: "6" // "Single block"
+  }
+
+  const inputImage = canvasAlt.toDataURL();
+
+  const res = await recognizeAreaScheduler.addJob('recognize', inputImage, extraConfig);
+
+  let wordTextA = wordsA.map((x) => x.text).join(" ");
+  let wordTextB = res.data.text.trim();
+
+  wordTextA = ocr.replaceLigatures(wordTextA);
+  wordTextB = ocr.replaceLigatures(wordTextB);
+
+  if (ignorePunctElem.checked) {
+    // Punctuation next to numbers is not ignored, even if this setting is enabled, as punctuation differences are
+    // often/usually substantive in this context (e.g. "-$1,000" vs $1,000" or "$100" vs. "$1.00")
+    wordTextA = wordTextA.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
+    wordTextB = wordTextB.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
+  }
+  if (ignoreCapElem.checked) {
+    wordTextA = wordTextA.toLowerCase();
+    wordTextB = wordTextB.toLowerCase();
+  }
+
+  console.log("Supp comparison: " + String(wordTextA == wordTextB) + " [" + wordTextA + " vs. " + wordTextB + "] for " + wordsA[0].id + " (page " + String(wordsA[0].line.page.n + 1) + ")");
+
+  return wordTextA == wordTextB;
+
+}

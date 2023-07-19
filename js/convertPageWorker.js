@@ -47,6 +47,8 @@ function ocrWord(line, text, bbox, id) {
     /** @type {Array<number>} */ 
     this.bbox = bbox;
     /** @type {boolean} */ 
+    this.compTruth = false;
+    /** @type {boolean} */ 
     this.matchTruth = false;
     /** @type {string} */ 
     this.id = id;

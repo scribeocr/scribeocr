@@ -9,6 +9,7 @@ export function ocrWord(line, text, bbox, id) {
     this.size = null;
     this.conf = 0;
     this.bbox = bbox;
+    this.compTruth = false;
     this.matchTruth = false;
     this.id = id;
     this.line = line;
@@ -335,6 +336,7 @@ function cloneLine(line) {
         wordNew.font = word.font;
         wordNew.size = word.size;
         wordNew.style = word.style;
+        wordNew.compTruth = word.compTruth;
         wordNew.matchTruth = word.matchTruth;
         lineNew.words.push(wordNew);
     }
@@ -354,6 +356,7 @@ function cloneWord(word) {
     wordNew.font = word.font;
     wordNew.size = word.size;
     wordNew.style = word.style;
+    wordNew.compTruth = word.compTruth;
     wordNew.matchTruth = word.matchTruth;
     return wordNew;
 }

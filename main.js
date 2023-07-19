@@ -229,16 +229,16 @@ globalThis.canvasAlt = new fabric.Canvas('d');
 globalThis.ctxAlt = canvasAlt.getContext('2d');
 
 globalThis.canvasComp1 = new fabric.Canvas('e');
-globalThis.ctxComp1 = canvasAlt.getContext('2d');
+globalThis.ctxComp1 = canvasComp1.getContext('2d');
 
 globalThis.canvasComp2 = new fabric.Canvas('f');
-globalThis.ctxComp2 = canvasAlt.getContext('2d');
+globalThis.ctxComp2 = canvasComp2.getContext('2d');
 
 globalThis.canvasComp0 = new fabric.Canvas('h');
-globalThis.ctxComp0 = canvasAlt.getContext('2d');
+globalThis.ctxComp0 = canvasComp0.getContext('2d');
 
 globalThis.canvasDebug = new fabric.Canvas('g');
-globalThis.ctxDebug = canvasAlt.getContext('2d');
+globalThis.ctxDebug = canvasDebug.getContext('2d');
 
 
 // // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
@@ -427,7 +427,7 @@ confThreshMedElem.addEventListener('change', () => { renderPageQueue(currentPage
 
 // const binaryCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('binaryCheckbox'));
 
-const autoRotateCheckboxElem = /** @type {HTMLInputEleme{ ont} */(document.getElementById('autoRotateCheckbox'));
+const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
 const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
 autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
@@ -702,7 +702,7 @@ function findAllMatches(text) {
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
-  
+
   if (!globalThis.hocrCurrent[currentPage.n]) {
     find.text[currentPage.n] = "";
     return;
@@ -1151,18 +1151,20 @@ export function getTesseractConfigs() {
 }
 
 // Checks scheduler to see if user has changed settings since scheduler was created
-function checkTesseractScheduler(scheduler, config = null) {
-  if (!scheduler?.["config"]) return false;
-  const allConfig = config || getTesseractConfigs();
-  delete scheduler?.["config"].rectangle;
+// function checkTesseractScheduler(scheduler, config = null) {
+//   if (!scheduler?.["config"]) return false;
+//   const allConfig = config || getTesseractConfigs();
+//   delete scheduler?.["config"].rectangle;
 
-  if (JSON.stringify(scheduler.config) === JSON.stringify(allConfig)) return true;
-  return false;
+//   if (JSON.stringify(scheduler.config) === JSON.stringify(allConfig)) return true;
+//   return false;
 
-}
+// }
 
 
 async function recognizeAllClick() {
+
+  const debugMode = true;
 
   // User can select engine directly using advanced options, or indirectly using basic options. 
   let oemMode;
@@ -1188,13 +1190,19 @@ async function recognizeAllClick() {
     convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
     globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
 
+    const time1a = Date.now();
     await recognizeAllPages(true, true);
+    const time1b = Date.now();
+    if (debugMode) console.log(`Tesseract Legacy runtime: ${time1b - time1a} ms`);
+
+    const time2a = Date.now();
     await recognizeAllPages(false, true);
+    const time2b = Date.now();
+    if (debugMode) console.log(`Tesseract LSTM runtime: ${time2b - time2a} ms`);
+
   
     // Whether user uploaded data will be compared against in addition to both Tesseract engines
     const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
-
-    const debugMode = true;
 
     if(debugMode) {
       globalThis.debugImg = {};
@@ -1218,19 +1226,24 @@ async function recognizeAllClick() {
     addDisplayLabel("Combined");
     setCurrentHOCR("Combined");      
     
+    const time3a = Date.now();
     for(let i=0;i<globalThis.imageAll["native"].length;i++) {
 
       const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
 
-      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", i, tessCombinedLabel);
+      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", tessCombinedLabel);
       globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
 
-      // If the user uploaded data, compare to that as well
+      // If the user uploaded data, compare to that as we
       if(userUploadMode) {
-        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", i, "Combined");
+        // globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", "Combined");
+        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], "comb", "Combined", true);
+
         globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
       }
-    }  
+    }
+    const time3b = Date.now();
+    if (debugMode) console.log(`Comparison runtime: ${time3b - time3a} ms`);
   }
 
   renderPageQueue(currentPage.n);
@@ -1240,7 +1253,7 @@ async function recognizeAllClick() {
   confThreshMedElem.disabled = false;
 
   // Set threshold values if not already set
-  confThreshHighElem.value = confThreshHighElem.value || "85";
+  confThreshHighElem.value = confThreshHighElem.value || "85"
   confThreshMedElem.value = confThreshMedElem.value || "75";
 
   toggleEditButtons(false);
@@ -1377,27 +1390,14 @@ async function compareGroundTruthClick(n) {
 globalThis.recognizeAreaScheduler = null;
 async function recognizeArea(imageCoords, wordMode = false) {
 
-  let left = imageCoords.left;
-  let top = imageCoords.top;
-  let width = imageCoords.width;
-  let height = imageCoords.height;
-
-  const allConfig = getTesseractConfigs();
-
-  // Create new scheduler if one does not exist, or the existing scheduler was created using different settings
-  if (!checkTesseractScheduler(globalThis.recognizeAreaScheduler, allConfig)) {
-    if (globalThis.recognizeAreaScheduler) {
-      await recognizeAreaScheduler.terminate()
-      globalThis.recognizeAreaScheduler = null;
-    }
-    globalThis.recognizeAreaScheduler = await createTesseractScheduler(1, allConfig);
-  }
+  // Create new scheduler if one does not exist
+  if (!globalThis.recognizeAreaScheduler) globalThis.recognizeAreaScheduler = await createTesseractScheduler(1);
 
   // When a user is manually selecting words to recognize, they are assumed to be in the same block.
   const psm = wordMode ? Tesseract.PSM["SINGLE_WORD"] : Tesseract.PSM["SINGLE_BLOCK"];
 
   const extraConfig = {
-    rectangle: { left, top, width, height },
+    rectangle: imageCoords,
     tessedit_pageseg_mode: psm
   }
 
@@ -1423,17 +1423,6 @@ async function recognizeArea(imageCoords, wordMode = false) {
 
   return;
 
-}
-
-
-function calcWordBaseline(wordbox, linebox, baseline) {
-  // Adjust box such that top/bottom approximate those coordinates at the leftmost point
-  const lineboxAdj = linebox.slice();
-
-  const wordboxXMid = wordbox[0] + (wordbox[2] - wordbox[0]) / 2;
-
-  return (wordboxXMid - lineboxAdj[0]) * baseline[0] + baseline[1] + lineboxAdj[3];
-  
 }
 
 async function showDebugImages() {
