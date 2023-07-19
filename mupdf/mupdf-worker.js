@@ -101,8 +101,8 @@ let ready = false;
     mupdf.pageWidth = Module.cwrap('pageWidth', 'number', ['number', 'number', 'number']);
     mupdf.pageHeight = Module.cwrap('pageHeight', 'number', ['number', 'number', 'number']);
     mupdf.pageLinksJSON = Module.cwrap('pageLinks', 'string', ['number', 'number', 'number']);
-    mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number']);
-      mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number']);
+    mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number', 'number']);
+      mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number', 'number']);
     mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
     mupdf.overlayPDFTextImageStart = Module.cwrap('overlayPDFTextImageStart', 'null', ['number']);
     mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number']);
@@ -207,11 +207,11 @@ mupdf.openDocument = function (data, magic) {
 	return mupdf.openDocumentFromBuffer(magic, ptr, n);
 }
 
-mupdf.drawPageAsPNG = function (doc, page, dpi, color=true) {
+mupdf.drawPageAsPNG = function (doc, page, dpi, color = true, skip_text = true) {
   if(color){
-    mupdf.doDrawPageAsPNG(doc, page, dpi);
+    mupdf.doDrawPageAsPNG(doc, page, dpi, skip_text);
   } else {
-    mupdf.doDrawPageAsPNGGray(doc, page, dpi);
+    mupdf.doDrawPageAsPNGGray(doc, page, dpi, skip_text);
   }
 
 	let n = mupdf.getLastDrawSize();

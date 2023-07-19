@@ -2438,7 +2438,9 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
 
         const useColor = colorMode == "color" ? true : false;
 
-        const res = await ms.addJob('drawPageAsPNG', [n + 1, dpi, useColor]);
+        const skipText = document.getElementById("omitNativeTextCheckbox").checked;
+
+        const res = await ms.addJob('drawPageAsPNG', [n + 1, dpi, useColor, skipText]);
 
         const image = document.createElement('img');
         await loadImage(res, image);
