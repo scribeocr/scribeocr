@@ -111,7 +111,7 @@ let ready = false;
 	mupdf.writePDF = Module.cwrap('writePDF', 'null', ['number', 'number', 'number', 'number']);
     mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
     mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
-    wasm_pageText = Module.cwrap('pageText', 'string', ['number', 'number', 'number', 'number']);
+    mupdf.pageText = Module.cwrap('pageText', 'string', ['number', 'number', 'number', 'number', 'number']);
     mupdf.searchJSON = Module.cwrap('search', 'string', ['number', 'number', 'number', 'string']);
     mupdf.loadOutline = Module.cwrap('loadOutline', 'number', ['number']);
     mupdf.freeOutline = Module.cwrap('freeOutline', null, ['number']);
@@ -207,7 +207,7 @@ mupdf.openDocument = function (data, magic) {
 	return mupdf.openDocumentFromBuffer(magic, ptr, n);
 }
 
-mupdf.drawPageAsPNG = function (doc, page, dpi, color = true, skip_text = true) {
+mupdf.drawPageAsPNG = function (doc, page, dpi, color = true, skip_text = false) {
   if(color){
     mupdf.doDrawPageAsPNG(doc, page, dpi, skip_text);
   } else {
@@ -263,16 +263,8 @@ mupdf.pageLinks = function (doc, page, dpi) {
 	return JSON.parse(mupdf.pageLinksJSON(doc, page, dpi));
 }
 
-mupdf.pageTextJSON = function (doc, page, dpi) {
-	return JSON.parse(wasm_pageText(doc, page, dpi, 0));
-}
-
-mupdf.pageTextHTML = function (doc, page, dpi) {
-	return wasm_pageText(doc, page, dpi, 1);
-}
-
-mupdf.pageTextXML = function (doc, page, dpi) {
-	return wasm_pageText(doc, page, dpi, 2);
+mupdf.pageTextXML = function (doc, page, dpi, skip_text_invis = false) {
+	return mupdf.pageText(doc, page, dpi, 1, skip_text_invis);
 }
 
 mupdf.search = function (doc, page, dpi, needle) {

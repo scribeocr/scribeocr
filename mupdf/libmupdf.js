@@ -885,6 +885,11 @@ if (!isDataURI(wasmBinaryFile)) {
  wasmBinaryFile = locateFile(wasmBinaryFile);
 }
 
+function relToAbsPath(fileName) {
+const url = new URL(fileName, import.meta.url);
+	return url.protocol == "file:" ? url.host + url.pathname : url.href;
+}
+wasmBinaryFile = relToAbsPath("./libmupdf.wasm");
 function getBinary(file) {
  try {
   if (file == wasmBinaryFile && wasmBinary) {
@@ -998,10 +1003,10 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 2093276: function($0) {
+ 2093340: function($0) {
   throw new Error(UTF8ToString($0));
  },
- 2093315: function() {
+ 2093379: function() {
   throw new Error("Cannot create MuPDF context!");
  }
 };
@@ -4613,7 +4618,6 @@ var asmLibraryArg = {
  "invoke_iiij": invoke_iiij,
  "invoke_iiijj": invoke_iiijj,
  "invoke_iij": invoke_iij,
- "invoke_ji": invoke_ji,
  "invoke_jii": invoke_jii,
  "invoke_jiij": invoke_jiij,
  "invoke_v": invoke_v,
@@ -4634,8 +4638,6 @@ var asmLibraryArg = {
  "invoke_viii": invoke_viii,
  "invoke_viiid": invoke_viiid,
  "invoke_viiif": invoke_viiif,
- "invoke_viiiffff": invoke_viiiffff,
- "invoke_viiifffffiii": invoke_viiifffffiii,
  "invoke_viiii": invoke_viiii,
  "invoke_viiiif": invoke_viiiif,
  "invoke_viiiiff": invoke_viiiiff,
@@ -4757,8 +4759,6 @@ var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function()
 };
 
 var _setThrew = Module["_setThrew"] = createExportWrapper("setThrew");
-
-var dynCall_ji = Module["dynCall_ji"] = createExportWrapper("dynCall_ji");
 
 var dynCall_viiijjiijjjjiiiiiiii = Module["dynCall_viiijjiijjjjiiiiiiii"] = createExportWrapper("dynCall_viiijjiijjjjiiiiiiii");
 
@@ -5458,39 +5458,6 @@ function invoke_iiiifi(index, a1, a2, a3, a4, a5) {
  }
 }
 
-function invoke_viiiffff(index, a1, a2, a3, a4, a5, a6, a7) {
- var sp = stackSave();
- try {
-  getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_viiiiiiifiiifffffiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19) {
- var sp = stackSave();
- try {
-  getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_viiifffffiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
- var sp = stackSave();
- try {
-  getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
 function invoke_iiiiiffiifiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12) {
  var sp = stackSave();
  try {
@@ -5506,6 +5473,17 @@ function invoke_iiiiiffi(index, a1, a2, a3, a4, a5, a6, a7) {
  var sp = stackSave();
  try {
   return getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_viiiiiiifiiifffffiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19) {
+ var sp = stackSave();
+ try {
+  getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
@@ -5550,17 +5528,6 @@ function invoke_viifffiiff(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
  var sp = stackSave();
  try {
   getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_ji(index, a1) {
- var sp = stackSave();
- try {
-  return dynCall_ji(index, a1);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
