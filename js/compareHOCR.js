@@ -632,10 +632,9 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
               minWordB = minWordB + 1;
               continue;
 
-              // If left of word B is past right of word A, move to next word A
-              // (We assume no match is possible for any B)
+              // If left of word B is past right of word A, move to next word B
             } else if (wordBoxBCore[0] > wordBoxACore[2]) {
-              break;
+              continue;
 
               // Otherwise, overlap is likely
             } else {

@@ -59,6 +59,13 @@ import { setDefaults } from "./js/setDefaults.js";
 
 import { ocr } from "./js/ocrObjects.js";
 
+import { printSelectedWords, downloadCanvas } from "./js/debug.js";
+
+const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
+const debugPrintWordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWords'));
+
+debugPrintWordsElem.addEventListener('click', printSelectedWords);
+debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
 
 
 // Opt-in to bootstrap tooltip feature
@@ -175,9 +182,6 @@ globalThis.currentPage = {
   renderStatus: 0,
   renderNum: 0
 }
-
-
-var parser = new DOMParser();
 
 // Define canvas
 globalThis.canvas = new fabric.Canvas('c');

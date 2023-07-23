@@ -1,3 +1,12 @@
+export function printSelectedWords() {
+  const selectedObjects = window.canvas.getActiveObjects();
+  if (!selectedObjects) return;
+  for(let i=0; i<selectedObjects.length; i++){
+    console.log(ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], selectedObjects[i].wordID));
+  }
+}
+
+
 export function downloadImage(img, filename) {
   const imgStr = typeof(img) == "string" ? img : img.src;
   const imgData = new Uint8Array(atob(imgStr.split(',')[1])
@@ -7,6 +16,14 @@ export function downloadImage(img, filename) {
   const imgBlob = new Blob([imgData], { type: 'application/octet-stream' });
 
   saveAs(imgBlob , filename);
+}
+
+const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
+
+export function downloadCanvas() {
+  const canvasDataStr = canvas.toDataURL();
+  const fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + "_canvas_" + String(currentPage.n) + ".png";
+  downloadImage(canvasDataStr, fileName);
 }
 
 // Utility function for downloading all images

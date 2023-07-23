@@ -49,6 +49,32 @@ const getPageWord = (page, id) => {
     return null;
 }
 
+// /**
+//  * @param {ocrPage} page
+//  * @param {string} search
+//  */
+// const searchPageWords = (page, search) => {
+
+//     const matchArr = [];
+//     for (let i=0; i<page.lines.length; i++) {
+//         for (let j=0; j<page.lines[i].words.length; j++) {
+//             if (page.lines[i].words[j].text.includes(search)) matchArr.push(page.lines[i].words[j]) ;
+//         }
+//     }
+
+//     return matchArr;
+// }
+
+
+
+// /**
+//  * Debugging function.  Should not be used in code.
+//  * @param {string} search
+//  */
+// const searchCurrentPageWords = (search) => {
+//     return searchPageWords(globalThis.hocrCurrent[currentPage.n], search);
+// }
+
 
 // TODO: When all words on a line are deleted, this should also delete the line.
 /**
@@ -362,3 +388,7 @@ function cloneWord(word) {
     wordNew.matchTruth = word.matchTruth;
     return wordNew;
 }
+
+
+// Making global for debugging purposes.  This should not be relied upon in code.
+globalThis.ocr = ocr;
