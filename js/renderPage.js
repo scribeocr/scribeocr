@@ -103,9 +103,9 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
       if (!wordFontSize) {
         if (wordSup) {
           // All superscripts are assumed to be numbers for now
-          wordFontSize = await getFontSize(defaultFont, "normal", box_height, "1");
+          wordFontSize = await getFontSize(wordFontFamily, "normal", box_height, "1");
         } else if (wordDropCap) {
-          wordFontSize = await getFontSize(defaultFont, "normal", box_height, wordText.slice(0, 1));
+          wordFontSize = await getFontSize(wordFontFamily, "normal", box_height, wordText.slice(0, 1));
           const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
           scaleX = (box_width / wordWidthFont);
     
@@ -152,6 +152,8 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
         opacity_arg = 1
         fill_arg = fillColorHex
       }
+
+      const showTextBoxBorderArg = showBoundingBoxesElem.checked || displayMode == "eval" && wordConf > confThreshHigh && !wordObj.matchTruth;
 
       const charSpacing = await calcCharSpacing(wordText, wordFontFamily, fontStyle, wordFontSize, box_width);
 
@@ -245,7 +247,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
           opacity: opacity_arg,
           charSpacing: charSpacing * 1000 / wordFontSize,
           fontSize: wordFontSize,
-          showTextBoxBorder: showBoundingBoxesElem.checked
+          showTextBoxBorder: showTextBoxBorderArg
         });
 
         textbox.hasControls = true;

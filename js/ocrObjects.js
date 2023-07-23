@@ -107,15 +107,17 @@ const getPageText = (page) => {
  */
 const calcLineFontSize = async (line) => {
     if (!line._size) {
+        // The font of the first word is used (if present), otherwise the default font is used.
+        const font = line.words[0]?.font || globalSettings.defaultFont;
         // If possible, calculate font size using the "x height".
         // Despite the name, the "x height" metric reported by OCR programs is generally actually the "o" height,
         // which is a slightly larger character due to underhang. 
         if (line.letterHeight != null && line.ascHeight != null && line.descHeight != null) {
             const xHeight = line.letterHeight - line.ascHeight - line.descHeight;
-            line._size = await getFontSize(globalSettings.defaultFont, "normal", xHeight, "o");
+            line._size = await getFontSize(font, "normal", xHeight, "o");
         // If possible, calculate font size using the ascender height (the height of capital letters like "A")
         } else {
-            line._size = await getFontSize(globalSettings.defaultFont, "normal", line.letterHeight - (line.descHeight || 0), "A");
+            line._size = await getFontSize(font, "normal", line.letterHeight - (line.descHeight || 0), "A");
         }
     }
 

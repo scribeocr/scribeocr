@@ -21,7 +21,7 @@ import { coords } from './js/coordinates.js';
 
 import { recognizeAllPages } from "./js/recognize.js";
 
-import { getFontSize, calcWordMetrics } from "./js/textUtils.js"
+import { calcWordMetrics } from "./js/textUtils.js"
 
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "./js/fontStatistics.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
@@ -1231,13 +1231,16 @@ async function recognizeAllClick() {
 
       const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
 
-      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", tessCombinedLabel);
+      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = (await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", tessCombinedLabel))[0];
       globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
 
       // If the user uploaded data, compare to that as we
       if(userUploadMode) {
-        // globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["Tesseract Combined"][i]["hocr"], ocrAll["User Upload"][i]["hocr"], "comb", "Combined");
-        globalThis.ocrAll["Combined"][i]["hocr"] = await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], "comb", "Combined", true);
+        if (document.getElementById("combineMode")?.value == "conf") {
+          globalThis.ocrAll["Combined"][i]["hocr"] = (await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], "stats", "Combined", true))[0];
+        } else {
+          globalThis.ocrAll["Combined"][i]["hocr"] = (await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], "comb", "Combined", true))[0];
+        }
 
         globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
       }
@@ -1310,7 +1313,6 @@ async function compareGroundTruthClick(n) {
     globalThis.evalStats = new Array(globalThis.imageAll["native"].length);
     for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
       const res = await compareHOCR(globalThis.hocrCurrent[i], globalThis.ocrAll["Ground Truth"][i]["hocr"]);
-      globalThis.hocrCurrent[i] = res[0].documentElement.outerHTML;
       globalThis.evalStats[i] = res[1];
     }
     globalThis.evalStatsConfig = evalStatsConfigNew;
@@ -1318,7 +1320,6 @@ async function compareGroundTruthClick(n) {
 
   const res = await compareHOCR(globalThis.hocrCurrent[n], globalThis.ocrAll["Ground Truth"][n]["hocr"]);
 
-  globalThis.hocrCurrent[n] = res[0].documentElement.outerHTML;
   globalThis.evalStats[n] = res[1];
 
   const metricTotalWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsPage'));
@@ -1326,19 +1327,24 @@ async function compareGroundTruthClick(n) {
   const metricIncorrectWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectWordsPage'));
   const metricMissedWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricMissedWordsPage'));
   const metricExtraWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricExtraWordsPage'));
+  const metricCorrectLowConfWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectLowConfWordsPage'));
+  const metricIncorrectHighConfWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectHighConfWordsPage'));
+
   const metricWERPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERPage'));
 
   // Display metrics for current page
-  metricTotalWordsPageElem.innerHTML = globalThis.evalStats[n][0];
-  metricCorrectWordsPageElem.innerHTML = globalThis.evalStats[n][1];
-  metricIncorrectWordsPageElem.innerHTML = globalThis.evalStats[n][2];
-  metricMissedWordsPageElem.innerHTML = globalThis.evalStats[n][3];
-  metricExtraWordsPageElem.innerHTML = globalThis.evalStats[n][4];
+  metricTotalWordsPageElem.innerHTML = globalThis.evalStats[n].total;
+  metricCorrectWordsPageElem.innerHTML = globalThis.evalStats[n].correct;
+  metricIncorrectWordsPageElem.innerHTML = globalThis.evalStats[n].incorrect;
+  metricMissedWordsPageElem.innerHTML = globalThis.evalStats[n].missed;
+  metricExtraWordsPageElem.innerHTML = globalThis.evalStats[n].extra;
+  metricCorrectLowConfWordsPageElem.innerHTML = globalThis.evalStats[n].correctLowConf;
+  metricIncorrectHighConfWordsPageElem.innerHTML = globalThis.evalStats[n].incorrectHighConf;
 
   if (evalStatsConfigNew["ignoreExtra"]) {
-    metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
+    metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n].incorrect + globalThis.evalStats[n].missed) / globalThis.evalStats[n].total) * 100) / 100).toString();
   } else {
-    metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n][2] + globalThis.evalStats[n][3] + globalThis.evalStats[n][4]) / globalThis.evalStats[n][0]) * 100) / 100).toString();
+    metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n].incorrect + globalThis.evalStats[n].missed + globalThis.evalStats[n].extra) / globalThis.evalStats[n].total) * 100) / 100).toString();
   }
 
   const metricTotalWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsDoc'));
@@ -1346,29 +1352,45 @@ async function compareGroundTruthClick(n) {
   const metricIncorrectWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectWordsDoc'));
   const metricMissedWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricMissedWordsDoc'));
   const metricExtraWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricExtraWordsDoc'));
+  const metricCorrectLowConfWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectLowConfWordsDoc'));
+  const metricIncorrectHighConfWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectHighConfWordsDoc'));
   const metricWERDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERDoc'));
-
+  
   // Calculate and display metrics for full document
   if (!loadMode) {
-    let evalStatsDoc = [0, 0, 0, 0, 0]
-    for (let i = 0; i < globalThis.evalStats.length; i++) {
-      evalStatsDoc[0] = evalStatsDoc[0] + globalThis.evalStats[i][0];
-      evalStatsDoc[1] = evalStatsDoc[1] + globalThis.evalStats[i][1];
-      evalStatsDoc[2] = evalStatsDoc[2] + globalThis.evalStats[i][2];
-      evalStatsDoc[3] = evalStatsDoc[3] + globalThis.evalStats[i][3];
-      evalStatsDoc[4] = evalStatsDoc[4] + globalThis.evalStats[i][4];
+
+    const evalStatsDoc = {
+      total: 0,
+      correct: 0,
+      incorrect: 0,
+      missed: 0,
+      extra: 0,
+      correctLowConf: 0,
+      incorrectHighConf: 0
     }
 
-    metricTotalWordsDocElem.innerHTML = evalStatsDoc[0].toString();
-    metricCorrectWordsDocElem.innerHTML = evalStatsDoc[1].toString();
-    metricIncorrectWordsDocElem.innerHTML = evalStatsDoc[2].toString();
-    metricMissedWordsDocElem.innerHTML = evalStatsDoc[3].toString();
-    metricExtraWordsDocElem.innerHTML = evalStatsDoc[4].toString();
+    for (let i = 0; i < globalThis.evalStats.length; i++) {
+      evalStatsDoc.total += globalThis.evalStats[i].total;
+      evalStatsDoc.correct += globalThis.evalStats[i].correct;
+      evalStatsDoc.incorrect += globalThis.evalStats[i].incorrect;
+      evalStatsDoc.missed += globalThis.evalStats[i].missed;
+      evalStatsDoc.extra += globalThis.evalStats[i].extra;
+      evalStatsDoc.correctLowConf += globalThis.evalStats[i].correctLowConf;
+      evalStatsDoc.incorrectHighConf += globalThis.evalStats[i].incorrectHighConf;
+    }
+
+    metricTotalWordsDocElem.innerHTML = evalStatsDoc.total.toString();
+    metricCorrectWordsDocElem.innerHTML = evalStatsDoc.correct.toString();
+    metricIncorrectWordsDocElem.innerHTML = evalStatsDoc.incorrect.toString();
+    metricMissedWordsDocElem.innerHTML = evalStatsDoc.missed.toString();
+    metricExtraWordsDocElem.innerHTML = evalStatsDoc.extra.toString();
+    metricCorrectLowConfWordsDocElem.innerHTML = evalStatsDoc.correctLowConf.toString();
+    metricIncorrectHighConfWordsDocElem.innerHTML = evalStatsDoc.incorrectHighConf.toString();
 
     if (evalStatsConfigNew["ignoreExtra"]) {
-      metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3]) / evalStatsDoc[0]) * 100) / 100).toString();
+      metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed) / evalStatsDoc.total) * 100) / 100).toString();
     } else {
-      metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc[2] + evalStatsDoc[3] + evalStatsDoc[4]) / evalStatsDoc[0]) * 100) / 100).toString();
+      metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed + evalStatsDoc.extra) / evalStatsDoc.total) * 100) / 100).toString();
     }
   } else {
     metricTotalWordsDocElem.innerHTML = '';
@@ -2209,6 +2231,8 @@ async function importFiles() {
 
   let existingLayout = false;
   if (xmlModeImport) {
+
+    document.getElementById("combineModeOptions")?.setAttribute("style", "");
 
     addDisplayLabel("User Upload");
     displayLabelTextElem.innerHTML = "User Upload";

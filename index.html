@@ -624,6 +624,27 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                 </div>
               </div>
             </div>
+            <div class="col col-2" id="combineModeOptions" style="display:none">
+              <div>
+                <label>Combine Mode:</label>
+                <a href="#" data-bs-custom-class="ttWide" class="d-inline-block"
+                  data-bs-toggle="tooltip" title="" data-bs-original-title="Determines how new recognition results should interact with user-provided OCR data.
+Update Confidence: Text in user-provided data will not be edited.  Confidence estimates will be updated based on whether the user-provided data matches the new recognition results. 
+Combine Data: In addition to updating confidence estimates, user-provided data may be edited if it appears to be incorrect." data-bs-placement="right">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)"
+                    class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                    <path
+                      d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                  </svg>
+                </a>
+              </div>
+              <div class="row">
+                <select id="combineMode" style="margin-left:0.7rem" class="form-control btn-sm" size="1">
+                  <option value="conf">Update Confidence</option>
+                  <option value="data" selected>Combine Data</option>
+                </select>
+              </div>
+            </div>
             <div class="col col-2" id="engineCol" style="display:none">
               <label>Alternative Builds</label>
               <div class="row">
@@ -785,6 +806,17 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                       <div id="metricCorrectWordsDoc"></div>
                     </div>
                   </div>
+                  <div class="row" style="margin-left:1rem">
+                    <div class="col-6">
+                      <div>Low Conf</div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricCorrectLowConfWordsPage"></div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricCorrectLowConfWordsDoc"></div>
+                    </div>
+                  </div>
                   <div class="row">
                     <div class="col-6">
                       <div>Incorrect Words</div>
@@ -794,6 +826,17 @@ All files are sorted in alphabetic order." data-bs-placement="right">
                     </div>
                     <div class="col-3">
                       <div id="metricIncorrectWordsDoc"></div>
+                    </div>
+                  </div>
+                  <div class="row"  style="margin-left:1rem">
+                    <div class="col-6">
+                      <div>High Conf</div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricIncorrectHighConfWordsPage"></div>
+                    </div>
+                    <div class="col-3">
+                      <div id="metricIncorrectHighConfWordsDoc"></div>
                     </div>
                   </div>
                   <div class="row">
@@ -848,8 +891,8 @@ All files are sorted in alphabetic order." data-bs-placement="right">
               </select>
               <label for="colorMode">Image Color Depth</label>
               <select id="colorMode" class="form-control btn-sm" size="1">
-                <option selected="color" selected>Color</option>
-                <option selected value="gray">Grayscale</option>
+                <option value="color" selected>Color</option>
+                <option value="gray">Grayscale</option>
                 <option value="binary">Binary</option>
               </select>
             </div>

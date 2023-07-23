@@ -25,7 +25,12 @@ const drawWordActual = async function(words, view = false) {
   const fontStyle =  words[0].style;
   const wordFontFamily = words[0].font || globalSettings.defaultFont;
 
-  ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
+  if (fontStyle == "small-caps") {
+    ctx.font = 1000 + 'px ' + wordFontFamily + " Small Caps";
+  } else {
+    ctx.font = fontStyle + " " + 1000 + 'px ' + wordFontFamily;
+  }
+
   const oMetrics = ctx.measureText("o");
 
   const fontObjI = await globalThis.fontObj[wordFontFamily][fontStyle];
@@ -126,16 +131,22 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
     return;
   }
 
-  ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
-  const oMetrics = ctx.measureText("o");
-
   const wordFontFamily = word.font || globalSettings.defaultFont;
+
+  if (word.style == "small-caps") {
+    ctx.font = 1000 + 'px ' + wordFontFamily + " Small Caps";
+  } else {
+    ctx.font = word.style + " " + 1000 + 'px ' + wordFontFamily;
+  }
+
+  const oMetrics = ctx.measureText("o");
 
   if (word.style == "small-caps") {
     ctx.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
   } else {
     ctx.font = word.style + " " + wordFontSize + 'px ' + wordFontFamily;
   }
+
 
   const fontObjI = await globalThis.fontObj[wordFontFamily][word.style];
 
@@ -496,7 +507,8 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 }
 
 /**
- * Checks words in pageA against words in pageB.
+ * Checks words in pageA against words in pageB.  Edits `compTruth` and `matchTruth` attributes of words in `pageA` in place
+ * and returns additional data depending on `mode`.
  * @param {ocrPage} pageA
  * @param {ocrPage} pageB
  * @param {string} mode - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
@@ -505,21 +517,34 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
  */
 export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "", supplementComp = false) {
 
-  const n = pageA.n;
+  const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
+  const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
 
-  const pageAInt = structuredClone(pageA);
+  const confThreshHigh = parseInt(confThreshHighElem.value) || 85;
+  const confThreshMed = parseInt(confThreshMedElem.value) || 75;
+
+  const n = pageA.n;
 
   if (debugLabel && !globalThis.debugLog) globalThis.debugLog = "";
   if (debugLabel) globalThis.debugLog += "Comparing page " + String(n) + "\n";
 
   const hocrAOverlap = {};
   const hocrBOverlap = {};
+  const hocrBOverlapAWords = {};
+  const hocrACorrect = {};
   const hocrBCorrect = {};
 
-  // Reset all comparison-related fields
-  ocr.getPageWords(pageAInt).map((x) => {
+  // Reset all comparison-related fields in input page
+  ocr.getPageWords(pageA).map((x) => {
     x.compTruth = false;
     x.matchTruth = false;
+  });
+
+  // Create copy of `pageA` so original is not edited
+  const pageAInt = structuredClone(pageA);
+
+  // Reset conf in cloned page only
+  ocr.getPageWords(pageAInt).map((x) => {
     x.conf = 0;
   });
 
@@ -558,9 +583,14 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
           // If option is set to ignore punctuation and the current "word" conly contains punctuation,
           // exit early with options that will result in the word being printed in green.
           if (ignorePunctElem.checked && !wordA.text.replace(/[\W_]/g, "")) {
+            const wordAOrig = ocr.getPageWord(pageA, wordA.id);
+            wordAOrig.compTruth = true;
+            wordAOrig.matchTruth = true;
+
             wordA.compTruth = true;
             wordA.matchTruth = true;
             wordA.conf = 100;
+            hocrACorrect[wordA.id] = 1;
           }
 
           const wordBoxA = wordA.bbox;
@@ -630,11 +660,19 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
               hocrAOverlap[wordA.id] = 1;
               hocrBOverlap[wordB.id] = 1;
 
+              if (!hocrBOverlapAWords[wordB.id]) hocrBOverlapAWords[wordB.id] = {};
+              hocrBOverlapAWords[wordB.id][wordA.id] = 1;
+
               // TODO: Account for cases without 1-to-1 mapping between bounding boxes
               if (wordTextA == wordTextB) {
+                const wordAOrig = ocr.getPageWord(pageA, wordA.id);
+                wordAOrig.compTruth = true;
+                wordAOrig.matchTruth = true;    
+
                 wordA.compTruth = true;
                 wordA.matchTruth = true;
                 wordA.conf = 100;
+                hocrACorrect[wordA.id] = 1;
                 hocrBCorrect[wordB.id] = 1;
 
               } else {
@@ -876,27 +914,29 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
     }
   }
 
-  if (mode == "comb") {
 
-    // If `supplementComp` is enabled, we run OCR for any words in pageA without an existing comparison in pageB.
-    // This ensures that every word has been checked.
-    // Unlike the comparisons above, this is strictly for confidence purposes--if conflicts are identified the text is not edited.
-    if (supplementComp) {
-      for (let i = 0; i < pageAInt.lines.length; i++) {
-        const line = pageAInt.lines[i];
-        for (let j = 0; j < line.words.length; j++) {
-          const word = line.words[j];
-          if (!word.compTruth) {
-            word.matchTruth = await checkWords([word], false);
-            word.conf = word.matchTruth ? 100 : 0;
-          }
+  // If `supplementComp` is enabled, we run OCR for any words in pageA without an existing comparison in pageB.
+  // This ensures that every word has been checked.
+  // Unlike the comparisons above, this is strictly for confidence purposes--if conflicts are identified the text is not edited.
+  if (supplementComp) {
+    for (let i = 0; i < pageAInt.lines.length; i++) {
+      const line = pageAInt.lines[i];
+      for (let j = 0; j < line.words.length; j++) {
+        const word = line.words[j];
+        if (!word.compTruth) {
+          word.matchTruth = await checkWords([word], false);
+          word.conf = word.matchTruth ? 100 : 0;
         }
       }
     }
-
-    return pageAInt;
   }
-  
+
+  // In addition to not making sense, the statistics below will not be properly calculated when `mode == "comb"` and errors will be thrown if attempted.
+  // The core issue is that pageAInt is being actively edited `mode == "comb"`.
+  // Therefore, `hocrAOverlap` ends up including words not in `pageA`, so `ocr.getPageWord(pageA, overlappingWordsA[i]);` returns `null`.
+  if (mode == "comb") return ([pageAInt, {}]);
+
+
   // Note: These metrics leave open the door for some fringe edge cases.
   // For example,
 
@@ -918,8 +958,49 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
   // Number of words in ground truth not identified by 1+ overlapping word in candidate OCR
   const incorrectCount = overlapCountB - correctCount;
 
-  const metricsRet = [totalCountB, correctCount, incorrectCount, (totalCountB - overlapCountB), (totalCountA - overlapCountA)];
 
+  let correctCountLowConf = 0;
+  let incorrectCountHighConf = 0;
+  const overlappingWordsB = Object.keys(hocrBOverlap);
+  for (let i=0; i<overlappingWordsB.length; i++) {
+    const wordBID = overlappingWordsB[i];
+
+
+    const wordAIDs = Object.keys(hocrBOverlapAWords[wordBID]);
+
+
+    let lowConfCount = 0;
+    let highConfCount = 0;
+    for (let j=0; j<wordAIDs.length; j++) {
+      // The word comes from the original input (pageA) since we need unedited confidence metrics.
+      const word = ocr.getPageWord(pageA, wordAIDs[j]);
+      if (word.conf <= confThreshMed) {
+        lowConfCount++;
+      } else if (word.conf > confThreshHigh) {
+        highConfCount++;
+      }
+    }
+
+    const match = hocrBCorrect[wordBID];
+
+    if (match && lowConfCount > 0) {
+      correctCountLowConf++;
+    } else if (!match && highConfCount > 0) {
+      incorrectCountHighConf++
+    }
+
+  }
+
+  const metricsRet = {
+    total: totalCountB,
+    correct: correctCount,
+    incorrect: incorrectCount,
+    missed: totalCountB - overlapCountB,
+    extra: totalCountA - overlapCountA,
+    correctLowConf: correctCountLowConf,
+    incorrectHighConf: incorrectCountHighConf
+  }
+  
   return ([pageAInt, metricsRet]);
 }
 
