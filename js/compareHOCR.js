@@ -644,6 +644,9 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
                 continue;
               }
 
+              // Mark `wordA` as having been compared
+              wordA.compTruth = true;
+
               let wordTextA = ocr.replaceLigatures(wordA.text);
               let wordTextB = ocr.replaceLigatures(wordB.text);
               if (ignorePunctElem.checked) {
@@ -680,7 +683,6 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
                 if(mode == "comb") {
 
                   wordA.conf = 0;
-                  wordA.compTruth = true;
                   wordA.matchTruth = false;
 
                   // Check if there is a 1-to-1 comparison between words (this is usually true)
