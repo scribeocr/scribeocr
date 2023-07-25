@@ -1060,6 +1060,7 @@ function initializeProgress(id, maxValue, initValue = 0) {
 
   const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
 
+  globalThis.loadCount = initValue;
   progressBar.setAttribute("aria-valuenow", initValue.toString());
   progressBar.setAttribute("style", "width: " + ((initValue / maxValue) * 100) + "%");
   progressBar.setAttribute("aria-valuemax", maxValue);
@@ -1190,7 +1191,7 @@ async function recognizeAllClick() {
 
   } else if (oemMode == "combined") {
 
-    loadCountHOCR = 0;
+    globalThis.loadCount = 0;
     convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
     globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
 
@@ -1304,7 +1305,7 @@ globalThis.evalStats = [];
 async function compareGroundTruthClick(n) {
 
   // When a document/recognition is still loading only the page statistics can be calculated
-  const loadMode = loadCountHOCR && loadCountHOCR < parseInt(convertPageScheduler["activeProgress"]?.elem?.getAttribute("aria-valuemax")) ? true : false;
+  const loadMode = globalThis.loadCount && globalThis.loadCount < parseInt(convertPageScheduler["activeProgress"]?.elem?.getAttribute("aria-valuemax")) ? true : false;
 
   const evalStatsConfigNew = {};
   evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
@@ -1925,7 +1926,7 @@ function addWordClick() {
 
 // Resets the environment.
 globalThis.fontMetricObjsMessage = [];
-var loadCountHOCR;
+
 async function clearFiles() {
 
   currentPage.n = 0;
@@ -1950,7 +1951,7 @@ async function clearFiles() {
     globalThis.muPDFScheduler = null;
   }
 
-  loadCountHOCR = 0;
+  globalThis.loadCount = 0;
 
   canvas.clear()
   pageCountElem.textContent = "";
@@ -2016,7 +2017,7 @@ async function importOCRFilesSupp() {
     }
   }
 
-  loadCountHOCR = 0;
+  globalThis.loadCount = 0;
   convertPageScheduler["activeProgress"] = initializeProgress("import-eval-progress-collapse", pageCountHOCR);
 
   toggleEditButtons(false);
@@ -2330,7 +2331,7 @@ async function importFiles() {
 
   let imageN = -1;
 
-  loadCountHOCR = 0;
+  globalThis.loadCount = 0;
 
   // Both OCR data and individual images (.png or .jpeg) contribute to the import loading bar
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
@@ -2895,8 +2896,8 @@ export async function updateDataProgress(mainData = true, combMode = false) {
 
   let activeProgress = convertPageScheduler["activeProgress"].elem;
 
-  loadCountHOCR = loadCountHOCR + 1;
-  activeProgress.setAttribute("aria-valuenow", loadCountHOCR);
+  globalThis.loadCount = globalThis.loadCount + 1;
+  activeProgress.setAttribute("aria-valuenow", globalThis.loadCount);
 
   const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
 
@@ -2904,14 +2905,14 @@ export async function updateDataProgress(mainData = true, combMode = false) {
   // This can make the interface less jittery compared to updating after every loop.
   // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
   const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
-  if (loadCountHOCR % updateInterval == 0 || loadCountHOCR == valueMax) {
-    activeProgress.setAttribute("style", "width: " + (loadCountHOCR / valueMax) * 100 + "%");
+  if (globalThis.loadCount % updateInterval == 0 || globalThis.loadCount == valueMax) {
+    activeProgress.setAttribute("style", "width: " + (globalThis.loadCount / valueMax) * 100 + "%");
   }
 
   // The following block is either run after all recognition is done (when only 1 engine is being used), 
   // or after the Legacy engine is done (when Legacy + LSTM are both being run).
   // It is assumed that all Legacy recognition will finish before any LSTM recognition begins, which may change in the future. 
-  if ((!combMode && loadCountHOCR == valueMax) || (combMode && loadCountHOCR == globalThis.imageAll.native.length)) {
+  if ((!combMode && globalThis.loadCount == valueMax) || (combMode && globalThis.loadCount == globalThis.imageAll.native.length)) {
 
     // Full-document stats (including font optimization) are only calulated for the "main" data, 
     // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
