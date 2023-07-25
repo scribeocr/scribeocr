@@ -60,21 +60,18 @@ function ocrWord(line, text, bbox, id) {
  * @param {ocrPage} page
  * @param {Array<number>} bbox
  * @param {Array<number>} baseline
- * @param {number} letterHeight
- * @param {?number} ascHeight
- * @param {?number} descHeight
+ * @param {number} ascHeight
+ * @param {?number} xHeight
  */
-function ocrLine(page, bbox, baseline, letterHeight, ascHeight, descHeight) {
+function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
     /** @type {Array<number>} */ 
     this.bbox = bbox;
     /** @type {Array<number>} */ 
     this.baseline = baseline;
     /** @type {number} */ 
-    this.letterHeight = letterHeight;
-    /** @type {?number} */ 
     this.ascHeight = ascHeight;
     /** @type {?number} */ 
-    this.descHeight = descHeight;
+    this.xHeight = xHeight;
     /** @type {Array<ocrWord>} */ 
     this.words = [];
     /** @type {ocrPage} */ 
@@ -412,7 +409,6 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
 
     let lineAscHeightArr = [];
     let lineXHeightArr = [];
-    let lineAllHeightArr = [];
 
     const stylesLine = {};
 
@@ -436,25 +432,14 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
     // Line font size metrics as reported by Tesseract.
     // As these are frequently not correct (as Tesseract calculates them before character recognition),
     // so they may be replaced later by versions we calculate.
-    const lineAllHeightTessStr = titleStrLine.match(/x_size\s+([\d\.\-]+)/)?.[1];
-    const lineAscHeightTessStr = titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/)?.[1];
-    const lineDescHeightTessStr = titleStrLine.match(/x_descenders\s+([\d\.\-]+)/)?.[1];
+    const lineAllHeightTessStr = parseFloat(titleStrLine.match(/x_size\s+([\d\.\-]+)/)?.[1] || "15");
+    const lineAscHeightTessStr = parseFloat(titleStrLine.match(/x_ascenders\s+([\d\.\-]+)/)?.[1] || "0");
+    const lineDescHeightTessStr = parseFloat(titleStrLine.match(/x_descenders\s+([\d\.\-]+)/)?.[1] || "0");
 
-    let lineAllHeightTess = (lineAllHeightTessStr ? parseFloat(lineAllHeightTessStr) : null) || 10;
-    let lineAscHeightTess = lineAscHeightTessStr ? parseFloat(lineAscHeightTessStr) : null;
-    let lineDescHeightTess = lineDescHeightTessStr ? parseFloat(lineDescHeightTessStr) : null;
+    const lineAscHeightTess = lineAllHeightTessStr - lineDescHeightTessStr;
+    const lineXHeightTess = lineAllHeightTessStr - lineDescHeightTessStr - lineAscHeightTessStr;
 
-    const lineObj = new ocrLine(pageObj, linebox, baseline, lineAllHeightTess, lineAscHeightTess, lineDescHeightTess);
-
-
-    // The only known scenario where letterHeight, ascHeight, and descHeight are not all defined
-    // is when Abbyy data is loaded, HOCR is exported, and then that HOCR is re-imported.
-    // As this HOCR is always at the word-level, convertWord is never run, so it does not matter
-    // that xHeight is left undefined.
-    let lineXHeightTess;
-    if (lineAllHeightTess != null && lineAscHeightTess != null && lineDescHeightTess != null) {
-      lineXHeightTess = lineAllHeightTess - lineAscHeightTess - lineDescHeightTess;
-    }
+    const lineObj = new ocrLine(pageObj, linebox, baseline, lineAscHeightTess, lineXHeightTess);
 
     let heightSmallCapsLine = [];
 
@@ -674,7 +659,6 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
           fontMetricsLine[fontFamily][style]["obs"] = fontMetricsLine[fontFamily][style]["obs"] + 1;
 
           // Save character heights to array for font size calculations
-          lineAllHeightArr.push(charHeight);
           if (ascCharArr.includes(contentStrLetter)) {
             lineAscHeightArr.push(charHeight);
           } else if (xCharArr.includes(contentStrLetter)) {
@@ -869,34 +853,23 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
       match = match.replaceAll(wordRegex, convertWord);
     }
 
-    let lineXHeightFinal;
+    // Note that not all of these numbers are directly comparable to the Tesseract version
+    // For example, lineAscHeightCalc is the median height of an ascender,
+    // while x_ascenders from Tesseract is [ascender height] - [x height]
+    const lineAscHeightCalc = quantile(lineAscHeightArr, 0.5);
+    const lineXHeightCalc = quantile(lineXHeightArr, 0.5);
 
-    if (lineXHeightTess) {
-      // Note that not all of these numbers are directly comparable to the Tesseract version
-      // For example, lineAscHeightCalc is the median height of an ascender,
-      // while x_ascenders from Tesseract is [ascender height] - [x height]
-      const lineAllHeightCalc = Math.max(...lineAllHeightArr);
-      let lineAscHeightCalc = quantile(lineAscHeightArr, 0.5);
-      const lineXHeightCalc = quantile(lineXHeightArr, 0.5);
+    const lineXHeightFinal = lineXHeightCalc && Math.abs(lineXHeightTess - lineXHeightCalc) > 2 ? lineXHeightCalc : lineXHeightTess;
 
-      lineXHeightFinal = lineXHeightCalc && Math.abs(lineXHeightTess - lineXHeightCalc) > 2 ? lineXHeightCalc : lineXHeightTess;
-
-      // When Tesseract font size metrics are significantly different from those calculated here, replace them.
-      if(lineAscHeightCalc && lineXHeightCalc) {
-        if(Math.abs(lineXHeightTess - lineXHeightCalc) > 2){
-          lineObj.letterHeight = lineAllHeightCalc;
-          lineObj.ascHeight = lineAscHeightCalc - lineXHeightCalc;
-          lineObj.descHeight = lineAllHeightCalc - lineAscHeightCalc;
-        }
-      } else if (lineAscHeightCalc){
-        if(Math.abs((lineXHeightTess + lineAscHeightTess) - lineAscHeightCalc) > 2){
-          lineObj.letterHeight = lineAllHeightCalc;
-          lineObj.ascHeight = null;
-          lineObj.descHeight = lineAllHeightCalc - lineAscHeightCalc;
-        }
-      }
+    // Replace Tesseract font size statistics with versions calculated above
+    if (lineAscHeightCalc) {
+      lineObj.ascHeight = lineAscHeightCalc;
+      // xHeight needs to be replaced, even if the new version is null.
+      // The font size calculated downstream will be more correct using only
+      // the ascender height than using the ascender height and an 
+      // inaccurate x-height from Tesseract. 
+      lineObj.xHeight = lineXHeightCalc;
     }
-
 
     // Normalize character metrics collected earlier, add to page-level object
     // This needs to happen after the corrected line x-height is calculated (as Tesseract's x-height calculation is often wrong for caps/small caps fonts)
@@ -1434,9 +1407,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
       pageAscHeightArr.push(lineAscHeight / lineXHeight);
     }
 
-    const lineAscOut = lineXHeight ? lineAscHeight - lineXHeight : null;
-
-    const lineObj = new ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAllHeight, lineAscOut, lineAllHeight - lineAscHeight);
+    const lineObj = new ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAscHeight || lineAllHeight, lineXHeight);
 
     xmlOut = xmlOut + "\">";
 
@@ -1910,7 +1881,7 @@ function convertPageStext(xmlPage, pageNum) {
     // TODO: This is very back-of-the-napkin, should figure out how to be more precise.
     const letterHeightOut = fontSize * 0.6;
 
-    const lineObj = new ocrLine(pageObj, lineBoxOut, baselineOut, letterHeightOut, null, null);
+    const lineObj = new ocrLine(pageObj, lineBoxOut, baselineOut, letterHeightOut, null);
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {

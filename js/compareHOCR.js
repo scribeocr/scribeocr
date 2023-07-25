@@ -1164,24 +1164,21 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
         // This is done because when a first/last line is added manually, it is often page numbers,
         // and is often not the same font size as other lines.
         if (lineI == 0 || lineI + 1 == lines.length) {
-          lineNew.letterHeight = lineNew.bbox[3] - lineNew.bbox[1];
-          lineNew.ascHeight = null;
-          lineNew.descHeight = null;
+          lineNew.ascHeight = lineNew.bbox[3] - lineNew.bbox[1];
+          lineNew.xHeight = null;
 
           // If the new line is between two existing lines, use metrics from nearby line to determine text size
         } else {
 
           const closestLine = lines[closestI];
-          lineNew.letterHeight = closestLine.letterHeight;
           lineNew.ascHeight = closestLine.ascHeight;
-          lineNew.descHeight = closestLine.descHeight;
+          lineNew.xHeight = closestLine.xHeight;
 
           // If the previous line's font size is clearly incorrect, we instead revert to assuming the textbox height is the "A" height.
           const lineHeight = lineNew.bbox[3] - lineNew.bbox[1];
-          if ((lineNew.letterHeight - (lineNew.descHeight || 0)) > lineHeight * 1.5) {
-            lineNew.letterHeight = lineNew.bbox[3] - lineNew.bbox[1];
-            lineNew.ascHeight = null;
-            lineNew.descHeight = null;
+          if (lineNew.ascHeight > lineHeight * 1.5) {
+            lineNew.ascHeight = lineNew.bbox[3] - lineNew.bbox[1];
+            lineNew.xHeight = null;
           }
         }
       }

@@ -135,15 +135,17 @@ const calcLineFontSize = async (line) => {
     if (!line._size) {
         // The font of the first word is used (if present), otherwise the default font is used.
         const font = line.words[0]?.font || globalSettings.defaultFont;
-        // If possible, calculate font size using the "x height".
-        // Despite the name, the "x height" metric reported by OCR programs is generally actually the "o" height,
-        // which is a slightly larger character due to underhang. 
-        if (line.letterHeight != null && line.ascHeight != null && line.descHeight != null) {
-            const xHeight = line.letterHeight - line.ascHeight - line.descHeight;
-            line._size = await getFontSize(font, "normal", xHeight, "o");
-        // If possible, calculate font size using the ascender height (the height of capital letters like "A")
-        } else {
-            line._size = await getFontSize(font, "normal", line.letterHeight - (line.descHeight || 0), "A");
+
+        // Font size is calculated using either (1) the ascender height or (2) the x-height.
+        // If both metrics are present both are used and the result is averaged.
+        if (line.ascHeight && !line.xHeight) {
+            line._size = await getFontSize(font, "normal", line.ascHeight, "A");
+        } else if (!line.ascHeight && line.xHeight) {
+            line._size = await getFontSize(font, "normal", line.xHeight, "o");
+        } else if (line.ascHeight && line.xHeight) {
+            const size1 = await getFontSize(font, "normal", line.ascHeight, "A");
+            const size2 = await getFontSize(font, "normal", line.xHeight, "o");
+            line._size = Math.floor((size1 + size2) / 2);
         }
     }
 
@@ -228,21 +230,18 @@ export const ocr = {
  * @param {ocrPage} page
  * @param {Array<number>} bbox
  * @param {Array<number>} baseline
- * @param {number} letterHeight
- * @param {?number} ascHeight
- * @param {?number} descHeight
+ * @param {number} ascHeight
+ * @param {?number} xHeight
  */
-function ocrLine(page, bbox, baseline, letterHeight, ascHeight, descHeight) {
+function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
     /** @type {Array<number>} */ 
     this.bbox = bbox;
     /** @type {Array<number>} */ 
     this.baseline = baseline;
     /** @type {number} */ 
-    this.letterHeight = letterHeight;
-    /** @type {?number} */ 
     this.ascHeight = ascHeight;
     /** @type {?number} */ 
-    this.descHeight = descHeight;
+    this.xHeight = xHeight;
     /** @type {Array<ocrWord>} */ 
     this.words = [];
     /** @type {ocrPage} */ 
@@ -354,7 +353,7 @@ function rotateLine(line, angle, dims = null) {
  * @param {ocrLine} line
  */
 function cloneLine(line) {
-    const lineNew = new ocrLine(line.page, line.bbox.slice(), line.baseline.slice(), line.letterHeight, line.ascHeight, line.descHeight);
+    const lineNew = new ocrLine(line.page, line.bbox.slice(), line.baseline.slice(), line.ascHeight, line.xHeight);
     for (let i=0; i<line.words.length; i++) {
         const word = line.words[i];
         const wordNew = new ocrWord(lineNew, word.text, word.bbox, word.id);

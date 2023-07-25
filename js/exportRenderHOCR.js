@@ -29,9 +29,8 @@ export function renderHOCR(ocrData, fontData, layoutData) {
     const lineObj = pageObj.lines[j];
     hocrOut += "<span class='ocr_line' title=\"bbox " + lineObj.bbox[0] + " " + lineObj.bbox[1] + " " + lineObj.bbox[2] + " " + lineObj.bbox[3];
     hocrOut += "; baseline " + round6(lineObj.baseline[0]) + " " + Math.round(lineObj.baseline[1]);
-    hocrOut +=  "; x_size " + lineObj.letterHeight 
-    if (lineObj.ascHeight) hocrOut += "; x_ascenders " + lineObj.ascHeight;
-    if (lineObj.descHeight) hocrOut += "; x_descenders " + lineObj.descHeight;
+    hocrOut +=  "; x_size " + lineObj.ascHeight; 
+    if (lineObj.xHeight) hocrOut += "; x_ascenders " + (lineObj.ascHeight - lineObj.xHeight);
     hocrOut += "\">";
     for (let k = 0; k < lineObj.words.length; k++) {
       const wordObj = lineObj.words[k];
