@@ -228,35 +228,38 @@ globalThis.runOnLoad = function () {
 
 
 
-// Define canvas
-globalThis.canvasAlt = new fabric.Canvas('d');
+// The main viewing canvas and debugging canvas both show data to the user and use Fabric.js.
+globalThis.canvasAlt = document.getElementById('d');
 globalThis.ctxAlt = canvasAlt.getContext('2d');
-
-globalThis.canvasComp1 = new fabric.Canvas('e');
-globalThis.ctxComp1 = canvasComp1.getContext('2d');
-
-globalThis.canvasComp2 = new fabric.Canvas('f');
-globalThis.ctxComp2 = canvasComp2.getContext('2d');
-
-globalThis.canvasComp0 = new fabric.Canvas('h');
-globalThis.ctxComp0 = canvasComp0.getContext('2d');
 
 globalThis.canvasDebug = new fabric.Canvas('g');
 globalThis.ctxDebug = canvasDebug.getContext('2d');
 
+// The canvases used for comparison purposes are used to draw text/images for computational purposes
+// so Fabric.js is not used. 
+globalThis.canvasComp1 = document.getElementById('e');
+globalThis.ctxComp1 = canvasComp1.getContext('2d');
+
+globalThis.canvasComp2 = document.getElementById('f');
+globalThis.ctxComp2 = canvasComp2.getContext('2d');
+
+globalThis.canvasComp0 = document.getElementById('h');
+globalThis.ctxComp0 = canvasComp0.getContext('2d');
+
+
 
 // // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
-canvasAlt.overlayVpt = false;
-globalThis.canvasComp0.overlayVpt = false;
-globalThis.canvasComp1.overlayVpt = false;
-globalThis.canvasComp2.overlayVpt = false;
+// canvasAlt.overlayVpt = false;
+// globalThis.canvasComp0.overlayVpt = false;
+// globalThis.canvasComp1.overlayVpt = false;
+// globalThis.canvasComp2.overlayVpt = false;
 globalThis.canvasDebug.overlayVpt = false;
 
 // // Turn off (some) automatic rendering of canvas
-canvasAlt.renderOnAddRemove = false;
-canvasComp0.renderOnAddRemove = false;
-canvasComp1.renderOnAddRemove = false;
-canvasComp2.renderOnAddRemove = false;
+// canvasAlt.renderOnAddRemove = false;
+// canvasComp0.renderOnAddRemove = false;
+// canvasComp1.renderOnAddRemove = false;
+// canvasComp2.renderOnAddRemove = false;
 canvasDebug.renderOnAddRemove = false;
 
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
@@ -1455,7 +1458,7 @@ async function recognizeArea(imageCoords, wordMode = false) {
 async function showDebugImages() {
 
   if (!showConflictsElem.checked) {
-    canvasDebug.clear();
+    ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
     document.getElementById("g")?.setAttribute("style", "display:none");
     return;
   }
@@ -1486,12 +1489,15 @@ async function showDebugImages() {
     const imgElem2 = document.createElement('img');
     await loadImage(img2, imgElem2);
 
-    const imgFab0 = new fabric.Image(imgElem0, {left: 5, top: top});
-    const imgFab1 = new fabric.Image(imgElem1, {left: 5 + imgElem0.width + 10, top: top});
-    const imgFab2 = new fabric.Image(imgElem2, {left: 5 + imgElem0.width + 10 + imgElem1.width + 10, top: top});
+    // Set a minimum width so the metrics are always readable
+    const colWidth = Math.max(imgElem0.width, 50);
+
+    const imgFab0 = new fabric.Image(imgElem0, {left: 5, top: top + 15});
+    const imgFab1 = new fabric.Image(imgElem1, {left: 5 + colWidth + 10, top: top + 15});
+    const imgFab2 = new fabric.Image(imgElem2, {left: 5 + 2 * (colWidth + 10), top: top + 15});
 
     let textbox1 = new fabric.Text(String(Math.round((imgArr[i]["errorAdjA"])*1e3)/1e3) + " [" + String(Math.round((imgArr[i]["errorRawA"])*1e3)/1e3) + "]", {
-      left: 5 + imgElem0.width + 10,
+      left: 5 + colWidth + 10,
       top: top,
       fill: "black",
       fontSize: 10
@@ -1500,13 +1506,13 @@ async function showDebugImages() {
     canvasDebug.add(textbox1);
 
     let textbox2 = new fabric.Text(String(Math.round((imgArr[i]["errorAdjB"])*1e3)/1e3) + " [" + String(Math.round((imgArr[i]["errorRawB"])*1e3)/1e3) + "]", {
-      left: 5 + imgElem0.width + 10 + imgElem1.width + 10,
+      left: 5 + 2 * (colWidth + 10),
       top: top,
       fill: "black",
       fontSize: 10
     });
 
-    const chosenRect = new fabric.Rect({left: 5 + imgElem0.width + 10 + chosen * (imgElem1.width + 10) - 3, top: top-3, width: imgElem1.width+6, height: imgElem1.height+6, fill: "#3269a8"});
+    const chosenRect = new fabric.Rect({left: 5 + colWidth + 10 + chosen * (colWidth + 10) - 3, top: top + 15 - 3, width: imgElem0.width+6, height: imgElem1.height+6, fill: "#3269a8"});
 
     canvasDebug.add(chosenRect);
     canvasDebug.add(imgFab0);
@@ -1515,8 +1521,8 @@ async function showDebugImages() {
     canvasDebug.add(textbox1);
     canvasDebug.add(textbox2);
 
-    top += imgElem1.height + 10;
-    leftMax = Math.max(leftMax, imgElem0.width + imgElem1.width + imgElem2.width + 30);
+    top += imgElem1.height + 25;
+    leftMax = Math.max(leftMax, 3 * colWidth + 30);
   }
 
   canvasDebug.setWidth(leftMax);

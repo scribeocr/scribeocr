@@ -1,6 +1,7 @@
 import { round3, getRandomAlphanum } from "./miscUtils.js";
 import { ocr } from "./ocrObjects.js";
 import { createTesseractScheduler } from "../main.js";
+import { calcCharSpacing } from "./textUtils.js";
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
 
@@ -17,7 +18,7 @@ var fabric = globalThis.fabric;
  * @param {Array<ocrWord>} words
  * @param {boolean} view
  */
-const drawWordActual = async function(words, view = false) {
+globalThis.drawWordActual = async function(words, view = false) {
 
   const n = words[0].line.page.n;
   // The font/style from the first word is used for the purposes of font metrics
@@ -84,33 +85,77 @@ const drawWordActual = async function(words, view = false) {
 
   // If provided, we crop to the dimensions of the font (fontAsc and fontDesc) rather than the image bounding box.
   const height =  fontAsc && fontDesc ? fontAsc + fontDesc : wordBoxUnion[3] - wordBoxUnion[1] + 1;
+  const width = wordBoxUnion[2] - wordBoxUnion[0] + 1;
   const cropY = fontAsc ? linebox[3] + baseline[1] - fontAsc + angleAdjYLine-1 : linebox[1];
 
   const imgElem = await globalThis.imageAll["binary"][n];
-  const img = new fabric.Image(imgElem, {left: 0, top: 0, cropX: wordBoxUnion[0]+angleAdjXWord-1, cropY: cropY, width: wordBoxUnion[2] - wordBoxUnion[0] + 1, height: height});
 
-  globalThis.canvasAlt.setHeight(img.height);
-  globalThis.canvasAlt.setWidth(img.width);
+  if (!imgElem) throw new Error('Binary image is not defined for the requested page.');
 
-  canvasAlt.add(img);
-  canvasAlt.renderAll();
+
+  globalThis.canvasAlt.height = height;
+  globalThis.canvasAlt.width = width;
+
+  ctxAlt.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
+
 
   if (view) {
-    globalThis.canvasComp0.setHeight(img.height);
-    globalThis.canvasComp0.setWidth(img.width);
-    globalThis.canvasComp1.setHeight(img.height);
-    globalThis.canvasComp1.setWidth(img.width);
-    globalThis.canvasComp2.setHeight(img.height);
-    globalThis.canvasComp2.setWidth(img.width);
 
-    canvasComp0.add(img);
-    canvasComp1.add(img);
-    canvasComp2.add(img);
+    globalThis.canvasComp0.height = height;
+    globalThis.canvasComp0.width = width;
+    globalThis.canvasComp1.height = height;
+    globalThis.canvasComp1.width = width;
+    globalThis.canvasComp2.height = height;
+    globalThis.canvasComp2.width = width;
+
+    ctxComp0.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
+    ctxComp1.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
+    ctxComp2.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
   }
 
   return;
 
 }
+
+/**
+ * Lightweight function for drawing text onto canvas with correct spacing/kerning without using Fabric.js.
+ * @param {string} text
+ */
+globalThis.printWordOnCanvas = async (ctx, text, font, style, size, boxWidth, left = 0, bottom = 0, fillStyle = "black") => {
+
+  // Set canvas to correct font and size
+  if (style == "small-caps") {
+    ctx.font = size + 'px ' + font + " Small Caps";
+  } else {
+    ctx.font = style + " " + size + 'px ' + font;
+  }
+  
+  ctx.fillStyle = fillStyle;
+
+  ctx.textBaseline = "bottom";
+
+  const fontObj = await globalThis.fontObj[font][style];
+
+  const wordTextArr = text.split("");
+
+  const charSpacing = await calcCharSpacing(text, font, style, size, boxWidth);
+
+  const wordTextCodeArr = wordTextArr.map((x) => String(fontObj.charToGlyph(x).index));
+
+  let leftI = left;
+  for(let i=0; i<wordTextArr.length; i++) {
+    ctx.fillText(wordTextArr[i], leftI, bottom);
+
+    if (i + 1 < wordTextArr.length) {
+      const advance = fontObj.charToGlyph(wordTextArr[i]).advanceWidth  * (size / fontObj.unitsPerEm);
+      const kern = i + 1 < wordTextArr.length ? fontObj.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (size / fontObj.unitsPerEm) || 0 : 0;
+      leftI += advance;
+      leftI += kern;
+      leftI += charSpacing;
+    }
+  }
+}
+
   
 /**
  * @param {ocrWord} word
@@ -118,7 +163,7 @@ const drawWordActual = async function(words, view = false) {
  * @param {number} lineFontSize
  * @param {?string} altText
  */
-let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText = null, debugCanvas = null){
+globalThis.drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText = null, ctxView = null){
 
   lineFontSize = lineFontSize || (await ocr.calcLineFontSize(word.line)) || 10;
 
@@ -133,18 +178,21 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
 
   const wordFontFamily = word.font || globalSettings.defaultFont;
 
+  // Set canvas to correct font but size 1000
+  // This allows for more precise measurements than using the actual size as the result is always a whole number
   if (word.style == "small-caps") {
-    ctx.font = 1000 + 'px ' + wordFontFamily + " Small Caps";
+    ctxAlt.font = 1000 + 'px ' + wordFontFamily + " Small Caps";
   } else {
-    ctx.font = word.style + " " + 1000 + 'px ' + wordFontFamily;
+    ctxAlt.font = word.style + " " + 1000 + 'px ' + wordFontFamily;
   }
 
-  const oMetrics = ctx.measureText("o");
+  const oMetrics = ctxAlt.measureText("o");
 
+  // Set canvas to correct font and size
   if (word.style == "small-caps") {
-    ctx.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
+    ctxAlt.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
   } else {
-    ctx.font = word.style + " " + wordFontSize + 'px ' + wordFontFamily;
+    ctxAlt.font = word.style + " " + wordFontSize + 'px ' + wordFontFamily;
   }
 
 
@@ -157,7 +205,7 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
   const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
   const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (wordFontSize / fontObjI.unitsPerEm);
 
-  const wordWidth1 = ctx.measureText(wordText).width;
+  const wordWidth1 = ctxAlt.measureText(wordText).width;
   const wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;
 
   const boxWidth = word.bbox[2] - word.bbox[0];
@@ -178,45 +226,18 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
 
     const baselineY = word.line.bbox[3] + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox[0]);
 
-    top = fontDesc + fontAsc + 1 - (baselineY - word.bbox[3]) - (fontDesc - fontDescWord);  
+    top = fontDesc + fontAsc - (baselineY - word.bbox[3]) - (fontDesc - fontDescWord);  
   
   } else {
-    top = fontDesc + fontAsc + 1;  
+    top = fontDesc + fontAsc;  
   }
 
-  const left = 0 - wordLeftBearing + offsetX;
+  const left = 1 - wordLeftBearing + offsetX;
 
-  let wordFontFamilyCanvas = word.style == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
-  let fontStyleCanvas = word.style == "small-caps" ? "normal" : word.style;
+  await printWordOnCanvas(ctxAlt, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, top);
 
-  let textbox = new fabric.IText(wordText, {
-    left: 0,
-    top: 0,
-    fill: "black",
-    fontFamily: wordFontFamilyCanvas,
-    fontStyle: fontStyleCanvas,
-    charSpacing: kerning * 1000 / wordFontSize,
-    fontSize: wordFontSize
-  });
-
-  // Set background color to white so that blank pixels are "255" in both versions
-  canvasAlt.setBackgroundColor("white");
-
-    await textbox.cloneAsImage(image => {
-    image.set({left: left,top:top,originY:"bottom"});
-
-    canvasAlt.add(image);
-    canvasAlt.renderAll();
-  });
-
-  if (debugCanvas) {
-    textbox.set({fill: "red"});
-    await textbox.cloneAsImage(image => {
-      image.set({left: left,top:top,originY:"bottom"});
-  
-      debugCanvas.add(image);
-      debugCanvas.renderAll();
-    });
+  if (ctxView) {
+    await printWordOnCanvas(ctxView, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, top, "red");
   }
 
 
@@ -225,10 +246,11 @@ let drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText
 /**
  * @param {Array<ocrWord>} wordsA
  * @param {Array<ocrWord>} wordsB
- * @param {number} n
  * @param {boolean} view
  */
-export async function evalWords(wordsA, wordsB, n, view = false){
+export async function evalWords(wordsA, wordsB = [], view = false){
+
+  const n = wordsA[0].line.page.n;
 
   const cosAngle = Math.cos(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 0;
@@ -253,24 +275,25 @@ export async function evalWords(wordsA, wordsB, n, view = false){
   const linebox = wordsA[0].line.bbox;
   const baseline = wordsA[0].line.baseline;
 
-  canvasAlt.clear();
+  ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
 
   if (view) {
-    // document.getElementById("e").setAttribute("style", "");
-    // document.getElementById("f").setAttribute("style", "");
-    canvasComp0.clear();
-    canvasComp1.clear();
-    canvasComp2.clear();
+    ctxComp0.clearRect(0, 0, ctxComp0.canvas.width, ctxComp0.canvas.height);
+    ctxComp1.clearRect(0, 0, ctxComp1.canvas.width, ctxComp1.canvas.height);
+    ctxComp2.clearRect(0, 0, ctxComp2.canvas.width, ctxComp2.canvas.height);
   }
 
   // Draw the actual words (from the user-provided image)
   await drawWordActual([...wordsA, ...wordsB], true);
 
-  const imageDataActual = ctxAlt.getImageData(0, 0, (wordBoxUnion[2] - wordBoxUnion[0] + 1), wordBoxUnion[3] - wordBoxUnion[1] + 1)["data"];
+  const imageDataActual = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
 
-  canvasAlt.clear();
+  ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+  ctxAlt.fillStyle = "white";
+  ctxAlt.fillRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
 
-  let debugCanvas = view ? canvasComp1 : null;
+
+  let ctxView = view ? ctxComp1 : null;
 
   // Draw the words in wordsA
   let x0;
@@ -288,45 +311,16 @@ export async function evalWords(wordsA, wordsB, n, view = false){
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-    await drawWordRender(word, offsetX, lineFontSize, null, debugCanvas);
+    await drawWordRender(word, offsetX, lineFontSize, null, ctxView);
   }
 
-  const imageDataExpectedA = ctxAlt.getImageData(0, 0, (wordBoxUnion[2] - wordBoxUnion[0] + 1), wordBoxUnion[3] - wordBoxUnion[1] + 1)["data"];
-
-  canvasAlt.clear();
-
-  debugCanvas = view ? canvasComp2 : null;
-
-  // Draw the words in wordsB
-  for (let i=0;i<wordsB.length;i++) {
-
-    // Clone object so editing does not impact the original
-    const word = ocr.cloneWord(wordsB[i]);
-
-    // Set style to whatever it is for wordsA.  This is based on the assumption that "A" is Tesseract Legacy and "B" is Tesseract LSTM (which does not have useful style info).
-    word.style = wordsA[0].style
-
-    const baselineY = linebox[3] + baseline[1] + baseline[0] * (word.bbox[0] - linebox[0]);
-    if (i == 0) {
-      x0 = word.bbox[0];
-      y0 = baselineY;
-    } 
-    const x = word.bbox[0];
-    const y = word.sup || word.dropcap ? word.bbox[3] : baselineY;
-
-    const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
-
-    await drawWordRender(word, offsetX, lineFontSize, null, debugCanvas);
-  }
-
-  const imageDataExpectedB = ctxAlt.getImageData(0, 0, (wordBoxUnion[2] - wordBoxUnion[0] + 1), wordBoxUnion[3] - wordBoxUnion[1] + 1)["data"];
-
-  canvasAlt.clear();
+  const imageDataExpectedA = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
 
   if (imageDataActual.length != imageDataExpectedA.length) {
     console.log("Actual and expected images are different sizes");
     debugger;
   }
+
 
   let diffA = 0;
   let totalA = 0;
@@ -339,20 +333,63 @@ export async function evalWords(wordsA, wordsB, n, view = false){
     }
   }
 
-  let diffB = 0;
-  let totalB = 0;
-  for(let i=0; i<imageDataActual.length; i++){
-    if(imageDataActual[i] != 255 || imageDataExpectedB[i] != 255){
-      totalB = totalB + 1;
-      if(imageDataActual[i] == 255 || imageDataExpectedB[i] == 255) {
-        diffB = diffB + 1;
-      }  
+  const metricA = diffA/totalA;
+
+  let metricB = 1;
+  if (wordsB.length > 0) {
+    ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+    ctxAlt.fillStyle = "white";
+    ctxAlt.fillRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+  
+    ctxView = view ? ctxComp2 : null;
+  
+    // Draw the words in wordsB
+    for (let i=0;i<wordsB.length;i++) {
+  
+      // Clone object so editing does not impact the original
+      const word = ocr.cloneWord(wordsB[i]);
+  
+      // Set style to whatever it is for wordsA.  This is based on the assumption that "A" is Tesseract Legacy and "B" is Tesseract LSTM (which does not have useful style info).
+      word.style = wordsA[0].style
+  
+      const baselineY = linebox[3] + baseline[1] + baseline[0] * (word.bbox[0] - linebox[0]);
+      if (i == 0) {
+        x0 = word.bbox[0];
+        y0 = baselineY;
+      } 
+      const x = word.bbox[0];
+      const y = word.sup || word.dropcap ? word.bbox[3] : baselineY;
+  
+      const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
+  
+      await drawWordRender(word, offsetX, lineFontSize, null, ctxView);
     }
+  
+    const imageDataExpectedB = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
+  
+    ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+  
+    let diffB = 0;
+    let totalB = 0;
+    for(let i=0; i<imageDataActual.length; i++){
+      if(imageDataActual[i] != 255 || imageDataExpectedB[i] != 255){
+        totalB = totalB + 1;
+        if(imageDataActual[i] == 255 || imageDataExpectedB[i] == 255) {
+          diffB = diffB + 1;
+        }  
+      }
+    }
+
+    metricB = diffB/totalB;
+  
   }
 
-  return [diffA/totalA, diffB/totalB];
+
+  return [metricA, metricB];
 
 }
+
+globalThis.evalWords = evalWords;
     
 /**
  * Calculate penalty for word using ad-hoc heuristics.
@@ -760,7 +797,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
                     const wordAClone = ocr.cloneWord(wordA);
                     wordAClone.text = wordB.text;
               
-                    const hocrError = await evalWords([wordA], [wordAClone], n, Boolean(debugLabel));
+                    const hocrError = await evalWords([wordA], [wordAClone], Boolean(debugLabel));
               
                     hocrAError = hocrError[0] + penalizeWord(wordA.text);
                     hocrBError = hocrError[1] + penalizeWord(wordB.text);
@@ -799,7 +836,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
                   } else if (twoToOne) {
 
                     // const hocrError = [0.1,0.1];
-                    const hocrError = await evalWords(wordsAArr, wordsBArr, n, Boolean(debugLabel));
+                    const hocrError = await evalWords(wordsAArr, wordsBArr, Boolean(debugLabel));
 
                     const wordsAText = wordsAArr.map((x) => x.text).join("");
                     const wordsBText =  wordsBArr.map((x) => x.text).join("");
