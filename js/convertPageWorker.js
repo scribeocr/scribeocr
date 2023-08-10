@@ -975,15 +975,19 @@ function convertPageAbbyy(xmlPage, pageNum) {
   let pageDims = xmlPage.match(/<page width=[\'\"](\d+)[\'\"] height=[\'\"](\d+)[\'\"]/);
   pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
 
-  if (!/\<charParams/i.test(xmlPage)) {
-    return (["", pageDims, null, null, null, {message: "char_error"}, {}]);
-  }
-
-  const boxes = convertTableLayoutAbbyy(xmlPage);
-
   const pageObj = new ocrPage(pageNum, pageDims);
 
   const fontMetricsObj = {};
+
+  // This condition is met for actual character errors (xml data lacks character-level data), as well as for empty pages.
+  // However, the error is only shown to the user if there are no pages with valid character data.
+  if (!/\<charParams/i.test(xmlPage)) {
+    fontMetricsObj["message"] = "char_error";
+    return ([pageObj, fontMetricsObj, {}]);
+    
+  }
+
+  const boxes = convertTableLayoutAbbyy(xmlPage);
 
   let lineLeft = new Array;
   let lineTop = new Array;
