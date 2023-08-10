@@ -128,33 +128,46 @@ async function main() {
         const n = event.data[1];
         const argsObj = event.data[2];
 
+        const pageObj = event.data[0][0];
+
         const oemCurrent = undefined;
-            
+		  
         // If an OEM engine is specified, save to the appropriate object within ocrAll,
         // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
         // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
         // while the recognition job is running.
         if (argsObj["engine"] && argsObj["mode"] == "full") {
-          globalThis.ocrAll[argsObj["engine"]][n]["hocr"] = event.data[0][0] || "<div class='ocr_page'></div>";
+          globalThis.ocrAll[argsObj["engine"]][n]["hocr"] = pageObj || null;
           if (oemCurrent) {
-            globalThis.hocrCurrent[n] = event.data[0][0] || "<div class='ocr_page'></div>";
+          globalThis.hocrCurrent[n] = pageObj || null;
           }
         } else {
-          globalThis.hocrCurrent[n] = event.data[0][0] || "<div class='ocr_page'></div>";
+          globalThis.hocrCurrent[n] = pageObj || null;
         }
-      
-        globalThis.pageMetricsObj["dimsAll"][n] = event.data[0][1];
-        globalThis.pageMetricsObj["angleAll"][n] = event.data[0][2];
-        globalThis.pageMetricsObj["leftAll"][n] = event.data[0][3];
-        globalThis.pageMetricsObj["angleAdjAll"][n] = event.data[0][4];
-      
+        
+        // When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
+        if (argsObj["mode"] == "area") {
+          globalThis.pageMetricsObj["dimsAll"][n] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
+          globalThis.hocrCurrent[n] = globalThis.hocrCurrent[n].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
+        } else {
+          globalThis.pageMetricsObj["dimsAll"][n] = pageObj.dims;
+        }
+          
+        globalThis.pageMetricsObj["angleAll"][n] = pageObj.angle;
+        globalThis.pageMetricsObj["leftAll"][n] = pageObj.left;
+        globalThis.pageMetricsObj["angleAdjAll"][n] = pageObj.angleAdj;
+  
+  
+        globalThis.pageMetricsObj["angleAll"][n] = pageObj.angle;
+        globalThis.pageMetricsObj["leftAll"][n] = pageObj.left;
+        globalThis.pageMetricsObj["angleAdjAll"][n] = pageObj.angleAdj;
+  
+        
         if(argsObj["saveMetrics"] ?? true){
-          fontMetricObjsMessage[n] = event.data[0][5];
+          fontMetricObjsMessage[n] = event.data[0][1];
         }
 
         worker.promises[event.data[event.data.length - 1]].resolve(event.data);
-
-        // console.log(event.data[0][0]);
       
     }
 
