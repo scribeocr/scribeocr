@@ -1003,10 +1003,10 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 2093340: function($0) {
+ 2093996: function($0) {
   throw new Error(UTF8ToString($0));
  },
- 2093379: function() {
+ 2094035: function() {
   throw new Error("Cannot create MuPDF context!");
  }
 };
@@ -4897,6 +4897,17 @@ function invoke_viiiii(index, a1, a2, a3, a4, a5) {
  }
 }
 
+function invoke_viiif(index, a1, a2, a3, a4) {
+ var sp = stackSave();
+ try {
+  getWasmTableEntry(index)(a1, a2, a3, a4);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
 function invoke_viiii(index, a1, a2, a3, a4) {
  var sp = stackSave();
  try {
@@ -4934,17 +4945,6 @@ function invoke_viiiifi(index, a1, a2, a3, a4, a5, a6) {
  var sp = stackSave();
  try {
   getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
-function invoke_viiif(index, a1, a2, a3, a4) {
- var sp = stackSave();
- try {
-  getWasmTableEntry(index)(a1, a2, a3, a4);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
