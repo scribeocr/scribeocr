@@ -105,6 +105,7 @@ export async function initMuPDFWorker() {
 		mupdf.overlayTextImageAddPage = wrap("overlayTextImageAddPage");
 		mupdf.overlayTextImageEnd = wrap("overlayTextImageEnd");
 		mupdf.overlayTextImage = wrap("overlayTextImage");
+		mupdf.checkNativeText = wrap("checkNativeText");
 		mupdf.write = wrap("write");
 		mupdf.terminate = function () { worker.terminate(); }
 	})

@@ -119,6 +119,7 @@ let ready = false;
     mupdf.outlinePage = Module.cwrap('outlinePage', 'number', ['number', 'number']);
     mupdf.outlineDown = Module.cwrap('outlineDown', 'number', ['number']);
     mupdf.outlineNext = Module.cwrap('outlineNext', 'number', ['number']);
+    mupdf.checkNativeText = Module.cwrap('checkNativeText', 'number', ['number']);
     postMessage("READY");
     ready = true;
   };

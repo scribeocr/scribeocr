@@ -1003,10 +1003,10 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 2093996: function($0) {
+ 2094012: function($0) {
   throw new Error(UTF8ToString($0));
  },
- 2094035: function() {
+ 2094051: function() {
   throw new Error("Cannot create MuPDF context!");
  }
 };
@@ -4685,6 +4685,8 @@ var _free = Module["_free"] = createExportWrapper("free");
 var _freeDocument = Module["_freeDocument"] = createExportWrapper("freeDocument");
 
 var _countPages = Module["_countPages"] = createExportWrapper("countPages");
+
+var _checkNativeText = Module["_checkNativeText"] = createExportWrapper("checkNativeText");
 
 var _pageText = Module["_pageText"] = createExportWrapper("pageText");
 
