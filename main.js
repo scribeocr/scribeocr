@@ -198,7 +198,7 @@ canvas.preserveObjectStacking = true;
 canvas.renderOnAddRemove = false;
 
 // Disable uniform scaling (locked aspect ratio when scaling corner point of bounding box)
-canvas.uniformScaling = false
+canvas.uniformScaling = false;
 
 // Show drag-and-drop interface above canvas
 (() => {
