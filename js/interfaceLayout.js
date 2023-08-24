@@ -31,7 +31,14 @@ function layoutBox(priority, coords) {
     this.inclusionLevel = "word";
 }
   
-export function addLayoutBoxClick() {
+export function addLayoutBoxClick(type = null) {
+
+    if (type) {
+        // Set default to whatever type was last selected
+        document.getElementById("layoutBoxType").textContent = {"order": "Order", "exclude": "Exclude", "dataColumn": "Column"}[type];
+    } else {
+        type = {"Order": "order", "Exclude": "exclude", "Column": "dataColumn"}[document.getElementById("layoutBoxType").textContent];
+    }
 
     canvas.__eventListeners = {}
 
@@ -117,6 +124,8 @@ export function addLayoutBoxClick() {
                 canvas.remove(rect);
 
                 init = true;
+
+                globalThis.layout[currentPage.n]["boxes"][id].type = type;
                 renderLayoutBox(id);
                 updateDataPreview();
             }

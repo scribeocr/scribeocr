@@ -597,7 +597,14 @@ const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementByI
 recognizeWordElem.addEventListener('click', () => recognizeAreaClick(true));
 
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
+const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
+const addLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeExclude'));
+const addLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeDataColumn'));
+
 addLayoutBoxElem.addEventListener('click', () => addLayoutBoxClick());
+addLayoutBoxTypeOrderElem.addEventListener('click', () => addLayoutBoxClick("order"));
+addLayoutBoxTypeExcludeElem.addEventListener('click', () => addLayoutBoxClick("exclude"));
+addLayoutBoxTypeDataColumnElem.addEventListener('click', () => addLayoutBoxClick("dataColumn"));
 
 const deleteLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('deleteLayoutBox'));
 deleteLayoutBoxElem.addEventListener('click', () => deleteLayoutBoxClick());
