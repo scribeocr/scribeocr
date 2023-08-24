@@ -27,6 +27,7 @@ import { calculateOverallFontMetrics, setDefaultFontAuto } from "./js/fontStatis
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
 import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences } from "./js/miscUtils.js";
+import { getAllFileEntries } from "./js/drag-and-drop.js";
 
 // Functions for various UI tabs
 import {
@@ -272,9 +273,6 @@ const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev')
 
 nextElem.addEventListener('click', () => displayPage(currentPage.n + 1));
 prevElem.addEventListener('click', () => displayPage(currentPage.n - 1));
-
-const uploaderElem = /** @type {HTMLInputElement} */(document.getElementById('uploader'));
-uploaderElem.addEventListener('change', importFiles);
 
 const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
@@ -986,11 +984,6 @@ document.getElementById('navBar')?.addEventListener('click', function (e) {
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
-document.getElementById('nav-import')?.addEventListener('hidden.bs.collapse', function (e) {
-  if (e.target.id != "nav-import") return;
-  hideProgress("import-progress-collapse");
-})
-
 document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', function (e) {
   if (e.target.id != "nav-recognize") return;
   hideProgress("import-eval-progress-collapse");
@@ -1008,7 +1001,7 @@ document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', 
 // When the navbar is "sticky", it does not automatically widen for large canvases (when the canvas size is larger than the viewport).
 // However, when the navbar is fixed, the canvas does not move out of the way of the navbar.
 // Therefore, the navbar is set to fixed, and the canvas is manually moved up/down when tabs are shown/collapsed.
-var tabHeightObj = { "nav-import": 65, "nav-recognize": 65, "nav-eval": 89, "nav-view": 117, "nav-edit": 104, "nav-layout": 83, "nav-download": 102, "nav-about": 81 }
+var tabHeightObj = { "nav-recognize": 65, "nav-eval": 89, "nav-view": 117, "nav-edit": 104, "nav-layout": 83, "nav-download": 102, "nav-about": 81 }
 
 const paddingRowElem = document.getElementById('paddingRow');
 
@@ -1087,7 +1080,7 @@ function initializeProgress(id, maxValue, initValue = 0) {
 // Hides progress bar if completed
 function hideProgress(id) {
   const progressCollapse = document.getElementById(id);
-  if (progressCollapse.getAttribute("class") == "collapse show") {
+  if (["collapse show", "collapsing"].includes(progressCollapse.getAttribute("class"))) {
     const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
     if (parseInt(progressBar.getAttribute("aria-valuenow")) >= parseInt(progressBar.getAttribute("aria-valuemax"))) {
       progressCollapse.setAttribute("class", "collapse");
@@ -1095,6 +1088,18 @@ function hideProgress(id) {
   }
 }
 
+// This differs from hideProgress in that (1) the hide is animated rather than instant and (2) the collapse is hidden regardless 
+// of whether loading is complete. 
+function hideProgress2(id) {
+  const progressCollapse = document.getElementById(id);
+  if (progressCollapse.getAttribute("class") == "collapse show") {
+    (new bootstrap.Collapse(document.getElementById("import-progress-collapse"))).hide()
+
+  // The collapsing animation needs to end before this can be hidden 
+  } else if (progressCollapse.getAttribute("class") == "collapsing") {
+    setTimeout(() => hideProgress2(id), 500);
+  }
+}
 
 export async function createTesseractScheduler(workerN, config = null) {
 
@@ -1963,7 +1968,7 @@ async function clearFiles() {
   pageCountElem.textContent = "";
   pageNumElem.value = "";
   downloadFileNameElem.value = "";
-  uploaderElem.value = "";
+  // uploaderElem.value = "";
   optimizeFontElem.checked = false;
   optimizeFontElem.disabled = true;
   downloadElem.disabled = true;
@@ -2069,7 +2074,7 @@ export function insertAlertMessage(innerHTML, error = true) {
 }
 
 
-async function importFiles() {
+async function importFiles(curFiles) {
 
   // It looks like the "load" event is not always triggered (when the page is refreshed).
   // This is a quick fix to make sure this function always runs.
@@ -2078,8 +2083,6 @@ async function importFiles() {
   // }
 
   globalThis.runOnLoad();
-
-  const curFiles = uploaderElem.files;
 
   if (!curFiles || curFiles.length == 0) return;
 
@@ -2920,6 +2923,9 @@ export async function updateDataProgress(mainData = true, combMode = false) {
   // It is assumed that all Legacy recognition will finish before any LSTM recognition begins, which may change in the future. 
   if ((!combMode && globalThis.loadCount == valueMax) || (combMode && globalThis.loadCount == globalThis.imageAll.native.length)) {
 
+    // Import progress bar is not in another collapse, so needs to be closed manually.
+    if (mainData) hideProgress2("import-progress-collapse");
+
     // Full-document stats (including font optimization) are only calulated for the "main" data, 
     // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
     // those uploads to not cause new fonts to be created. 
@@ -3205,3 +3211,89 @@ async function handleDownload() {
 
 // Set default settings
 setDefaults();
+
+
+// document.getElementById("c").parentElement.insertBefore(document.getElementById("uploadTemplate").content, document.getElementById("c").parentElement.firstChild);
+
+(() => {
+  const uploadElement = document.createElement("fieldset");
+  uploadElement.setAttribute("class", "upload_dropZone text-center p-4");
+  uploadElement.setAttribute("id", "uploadDropZone");
+  uploadElement.setAttribute("style", "width:100%;height:100%;position:absolute;z-index:10");
+  uploadElement.innerHTML = `<legend class="visually-hidden">Image uploader</legend>
+  
+  <p class="small" style="margin-top:45%">Drag &amp; drop files inside dashed region<br><i>or</i></p>
+  <input id="upload_image_logo" data-post-name="image_logo"
+    data-post-url="https://someplace.com/image/uploads/logos/"
+    class="position-absolute invisible" type="file" multiple />
+  <input type="file" class="position-absolute invisible" id="openFileInput" multiple>
+  <label class="btn btn-info mb-3" for="openFileInput" style="min-width:8rem">Select
+    Files</label>
+  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"
+    style="display:inline!important"></div>
+  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"></div>`
+
+  document.getElementById("c").parentElement.insertBefore(uploadElement, document.getElementById("c").parentElement.firstChild);
+
+})();
+
+const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
+openFileInputElem.addEventListener('change',  (event) => {
+  if (event.target.files.length == 0) return;
+
+  importFiles(event.target.files);
+  // This should run after importFiles so if that function fails the dropzone is not removed
+  document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
+});
+
+
+globalThis.zone = document.getElementById("uploadDropZone");
+
+zone.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  event.target.classList.add('highlight');
+});
+
+zone.addEventListener('dragleave', (event) => {
+  event.preventDefault();
+  event.target.classList.remove('highlight');
+});
+
+// This is where the drop is handled.
+zone.addEventListener('drop', async (event) => {
+  // Prevent navigation.
+  event.preventDefault();
+  let items = await getAllFileEntries(event.dataTransfer.items);
+
+  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => x.file(resolve, reject))));
+  const files = filesPromises.map(x => x.value);
+
+  if (files.length == 0) return;
+
+  event.target.classList.remove('highlight');
+
+  importFiles(files);
+
+  // This should run after importFiles so if that function fails the dropzone is not removed
+  document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
+
+});
+
+const highlight = event => event.target.classList.add('highlight');
+
+const unhighlight = event => event.target.classList.remove('highlight');
+
+zone.addEventListener(event, highlight, false);
+
+['dragenter', 'dragover'].forEach(event => {
+    zone.addEventListener(event, highlight, false);
+});
+
+// Highlighting drop area when item is dragged over it
+['dragenter', 'dragover'].forEach(event => {
+    zone.addEventListener(event, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(event => {
+    zone.addEventListener(event, unhighlight, false);
+});

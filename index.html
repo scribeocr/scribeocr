@@ -107,6 +107,22 @@
       background-color: var(--bs-info);
     }
 
+		.upload_dropZone {
+			color: #0f3c4b;
+			outline: 2px dashed #c1ddef;
+			outline-offset: -12px;
+			transition:
+				outline-offset 0.2s ease-out,
+				outline-color 0.3s ease-in-out,
+				background-color 0.2s ease-out;
+		}
+
+		.upload_dropZone.highlight {
+			outline-offset: -4px;
+			outline-color: #0576bd;
+			background-color: #c8dadf;
+		}
+
     .dataPreview table,
     th,
     td {
@@ -135,8 +151,6 @@
           <div class="col-8 col-xl-6" id="nav-tab-container">
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
 
-              <a class="nav-link collapsed" id="nav-import-tab" data-bs-toggle="collapse" data-bs-target="#nav-import"
-                type="button" role="tab" aria-controls="nav-import">Import</a>
               <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
               <a class="nav-link collapsed" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval"
@@ -514,51 +528,6 @@
 
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="collapse" id="nav-import" role="tabpanel" aria-labelledby="nav-import-tab"
-          data-bs-parent="#user-controls">
-          <div class="row" style="padding:0.4rem;">
-            <div class="col col-4">
-              <div class="form-group">
-                <label for="uploader">Import Files</label>
-                <a href="#" id="my_tooltip" data-bs-custom-class="ttWide" class="d-inline-block"
-                  data-bs-toggle="tooltip" title="" data-bs-original-title="Accepts image files (.png, .jpeg, or .pdf) along with (optionally) OCR files (.hocr or Abbyy .xml).
-All files are sorted in alphabetic order." data-bs-placement="right">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)"
-                    class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                    <path
-                      d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                  </svg>
-                </a>
-
-                <input type="file" id="uploader" class="form-control btn-sm" autocomplete="off" label="Import Files"
-                  multiple>
-              </div>
-            </div>
-            <div class="col col-2">
-              <label for="reset">Reset All (Files + Edits)</label><br>
-              <button type="button" id="reset" class="btn btn-secondary btn-sm">Reset</button>
-            </div>
-            <!-- <div class="col col-2">
-              <label>Options</label><br>
-              <div class="form-check form-switch">
-                <label><input class="form-check-input" type="checkbox" id="extractTextCheckbox"> Extract Text from PDF</label><br>
-              </div>
-            </div> -->
-          </div>
-          <div class="collapse" id="import-progress-collapse">
-            <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
-              <div class="col col-2" style="padding-left:0">
-                <div>Loading Files</div>
-              </div>
-              <div class="col col-7">
-                <div class="progress" style="margin: 0.25rem;">
-                  <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
-                    aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
               </div>
             </div>
@@ -1197,6 +1166,20 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
           </div>
         </div>
         <div class="row">
+          <div class="collapse" id="import-progress-collapse">
+            <div class="row" style="padding-top:0.4rem;margin:0.4rem;">
+              <div class="col col-2" style="padding-left:0">
+                <div>Loading Files</div>
+              </div>
+              <div class="col col-7">
+                <div class="progress" style="margin: 0.25rem;">
+                  <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
+                    aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div id="alertDiv">
           </div>
         </div>
