@@ -200,6 +200,91 @@ canvas.renderOnAddRemove = false;
 // Disable uniform scaling (locked aspect ratio when scaling corner point of bounding box)
 canvas.uniformScaling = false
 
+// Show drag-and-drop interface above canvas
+(() => {
+  const uploadElement = document.createElement("fieldset");
+  uploadElement.setAttribute("class", "upload_dropZone text-center p-4");
+  uploadElement.setAttribute("id", "uploadDropZone");
+  uploadElement.setAttribute("style", "width:100%;height:100%;position:absolute;z-index:10");
+  uploadElement.innerHTML = `<legend class="visually-hidden">Image uploader</legend>
+  
+  <p class="small" style="margin-top:45%">Drag &amp; drop files inside dashed region<br><i>or</i></p>
+  <input id="upload_image_logo" data-post-name="image_logo"
+    data-post-url="https://someplace.com/image/uploads/logos/"
+    class="position-absolute invisible" type="file" multiple />
+  <input type="file" class="position-absolute invisible" id="openFileInput" multiple>
+  <label class="btn btn-info mb-3" for="openFileInput" style="min-width:8rem">Select
+    Files</label>
+  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"
+    style="display:inline!important"></div>
+  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"></div>`
+
+  document.getElementById("c").parentElement.insertBefore(uploadElement, document.getElementById("c").parentElement.firstChild);
+
+})();
+
+const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
+openFileInputElem.addEventListener('change',  (event) => {
+  if (event.target.files.length == 0) return;
+
+  importFiles(event.target.files);
+  // This should run after importFiles so if that function fails the dropzone is not removed
+  document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
+});
+
+
+globalThis.zone = document.getElementById("uploadDropZone");
+
+zone.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  event.target.classList.add('highlight');
+});
+
+zone.addEventListener('dragleave', (event) => {
+  event.preventDefault();
+  event.target.classList.remove('highlight');
+});
+
+// This is where the drop is handled.
+zone.addEventListener('drop', async (event) => {
+  // Prevent navigation.
+  event.preventDefault();
+  let items = await getAllFileEntries(event.dataTransfer.items);
+
+  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => x.file(resolve, reject))));
+  const files = filesPromises.map(x => x.value);
+
+  if (files.length == 0) return;
+
+  event.target.classList.remove('highlight');
+
+  importFiles(files);
+
+  // This should run after importFiles so if that function fails the dropzone is not removed
+  document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
+
+});
+
+const highlight = event => event.target.classList.add('highlight');
+
+const unhighlight = event => event.target.classList.remove('highlight');
+
+zone.addEventListener(event, highlight, false);
+
+['dragenter', 'dragover'].forEach(event => {
+    zone.addEventListener(event, highlight, false);
+});
+
+// Highlighting drop area when item is dragged over it
+['dragenter', 'dragover'].forEach(event => {
+    zone.addEventListener(event, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(event => {
+    zone.addEventListener(event, unhighlight, false);
+});
+
+
 
 // Content that should be run once, after all dependencies are done loading are done loading
 globalThis.runOnLoad = function () {
@@ -3211,89 +3296,3 @@ async function handleDownload() {
 
 // Set default settings
 setDefaults();
-
-
-// document.getElementById("c").parentElement.insertBefore(document.getElementById("uploadTemplate").content, document.getElementById("c").parentElement.firstChild);
-
-(() => {
-  const uploadElement = document.createElement("fieldset");
-  uploadElement.setAttribute("class", "upload_dropZone text-center p-4");
-  uploadElement.setAttribute("id", "uploadDropZone");
-  uploadElement.setAttribute("style", "width:100%;height:100%;position:absolute;z-index:10");
-  uploadElement.innerHTML = `<legend class="visually-hidden">Image uploader</legend>
-  
-  <p class="small" style="margin-top:45%">Drag &amp; drop files inside dashed region<br><i>or</i></p>
-  <input id="upload_image_logo" data-post-name="image_logo"
-    data-post-url="https://someplace.com/image/uploads/logos/"
-    class="position-absolute invisible" type="file" multiple />
-  <input type="file" class="position-absolute invisible" id="openFileInput" multiple>
-  <label class="btn btn-info mb-3" for="openFileInput" style="min-width:8rem">Select
-    Files</label>
-  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"
-    style="display:inline!important"></div>
-  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"></div>`
-
-  document.getElementById("c").parentElement.insertBefore(uploadElement, document.getElementById("c").parentElement.firstChild);
-
-})();
-
-const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
-openFileInputElem.addEventListener('change',  (event) => {
-  if (event.target.files.length == 0) return;
-
-  importFiles(event.target.files);
-  // This should run after importFiles so if that function fails the dropzone is not removed
-  document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
-});
-
-
-globalThis.zone = document.getElementById("uploadDropZone");
-
-zone.addEventListener('dragover', (event) => {
-  event.preventDefault();
-  event.target.classList.add('highlight');
-});
-
-zone.addEventListener('dragleave', (event) => {
-  event.preventDefault();
-  event.target.classList.remove('highlight');
-});
-
-// This is where the drop is handled.
-zone.addEventListener('drop', async (event) => {
-  // Prevent navigation.
-  event.preventDefault();
-  let items = await getAllFileEntries(event.dataTransfer.items);
-
-  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => x.file(resolve, reject))));
-  const files = filesPromises.map(x => x.value);
-
-  if (files.length == 0) return;
-
-  event.target.classList.remove('highlight');
-
-  importFiles(files);
-
-  // This should run after importFiles so if that function fails the dropzone is not removed
-  document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
-
-});
-
-const highlight = event => event.target.classList.add('highlight');
-
-const unhighlight = event => event.target.classList.remove('highlight');
-
-zone.addEventListener(event, highlight, false);
-
-['dragenter', 'dragover'].forEach(event => {
-    zone.addEventListener(event, highlight, false);
-});
-
-// Highlighting drop area when item is dragged over it
-['dragenter', 'dragover'].forEach(event => {
-    zone.addEventListener(event, highlight, false);
-});
-
-['dragleave', 'drop'].forEach(event => {
-    zone.addEventListener(event, unhighlight, false);
-});
