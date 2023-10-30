@@ -1255,12 +1255,9 @@ export async function createTesseractScheduler(workerN, config = null) {
 
   scheduler["workers"] = [];
   for (let i = 0; i < workerN; i++) {
-    const w = await Tesseract.createWorker(workerOptions);
-    await w.loadLanguage('eng');
-    await w.initialize('eng', allConfig.tessedit_ocr_engine_mode);
+    const w = await Tesseract.createWorker("eng", allConfig.tessedit_ocr_engine_mode, workerOptions);
     await w.setParameters(allConfig);
     scheduler["workers"][i] = w;
-
     scheduler.addWorker(w);
   }
 
