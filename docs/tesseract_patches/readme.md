@@ -1,1 +1,0 @@
-The included build of Tesseract contains various patches and edits versus the base project.  These are described in this folder.  This includes some but not all the changes implemented for Tesseract.js in general, which are described in the [Tesseract.js-core](https://github.com/naptha/tesseract.js-core) repo. 
