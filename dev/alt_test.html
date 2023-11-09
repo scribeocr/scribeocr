@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas Text Example</title>
+    <link href="../fonts/DMSans-Regular.woff" rel="stylesheet">
+    <style>
+        /* Make sure the canvas text will be rendered using Open Sans */
+        .dm-sans-default {
+            font-family: 'DMSans', sans-serif;
+            font-size: 24px;
+        }
+
+        .dm-sans-alt {
+            font-family: 'DMSans', sans-serif;
+            font-size: 24px;
+            /* You can adjust the size as needed */
+            font-feature-settings: 'ss03' 1; 
+        }
+    </style>
+        <script type="module" src="alt_test.js"></script>
+
+</head>
+
+<body>
+    <div class="dm-sans-default">
+        Test g
+    </div>
+
+    <div class="dm-sans-alt">
+        Test g
+    </div>
+
+    <canvas id="c" class="dm-sans-default" width="800" height="400"></canvas>
+    <canvas id="d" class="dm-sans-alt" width="800" height="400"></canvas>
+
+</body>
+
+</html>
