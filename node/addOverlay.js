@@ -1,4 +1,5 @@
 // Code for adding visualization to OCR output
+// Use: `node addOverlay.js [PDF file] [OCR data file] [output directory]`
 
 import fs from "fs";
 import path from "path";
@@ -13,9 +14,8 @@ import { loadFontFamily } from "../js/fontUtils.js";
 import { initOptimizeFontWorker, optimizeFont3 } from "../js/optimizeFont.js";
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "../js/fontStatistics.js";
 
-globalThis.window = {};
-const { default: Tesseract } = await import('../tess/tesseract.es6.js');
-globalThis.window = undefined;
+import Tesseract from 'tesseract.js';
+
 
 
 globalThis.Tesseract = Tesseract;
@@ -23,10 +23,13 @@ globalThis.Tesseract = Tesseract;
 globalThis.self = globalThis;
 await import('../lib/opentype.js');
 
-globalThis.globalSettings = {
-    simdSupport: false, // This should be edited for any code that actually uses Tesseract
-    defaultFont: "Libre Baskerville"
-  }
+  // Object that keeps track of various global settings
+  globalThis.globalSettings = {
+    simdSupport: false,
+    defaultFont: "SerifDefault",
+    defaultFontSans: "NimbusSanL",
+    defaultFontSerif: "NimbusRomNo9L"
+  }  
 
 globalThis.fontMetricObjsMessage = [];
 
@@ -34,15 +37,15 @@ const args = process.argv.slice(2);
 
 async function main() {
     let hocrStrFirst = fs.readFileSync(args[1], 'utf8');
-    if (!hocrStrFirst) throw "Could not read file: " + args[0];
+    if (!hocrStrFirst) throw "Could not read file: " + args[1];
 
     const backgroundArg = args[0];
     const outputDir = args[2] || "./";
     const outputPath = outputDir + "/" + path.basename(backgroundArg).replace(/\.\w{1,5}$/i, "_vis.pdf");
 
-    loadFontFamily("Open Sans");
-    loadFontFamily("Libre Baskerville");
-
+    loadFontFamily("SansDefault");
+    loadFontFamily("SerifDefault");
+    
     const backgroundPDF = /pdf$/i.test(backgroundArg);
 
   

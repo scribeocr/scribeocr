@@ -60,13 +60,15 @@ import { setDefaults } from "./js/setDefaults.js";
 
 import { ocr } from "./js/ocrObjects.js";
 
-import { printSelectedWords, downloadCanvas } from "./js/debug.js";
+import { printSelectedWords, downloadCanvas, evalSelectedLine } from "./js/debug.js";
 
 const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
 const debugPrintWordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWords'));
+const debugEvalLineElem = /** @type {HTMLInputElement} */(document.getElementById('debugEvalLine'));
 
 debugPrintWordsElem.addEventListener('click', printSelectedWords);
 debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
+debugEvalLineElem.addEventListener('click', evalSelectedLine);
 
 
 // Opt-in to bootstrap tooltip feature
@@ -159,9 +161,10 @@ globalThis.inputDataModes = {
 // Object that keeps track of various global settings
 globalThis.globalSettings = {
   simdSupport: false,
-  defaultFont: "Libre Baskerville"
+  defaultFont: "SerifDefault",
+  defaultFontSans: "NimbusSanL",
+  defaultFontSerif: "NimbusRomNo9L"
 }
-
 
 
 /**
@@ -319,8 +322,8 @@ globalThis.runOnLoad = function () {
   // globalThis.runOnLoadRun = true;
 
   // Load fonts
-  loadFontFamily("Open Sans");
-  loadFontFamily("Libre Baskerville");
+  loadFontFamily("SansDefault");
+  loadFontFamily("SerifDefault");
 
   const debugEngineVersionElem = /** @type {HTMLInputElement} */(document.getElementById('debugEngineVersion'));
 
@@ -525,13 +528,12 @@ document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedW
 document.getElementById('addWord')?.addEventListener('click', addWordClick);
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
-document.getElementById('zoomMinus')?.addEventListener('click', () => { changeZoom('minus') });
 const zoomInputElem = /** @type {HTMLInputElement} */(document.getElementById('zoomInput'));
-zoomInputElem.addEventListener('change', (event) => { changeZoom(zoomInputElem.value) });
-document.getElementById('zoomPlus')?.addEventListener('click', () => { changeZoom('plus') });
+zoomInputElem.addEventListener('change', (event) => { changeZoom(parseFloat(zoomInputElem.value)) });
 
-// const displayFontElem = /** @type {HTMLInputElement} */(document.getElementById('displayFont'));
-// displayFontElem.addEventListener('change', (event) => { changeDisplayFont(displayFontElem.value) });
+const zoomValueIncrement = 500;
+document.getElementById('zoomMinus')?.addEventListener('click', () => { changeZoom(parseFloat(zoomInputElem.value) - zoomValueIncrement) });
+document.getElementById('zoomPlus')?.addEventListener('click', () => { changeZoom(parseFloat(zoomInputElem.value) + zoomValueIncrement) });
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
 optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked) });
@@ -1062,22 +1064,20 @@ export function setCurrentHOCR(x) {
 
 }
 
-
+/**
+ * Adjusts the zoom level for a page.
+ *
+ * @param {number} value - Desired zoom level
+ */
 function changeZoom(value) {
 
-  let currentValue = parseFloat(zoomInputElem.value);
-
-  if (value == "minus") {
-    value = currentValue - 500;
-  } else if (value == "plus") {
-    value = currentValue + 500;
-  }
+  if (isNaN(value)) return;
 
   // Set min/max values to avoid typos causing unexpected issues
   value = Math.max(value, 500);
   value = Math.min(value, 5000);
 
-  zoomInputElem.value = value;
+  zoomInputElem.value = String(value);
   renderPageQueue(currentPage.n, "screen", false);
 }
 
@@ -2063,6 +2063,10 @@ function addWordClick() {
   });
 }
 
+/** @type {Array<ocrPage>} */ 
+globalThis.hocrCurrent = [];
+
+
 // Resets the environment.
 globalThis.fontMetricObjsMessage = [];
 
@@ -2071,7 +2075,6 @@ async function clearFiles() {
   currentPage.n = 0;
 
   globalThis.imageAll = {};
-  /** @type {Array<ocrPage>} */ 
   globalThis.hocrCurrent = [];
   globalThis.layout = [];
   globalThis.fontMetricsObj = {};
@@ -2508,6 +2511,13 @@ async function initMuPDFScheduler(file, workers = 3) {
   }
 }
 
+/**
+ * Loads an image from a given URL and sets it to a specified HTML element.
+ * 
+ * @param {string} url - The URL of the image to load.
+ * @param {HTMLImageElement} elem - The image element where the loaded image will be set.
+ * @returns {Promise<HTMLImageElement>} A promise that resolves with the image element when the image is loaded successfully.
+ */
 async function loadImage(url, elem) {
   return new Promise((resolve, reject) => {
     elem.onload = () => resolve(elem);
@@ -2516,13 +2526,24 @@ async function loadImage(url, elem) {
   });
 }
 
-// Function that renders images and stores them in cache array (or returns early if the requested image already exists).
-// This function contains 2 distinct image rendering steps:
-// 1. Pages are rendered from .pdf to .png [either color or grayscale] using muPDF
-// 1. Existing .png images are processed (currently rotation and/or thresholding) using Tesseract/Leptonica
-export async function renderPDFImageCache(pagesArr, rotate = null, progress = null) {
 
-  const colorMode = colorModeElem.value;
+/**
+ * Renders images and stores them in cache array (or returns early if the requested image already exists).
+ * Contains 2 distinct image rendering steps:
+ * 1. Pages are rendered from .pdf to .png [either color or grayscale] using muPDF
+ * 2. Existing .png images are processed (currently rotation and/or thresholding) using Tesseract/Leptonica
+ * 
+ * @async
+ * @export
+ * @param {number[]} pagesArr - Array of page numbers to render 
+ * @param {boolean|null} [rotate=null] - Whether to apply rotation to the images (true/false), or no preference (null).
+ * @param {Object|null} [progress=null] - A progress tracking object, which should have an `increment` method.
+ * @param {string|null} [colorMode=null] - Color mode ("color", "gray", or "binary"). If left `null`, defaults to option selected in the UI.
+ * @returns {Promise<void>} A promise that resolves when all the images have been processed.
+ */
+export async function renderPDFImageCache(pagesArr, rotate = null, progress = null, colorMode = null) {
+
+  colorMode = colorMode || colorModeElem.value;
   const colorName = colorMode == "binary" ? "binary" : "native";
 
   await Promise.allSettled(pagesArr.map((n) => {
@@ -2743,7 +2764,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
       canvas.clear();
 
       if (imgDims != null) {
-        let zoomFactor = Math.min(parseFloat(/** @type {HTMLInputElement} */(document.getElementById('zoomInput')).value) / imgDims[1], 1);
+        let zoomFactor = parseFloat(zoomInputElem.value) / imgDims[1];
         canvas.setHeight(imgDims[0] * zoomFactor);
         canvas.setWidth(imgDims[1] * zoomFactor);
         canvas.setZoom(zoomFactor);
@@ -2802,7 +2823,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   }
 
   if (imgDims != null) {
-    let zoomFactor = Math.min(parseFloat(/** @type {HTMLInputElement} */(document.getElementById('zoomInput')).value) / imgDims[1], 1);
+    let zoomFactor = parseFloat(zoomInputElem.value) / imgDims[1];
     canvas.setHeight(imgDims[0] * zoomFactor);
     canvas.setWidth(imgDims[1] * zoomFactor);
     canvas.setZoom(zoomFactor);

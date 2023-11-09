@@ -47,6 +47,15 @@ export async function optimizeFont2(fontFamily) {
 
 	if (!fontDataOptimized[fontFamily]) fontDataOptimized[fontFamily] = {};
 
+	// fontFamily is assumed to be either "SerifDefault" or "SansDefault"
+	// fontFamilySrc indicates which font to use as a starting point for optimization.
+	let fontFamilySrc = fontFamily;
+	if (fontFamily == "SerifDefault") {
+		fontFamilySrc = globalThis.globalSettings.defaultFontSerif;
+	} else if (fontFamily == "SansDefault") {
+		fontFamilySrc = globalThis.globalSettings.defaultFontSans;
+	}
+
 	await Promise.allSettled(["normal", "italic", "small-caps"].map(async (style) => {
 		// Optimize font if there are metrics to do so
 		if (fontMetricI[style]) {
@@ -54,11 +63,11 @@ export async function optimizeFont2(fontFamily) {
 			let fontSrc;
 			if (style == "small-caps") {
 				// fontSrc = globalThis.fontObjRaw[fontFamily]["small-caps"];
-				fontSrc = relToAbsPath("../fonts/" + fontFiles[fontFamily + "-small-caps"]);
+				fontSrc = relToAbsPath("../fonts/" + fontFiles[fontFamilySrc + "-small-caps"]);
 			} else if (style == "italic") {
-				fontSrc = relToAbsPath("../fonts/" + fontFiles[fontFamily + "-italic"]);
+				fontSrc = relToAbsPath("../fonts/" + fontFiles[fontFamilySrc + "-italic"]);
 			} else {
-				fontSrc = relToAbsPath("../fonts/" + fontFiles[fontFamily]);
+				fontSrc = relToAbsPath("../fonts/" + fontFiles[fontFamilySrc]);
 			}
 
 			const fontOptObj = await globalThis.optimizeFontScheduler.addJob("optimizeFont", { fontData: fontSrc, fontMetrics: fontMetricI[style], style: style });

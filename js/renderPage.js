@@ -20,8 +20,6 @@ const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById
 
 export async function renderPage(canvas, page, defaultFont, imgDims, angle, fontObj, leftAdjX) {
 
-  let ctx = canvas.getContext('2d');
-
   const layoutMode = globalThis.layoutMode || false;
 
   // objectCaching slows down page render speeds, and is generally not needed.
@@ -50,14 +48,6 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
     const linebox = lineObj.bbox;
     const baseline = lineObj.baseline;
     lineFontSize = (await ocr.calcLineFontSize(lineObj)) ||  lineFontSize;
-
-    // If none of the above conditions are met (not enough info to calculate font size), the font size from the previous line is reused.
-    ctx.font = 1000 + 'px ' + defaultFont;
-    //const AMetrics = ctx.measureText("A");
-    const oMetrics = ctx.measureText("o");
-    //const jMetrics = ctx.measureText("gjpqy");
-    ctx.font = lineFontSize + 'px ' + defaultFont;
-
 
     const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
 
@@ -162,15 +152,6 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
 
       let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
 
-        // The function fontBoundingBoxDescent currently is not enabled by default in Firefox.
-        // Can return to this simpler code if that changes.
-        // https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics/fontBoundingBoxDescent
-        //let fontDesc = (jMetrics.fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
-
-        let fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
-
-        let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
-
         let baselineWord;
         let visualBaseline;
         if (wordSup || wordDropCap) {
@@ -205,8 +186,6 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
           visualBaseline = linebox[3] + baseline[1] + angleAdjLine.y;
         }
 
-        const top = visualBaseline + fontDesc;
-
         const visualLeft = box[0] + angleAdjXWord + leftAdjX;
         const left = visualLeft - wordLeftBearing;
 
@@ -217,11 +196,10 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
 
         let textbox = new fabric.IText(wordText, {
           left: left,
-          //top: y,
-          top: top,
+          top: visualBaseline,
           selectable: !layoutMode,
           leftOrig: left,
-          topOrig: top,
+          topOrig: visualBaseline,
           baselineAdj: 0,
           wordSup: wordSup,
           originY: "bottom",
@@ -257,7 +235,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
         if (renderWordBoxes) {
           let rect = new fabric.Rect({
             left: left,
-            top: top,
+            top: visualBaseline,
             originY: "bottom",
             width: box_width,
             height: box_height,

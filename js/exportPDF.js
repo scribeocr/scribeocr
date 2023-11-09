@@ -92,9 +92,14 @@ const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\
 
 export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
+  // Only "SansDefault" and "SerifDefault" are currently considered for inclusion in PDF export,
+  // as these are the only 2 fonts actually used for printing OCR text. 
+  // All other font objects are used for font optimization purposes. 
+  const exportFontObj = { "SansDefault" : globalThis.fontObj["SansDefault"], "SerifDefault" : globalThis.fontObj["SerifDefault"]};
+
   // Get count of various objects inserted into pdf
   let fontCount = 0;
-  for (const [familyKey, familyObj] of Object.entries(globalThis.fontObj)) {
+  for (const [familyKey, familyObj] of Object.entries(exportFontObj)) {
     for (const [key, value] of Object.entries(familyObj)) {
       fontCount += 1;
     }
@@ -121,7 +126,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
   let fontI = 0;
   let pdfFonts = {};
   let pdfFontsStr = "";
-  for (const [familyKey, familyObj] of Object.entries(globalThis.fontObj)) {
+  for (const [familyKey, familyObj] of Object.entries(exportFontObj)) {
     pdfFonts[familyKey] = {};
     for (const [key, value] of Object.entries(familyObj)) {
       const font = await value;
@@ -317,9 +322,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     const lineTopAdj = linebox[3] + baseline[1] + angleAdjYLine;
 
     if (rotateText) {
-      textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
+      textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj + 1) + " Tm\n";
     } else {
-      textStream += String(1) + " " + String(0) + " " + String(0) + " " + String(1) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj) + " Tm\n";
+      textStream += String(1) + " " + String(0) + " " + String(0) + " " + String(1) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj + 1) + " Tm\n";
     }
 
     lineOrigin[0] = lineLeftAdj;

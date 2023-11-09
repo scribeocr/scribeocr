@@ -147,20 +147,7 @@ export async function updateWordCanvas(wordI) {
 
   wordI.left = wordI.visualLeft - wordMetrics["leftSideBearing"] - groupOffsetLeft;
 
-  // 2. Re-calculate vertical position given potentially new descender metric
-  const groupOffsetTop = wordI?.group?.ownMatrixCache?.value[5] || 0;
-
-  ctx.font = 1000 + 'px ' + globalThis.defaultFont;
-  const oMetrics = ctx.measureText("o");
-
-  const fontObjI = await globalThis.fontObj[wordI.fontFamilyLookup][wordI.fontStyleLookup];
-  let fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
-
-  let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordI.fontSize / 1000);
-
-  wordI.top = wordI.visualBaseline + fontDesc - groupOffsetTop;
-
-  // 3. Re-calculate character spacing (if the word has multiple letters)
+  // 2. Re-calculate character spacing (if the word has multiple letters)
   if(wordI.text.length > 1){
     const visualWidthNew = wordMetrics["visualWidth"];
     const kerning = (wordI.visualWidth - visualWidthNew) / (wordI.text.length - 1);
@@ -244,14 +231,10 @@ export function adjustBaselineRangeChange(value){
       continue;
     }
 
-    // Adjust bbox for line
+    // Adjust baseline offset for line
     if (i === 0) {
-      wordObj.line.bbox[1] = wordObj.line.bbox[1] + valueChange;
-      wordObj.line.bbox[3] = wordObj.line.bbox[3] + valueChange;
+      wordObj.line.baseline[1] = wordObj.line.baseline[1] + valueChange;
     }
-
-    wordObj.bbox[1] = wordObj.bbox[1] + valueChange;
-    wordObj.bbox[3] = wordObj.bbox[3] + valueChange;
 
   }
 

@@ -1,6 +1,6 @@
 import { round3, getRandomAlphanum } from "./miscUtils.js";
 import { ocr } from "./ocrObjects.js";
-import { createTesseractScheduler } from "../main.js";
+import { createTesseractScheduler, renderPDFImageCache } from "../main.js";
 import { calcCharSpacing } from "./textUtils.js";
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
@@ -8,10 +8,6 @@ const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById(
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreCap"));
 
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
-
-// Quick fix to get VSCode type errors to stop
-// Long-term should see if there is a way to get types to work with fabric.js
-var fabric = globalThis.fabric;
 
 /**
  * Crop the image data the area containing `words` and render to the `globalThis.canvasAlt` canvas.
@@ -83,10 +79,12 @@ globalThis.drawWordActual = async function(words, view = false) {
 
   const angleAdjXWord = Math.abs(globalThis.pageMetricsObj.angleAll[n]) >= 1 ? angleAdjXLine + (1 - cosAngle) * (wordBoxUnion[0] - linebox[0]) : angleAdjXLine;
 
-  // If provided, we crop to the dimensions of the font (fontAsc and fontDesc) rather than the image bounding box.
+  // We crop to the dimensions of the font (fontAsc and fontDesc) rather than the image bounding box.
   const height =  fontAsc && fontDesc ? fontAsc + fontDesc : wordBoxUnion[3] - wordBoxUnion[1] + 1;
   const width = wordBoxUnion[2] - wordBoxUnion[0] + 1;
-  const cropY = fontAsc ? linebox[3] + baseline[1] - fontAsc + angleAdjYLine-1 : linebox[1];
+
+  const cropY = linebox[3] + baseline[1] - fontAsc - 1;
+  const cropYAdj = cropY + angleAdjYLine;
 
   const imgElem = await globalThis.imageAll["binary"][n];
 
@@ -96,7 +94,7 @@ globalThis.drawWordActual = async function(words, view = false) {
   globalThis.canvasAlt.height = height;
   globalThis.canvasAlt.width = width;
 
-  ctxAlt.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
+  ctxAlt.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
 
 
   if (view) {
@@ -108,12 +106,12 @@ globalThis.drawWordActual = async function(words, view = false) {
     globalThis.canvasComp2.height = height;
     globalThis.canvasComp2.width = width;
 
-    ctxComp0.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
-    ctxComp1.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
-    ctxComp2.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropY, width, height, 0, 0, width, height);
+    ctxComp0.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
+    ctxComp1.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
+    ctxComp2.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
   }
 
-  return;
+  return cropY;
 
 }
 
@@ -132,7 +130,7 @@ globalThis.printWordOnCanvas = async (ctx, text, font, style, size, boxWidth, le
   
   ctx.fillStyle = fillStyle;
 
-  ctx.textBaseline = "bottom";
+  ctx.textBaseline = "alphabetic";
 
   const fontObj = await globalThis.fontObj[font][style];
 
@@ -160,10 +158,11 @@ globalThis.printWordOnCanvas = async (ctx, text, font, style, size, boxWidth, le
 /**
  * @param {ocrWord} word
  * @param {number} offsetX
+ * @param {number} cropY
  * @param {number} lineFontSize
  * @param {?string} altText
  */
-globalThis.drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, altText = null, ctxView = null){
+globalThis.drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFontSize = 0, altText = null, ctxView = null){
 
   lineFontSize = lineFontSize || (await ocr.calcLineFontSize(word.line)) || 10;
 
@@ -186,8 +185,6 @@ globalThis.drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, 
     ctxAlt.font = word.style + " " + 1000 + 'px ' + wordFontFamily;
   }
 
-  const oMetrics = ctxAlt.measureText("o");
-
   // Set canvas to correct font and size
   if (word.style == "small-caps") {
     ctxAlt.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
@@ -195,69 +192,64 @@ globalThis.drawWordRender = async function(word, offsetX = 0, lineFontSize = 0, 
     ctxAlt.font = word.style + " " + wordFontSize + 'px ' + wordFontFamily;
   }
 
-
   const fontObjI = await globalThis.fontObj[wordFontFamily][word.style];
 
   // Calculate font glyph metrics for precise positioning
-  const wordLastGlyphMetrics = fontObjI.charToGlyph(wordText.substr(-1)).getMetrics();
   const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
 
   const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
-  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing * (wordFontSize / fontObjI.unitsPerEm);
 
-  const wordWidth1 = ctxAlt.measureText(wordText).width;
-  const wordWidth = wordWidth1 - wordRightBearing - wordLeftBearing;
+  let baselineY = word.line.bbox[3] + word.line.baseline[1];
 
-  const boxWidth = word.bbox[2] - word.bbox[0];
-
-  const kerning = wordText.length > 1 ? round3((boxWidth - wordWidth) / (wordText.length - 1)) : 0;
-
-  const fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
-  const fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
-
-  const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-  const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-
-  let top;
   if (word.sup) {
-    let fontDescWord = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (wordFontSize / 1000);
 
     const wordboxXMid = word.bbox[0] + (word.bbox[2] - word.bbox[0]) / 2;
 
-    const baselineY = word.line.bbox[3] + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox[0]);
+    const baselineYWord = word.line.bbox[3] + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox[0]);
 
-    top = fontDesc + fontAsc - (baselineY - word.bbox[3]) - (fontDesc - fontDescWord);  
+    baselineY = baselineY - (baselineYWord - word.bbox[3]);
   
-  } else {
-    top = fontDesc + fontAsc;  
-  }
+  } 
+
+  const y = baselineY - cropY;
 
   const left = 1 - wordLeftBearing + offsetX;
 
-  await printWordOnCanvas(ctxAlt, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, top);
+  await printWordOnCanvas(ctxAlt, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, y);
 
   if (ctxView) {
-    await printWordOnCanvas(ctxView, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, top, "red");
+    await printWordOnCanvas(ctxView, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, y, "red");
   }
-
 
 }
   
 /**
- * @param {Array<ocrWord>} wordsA
- * @param {Array<ocrWord>} wordsB
- * @param {boolean} view
+ * Evaluate the accuracy of OCR results by comparing visually with input image.
+ * Optionally, an alternative array of OCR results (for the same underlying text)
+ * can be provided for comparison purposes.
+ * @param {Array<ocrWord>} wordsA - Array of words  
+ * @param {Array<ocrWord>} wordsB - Array of words for comparison.  Optional. 
+ * @param {boolean} view - Draw results on debugging canvases
+ * @param {boolean} useAFontSize - Use font size from `wordsA` when printing `wordsB`
+ *   This is useful when the metrics from `wordsA` are considered systematically more reliable,
+ *   such as when `wordsA` are from Tesseract Legacy and `wordsB` are from Tesseract LSTM.
  */
-export async function evalWords(wordsA, wordsB = [], view = false){
+export async function evalWords(wordsA, wordsB = [], view = false, useAFontSize = true, useABaseline = true){
 
   const n = wordsA[0].line.page.n;
 
   const cosAngle = Math.cos(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 0;
 
-  const lineFontSize = await ocr.calcLineFontSize(wordsA[0].line);
+  const lineFontSizeA = await ocr.calcLineFontSize(wordsA[0].line);
 
-  if (!lineFontSize) return [1,1];
+  if (!lineFontSizeA) return [1,1];
+
+  let lineFontSizeB = lineFontSizeA;
+  if (!useAFontSize && wordsB?.[0]) {
+    const lineFontSizeBCalc = await ocr.calcLineFontSize(wordsB[0].line);
+    lineFontSizeB = lineFontSizeBCalc || lineFontSizeA;
+  }
 
   const wordsABox = wordsA.map(x => x.bbox);
   const wordsBBox = wordsB.map(x => x.bbox);
@@ -273,7 +265,9 @@ export async function evalWords(wordsA, wordsB = [], view = false){
   
   // All words are assumed to be on the same line
   const linebox = wordsA[0].line.bbox;
-  const baseline = wordsA[0].line.baseline;
+  const baselineA = wordsA[0].line.baseline;
+
+  const baselineB = useABaseline ? baselineA : wordsB[0].line.baseline;
 
   ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
 
@@ -284,14 +278,13 @@ export async function evalWords(wordsA, wordsB = [], view = false){
   }
 
   // Draw the actual words (from the user-provided image)
-  await drawWordActual([...wordsA, ...wordsB], true);
+  const cropY = await drawWordActual([...wordsA, ...wordsB], true);
 
   const imageDataActual = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
 
   ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
   ctxAlt.fillStyle = "white";
   ctxAlt.fillRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
-
 
   let ctxView = view ? ctxComp1 : null;
 
@@ -301,7 +294,7 @@ export async function evalWords(wordsA, wordsB = [], view = false){
   for (let i=0;i<wordsA.length;i++) {
     const word = wordsA[i];
     const wordIBox = word.bbox;
-    const baselineY = linebox[3] + baseline[1] + baseline[0] * (wordIBox[0] - linebox[0]);
+    const baselineY = linebox[3] + baselineA[1] + baselineA[0] * (wordIBox[0] - linebox[0]);
     if (i == 0) {
       x0 = wordIBox[0];
       y0 = baselineY;
@@ -311,7 +304,7 @@ export async function evalWords(wordsA, wordsB = [], view = false){
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-    await drawWordRender(word, offsetX, lineFontSize, null, ctxView);
+    await drawWordRender(word, offsetX, cropY, lineFontSizeA, null, ctxView);
   }
 
   const imageDataExpectedA = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
@@ -352,7 +345,7 @@ export async function evalWords(wordsA, wordsB = [], view = false){
       // Set style to whatever it is for wordsA.  This is based on the assumption that "A" is Tesseract Legacy and "B" is Tesseract LSTM (which does not have useful style info).
       word.style = wordsA[0].style
   
-      const baselineY = linebox[3] + baseline[1] + baseline[0] * (word.bbox[0] - linebox[0]);
+      const baselineY = linebox[3] + baselineB[1] + baselineB[0] * (word.bbox[0] - linebox[0]);
       if (i == 0) {
         x0 = word.bbox[0];
         y0 = baselineY;
@@ -362,7 +355,7 @@ export async function evalWords(wordsA, wordsB = [], view = false){
   
       const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
   
-      await drawWordRender(word, offsetX, lineFontSize, null, ctxView);
+      await drawWordRender(word, offsetX, cropY, lineFontSizeB, null, ctxView);
     }
   
     const imageDataExpectedB = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
@@ -1272,3 +1265,141 @@ export async function checkWords(wordsA, view = false){
   return wordTextA == wordTextB;
 
 }
+
+export async function evalOverlapDocument() {
+
+  // Render binarized versions of images
+  await renderPDFImageCache(Array.from({ length: globalThis.imageAll["native"].length + 1 }, (v, k) => k), null, null, "binary");
+
+  let metricSum = 0;
+  let wordCt = 0;
+
+  for (let i=0; i<globalThis.hocrCurrent.length; i++) {
+    const ocrPageI = globalThis.hocrCurrent[i];
+    for (let j=0; j<ocrPageI.lines.length; j++) {
+      const ocrLineJ = ocrPageI.lines[j];
+      const metricJ = await evalWords(ocrLineJ.words, [], false);
+      metricSum = metricSum + (metricJ[0] * ocrLineJ.words.length);
+      wordCt = wordCt + ocrLineJ.words.length;
+    }
+  }
+
+  return metricSum / wordCt;
+
+}
+
+globalThis.evalOverlapDocument = evalOverlapDocument;
+
+export async function adjustFontSizesDocument() {
+
+  // Render binarized versions of images
+  await renderPDFImageCache(Array.from({ length: globalThis.imageAll["native"].length + 1 }, (v, k) => k), null, null, "binary");
+
+  let improveCt = 0;
+  let totalCt = 0;
+
+  for (let i=0; i<globalThis.hocrCurrent.length; i++) {
+    const ocrPageI = globalThis.hocrCurrent[i];
+    for (let j=0; j<ocrPageI.lines.length; j++) {
+      const ocrLineJ = ocrPageI.lines[j];
+
+      const ocrLineJClone = ocr.cloneLine(ocrLineJ);
+      const fontSizeBase = await ocr.calcLineFontSize(ocrLineJClone);
+      if (!fontSizeBase) continue;
+      ocrLineJClone._size = fontSizeBase - 1;
+    
+      const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, false, false);
+
+      if (metricJ[1] < metricJ[0]) {
+        ocrLineJ._size = ocrLineJClone._size;
+        improveCt = improveCt + 1;
+        console.log("Reducing font size improves results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
+      } else {
+        console.log("Reducing font size does not improve results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
+      }
+
+      totalCt = totalCt + 1;
+
+    }
+  }
+
+  return improveCt / totalCt;
+
+}
+
+globalThis.adjustFontSizesDocument = adjustFontSizesDocument;
+
+export async function adjustBaselineDocument() {
+
+  // Render binarized versions of images
+  await renderPDFImageCache(Array.from({ length: globalThis.imageAll["native"].length + 1 }, (v, k) => k), null, null, "binary");
+
+  let improveCt = 0;
+  let totalCt = 0;
+
+  for (let i=0; i<globalThis.hocrCurrent.length; i++) {
+    const ocrPageI = globalThis.hocrCurrent[i];
+    for (let j=0; j<ocrPageI.lines.length; j++) {
+      const ocrLineJ = ocrPageI.lines[j];
+
+      const ocrLineJClone = ocr.cloneLine(ocrLineJ);
+      ocrLineJClone.baseline[1] = ocrLineJClone.baseline[1] + 1;
+    
+      const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, false, false, false);
+
+      if (metricJ[1] < metricJ[0]) {
+        ocrLineJ.baseline[1] = ocrLineJ.baseline[1] + 1;
+        improveCt = improveCt + 1;
+        console.log("Lowering baseline improves results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
+      } else {
+        console.log("Lowering baseline does not improve results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
+      }
+
+      totalCt = totalCt + 1;
+
+    }
+  }
+
+  return improveCt / totalCt;
+
+}
+
+globalThis.adjustBaselineDocument = adjustBaselineDocument;
+
+export async function compareBaselinesLine(ocrLineJ) {
+  const ocrLineJClone = ocr.cloneLine(ocrLineJ);
+  ocrLineJClone.baseline[1] = ocrLineJClone.baseline[1] + 1;
+
+  const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, true, false, false);
+  return metricJ;
+}
+
+
+
+export async function compareFontSizesLine(ocrLineJ) {
+  const ocrLineJClone = ocr.cloneLine(ocrLineJ);
+  const fontSizeBase = await ocr.calcLineFontSize(ocrLineJClone);
+  if (!fontSizeBase) return;
+  ocrLineJClone._size = fontSizeBase - 1;
+
+  const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, true, false);
+  return metricJ;
+}
+
+
+export async function compareFontsWords(wordsA, fontAlt, view = false) {
+
+  const wordsAClone = [];
+  for (let i=0; i<wordsA.length; i++) {
+    const wordAClone = ocr.cloneWord(wordsA[i]);
+    wordAClone.font = fontAlt;
+    wordsAClone.push(wordAClone);
+  }
+
+  const hocrError = await evalWords(wordsA, wordsAClone, view);
+
+  return hocrError;
+
+}
+
+globalThis.compareFontsWords = compareFontsWords;

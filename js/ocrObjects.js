@@ -93,6 +93,9 @@ const deletePageWord = (page, id) => {
     }
 }
 
+/**
+ * @param {ocrPage} page
+ */
 const getPageWords = (page) => {
     const words = [];
     for (let i=0; i<page.lines.length; i++) {
@@ -129,27 +132,32 @@ const getPageText = (page) => {
 // Therefore, the appropriate font size must be calculated using (1) the character stats from the input image and 
 // (2) stats regarding the font being used. 
 /**
+ * Get or calculate font size for line.
+ * This value will either be (1) a manually set value or (2) a value calculated using line metrics.
  * @param {ocrLine} line
  */
 const calcLineFontSize = async (line) => {
-    if (!line._size) {
-        // The font of the first word is used (if present), otherwise the default font is used.
-        const font = line.words[0]?.font || globalSettings.defaultFont;
 
-        // Font size is calculated using either (1) the ascender height or (2) the x-height.
-        // If both metrics are present both are used and the result is averaged.
-        if (line.ascHeight && !line.xHeight) {
-            line._size = await getFontSize(font, "normal", line.ascHeight, "A");
-        } else if (!line.ascHeight && line.xHeight) {
-            line._size = await getFontSize(font, "normal", line.xHeight, "o");
-        } else if (line.ascHeight && line.xHeight) {
-            const size1 = await getFontSize(font, "normal", line.ascHeight, "A");
-            const size2 = await getFontSize(font, "normal", line.xHeight, "o");
-            line._size = Math.floor((size1 + size2) / 2);
-        }
-    }
+    if (line._size) return line._size;
 
-    return line._size;
+    if (line._sizeCalc) return line._sizeCalc;
+
+    // The font of the first word is used (if present), otherwise the default font is used.
+    const font = line.words[0]?.font || globalSettings.defaultFont;
+
+    // Font size is calculated using either (1) the ascender height or (2) the x-height.
+    // If both metrics are present both are used and the result is averaged.
+    if (line.ascHeight && !line.xHeight) {
+        line._sizeCalc = await getFontSize(font, "normal", line.ascHeight, "A");
+    } else if (!line.ascHeight && line.xHeight) {
+        line._sizeCalc = await getFontSize(font, "normal", line.xHeight, "o");
+    } else if (line.ascHeight && line.xHeight) {
+        const size1 = await getFontSize(font, "normal", line.ascHeight, "A");
+        const size2 = await getFontSize(font, "normal", line.xHeight, "o");
+        line._sizeCalc = Math.floor((size1 + size2) / 2);
+    } 
+
+    return line._sizeCalc;
 
 }
 
@@ -232,8 +240,19 @@ export const ocr = {
  * @param {Array<number>} baseline
  * @param {number} ascHeight
  * @param {?number} xHeight
+ * @property {Array<number>} bbox - bounding box for line
+ * @property {Array<number>} baseline - baseline [slope, offset]
+ * @property {number} ascHeight - 
+ * @property {?number} xHeight - 
+ * @property {Array<ocrWord>} words - words in line
+ * @property {ocrPage} page - page line belongs to
+ * @property {?number} _sizeCalc - calculated line font size (using `ascHeight` and `xHeight`)
+ * @property {?number} _size - line font size set (set through other means)
+ *  `_size` should be preferred over `_sizeCalc` when both exist.
  */
 function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
+    // These inline comments are required for types to work correctly with VSCode Intellisense.
+    // Unfortunately, the @property tags above are not sufficient.
     /** @type {Array<number>} */ 
     this.bbox = bbox;
     /** @type {Array<number>} */ 
@@ -247,8 +266,10 @@ function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
     /** @type {ocrPage} */ 
     this.page = page;
     /** @type {?number} */ 
+    this._sizeCalc = null;
+    /** @type {?number} */
     this._size = null;
-}
+  }
 
 // Re-calculate bbox for line
 function calcLineBbox(line) {

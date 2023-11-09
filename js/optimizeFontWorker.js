@@ -16,6 +16,32 @@ function quantile(arr, ntile) {
   return arr1[mid];
 };
 
+function scaleGlyph(glyph, mult) {
+
+  for (let j = 0; j < glyph.path.commands.length; j++) {
+    let pointJ = glyph.path.commands[j];
+
+    if (pointJ.x != null) {
+      pointJ.x = Math.round(pointJ.x * mult);
+    }
+    if (pointJ.x1 != null) {
+      pointJ.x1 = Math.round(pointJ.x1 * mult);
+    }
+    if (pointJ.x2 != null) {
+      pointJ.x2 = Math.round(pointJ.x2 * mult);
+    }
+
+    if (pointJ.y != null) {
+      pointJ.y = Math.round(pointJ.y * mult);
+    }
+    if (pointJ.y1 != null) {
+      pointJ.y1 = Math.round(pointJ.y1 * mult);
+    }
+    if (pointJ.y2 != null) {
+      pointJ.y2 = Math.round(pointJ.y2 * mult);
+    }
+  }
+}
 
 // Creates optimized version of font based on metrics in `fontMetricsObj`
 async function optimizeFont(fontData, fontMetricsObj, type) {
@@ -31,35 +57,37 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
   // The presence of ligatures (such as ﬁ and ﬂ) is not properly accounted for when setting character metrics.
   workingFont.tables.gsub = null;
 
-
-  if (type == "normal" && fontMetricsObj.variants?.sans_g && /sans/i.test(workingFont.names.fontFamily.en)) {
-    const glyphI = workingFont.charToGlyph("g");
-    glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_g_single);
-  }
-  if (type == "normal" && fontMetricsObj.variants?.sans_1 && /sans/i.test(workingFont.names.fontFamily.en)) {
-    const glyphI = workingFont.charToGlyph("1");
-    glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_1_base);
-  }
-  if (type == "italic" && fontMetricsObj.variants?.serif_italic_y && /libre/i.test(workingFont.names.fontFamily.en)) {
-    const glyphI = workingFont.charToGlyph("y");
-    glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_y_min);
-  }
-  if (type == "italic" && fontMetricsObj.variants?.serif_open_k && /libre/i.test(workingFont.names.fontFamily.en)) {
-    const glyphI = workingFont.charToGlyph("k");
-    glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_k_open);
-  }
-  if (type == "italic" && fontMetricsObj.variants?.serif_pointy_vw && /libre/i.test(workingFont.names.fontFamily.en)) {
-    const glyphI1 = workingFont.charToGlyph("v");
-    glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_v_pointed);
-    const glyphI2 = workingFont.charToGlyph("w");
-    glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_w_pointed);
-  }
-  if (type == "italic" && fontMetricsObj.variants?.serif_stem_sans_pq && /libre/i.test(workingFont.names.fontFamily.en)) {
-    const glyphI1 = workingFont.charToGlyph("p");
-    glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_p_sans_stem);
-    const glyphI2 = workingFont.charToGlyph("q");
-    glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_q_sans_stem);
-  }
+  // TODO: Adapt glyph substitution to work with new Nimbus fonts
+  // if (type == "normal" && fontMetricsObj.variants?.sans_g && /sans/i.test(workingFont.names.fontFamily.en)) {
+  //   const glyphI = workingFont.charToGlyph("g");
+  //   glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_g_single);
+  //   scaleGlyph(glyphI, workingFont.unitsPerEm / 2000);
+  // }
+  // if (type == "normal" && fontMetricsObj.variants?.sans_1 && /sans/i.test(workingFont.names.fontFamily.en)) {
+  //   const glyphI = workingFont.charToGlyph("1");
+  //   glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_1_base);
+  //   scaleGlyph(glyphI, workingFont.unitsPerEm / 2000);
+  // }
+  // if (type == "italic" && fontMetricsObj.variants?.serif_italic_y && /libre/i.test(workingFont.names.fontFamily.en)) {
+  //   const glyphI = workingFont.charToGlyph("y");
+  //   glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_y_min);
+  // }
+  // if (type == "italic" && fontMetricsObj.variants?.serif_open_k && /libre/i.test(workingFont.names.fontFamily.en)) {
+  //   const glyphI = workingFont.charToGlyph("k");
+  //   glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_k_open);
+  // }
+  // if (type == "italic" && fontMetricsObj.variants?.serif_pointy_vw && /libre/i.test(workingFont.names.fontFamily.en)) {
+  //   const glyphI1 = workingFont.charToGlyph("v");
+  //   glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_v_pointed);
+  //   const glyphI2 = workingFont.charToGlyph("w");
+  //   glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_w_pointed);
+  // }
+  // if (type == "italic" && fontMetricsObj.variants?.serif_stem_sans_pq && /libre/i.test(workingFont.names.fontFamily.en)) {
+  //   const glyphI1 = workingFont.charToGlyph("p");
+  //   glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_p_sans_stem);
+  //   const glyphI2 = workingFont.charToGlyph("q");
+  //   glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_q_sans_stem);
+  // }
 
 
   let oGlyph = workingFont.charToGlyph("o").getMetrics();
@@ -343,8 +371,8 @@ addEventListener('message', async (e) => {
   }
 
   await import('../lib/opentype.js');
-  const { glyphAlts } = await import('../fonts/glyphs.js');
-  globalThis.glyphAlts = glyphAlts;
+  // const { glyphAlts } = await import('../fonts/glyphs.js');
+  // globalThis.glyphAlts = glyphAlts;
   
   const fontData = e.data[1].fontData;
   const fontMetrics = e.data[1].fontMetrics;

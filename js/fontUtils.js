@@ -14,7 +14,17 @@ const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact
 const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
 
-// Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font (Open Sans) or serif font (Libre Baskerville)
+
+/**
+ * Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font or serif font.
+ *
+ * @param {string} fontName - The name of the font to determine the type of. If the font name 
+ * is falsy, the function will return "Default".
+ * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault", 
+ * "SerifDefault", or "Default" (if the font type cannot be determined).
+ * @throws {console.log} - Logs an error message to the console if the font is unidentified and 
+ * it is not the "Default Metrics Font".
+ */
 export function determineSansSerif(fontName) {
 
   let fontFamily = "Default";
@@ -22,16 +32,16 @@ export function determineSansSerif(fontName) {
   if(fontName){
     // First, test to see if "sans" or "serif" is in the name of the font
     if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
-      fontFamily = "Open Sans";
+      fontFamily = "SansDefault";
     } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
-      fontFamily = "Libre Baskerville";
+      fontFamily = "SerifDefault";
 
     // If not, check against a list of known sans/serif fonts.
     // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
     } else if (serifFontsRegex.test(fontName)) {
-      fontFamily = "Libre Baskerville";
+      fontFamily = "SerifDefault";
     } else if (sansFontsRegex.test(fontName)) {
-      fontFamily = "Open Sans";
+      fontFamily = "SansDefault";
     } else if (fontName != "Default Metrics Font") {
       console.log("Unidentified font in XML: " + fontName);
     }
@@ -42,57 +52,66 @@ export function determineSansSerif(fontName) {
 }
 
 
-// Load all font styles for specified font family
+/**
+ * Asynchronously loads a font family based on the provided input parameters. 
+ * The function updates global font object storage with font data for normal, italic, 
+ * and small-caps styles. It also attempts to load the fonts in the browser.
+ *
+ * @param {string} fontFamily - The name of the font family to load. Accepts either 
+ * (1) "SansDefault"/"SerifDefault" or (2) the name of a font.
+ * @throws Will log an error to the console if any of the font loading promises are rejected.
+ * @returns {Promise<void>} A promise that resolves once all font styles have been loaded 
+ * and processed, or rejects if an error occurs during the loading process.
+ * @global
+ */
 export async function loadFontFamily(fontFamily) {
 
   const heightSmallCaps = 1;
 
-  let familyStr;
-  if (fontFamily.toLowerCase() == "open sans") {
-    familyStr = "Open Sans";
-  } else if (fontFamily.toLowerCase() == "libre baskerville") {
-    familyStr = "Libre Baskerville";
-  } else {
-    familyStr = fontFamily;
+  let familyStrInput = fontFamily; 
+  let familyStrOutput = fontFamily; 
+
+  // "SansDefault" and "SerifDefault" are not actually files--what gets loaded is determined by the settings.
+  if (familyStrInput == "SansDefault") {
+    familyStrInput = globalThis.globalSettings.defaultFontSans;
+  } else if (familyStrInput == "SerifDefault") {
+    familyStrInput = globalThis.globalSettings.defaultFontSerif;
   }
 
   if (!globalThis.fontObj) {
     globalThis.fontObj = {};
     globalThis.fontObjRaw = {};
   }
-  if (!globalThis.fontObj[familyStr]) {
-    globalThis.fontObj[familyStr] = {};
-    globalThis.fontObjRaw[familyStr] = {};
+  if (!globalThis.fontObj[familyStrOutput]) {
+    globalThis.fontObj[familyStrOutput] = {};
+  }
+  if (!globalThis.fontObjRaw[familyStrInput]) {
+    globalThis.fontObjRaw[familyStrInput] = {};
   }
 
   // Font data can either be stored in an array or found through a URL
-  const sourceItalic = globalThis.fontObjRaw[familyStr]["italic"] || relToAbsPath("../fonts/" + fontFiles[familyStr + "-italic"]);
-  const sourceNormal = globalThis.fontObjRaw[familyStr]["normal"] || relToAbsPath("../fonts/" + fontFiles[familyStr]);
-  const sourceSmallCaps = globalThis.fontObjRaw[familyStr]["small-caps"] || relToAbsPath("../fonts/" + fontFiles[familyStr + "-small-caps"]);
+  const sourceItalic = globalThis.fontObjRaw[familyStrInput]["italic"] || relToAbsPath("../fonts/" + fontFiles[familyStrInput + "-italic"]);
+  const sourceNormal = globalThis.fontObjRaw[familyStrInput]["normal"] || relToAbsPath("../fonts/" + fontFiles[familyStrInput]);
+  const sourceSmallCaps = globalThis.fontObjRaw[familyStrInput]["small-caps"] || relToAbsPath("../fonts/" + fontFiles[familyStrInput + "-small-caps"]);
 
+  if (!sourceItalic || !sourceNormal || !sourceSmallCaps) {
+    throw new Error('No input file or data detected.'); 
+  }
 
-  globalThis.fontObj[familyStr]["italic"] = loadFont(familyStr + "-italic", sourceItalic, true).then(async (x) => {
-    if (globalThis.document) await loadFontBrowser(familyStr, "italic", sourceItalic, true);
+  globalThis.fontObj[familyStrOutput]["italic"] = loadFont(familyStrInput + "-italic", sourceItalic, true).then(async (x) => {
+    if (globalThis.document) await loadFontBrowser(familyStrOutput, "italic", sourceItalic, true);
     return x;
   }, (x) => console.log(x));
-  globalThis.fontObj[familyStr]["normal"] = loadFont(familyStr, sourceNormal, true).then(async (x) => {
-    if (globalThis.document) await loadFontBrowser(familyStr, "normal", sourceNormal, true);
+  globalThis.fontObj[familyStrOutput]["normal"] = loadFont(familyStrInput, sourceNormal, true).then(async (x) => {
+    if (globalThis.document) await loadFontBrowser(familyStrOutput, "normal", sourceNormal, true);
     return x;
   }, (x) => console.log(x));
-  globalThis.fontObj[familyStr]["small-caps"] = loadFont(familyStr, sourceSmallCaps, true).then(async (x) => {
-    if (globalThis.document) await loadFontBrowser(familyStr, "small-caps", sourceSmallCaps, true);
+  globalThis.fontObj[familyStrOutput]["small-caps"] = loadFont(familyStrInput, sourceSmallCaps, true).then(async (x) => {
+    if (globalThis.document) await loadFontBrowser(familyStrOutput, "small-caps", sourceSmallCaps, true);
     return x;
   }, (x) => console.log(x));
 
-  // Most fonts do not include small caps variants, so we create our own using the normal variant as a starting point. 
-  // globalThis.fontObj[familyStr]["small-caps"] = createSmallCapsFont(sourceNormal, heightSmallCaps).then(async (x) => {
-  // globalThis.fontObj[familyStr]["small-caps"] = globalThis.optimizeFontScheduler.addJob("createSmallCapsFont", {fontData: sourceNormal, heightSmallCaps: heightSmallCaps}).then(async (x) => {
-  //   globalThis.fontObjRaw[familyStr]["small-caps"] = x.fontData;
-  //   loadFontBrowser(familyStr, "small-caps", globalThis.fontObjRaw[familyStr]["small-caps"], true);
-  //   return await loadFont(familyStr, globalThis.fontObjRaw[familyStr]["small-caps"], true);
-  // });
-
-  await Promise.allSettled([globalThis.fontObj[familyStr]["normal"], globalThis.fontObj[familyStr]["italic"], globalThis.fontObj[familyStr]["small-caps"]]);
+  await Promise.allSettled([globalThis.fontObj[familyStrOutput]["normal"], globalThis.fontObj[familyStrOutput]["italic"], globalThis.fontObj[familyStrOutput]["small-caps"]]);
 }
 
 // Load font as FontFace (used for displaying on canvas)
@@ -181,22 +200,34 @@ export async function loadFont(font, src, overwrite = false) {
 
   // Only load font if not already loaded
   if (overwrite || !globalThis.fontObj[familyStr][styleStr]) {
+    let workingFont;
+
     if (typeof (src) == "string") {
-      return opentype.load(src);
+      workingFont = await opentype.load(src);
     } else {
-      return opentype.parse(src, { lowMemory: false });
+      workingFont = await opentype.parse(src, { lowMemory: false });
     }
+
+    // Remove gsub table.  
+    // If this does not occur, Opentype.js will throw an error when writing the font 
+    // to a buffer for certain fonts (e.g. DM Sans), which happens during the write to PDF step. 
+    // Error: lookup type 6 format 2 is not yet supported.
+    workingFont.tables.gsub = null;
+
+    return workingFont;
+
   }
-  //await loadFontBrowser(familyStr, styleStr, src, overwrite = overwrite);
 }
 
 // Object containing location of various font files
-export const fontFiles = {"Libre Baskerville": "LibreBaskerville-Regular.woff",
-"Libre Baskerville-italic": "LibreBaskerville-Italic.woff",
-"Libre Baskerville-small-caps": "LibreBaskerville-SmallCaps.woff",
-"Open Sans": "OpenSans-Regular.woff",
-"Open Sans-italic": "OpenSans-Italic.woff",
-"Open Sans-small-caps": "OpenSans-SmallCaps.woff"};
+export const fontFiles = {
+"NimbusRomNo9L": "NimbusRomNo9L-Reg.woff",
+"NimbusRomNo9L-italic": "NimbusRomNo9L-RegIta.woff",
+"NimbusRomNo9L-small-caps": "NimbusRomNo9L-RegSmallCaps.woff",
+"NimbusSanL": "NimbusSanL-Reg.woff",
+"NimbusSanL-italic": "NimbusSanL-RegIta.woff",
+"NimbusSanL-small-caps": "NimbusSanL-RegSmallCaps.woff",
+};
 
 export function relToAbsPath(fileName) {
   const url = new URL(fileName, import.meta.url);

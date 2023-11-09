@@ -18,8 +18,8 @@ export function checkMultiFontMode(fontMetricsObj) {
   let defaultFontObs = 0;
   let namedFontObs = 0;
   if (fontMetricsObj["Default"]?.obs) {defaultFontObs = defaultFontObs + fontMetricsObj["Default"]?.obs};
-  if (fontMetricsObj["Libre Baskerville"]?.obs) {namedFontObs = namedFontObs + fontMetricsObj["Libre Baskerville"]?.obs};
-  if (fontMetricsObj["Open Sans"]?.obs) {namedFontObs = namedFontObs + fontMetricsObj["Open Sans"]?.obs};
+  if (fontMetricsObj["SerifDefault"]?.obs) {namedFontObs = namedFontObs + fontMetricsObj["SerifDefault"]?.obs};
+  if (fontMetricsObj["SansDefault"]?.obs) {namedFontObs = namedFontObs + fontMetricsObj["SansDefault"]?.obs};
   
   return namedFontObs > defaultFontObs ? true : false;
 
@@ -31,10 +31,10 @@ export function setDefaultFontAuto() {
 
   // Change default font to whatever named font appears more
   if (multiFontMode) {
-    if ((globalThis.fontMetricsObj["Libre Baskerville"]?.obs || 0) > (globalThis.fontMetricsObj["Open Sans"]?.obs || 0)) {
-      globalThis.globalSettings.defaultFont = "Libre Baskerville";
+    if ((globalThis.fontMetricsObj["SerifDefault"]?.obs || 0) > (globalThis.fontMetricsObj["SansDefault"]?.obs || 0)) {
+      globalThis.globalSettings.defaultFont = "SerifDefault";
     } else {
-      globalThis.globalSettings.defaultFont = "Open Sans";
+      globalThis.globalSettings.defaultFont = "SansDefault";
     }
   }
 
@@ -176,7 +176,7 @@ function calculateFontMetrics(fontMetricObj){
 
 
 export function parseDebugInfo(debugTxt){
-  if(!globalThis.fontScores) globalThis.fontScores = {"Libre Baskerville": {}, "Open Sans": {}, "Default" : {}};
+  if(!globalThis.fontScores) globalThis.fontScores = {"SerifDefault": {}, "SansDefault": {}, "Default" : {}};
 
   const fontLines = debugTxt.match(/Modal Font.+/g);
 
@@ -249,26 +249,26 @@ const serif_stem_serif_pq_regex = new RegExp(serif_stem_serif_pq.reduce((x,y) =>
 // This function identifies variations that require switching out a glyph from the default font entirely. 
 export function identifyFontVariants(fontScores, fontMetrics) {
 
-  if (fontMetrics?.["Open Sans"]?.["normal"]) {
-    const sans_g = calcTopFont(fontScores?.["Open Sans"]?.["normal"]?.["g"]);
-    fontMetrics["Open Sans"]["normal"].variants["sans_g"] = single_g_regex.test(sans_g);
-    const sans_1 = calcTopFont(fontScores?.["Open Sans"]?.["normal"]?.["1"]);
-    fontMetrics["Open Sans"]["normal"].variants["sans_1"] = base_1_regex.test(sans_1);
+  if (fontMetrics?.["SansDefault"]?.["normal"]) {
+    const sans_g = calcTopFont(fontScores?.["SansDefault"]?.["normal"]?.["g"]);
+    fontMetrics["SansDefault"]["normal"].variants["sans_g"] = single_g_regex.test(sans_g);
+    const sans_1 = calcTopFont(fontScores?.["SansDefault"]?.["normal"]?.["1"]);
+    fontMetrics["SansDefault"]["normal"].variants["sans_1"] = base_1_regex.test(sans_1);
   }
 
-  if (fontMetrics?.["Libre Baskerville"]?.["italic"]) {
-    const min_y = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["y"]);
-    fontMetrics["Libre Baskerville"]["italic"].variants["serif_italic_y"] = min_y_regex.test(min_y);
-    const closed_k = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["y"]);
-    fontMetrics["Libre Baskerville"]["italic"].variants["serif_open_k"] = !closed_k_regex.test(closed_k);
+  if (fontMetrics?.["SerifDefault"]?.["italic"]) {
+    const min_y = calcTopFont(fontScores?.["SerifDefault"]?.["italic"]?.["y"]);
+    fontMetrics["SerifDefault"]["italic"].variants["serif_italic_y"] = min_y_regex.test(min_y);
+    const closed_k = calcTopFont(fontScores?.["SerifDefault"]?.["italic"]?.["y"]);
+    fontMetrics["SerifDefault"]["italic"].variants["serif_open_k"] = !closed_k_regex.test(closed_k);
   
-    const rounded_v = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["v"]);
-    const rounded_w = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["w"]);
-    fontMetrics["Libre Baskerville"]["italic"].variants["serif_pointy_vw"] = !(rounded_vw_regex.test(rounded_v) || rounded_vw_regex.test(rounded_w));
+    const rounded_v = calcTopFont(fontScores?.["SerifDefault"]?.["italic"]?.["v"]);
+    const rounded_w = calcTopFont(fontScores?.["SerifDefault"]?.["italic"]?.["w"]);
+    fontMetrics["SerifDefault"]["italic"].variants["serif_pointy_vw"] = !(rounded_vw_regex.test(rounded_v) || rounded_vw_regex.test(rounded_w));
   
-    const serif_italic_p = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["p"]);
-    const serif_italic_q = calcTopFont(fontScores?.["Libre Baskerville"]?.["italic"]?.["q"]);
-    fontMetrics["Libre Baskerville"]["italic"].variants["serif_stem_sans_pq"] = !(serif_stem_serif_pq_regex.test(serif_italic_p) || serif_stem_serif_pq_regex.test(serif_italic_q));
+    const serif_italic_p = calcTopFont(fontScores?.["SerifDefault"]?.["italic"]?.["p"]);
+    const serif_italic_q = calcTopFont(fontScores?.["SerifDefault"]?.["italic"]?.["q"]);
+    fontMetrics["SerifDefault"]["italic"].variants["serif_stem_sans_pq"] = !(serif_stem_serif_pq_regex.test(serif_italic_p) || serif_stem_serif_pq_regex.test(serif_italic_q));
   
   }
 

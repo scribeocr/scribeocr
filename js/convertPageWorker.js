@@ -62,22 +62,35 @@ function ocrWord(line, text, bbox, id) {
  * @param {Array<number>} baseline
  * @param {number} ascHeight
  * @param {?number} xHeight
+ * @property {Array<number>} bbox - bounding box for line
+ * @property {Array<number>} baseline - baseline [slope, offset]
+ * @property {number} ascHeight - 
+ * @property {?number} xHeight - 
+ * @property {Array<ocrWord>} words - words in line
+ * @property {ocrPage} page - page line belongs to
+ * @property {?number} _sizeCalc - calculated line font size (using `ascHeight` and `xHeight`)
+ * @property {?number} _size - line font size set (set through other means)
+ *  `_size` should be preferred over `_sizeCalc` when both exist.
  */
 function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
-    /** @type {Array<number>} */ 
-    this.bbox = bbox;
-    /** @type {Array<number>} */ 
-    this.baseline = baseline;
-    /** @type {number} */ 
-    this.ascHeight = ascHeight;
-    /** @type {?number} */ 
-    this.xHeight = xHeight;
-    /** @type {Array<ocrWord>} */ 
-    this.words = [];
-    /** @type {ocrPage} */ 
-    this.page = page;
-    /** @type {?number} */ 
-    this._size = null;
+  // These inline comments are required for types to work correctly with VSCode Intellisense.
+  // Unfortunately, the @property tags above are not sufficient.
+  /** @type {Array<number>} */ 
+  this.bbox = bbox;
+  /** @type {Array<number>} */ 
+  this.baseline = baseline;
+  /** @type {number} */ 
+  this.ascHeight = ascHeight;
+  /** @type {?number} */ 
+  this.xHeight = xHeight;
+  /** @type {Array<ocrWord>} */ 
+  this.words = [];
+  /** @type {ocrPage} */ 
+  this.page = page;
+  /** @type {?number} */ 
+  this._sizeCalc = null;
+  /** @type {?number} */
+  this._size = null;
 }
 
 /**
@@ -196,7 +209,16 @@ const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact
 const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
 
-// Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font (Open Sans) or serif font (Libre Baskerville)
+/**
+ * Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font or serif font.
+ *
+ * @param {string} fontName - The name of the font to determine the type of. If the font name 
+ * is falsy, the function will return "Default".
+ * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault", 
+ * "SerifDefault", or "Default" (if the font type cannot be determined).
+ * @throws {console.log} - Logs an error message to the console if the font is unidentified and 
+ * it is not the "Default Metrics Font".
+ */
 function determineSansSerif(fontName) {
 
   let fontFamily = "Default";
@@ -204,16 +226,16 @@ function determineSansSerif(fontName) {
   if(fontName){
     // First, test to see if "sans" or "serif" is in the name of the font
     if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
-      fontFamily = "Open Sans";
+      fontFamily = "SansDefault";
     } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
-      fontFamily = "Libre Baskerville";
+      fontFamily = "SerifDefault";
 
     // If not, check against a list of known sans/serif fonts.
     // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
     } else if (serifFontsRegex.test(fontName)) {
-      fontFamily = "Libre Baskerville";
+      fontFamily = "SerifDefault";
     } else if (sansFontsRegex.test(fontName)) {
-      fontFamily = "Open Sans";
+      fontFamily = "SansDefault";
     } else if (fontName != "Default Metrics Font") {
       console.log("Unidentified font in XML: " + fontName);
     }
