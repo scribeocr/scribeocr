@@ -1,6 +1,10 @@
 const fontName = 'NimbusRomNo9L';
 const fontSrc = '../fonts/NimbusRomNo9L-Reg.woff';
 
+// Prevent typescript intellisense errors
+// https://stackoverflow.com/questions/35758584/cannot-redeclare-block-scoped-variable
+export {}
+
 const fontSize = 80;
 const baseline = 200;
 
@@ -13,10 +17,6 @@ globalThis.ctxBase = canvasBase.getContext("2d");
 
 const calcFontDesc = (fontObj, fontSize) => {
     ctx.font = String(1000) + "px " + fontName;
-    // const fontMetrics = ctx.measureText("o");
-
-    // const fontDesc = (fontMetrics.fontBoundingBoxDescent - fontMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
-
 
     let fontBoundingBoxDescent = Math.abs(fontObj.descender) * (1000 / fontObj.unitsPerEm);
     let oBoundingBoxDescent = Math.abs(fontObj.charToGlyph("o").getMetrics().yMin) * (1000 / fontObj.unitsPerEm);

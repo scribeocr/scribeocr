@@ -2,6 +2,10 @@
 const fontName = 'DMSans';
 const fontSrc = '../fonts/DMSans-Regular.woff';
 
+// Prevent typescript intellisense errors
+// https://stackoverflow.com/questions/35758584/cannot-redeclare-block-scoped-variable
+export {}
+
 const fontSize = 80;
 const baseline = 200;
 
