@@ -32,6 +32,7 @@ await import('../lib/opentype.js');
   }  
 
 globalThis.fontMetricObjsMessage = [];
+globalThis.convertPageWarn = [];
 
 const args = process.argv.slice(2);
 
@@ -168,6 +169,7 @@ async function main() {
         
         if(argsObj["saveMetrics"] ?? true){
           fontMetricObjsMessage[n] = event.data[0][1];
+          convertPageWarn[n] = event.data[0][3];
         }
 
         worker.promises[event.data[event.data.length - 1]].resolve(event.data);
@@ -197,8 +199,10 @@ async function main() {
         await worker[func]([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
     }
 
-    globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-    setDefaultFontAuto();
+    const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
+    globalThis.fontMetricsObj = metricsRet.fontMetrics;
+
+    if (globalThis.fontMetricsObj) setDefaultFontAuto(globalThis.fontMetricsObj);
     await optimizeFont3(true);
 
     const pdfStr = await hocrToPDF(globalThis.hocrCurrent, 0, -1, "proof", true, false);

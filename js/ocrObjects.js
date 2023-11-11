@@ -1,17 +1,55 @@
 import { getFontSize } from "./textUtils.js"
 
+/**
+ * @param {number} n
+ * @param {Array<number>} dims
+ */
+export function ocrPage(n, dims) {
+    /** @type {number} */ 
+      this.n = n;
+      /** @type {Array<number>} */ 
+      this.dims = dims;
+      /** @type {number} */ 
+      this.angle = 0;
+      /** @type {?number} */ 
+      this.left = null;
+       /** @type {number} */ 
+      this.leftAdj = 0;
+      /** @type {Array<ocrLine>} */ 
+      this.lines = [];
+  }
+  
+
+/**
+ * @param {ocrLine} line
+ * @param {string} text
+ * @param {Array<number>} bbox
+ * @param {string} id
+ */
 export function ocrWord(line, text, bbox, id) {
+    /** @type {boolean} */ 
     this.sup = false;
+    /** @type {boolean} */ 
     this.dropcap = false;
+    /** @type {string} */ 
     this.text = text;
+    /** @type {string} */ 
     this.style = "normal";
+    /** @type {?string} */ 
     this.font = null;
+    /** @type {?number} */ 
     this.size = null;
+    /** @type {number} */ 
     this.conf = 0;
+    /** @type {Array<number>} */ 
     this.bbox = bbox;
+    /** @type {boolean} */ 
     this.compTruth = false;
+    /** @type {boolean} */ 
     this.matchTruth = false;
+    /** @type {string} */ 
     this.id = id;
+    /** @type {ocrLine} */ 
     this.line = line;
 }
 
@@ -218,6 +256,9 @@ function escapeXml(string) {
 
 
 export const ocr = {
+    ocrWord: ocrWord,
+    ocrLine: ocrLine,
+    ocrPage: ocrPage,
     calcLineFontSize : calcLineFontSize,
     calcLineAngleAdj : calcLineAngleAdj,
     calcLineBbox: calcLineBbox,
@@ -230,7 +271,7 @@ export const ocr = {
     deletePageWord: deletePageWord,
     calcWordFontSize: calcWordFontSize,
     replaceLigatures: replaceLigatures,
-    escapeXml: escapeXml
+    escapeXml: escapeXml,
 }
 
 
@@ -250,7 +291,7 @@ export const ocr = {
  * @property {?number} _size - line font size set (set through other means)
  *  `_size` should be preferred over `_sizeCalc` when both exist.
  */
-function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
+export function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
     // These inline comments are required for types to work correctly with VSCode Intellisense.
     // Unfortunately, the @property tags above are not sufficient.
     /** @type {Array<number>} */ 
@@ -411,4 +452,4 @@ function cloneWord(word) {
 
 
 // Making global for debugging purposes.  This should not be relied upon in code.
-globalThis.ocr = ocr;
+// globalThis.ocr = ocr;

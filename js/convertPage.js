@@ -65,7 +65,8 @@ export async function initConvertPageWorker() {
 			if (Object.keys(globalThis.layout[n].boxes).length == 0) globalThis.layout[n].boxes = event.data[0][2];
 		  
 			if(argsObj["saveMetrics"] ?? true){
-			  fontMetricObjsMessage[n] = event.data[0][1];
+			  globalThis.fontMetricObjsMessage[n] = event.data[0][1];
+			  globalThis.convertPageWarn[n] = event.data[0][3];
 			}
 		  
 			// If this is the page the user has open, render it to the canvas

@@ -8,6 +8,16 @@ import { quantile, round6 } from "./miscUtils.js";
 
 import { determineSansSerif } from "./fontUtils.js";
 
+/** @type {Array<Object.<string, fontMetricsRawFamily>>} */ 
+globalThis.fontMetricObjsMessage = [];
+
+/** @type {Array<Object.<string, string>>} */ 
+globalThis.convertPageWarn = [];
+
+/** @type {?Object.<string, fontMetricsFamily>} */ 
+globalThis.fontMetricsObj = null;
+
+
 // Checks whether `multiFontMode` should be enabled or disabled. 
 // Usually (including when the built-in OCR engine is used) we will have metrics for individual font families, 
 // which are used to optimize the appropriate fonts ("multiFontMode" is `true` in this case). 
@@ -26,56 +36,73 @@ export function checkMultiFontMode(fontMetricsObj) {
 }
 
 // Automatically sets the default font to whatever font is most common per globalThis.fontMetricsObj
-export function setDefaultFontAuto() {
-  const multiFontMode = checkMultiFontMode(globalThis.fontMetricsObj);
+
+/**
+ * Automatically sets the default font to whatever font is most common in the provided font metrics.
+ * 
+ * @param {Object.<string, fontMetricsFamily>} fontMetricsObj 
+ */
+export function setDefaultFontAuto(fontMetricsObj) {
+  const multiFontMode = checkMultiFontMode(fontMetricsObj);
 
   // Change default font to whatever named font appears more
   if (multiFontMode) {
-    if ((globalThis.fontMetricsObj["SerifDefault"]?.obs || 0) > (globalThis.fontMetricsObj["SansDefault"]?.obs || 0)) {
+    if ((fontMetricsObj["SerifDefault"]?.obs || 0) > (fontMetricsObj["SansDefault"]?.obs || 0)) {
       globalThis.globalSettings.defaultFont = "SerifDefault";
     } else {
       globalThis.globalSettings.defaultFont = "SansDefault";
     }
   }
-
 }
 
-// Calculations that are run after all files (both image and OCR) have been loaded.
-export function calculateOverallFontMetrics(fontMetricObjsMessage) {
+/**
+ * Combine page-level character statistics to calculate overall font metrics.
+ * Run after all files (both image and OCR) have been loaded.
+ * 
+ * @param {Array<Object.<string, fontMetricsRawFamily>>} fontMetricObjsMessage 
+ * @param {Array<Object.<string, string>>} warnArr - Array of objects containing warning/error messages from convertPage
+ * @returns {{charError: boolean, charWarn: boolean, fontMetrics: ?Object.<string, fontMetricsFamily>}} - 
+ */
+export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
+
+  /** @type {Array<Object.<string, fontMetricsRawFamily>>} */ 
+  const fontMetricObjsMessageFilter = [];
 
   // TODO: Figure out what happens if there is one blank page with no identified characters (as that would presumably trigger an error and/or warning on the page level).
   // Make sure the program still works in that case for both Tesseract and Abbyy.
   let charErrorCt = 0;
   let charWarnCt = 0;
   let charGoodCt = 0;
-  for (const [key, obj] of Object.entries(fontMetricObjsMessage)) {
-    if (obj["message"] == "char_error") {
+  for (let i=0; i<warnArr.length; i++) {
+    const warn = warnArr[i]?.["char"];
+    if (warn == "char_error") {
       charErrorCt = charErrorCt + 1;
-    } else if (obj["message"] == "char_warning") {
+    } else if (warn == "char_warning") {
       charWarnCt = charWarnCt + 1;
     } else {
       charGoodCt = charGoodCt + 1;
+      fontMetricObjsMessageFilter.push(fontMetricObjsMessage[i]);
     }
   }
 
-  let fontMetricsObj = {};
-
+  // The UI warning/error messages cannot be thrown within this function, 
+  // as that would make this file break when imported into contexts that do not have the main UI. 
   if (charGoodCt == 0 && charErrorCt > 0) {
-    return {"message": "char_error"};
+    return {charWarn: false, charError: true, fontMetrics: null};
 
   } else if (charGoodCt == 0 && charWarnCt > 0) {
-    return {"message": "char_warning"};
+
+    return {charWarn: true, charError: false, fontMetrics: null};
 
   } else {
 
-    // TODO: This reduce-based implementation is extremely inefficient due to allocating a ton of arrays. Should be replaced with implementation that pushes to single array. 
-    fontMetricsObj = fontMetricObjsMessage.filter((x) => !["char_error", "char_warning"].includes(x?.message)).reduce((x,y) => unionFontMetrics(x,y));
+    const fontMetricsRawObj = fontMetricObjsMessageFilter.reduce((x,y) => unionFontMetricsRawObj(x,y));
 
+    /** @type {Object.<string, fontMetricsFamily>} */ 
     let fontMetricsOut = {};
 
-    for (const [family, obj] of Object.entries(fontMetricsObj)) {
-      fontMetricsOut[family] = {};
-      fontMetricsOut[family]["obs"] = 0;
+    for (const [family, obj] of Object.entries(fontMetricsRawObj)) {
+      fontMetricsOut[family] = new fontMetricsFamily();
       for (const [style, obj2] of Object.entries(obj)) {
         fontMetricsOut[family][style] = calculateFontMetrics(obj2);
         fontMetricsOut[family]["obs"] = fontMetricsOut[family]["obs"] + fontMetricsOut[family][style]["obs"];
@@ -84,75 +111,156 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage) {
 
     fontMetricsOut = identifyFontVariants(globalThis.fontScores, fontMetricsOut);
 
-    return (fontMetricsOut);
+    return {charWarn: false, charError: false, fontMetrics: fontMetricsOut};
   }
 }
 
-
-function fontMetrics(){
+/**
+ * Object containing font metrics for individual font.
+ * @property {Object.<string, number>} width - Width of glyph as proportion of x-height
+ * @property {Object.<string, number>} height - height of glyph as proportion of x-height
+ * @property {Object.<string, number>} desc - WIP, not fully implemented, not used for anything
+ * @property {Object.<string, number>} advance - 
+ * @property {Object.<string, number>} kerning - 
+ * @property {Object.<string, boolean>} variants - 
+ * @property {ocrPage} heightCaps - 
+ * @property {?number} obs - Number of observations used to calculate statistics
+ * 
+ * Note: The "x-height" metric referred to above is actually closer to the height of the "o" character.
+ * This is because most characters used for this calculation are slightly larger than "x", 
+ * and Tesseract does not take this into account when performing this calculation. 
+ */
+export function fontMetricsFont(){
+  /** @type {Object.<string, number>} */ 
   this.width = {};
+  /** @type {Object.<string, number>} */ 
   this.height = {};
+  /** @type {Object.<string, number>} */ 
   this.desc = {};
+  /** @type {Object.<string, number>} */ 
   this.advance = {};
+  /** @type {Object.<string, number>} */ 
   this.kerning = {};
-  this.obs = 0;
+  /** @type {Object.<string, boolean>} */ 
   this.variants = {};
+  /** @type {number} */ 
+  this.heightCaps = 1.3;
+  /** @type {number} */ 
+  this.obs = 0;
 }
+
+function fontMetricsFamily() {
+  this.normal = new fontMetricsFont();
+  this.italic = new fontMetricsFont();
+  this["small-caps"] = new fontMetricsFont();
+  this.obs = 0;
+}
+
 
 // The following functions are used for combining an array of page-level fontMetrics objects produced by convertPage.js into a single document-level object.
-function unionSingleFontMetrics(fontMetricsA, fontMetricsB){
+
+/**
+ * Adds observations from `fontMetricsB` into `fontMetricsA`. Modifies `fontMetricsA` in place.
+ * 
+ * @param {?fontMetricsRawFont} fontMetricsRawFontA 
+ * @param {?fontMetricsRawFont} fontMetricsRawFontB 
+ * @param {?number} xHeight - If specified, values from `fontMetricsRawFontB` will be normalized by dividing by `xHeight`.
+ * @returns {?fontMetricsRawFont} - Returns fontMetricsFontA after modifying in place
+ */
+function unionFontMetricsFont(fontMetricsRawFontA, fontMetricsRawFontB, xHeight = null){
   // If one of the inputs is undefined, return early with the only valid object
-  if(fontMetricsA && !fontMetricsB){
-    return;
-  } else if (!fontMetricsA && fontMetricsB){
-    fontMetricsA = structuredClone(fontMetricsB);
-  } 
+  if (!fontMetricsRawFontA) {
+    if (!fontMetricsRawFontB) return null;
+    fontMetricsRawFontA = structuredClone(fontMetricsRawFontB);
+    return fontMetricsRawFontA;
+  }
+  if (!fontMetricsRawFontB) {
+    return fontMetricsRawFontA;
+  }
 
-  if(fontMetricsB?.obs) fontMetricsA.obs = fontMetricsA.obs + fontMetricsB.obs;
+  if(fontMetricsRawFontB?.obs) fontMetricsRawFontA.obs = fontMetricsRawFontA.obs + fontMetricsRawFontB.obs;
 
-  for (const [prop, obj] of Object.entries(fontMetricsB)) {
+  for (const [prop, obj] of Object.entries(fontMetricsRawFontB)) {
     for (const [key, value] of Object.entries(obj)) {
-      if(!fontMetricsA[prop][key]){
-        fontMetricsA[prop][key] = [];
+      if(!fontMetricsRawFontA[prop][key]){
+        fontMetricsRawFontA[prop][key] = [];
       }
-      Array.prototype.push.apply(fontMetricsA[prop][key], value);
+      if (xHeight) {
+        const valueNorm = value.map((x) => x / xHeight).filter((x) => x);
+        Array.prototype.push.apply(fontMetricsRawFontA[prop][key], valueNorm);
+      } else {
+        Array.prototype.push.apply(fontMetricsRawFontA[prop][key], value);
+      }
     }  
   }
-  return(fontMetricsA);
+  return(fontMetricsRawFontA);
 }
 
-// Combines font metric objects by adding the observations from fontMetricsB to fontMetricsA
-function unionFontMetrics(fontMetricsA, fontMetricsB){
+/**
+ * Object containing individual observations of various character metrics.
+ */
+function fontMetricsRawFont(){
+  /** @type {Object.<string, Array.<number>>} */ 
+  this.width = {};
+  /** @type {Object.<string, Array.<number>>} */ 
+  this.height = {};
+  /** @type {Object.<string, Array.<number>>} */ 
+  this.desc = {};
+  /** @type {Object.<string, Array.<number>>} */ 
+  this.advance = {};
+  /** @type {Object.<string, Array.<number>>} */ 
+  this.kerning = {};
+  /** @type {number} */ 
+  this.obs = 0;
+}
 
-  for(const [family, obj] of Object.entries(fontMetricsB)){
+function fontMetricsRawFamily() {
+  this.normal = new fontMetricsRawFont();
+  this.italic = new fontMetricsRawFont();
+  this["small-caps"] = new fontMetricsRawFont();
+}
+
+/**
+ * Adds observations from `fontMetricsB` into `fontMetricsA`. Modifies `fontMetricsA` in place.
+ * 
+ * @param {Object.<string, fontMetricsRawFamily>} fontMetricsRawObjA 
+ * @param {Object.<string, fontMetricsRawFamily>} fontMetricsRawObjB 
+ * @returns {Object.<string, fontMetricsRawFamily>} - Returns fontMetricsObjA after modifying in place
+ */
+function unionFontMetricsRawObj(fontMetricsRawObjA, fontMetricsRawObjB){
+
+  for(const [family, obj] of Object.entries(fontMetricsRawObjB)){
     for(const [style, obj2] of Object.entries(obj)){
       if (Object.keys(obj2["width"]).length == 0) continue;
-      if(!fontMetricsA[family]){
-        fontMetricsA[family] = {};
-      }
-      if(!fontMetricsA[family][style]){
-        fontMetricsA[family][style] = new fontMetrics();
+      if(!fontMetricsRawObjA[family]){
+        fontMetricsRawObjA[family] = new fontMetricsRawFamily();
       }
     }  
   }
 
-  for(const [family, obj] of Object.entries(fontMetricsA)){
+  for(const [family, obj] of Object.entries(fontMetricsRawObjA)){
     for(const [style, obj2] of Object.entries(obj)){
-      unionSingleFontMetrics(fontMetricsA?.[family]?.[style], fontMetricsB?.[family]?.[style]);
+      unionFontMetricsFont(fontMetricsRawObjA?.[family]?.[style], fontMetricsRawObjB?.[family]?.[style]);
     }  
   }
 
-  return(fontMetricsA);
+  return(fontMetricsRawObjA);
 
 }
 
-function calculateFontMetrics(fontMetricObj){
+/**
+ * Calculates final font statistics from individual observations.
+ * 
+ * @param {fontMetricsRawFont} fontMetricsRawFontObj 
+ * @returns {fontMetricsFont} - 
+ */
+function calculateFontMetrics(fontMetricsRawFontObj){
 
-  const fontMetricOut = new fontMetrics();
+  const fontMetricOut = new fontMetricsFont();
 
   // Take the median of each array
   for (let prop of ["width","height","desc","advance","kerning"]){
-    for (let [key, value] of Object.entries(fontMetricObj[prop])) {
+    for (let [key, value] of Object.entries(fontMetricsRawFontObj[prop])) {
       if (value.length > 0) {
         fontMetricOut[prop][key] = round6(quantile(value, 0.5));
       }
@@ -161,7 +269,7 @@ function calculateFontMetrics(fontMetricObj){
 
   // Calculate median hight of capital letters only
   const heightCapsArr = [];
-  for (const [key, value] of Object.entries(fontMetricObj["height"])) {
+  for (const [key, value] of Object.entries(fontMetricsRawFontObj["height"])) {
     if (/[A-Z]/.test(String.fromCharCode(parseInt(key)))) {
       Array.prototype.push.apply(heightCapsArr, value);
     }
@@ -169,7 +277,7 @@ function calculateFontMetrics(fontMetricObj){
 
   fontMetricOut["heightCaps"] = round6(quantile(heightCapsArr, 0.5));
 
-  fontMetricOut["obs"] = fontMetricObj["obs"];
+  fontMetricOut["obs"] = fontMetricsRawFontObj["obs"];
 
   return(fontMetricOut);
 }

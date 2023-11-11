@@ -58,7 +58,7 @@ import { initConvertPageWorker } from './js/convertPage.js';
 // Load default settings
 import { setDefaults } from "./js/setDefaults.js";
 
-import { ocr } from "./js/ocrObjects.js";
+import { ocr, ocrWord, ocrLine, ocrPage } from "./js/ocrObjects.js";
 
 import { printSelectedWords, downloadCanvas, evalSelectedLine } from "./js/debug.js";
 
@@ -1836,7 +1836,7 @@ function addWordClick() {
 
     const pageObj = new ocrPage(currentPage.n, globalThis.hocrCurrent[currentPage.n].dims);
     // Arbitrary values of font statistics are used since these are replaced later
-    const lineObj = new ocrLine(pageObj, wordBox, [0,0], 10, null, null);
+    const lineObj = new ocrLine(pageObj, wordBox, [0,0], 10, null);
     pageObj.lines = [lineObj];
     const wordIDNew = getRandomAlphanum(10);
     const wordObj = new ocrWord(lineObj, wordText, wordBox, wordIDNew);
@@ -2068,8 +2068,6 @@ globalThis.hocrCurrent = [];
 
 
 // Resets the environment.
-globalThis.fontMetricObjsMessage = [];
-
 async function clearFiles() {
 
   currentPage.n = 0;
@@ -2077,9 +2075,10 @@ async function clearFiles() {
   globalThis.imageAll = {};
   globalThis.hocrCurrent = [];
   globalThis.layout = [];
-  globalThis.fontMetricsObj = {};
+  globalThis.fontMetricsObj = null;
   globalThis.pageMetricsObj = {};
   globalThis.fontMetricObjsMessage = [];
+  globalThis.convertPageWarn = [];
 
   if (globalThis.binaryScheduler) {
     const bs = await globalThis.binaryScheduler;
@@ -2360,7 +2359,7 @@ async function importFiles(curFiles) {
     // Restore font metrics and optimize font from previous session (if applicable)
     if (ocrData.fontMetricsObj) {
       globalThis.fontMetricsObj = ocrData.fontMetricsObj;
-      setDefaultFontAuto();
+      setDefaultFontAuto(ocrData.fontMetricsObj);
       optimizeFontElem.disabled = false;
       optimizeFontElem.checked = true;
       await optimizeFont3(true);
@@ -3057,18 +3056,25 @@ export async function updateDataProgress(mainData = true, combMode = false) {
         // This logic is handled elsewhere for resumeMode
       } else {
         // Buttons are enabled from calculateOverallFontMetrics function in this case
-        globalThis.fontMetricsObj = calculateOverallFontMetrics(fontMetricObjsMessage);
-        if (globalThis.fontMetricsObj.message == "char_error") {
+        const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);      
+      
+        if (metricsRet.charError) {
           const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
           insertAlertMessage(errorHTML);
-        } else if (globalThis.fontMetricsObj.message == "char_warning") {
+
+        } else if (metricsRet.charWarn) {
           const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
           insertAlertMessage(warningHTML, false);
-          // Font optimization is still impossible when extracting text from PDFs
-        } else if (!globalThis.inputDataModes.extractTextMode) {
+
+        } else {
+          globalThis.fontMetricsObj = metricsRet.fontMetrics;
+        }
+
+        // Font optimization is still impossible when extracting text from PDFs
+        if (globalThis.fontMetricsObj && !globalThis.inputDataModes.extractTextMode) {
           optimizeFontElem.disabled = false;
           optimizeFontElem.checked = true;
-          setDefaultFontAuto();
+          setDefaultFontAuto(globalThis.fontMetricsObj);
           await optimizeFont3(true);
         }
       }

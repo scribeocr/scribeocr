@@ -44,7 +44,7 @@ function scaleGlyph(glyph, mult) {
 }
 
 // Creates optimized version of font based on metrics in `fontMetricsObj`
-async function optimizeFont(fontData, fontMetricsObj, type) {
+async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearings = false) {
 
   let workingFont;
   if (typeof (fontData) == "string") {
@@ -56,6 +56,18 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
   // Remove GSUB table (in most Latin fonts this table is responsible for ligatures, if it is used at all).
   // The presence of ligatures (such as ﬁ and ﬂ) is not properly accounted for when setting character metrics.
   workingFont.tables.gsub = null;
+
+  // Scale font to standardize x-height
+  // TODO: Make this optional or move to a separate script so the default fonts can be pre-scaled. 
+  const xHeightStandard = 0.47 * workingFont.unitsPerEm;
+  let oGlyph = workingFont.charToGlyph("o").getMetrics();
+  let xHeight = oGlyph.yMax - oGlyph.yMin;
+  const xHeightScale = xHeightStandard / xHeight;
+  if (Math.abs(xHeightScale) > 0.01) {
+    for (const [key, value] of Object.entries(workingFont.glyphs.glyphs)) {
+      scaleGlyph(value, xHeightScale);
+    }  
+  }
 
   // TODO: Adapt glyph substitution to work with new Nimbus fonts
   // if (type == "normal" && fontMetricsObj.variants?.sans_g && /sans/i.test(workingFont.names.fontFamily.en)) {
@@ -90,8 +102,8 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
   // }
 
 
-  let oGlyph = workingFont.charToGlyph("o").getMetrics();
-  let xHeight = oGlyph.yMax - oGlyph.yMin;
+  oGlyph = workingFont.charToGlyph("o").getMetrics();
+  xHeight = oGlyph.yMax - oGlyph.yMin;
 
   let fontAscHeight = workingFont.charToGlyph("A").getMetrics().yMax;
 
@@ -128,8 +140,8 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
 
 
     // Left bearings are currently only changed for specific punctuation characters (overall scaling aside)
-    let shiftX = 0;
-    if ([";", ":", "‘", "’", "“", "”", "\""].includes(charLit)) {
+    let shiftX = 0;    
+    if ([";", ":", "‘", "’", "“", "”", "\""].includes(charLit) || adjustAllLeftBearings) {
       let leftBearingCorrect = Math.round(fontMetricsObj["advance"][key] * xHeight);
       if (isFinite(leftBearingCorrect)) {
         let leftBearingAct = glyphI.leftSideBearing;
@@ -284,11 +296,11 @@ async function optimizeFont(fontData, fontMetricsObj, type) {
     const charI = descAdjArr[i];
     const charICode = charI.charCodeAt(0);
     const actMult = Math.max(fontMetricsObj["height"][charICode] / fontMetricsObj["height"][97], 0);
-    const fontMetrics = workingFont.charToGlyph(charI).getMetrics();
-    const fontMult = (fontMetrics.yMax - fontMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
+    const metrics = workingFont.charToGlyph(charI).getMetrics();
+    const fontMult = (metrics.yMax - metrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin);
     const actFontMult = actMult / fontMult;
-    const glyphHeight = fontMetrics.yMax - fontMetrics.yMin;
-    const glyphLowerStemHeight = minA - fontMetrics.yMin;
+    const glyphHeight = metrics.yMax - metrics.yMin;
+    const glyphLowerStemHeight = minA - metrics.yMin;
     if (Math.abs(actFontMult) > 1.02) {
       let glyphI = workingFont.charToGlyph(charI);
 
@@ -375,8 +387,9 @@ addEventListener('message', async (e) => {
   // globalThis.glyphAlts = glyphAlts;
   
   const fontData = e.data[1].fontData;
-  const fontMetrics = e.data[1].fontMetrics;
+  const metrics = e.data[1].fontMetrics;
   const style = e.data[1].style;
+  const adjustAllLeftBearings = e.data[1].adjustAllLeftBearings;
   const heightSmallCaps = e.data[1].heightSmallCaps;
   const func = e.data[0];
 
@@ -387,7 +400,7 @@ addEventListener('message', async (e) => {
     // const fontBuffer = font.toArrayBuffer();
     // return postMessage({ fontData: fontBuffer, id: e.data[2] }, [fontBuffer]);
   } else {
-    const font = await optimizeFont(fontData, fontMetrics, style);
+    const font = await optimizeFont(fontData, metrics, style, adjustAllLeftBearings);
     const fontBuffer = font.toArrayBuffer();
     return postMessage({ fontData: fontBuffer, kerningPairs: font.kerningPairs, id: e.data[2] }, [fontBuffer]);
   }
