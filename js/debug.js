@@ -1,4 +1,5 @@
 import { evalWords } from "./compareHOCR.js";
+import ocr from "./ocrObjects.js";
 
 export function printSelectedWords() {
   const selectedObjects = window.canvas.getActiveObjects();

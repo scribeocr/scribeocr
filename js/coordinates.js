@@ -6,7 +6,22 @@
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 
+/**
+ * @typedef {Object} BoundingBox
+ * @property {number} top - 
+ * @property {number} left - 
+ * @property {number} width - 
+ * @property {number} height - 
+ */
 
+/**
+ * Rotates a bounding box by a given angle.
+ * 
+ * @param {BoundingBox} boundingBox - The bounding box to be rotated. 
+ * @param {number} rotateAngle - Rotation angle in degrees. 
+ * 
+ * @returns {BoundingBox} A new rotated bounding box.
+ */
 function rotateBoundingBox(boundingBox, rotateAngle) {
     let angleAdjXRect = 0;
     let angleAdjYRect = 0;
@@ -31,7 +46,15 @@ function rotateBoundingBox(boundingBox, rotateAngle) {
 
 }
 
-// Note: Despite having a page number argument, this function only works on the current page due to the use of `currentPage.leftAdjX`
+/**
+ * Transform from coordinates in canvas to coordinates in image.
+ * 
+ * @param {BoundingBox} canvasCoords - Bounding box in canvas coordinates.
+ * @param {number} n - Page number (index 0)
+ * @param {boolean} binary - Use binary image
+ * @returns {BoundingBox} Bounding box in image coordinates. 
+ * Note: Despite having a page number argument, this function only works on the current page due to the use of `currentPage.leftAdjX`
+ */
 function canvasToImage(canvasCoords, n, binary = false){
 
     const imageRotated = binary ? globalThis.imageAll.binaryRotated[n] : globalThis.imageAll.nativeRotated[n];
@@ -51,6 +74,14 @@ function canvasToImage(canvasCoords, n, binary = false){
     return {left : canvasCoords.left - currentPage.leftAdjX, top: canvasCoords.top, width: canvasCoords.width, height: canvasCoords.height}
 }
 
+/**
+ * Transform from coordinates in OCR data to coordinates on image.
+ * 
+ * @param {BoundingBox} ocrCoords - Bounding box in OCR coordinates.
+ * @param {number} n - Page number (index 0)
+ * @param {boolean} binary - Use binary image
+ * @returns {BoundingBox} Bounding box in image coordinates. 
+ */
 function ocrToImage(ocrCoords, n, binary = false){
 
     const imageRotated = binary ? globalThis.imageAll.binaryRotated[n] : globalThis.imageAll.nativeRotated[n];
@@ -67,7 +98,9 @@ function ocrToImage(ocrCoords, n, binary = false){
 
 }
 
-export let coords = {
+const coords = {
     canvasToImage: canvasToImage,
     ocrToImage: ocrToImage
 }
+
+export default coords;

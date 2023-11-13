@@ -17,7 +17,7 @@ import { writeDocx } from './js/exportWriteDocx.js';
 import { writeXlsx } from './js/exportWriteTabular.js';
 
 import { renderPage } from './js/renderPage.js';
-import { coords } from './js/coordinates.js';
+import coords from './js/coordinates.js';
 
 import { recognizeAllPages } from "./js/recognize.js";
 
@@ -58,7 +58,7 @@ import { initConvertPageWorker } from './js/convertPage.js';
 // Load default settings
 import { setDefaults } from "./js/setDefaults.js";
 
-import { ocr, ocrWord, ocrLine, ocrPage } from "./js/ocrObjects.js";
+import ocr from "./js/ocrObjects.js";
 
 import { printSelectedWords, downloadCanvas, evalSelectedLine } from "./js/debug.js";
 
@@ -236,7 +236,7 @@ openFileInputElem.addEventListener('change',  (event) => {
 });
 
 
-globalThis.zone = document.getElementById("uploadDropZone");
+globalThis.zone = /** @type {HTMLInputElement} */ (document.getElementById("uploadDropZone"));
 
 zone.addEventListener('dragover', (event) => {
   event.preventDefault();
@@ -343,39 +343,42 @@ globalThis.runOnLoad = function () {
 }
 
 
-
-// The main viewing canvas and debugging canvas both show data to the user and use Fabric.js.
-globalThis.canvasAlt = document.getElementById('d');
-globalThis.ctxAlt = canvasAlt.getContext('2d');
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for rendering text for overlap comparisons. 
+ */
+globalThis.ctxAlt = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('d')).getContext('2d'));
 
 globalThis.canvasDebug = new fabric.Canvas('g');
 globalThis.ctxDebug = canvasDebug.getContext('2d');
 
-// The canvases used for comparison purposes are used to draw text/images for computational purposes
-// so Fabric.js is not used. 
-globalThis.canvasComp1 = document.getElementById('e');
-globalThis.ctxComp1 = canvasComp1.getContext('2d');
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user. 
+ */
+globalThis.ctxComp1 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('e')).getContext('2d'));
 
-globalThis.canvasComp2 = document.getElementById('f');
-globalThis.ctxComp2 = canvasComp2.getContext('2d');
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user. 
+ */
+globalThis.ctxComp2 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('f')).getContext('2d'));
 
-globalThis.canvasComp0 = document.getElementById('h');
-globalThis.ctxComp0 = canvasComp0.getContext('2d');
-
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user. 
+ */
+globalThis.ctxComp0 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('h')).getContext('2d'));
 
 
 // // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
-// canvasAlt.overlayVpt = false;
-// globalThis.canvasComp0.overlayVpt = false;
-// globalThis.canvasComp1.overlayVpt = false;
-// globalThis.canvasComp2.overlayVpt = false;
 globalThis.canvasDebug.overlayVpt = false;
 
 // // Turn off (some) automatic rendering of canvas
-// canvasAlt.renderOnAddRemove = false;
-// canvasComp0.renderOnAddRemove = false;
-// canvasComp1.renderOnAddRemove = false;
-// canvasComp2.renderOnAddRemove = false;
 canvasDebug.renderOnAddRemove = false;
 
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
@@ -389,7 +392,7 @@ const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev')
 nextElem.addEventListener('click', () => displayPage(currentPage.n + 1));
 prevElem.addEventListener('click', () => displayPage(currentPage.n - 1));
 
-const colorModeElem = /** @type {HTMLInputElement} */(document.getElementById('colorMode'));
+const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
 
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
@@ -666,7 +669,7 @@ const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById(
 ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
 
 
-const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
+const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
 displayModeElem.addEventListener('change', () => { displayModeClick(displayModeElem.value) });
 
 const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
@@ -1666,6 +1669,12 @@ async function showDebugImages() {
 
 
 var rect1;
+
+/**
+ * Recognize area selected by user in Tesseract.
+ * 
+ * @param {boolean} wordMode - Assume selection is single word.
+ */
 function recognizeAreaClick(wordMode = false) {
 
   canvas.on('mouse:down', function (o) {
@@ -1834,12 +1843,12 @@ function addWordClick() {
 
     const wordBox = [rectLeftHOCR, rectTopHOCR, rectRightHOCR, rectBottomHOCR];
 
-    const pageObj = new ocrPage(currentPage.n, globalThis.hocrCurrent[currentPage.n].dims);
+    const pageObj = new ocr.ocrPage(currentPage.n, globalThis.hocrCurrent[currentPage.n].dims);
     // Arbitrary values of font statistics are used since these are replaced later
-    const lineObj = new ocrLine(pageObj, wordBox, [0,0], 10, null);
+    const lineObj = new ocr.ocrLine(pageObj, wordBox, [0,0], 10, null);
     pageObj.lines = [lineObj];
     const wordIDNew = getRandomAlphanum(10);
-    const wordObj = new ocrWord(lineObj, wordText, wordBox, wordIDNew);
+    const wordObj = new ocr.ocrWord(lineObj, wordText, wordBox, wordIDNew);
     lineObj.words = [wordObj];
 
     combineData(pageObj, globalThis.hocrCurrent[currentPage.n], true);
@@ -3178,6 +3187,7 @@ async function handleDownload() {
   const maxValue = parseInt(pdfPageMaxElem.value)-1;
   const pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue);
 
+  /** @type {Array<ocrPage>} */ 
   let hocrDownload = [];
 
   if (download_type != "hocr" && download_type != "xlsx" && enableLayoutElem.checked) {

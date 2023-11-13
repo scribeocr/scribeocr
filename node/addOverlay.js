@@ -125,7 +125,7 @@ async function main() {
 
     globalThis.hocrCurrent = Array(pageCount);
 
-    const url = new URL('../js/convertPageWorker.js', import.meta.url);
+    const url = new URL('../js/worker/convertPageWorker.js', import.meta.url);
     const worker = new Worker(url, { type: 'module' });
 
     worker.onmessage = async function (event) {

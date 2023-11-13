@@ -27,7 +27,12 @@ export function getRandomAlphanum(num){
   return outArr.join('');
 }
 
-
+/**
+ * Calculates the nth quantile of a given array of numbers.
+ * @param {number[]} arr - The array of numbers.
+ * @param {number} ntile - The quantile to calculate. Should be a value between 0 and 1.
+ * @returns {number|null} The nth quantile value if the array is not empty; otherwise, null.
+ */
 export function quantile(arr, ntile){
   if(arr.length == 0){
     return null;
@@ -94,6 +99,11 @@ export function round3(x){
     return(Math.round(x*1e3)/1e3);
 }
 
+/**
+ * Rounds a number to six decimal places.
+ * @param {number} x - The number to be rounded.
+ * @returns {number} The rounded number.
+ */
 export function round6(x){
     return(Math.round(x*1e6)/1e6);
 }

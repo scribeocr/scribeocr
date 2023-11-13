@@ -9,7 +9,7 @@ export async function initConvertPageWorker() {
 
 	return new Promise((resolve, reject) => {
 		let obj = {};
-		const url = new URL('./convertPageWorker.js', import.meta.url);
+		const url = new URL('./worker/convertPageWorker.js', import.meta.url);
 		let worker = globalThis.document ? new Worker(url) : new Worker(url, { type: 'module' });
 
         worker.promises = {};

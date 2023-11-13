@@ -1,4 +1,4 @@
-import { ocr } from './ocrObjects.js';
+import ocr from './ocrObjects.js';
 import { round6 } from "./miscUtils.js";
 
 /**

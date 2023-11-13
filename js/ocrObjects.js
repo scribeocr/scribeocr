@@ -3,6 +3,7 @@ import { getFontSize } from "./textUtils.js"
 /**
  * @param {number} n
  * @param {Array<number>} dims
+ * @global
  */
 export function ocrPage(n, dims) {
     /** @type {number} */ 
@@ -19,6 +20,44 @@ export function ocrPage(n, dims) {
       this.lines = [];
   }
   
+
+/**
+ * @param {ocrPage} page
+ * @param {Array<number>} bbox
+ * @param {Array<number>} baseline
+ * @param {number} ascHeight
+ * @param {?number} xHeight
+ * @property {Array<number>} bbox - bounding box for line
+ * @property {Array<number>} baseline - baseline [slope, offset]
+ * @property {number} ascHeight - 
+ * @property {?number} xHeight - 
+ * @property {Array<ocrWord>} words - words in line
+ * @property {ocrPage} page - page line belongs to
+ * @property {?number} _sizeCalc - calculated line font size (using `ascHeight` and `xHeight`)
+ * @property {?number} _size - line font size set (set through other means)
+ *  `_size` should be preferred over `_sizeCalc` when both exist.
+ */
+export function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
+    // These inline comments are required for types to work correctly with VSCode Intellisense.
+    // Unfortunately, the @property tags above are not sufficient.
+    /** @type {Array<number>} */ 
+    this.bbox = bbox;
+    /** @type {Array<number>} */ 
+    this.baseline = baseline;
+    /** @type {number} */ 
+    this.ascHeight = ascHeight;
+    /** @type {?number} */ 
+    this.xHeight = xHeight;
+    /** @type {Array<ocrWord>} */ 
+    this.words = [];
+    /** @type {ocrPage} */ 
+    this.page = page;
+    /** @type {?number} */ 
+    this._sizeCalc = null;
+    /** @type {?number} */
+    this._size = null;
+  }
+
 
 /**
  * @param {ocrLine} line
@@ -119,12 +158,18 @@ const getPageWord = (page, id) => {
  * Delete word with id on a given page.
  * @param {ocrPage} page
  * @param {string} id
+ * TODO: This function currently needs to be called for every word deleted. 
+ * This leads to noticable lag when deleting a large number of words at the same time.
+ * Rewrite to handle multiple words. 
  */
 const deletePageWord = (page, id) => {
     for (let i=0; i<page.lines.length; i++) {
         for (let j=0; j<page.lines[i].words.length; j++) {
             if (page.lines[i].words[j].id === id) {
                 page.lines[i].words.splice(j, 1);
+                if (page.lines[i].words.length == 0) {
+                    page.lines.splice(i, 1);
+                }
                 return;
             }
         }
@@ -253,64 +298,6 @@ function escapeXml(string) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 }
-
-
-export const ocr = {
-    ocrWord: ocrWord,
-    ocrLine: ocrLine,
-    ocrPage: ocrPage,
-    calcLineFontSize : calcLineFontSize,
-    calcLineAngleAdj : calcLineAngleAdj,
-    calcLineBbox: calcLineBbox,
-    getPageWord: getPageWord,
-    getPageWords: getPageWords,
-    getPageText: getPageText,
-    cloneLine: cloneLine,
-    cloneWord: cloneWord,
-    rotateLine: rotateLine,
-    deletePageWord: deletePageWord,
-    calcWordFontSize: calcWordFontSize,
-    replaceLigatures: replaceLigatures,
-    escapeXml: escapeXml,
-}
-
-
-/**
- * @param {ocrPage} page
- * @param {Array<number>} bbox
- * @param {Array<number>} baseline
- * @param {number} ascHeight
- * @param {?number} xHeight
- * @property {Array<number>} bbox - bounding box for line
- * @property {Array<number>} baseline - baseline [slope, offset]
- * @property {number} ascHeight - 
- * @property {?number} xHeight - 
- * @property {Array<ocrWord>} words - words in line
- * @property {ocrPage} page - page line belongs to
- * @property {?number} _sizeCalc - calculated line font size (using `ascHeight` and `xHeight`)
- * @property {?number} _size - line font size set (set through other means)
- *  `_size` should be preferred over `_sizeCalc` when both exist.
- */
-export function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
-    // These inline comments are required for types to work correctly with VSCode Intellisense.
-    // Unfortunately, the @property tags above are not sufficient.
-    /** @type {Array<number>} */ 
-    this.bbox = bbox;
-    /** @type {Array<number>} */ 
-    this.baseline = baseline;
-    /** @type {number} */ 
-    this.ascHeight = ascHeight;
-    /** @type {?number} */ 
-    this.xHeight = xHeight;
-    /** @type {Array<ocrWord>} */ 
-    this.words = [];
-    /** @type {ocrPage} */ 
-    this.page = page;
-    /** @type {?number} */ 
-    this._sizeCalc = null;
-    /** @type {?number} */
-    this._size = null;
-  }
 
 // Re-calculate bbox for line
 function calcLineBbox(line) {
@@ -450,6 +437,25 @@ function cloneWord(word) {
     return wordNew;
 }
 
+const ocr = {
+    ocrPage: ocrPage,
+    ocrLine: ocrLine,
+    ocrWord: ocrWord,
+    calcLineFontSize : calcLineFontSize,
+    calcLineAngleAdj : calcLineAngleAdj,
+    calcLineBbox: calcLineBbox,
+    getPageWord: getPageWord,
+    getPageWords: getPageWords,
+    getPageText: getPageText,
+    cloneLine: cloneLine,
+    cloneWord: cloneWord,
+    rotateLine: rotateLine,
+    deletePageWord: deletePageWord,
+    calcWordFontSize: calcWordFontSize,
+    replaceLigatures: replaceLigatures,
+    escapeXml: escapeXml,
+}
 
+export default ocr;
 // Making global for debugging purposes.  This should not be relied upon in code.
 // globalThis.ocr = ocr;

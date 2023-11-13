@@ -5,10 +5,12 @@ import { getFontSize, calcCharSpacing, calcWordMetrics } from "./textUtils.js";
 
 import { loadFontBrowser } from "./fontUtils.js";
 
-import { ocr } from "./ocrObjects.js";
+import ocr from "./ocrObjects.js";
 
 // Function for converting from bufferArray to hex (string)
 // Taken from https://stackoverflow.com/questions/40031688/javascript-arraybuffer-to-hex
+
+/** @type {Array<string>} */
 const byteToHex = [];
 
 for (let n = 0; n <= 0xff; ++n)
@@ -17,9 +19,16 @@ for (let n = 0; n <= 0xff; ++n)
     byteToHex.push(hexOctet);
 }
 
+/**
+ * Converts an ArrayBuffer to a hexadecimal string.
+ * 
+ * @param {ArrayBuffer} arrayBuffer - The ArrayBuffer to be converted.
+ * @returns {string} The hexadecimal representation of the ArrayBuffer.
+ */
 function hex(arrayBuffer)
 {
     const buff = new Uint8Array(arrayBuffer);
+    /** @type {Array<string>} */
     const hexOctets = []; // new Array(buff.length) is even faster (preallocates necessary array size), then use hexOctets[i] instead of .push()
 
     for (let i = 0; i < buff.length; ++i)
@@ -31,6 +40,13 @@ function hex(arrayBuffer)
 // Creates 3 PDF objects necessary to embed font.
 // These are (1) the font dictionary, (2) the font descriptor, and (3) the font file,
 // which will be located at objects firstObjIndex, firstObjIndex + 1, and firstObjIndex + 2 (respectively). 
+
+/**
+ * Converts a Opentype.js font object into a string for adding to a PDF.
+ * 
+ * @param {opentype.Font} font - Opentype.js font object
+ * @param {number} firstObjIndex - Index for the first PDF object
+ */
 function createFontObj(font, firstObjIndex){
 
   // Start 1st object: Font Dictionary
@@ -90,6 +106,20 @@ function createFontObj(font, firstObjIndex){
 // This is different than wordRegex in the convertPage.js file, as here we assume that the xml is already at the word-level (no character-level elements).
 const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\s*)/, "ig");
 
+/**
+ * Create a PDF from an array of ocrPage objects.
+ *
+ * @param {Array<ocrPage>} hocrArr - 
+ * @param {number} minpage - 
+ * @param {number} maxpage - 
+ * @param {string} textMode - 
+ * @param {boolean} rotateText - 
+ * @param {boolean} rotateBackground - 
+ * @param {Array<number>} dimsLimit - 
+ * @param {?any} progress - 
+ * @param {number} confThreshHigh - 
+ * @param {number} confThreshMed - 
+ */
 export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
   // Only "SansDefault" and "SerifDefault" are currently considered for inclusion in PDF export,
@@ -192,19 +222,19 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     outputDims = inputDims;
   }
 
-  // Note: Text may contain nested elements (e.g. `<span class="ocr_dropcap">`) so it cannot be assumed that `</span></span>` indicates the end of the line
-  // const lines = hocrStr?.split(/(?=<span class\=[\"\']ocr_line)/g)?.slice(1);
-  const lines = pageObj.lines;
+  const noContent = !pageObj || pageObj.lines.length == 0;
 
   // Start 2nd object: Page
   let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims[1]) + " " + String(outputDims[0]) + "]";
 
-  if (lines) secondObj += "/Contents " + String(firstObjIndex) + " 0 R";
+  if (noContent) secondObj += "/Contents " + String(firstObjIndex) + " 0 R";
 
   secondObj += pageResourceStr + "/Parent " + parentIndex + " 0 R>>\nendobj\n\n";  
 
   // If there is no text content, return the empty page with no contents
-  if(!lines) return secondObj;
+  if(noContent) return secondObj;
+
+  const lines = pageObj.lines;
 
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
@@ -234,13 +264,15 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
   for(let i=0;i<lines.length;i++) {
 
     const line = lines[i];
+    const words = line.words;
+
+    if (words.length == 0) continue;
 
     const baseline = line.baseline;
     const linebox = line.bbox;
 
     lineFontSize = (await ocr.calcLineFontSize(line)) || lineFontSize;
-
-    const words = line.words;
+    
     const word = words[0];
     const wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
 

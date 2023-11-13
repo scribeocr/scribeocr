@@ -1,6 +1,17 @@
 
 
 
+/**
+ * Calculates font size by comparing provided character height to font metrics.
+ * 
+ * @param {string} fontFamily - 
+ * @param {string} fontStyle - 
+ * @param {number} charHeightActual - Actual, measured height of character in pixels.
+ * @param {string} [compChar='o'] - Character to compare `charHeightActual` against (default is 'o').
+ * @returns {Promise<number>} A promise that resolves to the calculated font size.
+ * 
+ * Note: The default value "o" corresponds to the x-height stat better than "x" does. 
+ */
 export async function getFontSize(fontFamily, fontStyle, charHeightActual, compChar = "o"){
 
   if (/small caps$/i.test(fontFamily)) {
@@ -60,7 +71,16 @@ export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle 
 
 }
 
-// Calculates char spacing required for the specified word to be rendered at a width of actualWidth
+
+/**
+ * Calculates char spacing required for the specified word to be rendered at specified width.
+ * 
+ * @param {string} wordText - 
+ * @param {string} fontFamily - 
+ * @param {string} fontStyle - 
+ * @param {number} fontSize - 
+ * @param {number} actualWidth - The actual width the word should be scaled to
+ */
 export async function calcCharSpacing(wordText, fontFamily, fontStyle, fontSize, actualWidth) {
   if(wordText.length < 2) return 0;
 

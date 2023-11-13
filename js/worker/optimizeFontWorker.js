@@ -1,8 +1,23 @@
 
+/**
+ * @typedef {import("../fontStatistics.js").fontMetricsFont} fontMetricsFont
+ */
+
+/**
+ * Rounds a number to six decimal places.
+ * @param {number} x - The number to be rounded.
+ * @returns {number} The rounded number.
+ */
 function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
 }
 
+/**
+ * Calculates the nth quantile of a given array of numbers.
+ * @param {number[]} arr - The array of numbers.
+ * @param {number} ntile - The quantile to calculate. Should be a value between 0 and 1.
+ * @returns {number|null} The nth quantile value if the array is not empty; otherwise, null.
+ */
 function quantile(arr, ntile) {
   if (arr.length == 0) {
     return null;
@@ -16,42 +31,57 @@ function quantile(arr, ntile) {
   return arr1[mid];
 };
 
-function scaleGlyph(glyph, mult) {
+/**
+ * Function that transforms a single numeric input. 
+ * @callback transformFunc
+ * @param {number} x - Numeric input
+ */
+
+/**
+ * Apply function to all points on glyph.
+ * @param {opentype.Glyph} glyph
+ * @param {transformFunc} func
+ * @param {boolean} transX - Transform x coordinates
+ * @param {boolean} transY - Transform y coordinates
+ */
+function transformGlyph(glyph, func, transX = false, transY = false) {
 
   for (let j = 0; j < glyph.path.commands.length; j++) {
     let pointJ = glyph.path.commands[j];
 
-    if (pointJ.x != null) {
-      pointJ.x = Math.round(pointJ.x * mult);
-    }
-    if (pointJ.x1 != null) {
-      pointJ.x1 = Math.round(pointJ.x1 * mult);
-    }
-    if (pointJ.x2 != null) {
-      pointJ.x2 = Math.round(pointJ.x2 * mult);
-    }
-
-    if (pointJ.y != null) {
-      pointJ.y = Math.round(pointJ.y * mult);
-    }
-    if (pointJ.y1 != null) {
-      pointJ.y1 = Math.round(pointJ.y1 * mult);
-    }
-    if (pointJ.y2 != null) {
-      pointJ.y2 = Math.round(pointJ.y2 * mult);
+    if (pointJ.type === 'M' || pointJ.type === 'L' || pointJ.type === 'C' || pointJ.type === 'Q') {
+      if (transX) pointJ.x = func(pointJ.x);
+      if (transY) pointJ.y = func(pointJ.y);
+      if (pointJ.type === 'C' || pointJ.type === 'Q') {
+        if (transX) pointJ.x1 = func(pointJ.x1);
+        if (transY) pointJ.y1 = func(pointJ.y1);
+        if (pointJ.type === 'C') {
+          if (transX) pointJ.x2 = func(pointJ.x2);
+          if (transY) pointJ.y2 = func(pointJ.y2);
+        }
+      }
     }
   }
 }
 
-// Creates optimized version of font based on metrics in `fontMetricsObj`
-async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearings = false) {
+/**
+ * Creates optimized version of font based on metrics provided. 
+ * @param {string|ArrayBuffer} fontData
+ * @param {fontMetricsFont} fontMetricsObj
+ * @param {string} type - 
+ * @param {boolean} adjustAllLeftBearings - 
+ */
+async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearings = false, standardizeSize = false) {
 
-  let workingFont;
-  if (typeof (fontData) == "string") {
-    workingFont = await opentype.load(fontData);
-  } else {
-    workingFont = opentype.parse(fontData, { lowMemory: false });
-  }
+  const workingFont = typeof (fontData) == "string" ? await opentype.load(fontData) : opentype.parse(fontData, { lowMemory: false });
+
+
+  // let workingFont;
+  // if (typeof (fontData) == "string") {
+  //   workingFont = await opentype.load(fontData);
+  // } else {
+  //   workingFont = opentype.parse(fontData, { lowMemory: false });
+  // }
 
   // Remove GSUB table (in most Latin fonts this table is responsible for ligatures, if it is used at all).
   // The presence of ligatures (such as ﬁ and ﬂ) is not properly accounted for when setting character metrics.
@@ -63,10 +93,15 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
   let oGlyph = workingFont.charToGlyph("o").getMetrics();
   let xHeight = oGlyph.yMax - oGlyph.yMin;
   const xHeightScale = xHeightStandard / xHeight;
-  if (Math.abs(xHeightScale) > 0.01) {
-    for (const [key, value] of Object.entries(workingFont.glyphs.glyphs)) {
-      scaleGlyph(value, xHeightScale);
-    }  
+  const scaleGlyph = (x) => x * xHeightScale;
+  if (Math.abs(1 - xHeightScale) > 0.01) {
+    if (standardizeSize) {
+      for (const [key, value] of Object.entries(workingFont.glyphs.glyphs)) {
+        transformGlyph(value, scaleGlyph, true, true);
+      }  
+    } else {
+      console.log("Font is not standard size ('o' 0.47x em size).  Either standardize the font ahead of time or enable `standardizeSize = true` to standardize on the fly.");
+    }
   }
 
   // TODO: Adapt glyph substitution to work with new Nimbus fonts
@@ -126,7 +161,6 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
 
     const charLit = String.fromCharCode(parseInt(key));
 
-
     // Some glyphs do not benefit from recalculating statistics, as they are commonly misidentified
     if (["."].includes(charLit)) { continue; }
 
@@ -142,9 +176,10 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
     // Left bearings are currently only changed for specific punctuation characters (overall scaling aside)
     let shiftX = 0;    
     if ([";", ":", "‘", "’", "“", "”", "\""].includes(charLit) || adjustAllLeftBearings) {
-      let leftBearingCorrect = Math.round(fontMetricsObj["advance"][key] * xHeight);
-      if (isFinite(leftBearingCorrect)) {
-        let leftBearingAct = glyphI.leftSideBearing;
+      const leftBearingCorrect = Math.round(fontMetricsObj["advance"][key] * xHeight);
+      const leftBearingAct = glyphI.leftSideBearing;
+      if (isFinite(leftBearingCorrect) && leftBearingAct !== undefined) {
+        
         shiftX = leftBearingCorrect - leftBearingAct;
 
         // Reset shiftX to 0 if resulting advance would be very small or negative
@@ -175,46 +210,14 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
       scaleXFactor = Math.max(Math.min(scaleXFactor, 1.3), 0.7);
     }
 
-    for (let j = 0; j < glyphI.path.commands.length; j++) {
-      let pointJ = glyphI.path.commands[j];
-      if (pointJ.x != null) {
-        //pointJ.x = Math.round((pointJ.x - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
-        if (singleStemClassB.includes(charLit) && type != "italic") {
-          if (Math.abs(pointJ.x - glyphICenter) > glyphIWidthQuarter) {
-            pointJ.x = Math.round((pointJ.x - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
-          }
-        } else {
-          pointJ.x = Math.round(pointJ.x * scaleXFactor) + shiftX;
-        }
+    const scaleH1 = (x) => Math.round((x - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
+    const scaleH2 = (x) => Math.round(x * scaleXFactor) + shiftX;
 
-      }
-      if (pointJ.x1 != null) {
-        //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
-        if (singleStemClassB.includes(charLit) && type != "italic") {
-          if (Math.abs(pointJ.x1 - glyphICenter) > glyphIWidthQuarter) {
-            pointJ.x1 = Math.round((pointJ.x1 - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
-          }
-        } else {
-          pointJ.x1 = Math.round(pointJ.x1 * scaleXFactor) + shiftX;
-        }
-      }
-      if (pointJ.x2 != null) {
-        //pointJ.x1 = Math.round((pointJ.x1 - glyphIMetrics.xMin) * scaleXFactor) + glyphIMetrics.xMin;
-        if (singleStemClassB.includes(charLit) && type != "italic") {
-          if (Math.abs(pointJ.x2 - glyphICenter) > glyphIWidthQuarter) {
-            pointJ.x2 = Math.round((pointJ.x2 - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
-          }
-        } else {
-          pointJ.x2 = Math.round(pointJ.x2 * scaleXFactor) + shiftX;
-        }
-      }
-
-
+    if (singleStemClassB.includes(charLit) && type != "italic") {
+      transformGlyph(glyphI, scaleH1, true, false);
+    } else {
+      transformGlyph(glyphI, scaleH2, true, false);
     }
-
-    // Do not adjust advance for italic "f".
-    // if (key == "102" && type == "italic") continue;
-
 
     glyphIMetrics = glyphI.getMetrics();
 
@@ -235,19 +238,11 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
       const charLit = String.fromCharCode(key);
   
       let glyphI = workingFont.charToGlyph(charLit);
-  
-      for (let j = 0; j < glyphI.path.commands.length; j++) {
-        let pointJ = glyphI.path.commands[j];
-        if (pointJ.y != null) {
-          pointJ.y = Math.round(pointJ.y * capsMult);
-        }
-        if (pointJ.y1 != null) {
-          pointJ.y1 = Math.round(pointJ.y1 * capsMult);
-        }
-        if (pointJ.y2 != null) {
-          pointJ.y2 = Math.round(pointJ.y2 * capsMult);
-        }
-      }
+
+      const scaleCaps = (x) => x * capsMult;
+
+      transformGlyph(glyphI, scaleCaps, false, true);
+
     }  
   }
 
@@ -265,23 +260,13 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
     const actFontJMult = actJMult / fontJMult;
 
     if (Math.abs(1 - actFontJMult) > 0.02) {
-      let glyphI = workingFont.charToGlyph("J");
-      let glyphIMetrics = glyphI.getMetrics();
+      const glyphI = workingFont.charToGlyph("J");
+      const glyphIMetrics = glyphI.getMetrics();
       const yAdj = Math.round(glyphIMetrics['yMax'] - (glyphIMetrics['yMax'] * actFontJMult));
 
-      for (let j = 0; j < glyphI.path.commands.length; j++) {
-        let pointJ = glyphI.path.commands[j];
-        if (pointJ.y != null) {
-          pointJ.y = Math.round(pointJ.y * actFontJMult + yAdj);
-        }
-        if (pointJ.y1 != null) {
-          pointJ.y1 = Math.round(pointJ.y1 * actFontJMult + yAdj);
-        }
-        if (pointJ.y2 != null) {
-          pointJ.y2 = Math.round(pointJ.y2 * actFontJMult + yAdj);
-        }
+      const transDescFunc = (x) => Math.round(x * actFontJMult + yAdj);
 
-      }
+      transformGlyph(glyphI, transDescFunc, false, true);
 
     }
   }
@@ -301,24 +286,31 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
     const actFontMult = actMult / fontMult;
     const glyphHeight = metrics.yMax - metrics.yMin;
     const glyphLowerStemHeight = minA - metrics.yMin;
+    const scaleYFactor = ((actFontMult - 1) * (glyphHeight / glyphLowerStemHeight)) + 1;
+
+    const scaleYFunc = (x) => Math.round((x - minA) * scaleYFactor);
+
     if (Math.abs(actFontMult) > 1.02) {
       let glyphI = workingFont.charToGlyph(charI);
-
+      
       // Adjust scaling factor to account for the fact that only the lower part of the stem is adjusted
-      let scaleYFactor = ((actFontMult - 1) * (glyphHeight / glyphLowerStemHeight)) + 1;
+      
+      // Note: This cannot be replaced with a call to `transformGlyph`, as this code only transforms certain glyphs. 
 
       for (let j = 0; j < glyphI.path.commands.length; j++) {
         let pointJ = glyphI.path.commands[j];
-        if (pointJ.y && pointJ.y < minA) {
-          pointJ.y = Math.round((pointJ.y - minA) * scaleYFactor);
-        }
-        if (pointJ.y1 && pointJ.y1 < minA) {
-          pointJ.y1 = Math.round((pointJ.y1 - minA) * scaleYFactor);
-        }
-        if (pointJ.y2 && pointJ.y2 < minA) {
-          pointJ.y2 = Math.round((pointJ.y2 - minA) * scaleYFactor);
+
+        if (pointJ.type === 'M' || pointJ.type === 'L' || pointJ.type === 'C' || pointJ.type === 'Q') {
+          if (pointJ.y < minA) pointJ.y = Math.round((pointJ.y - minA) * scaleYFactor);
+          if (pointJ.type === 'C' || pointJ.type === 'Q') {
+            if (pointJ.y1 < minA) pointJ.y1 = Math.round((pointJ.y1 - minA) * scaleYFactor);
+            if (pointJ.type === 'C') {
+              if (pointJ.y2 < minA) pointJ.y2 = Math.round((pointJ.y2 - minA) * scaleYFactor);
+            }
+          }
         }
       }
+
     }
   }
 
@@ -328,7 +320,7 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
   let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
   let minKern = maxKern * -1;
 
-  for (const [key, value] of Object.entries(fontMetricsObj["kerning"])) {
+  for (const [key, value] of Object.entries(fontMetricsObj.kerning)) {
 
     // Do not adjust pair kerning for italic "ff".
     // Given the amount of overlap between these glyphs, this metric is rarely accurate. 
@@ -379,10 +371,12 @@ addEventListener('message', async (e) => {
   if (typeof process === "undefined") {
     globalThis.window = {};
   } else {
-    await import("../node/require.js");
+    await import("../../node/require.js");
   }
 
-  await import('../lib/opentype.js');
+  await import('../../lib/opentype.js');
+
+  
   // const { glyphAlts } = await import('../fonts/glyphs.js');
   // globalThis.glyphAlts = glyphAlts;
   

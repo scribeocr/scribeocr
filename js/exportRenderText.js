@@ -1,5 +1,5 @@
 import { quantile } from "./miscUtils.js";
-import { ocr } from "./ocrObjects.js";
+import ocr from "./ocrObjects.js";
 
 export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
 

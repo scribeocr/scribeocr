@@ -174,7 +174,11 @@ function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
 }
 
 
-
+/**
+ * Rounds a number to six decimal places.
+ * @param {number} x - The number to be rounded.
+ * @returns {number} The rounded number.
+ */
 function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
 }
@@ -336,6 +340,12 @@ function rotateLine(line, angle) {
 const ascCharArr = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "b", "d", "h", "k", "l", "t", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z"]
 
+/**
+ * Calculates the nth quantile of a given array of numbers.
+ * @param {number[]} arr - The array of numbers.
+ * @param {number} ntile - The quantile to calculate. Should be a value between 0 and 1.
+ * @returns {number|null} The nth quantile value if the array is not empty; otherwise, null.
+ */
 function quantile(arr, ntile) {
   if (arr.length == 0) {
     return null

@@ -6,7 +6,7 @@
 
 import { calcWordMetrics } from "./textUtils.js"
 import { renderPageQueue } from "../main.js"
-import { ocr } from "./ocrObjects.js";
+import ocr from "./ocrObjects.js";
 
 
 export function deleteSelectedWords(){

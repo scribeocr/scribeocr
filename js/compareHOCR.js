@@ -1,5 +1,5 @@
 import { round3, getRandomAlphanum } from "./miscUtils.js";
-import { ocr } from "./ocrObjects.js";
+import ocr from "./ocrObjects.js";
 import { createTesseractScheduler, renderPDFImageCache } from "../main.js";
 import { calcCharSpacing } from "./textUtils.js";
 
@@ -10,7 +10,7 @@ const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById("i
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
 
 /**
- * Crop the image data the area containing `words` and render to the `globalThis.canvasAlt` canvas.
+ * Crop the image data the area containing `words` and render to the `globalThis.ctxAlt.canvas` canvas.
  * @param {Array<ocrWord>} words
  * @param {boolean} view
  */
@@ -91,20 +91,20 @@ globalThis.drawWordActual = async function(words, view = false) {
   if (!imgElem) throw new Error('Binary image is not defined for the requested page.');
 
 
-  globalThis.canvasAlt.height = height;
-  globalThis.canvasAlt.width = width;
+  globalThis.ctxAlt.canvas.height = height;
+  globalThis.ctxAlt.canvas.width = width;
 
   ctxAlt.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
 
 
   if (view) {
 
-    globalThis.canvasComp0.height = height;
-    globalThis.canvasComp0.width = width;
-    globalThis.canvasComp1.height = height;
-    globalThis.canvasComp1.width = width;
-    globalThis.canvasComp2.height = height;
-    globalThis.canvasComp2.width = width;
+    globalThis.ctxComp0.canvas.height = height;
+    globalThis.ctxComp0.canvas.width = width;
+    globalThis.ctxComp1.canvas.height = height;
+    globalThis.ctxComp1.canvas.width = width;
+    globalThis.ctxComp2.canvas.height = height;
+    globalThis.ctxComp2.canvas.width = width;
 
     ctxComp0.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
     ctxComp1.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
@@ -802,11 +802,11 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
 
                       const debugObj = {
                         // Raw image
-                        imageRaw: globalThis.canvasComp0.toDataURL(),
+                        imageRaw: globalThis.ctxComp0.canvas.toDataURL(),
                         // Image + OCR "A" overlay
-                        imageA: globalThis.canvasComp1.toDataURL(),
+                        imageA: globalThis.ctxComp1.canvas.toDataURL(),
                         // Image + OCR "B" overlay
-                        imageB: globalThis.canvasComp2.toDataURL(),
+                        imageB: globalThis.ctxComp2.canvas.toDataURL(),
                         // Raw (pixel overlap) error metric "A"
                         errorRawA: hocrError[0],
                         // Raw (pixel overlap) error metric "B"
@@ -858,11 +858,11 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
 
                       const debugObj = {
                         // Raw image
-                        imageRaw: globalThis.canvasComp0.toDataURL(),
+                        imageRaw: globalThis.ctxComp0.canvas.toDataURL(),
                         // Image + OCR "A" overlay
                         imageA: globalThis.canvasComp1.toDataURL(),
                         // Image + OCR "B" overlay
-                        imageB: globalThis.canvasComp2.toDataURL(),
+                        imageB: globalThis.ctxComp2.canvas.toDataURL(),
                         // Raw (pixel overlap) error metric "A"
                         errorRawA: hocrError[0],
                         // Raw (pixel overlap) error metric "B"
@@ -1239,7 +1239,7 @@ export async function checkWords(wordsA, view = false){
     tessedit_pageseg_mode: "6" // "Single block"
   }
 
-  const inputImage = canvasAlt.toDataURL();
+  const inputImage = ctxAlt.canvas.toDataURL();
 
   const res = await recognizeAreaScheduler.addJob('recognize', inputImage, extraConfig);
 

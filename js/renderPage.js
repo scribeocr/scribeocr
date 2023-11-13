@@ -3,7 +3,7 @@ import { getFontSize, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
 import { updateWordCanvas } from "./interfaceEdit.js";
 import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
 import { round3 } from "./miscUtils.js"
-import { ocr } from "./ocrObjects.js";
+import ocr from "./ocrObjects.js";
 
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));

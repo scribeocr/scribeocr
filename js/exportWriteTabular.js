@@ -8,7 +8,7 @@ import {  xlsxStrings, sheetStart, sheetEnd } from "./xlsxFiles.js";
 
 import { calcOverlap } from "./compareHOCR.js";
 
-import { ocr } from "./ocrObjects.js";
+import ocr from "./ocrObjects.js";
 
 /**
  * @param {ocrPage} pageObj
