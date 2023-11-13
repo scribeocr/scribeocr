@@ -11,6 +11,34 @@ await import('../lib/opentype.js');
 
 const args = process.argv.slice(2);
 
+/**
+ * Apply function to all points on glyph.
+ * @param {opentype.Glyph} glyph
+ * @param {transformFunc} func
+ * @param {boolean} transX - Transform x coordinates
+ * @param {boolean} transY - Transform y coordinates
+ */
+function transformGlyph(glyph, func, transX = false, transY = false) {
+
+    for (let j = 0; j < glyph.path.commands.length; j++) {
+      let pointJ = glyph.path.commands[j];
+  
+      if (pointJ.type === 'M' || pointJ.type === 'L' || pointJ.type === 'C' || pointJ.type === 'Q') {
+        if (transX) pointJ.x = func(pointJ.x);
+        if (transY) pointJ.y = func(pointJ.y);
+        if (pointJ.type === 'C' || pointJ.type === 'Q') {
+          if (transX) pointJ.x1 = func(pointJ.x1);
+          if (transY) pointJ.y1 = func(pointJ.y1);
+          if (pointJ.type === 'C') {
+            if (transX) pointJ.x2 = func(pointJ.x2);
+            if (transY) pointJ.y2 = func(pointJ.y2);
+          }
+        }
+      }
+    }
+  }
+  
+
 // Note: Small caps are treated differently from Bold and Italic styles.
 // Browsers will "fake" small caps using smaller versions of large caps.
 // Unfortunately, it looks like small caps cannot be loaded as a FontFace referring
@@ -28,11 +56,14 @@ async function createSmallCapsFont(fontData, heightSmallCaps) {
     let oGlyph = workingFont.charToGlyph("o");
     let oGlyphMetrics = oGlyph.getMetrics();
     let xHeight = oGlyphMetrics.yMax - oGlyphMetrics.yMin;
-    let fontAscHeight = workingFont.charToGlyph("A").getMetrics().yMax;
-    const smallCapsMult = xHeight * (heightSmallCaps ?? 1) / fontAscHeight;
+
+    // Using "O" rather than "A" to avoid changing x-height of input font
+    let OGlyph = workingFont.charToGlyph("O");
+    let OGlyphMetrics = OGlyph.getMetrics();
+    let ascHeight = OGlyphMetrics.yMax - OGlyphMetrics.yMin;
+
+    const smallCapsMult = xHeight * (heightSmallCaps ?? 1) / ascHeight;
     const lower = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"];
-    const singleStemClassA = ["i", "l", "t", "I"];
-    const singleStemClassB = ["f", "i", "j", "l", "t", "I", "J", "T"];
 
     for (let i = 0; i < lower.length; i++) {
         const charLit = lower[i];
@@ -41,29 +72,8 @@ async function createSmallCapsFont(fontData, heightSmallCaps) {
 
         glyphI.path.commands = JSON.parse(JSON.stringify(glyphIUpper.path.commands));
 
-        for (let j = 0; j < glyphI.path.commands.length; j++) {
-            let pointJ = glyphI.path.commands[j];
-            if (pointJ.x != null) {
-                pointJ.x = Math.round(pointJ.x * (smallCapsMult));
-            }
-            if (pointJ.x1 != null) {
-                pointJ.x1 = Math.round(pointJ.x1 * (smallCapsMult));
-            }
-            if (pointJ.x2 != null) {
-                pointJ.x2 = Math.round(pointJ.x2 * (smallCapsMult));
-            }
-
-            if (pointJ.y != null) {
-                pointJ.y = Math.round(pointJ.y * (smallCapsMult));
-            }
-            if (pointJ.y1 != null) {
-                pointJ.y1 = Math.round(pointJ.y1 * (smallCapsMult));
-            }
-            if (pointJ.y2 != null) {
-                pointJ.y2 = Math.round(pointJ.y2 * (smallCapsMult));
-            }
-
-        }
+        const scaleCaps = (x) => x * smallCapsMult;
+        transformGlyph(glyphI, scaleCaps, true, true);
 
         glyphI.advanceWidth = Math.round(glyphIUpper.advanceWidth * smallCapsMult);
 
