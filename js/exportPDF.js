@@ -227,7 +227,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
   // Start 2nd object: Page
   let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims[1]) + " " + String(outputDims[0]) + "]";
 
-  if (noContent) secondObj += "/Contents " + String(firstObjIndex) + " 0 R";
+  if (!noContent) secondObj += "/Contents " + String(firstObjIndex) + " 0 R";
 
   secondObj += pageResourceStr + "/Parent " + parentIndex + " 0 R>>\nendobj\n\n";  
 
