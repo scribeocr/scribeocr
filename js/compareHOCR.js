@@ -860,7 +860,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
                         // Raw image
                         imageRaw: globalThis.ctxComp0.canvas.toDataURL(),
                         // Image + OCR "A" overlay
-                        imageA: globalThis.canvasComp1.toDataURL(),
+                        imageA: globalThis.ctxComp1.canvas.toDataURL(),
                         // Image + OCR "B" overlay
                         imageB: globalThis.ctxComp2.canvas.toDataURL(),
                         // Raw (pixel overlap) error metric "A"
