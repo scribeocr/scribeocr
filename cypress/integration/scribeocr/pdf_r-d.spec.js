@@ -3,12 +3,12 @@ const httpServer = Cypress.env('TESTSITE');
 describe('It', () => {
   beforeEach(() => {
     cy.visit(httpServer);
-    cy.get('#nav-import-tab').click()
+    
 cy.wait(500);
   })
 
   it('recognises and downloads a text file from a pdf with no imported ocr data', () => {
-    cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/aurelia.pdf'])
+    cy.get('#openFileInput').selectFile(['cypress/fixtures/multi_pdf_nd/aurelia.pdf'], { force: true })
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
     
@@ -23,12 +23,13 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#download').click()
+    cy.wait(500)
+cy.get('#download').click()
     cy.verifyDownload('aurelia.txt')
   })
 /*
   it('recognises and downloads a text file from 5 pdfs with no imported ocr data', () => {
-    cy.get('#uploader').selectFile([
+    cy.get('#openFileInput').selectFile([
       'cypress/fixtures/multi_pdf_nd/snow_drops.pdf', 
       'cypress/fixtures/multi_pdf_nd/aurelia.pdf',
       'cypress/fixtures/multi_pdf_nd/henreys_grave.pdf', 
@@ -48,12 +49,13 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionText').click()
-    cy.get('#download').click()
+    cy.wait(500)
+cy.get('#download').click()
     cy.verifyDownload('snow_drops.txt')
   })
 */
   it('r & d pdf from pdf, no imported ocr data, COLOR', () => {
-    cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/the_past.pdf'])
+    cy.get('#openFileInput').selectFile(['cypress/fixtures/multi_pdf_nd/the_past.pdf'], { force: true })
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
     
@@ -72,12 +74,13 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#download').click()
+    cy.wait(500)
+cy.get('#download').click()
     cy.verifyDownload('the_past.pdf')
   })
 
   it('r & d pdf from pdf, no imported ocr data, BINARY', () => {
-    cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/henreys_grave.pdf'])
+    cy.get('#openFileInput').selectFile(['cypress/fixtures/multi_pdf_nd/henreys_grave.pdf'], { force: true })
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
     
@@ -96,12 +99,13 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#download').click()
+    cy.wait(500)
+cy.get('#download').click()
     cy.verifyDownload('henreys_grave.pdf')
   })
 /*
   it('recognises and downloads a pdf file from 5 pdfs with no imported ocr data', () => {
-    cy.get('#uploader').selectFile([
+    cy.get('#openFileInput').selectFile([
       'cypress/fixtures/multi_pdf_nd/the_past.pdf', 
       'cypress/fixtures/multi_pdf_nd/aurelia.pdf',
       'cypress/fixtures/multi_pdf_nd/henreys_grave.pdf', 
@@ -121,12 +125,13 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionPDF').click()
-    cy.get('#download').click()
+    cy.wait(500)
+cy.get('#download').click()
     cy.verifyDownload('the_past.pdf')
   })
 */
   it('recognises and downloads a hocr file from a pdf with no imported ocr data', () => {
-    cy.get('#uploader').selectFile(['cypress/fixtures/multi_pdf_nd/pretty_faces.pdf'])
+    cy.get('#openFileInput').selectFile(['cypress/fixtures/multi_pdf_nd/pretty_faces.pdf'], { force: true })
     cy.wait(3000)
     cy.get('#pageCount').should('have.text', '1')
 
@@ -140,12 +145,13 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()
-    cy.get('#download').click()
+    cy.wait(500)
+cy.get('#download').click()
     cy.verifyDownload('pretty_faces.hocr')
   })
 /*
   it('recognises and downloads a text file from 5 pdfs with no imported ocr data', () => {
-    cy.get('#uploader').selectFile([
+    cy.get('#openFileInput').selectFile([
       'cypress/fixtures/multi_pdf_nd/pretty_faces.pdf', 
       'cypress/fixtures/multi_pdf_nd/aurelia.pdf',
       'cypress/fixtures/multi_pdf_nd/henreys_grave.pdf', 
@@ -164,7 +170,8 @@ cy.wait(500)
 cy.wait(500)
     cy.get('#downloadFormat').click()
     cy.get('#formatLabelOptionHOCR').click()  
-    cy.get('#download').click()
+    cy.wait(500)
+cy.get('#download').click()
     cy.verifyDownload('pretty_faces.hocr')
   })
 */
