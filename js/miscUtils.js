@@ -4,13 +4,25 @@
 
 import pako from '../lib/pako.esm.min.js';
 
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+/**
+ * Generates a random integer.
+ *
+ * @param {number} min - The minimum value (inclusive).
+ * @param {number} max - The maximum value (exclusive).
+ * 
+ * Taken from: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+ */
 export function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
 }
 
+/**
+ * Generates a random alphanumeric string of a specified length.
+ *
+ * @param {number} num - The length of the alphanumeric string to generate.
+ */
 export function getRandomAlphanum(num){
   let outArr = new Array(num);
   for(let i=0;i<num;i++){
@@ -64,9 +76,16 @@ export function sleep(ms) { return new Promise((r) =>
 
 
 // Reads OCR files, which may be compressed as .gz or uncompressed
+
+/**
+ * Reads an OCR file, which may be compressed as .gz or uncompressed.
+ *
+ * @param {File|string} file - OCR file to read
+ * @returns {Promise<string>} - Contents of file
+ */
 export function readOcrFile(file){
   if (typeof file === 'string') {
-    return file;
+    return Promise.resolve(file);
   } else if(/\.gz$/i.test(file.name)){
     return(readTextFileGz(file));
   } else {
@@ -74,6 +93,13 @@ export function readOcrFile(file){
   }
 }
 
+/**
+ * Reads the contents of a Gzip-compressed text file and returns them as a promise.
+ *
+ * @param {File} file - The File object representing the Gzip-compressed text file to read.
+ * @returns {Promise<string>} A promise that resolves with the decompressed text content of the file
+ *                           or rejects with an error if reading or decompression fails.
+ */
 async function readTextFileGz(file) {
     return new Promise(async (resolve, reject) => {
         let zip1 = await file.arrayBuffer();
@@ -83,7 +109,13 @@ async function readTextFileGz(file) {
 }
 
 
-
+/**
+ * Reads the contents of a text file and returns them as a promise.
+ *
+ * @param {File} file - The File object representing the text file to read.
+ * @returns {Promise<string>} A promise that resolves with the text content of the file
+ *                           or rejects with an error if reading fails.
+ */
 export function readTextFile(file) {
   return new Promise((resolve, reject) => {
     let reader = new FileReader();
@@ -140,4 +172,26 @@ export function occurrences(string, subString, allowOverlapping, caseSensitive =
       } else break;
   }
   return n;
+}
+
+
+// Modified version of code found in FileSaver.js
+
+/**
+ * Saves a Blob or a string URL as a file to the user's computer.
+ * Modified version of code found in FileSaver.js.
+ * 
+ * @global
+ * @param {Blob} blob - The Blob object to save as a file.
+ * @param {string} name - File name. 
+ */
+export const saveAs = function(blob, name) {
+  const a = document.createElement('a');
+  a.download = name;
+  a.href = globalThis.URL.createObjectURL(blob);
+  a.dispatchEvent(new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true,
+    view: window
+  }));
 }

@@ -202,6 +202,12 @@ export function adjustBaseline(){
 
 }
 
+/**
+ * Visually moves the selected line's baseline on the canvas.
+ * Called when user is actively dragging the adjust baseline slider. 
+ * 
+ * @param {string | number} value - New baseline value.
+ */
 export function adjustBaselineRange(value){
   for(let i=0;i<objectsLine.length;i++){
     const objectI = objectsLine[i];
@@ -212,8 +218,13 @@ export function adjustBaselineRange(value){
 
 }
 
+/**
+ * Adjusts the selected line's baseline in the canvas object and underlying OCR data.
+ * Called after user releases adjust baseline slider.
+ * 
+ * @param {string | number} value - New baseline value.
+ */
 export function adjustBaselineRangeChange(value){
-  console.log("Mouseup");
 
   value = parseInt(value) - 100;
   let valueChange = value - objectsLine[0].baselineAdj;
@@ -237,5 +248,4 @@ export function adjustBaselineRangeChange(value){
     }
 
   }
-
 }

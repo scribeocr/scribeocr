@@ -172,24 +172,6 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
     let glyphIWidth = glyphIMetrics.xMax - glyphIMetrics.xMin;
     let scaleXFactor = (value * xHeight) / glyphIWidth;
 
-
-    // Left bearings are currently only changed for specific punctuation characters (overall scaling aside)
-    let shiftX = 0;    
-    if ([";", ":", "‘", "’", "“", "”", "\""].includes(charLit) || adjustAllLeftBearings) {
-      const leftBearingCorrect = Math.round(fontMetricsObj["advance"][key] * xHeight);
-      const leftBearingAct = glyphI.leftSideBearing;
-      if (isFinite(leftBearingCorrect) && leftBearingAct !== undefined) {
-        
-        shiftX = leftBearingCorrect - leftBearingAct;
-
-        // Reset shiftX to 0 if resulting advance would be very small or negative
-        if (shiftX + glyphI.advanceWidth < workingFont.unitsPerEm * 0.05) {
-          shiftX = 0;
-        }
-
-      }
-    }
-
     // TODO: For simplicitly we assume the stem is located at the midpoint of the bounding box (0.35 for "f")
     // This is not always true (for example, "t" in Libre Baskerville).
     // Look into whether there is a low(ish) effort way of finding the visual center for real.
@@ -210,8 +192,8 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
       scaleXFactor = Math.max(Math.min(scaleXFactor, 1.3), 0.7);
     }
 
-    const scaleH1 = (x) => Math.round((x - glyphICenter) * scaleXFactor) + glyphICenter + shiftX;
-    const scaleH2 = (x) => Math.round(x * scaleXFactor) + shiftX;
+    const scaleH1 = (x) => Math.round((x - glyphICenter) * scaleXFactor) + glyphICenter;
+    const scaleH2 = (x) => Math.round(x * scaleXFactor);
 
     if (singleStemClassB.includes(charLit) && type != "italic") {
       transformGlyph(glyphI, scaleH1, true, false);
@@ -220,13 +202,40 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
     }
 
     glyphIMetrics = glyphI.getMetrics();
+    // leftSideBearing is not automatically updated by glyphIMetrics
+    glyphI.leftSideBearing = glyphIMetrics.xMin;
+
+    // Edit left bearings.
+    // This must be done after any horizontal scaling for the calculations to be correct. 
+    // Left bearings are currently only changed for specific punctuation characters (overall scaling aside)
+    let shiftX = 0;    
+    if ([";", ":", "‘", "’", "“", "”", "\""].includes(charLit) || adjustAllLeftBearings) {
+      const leftBearingCorrect = 0;
+      // xMin is automatically updated by getMetrics, leftSideBearing is not 
+      const leftBearingAct = glyphIMetrics.xMin;
+      if (isFinite(leftBearingCorrect) && leftBearingAct !== undefined) {
+        
+        shiftX = leftBearingCorrect - leftBearingAct;
+
+        // Reset shiftX to 0 if resulting advance would be very small or negative
+        if (shiftX + glyphI.advanceWidth < workingFont.unitsPerEm * 0.05) {
+          shiftX = 0;
+        }
+
+      }
+    }
+
+    if (shiftX != 0) {
+      const shiftH = (x) => x + shiftX;
+      transformGlyph(glyphI, shiftH, true, false);
+      glyphIMetrics = glyphI.getMetrics();
+    }
 
     // To simplify calculations, no right bearings are used.
-    //glyphI.advanceWidth = Math.round(scaleXFactor * glyphIWidth) + glyphIMetrics.xMin;
     glyphI.advanceWidth = glyphIMetrics.xMax;
+    // leftSideBearing is not automatically updated by glyphIMetrics
     glyphI.leftSideBearing = glyphIMetrics.xMin;
     //glyphI.rightSideBearing = 0;
-
 
   }
 
@@ -250,7 +259,8 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
   const charHeightKeys = Object.keys(fontMetricsObj["height"]);
   const charHeightA = round6(quantile(Object.values(fontMetricsObj["height"]).filter((element, index) => upperAscCodes.includes(charHeightKeys[index])), 0.5));
 
-  {    // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
+  // Brackets are here so this is block scoped. 
+  { // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
     // Adjust height of capital J (which often has a height greater than other capital letters)
     // All height from "J" above that of "A" is assumed to occur under the baseline
     const actJMult = Math.max(round6(fontMetricsObj["height"][74]) / charHeightA, 0);
@@ -313,6 +323,10 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
 
     }
   }
+
+  const glyphI = workingFont.charToGlyph("g");
+  const glyphIMetrics = glyphI.getMetrics();
+  console.log(glyphIMetrics.xMin);
 
   let fontKerningObj = new Object;
 
@@ -384,6 +398,7 @@ addEventListener('message', async (e) => {
   const metrics = e.data[1].fontMetrics;
   const style = e.data[1].style;
   const adjustAllLeftBearings = e.data[1].adjustAllLeftBearings;
+  const standardizeSize = e.data[1].standardizeSize;
   const heightSmallCaps = e.data[1].heightSmallCaps;
   const func = e.data[0];
 
@@ -394,7 +409,7 @@ addEventListener('message', async (e) => {
     // const fontBuffer = font.toArrayBuffer();
     // return postMessage({ fontData: fontBuffer, id: e.data[2] }, [fontBuffer]);
   } else {
-    const font = await optimizeFont(fontData, metrics, style, adjustAllLeftBearings);
+    const font = await optimizeFont(fontData, metrics, style, adjustAllLeftBearings, standardizeSize);
     const fontBuffer = font.toArrayBuffer();
     return postMessage({ fontData: fontBuffer, kerningPairs: font.kerningPairs, id: e.data[2] }, [fontBuffer]);
   }

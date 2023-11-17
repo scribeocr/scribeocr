@@ -1,22 +1,12 @@
 
 import { getFontSize, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
-import { updateWordCanvas } from "./interfaceEdit.js";
 import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
-import { round3 } from "./miscUtils.js"
 import ocr from "./ocrObjects.js";
+import { ITextWord } from "./fabricObjects.js";
 
-const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
-const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
-const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
-const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
-const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
-const styleItalicButton = new bootstrap.Button(styleItalicElem);
-const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
-const styleSuperButton = new bootstrap.Button(styleSuperElem);
-const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
+
 
 export async function renderPage(canvas, page, defaultFont, imgDims, angle, fontObj, leftAdjX) {
 
@@ -194,9 +184,10 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
 
         const textBackgroundColor = globalThis.find.search && wordText.toLowerCase().includes(globalThis.find.search?.toLowerCase()) ? '#4278f550' : '';
 
-        let textbox = new fabric.IText(wordText, {
+        const textbox = new ITextWord(wordText, {
           left: left,
           top: visualBaseline,
+          word: wordObj,
           selectable: !layoutMode,
           leftOrig: left,
           topOrig: visualBaseline,
@@ -226,179 +217,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
           charSpacing: charSpacing * 1000 / wordFontSize,
           fontSize: wordFontSize,
           showTextBoxBorder: showTextBoxBorderArg
-        });
-
-        textbox.hasControls = true;
-        textbox.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
-
-        let renderWordBoxes = false;
-        if (renderWordBoxes) {
-          let rect = new fabric.Rect({
-            left: left,
-            top: visualBaseline,
-            originY: "bottom",
-            width: box_width,
-            height: box_height,
-            stroke: '#287bb5',
-            fill: false,
-            opacity: 0.7
-          });
-          rect.hasControls = false;
-          rect.hoverCursor = false;
-          canvas.add(rect);
-        }
-
-
-        textbox.on('editing:exited', async function () {
-          if (this.hasStateChanged) {
-            if (document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)) {
-              let textInt = this.text;
-              textInt = textInt.replace(/(^|[-–—])\'/, "$1‘");
-              textInt = textInt.replace(/(^|[-–—])\"/, "$1“");
-              textInt = textInt.replace(/\'(?=$|[-–—])/, "’");
-              textInt = textInt.replace(/\"(?=$|[-–—])/, "”");
-              textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
-              this.text = textInt;
-            }
-
-            await updateWordCanvas(this);
-
-            const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], this.wordID);
-
-            if (!wordObj) {
-              console.warn("Canvas element contains ID" + this.wordID + "that does not exist in OCR data.  Skipping word.");
-            } else {
-              wordObj.text = this.text;
-            }
-          }
-        });
-        textbox.on('selected', function () {
-          // If multiple words are selected in a group, all the words in the group need to be considered when setting the UI
-          if (this.group) {
-            if (!this.group.style) {
-              let fontFamilyGroup = null;
-              let fontSizeGroup = null;
-              let supGroup = null;
-              let italicGroup = null;
-              let smallCapsGroup = null;
-              let singleFontFamily = true;
-              let singleFontSize = true;
-              for (let i=0; i<this.group._objects.length; i++) {
-                const wordI = this.group._objects[i];
-                // If there is no wordID then this object must be something other than a word
-                if (!wordI.wordID) continue;
-    
-                // Font style and font size consider all words in the group
-                if (fontFamilyGroup == null) {
-                  fontFamilyGroup = wordI.fontFamily.replace(/ Small Caps/, "");
-                } else {
-                  if (wordI.fontFamily.replace(/ Small Caps/, "") != fontFamilyGroup) {
-                    singleFontFamily = false;
-                  }
-                }
-    
-                if (fontSizeGroup == null) {
-                  fontSizeGroup = wordI.fontSize;
-                } else {
-                  if (wordI.fontSize != fontSizeGroup) {
-                    singleFontSize = false;
-                  }
-                }
-    
-                // Style toggles only consider the first word in the group
-                if (supGroup == null) supGroup = wordI.wordSup;
-                if (italicGroup == null) italicGroup = wordI.fontStyle == "italic";
-                if (smallCapsGroup == null) smallCapsGroup = /Small Caps/i.test(wordI.fontFamily);
-              }
-    
-              this.group.style = {
-                fontFamily: singleFontFamily ? fontFamilyGroup : "",
-                fontSize: singleFontSize ? fontSizeGroup : "",
-                sup: supGroup,
-                italic: italicGroup ,
-                smallCaps: smallCapsGroup
-              }
-    
-              wordFontElem.value = this.group.style.fontFamily;
-              fontSizeElem.value = this.group.style.fontSize;
-    
-              if(this.group.style.sup != styleSuperElem.classList.contains("active")) {
-                styleSuperButton.toggle();
-              }
-              if(this.group.style.italic != styleItalicElem.classList.contains("active")) {
-                styleItalicButton.toggle();
-              }
-              if(this.group.style.smallCaps != styleSmallCapsElem.classList.contains("active")) {
-                styleSmallCapsButton.toggle();
-              }  
-            }
-    
-          // If only one word is selected, we can just use the values for that one word
-          } else {
-            const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
-            if (!this.defaultFontFamily && Object.keys(globalThis.fontObj).includes(fontFamily)) {
-              wordFontElem.value = fontFamily;
-            }
-            fontSizeElem.value = this.fontSize;
-            if(this.wordSup != styleSuperElem.classList.contains("active")) {
-              styleSuperButton.toggle();
-            }
-            const italic = this.fontStyle == "italic";
-            if(italic != styleItalicElem.classList.contains("active")) {
-              styleItalicButton.toggle();
-            }
-            const smallCaps = /Small Caps/i.test(this.fontFamily);
-            if(smallCaps != styleSmallCapsElem.classList.contains("active")) {
-              styleSmallCapsButton.toggle();
-            }  
-          }
-        });
-            textbox.on('deselected', function () {
-          wordFontElem.value = "Default";
-          //document.getElementById("collapseRange").setAttribute("class", "collapse");
-          bsCollapse.hide();
-          rangeBaselineElem.value = "100";
-        });
-        textbox.on('modified', async (opt) => {
-          if (opt.action == "scaleX") {
-            const textboxWidth = opt.target.calcTextWidth();
-
-            const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
-            const visualWidthNew = (textboxWidth - wordMetrics["leftSideBearing"] - wordMetrics["rightSideBearing"]) * opt.target.scaleX;
-
-            let visualRightNew = opt.target.left + visualWidthNew;
-            let visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
-
-            const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], opt.target.wordID);
-    
-            if (!wordObj) {
-              console.warn("Canvas element contains ID" + opt.target.wordID + "that does not exist in OCR data.  Skipping word.");
-            } else {
-              const leftDelta = Math.round(opt.target.left - opt.target.leftOrig);
-              const rightDelta =  Math.round(visualRightNew - visualRightOrig);
-              wordObj.bbox[0] = wordObj.bbox[0] + leftDelta;
-              wordObj.bbox[2] = wordObj.bbox[2] + rightDelta;
-            }    
-
-            if (opt.target.text.length > 1) {
-
-
-              const widthDelta = visualWidthNew - opt.target.visualWidth;
-              if (widthDelta != 0) {
-                const charSpacingDelta = (widthDelta / (opt.target.text.length - 1)) * 1000 / opt.target.fontSize;
-                opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
-                opt.target.scaleX = 1;
-
-              }
-
-            }
-            opt.target.leftOrig = opt.target.left;
-            opt.target.visualWidth = visualWidthNew;
-          }
-        });
-
-
-        // TODO: A prototype for the texboxes should be created instead of adding to each one
+        })
 
         canvas.add(textbox);
 

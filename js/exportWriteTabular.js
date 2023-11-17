@@ -10,6 +10,8 @@ import { calcOverlap } from "./compareHOCR.js";
 
 import ocr from "./ocrObjects.js";
 
+import { saveAs } from "./miscUtils.js";
+
 /**
  * @param {ocrPage} pageObj
  */

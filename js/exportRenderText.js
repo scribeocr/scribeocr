@@ -1,6 +1,15 @@
 import { quantile } from "./miscUtils.js";
 import ocr from "./ocrObjects.js";
 
+/**
+ * Convert an array of ocrPage objects to plain text, or XML for a Word document. 
+ *
+ * @param {Array<ocrPage>} hocrCurrent - 
+ * @param {boolean} removeLineBreaks - Remove line breaks within what appears to be the same paragraph.
+ *    This allows for reflowing text.
+ * @param {boolean} breaksBetweenPages - Add line breaks between pages.
+ * @param {boolean} docxMode - Create XML for a word document rather than plain text.
+ */
 export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
 
   let textStr = "";
@@ -26,15 +35,20 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
     const lineRightArr = [];
     const lineWidthArr = [];
     const lineSpaceArr = [];
+    /** @type {?number} */
     let lineLeftMedian = null;
+    /** @type {?number} */
     let lineRightMedian = null;
+    /** @type {?number} */
     let lineWidthMedian = null;
+    /** @type {?number} */
     let lineSpaceMedian = null;
 
     if (removeLineBreaks) {
 
       const angle = globalThis.pageMetricsObj["angleAll"][g] * -1 ?? 0;
 
+      /** @type {?number} */
       let y2Prev = null;
 
       for (let h = 0; h < pageObj.lines.length; h++) {
@@ -42,7 +56,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
         const lineBox = lineObj.bbox;
 
-        if (h > 0) {
+        if (y2Prev !== null) {
           lineSpaceArr.push(lineBox[3] - y2Prev);
         }
 

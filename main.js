@@ -26,10 +26,14 @@ import { calcWordMetrics } from "./js/textUtils.js"
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "./js/fontStatistics.js";
 import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
 
-import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences } from "./js/miscUtils.js";
+import { ITextWord } from "./js/fabricObjects.js";
+
+import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences, saveAs } from "./js/miscUtils.js";
 import { getAllFileEntries } from "./js/drag-and-drop.js";
 
 // Functions for various UI tabs
+import { selectDisplayMode } from "./js/interfaceView.js";
+
 import {
   deleteSelectedWords, changeWordFontStyle, changeWordFontSize, changeWordFontFamily, toggleSuperSelectedWords,
   adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateWordCanvas
@@ -95,44 +99,6 @@ var leftGlobal;
 fabric.Object.prototype.hasControls = false;
 fabric.Object.prototype.lockMovementX = true;
 fabric.Object.prototype.lockMovementY = true;
-
-fabric.IText.prototype.toObject = (function (toObject) {
-  return function () {
-    return fabric.util.object.extend(toObject.call(this), {
-      fill_proof: this.fill_proof,
-      fill_ebook: this.fill_ebook,
-      wordID: this.wordID,
-      visualWidth: this.visualWidth,
-      defaultFontFamily: this.defaultFontFamily
-    });
-  };
-})(fabric.IText.prototype.toObject);
-
-// Displaying bounding boxes is useful for cases where text is correct but word segmentation is wrong
-// https://stackoverflow.com/questions/51233082/draw-border-on-fabric-textbox-when-its-not-selected
-var originalRender = fabric.Textbox.prototype._render;
-fabric.IText.prototype._render = function (ctx) {
-  originalRender.call(this, ctx);
-  //Don't draw border if it is active(selected/ editing mode)
-  //if (this.selected) return;
-  if (this.showTextBoxBorder) {
-    var w = this.width,
-      h = this.height,
-      x = -this.width / 2,
-      y = -this.height / 2;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + w, y);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x, y + h);
-    ctx.lineTo(x, y);
-    ctx.closePath();
-    var stroke = ctx.strokeStyle;
-    ctx.strokeStyle = this.textboxBorderColor;
-    ctx.stroke();
-    ctx.strokeStyle = stroke;
-  }
-}
 
 /**
  * @typedef inputDataModes
@@ -392,6 +358,8 @@ const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev')
 nextElem.addEventListener('click', () => displayPage(currentPage.n + 1));
 prevElem.addEventListener('click', () => displayPage(currentPage.n - 1));
 
+const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
+
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
 
@@ -557,10 +525,6 @@ autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(current
 showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
 document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
 
-const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
-rangeLeftMarginElem.addEventListener('input', () => { adjustMarginRange(rangeLeftMarginElem.value) });
-rangeLeftMarginElem.addEventListener('mouseup', () => { adjustMarginRangeChange(rangeLeftMarginElem.value) });
-
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
 displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className != "dropdown-item") return; setCurrentHOCR(e.target.innerHTML) });
@@ -648,17 +612,6 @@ showExcludedTextElem.addEventListener('click', () => getExcludedText());
 
 
 
-function displayModeClick(x) {
-
-  if (x == "eval") {
-    renderPageQueue(currentPage.n, 'screen', true);
-  } else {
-    selectDisplayMode(displayModeElem.value);
-  }
-
-}
-
-
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
 ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
 
@@ -670,7 +623,6 @@ ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n
 
 
 const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
-displayModeElem.addEventListener('change', () => { displayModeClick(displayModeElem.value) });
 
 const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
 pdfPageMinElem.addEventListener('keyup', function (event) {
@@ -1085,17 +1037,6 @@ function changeZoom(value) {
 }
 
 
-function adjustMarginRange(value) {
-  globalThis.canvas.viewportTransform[4] = (parseInt(value) - 200);
-  globalThis.canvas.renderAll();
-}
-
-
-function adjustMarginRangeChange(value) {
-  if (typeof (globalThis.pageMetricsObj["manAdjAll"]) == "undefined") return;
-  globalThis.pageMetricsObj["manAdjAll"][currentPage.n] = (parseInt(value) - 200);
-}
-
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
 document.getElementById('navBar')?.addEventListener('click', function (e) {
@@ -1107,7 +1048,7 @@ document.getElementById('navBar')?.addEventListener('click', function (e) {
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
 document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', function (e) {
-  if (e.target.id != "nav-recognize") return;
+  if (!e?.target || e.target.id != "nav-recognize") return;
   hideProgress("import-eval-progress-collapse");
   hideProgress("recognize-recognize-progress-collapse");
 })
@@ -1137,7 +1078,7 @@ document.getElementById('nav-download')?.addEventListener('shown.bs.collapse', f
 // Therefore, the navbar is set to fixed, and the canvas is manually moved up/down when tabs are shown/collapsed.
 var tabHeightObj = { "nav-recognize": 65, "nav-eval": 89, "nav-view": 117, "nav-edit": 104, "nav-layout": 83, "nav-download": 102, "nav-about": 81 }
 
-const paddingRowElem = document.getElementById('paddingRow');
+const paddingRowElem = /**@type {HTMLElement} */(document.getElementById('paddingRow'));
 
 function adjustPaddingRow(e) {
   if (e.target.id != this.id) return;
@@ -1800,6 +1741,10 @@ function addWordClick() {
       opacity_arg = 1;
       fill_arg = fillColorHex;
     }
+    // const rectLeft = rect.left + (rect?.ownMatrixCache?.value[4] || 0);
+    // const rectTop = rect.top + (rect?.ownMatrixCache?.value[5] || 0);
+    const rectLeft = rect.left + (rect?.group?.left|| 0);
+    const rectTop = rect.top + (rect?.group?.top || 0);
 
     let wordText = "A";
     // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
@@ -1820,9 +1765,9 @@ function addWordClick() {
       shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
       shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
 
-      const baselineY = (rect.top + rect.height) - (rect.height) / 3;
+      const baselineY = (rectTop + rect.height) - (rect.height) / 3;
 
-      const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (rect.left - shiftX);
+      const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (rectLeft - shiftX);
       const angleAdjXInt = sinAngle * ((baselineY - shiftY) - angleAdjYInt * 0.5);
 
       angleAdjXRect = angleAdjXInt + shiftX;
@@ -1831,15 +1776,15 @@ function addWordClick() {
     }
 
     // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
-    let rectTopHOCR = rect.top - angleAdjYRect;
-    let rectBottomHOCR = rect.top + rect.height - angleAdjYRect;
+    let rectTopHOCR = rectTop - angleAdjYRect;
+    let rectBottomHOCR = rectTop + rect.height - angleAdjYRect;
 
-    let rectTopCoreHOCR = Math.round(rect.top + rect.height * 0.2 - angleAdjYRect);
-    let rectBottomCoreHOCR = Math.round(rect.top + rect.height * 0.8 - angleAdjYRect);
+    let rectTopCoreHOCR = Math.round(rectTop + rect.height * 0.2 - angleAdjYRect);
+    let rectBottomCoreHOCR = Math.round(rectTop + rect.height * 0.8 - angleAdjYRect);
 
-    let rectLeftHOCR = rect.left - angleAdjXRect - currentPage.leftAdjX;
-    let rectRightHOCR = rect.left + rect.width - angleAdjXRect - currentPage.leftAdjX;
-    let rectMidHOCR = rect.left + rect.width * 0.5 - angleAdjXRect - currentPage.leftAdjX;
+    let rectLeftHOCR = rectLeft - angleAdjXRect - currentPage.leftAdjX;
+    let rectRightHOCR = rectLeft + rect.width - angleAdjXRect - currentPage.leftAdjX;
+    let rectMidHOCR = rectLeft + rect.width * 0.5 - angleAdjXRect - currentPage.leftAdjX;
 
     const wordBox = [rectLeftHOCR, rectTopHOCR, rectRightHOCR, rectBottomHOCR];
 
@@ -1851,7 +1796,11 @@ function addWordClick() {
     const wordObj = new ocr.ocrWord(lineObj, wordText, wordBox, wordIDNew);
     lineObj.words = [wordObj];
 
-    combineData(pageObj, globalThis.hocrCurrent[currentPage.n], true);
+    combineData(pageObj, globalThis.hocrCurrent[currentPage.n], true, false);
+
+    // Get line word was added to in main data.
+    // This will have different metrics from `lineObj` when the line was combined into an existing line.
+    const wordObjNew = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDNew);
 
     // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
     let angleAdjX = 0;
@@ -1864,33 +1813,20 @@ function addWordClick() {
       angleAdjY = angleAdjYInt + shiftY;
     }
 
-    const fontSize = await ocr.calcLineFontSize(lineObj);
+    const fontSize = await ocr.calcLineFontSize(wordObjNew.line);
 
     ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
-    const oMetrics = ctx.measureText("o");
-    const jMetrics = ctx.measureText("gjpqy");
     ctx.font = fontSize + 'px ' + globalSettings.defaultFont;
 
-    // The function fontBoundingBoxDescent currently is not enabled by default in Firefox.
-    // Can return to this simpler code if that changes.
-    // https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics/fontBoundingBoxDescent
-    //let fontDesc = (jMetrics.fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
-
-    const fontNormal = await globalThis.fontObj[globalSettings.defaultFont]["normal"];
-    //const fontItalic = await fontObj[globalSettings.defaultFont]["italic"];
-
-    let fontBoundingBoxDescent = Math.round(Math.abs(fontNormal.descender) * (1000 / fontNormal.unitsPerEm));
-
-    let fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (fontSize / 1000);
-
-    let top = lineObj.bbox[3] + lineObj.baseline[1] + fontDesc + angleAdjY;
+    let top = wordObjNew.line.bbox[3] + wordObjNew.line.baseline[1] + angleAdjY;
 
     const textBackgroundColor = globalThis.find.search && wordText.includes(globalThis.find.search) ? '#4278f550' : '';
 
-    let textbox = new fabric.IText(wordText, {
-      left: rect.left,
+    const textbox = new ITextWord(wordText, {
+      left: rectLeft,
       top: top,
-      leftOrig: rect.left,
+      word: wordObjNew,
+      leftOrig: rectLeft,
       topOrig: top,
       baselineAdj: 0,
       wordSup: false,
@@ -1906,163 +1842,13 @@ function addWordClick() {
       textBackgroundColor: textBackgroundColor,
       //line: i,
       visualWidth: rect.width,
-      visualLeft: rect.left,
+      visualLeft: rectLeft,
       visualBaseline: rect.bottom,
       defaultFontFamily: true,
       opacity: 1,
       //charSpacing: kerning * 1000 / wordFontSize
       fontSize: fontSize
     });
-
-    textbox.hasControls = true;
-    textbox.setControlsVisibility({bl:false,br:false,mb:false,ml:true,mr:true,mt:false,tl:false,tr:false,mtr:false});
-
-    textbox.on('editing:exited', async function () {
-      if (this.hasStateChanged) {
-        if (document.getElementById("smartQuotes").checked && /[\'\"]/.test(this.text)) {
-          let textInt = this.text;
-          textInt = textInt.replace(/(^|[-–—])\'/, "$1‘");
-          textInt = textInt.replace(/(^|[-–—])\"/, "$1“");
-          textInt = textInt.replace(/\'(?=$|[-–—])/, "’");
-          textInt = textInt.replace(/\"(?=$|[-–—])/, "”");
-          textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, "$1’");
-          this.text = textInt;
-        }
-        await updateWordCanvas(this);
-        const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], this.wordID);
-
-        if (!wordObj) {
-          console.warn("Canvas element contains ID" + this.wordID + "that does not exist in OCR data.  Skipping word.");
-        } else {
-          wordObj.text = this.text;
-        }
-  }
-    });
-    textbox.on('selected', function () {
-      // If multiple words are selected in a group, all the words in the group need to be considered when setting the UI
-      if (this.group) {
-        if (!this.group.style) {
-          let fontFamilyGroup = null;
-          let fontSizeGroup = null;
-          let supGroup = null;
-          let italicGroup = null;
-          let smallCapsGroup = null;
-          let singleFontFamily = true;
-          let singleFontSize = true;
-          for (let i=0; i<this.group._objects.length; i++) {
-            const wordI = this.group._objects[i];
-            // If there is no wordID then this object must be something other than a word
-            if (!wordI.wordID) continue;
-
-            // Font style and font size consider all words in the group
-            if (fontFamilyGroup == null) {
-              fontFamilyGroup = wordI.fontFamily.replace(/ Small Caps/, "");
-            } else {
-              if (wordI.fontFamily.replace(/ Small Caps/, "") != fontFamilyGroup) {
-                singleFontFamily = false;
-              }
-            }
-
-            if (fontSizeGroup == null) {
-              fontSizeGroup = wordI.fontSize;
-            } else {
-              if (wordI.fontSize != fontSizeGroup) {
-                singleFontSize = false;
-              }
-            }
-
-            // Style toggles only consider the first word in the group
-            if (supGroup == null) supGroup = wordI.wordSup;
-            if (italicGroup == null) italicGroup = wordI.fontStyle == "italic";
-            if (smallCapsGroup == null) smallCapsGroup = /Small Caps/i.test(wordI.fontFamily);
-          }
-
-          this.group.style = {
-            fontFamily: singleFontFamily ? fontFamilyGroup : "",
-            fontSize: singleFontSize ? fontSizeGroup : "",
-            sup: supGroup,
-            italic: italicGroup ,
-            smallCaps: smallCapsGroup
-          }
-
-          wordFontElem.value = this.group.style.fontFamily;
-          fontSizeElem.value = this.group.style.fontSize;
-
-          if(this.group.style.sup != styleSuperElem.classList.contains("active")) {
-            styleSuperButton.toggle();
-          }
-          if(this.group.style.italic != styleItalicElem.classList.contains("active")) {
-            styleItalicButton.toggle();
-          }
-          if(this.group.style.smallCaps != styleSmallCapsElem.classList.contains("active")) {
-            styleSmallCapsButton.toggle();
-          }  
-        }
-
-      // If only one word is selected, we can just use the values for that one word
-      } else {
-        const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
-        if (!this.defaultFontFamily && Object.keys(globalThis.fontObj).includes(fontFamily)) {
-          wordFontElem.value = fontFamily;
-        }
-        fontSizeElem.value = this.fontSize;
-        if(this.wordSup != styleSuperElem.classList.contains("active")) {
-          styleSuperButton.toggle();
-        }
-        const italic = this.fontStyle == "italic";
-        if(italic != styleItalicElem.classList.contains("active")) {
-          styleItalicButton.toggle();
-        }
-        const smallCaps = /Small Caps/i.test(this.fontFamily);
-        if(smallCaps != styleSmallCapsElem.classList.contains("active")) {
-          styleSmallCapsButton.toggle();
-        }  
-      }
-    });
-    textbox.on('deselected', function () {
-      wordFontElem.value = "Default";
-      bsCollapse.hide();
-      rangeBaselineElem.value = "100";
-    });
-
-    textbox.on('modified', async (opt) => {
-      // inspect action and check if the value is what you are looking for
-      if (opt.action == "scaleX") {
-        const textboxWidth = opt.target.calcTextWidth();
-
-        const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamily, opt.target.fontSize, opt.target.fontStyle);
-        const visualWidthNew = (textboxWidth - wordMetrics["leftSideBearing"] - wordMetrics["rightSideBearing"]) * opt.target.scaleX;
-
-        let visualRightNew = opt.target.left + visualWidthNew;
-        let visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
-
-        const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], opt.target.wordID);
-    
-        if (!wordObj) {
-          console.warn("Canvas element contains ID" + opt.target.wordID + "that does not exist in OCR data.  Skipping word.");
-        } else {
-          const leftDelta = Math.round(opt.target.left - opt.target.leftOrig);
-          const rightDelta =  Math.round(visualRightNew - visualRightOrig);
-          wordObj.bbox[0] = wordObj.bbox[0] + leftDelta;
-          wordObj.bbox[2] = wordObj.bbox[2] + rightDelta;
-        }
-
-        if (opt.target.text.length > 1) {
-
-
-          const widthDelta = visualWidthNew - opt.target.visualWidth;
-          if (widthDelta != 0) {
-            const charSpacingDelta = (widthDelta / (opt.target.text.length - 1)) * 1000 / opt.target.fontSize;
-            opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
-            opt.target.scaleX = 1;
-
-          }
-
-        }
-        opt.target.leftOrig = opt.target.left;
-        opt.target.visualWidth = visualWidthNew;
-      }
-});
 
     canvas.remove(rect);
     canvas.add(textbox);
@@ -2979,26 +2765,6 @@ async function initSchedulerIfNeeded(x) {
   return(window[x]);
 }
 
-// Modified version of code found in FileSaver.js
-globalThis.saveAs = function(blob, name, opts) {
-  var a = document.createElement('a');
-  name = name || blob.name || 'download';
-  a.download = name;
-  //a.rel = 'noopener'; // tabnabbing
-  // TODO: detect chrome extensions & packaged apps
-  // a.target = '_blank'
-  if (typeof blob === 'string') {
-    a.href = blob;
-  } else {
-    a.href = globalThis.URL.createObjectURL(blob);
-  }
-  a.dispatchEvent(new MouseEvent('click', {
-    bubbles: true,
-    cancelable: true,
-    view: window
-  }));
-}
-
 async function initOptimizeFontScheduler(workers = 3) {
   globalThis.optimizeFontScheduler = await Tesseract.createScheduler();
   globalThis.optimizeFontScheduler["workers"] = new Array(workers); 
@@ -3114,60 +2880,6 @@ function calculateOverallPageMetrics() {
   leftGlobal = quantile(leftAllPer, 0.5);
   globalThis.pageMetricsObj["manAdjAll"] = new Array(globalThis.pageMetricsObj["leftAll"].length);
   globalThis.pageMetricsObj["manAdjAll"].fill(0);
-
-}
-
-// Function to change the display mode
-// Impacts text color and opacity, and backgound image opacity
-globalThis.selectDisplayMode = function (x) {
-
-  if (inputDataModes.xmlMode[currentPage.n] && inputDataModes.pdfMode && currentPage.renderStatus != 2) { return; }
-
-  let opacity_arg, fill_arg;
-  if (x == "invis") {
-    opacity_arg = 0
-    fill_arg = "fill_ebook"
-  } else if (x == "ebook") {
-    opacity_arg = 1
-    fill_arg = "fill_ebook"
-  } else if (x == "eval") {
-    opacity_arg = 1
-    fill_arg = "fill_eval"
-  } else {
-    opacity_arg = 1
-    fill_arg = "fill_proof"
-  }
-
-  canvas.forEachObject(function (obj) {
-    // A defined value for obj.get(fill_arg) is assumed to indicate that the itext object is an OCR word. 
-    if (obj.type == "i-text" && obj.get(fill_arg)) {
-      obj.set("fill", obj.get(fill_arg));
-
-      obj.set("opacity", opacity_arg);
-    }
-  });
-
-  // Edit rotation for images that have already been rotated
-  if (colorModeElem.value == "binary" && globalThis.imageAll["binaryRotated"][currentPage.n] || colorModeElem.value != "binary" && globalThis.imageAll["nativeRotated"][currentPage.n]) {
-    // If rotation is requested, 
-    if (autoRotateCheckboxElem.checked) {
-      currentPage.backgroundOpts.angle = 0;
-    } else {
-      currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
-    }
-  }
-
-  // Include a background image if appropriate
-  if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
-    canvas.setBackgroundColor("white");
-    //canvas.setBackgroundImage(currentPage.backgroundImage, canvas.renderAll.bind(canvas));
-    canvas.setBackgroundImage(currentPage.backgroundImage, canvas.renderAll.bind(canvas), currentPage.backgroundOpts);
-  } else {
-    canvas.setBackgroundColor(null);
-    canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
-  }
-
-  working = false;
 
 }
 

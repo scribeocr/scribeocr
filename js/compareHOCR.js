@@ -1044,8 +1044,10 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
  * @param {ocrPage} pageB - Existing page
  * @param {boolean} replaceFontSize - Whether font size stats in the new line(s) should be replaced by font size in previous line.
  *  This option is used when the user manually adds a word, as the manually-drawn box will only roughly correspond to font size.
+ * @param {boolean} editWordIds - Edit word IDs in `pageB` by appending random characters to the end.
+ *  As word ID values must be unique, this is useful when `pageB` may contain duplicative values.
  */
-export function combineData(pageA, pageB, replaceFontSize = false) {
+export function combineData(pageA, pageB, replaceFontSize = false, editWordIds = true) {
 
   const linesNew = pageA.lines;
 	const lines = pageB.lines;
@@ -1057,8 +1059,6 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 
     const lineNewRot = ocr.cloneLine(lineNew);
     ocr.rotateLine(lineNewRot, globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1, globalThis.pageMetricsObj["dimsAll"][currentPage.n]);
-
-
 
 		// const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
     // const cosAngle = Math.cos(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
@@ -1151,6 +1151,7 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 
 			for (let i = 0; i < wordsNew.length; i++) {
 				let wordNew = wordsNew[i];
+        wordNew.line = match;
 				const wordBoxNew = wordNew.bbox;
 
 				// Identify closest word on existing line
@@ -1164,7 +1165,7 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 				} while (wordBox[2] < wordBoxNew[0] && j < words.length);
 
 				// Replace id (which is likely duplicative) with unique id
-				wordNew.id = word.id + getRandomAlphanum(3);
+				if (editWordIds) wordNew.id = word.id + getRandomAlphanum(3);
 
 				// Add to page data
 				// Note: Words will appear correctly on the canvas (and in the pdf) regardless of whether they are in the right order.
@@ -1185,7 +1186,7 @@ export function combineData(pageA, pageB, replaceFontSize = false) {
 				const wordNew = wordsNew[i];
 
 				// Replace id (which is likely duplicative) with unique id
-				wordNew.id = wordNew.id + getRandomAlphanum(3);
+				if (editWordIds) wordNew.id = wordNew.id + getRandomAlphanum(3);
 			}
 
       if (replaceFontSize) {
