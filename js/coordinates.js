@@ -26,13 +26,13 @@ function rotateBoundingBox(boundingBox, rotateAngle) {
     let angleAdjXRect = 0;
     let angleAdjYRect = 0;
 
-    const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
+    const pageDims = globalThis.pageMetricsArr[currentPage.n].dims;
 
     const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
     const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
 
-    const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
-    const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+    const shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
+    const shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
 
     const baselineY = boundingBox.top + boundingBox.height - boundingBox.height / 3;
 
@@ -61,12 +61,12 @@ function canvasToImage(canvasCoords, n, binary = false){
 
     // If the rendered image has been rotated to match the user-specified rotation setting (or the angle is so small it doesn't matter)
     // the only difference between coordinate systems is the left margin offset. 
-    if (autoRotateCheckboxElem.checked && imageRotated || !autoRotateCheckboxElem.checked && imageRotated || Math.abs(globalThis.pageMetricsObj["angleAll"][n] ?? 0) <= 0.05) {
+    if (autoRotateCheckboxElem.checked && imageRotated || !autoRotateCheckboxElem.checked && imageRotated || Math.abs(globalThis.pageMetricsArr[n].angle ?? 0) <= 0.05) {
         return {left : canvasCoords.left - currentPage.leftAdjX, top: canvasCoords.top, width: canvasCoords.width, height: canvasCoords.height}
     }
 
     // Otherwise, we must also account for rotation applied by the canvas
-    const rotateAngle = autoRotateCheckboxElem.checked && !imageRotated ? globalThis.pageMetricsObj["angleAll"][n] : globalThis.pageMetricsObj["angleAll"][n] * -1;
+    const rotateAngle = autoRotateCheckboxElem.checked && !imageRotated ? globalThis.pageMetricsArr[n].angle : globalThis.pageMetricsArr[n].angle * -1;
 
     canvasCoords = rotateBoundingBox(canvasCoords, rotateAngle);
 
@@ -92,7 +92,7 @@ function ocrToImage(ocrCoords, n, binary = false){
     }
 
     // Otherwise, we must also account for rotation applied by the canvas
-    const rotateAngle = globalThis.pageMetricsObj["angleAll"][n] * -1;
+    const rotateAngle = globalThis.pageMetricsArr[n].angle * -1;
 
     return rotateBoundingBox(ocrCoords, rotateAngle);
 

@@ -2,6 +2,7 @@
 import { renderPageQueue, displayPage } from "../main.js";
 import { getRandomAlphanum } from "./miscUtils.js";
 import { combineData } from "./compareHOCR.js";
+import { pageMetrics } from "./objects/pageMetricsObjects.js";
 
 var parser = new DOMParser();
 
@@ -10,7 +11,8 @@ export async function initConvertPageWorker() {
 	return new Promise((resolve, reject) => {
 		let obj = {};
 		const url = new URL('./worker/convertPageWorker.js', import.meta.url);
-		let worker = globalThis.document ? new Worker(url) : new Worker(url, { type: 'module' });
+		let worker = new Worker(url, { type: 'module' });
+		// let worker = globalThis.document ? new Worker(url) : new Worker(url, { type: 'module' });
 
         worker.promises = {};
         worker.promiseId = 0;
@@ -18,14 +20,14 @@ export async function initConvertPageWorker() {
 			const n = event.data[1];
 			const argsObj = event.data[2];
 
-			const pageObj = event.data[0][0];
+			const pageObj = /**@type {ocrPage} */ (event.data[0][0]);
 		  
 			// Detect if the new data needs to be combined with existing data.
 			// This occurs when using "recognize area" mode on a page with existing OCR data. 
 			if(argsObj["mode"] == "area") {
 			  const lines = globalThis.hocrCurrent[n].lines;
 			  if(lines && lines.length > 0) {
-				combineData(pageObj, globalThis.hocrCurrent[currentPage.n]);
+				combineData(pageObj, globalThis.hocrCurrent[currentPage.n], globalThis.pageMetricsArr[currentPage.n]);
 				renderPageQueue(currentPage.n, 'screen', false);
 				worker.promises[event.data[event.data.length - 1]].resolve(event.data);
 				return;
@@ -47,19 +49,16 @@ export async function initConvertPageWorker() {
 			  globalThis.hocrCurrent[n] = pageObj || null;
 			}
 		  
-			// When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
-			if (argsObj["mode"] == "area") {
-			  globalThis.pageMetricsObj["dimsAll"][n] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
-			  globalThis.hocrCurrent[n] = globalThis.hocrCurrent[n].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
-			} else {
-			  globalThis.pageMetricsObj["dimsAll"][n] = pageObj.dims;
+			// If a pageMetrics object was not initialized for this page, do so now. 
+			// This should happen for the case when OCR data is being imported by the user.
+			if (argsObj["mode"] !== "area" && !globalThis.pageMetricsArr[n]) {
+				globalThis.pageMetricsArr[n] = new pageMetrics(pageObj.dims);
 			}
 		  
 			inputDataModes.xmlMode[n] = true;
 
-			globalThis.pageMetricsObj["angleAll"][n] = pageObj.angle;
-			globalThis.pageMetricsObj["leftAll"][n] = pageObj.left;
-			globalThis.pageMetricsObj["angleAdjAll"][n] = pageObj.angleAdj;
+			globalThis.pageMetricsArr[n].angle = pageObj.angle;
+			globalThis.pageMetricsArr[n].left = pageObj.left;
 
 			// Layout boxes are only overwritten if none exist yet for the page
 			if (Object.keys(globalThis.layout[n].boxes).length == 0) globalThis.layout[n].boxes = event.data[0][2];

@@ -1,235 +1,150 @@
+// This file contains utility functions for calculating statistics using Opentype.js font objects.
+// The only import/dependency this file should have (aside from importing misc utility functions) should be fontObjects.js.
 
-// File summary:
-// Utility functions used for loading fonts.
-// To make sure what the user sees on the canvas matches the final pdf output,
-// all fonts should have an identical OpenType.js and FontFace version.
+import { fontAll } from "./objects/fontObjects.js";
 
-// Sans/serif lookup for common font families
-// Should be added to if additional fonts are encountered
-// Fonts that should not be added (both Sans and Serif variants):
-// DejaVu
-const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times", "Liberation Mono"];
-const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
+/**
+ * Calculates font size by comparing provided character height to font metrics.
+ * 
+ * @param {string} fontFamily - 
+ * @param {string} fontStyle - 
+ * @param {number} charHeightActual - Actual, measured height of character in pixels.
+ * @param {string} [compChar='o'] - Character to compare `charHeightActual` against (default is 'o').
+ * @returns {Promise<number>} A promise that resolves to the calculated font size.
+ * 
+ * Note: The default value "o" corresponds to the x-height stat better than "x" does. 
+ */
+export async function getFontSize(fontFamily, fontStyle, charHeightActual, compChar = "o"){
 
-const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
-const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
+  if (/small caps$/i.test(fontFamily)) {
+    fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
+    fontStyle = "small-caps";
+  }
+
+  const fontI = /**@type {fontContainerFont} */  (fontAll[fontFamily][fontStyle]);
+  const fontOpentypeI = await fontI.opentype;
+
+  const charMetrics = fontOpentypeI.charToGlyph(compChar).getMetrics();
+  const charHeight = (charMetrics.yMax - charMetrics.yMin) * (1 / fontOpentypeI.unitsPerEm);
+
+  return Math.round(charHeightActual / charHeight);
+
+}
+
+/**
+ * @typedef WordMetrics
+ * @type {object}
+ * @property {number} visualWidth - Width of printed characters in px (does not include left/right bearings).
+ * @property {number} leftSideBearing - Width of left bearing in px.
+ * @property {number} rightSideBearing - Width of right bearing in px.
+ */
+/**  
+ * @async 
+ * @return {Promise<WordMetrics>} 
+ */
+export async function calcWordMetrics(wordText, fontFamily, fontSize, fontStyle = "normal"){
+
+  if (/small caps$/i.test(fontFamily)) {
+    fontFamily = fontFamily.replace(/\s?small\s?caps/i, "");
+    fontStyle = "small-caps";
+  }
+
+  // Calculate font glyph metrics for precise positioning
+  const fontI = /**@type {fontContainerFont} */  (fontAll[fontFamily][fontStyle]);
+  const fontOpentypeI = await fontI.opentype;
+
+  let wordWidth1 = 0;
+  const wordTextArr = wordText.split("");
+  for (let i=0; i<wordTextArr.length; i++) {
+    const charI = wordTextArr[i];
+    const charJ = wordTextArr[i+1];
+    wordWidth1 += fontOpentypeI.charToGlyph(charI).advanceWidth;
+    if (charJ) wordWidth1 += fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(charI),fontOpentypeI.charToGlyph(charJ));
+  }
+
+  const wordLastGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(-1)).getMetrics();
+  const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0,1)).getMetrics();
+
+  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing;
+  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing;
+
+  const wordWidthPx = (wordWidth1 - wordRightBearing - wordLeftBearing) * (fontSize / fontOpentypeI.unitsPerEm);
+  const wordLeftBearingPx = wordLeftBearing * (fontSize / fontOpentypeI.unitsPerEm);
+  const wordRightBearingPx = wordRightBearing * (fontSize / fontOpentypeI.unitsPerEm);
+
+  return {"visualWidth": wordWidthPx, "leftSideBearing": wordLeftBearingPx, "rightSideBearing": wordRightBearingPx}
+
+}
 
 
 /**
- * Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font or serif font.
- *
- * @param {string} fontName - The name of the font to determine the type of. If the font name 
- * is falsy, the function will return "Default".
- * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault", 
- * "SerifDefault", or "Default" (if the font type cannot be determined).
- * @throws {console.log} - Logs an error message to the console if the font is unidentified and 
- * it is not the "Default Metrics Font".
+ * Calculates char spacing required for the specified word to be rendered at specified width.
+ * 
+ * @param {string} wordText - 
+ * @param {string} fontFamily - 
+ * @param {string} fontStyle - 
+ * @param {number} fontSize - 
+ * @param {number} actualWidth - The actual width the word should be scaled to
  */
-export function determineSansSerif(fontName) {
+export async function calcCharSpacing(wordText, fontFamily, fontStyle, fontSize, actualWidth) {
+  if(wordText.length < 2) return 0;
 
-  let fontFamily = "Default";
-  // Font support is currently limited to 1 font for Sans and 1 font for Serif.
-  if(fontName){
-    // First, test to see if "sans" or "serif" is in the name of the font
-    if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
-      fontFamily = "SansDefault";
-    } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
-      fontFamily = "SerifDefault";
+  const wordWidth = (await calcWordMetrics(wordText, fontFamily, fontSize, fontStyle))["visualWidth"];
 
-    // If not, check against a list of known sans/serif fonts.
-    // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
-    } else if (serifFontsRegex.test(fontName)) {
-      fontFamily = "SerifDefault";
-    } else if (sansFontsRegex.test(fontName)) {
-      fontFamily = "SansDefault";
-    } else if (fontName != "Default Metrics Font") {
-      console.log("Unidentified font in XML: " + fontName);
-    }
-  }
+  const charSpacing = Math.round((actualWidth - wordWidth) / (wordText.length - 1)*1e3)/1e3;
 
-  return fontFamily;
+  return charSpacing;
 
 }
-
 
 /**
- * Asynchronously loads a font family based on the provided input parameters. 
- * The function updates global font object storage with font data for normal, italic, 
- * and small-caps styles. It also attempts to load the fonts in the browser.
- *
- * @param {string} fontFamily - The name of the font family to load. Accepts either 
- * (1) "SansDefault"/"SerifDefault" or (2) the name of a font.
- * @throws Will log an error to the console if any of the font loading promises are rejected.
- * @returns {Promise<void>} A promise that resolves once all font styles have been loaded 
- * and processed, or rejects if an error occurs during the loading process.
- * @global
+ * Calculate font size for word.
+ * Returns null for any word where the default size for the line should be used.
+ * This function differs from accessing the `word.font` property in that
+ * @param {ocrWord} word
  */
-export async function loadFontFamily(fontFamily) {
-
-  const heightSmallCaps = 1;
-
-  let familyStrInput = fontFamily; 
-  let familyStrOutput = fontFamily; 
-
-  // "SansDefault" and "SerifDefault" are not actually files--what gets loaded is determined by the settings.
-  if (familyStrInput == "SansDefault") {
-    familyStrInput = globalThis.globalSettings.defaultFontSans;
-  } else if (familyStrInput == "SerifDefault") {
-    familyStrInput = globalThis.globalSettings.defaultFontSerif;
-  }
-
-  if (!globalThis.fontObj) {
-    globalThis.fontObj = {};
-    globalThis.fontObjRaw = {};
-  }
-  if (!globalThis.fontObj[familyStrOutput]) {
-    globalThis.fontObj[familyStrOutput] = {};
-  }
-  if (!globalThis.fontObjRaw[familyStrInput]) {
-    globalThis.fontObjRaw[familyStrInput] = {};
-  }
-
-  // Font data can either be stored in an array or found through a URL
-  const sourceItalic = globalThis.fontObjRaw[familyStrInput]["italic"] || relToAbsPath("../fonts/" + fontFiles[familyStrInput + "-italic"]);
-  const sourceNormal = globalThis.fontObjRaw[familyStrInput]["normal"] || relToAbsPath("../fonts/" + fontFiles[familyStrInput]);
-  const sourceSmallCaps = globalThis.fontObjRaw[familyStrInput]["small-caps"] || relToAbsPath("../fonts/" + fontFiles[familyStrInput + "-small-caps"]);
-
-  if (!sourceItalic || !sourceNormal || !sourceSmallCaps) {
-    throw new Error('No input file or data detected.'); 
-  }
-
-  globalThis.fontObj[familyStrOutput]["italic"] = loadFont(familyStrInput + "-italic", sourceItalic, true).then(async (x) => {
-    if (globalThis.document) await loadFontBrowser(familyStrOutput, "italic", sourceItalic, true);
-    return x;
-  }, (x) => console.log(x));
-  globalThis.fontObj[familyStrOutput]["normal"] = loadFont(familyStrInput, sourceNormal, true).then(async (x) => {
-    if (globalThis.document) await loadFontBrowser(familyStrOutput, "normal", sourceNormal, true);
-    return x;
-  }, (x) => console.log(x));
-  globalThis.fontObj[familyStrOutput]["small-caps"] = loadFont(familyStrInput, sourceSmallCaps, true).then(async (x) => {
-    if (globalThis.document) await loadFontBrowser(familyStrOutput, "small-caps", sourceSmallCaps, true);
-    return x;
-  }, (x) => console.log(x));
-
-  await Promise.allSettled([globalThis.fontObj[familyStrOutput]["normal"], globalThis.fontObj[familyStrOutput]["italic"], globalThis.fontObj[familyStrOutput]["small-caps"]]);
-}
-
-// Load font as FontFace (used for displaying on canvas)
-export async function loadFontBrowser(fontFamily, fontStyle, src, overwrite = false) {
-
-  src = await src;
-
-  if (typeof (src) == "string") {
-    src = "url(" + src + ")";
-  }
-
-  if (typeof (globalThis.fontFaceObj) == "undefined") {
-    globalThis.fontFaceObj = new Object;
-  }
-
-  // Only load font if not already loaded.
-  if (overwrite || !document.fonts.check(fontStyle + " 10px '" + fontFamily + "'")) {
-    let newFont;
-    if (fontStyle == "small-caps") {
-      newFont = new FontFace(fontFamily + " Small Caps", src);
-    } else {
-      newFont = new FontFace(fontFamily, src, { style: fontStyle });
-    }
-
-    if (typeof (globalThis.fontFaceObj[fontFamily]) == "undefined") {
-      globalThis.fontFaceObj[fontFamily] = new Object;
-    }
-
-    if (typeof (globalThis.fontFaceObj[fontFamily][fontStyle]) != "undefined") {
-      document.fonts.delete(globalThis.fontFaceObj[fontFamily][fontStyle]);
-    }
-
-    globalThis.fontFaceObj[fontFamily][fontStyle] = newFont;
-
-    await newFont.load();
-    // add font to document
-    document.fonts.add(newFont);
-    // enable font with CSS class
-    document.body.classList.add('fonts-loaded');
-
-  }
-
-  // Without clearing the cache FabricJS continues to use old font metrics.
-  fabric.util.clearFabricFontCache(fontFamily);
-  fabric.util.clearFabricFontCache(fontFamily + " Small Caps");
-
-  return;
-
-}
-
-// function createSmallCapsFont(fontData, heightSmallCaps) {
-
-//   return new Promise(function (resolve, reject) {
-//     let id = globalThis.optimizeFontWorker.promiseId++;
-//     globalThis.optimizeFontWorker.promises[id] = { resolve: resolve };
-
-//     globalThis.optimizeFontWorker.postMessage({fontData: fontData, heightSmallCaps: heightSmallCaps, func: "createSmallCapsFont", id: id});
-
-//   });
-
-// }
-
-// Load font as opentype.js object, call loadFontBrowser to load as FontFace
-export async function loadFont(font, src, overwrite = false) {
-
-  if (typeof (globalThis.fontObjRaw) == "undefined") {
-    globalThis.fontObjRaw = {};
-  }
-
-  let styleStr = font.match(/[\-](.+)/);
-  if (styleStr == null) {
-    styleStr = "normal";
-    // Alternative names for "Normal"
+export const calcWordFontSize = async (word) => {
+  if (word.size) {
+      return word.size;
+  } else if (word.sup) {
+      return await getFontSize(word.font || globalSettings.defaultFont, "normal", word.bbox[3] - word.bbox[1], "1");
+  } else if (word.dropcap) {
+      return await getFontSize(word.font || globalSettings.defaultFont, "normal", word.bbox[3] - word.bbox[1], word.text.slice(0, 1));
   } else {
-    styleStr = styleStr[1].toLowerCase()
-    if (["medium", "roman"].includes(styleStr)) {
-      styleStr = "normal";
-    }
-  }
-
-  const familyStr = font.match(/[^\-]+/)[0];
-
-  if (!globalThis.fontObjRaw[familyStr]) {
-    globalThis.fontObjRaw[familyStr] = new Object;
-  }
-
-  // Only load font if not already loaded
-  if (overwrite || !globalThis.fontObj[familyStr][styleStr]) {
-    let workingFont;
-
-    if (typeof (src) == "string") {
-      workingFont = await opentype.load(src);
-    } else {
-      workingFont = await opentype.parse(src, { lowMemory: false });
-    }
-
-    // Remove gsub table.  
-    // If this does not occur, Opentype.js will throw an error when writing the font 
-    // to a buffer for certain fonts (e.g. DM Sans), which happens during the write to PDF step. 
-    // Error: lookup type 6 format 2 is not yet supported.
-    workingFont.tables.gsub = null;
-
-    return workingFont;
-
+      return null;
   }
 }
 
-// Object containing location of various font files
-export const fontFiles = {
-"NimbusRomNo9L": "NimbusRomNo9L-Reg.woff",
-"NimbusRomNo9L-italic": "NimbusRomNo9L-RegIta.woff",
-"NimbusRomNo9L-small-caps": "NimbusRomNo9L-RegSmallCaps.woff",
-"NimbusSanL": "NimbusSanL-Reg.woff",
-"NimbusSanL-italic": "NimbusSanL-RegIta.woff",
-"NimbusSanL-small-caps": "NimbusSanL-RegSmallCaps.woff",
-};
+// Font size, unlike other characteristics (e.g. bbox and baseline), does not come purely from pixels on the input image. 
+// This is because different fonts will create different sized characters even when the nominal "font size" is identical. 
+// Therefore, the appropriate font size must be calculated using (1) the character stats from the input image and 
+// (2) stats regarding the font being used. 
+/**
+* Get or calculate font size for line.
+* This value will either be (1) a manually set value or (2) a value calculated using line metrics.
+* @param {ocrLine} line
+*/
+export const calcLineFontSize = async (line) => {
 
-export function relToAbsPath(fileName) {
-  const url = new URL(fileName, import.meta.url);
-  return url.protocol == "file:" ? url.host + url.pathname : url.href;
+  if (line._size) return line._size;
+
+  if (line._sizeCalc) return line._sizeCalc;
+
+  // The font of the first word is used (if present), otherwise the default font is used.
+  const font = line.words[0]?.font || globalSettings.defaultFont;
+
+  // Font size is calculated using either (1) the ascender height or (2) the x-height.
+  // If both metrics are present both are used and the result is averaged.
+  if (line.ascHeight && !line.xHeight) {
+      line._sizeCalc = await getFontSize(font, "normal", line.ascHeight, "A");
+  } else if (!line.ascHeight && line.xHeight) {
+      line._sizeCalc = await getFontSize(font, "normal", line.xHeight, "o");
+  } else if (line.ascHeight && line.xHeight) {
+      const size1 = await getFontSize(font, "normal", line.ascHeight, "A");
+      const size2 = await getFontSize(font, "normal", line.xHeight, "o");
+      line._sizeCalc = Math.floor((size1 + size2) / 2);
+  } 
+
+  return line._sizeCalc;
+
 }

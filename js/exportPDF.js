@@ -1,11 +1,11 @@
 
 import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 
-import { getFontSize, calcCharSpacing, calcWordMetrics } from "./textUtils.js";
+import { getFontSize, calcCharSpacing, calcWordMetrics, calcLineFontSize } from "./fontUtils.js";
 
-import { loadFontBrowser } from "./fontUtils.js";
+import { fontAll } from "./objects/fontObjects.js";
 
-import ocr from "./ocrObjects.js";
+import ocr from "./objects/ocrObjects.js";
 
 // Function for converting from bufferArray to hex (string)
 // Taken from https://stackoverflow.com/questions/40031688/javascript-arraybuffer-to-hex
@@ -112,20 +112,21 @@ const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\
  * @param {Array<ocrPage>} hocrArr - 
  * @param {number} minpage - 
  * @param {number} maxpage - 
- * @param {string} textMode - 
+ * @param {("ebook"|"eval"|"proof"|"invis")} textMode - 
  * @param {boolean} rotateText - 
  * @param {boolean} rotateBackground - 
- * @param {Array<number>} dimsLimit - 
+ * @param {dims} dimsLimit - 
  * @param {?any} progress - 
  * @param {number} confThreshHigh - 
  * @param {number} confThreshMed - 
  */
-export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = [-1,-1], progress = null, confThreshHigh = 85, confThreshMed = 75) {
+export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = {width: -1, height: -1}, progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
   // Only "SansDefault" and "SerifDefault" are currently considered for inclusion in PDF export,
   // as these are the only 2 fonts actually used for printing OCR text. 
   // All other font objects are used for font optimization purposes. 
-  const exportFontObj = { "SansDefault" : globalThis.fontObj["SansDefault"], "SerifDefault" : globalThis.fontObj["SerifDefault"]};
+
+  const exportFontObj = { "SansDefault" : (fontAll.SansDefault), "SerifDefault" : fontAll.SerifDefault};
 
   // Get count of various objects inserted into pdf
   let fontCount = 0;
@@ -159,7 +160,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
   for (const [familyKey, familyObj] of Object.entries(exportFontObj)) {
     pdfFonts[familyKey] = {};
     for (const [key, value] of Object.entries(familyObj)) {
-      const font = await value;
+      const font = await value.opentype;
       pdfOut += createFontObj(font, 3 + fontI * 3);
 
       pdfFonts[familyKey][key] = "/F" + String(fontI);
@@ -184,8 +185,8 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
 
   // Add pages
   for(let i=minpage;i<=maxpage;i++) {
-    const angle = globalThis.pageMetricsObj["angleAll"][i] || 0;
-    let dims = globalThis.pageMetricsObj.dimsAll[i];
+    const angle = globalThis.pageMetricsArr[i].angle || 0;
+    let dims = globalThis.pageMetricsArr[i].dims;
 
     pdfOut += (await ocrPageToPDF( hocrArr[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
     if (progress) progress.increment();
@@ -214,18 +215,32 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
 }
 
 /**
- * @param {ocrPage} pageObj - ...
+ * 
+ * @param {ocrPage} pageObj 
+ * @param {dims} inputDims 
+ * @param {dims} outputDims 
+ * @param {number} firstObjIndex 
+ * @param {number} parentIndex 
+ * @param {string} pageResourceStr 
+ * @param {*} pdfFonts 
+ * @param {("ebook"|"eval"|"proof"|"invis")} textMode - 
+ * @param {number} angle 
+ * @param {boolean} rotateText 
+ * @param {boolean} rotateBackground 
+ * @param {number} confThreshHigh 
+ * @param {number} confThreshMed 
+ * @returns 
  */
 async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75) {
 
-  if (outputDims[0] < 1) {
+  if (outputDims.width < 1) {
     outputDims = inputDims;
   }
 
   const noContent = !pageObj || pageObj.lines.length == 0;
 
   // Start 2nd object: Page
-  let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims[1]) + " " + String(outputDims[0]) + "]";
+  let secondObj = String(firstObjIndex + 1) + " 0 obj\n<</Type/Page/MediaBox[0 0 " + String(outputDims.width) + " " + String(outputDims.height) + "]";
 
   if (!noContent) secondObj += "/Contents " + String(firstObjIndex) + " 0 R";
 
@@ -239,8 +254,8 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  const shiftX = sinAngle * (inputDims[0] * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((inputDims[1] - shiftX) * 0.5) || 0;
+  const shiftX = sinAngle * (inputDims.height * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((inputDims.width - shiftX) * 0.5) || 0;
 
   // Start 1st object: Text Content
   let textStream = "";
@@ -257,7 +272,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
   let lineOrigin = [0,0];
 
   // Move cursor to top of the page
-  textStream += "1 0 0 1 0 " + String(outputDims[0]) + " Tm\n";
+  textStream += "1 0 0 1 0 " + String(outputDims.height) + " Tm\n";
 
   let pdfFontCurrent = "";
 
@@ -271,7 +286,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     const baseline = line.baseline;
     const linebox = line.bbox;
 
-    lineFontSize = (await ocr.calcLineFontSize(line)) || lineFontSize;
+    lineFontSize = (await calcLineFontSize(line)) || lineFontSize;
     
     const word = words[0];
     const wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
@@ -317,7 +332,8 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
     textStream += fillColor + "\n";
 
-    const fontObjI = await globalThis.fontObj[wordFontFamily][fontStyle];
+    const fontI = /**@type {fontContainerFont} */  (fontAll[wordFontFamily][fontStyle]);
+    const fontOpentypeI = await fontI.opentype;
 
     // Set font and font size
     textStream += pdfFonts[wordFontFamily][fontStyle] + " " + String(lineFontSize) + " Tf\n";
@@ -345,18 +361,18 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       tz = (wordWidthActual / wordWidthFont) * 100;
     }
 
-    const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
+    const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
     
-    const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
+    const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
 
     // Move to next line
     const lineLeftAdj = wordBox[0] - wordLeftBearing * (tz / 100) + angleAdjXLine;
     const lineTopAdj = linebox[3] + baseline[1] + angleAdjYLine;
 
     if (rotateText) {
-      textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj + 1) + " Tm\n";
+      textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims.height - lineTopAdj + 1) + " Tm\n";
     } else {
-      textStream += String(1) + " " + String(0) + " " + String(0) + " " + String(1) + " " + String(lineLeftAdj) + " " + String(outputDims[0] - lineTopAdj + 1) + " Tm\n";
+      textStream += String(1) + " " + String(0) + " " + String(0) + " " + String(1) + " " + String(lineLeftAdj) + " " + String(outputDims.height - lineTopAdj + 1) + " Tm\n";
     }
 
     lineOrigin[0] = lineLeftAdj;
@@ -440,9 +456,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         const wordWidthActual = wordBox[2] - wordBox[0];
         const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamilyLast, wordFontSize, fontStyle)).visualWidth;
         tz = (wordWidthActual / wordWidthFont) * 100;
-      }
+      }  
 
-      const font = await globalThis.fontObj[wordFontFamily][fontStyle];
+      const font = await (/**@type {fontContainerFont} */  (fontAll[wordFontFamily][fontStyle])).opentype;
       const pdfFont = pdfFonts[wordFontFamily][fontStyle];
 
       let wordFirstGlyphMetrics = font.charToGlyph(wordText.substr(0, 1)).getMetrics();
@@ -464,7 +480,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         // The space between words determined by:
         // (1) The right bearing of the last word, (2) the left bearing of the current word, (3) the width of the space character between words,
         // (4) the current character spacing value (applied twice--both before and after the space character).
-        const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).visualWidth;
+        // const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).visualWidth;
+        const spaceWidth = fontOpentypeI.charToGlyph(" ").advanceWidth * (fontSizeLast / fontOpentypeI.unitsPerEm);
+
         const wordSpaceExpected = (spaceWidth + charSpacing * 2 + wordRightBearingLast) * (tzCurrent / 100) + wordLeftBearing;
       
         // Ad-hoc adjustment needed to replicate wordSpace
@@ -523,7 +541,10 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       for(let i=0; i<wordTextArr.length; i++) {
         const letter = winEncodingLookup[wordTextArr[i]];
         if (letter) {
-          const kern = i + 1 < wordTextArr.length ? font.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (-1000 / font.unitsPerEm) || 0 : 0;
+
+          // const kern = i + 1 < wordTextArr.length ? font.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (-1000 / font.unitsPerEm) || 0 : 0;
+          const kern = i + 1 < wordTextArr.length ? fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(wordTextArr[i]), fontOpentypeI.charToGlyph(wordTextArr[i+1])) * (-1000 / font.unitsPerEm) || 0 : 0;
+
           textStream += "(" + letter + ") " + String(Math.round(kern * 1e6) / 1e6) + " ";
         } else {
           // When the character is not in winEncodingLookup a space is inserted, with extra space to match the width of the missing character

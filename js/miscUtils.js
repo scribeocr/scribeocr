@@ -2,8 +2,6 @@
 // File summary:
 // Various utility functions used in other files.
 
-import pako from '../lib/pako.esm.min.js';
-
 /**
  * Generates a random integer.
  *
@@ -101,6 +99,7 @@ export function readOcrFile(file){
  *                           or rejects with an error if reading or decompression fails.
  */
 async function readTextFileGz(file) {
+    const pako = await import('../lib/pako.esm.min.js');
     return new Promise(async (resolve, reject) => {
         let zip1 = await file.arrayBuffer();
         let zip2 = await pako.inflate(zip1, {"to": "string"});
@@ -194,4 +193,19 @@ export const saveAs = function(blob, name) {
     cancelable: true,
     view: window
   }));
+}
+
+/**
+ * Loads an image from a given URL and sets it to a specified HTML element.
+ * 
+ * @param {string} url - The URL of the image to load.
+ * @param {HTMLImageElement} elem - The image element where the loaded image will be set.
+ * @returns {Promise<HTMLImageElement>} A promise that resolves with the image element when the image is loaded successfully.
+ */
+export async function loadImage(url, elem) {
+  return new Promise((resolve, reject) => {
+    elem.onload = () => resolve(elem);
+    elem.onerror = reject;
+    elem.src = url;
+  });
 }

@@ -4,9 +4,9 @@
 
 import { quantile, round6 } from "./miscUtils.js";
 
-// import { glyphAlts } from "../fonts/glyphs.js";
+import { fontMetricsFamily, fontMetricsRawFamily, fontMetricsFont } from "./objects/fontMetricsObjects.js";
 
-import { determineSansSerif } from "./fontUtils.js";
+// import { glyphAlts } from "../fonts/glyphs.js";
 
 /** @type {Array<Object.<string, fontMetricsRawFamily>>} */ 
 globalThis.fontMetricObjsMessage = [];
@@ -16,6 +16,54 @@ globalThis.convertPageWarn = [];
 
 /** @type {?Object.<string, fontMetricsFamily>} */ 
 globalThis.fontMetricsObj = null;
+
+
+// Sans/serif lookup for common font families
+// Should be added to if additional fonts are encountered
+// Fonts that should not be added (both Sans and Serif variants):
+// DejaVu
+const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times", "Liberation Mono"];
+const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
+
+const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
+const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
+
+
+/**
+ * Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font or serif font.
+ *
+ * @param {string} fontName - The name of the font to determine the type of. If the font name 
+ * is falsy, the function will return "Default".
+ * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault", 
+ * "SerifDefault", or "Default" (if the font type cannot be determined).
+ * @throws {console.log} - Logs an error message to the console if the font is unidentified and 
+ * it is not the "Default Metrics Font".
+ */
+export function determineSansSerif(fontName) {
+
+  let fontFamily = "Default";
+  // Font support is currently limited to 1 font for Sans and 1 font for Serif.
+  if(fontName){
+    // First, test to see if "sans" or "serif" is in the name of the font
+    if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
+      fontFamily = "SansDefault";
+    } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
+      fontFamily = "SerifDefault";
+
+    // If not, check against a list of known sans/serif fonts.
+    // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
+    } else if (serifFontsRegex.test(fontName)) {
+      fontFamily = "SerifDefault";
+    } else if (sansFontsRegex.test(fontName)) {
+      fontFamily = "SansDefault";
+    } else if (fontName != "Default Metrics Font") {
+      console.log("Unidentified font in XML: " + fontName);
+    }
+  }
+
+  return fontFamily;
+
+}
 
 
 // Checks whether `multiFontMode` should be enabled or disabled. 
@@ -115,46 +163,6 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
   }
 }
 
-/**
- * Object containing font metrics for individual font.
- * @property {Object.<string, number>} width - Width of glyph as proportion of x-height
- * @property {Object.<string, number>} height - height of glyph as proportion of x-height
- * @property {Object.<string, number>} desc - WIP, not fully implemented, not used for anything
- * @property {Object.<string, number>} advance - 
- * @property {Object.<string, number>} kerning - 
- * @property {Object.<string, boolean>} variants - 
- * @property {ocrPage} heightCaps - 
- * @property {?number} obs - Number of observations used to calculate statistics
- * 
- * Note: The "x-height" metric referred to above is actually closer to the height of the "o" character.
- * This is because most characters used for this calculation are slightly larger than "x", 
- * and Tesseract does not take this into account when performing this calculation. 
- */
-export function fontMetricsFont(){
-  /** @type {Object.<string, number>} */ 
-  this.width = {};
-  /** @type {Object.<string, number>} */ 
-  this.height = {};
-  /** @type {Object.<string, number>} */ 
-  this.desc = {};
-  /** @type {Object.<string, number>} */ 
-  this.advance = {};
-  /** @type {Object.<string, number>} */ 
-  this.kerning = {};
-  /** @type {Object.<string, boolean>} */ 
-  this.variants = {};
-  /** @type {number} */ 
-  this.heightCaps = 1.3;
-  /** @type {number} */ 
-  this.obs = 0;
-}
-
-function fontMetricsFamily() {
-  this.normal = new fontMetricsFont();
-  this.italic = new fontMetricsFont();
-  this["small-caps"] = new fontMetricsFont();
-  this.obs = 0;
-}
 
 
 // The following functions are used for combining an array of page-level fontMetrics objects produced by convertPage.js into a single document-level object.
@@ -196,29 +204,6 @@ function unionFontMetricsFont(fontMetricsRawFontA, fontMetricsRawFontB, xHeight 
   return(fontMetricsRawFontA);
 }
 
-/**
- * Object containing individual observations of various character metrics.
- */
-function fontMetricsRawFont(){
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.width = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.height = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.desc = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.advance = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.kerning = {};
-  /** @type {number} */ 
-  this.obs = 0;
-}
-
-function fontMetricsRawFamily() {
-  this.normal = new fontMetricsRawFont();
-  this.italic = new fontMetricsRawFont();
-  this["small-caps"] = new fontMetricsRawFont();
-}
 
 /**
  * Adds observations from `fontMetricsB` into `fontMetricsA`. Modifies `fontMetricsA` in place.

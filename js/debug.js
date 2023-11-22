@@ -1,5 +1,5 @@
-import { evalWords } from "./compareHOCR.js";
-import ocr from "./ocrObjects.js";
+import { evalWords, calcOverlap } from "./compareHOCR.js";
+import ocr from "./objects/ocrObjects.js";
 import { saveAs } from "./miscUtils.js";
 
 export function printSelectedWords() {
@@ -84,7 +84,59 @@ export async function downloadImageDebug(filename_base, type = "Combined") {
   }
 }
 
-  
+
+export function getExcludedText() {
+
+  for (let i=0; i<=globalThis.hocrCurrent.length; i++){
+    const textArr = getExcludedTextPage(globalThis.hocrCurrent[i], globalThis.layout[i]);
+
+    if (textArr.length > 0) {
+      textArr.map((x) => console.log(x + " [Page " + String(i) + "]"));
+    }
+  }
+
+}
+
+// Get array of text that will be excluded from exports due to "exclude" layout boxes. 
+// This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point. 
+
+/**
+ * @param {ocrPage} pageA
+ */
+export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
+
+  const excludedArr = [];
+
+  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return excludedArr;
+
+  const priorityArr = Array(pageA.lines.length);
+
+  // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
+  priorityArr.fill(10);
+
+  for (let i = 0; i < pageA.lines.length; i++) {
+    const lineA = pageA.lines[i];
+
+    for (const [id, obj] of Object.entries(layoutObj.boxes)) {
+      const overlap = calcOverlap(lineA.bbox, obj["coords"]);
+      if (overlap > 0.5) {
+        if (obj["type"] == "order") {
+          priorityArr[i] = obj["priority"];
+        } else if (obj["type"] == "exclude" && applyExclude) {
+          const words = lineA.words;
+          let text = "";
+          for (let i=0; i<words.length; i++) {
+            text += words[i].text + " ";
+          }
+          excludedArr.push(text)
+        }
+      } 
+    }
+  }
+
+  return excludedArr;
+
+}
 
 // function subsetFont (font) {
 

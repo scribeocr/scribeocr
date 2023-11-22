@@ -1,49 +1,96 @@
-import { round3, getRandomAlphanum } from "./miscUtils.js";
-import ocr from "./ocrObjects.js";
-import { createTesseractScheduler, renderPDFImageCache } from "../main.js";
-import { calcCharSpacing } from "./textUtils.js";
+import { getRandomAlphanum } from "./miscUtils.js";
+import ocr from "./objects/ocrObjects.js";
+import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from "./fontUtils.js";
+import { fontAll } from "./objects/fontObjects.js";
+import { pageMetrics } from "./objects/pageMetricsObjects.js";
 
-const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
+if (globalThis.document) {
+  /**
+   * @global
+   * @type {CanvasRenderingContext2D}
+   * @description - Used under the hood for rendering text for overlap comparisons. 
+   */
+  globalThis.ctxAlt = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('d')).getContext('2d'));
 
-const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreCap"));
 
-const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
+  /**
+   * @global
+   * @type {CanvasRenderingContext2D}
+   * @description - Used under the hood for generating overlap visualizations to display to user. 
+   */
+  globalThis.ctxComp1 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('e')).getContext('2d'));
+
+  /**
+   * @global
+   * @type {CanvasRenderingContext2D}
+   * @description - Used under the hood for generating overlap visualizations to display to user. 
+   */
+  globalThis.ctxComp2 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('f')).getContext('2d'));
+
+  /**
+   * @global
+   * @type {CanvasRenderingContext2D}
+   * @description - Used under the hood for generating overlap visualizations to display to user. 
+   */
+  globalThis.ctxComp0 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('h')).getContext('2d'));
+
+} else {
+  const { createCanvas, loadImage, registerFont } = await import('canvas');
+
+  const canvasAlt = createCanvas(200, 200);
+  globalThis.ctxAlt = canvasAlt.getContext('2d');
+
+  const canvasComp0 = createCanvas(200, 200);
+  globalThis.ctxComp0 = canvasComp0.getContext('2d');
+
+  const canvaComp1 = createCanvas(200, 200);
+  globalThis.ctxComp1 = canvaComp1.getContext('2d');
+
+  const canvasComp2 = createCanvas(200, 200);
+  globalThis.ctxComp2 = canvasComp2.getContext('2d');
+
+}
+
+
+
+const calcCtx = globalThis.ctxAlt;
+const viewCtx0 = globalThis.ctxComp0;
+const viewCtx1 = globalThis.ctxComp1;
+const viewCtx2 = globalThis.ctxComp2;
 
 /**
- * Crop the image data the area containing `words` and render to the `globalThis.ctxAlt.canvas` canvas.
+ * Crop the image data the area containing `words` and render to the `calcCtx.canvas` canvas.
  * @param {Array<ocrWord>} words
+ * @param {HTMLImageElement|Promise<HTMLImageElement>} binaryImage
+ * @param {pageMetrics} pageMetricsObj
  * @param {boolean} view
  */
-globalThis.drawWordActual = async function(words, view = false) {
+const drawWordActual = async function(words, binaryImage, pageMetricsObj, view = false) {
 
   const n = words[0].line.page.n;
   // The font/style from the first word is used for the purposes of font metrics
-  const lineFontSize = await ocr.calcLineFontSize(words[0].line);
+  const lineFontSize = await calcLineFontSize(words[0].line);
   const fontStyle =  words[0].style;
   const wordFontFamily = words[0].font || globalSettings.defaultFont;
 
-  if (fontStyle == "small-caps") {
-    ctx.font = 1000 + 'px ' + wordFontFamily + " Small Caps";
-  } else {
-    ctx.font = fontStyle + " " + 1000 + 'px ' + wordFontFamily;
-  }
+  const fontI = /**@type {fontContainerFont} */  (fontAll[wordFontFamily][fontStyle]);
+  const fontOpentypeI = await fontI.opentype;
+  calcCtx.font = fontI.fontFaceStyle + " " + 1000 + "px " + fontI.fontFaceName;
 
-  const oMetrics = ctx.measureText("o");
+  const oMetrics = calcCtx.measureText("o");
 
-  const fontObjI = await globalThis.fontObj[wordFontFamily][fontStyle];
-
-  const fontBoundingBoxDescent = Math.round(Math.abs(fontObjI.descender) * (1000 / fontObjI.unitsPerEm));
-  const fontBoundingBoxAscent = Math.round(Math.abs(fontObjI.ascender) * (1000 / fontObjI.unitsPerEm));
+  const fontBoundingBoxDescent = Math.round(Math.abs(fontOpentypeI.descender) * (1000 / fontOpentypeI.unitsPerEm));
+  const fontBoundingBoxAscent = Math.round(Math.abs(fontOpentypeI.ascender) * (1000 / fontOpentypeI.unitsPerEm));
 
   const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
   const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
 
-  const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * (Math.PI / 180));
-  const cosAngle = Math.cos(globalThis.pageMetricsObj.angleAll[n] * (Math.PI / 180));
+  const sinAngle = Math.sin(pageMetricsObj.angle * (Math.PI / 180));
+  const cosAngle = Math.cos(pageMetricsObj.angle * (Math.PI / 180));
 
-  const pageDims = globalThis.pageMetricsObj["dimsAll"][n];
-  const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+  const pageDims = pageMetricsObj.dims;
+  const shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
 
   const wordsBox = words.map(x => x.bbox);
 
@@ -60,7 +107,7 @@ globalThis.drawWordActual = async function(words, view = false) {
 
   let angleAdjXLine = 0;
   let angleAdjYLine = 0;
-  if (Math.abs(globalThis.pageMetricsObj.angleAll[n] ?? 0) > 0.05) {
+  if (Math.abs(pageMetricsObj.angle ?? 0) > 0.05) {
 
     const x = linebox[0];
     const y = linebox[3] + baseline[1];
@@ -77,7 +124,7 @@ globalThis.drawWordActual = async function(words, view = false) {
 
   }
 
-  const angleAdjXWord = Math.abs(globalThis.pageMetricsObj.angleAll[n]) >= 1 ? angleAdjXLine + (1 - cosAngle) * (wordBoxUnion[0] - linebox[0]) : angleAdjXLine;
+  const angleAdjXWord = Math.abs(pageMetricsObj.angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (wordBoxUnion[0] - linebox[0]) : angleAdjXLine;
 
   // We crop to the dimensions of the font (fontAsc and fontDesc) rather than the image bounding box.
   const height =  fontAsc && fontDesc ? fontAsc + fontDesc : wordBoxUnion[3] - wordBoxUnion[1] + 1;
@@ -86,29 +133,29 @@ globalThis.drawWordActual = async function(words, view = false) {
   const cropY = linebox[3] + baseline[1] - fontAsc - 1;
   const cropYAdj = cropY + angleAdjYLine;
 
-  const imgElem = await globalThis.imageAll["binary"][n];
+  const imgElem = await binaryImage;
 
   if (!imgElem) throw new Error('Binary image is not defined for the requested page.');
 
 
-  globalThis.ctxAlt.canvas.height = height;
-  globalThis.ctxAlt.canvas.width = width;
+  calcCtx.canvas.height = height;
+  calcCtx.canvas.width = width;
 
-  ctxAlt.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
+  calcCtx.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
 
 
   if (view) {
 
-    globalThis.ctxComp0.canvas.height = height;
-    globalThis.ctxComp0.canvas.width = width;
-    globalThis.ctxComp1.canvas.height = height;
-    globalThis.ctxComp1.canvas.width = width;
-    globalThis.ctxComp2.canvas.height = height;
-    globalThis.ctxComp2.canvas.width = width;
+    viewCtx0.canvas.height = height;
+    viewCtx0.canvas.width = width;
+    viewCtx1.canvas.height = height;
+    viewCtx1.canvas.width = width;
+    viewCtx2.canvas.height = height;
+    viewCtx2.canvas.width = width;
 
-    ctxComp0.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
-    ctxComp1.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
-    ctxComp2.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
+    viewCtx0.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
+    viewCtx1.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
+    viewCtx2.drawImage(imgElem, wordBoxUnion[0]+angleAdjXWord-1, cropYAdj, width, height, 0, 0, width, height);
   }
 
   return cropY;
@@ -117,36 +164,39 @@ globalThis.drawWordActual = async function(words, view = false) {
 
 /**
  * Lightweight function for drawing text onto canvas with correct spacing/kerning without using Fabric.js.
- * @param {string} text
+ * 
+ * @param {CanvasRenderingContext2D} ctx 
+ * @param {string} text 
+ * @param {string} font 
+ * @param {string} style 
+ * @param {number} size 
+ * @param {number} boxWidth 
+ * @param {number} left 
+ * @param {number} bottom 
+ * @param {string} fillStyle 
  */
-globalThis.printWordOnCanvas = async (ctx, text, font, style, size, boxWidth, left = 0, bottom = 0, fillStyle = "black") => {
+const printWordOnCanvas = async (ctx, text, font, style, size, boxWidth, left = 0, bottom = 0, fillStyle = "black") => {
 
-  // Set canvas to correct font and size
-  if (style == "small-caps") {
-    ctx.font = size + 'px ' + font + " Small Caps";
-  } else {
-    ctx.font = style + " " + size + 'px ' + font;
-  }
+  const fontI = /**@type {fontContainerFont} */  (fontAll[font][style]);
+  const fontOpentypeI = await fontI.opentype;
+
+  ctx.font = fontI.fontFaceStyle + " " + size + "px " + fontI.fontFaceName;
   
   ctx.fillStyle = fillStyle;
 
   ctx.textBaseline = "alphabetic";
 
-  const fontObj = await globalThis.fontObj[font][style];
-
   const wordTextArr = text.split("");
 
   const charSpacing = await calcCharSpacing(text, font, style, size, boxWidth);
-
-  const wordTextCodeArr = wordTextArr.map((x) => String(fontObj.charToGlyph(x).index));
 
   let leftI = left;
   for(let i=0; i<wordTextArr.length; i++) {
     ctx.fillText(wordTextArr[i], leftI, bottom);
 
     if (i + 1 < wordTextArr.length) {
-      const advance = fontObj.charToGlyph(wordTextArr[i]).advanceWidth  * (size / fontObj.unitsPerEm);
-      const kern = i + 1 < wordTextArr.length ? fontObj.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (size / fontObj.unitsPerEm) || 0 : 0;
+      const advance = fontOpentypeI.charToGlyph(wordTextArr[i]).advanceWidth  * (size / fontOpentypeI.unitsPerEm);
+      const kern = i + 1 < wordTextArr.length ? fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(wordTextArr[i]), fontOpentypeI.charToGlyph(wordTextArr[i+1])) * (size / fontOpentypeI.unitsPerEm) || 0 : 0;
       leftI += advance;
       leftI += kern;
       leftI += charSpacing;
@@ -156,19 +206,22 @@ globalThis.printWordOnCanvas = async (ctx, text, font, style, size, boxWidth, le
 
   
 /**
+ * Print word on `ctxCanvas`.
+ * 
  * @param {ocrWord} word
  * @param {number} offsetX
  * @param {number} cropY
  * @param {number} lineFontSize
  * @param {?string} altText
+ * @param {?CanvasRenderingContext2D} ctxView
  */
-globalThis.drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFontSize = 0, altText = null, ctxView = null){
+const drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFontSize = 0, altText = null, ctxView = null){
 
-  lineFontSize = lineFontSize || (await ocr.calcLineFontSize(word.line)) || 10;
+  lineFontSize = lineFontSize || (await calcLineFontSize(word.line)) || 10;
 
   const wordText = altText ? ocr.replaceLigatures(altText) : ocr.replaceLigatures(word.text);
 
-  const wordFontSize = (await ocr.calcWordFontSize(word)) || lineFontSize;
+  const wordFontSize = (await calcWordFontSize(word)) || lineFontSize;
 
   if(!wordFontSize){
     console.log("Font size not found");
@@ -177,27 +230,16 @@ globalThis.drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFon
 
   const wordFontFamily = word.font || globalSettings.defaultFont;
 
-  // Set canvas to correct font but size 1000
-  // This allows for more precise measurements than using the actual size as the result is always a whole number
-  if (word.style == "small-caps") {
-    ctxAlt.font = 1000 + 'px ' + wordFontFamily + " Small Caps";
-  } else {
-    ctxAlt.font = word.style + " " + 1000 + 'px ' + wordFontFamily;
-  }
+  const fontI = /**@type {fontContainerFont} */  (fontAll[wordFontFamily][word.style]);
+  const fontOpentypeI = await fontI.opentype;
 
   // Set canvas to correct font and size
-  if (word.style == "small-caps") {
-    ctxAlt.font = wordFontSize + 'px ' + wordFontFamily + " Small Caps";
-  } else {
-    ctxAlt.font = word.style + " " + wordFontSize + 'px ' + wordFontFamily;
-  }
-
-  const fontObjI = await globalThis.fontObj[wordFontFamily][word.style];
+  // ctx.font = fontI.fontFaceStyle + " " + String(wordFontSize) + "px " + fontI.fontFaceName;
 
   // Calculate font glyph metrics for precise positioning
-  const wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
+  const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
 
-  const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
+  const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
 
   let baselineY = word.line.bbox[3] + word.line.baseline[1];
 
@@ -215,7 +257,7 @@ globalThis.drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFon
 
   const left = 1 - wordLeftBearing + offsetX;
 
-  await printWordOnCanvas(ctxAlt, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, y);
+  await printWordOnCanvas(calcCtx, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, y);
 
   if (ctxView) {
     await printWordOnCanvas(ctxView, wordText, wordFontFamily, word.style, wordFontSize, word.bbox[2] - word.bbox[0], left, y, "red");
@@ -229,25 +271,33 @@ globalThis.drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFon
  * can be provided for comparison purposes.
  * @param {Array<ocrWord>} wordsA - Array of words  
  * @param {Array<ocrWord>} wordsB - Array of words for comparison.  Optional. 
- * @param {boolean} view - Draw results on debugging canvases
- * @param {boolean} useAFontSize - Use font size from `wordsA` when printing `wordsB`
+ * @param {HTMLImageElement} binaryImage - Image to compare to
+ * @param {pageMetrics} pageMetricsObj
+ * @param {Object} [options]
+ * @param {boolean} [options.view] - Draw results on debugging canvases
+ * @param {boolean} [options.useAFontSize] - Use font size from `wordsA` when printing `wordsB`
  *   This is useful when the metrics from `wordsA` are considered systematically more reliable,
  *   such as when `wordsA` are from Tesseract Legacy and `wordsB` are from Tesseract LSTM.
+ * @param {boolean} [options.useABaseline]
  */
-export async function evalWords(wordsA, wordsB = [], view = false, useAFontSize = true, useABaseline = true){
+export async function evalWords(wordsA, wordsB = [], binaryImage, pageMetricsObj, options = {}){
+
+  const view = options?.view === undefined ? true : options?.view;
+  const useAFontSize = options?.useAFontSize === undefined ? true : options?.useAFontSize;
+  const useABaseline = options?.useABaseline === undefined ? true : options?.useABaseline;
 
   const n = wordsA[0].line.page.n;
 
-  const cosAngle = Math.cos(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 1;
-  const sinAngle = Math.sin(globalThis.pageMetricsObj.angleAll[n] * -1 * (Math.PI / 180)) || 0;
+  const cosAngle = Math.cos(pageMetricsObj.angle * -1 * (Math.PI / 180)) || 1;
+  const sinAngle = Math.sin(pageMetricsObj.angle * -1 * (Math.PI / 180)) || 0;
 
-  const lineFontSizeA = await ocr.calcLineFontSize(wordsA[0].line);
+  const lineFontSizeA = await calcLineFontSize(wordsA[0].line);
 
   if (!lineFontSizeA) return [1,1];
 
   let lineFontSizeB = lineFontSizeA;
   if (!useAFontSize && wordsB?.[0]) {
-    const lineFontSizeBCalc = await ocr.calcLineFontSize(wordsB[0].line);
+    const lineFontSizeBCalc = await calcLineFontSize(wordsB[0].line);
     lineFontSizeB = lineFontSizeBCalc || lineFontSizeA;
   }
 
@@ -267,26 +317,24 @@ export async function evalWords(wordsA, wordsB = [], view = false, useAFontSize 
   const linebox = wordsA[0].line.bbox;
   const baselineA = wordsA[0].line.baseline;
 
-  const baselineB = useABaseline ? baselineA : wordsB[0].line.baseline;
-
-  ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+  calcCtx.clearRect(0, 0, calcCtx.canvas.width, calcCtx.canvas.height);
 
   if (view) {
-    ctxComp0.clearRect(0, 0, ctxComp0.canvas.width, ctxComp0.canvas.height);
-    ctxComp1.clearRect(0, 0, ctxComp1.canvas.width, ctxComp1.canvas.height);
-    ctxComp2.clearRect(0, 0, ctxComp2.canvas.width, ctxComp2.canvas.height);
+    viewCtx0.clearRect(0, 0, viewCtx0.canvas.width, viewCtx0.canvas.height);
+    viewCtx1.clearRect(0, 0, viewCtx1.canvas.width, viewCtx1.canvas.height);
+    viewCtx2.clearRect(0, 0, viewCtx2.canvas.width, viewCtx2.canvas.height);
   }
 
   // Draw the actual words (from the user-provided image)
-  const cropY = await drawWordActual([...wordsA, ...wordsB], true);
+  const cropY = await drawWordActual([...wordsA, ...wordsB], binaryImage, pageMetricsObj, true);
 
-  const imageDataActual = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
+  const imageDataActual = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height)["data"];
 
-  ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
-  ctxAlt.fillStyle = "white";
-  ctxAlt.fillRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+  calcCtx.clearRect(0, 0, calcCtx.canvas.width, calcCtx.canvas.height);
+  calcCtx.fillStyle = "white";
+  calcCtx.fillRect(0, 0, calcCtx.canvas.width, calcCtx.canvas.height);
 
-  let ctxView = view ? ctxComp1 : null;
+  let ctxView = view ? viewCtx1 : null;
 
   // Draw the words in wordsA
   let x0;
@@ -307,7 +355,7 @@ export async function evalWords(wordsA, wordsB = [], view = false, useAFontSize 
     await drawWordRender(word, offsetX, cropY, lineFontSizeA, null, ctxView);
   }
 
-  const imageDataExpectedA = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
+  const imageDataExpectedA = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height)["data"];
 
   if (imageDataActual.length != imageDataExpectedA.length) {
     console.log("Actual and expected images are different sizes");
@@ -330,11 +378,13 @@ export async function evalWords(wordsA, wordsB = [], view = false, useAFontSize 
 
   let metricB = 1;
   if (wordsB.length > 0) {
-    ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
-    ctxAlt.fillStyle = "white";
-    ctxAlt.fillRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+    const baselineB = useABaseline ? baselineA : wordsB[0].line.baseline;
+
+    calcCtx.clearRect(0, 0, calcCtx.canvas.width, calcCtx.canvas.height);
+    calcCtx.fillStyle = "white";
+    calcCtx.fillRect(0, 0, calcCtx.canvas.width, calcCtx.canvas.height);
   
-    ctxView = view ? ctxComp2 : null;
+    ctxView = view ? viewCtx2 : null;
   
     // Draw the words in wordsB
     for (let i=0;i<wordsB.length;i++) {
@@ -358,9 +408,9 @@ export async function evalWords(wordsA, wordsB = [], view = false, useAFontSize 
       await drawWordRender(word, offsetX, cropY, lineFontSizeB, null, ctxView);
     }
   
-    const imageDataExpectedB = ctxAlt.getImageData(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height)["data"];
+    const imageDataExpectedB = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height)["data"];
   
-    ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
+    calcCtx.clearRect(0, 0, calcCtx.canvas.width, calcCtx.canvas.height);
   
     let diffB = 0;
     let totalB = 0;
@@ -381,8 +431,6 @@ export async function evalWords(wordsA, wordsB = [], view = false, useAFontSize 
   return [metricA, metricB];
 
 }
-
-globalThis.evalWords = evalWords;
     
 /**
  * Calculate penalty for word using ad-hoc heuristics.
@@ -482,81 +530,40 @@ export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = 
 
 }
 
-
-export function getExcludedText() {
-
-  for (let i=0; i<=globalThis.hocrCurrent.length; i++){
-    const textArr = getExcludedTextPage(globalThis.hocrCurrent[i], globalThis.layout[i]);
-
-    if (textArr.length > 0) {
-      textArr.map((x) => console.log(x + " [Page " + String(i) + "]"));
-    }
-  }
-
-}
-
-// Get array of text that will be excluded from exports due to "exclude" layout boxes. 
-// This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point. 
-
-/**
- * @param {ocrPage} pageA
- */
-export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
-
-  const excludedArr = [];
-
-  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return excludedArr;
-
-  const priorityArr = Array(pageA.lines.length);
-
-  // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
-  priorityArr.fill(10);
-
-  for (let i = 0; i < pageA.lines.length; i++) {
-    const lineA = pageA.lines[i];
-
-    for (const [id, obj] of Object.entries(layoutObj.boxes)) {
-      const overlap = calcOverlap(lineA.bbox, obj["coords"]);
-      if (overlap > 0.5) {
-        if (obj["type"] == "order") {
-          priorityArr[i] = obj["priority"];
-        } else if (obj["type"] == "exclude" && applyExclude) {
-          const words = lineA.words;
-          let text = "";
-          for (let i=0; i<words.length; i++) {
-            text += words[i].text + " ";
-          }
-          excludedArr.push(text)
-        }
-      } 
-    }
-  }
-
-  return excludedArr;
-
-}
-
 /**
  * Checks words in pageA against words in pageB.  Edits `compTruth` and `matchTruth` attributes of words in `pageA` in place
  * and returns additional data depending on `mode`.
  * @param {ocrPage} pageA
  * @param {ocrPage} pageB
- * @param {string} mode - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
+ * @param {HTMLImageElement} binaryImage
+ * @param {pageMetrics} pageMetricsObj
+ * @param {object} options
+ * @param {string} [options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
  *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created. 
- * @param {string} debugLabel
+ * @param {string} [options.debugLabel]
+ * @param {boolean} [options.supplementComp] - Whether to run additional recognition jobs for words in `pageA` not in `pageB`
+ * @param {Tesseract.Scheduler} [options.tessScheduler] - Tesseract scheduler to use for recognizing text.  Only needed if `supplementComp` is true.
+ * @param {boolean} [options.ignorePunct]
+ * @param {boolean} [options.ignoreCap]
+ * @param {number} [options.confThreshHigh]
+ * @param {number} [options.confThreshMed]
  */
-export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "", supplementComp = false) {
+export async function compareHOCR(pageA, pageB, binaryImage, pageMetricsObj, options = {}) {
 
-  const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
-  const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-
-  const confThreshHigh = parseInt(confThreshHighElem.value) || 85;
-  const confThreshMed = parseInt(confThreshMedElem.value) || 75;
+  const mode = options?.mode === undefined ? "stats" : options?.mode;
+  const debugLabel = options?.debugLabel === undefined ? "" : options?.debugLabel;
+  const supplementComp = options?.supplementComp === undefined ? false : options?.supplementComp;
+  const tessScheduler = options?.tessScheduler === undefined ? null : options?.tessScheduler;
+  const ignorePunct = options?.ignorePunct === undefined ? false : options?.ignorePunct;
+  const ignoreCap = options?.ignoreCap === undefined ? false : options?.ignoreCap;
+  const confThreshHigh = options?.confThreshHigh === undefined ? 85 : options?.confThreshHigh;
+  const confThreshMed = options?.confThreshMed === undefined ? 75 : options?.confThreshMed;
 
   const n = pageA.n;
 
-  if (debugLabel && !globalThis.debugLog) globalThis.debugLog = "";
-  if (debugLabel) globalThis.debugLog += "Comparing page " + String(n) + "\n";
+  let debugLog = "";
+
+  if (debugLabel) debugLog += "Comparing page " + String(n) + "\n";
 
   const hocrAOverlap = {};
   const hocrBOverlap = {};
@@ -612,7 +619,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
           //    some of the stats may not add up.
           // If option is set to ignore punctuation and the current "word" conly contains punctuation,
           // exit early with options that will result in the word being printed in green.
-          if (ignorePunctElem.checked && !wordA.text.replace(/[\W_]/g, "")) {
+          if (ignorePunct && !wordA.text.replace(/[\W_]/g, "")) {
             const wordAOrig = ocr.getPageWord(pageA, wordA.id);
             wordAOrig.compTruth = true;
             wordAOrig.matchTruth = true;
@@ -678,13 +685,13 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
 
               let wordTextA = ocr.replaceLigatures(wordA.text);
               let wordTextB = ocr.replaceLigatures(wordB.text);
-              if (ignorePunctElem.checked) {
+              if (ignorePunct) {
                 // Punctuation next to numbers is not ignored, even if this setting is enabled, as punctuation differences are
                 // often/usually substantive in this context (e.g. "-$1,000" vs $1,000" or "$100" vs. "$1.00")
                 wordTextA = wordTextA.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
                 wordTextB = wordTextB.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
               }
-              if (ignoreCapElem.checked) {
+              if (ignoreCap) {
                 wordTextA = wordTextA.toLowerCase();
                 wordTextB = wordTextB.toLowerCase();
               }
@@ -759,7 +766,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
                   // This should filter off cases where 2+ words in one dataset match to 1 word in another
                   // TODO: Account for cases without 1-to-1 mapping between bounding boxes
                   if(!oneToOne && !twoToOne) {
-                    if (debugLabel) globalThis.debugLog += "Skipping words due to low overlap: " + wordTextA + " [Legacy] " + wordTextB + " [LSTM]\n";
+                    if (debugLabel) debugLog += "Skipping words due to low overlap: " + wordTextA + " [Legacy] " + wordTextB + " [LSTM]\n";
                     continue;
                   };
 
@@ -790,7 +797,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
                     const wordAClone = ocr.cloneWord(wordA);
                     wordAClone.text = wordB.text;
               
-                    const hocrError = await evalWords([wordA], [wordAClone], Boolean(debugLabel));
+                    const hocrError = await evalWords([wordA], [wordAClone], binaryImage, pageMetricsObj, {view: Boolean(debugLabel)});
               
                     hocrAError = hocrError[0] + penalizeWord(wordA.text);
                     hocrBError = hocrError[1] + penalizeWord(wordB.text);
@@ -802,11 +809,11 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
 
                       const debugObj = {
                         // Raw image
-                        imageRaw: globalThis.ctxComp0.canvas.toDataURL(),
+                        imageRaw: viewCtx0.canvas.toDataURL(),
                         // Image + OCR "A" overlay
-                        imageA: globalThis.ctxComp1.canvas.toDataURL(),
+                        imageA: viewCtx1.canvas.toDataURL(),
                         // Image + OCR "B" overlay
-                        imageB: globalThis.ctxComp2.canvas.toDataURL(),
+                        imageB: viewCtx2.canvas.toDataURL(),
                         // Raw (pixel overlap) error metric "A"
                         errorRawA: hocrError[0],
                         // Raw (pixel overlap) error metric "B"
@@ -823,13 +830,13 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
 
                       globalThis.debugImg[debugLabel][n].push(debugObj);
 
-                      globalThis.debugLog += "Legacy Word: " + wordA.text + " [Error: " + String(hocrAError) + "]\n";
-                      globalThis.debugLog += "LSTM Word: " + wordB.text + " [Error: " + String(hocrBError) + "]\n";  
+                      debugLog += "Legacy Word: " + wordA.text + " [Error: " + String(hocrAError) + "]\n";
+                      debugLog += "LSTM Word: " + wordB.text + " [Error: " + String(hocrBError) + "]\n";  
                     }
                   } else if (twoToOne) {
 
                     // const hocrError = [0.1,0.1];
-                    const hocrError = await evalWords(wordsAArr, wordsBArr, Boolean(debugLabel));
+                    const hocrError = await evalWords(wordsAArr, wordsBArr, binaryImage, pageMetricsObj, {view: Boolean(debugLabel)});
 
                     const wordsAText = wordsAArr.map((x) => x.text).join("");
                     const wordsBText =  wordsBArr.map((x) => x.text).join("");
@@ -858,11 +865,11 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
 
                       const debugObj = {
                         // Raw image
-                        imageRaw: globalThis.ctxComp0.canvas.toDataURL(),
+                        imageRaw: viewCtx0.canvas.toDataURL(),
                         // Image + OCR "A" overlay
-                        imageA: globalThis.ctxComp1.canvas.toDataURL(),
+                        imageA: viewCtx1.canvas.toDataURL(),
                         // Image + OCR "B" overlay
-                        imageB: globalThis.ctxComp2.canvas.toDataURL(),
+                        imageB: viewCtx2.canvas.toDataURL(),
                         // Raw (pixel overlap) error metric "A"
                         errorRawA: hocrError[0],
                         // Raw (pixel overlap) error metric "B"
@@ -879,19 +886,19 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
 
                       globalThis.debugImg[debugLabel][n].push(debugObj);
 
-                      globalThis.debugLog += "Legacy Word: " + wordsAArr.map((x) => x.text).join(" ") + " [Error: " + String(hocrAError) + "]\n";
-                      globalThis.debugLog += "LSTM Word: " + wordsBArr.map((x) => x.text).join(" ") + " [Error: " + String(hocrBError) + "]\n";
+                      debugLog += "Legacy Word: " + wordsAArr.map((x) => x.text).join(" ") + " [Error: " + String(hocrAError) + "]\n";
+                      debugLog += "LSTM Word: " + wordsBArr.map((x) => x.text).join(" ") + " [Error: " + String(hocrBError) + "]\n";
                     }
   
                   }
                               
                   if(hocrBError < hocrAError) {
                     const skip = ["eg","ie"].includes(wordA.text.replace(/\W/g,""));
-                    if (skip) globalThis.debugLog += "Skipping word replacement\n";
+                    if (skip) debugLog += "Skipping word replacement\n";
 
                     if(!skip){
                       if(oneToOne){
-                        globalThis.debugLog += "Replacing word " + wordA.text + " with word " + wordB.text + "\n";
+                        debugLog += "Replacing word " + wordA.text + " with word " + wordB.text + "\n";
                         wordA.text = wordB.text;
 
 
@@ -955,7 +962,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
       for (let j = 0; j < line.words.length; j++) {
         const word = line.words[j];
         if (!word.compTruth) {
-          word.matchTruth = await checkWords([word], false);
+          word.matchTruth = await checkWords([word], binaryImage, pageMetricsObj, tessScheduler, {ignorePunct: ignorePunct, view: false});
           word.conf = word.matchTruth ? 100 : 0;
         }
       }
@@ -965,8 +972,7 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
   // In addition to not making sense, the statistics below will not be properly calculated when `mode == "comb"` and errors will be thrown if attempted.
   // The core issue is that pageAInt is being actively edited `mode == "comb"`.
   // Therefore, `hocrAOverlap` ends up including words not in `pageA`, so `ocr.getPageWord(pageA, overlappingWordsA[i]);` returns `null`.
-  if (mode == "comb") return ([pageAInt, {}]);
-
+  if (mode == "comb") return {page: pageAInt, metrics: {}, debugLog: debugLog};;
 
   // Note: These metrics leave open the door for some fringe edge cases.
   // For example,
@@ -1031,8 +1037,9 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
     correctLowConf: correctCountLowConf,
     incorrectHighConf: incorrectCountHighConf
   }
-  
-  return ([pageAInt, metricsRet]);
+
+  return {page: pageAInt, metrics: metricsRet, debugLog: debugLog};
+
 }
 
 
@@ -1042,12 +1049,13 @@ export async function compareHOCR(pageA, pageB, mode = "stats", debugLabel = "",
  * Based on overlap between bounding boxes, lines may be added or combined with existing lines.
  * @param {ocrPage} pageA - New page
  * @param {ocrPage} pageB - Existing page
+ * @param {pageMetrics} pageMetricsObj - Page metrics
  * @param {boolean} replaceFontSize - Whether font size stats in the new line(s) should be replaced by font size in previous line.
  *  This option is used when the user manually adds a word, as the manually-drawn box will only roughly correspond to font size.
  * @param {boolean} editWordIds - Edit word IDs in `pageB` by appending random characters to the end.
  *  As word ID values must be unique, this is useful when `pageB` may contain duplicative values.
  */
-export function combineData(pageA, pageB, replaceFontSize = false, editWordIds = true) {
+export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = false, editWordIds = true) {
 
   const linesNew = pageA.lines;
 	const lines = pageB.lines;
@@ -1058,10 +1066,7 @@ export function combineData(pageA, pageB, replaceFontSize = false, editWordIds =
     if (lineNew.words.length == 0) continue;
 
     const lineNewRot = ocr.cloneLine(lineNew);
-    ocr.rotateLine(lineNewRot, globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1, globalThis.pageMetricsObj["dimsAll"][currentPage.n]);
-
-		// const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
-    // const cosAngle = Math.cos(globalThis.pageMetricsObj["angleAll"][currentPage.n] * (Math.PI / 180));
+    ocr.rotateLine(lineNewRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
 
 		// Identify the OCR line a bounding box is in (or closest line if no match exists)
     // (1) If the new line's bounding box has significant overlap with an existing line's bounding box, add to that line.
@@ -1084,7 +1089,7 @@ export function combineData(pageA, pageB, replaceFontSize = false, editWordIds =
       if (line.words.length == 0) continue;
 
       const lineRot = ocr.cloneLine(line);
-      ocr.rotateLine(lineRot, globalThis.pageMetricsObj["angleAll"][currentPage.n] * -1, globalThis.pageMetricsObj["dimsAll"][currentPage.n]);
+      ocr.rotateLine(lineRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
 
       const left = Math.max(lineRot.bbox[0], lineNewRot.bbox[0]);
       const top = Math.max(lineRot.bbox[1], lineNewRot.bbox[1]);
@@ -1140,7 +1145,7 @@ export function combineData(pageA, pageB, replaceFontSize = false, editWordIds =
     // (2) the horizontal gap between matched lines is >2x the vertical gap to the nearest preceding/following line.
     // This is intended to eliminate cases when new words are inserted into the wrong column and/or floating element
     // (possibly on the other side of the page) just because vertical overlap exists.
-    if (match && matchXOverlap == 0 && matchXDist > 2 * yDistMin && pageB.dims[1] * 0.05 < matchXDist) match = undefined;
+    if (match && matchXOverlap == 0 && matchXDist > 2 * yDistMin && pageB.dims.width * 0.05 < matchXDist) match = undefined;
 
 
 		const wordsNew = lineNew.words;
@@ -1226,23 +1231,30 @@ export function combineData(pageA, pageB, replaceFontSize = false, editWordIds =
 
 /**
  * @param {Array<ocrWord>} wordsA
- * @param {boolean} view
+ * @param {HTMLImageElement} binaryImage
+ * @param {pageMetrics} pageMetricsObj
+ * @param {Tesseract.Scheduler} tessScheduler
+ * @param {object} [options]
+ * @param {boolean} [options.view] - TODO: make this functional or remove
+ * @param {boolean} [options.ignorePunct]
+ * @param {boolean} [options.ignoreCap]
  */
-export async function checkWords(wordsA, view = false){
+export async function checkWords(wordsA, binaryImage, pageMetricsObj, tessScheduler, options = {}){
+
+  const view = options?.view === undefined ? false : options?.view;
+  const ignorePunct = options?.ignorePunct === undefined ? false : options?.ignorePunct;
+  const ignoreCap = options?.ignoreCap === undefined ? false : options?.ignoreCap;
 
   // Draw the actual words (from the user-provided image)
-  await drawWordActual(wordsA, true);
-
-  // Create new scheduler if one does not exist
-  if (!globalThis.recognizeAreaScheduler) globalThis.recognizeAreaScheduler = await createTesseractScheduler(1);
+  await drawWordActual(wordsA, binaryImage, pageMetricsObj, true);
 
   const extraConfig = {
     tessedit_pageseg_mode: "6" // "Single block"
   }
 
-  const inputImage = ctxAlt.canvas.toDataURL();
+  const inputImage = calcCtx.canvas.toDataURL();
 
-  const res = await recognizeAreaScheduler.addJob('recognize', inputImage, extraConfig);
+  const res = await tessScheduler.addJob('recognize', inputImage, extraConfig);
 
   let wordTextA = wordsA.map((x) => x.text).join(" ");
   let wordTextB = res.data.text.trim();
@@ -1250,13 +1262,13 @@ export async function checkWords(wordsA, view = false){
   wordTextA = ocr.replaceLigatures(wordTextA);
   wordTextB = ocr.replaceLigatures(wordTextB);
 
-  if (ignorePunctElem.checked) {
+  if (ignorePunct) {
     // Punctuation next to numbers is not ignored, even if this setting is enabled, as punctuation differences are
     // often/usually substantive in this context (e.g. "-$1,000" vs $1,000" or "$100" vs. "$1.00")
     wordTextA = wordTextA.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
     wordTextB = wordTextB.replace(/(^|\D)[\W_]($|\D)/g, "$1$2");
   }
-  if (ignoreCapElem.checked) {
+  if (ignoreCap) {
     wordTextA = wordTextA.toLowerCase();
     wordTextB = wordTextB.toLowerCase();
   }
@@ -1267,140 +1279,81 @@ export async function checkWords(wordsA, view = false){
 
 }
 
-export async function evalOverlapDocument() {
 
-  // Render binarized versions of images
-  await renderPDFImageCache(Array.from({ length: globalThis.imageAll["native"].length + 1 }, (v, k) => k), null, null, "binary");
+/**
+ * 
+ * @param {fontContainerFamily} font 
+ * @param {Array<ocrPage>} pageArr
+ * @param {Array<HTMLImageElement>} binaryImageArr
+ * @param {number} n - Number of words to compare
+ */
+async function evalFontPages(font, pageArr, binaryImageArr, n = 500) {
 
-  let metricSum = 0;
-  let wordCt = 0;
+  let metricTotal = 0;
+  let wordsTotal = 0;
+  
+  for (let i=0; i<pageArr.length; i++) {
+    if (wordsTotal > n) break;
 
-  for (let i=0; i<globalThis.hocrCurrent.length; i++) {
-    const ocrPageI = globalThis.hocrCurrent[i];
-    for (let j=0; j<ocrPageI.lines.length; j++) {
-      const ocrLineJ = ocrPageI.lines[j];
-      const metricJ = await evalWords(ocrLineJ.words, [], false);
-      metricSum = metricSum + (metricJ[0] * ocrLineJ.words.length);
-      wordCt = wordCt + ocrLineJ.words.length;
-    }
-  }
+    const ocrPage = pageArr[i];
+    for (let j=0; j<ocrPage.lines.length; j++) {
+      if (wordsTotal > n) break;
 
-  return metricSum / wordCt;
+      const ocrLineJ = ocrPage.lines[j];
 
-}
+      // If the font is not set for a specific word, whether it is assumed sans/serif will be determined by the default font.
+      const lineFontType = ocrLineJ.words[0].font ? fontAll[ocrLineJ.words[0].font].normal.type : fontAll.Default.normal.type;
 
-globalThis.evalOverlapDocument = evalOverlapDocument;
-
-export async function adjustFontSizesDocument() {
-
-  // Render binarized versions of images
-  await renderPDFImageCache(Array.from({ length: globalThis.imageAll["native"].length + 1 }, (v, k) => k), null, null, "binary");
-
-  let improveCt = 0;
-  let totalCt = 0;
-
-  for (let i=0; i<globalThis.hocrCurrent.length; i++) {
-    const ocrPageI = globalThis.hocrCurrent[i];
-    for (let j=0; j<ocrPageI.lines.length; j++) {
-      const ocrLineJ = ocrPageI.lines[j];
+      if (font.normal.type != lineFontType) continue;
 
       const ocrLineJClone = ocr.cloneLine(ocrLineJ);
-      const fontSizeBase = await ocr.calcLineFontSize(ocrLineJClone);
-      if (!fontSizeBase) continue;
-      ocrLineJClone._size = fontSizeBase - 1;
-    
-      const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, false, false);
 
-      if (metricJ[1] < metricJ[0]) {
-        ocrLineJ._size = ocrLineJClone._size;
-        improveCt = improveCt + 1;
-        console.log("Reducing font size improves results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
-      } else {
-        console.log("Reducing font size does not improve results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
+      for (let i=0; i<ocrLineJClone.words.length; i++) {
+        ocrLineJClone.words[i].font = font.normal.family;
       }
+    
+      const metricJ = await evalWords(ocrLineJClone.words, [], binaryImageArr[i], globalThis.pageMetricsArr[i]);
 
-      totalCt = totalCt + 1;
+      metricTotal = metricTotal + (metricJ[0] * ocrLineJ.words.length);
+
+      wordsTotal = wordsTotal + ocrLineJ.words.length;
 
     }
   }
 
-  return improveCt / totalCt;
+  return metricTotal;
 
 }
 
-globalThis.adjustFontSizesDocument = adjustFontSizesDocument;
+/**
+ * @param {Array<ocrPage>} pageArr
+ * @param {Array<HTMLImageElement>} binaryImageArr
+ */
+export async function selectDefaultFontsDocument(pageArr, binaryImageArr) {
 
-export async function adjustBaselineDocument() {
+  const fontSans = ["Carlito", "NimbusSans"];
 
-  // Render binarized versions of images
-  await renderPDFImageCache(Array.from({ length: globalThis.imageAll["native"].length + 1 }, (v, k) => k), null, null, "binary");
+  const metricCarlito = await evalFontPages(fontAll.Carlito, pageArr, binaryImageArr);
+  const metricNimbusSans = await evalFontPages(fontAll.NimbusSans, pageArr, binaryImageArr);
+  console.log("metricCarlito: " + String(metricCarlito));
+  console.log("metricNimbusSans: " + String(metricNimbusSans));
 
-  let improveCt = 0;
-  let totalCt = 0;
+  const metricCentury = await evalFontPages(fontAll.Century, pageArr, binaryImageArr);
+  const metricNimbusRomNo9L = await evalFontPages(fontAll.NimbusRomNo9L, pageArr, binaryImageArr);
+  console.log("metricCentury: " + String(metricCentury));
+  console.log("metricNimbusRomNo9L: " + String(metricNimbusRomNo9L));
 
-  for (let i=0; i<globalThis.hocrCurrent.length; i++) {
-    const ocrPageI = globalThis.hocrCurrent[i];
-    for (let j=0; j<ocrPageI.lines.length; j++) {
-      const ocrLineJ = ocrPageI.lines[j];
-
-      const ocrLineJClone = ocr.cloneLine(ocrLineJ);
-      ocrLineJClone.baseline[1] = ocrLineJClone.baseline[1] + 1;
-    
-      const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, false, false, false);
-
-      if (metricJ[1] < metricJ[0]) {
-        ocrLineJ.baseline[1] = ocrLineJ.baseline[1] + 1;
-        improveCt = improveCt + 1;
-        console.log("Lowering baseline improves results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
-      } else {
-        console.log("Lowering baseline does not improve results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
-      }
-
-      totalCt = totalCt + 1;
-
-    }
+  let change = false;
+  if (metricCarlito < metricNimbusSans) {
+    fontAll.SansDefault = fontAll.Carlito;
+    change = true;
   }
 
-  return improveCt / totalCt;
-
-}
-
-globalThis.adjustBaselineDocument = adjustBaselineDocument;
-
-export async function compareBaselinesLine(ocrLineJ) {
-  const ocrLineJClone = ocr.cloneLine(ocrLineJ);
-  ocrLineJClone.baseline[1] = ocrLineJClone.baseline[1] + 1;
-
-  const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, true, false, false);
-  return metricJ;
-}
-
-
-
-export async function compareFontSizesLine(ocrLineJ) {
-  const ocrLineJClone = ocr.cloneLine(ocrLineJ);
-  const fontSizeBase = await ocr.calcLineFontSize(ocrLineJClone);
-  if (!fontSizeBase) return;
-  ocrLineJClone._size = fontSizeBase - 1;
-
-  const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, true, false);
-  return metricJ;
-}
-
-
-export async function compareFontsWords(wordsA, fontAlt, view = false) {
-
-  const wordsAClone = [];
-  for (let i=0; i<wordsA.length; i++) {
-    const wordAClone = ocr.cloneWord(wordsA[i]);
-    wordAClone.font = fontAlt;
-    wordsAClone.push(wordAClone);
+  if (metricCentury < metricNimbusRomNo9L) {
+    fontAll.SerifDefault = fontAll.Century;
+    change = true;
   }
 
-  const hocrError = await evalWords(wordsA, wordsAClone, view);
-
-  return hocrError;
+  return change;
 
 }
-
-globalThis.compareFontsWords = compareFontsWords;

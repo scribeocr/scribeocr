@@ -1,10 +1,11 @@
-import ocr from './ocrObjects.js';
+import ocr from './objects/ocrObjects.js';
 import { round6, saveAs } from "./miscUtils.js";
 
 /**
  * @param {Array<ocrPage>} ocrData - ...
+ * @param {Object.<string, fontMetricsFamily>} fontMetrics
  */
-export function renderHOCR(ocrData, fontData, layoutData) {
+export function renderHOCR(ocrData, fontMetrics, layoutData) {
   const minValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMin')).value) - 1;
   const maxValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMax')).value);
 
@@ -24,7 +25,7 @@ export function renderHOCR(ocrData, fontData, layoutData) {
 
  for (let i = minValue; i < maxValue; i++) {
   const pageObj = ocrData[i];
-  hocrOut += "<div class='ocr_page' title='bbox 0 0 " + pageObj.dims[1] + " " + pageObj.dims[0] + "'>";
+  hocrOut += "<div class='ocr_page' title='bbox 0 0 " + pageObj.dims.width + " " + pageObj.dims.height + "'>";
   for (let j = 0; j < pageObj.lines.length; j++) {
     const lineObj = pageObj.lines[j];
     hocrOut += "<span class='ocr_line' title=\"bbox " + lineObj.bbox[0] + " " + lineObj.bbox[1] + " " + lineObj.bbox[2] + " " + lineObj.bbox[3];
@@ -76,7 +77,7 @@ export function renderHOCR(ocrData, fontData, layoutData) {
  let exportXML = exportParser.parseFromString(hocrOut, "text/xml");
 
  // Add font metrics data
- let fontXML = exportParser.parseFromString("<meta name='font-metrics' content='" + JSON.stringify(fontData) + "'></meta>", "text/xml");
+ let fontXML = exportParser.parseFromString("<meta name='font-metrics' content='" + JSON.stringify(fontMetrics) + "'></meta>", "text/xml");
  exportXML.getElementsByTagName("head")[0].appendChild(fontXML.firstChild);
 
  // Add layout box data

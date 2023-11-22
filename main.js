@@ -21,14 +21,16 @@ import coords from './js/coordinates.js';
 
 import { recognizeAllPages } from "./js/recognize.js";
 
-import { calcWordMetrics } from "./js/textUtils.js"
+import { calcLineFontSize } from "./js/fontUtils.js"
+
+import { pageMetrics } from "./js/objects/pageMetricsObjects.js";
 
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "./js/fontStatistics.js";
-import { loadFont, loadFontBrowser, loadFontFamily } from "./js/fontUtils.js";
+import { enableDisableFontOpt } from "./js/objects/fontObjects.js";
 
-import { ITextWord } from "./js/fabricObjects.js";
+import { ITextWord } from "./js/objects/fabricObjects.js";
 
-import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences, saveAs } from "./js/miscUtils.js";
+import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences, saveAs, loadImage } from "./js/miscUtils.js";
 import { getAllFileEntries } from "./js/drag-and-drop.js";
 
 // Functions for various UI tabs
@@ -46,9 +48,9 @@ import {
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
-import { optimizeFont3, initOptimizeFontWorker } from "./js/optimizeFont.js";
+import { initOptimizeFontWorker } from "./js/optimizeFont.js";
 
-import { evalWords, compareHOCR, reorderHOCR, getExcludedText, combineData } from "./js/compareHOCR.js";
+import { evalWords, compareHOCR, reorderHOCR, combineData, selectDefaultFontsDocument } from "./js/compareHOCR.js";
 
 import { hocrToPDF } from "./js/exportPDF.js";
 
@@ -62,9 +64,9 @@ import { initConvertPageWorker } from './js/convertPage.js';
 // Load default settings
 import { setDefaults } from "./js/setDefaults.js";
 
-import ocr from "./js/ocrObjects.js";
+import ocr from "./js/objects/ocrObjects.js";
 
-import { printSelectedWords, downloadCanvas, evalSelectedLine } from "./js/debug.js";
+import { printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText } from "./js/debug.js";
 
 const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
 const debugPrintWordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWords'));
@@ -108,7 +110,6 @@ fabric.Object.prototype.lockMovementY = true;
  * @property {Boolean} imageMode - an ID.
  * @property {Boolean} resumeMode - an ID.
  * @property {Boolean} extractTextMode - an ID.
-
  */
 /** @type {inputDataModes} */
 globalThis.inputDataModes = {
@@ -285,12 +286,6 @@ export function insertAlertMessage(innerHTML, error = true, divId = "alertDiv") 
 // Content that should be run once, after all dependencies are done loading are done loading
 globalThis.runOnLoad = function () {
 
-  // globalThis.runOnLoadRun = true;
-
-  // Load fonts
-  loadFontFamily("SansDefault");
-  loadFontFamily("SerifDefault");
-
   const debugEngineVersionElem = /** @type {HTMLInputElement} */(document.getElementById('debugEngineVersion'));
 
   // Detect whether SIMD instructions are supported
@@ -309,36 +304,10 @@ globalThis.runOnLoad = function () {
 }
 
 
-/**
- * @global
- * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for rendering text for overlap comparisons. 
- */
-globalThis.ctxAlt = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('d')).getContext('2d'));
 
 globalThis.canvasDebug = new fabric.Canvas('g');
 globalThis.ctxDebug = canvasDebug.getContext('2d');
 
-/**
- * @global
- * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user. 
- */
-globalThis.ctxComp1 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('e')).getContext('2d'));
-
-/**
- * @global
- * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user. 
- */
-globalThis.ctxComp2 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('f')).getContext('2d'));
-
-/**
- * @global
- * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user. 
- */
-globalThis.ctxComp0 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('h')).getContext('2d'));
 
 
 // // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
@@ -1316,15 +1285,61 @@ async function recognizeAllClick() {
 
       const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
 
-      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = (await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], "comb", tessCombinedLabel))[0];
+      const compOptions = {
+        mode: "comb", debugLabel: tessCombinedLabel,
+        ignoreCap: ignoreCapElem.checked,
+        ignorePunct: ignorePunctElem.checked,
+        confThreshHigh: parseInt(confThreshHighElem.value),
+        confThreshMed: parseInt(confThreshMedElem.value)
+      };
+
+      const res = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], globalThis.imageAll["binary"][i], globalThis.pageMetricsArr[i], compOptions);
+
+      if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+      globalThis.debugLog += res.debugLog;
+
+      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = res.page;
       globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
 
       // If the user uploaded data, compare to that as we
       if(userUploadMode) {
+        if (!globalThis.recognizeAreaScheduler) globalThis.recognizeAreaScheduler = await createTesseractScheduler(1);
         if (document.getElementById("combineMode")?.value == "conf") {
-          globalThis.ocrAll["Combined"][i]["hocr"] = (await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], "stats", "Combined", true))[0];
+          const compOptions = {
+            debugLabel: "Combined",
+            supplementComp: true,
+            tessScheduler: globalThis.recognizeAreaScheduler,
+            ignoreCap: ignoreCapElem.checked,
+            ignorePunct: ignorePunctElem.checked,
+            confThreshHigh: parseInt(confThreshHighElem.value),
+            confThreshMed: parseInt(confThreshMedElem.value)    
+          };
+
+          const res = await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], globalThis.imageAll["binary"][i], globalThis.pageMetricsArr[i], compOptions);
+
+          if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+          globalThis.debugLog += res.debugLog;
+
+          globalThis.ocrAll["Combined"][i]["hocr"] = res.page;
+
         } else {
-          globalThis.ocrAll["Combined"][i]["hocr"] = (await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], "comb", "Combined", true))[0];
+          const compOptions = {
+            mode: "comb", 
+            debugLabel: "Combined",
+            supplementComp: true,
+            tessScheduler: globalThis.recognizeAreaScheduler,
+            ignoreCap: ignoreCapElem.checked,
+            ignorePunct: ignorePunctElem.checked,
+            confThreshHigh: parseInt(confThreshHighElem.value),
+            confThreshMed: parseInt(confThreshMedElem.value)    
+          };
+          const res = await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], globalThis.imageAll["binary"][i], globalThis.pageMetricsArr[i], compOptions);
+
+          if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+          globalThis.debugLog += res.debugLog;
+
+          globalThis.ocrAll["Combined"][i]["hocr"] = res.page;
+    
         }
 
         globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
@@ -1393,19 +1408,30 @@ async function compareGroundTruthClick(n) {
   evalStatsConfigNew["ignoreCap"] = ignoreCapElem.checked;
   evalStatsConfigNew["ignoreExtra"] = ignoreExtraElem.checked;
 
+  const compOptions = {
+    ignoreCap: ignoreCapElem.checked,
+    ignorePunct: ignorePunctElem.checked,
+    confThreshHigh: parseInt(confThreshHighElem.value),
+    confThreshMed: parseInt(confThreshMedElem.value)    
+  };
+
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
     globalThis.evalStats = new Array(globalThis.imageAll["native"].length);
     for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
-      const res = await compareHOCR(globalThis.hocrCurrent[i], globalThis.ocrAll["Ground Truth"][i]["hocr"]);
-      globalThis.evalStats[i] = res[1];
+      const res = await compareHOCR(globalThis.hocrCurrent[i], globalThis.ocrAll["Ground Truth"][i]["hocr"], globalThis.imageAll["binary"][n], globalThis.pageMetricsArr[n], compOptions);
+      globalThis.evalStats[i] = res.metrics;
+      if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+      globalThis.debugLog += res.debugLog;
     }
     globalThis.evalStatsConfig = evalStatsConfigNew;
   }
 
-  const res = await compareHOCR(globalThis.hocrCurrent[n], globalThis.ocrAll["Ground Truth"][n]["hocr"]);
+  const res = await compareHOCR(globalThis.hocrCurrent[n], globalThis.ocrAll["Ground Truth"][n]["hocr"], globalThis.imageAll["binary"][n], globalThis.pageMetricsArr[n], compOptions);
+  if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+  globalThis.debugLog += res.debugLog;
 
-  globalThis.evalStats[n] = res[1];
+  globalThis.evalStats[n] = res.metrics;
 
   const metricTotalWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsPage'));
   const metricCorrectWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectWordsPage'));
@@ -1513,14 +1539,14 @@ async function recognizeArea(imageCoords, wordMode = false) {
   const res = await recognizeAreaScheduler.addJob('recognize', inputImage.src, extraConfig);
   let hocrString = res.data.hocr;
 
-  const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n]) > 0.05 ? globalThis.pageMetricsObj["angleAll"][currentPage.n] : 0;
+  const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsArr[currentPage.n].angle) > 0.05 ? globalThis.pageMetricsArr[currentPage.n].angle : 0;
 
   const oemText = "Tesseract " + oemLabelTextElem.innerHTML;
 
   const argsObj = {
     "mode": "area",
     "angle": angleArg,
-    "pageDims": globalThis.pageMetricsObj.dimsAll[currentPage.n],
+    "pageDims": globalThis.pageMetricsArr[currentPage.n].dims,
     "engine": oemText
   }
 
@@ -1753,17 +1779,17 @@ function addWordClick() {
     let sinAngle = 0;
     let shiftX = 0;
     let shiftY = 0;
-    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
+    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[currentPage.n].angle ?? 0) > 0.05) {
 
-      const rotateAngle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
+      const rotateAngle = globalThis.pageMetricsArr[currentPage.n].angle;
 
-      const pageDims = globalThis.pageMetricsObj["dimsAll"][currentPage.n];
+      const pageDims = globalThis.pageMetricsArr[currentPage.n].dims;
 
       sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
       const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
 
-      shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
-      shiftY = sinAngle * ((pageDims[1] - shiftX) * 0.5) || 0;
+      shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
+      shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
 
       const baselineY = (rectTop + rect.height) - (rect.height) / 3;
 
@@ -1796,7 +1822,7 @@ function addWordClick() {
     const wordObj = new ocr.ocrWord(lineObj, wordText, wordBox, wordIDNew);
     lineObj.words = [wordObj];
 
-    combineData(pageObj, globalThis.hocrCurrent[currentPage.n], true, false);
+    combineData(pageObj, globalThis.hocrCurrent[currentPage.n], globalThis.pageMetricsArr[currentPage.n], true, false);
 
     // Get line word was added to in main data.
     // This will have different metrics from `lineObj` when the line was combined into an existing line.
@@ -1805,7 +1831,7 @@ function addWordClick() {
     // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
     let angleAdjX = 0;
     let angleAdjY = 0;
-    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsObj["angleAll"][currentPage.n] ?? 0) > 0.05) {
+    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[currentPage.n].angle ?? 0) > 0.05) {
       const angleAdjXInt = sinAngle * (wordObj.line.bbox[3] + wordObj.line.baseline[1]);
       const angleAdjYInt = sinAngle * (wordObj.line.bbox[0] + angleAdjXInt / 2) * -1;
 
@@ -1813,10 +1839,7 @@ function addWordClick() {
       angleAdjY = angleAdjYInt + shiftY;
     }
 
-    const fontSize = await ocr.calcLineFontSize(wordObjNew.line);
-
-    ctx.font = 1000 + 'px ' + globalSettings.defaultFont;
-    ctx.font = fontSize + 'px ' + globalSettings.defaultFont;
+    const fontSize = await calcLineFontSize(wordObjNew.line);
 
     let top = wordObjNew.line.bbox[3] + wordObjNew.line.baseline[1] + angleAdjY;
 
@@ -1861,6 +1884,8 @@ function addWordClick() {
 /** @type {Array<ocrPage>} */ 
 globalThis.hocrCurrent = [];
 
+/** @type {Array<pageMetrics>} */
+globalThis.pageMetricsArr = [];
 
 // Resets the environment.
 async function clearFiles() {
@@ -1871,7 +1896,7 @@ async function clearFiles() {
   globalThis.hocrCurrent = [];
   globalThis.layout = [];
   globalThis.fontMetricsObj = null;
-  globalThis.pageMetricsObj = {};
+  globalThis.pageMetricsArr = [];
   globalThis.fontMetricObjsMessage = [];
   globalThis.convertPageWarn = [];
 
@@ -1984,13 +2009,7 @@ async function importFiles(curFiles) {
 
   globalThis.state.downloadReady = false;
 
-  globalThis.pageMetricsObj = {};
-  globalThis.pageMetricsObj["angleAll"] = [];
-  globalThis.pageMetricsObj["dimsAll"] = [];
-  globalThis.pageMetricsObj["leftAll"] = [];
-  globalThis.pageMetricsObj["angleAdjAll"] = [];
-  globalThis.pageMetricsObj["manAdjAll"] = [];
-
+  globalThis.pageMetricsArr = [];
 
   // Sort files into (1) HOCR files, (2) image files, or (3) unsupported using extension.
   let imageFilesAll = [];
@@ -2123,7 +2142,9 @@ async function importFiles(curFiles) {
       // In addition to capping the resolution, also switch the width/height
       const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
 
-      globalThis.pageMetricsObj["dimsAll"] = pageDims;
+      for (let i=0; i<pageDims.length; i++) {
+        globalThis.pageMetricsArr[i] = new pageMetrics({height: pageDims[i][0], width: pageDims[i][1]});
+      }
 
       if (globalThis.inputDataModes.extractTextMode) {
         stextMode = true;
@@ -2157,7 +2178,7 @@ async function importFiles(curFiles) {
       setDefaultFontAuto(ocrData.fontMetricsObj);
       optimizeFontElem.disabled = false;
       optimizeFontElem.checked = true;
-      await optimizeFont3(true);
+      await enableDisableFontOpt(true);
     }
 
     // Restore layout data from previous session (if applicable)
@@ -2305,21 +2326,6 @@ async function initMuPDFScheduler(file, workers = 3) {
   }
 }
 
-/**
- * Loads an image from a given URL and sets it to a specified HTML element.
- * 
- * @param {string} url - The URL of the image to load.
- * @param {HTMLImageElement} elem - The image element where the loaded image will be set.
- * @returns {Promise<HTMLImageElement>} A promise that resolves with the image element when the image is loaded successfully.
- */
-async function loadImage(url, elem) {
-  return new Promise((resolve, reject) => {
-    elem.onload = () => resolve(elem);
-    elem.onerror = reject;
-    elem.src = url;
-  });
-}
-
 
 /**
  * Renders images and stores them in cache array (or returns early if the requested image already exists).
@@ -2382,7 +2388,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
         // Render to 300 dpi by default
         let dpi = 300;
 
-        const imgWidthXml = globalThis.pageMetricsObj["dimsAll"][n][1];
+        const imgWidthXml = globalThis.pageMetricsArr[n].dims.width;
         const imgWidthPdf = await ms.addJob('pageWidth', [n + 1, 300]);
         if (imgWidthPdf != imgWidthXml) {
           dpi = 300 * (imgWidthXml / imgWidthPdf);
@@ -2409,10 +2415,10 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
     // const renderNativeImage = colorMode == "gray" && globalThis.imageAll["nativeColor"][n] == "color";
 
     // Whether binarized image needs to be rotated (or re-rendered without rotation)
-    const rotateBinary = colorMode == "binary" && (rotate == true && !globalThis.imageAll["binaryRotated"][n] && Math.abs(globalThis.pageMetricsObj["angleAll"][n]) > 0.05 || rotate == false && globalThis.imageAll["binaryRotated"][n] == true);
+    const rotateBinary = colorMode == "binary" && (rotate == true && !globalThis.imageAll["binaryRotated"][n] && Math.abs(globalThis.pageMetricsArr[n].angle) > 0.05 || rotate == false && globalThis.imageAll["binaryRotated"][n] == true);
 
     // Whether native image needs to be rotated
-    const rotateNative = colorName == "native" && (rotate == true && !globalThis.imageAll["nativeRotated"][n] && Math.abs(globalThis.pageMetricsObj["angleAll"][n]) > 0.05);
+    const rotateNative = colorName == "native" && (rotate == true && !globalThis.imageAll["nativeRotated"][n] && Math.abs(globalThis.pageMetricsArr[n].angle) > 0.05);
 
     // If nothing needs to be done, return early.
     if (!(renderBinary || rotateBinary || rotateNative )) {
@@ -2421,7 +2427,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
     };
 
     // If no preference is specified for rotation, default to true
-    const angleArg = rotate != false ? globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180) * -1 || 0 : 0;
+    const angleArg = rotate != false ? globalThis.pageMetricsArr[n].angle * (Math.PI / 180) * -1 || 0 : 0;
 
     const saveBinaryImageArg = true;
     const saveColorImageArg = rotateNative;
@@ -2489,11 +2495,11 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   // (1) No data has been imported
   const noInput = !inputDataModes.xmlMode[n] && !(inputDataModes.imageMode || inputDataModes.pdfMode);
   // (2) XML data should exist but does not (yet)
-  const xmlMissing = inputDataModes.xmlMode[n] && (globalThis.hocrCurrent.length == 0 || globalThis.hocrCurrent[n] === undefined || globalThis.hocrCurrent[n] === null || globalThis.pageMetricsObj["dimsAll"][n] === undefined);
+  const xmlMissing = inputDataModes.xmlMode[n] && (globalThis.hocrCurrent.length == 0 || globalThis.hocrCurrent[n] === undefined || globalThis.hocrCurrent[n] === null || globalThis.pageMetricsArr[n].dims === undefined);
   // (3) Image data should exist but does not (yet)
   const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null);
   // (4) PDF data should exist but does not (yet)
-  const pdfMissing = inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined" || globalThis.pageMetricsObj["dimsAll"][n] === undefined);
+  const pdfMissing = inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined" || globalThis.pageMetricsArr[n].dims === undefined);
 
   if (noInput || xmlMissing || imageMissing || pdfMissing) {
     console.log("Exiting renderPageQueue early");
@@ -2523,14 +2529,12 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   } 
 
   // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
-  const imgDims = new Array(2);
+  let imgDims;
   if (inputDataModes.xmlMode[n] || inputDataModes.pdfMode) {
-    imgDims[1] = globalThis.pageMetricsObj["dimsAll"][n][1];
-    imgDims[0] = globalThis.pageMetricsObj["dimsAll"][n][0];
+    imgDims = globalThis.pageMetricsArr[n].dims;
   } else {
     const backgroundImage = await globalThis.imageAll["native"][n];
-    imgDims[1] = backgroundImage.width;
-    imgDims[0] = backgroundImage.height;
+    imgDims = {width: backgroundImage.width, height: backgroundImage.height};
   }
 
   // Calculate options for background image and overlay
@@ -2539,13 +2543,13 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
     currentPage.backgroundOpts.originX = "center";
     currentPage.backgroundOpts.originY = "center";
 
-    currentPage.backgroundOpts.left = imgDims[1] * 0.5;
-    currentPage.backgroundOpts.top = imgDims[0] * 0.5;
+    currentPage.backgroundOpts.left = imgDims.width * 0.5;
+    currentPage.backgroundOpts.top = imgDims.height * 0.5;
 
 
-    let marginPx = Math.round(imgDims[1] * leftGlobal);
+    let marginPx = Math.round(imgDims.width * leftGlobal);
     if (autoRotateCheckboxElem.checked) {
-      currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][n] * -1 ?? 0;
+      currentPage.backgroundOpts.angle = globalThis.pageMetricsArr[n].angle * -1 ?? 0;
 
     } else {
       currentPage.backgroundOpts.angle = 0;
@@ -2558,13 +2562,13 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
       canvas.clear();
 
       if (imgDims != null) {
-        let zoomFactor = parseFloat(zoomInputElem.value) / imgDims[1];
-        canvas.setHeight(imgDims[0] * zoomFactor);
-        canvas.setWidth(imgDims[1] * zoomFactor);
+        let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
+        canvas.setHeight(imgDims.height * zoomFactor);
+        canvas.setWidth(imgDims.width * zoomFactor);
         canvas.setZoom(zoomFactor);
       }
 
-      let marginLine = new fabric.Line([marginPx, 0, marginPx, imgDims[0]], { stroke: 'blue', strokeWidth: 1, selectable: false, hoverCursor: 'default' });
+      let marginLine = new fabric.Line([marginPx, 0, marginPx, imgDims.height], { stroke: 'blue', strokeWidth: 1, selectable: false, hoverCursor: 'default' });
       canvas.add(marginLine);
 
       let marginImage = canvas.toDataURL();
@@ -2580,24 +2584,24 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
     if (autoMarginCheckboxElem.checked && leftGlobal != null) {
 
       // Adjust page to match global margin unless it would require large transformation (likely error)
-      if (globalThis.pageMetricsObj["leftAll"][n] > 0 && Math.abs(marginPx - globalThis.pageMetricsObj["leftAll"][n]) < (globalThis.pageMetricsObj["dimsAll"][currentPage.n][1] / 3)) {
-        currentPage.leftAdjX = marginPx - globalThis.pageMetricsObj["leftAll"][n];
+      if (globalThis.pageMetricsArr[n].left > 0 && Math.abs(marginPx - globalThis.pageMetricsArr[n].left) < (globalThis.pageMetricsArr[currentPage.n].dims.width / 3)) {
+        currentPage.leftAdjX = marginPx - globalThis.pageMetricsArr[n].left;
       }
 
       if (autoRotateCheckboxElem.checked) {
-        const sinAngle = Math.sin(globalThis.pageMetricsObj["angleAll"][n] * (Math.PI / 180));
-        const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
+        const sinAngle = Math.sin(globalThis.pageMetricsArr[n].angle * (Math.PI / 180));
+        const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
 
-        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsObj["angleAdjAll"][n] || 0);
+        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsArr[n].angleAdj || 0);
       }
 
-      currentPage.backgroundOpts.left = imgDims[1] * 0.5 + currentPage.leftAdjX;
+      currentPage.backgroundOpts.left = imgDims.width * 0.5 + currentPage.leftAdjX;
     } else {
-      currentPage.backgroundOpts.left = imgDims[1] * 0.5;
+      currentPage.backgroundOpts.left = imgDims.width * 0.5;
     }
 
     if (mode == "screen") {
-      canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
+      canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
     }
 
   } else {
@@ -2617,9 +2621,9 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   }
 
   if (imgDims != null) {
-    let zoomFactor = parseFloat(zoomInputElem.value) / imgDims[1];
-    canvas.setHeight(imgDims[0] * zoomFactor);
-    canvas.setWidth(imgDims[1] * zoomFactor);
+    let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
+    canvas.setHeight(imgDims.height * zoomFactor);
+    canvas.setWidth(imgDims.width * zoomFactor);
     canvas.setZoom(zoomFactor);
   }
 
@@ -2643,7 +2647,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
 
 
   if (mode == "screen" && currentPage.n == n && inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, globalThis.hocrCurrent[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsObj["angleAll"][n], globalThis.fontObj, currentPage.leftAdjX);
+    await renderPage(canvas, globalThis.hocrCurrent[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, currentPage.leftAdjX);
     if (currentPage.n == n && currentPage.renderNum == renderNum) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
       await selectDisplayMode(displayModeElem.value);
@@ -2697,8 +2701,8 @@ export async function displayPage(n) {
   currentPage.n = n;
   pageNumElem.value = (currentPage.n + 1).toString();
 
-  rangeLeftMarginElem.value = 200 + globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
-  canvas.viewportTransform[4] = globalThis.pageMetricsObj["manAdjAll"][currentPage.n] ?? 0;
+  rangeLeftMarginElem.value = 200 + globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
+  canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
 
   await renderPageQueue(currentPage.n);
 
@@ -2727,7 +2731,7 @@ export async function displayPage(n) {
 
 async function optimizeFontClick(value) {
 
-  await optimizeFont3(value);
+  await enableDisableFontOpt(value);
 
   renderPageQueue(currentPage.n);
 }
@@ -2850,8 +2854,17 @@ export async function updateDataProgress(mainData = true, combMode = false) {
           optimizeFontElem.disabled = false;
           optimizeFontElem.checked = true;
           setDefaultFontAuto(globalThis.fontMetricsObj);
-          await optimizeFont3(true);
+          await enableDisableFontOpt(true);
         }
+
+        // Evaluate default fonts using up to 5 pages. 
+        const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
+        await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
+        // Select best default fonts
+        const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum));
+        // Re-render current page if default font changed
+        if (change) renderPageQueue(currentPage.n);
+
       }
 
       calculateOverallPageMetrics();
@@ -2873,14 +2886,11 @@ export async function updateDataProgress(mainData = true, combMode = false) {
 function calculateOverallPageMetrics() {
   // It is possible for image resolution to vary page-to-page, so the left margin must be calculated
   // as a percent to remain visually identical between pages.
-  let leftAllPer = new Array(globalThis.pageMetricsObj["leftAll"].length);
-  for (let i = 0; i < globalThis.pageMetricsObj["leftAll"].length; i++) {
-    leftAllPer[i] = globalThis.pageMetricsObj["leftAll"][i] / globalThis.pageMetricsObj["dimsAll"][i][1];
+  let leftAllPer = new Array(globalThis.pageMetricsArr.length);
+  for (let i = 0; i < globalThis.pageMetricsArr.length; i++) {
+    leftAllPer[i] = globalThis.pageMetricsArr[i].left / globalThis.pageMetricsArr[i].dims.width;
   }
   leftGlobal = quantile(leftAllPer, 0.5);
-  globalThis.pageMetricsObj["manAdjAll"] = new Array(globalThis.pageMetricsObj["leftAll"].length);
-  globalThis.pageMetricsObj["manAdjAll"].fill(0);
-
 }
 
 async function handleDownload() {
@@ -2913,23 +2923,12 @@ async function handleDownload() {
 
   if (download_type == "pdf") {
 
-    // In the fringe case where images are uploaded but no recognition data is present, dimensions come from the images. 
-    if (inputDataModes.imageMode) {
-      for (let i=minValue; i<=maxValue; i++){
-        if (!globalThis.pageMetricsObj.dimsAll[i]) {
-          await renderPDFImageCache([i]);
-          const backgroundImage = await globalThis.imageAll["native"][i];
-          globalThis.pageMetricsObj.dimsAll[i] = [backgroundImage.height, backgroundImage.width];
-        }
-      }
-    }
-
     let standardizeSizeMode = standardizeCheckboxElem.checked;
-    let dimsLimit = [-1,-1];
+    let dimsLimit = {width: -1, height: -1};
     if (standardizeSizeMode) {
       for (let i = minValue; i <= maxValue; i++) {
-        dimsLimit[0] = Math.max(dimsLimit[0], globalThis.pageMetricsObj["dimsAll"][i][0]);
-        dimsLimit[1] = Math.max(dimsLimit[1], globalThis.pageMetricsObj["dimsAll"][i][1]);
+        dimsLimit.height = Math.max(dimsLimit.height, globalThis.pageMetricsArr[i].dims.height);
+        dimsLimit.width = Math.max(dimsLimit.width, globalThis.pageMetricsArr[i].dims.width);
       }
     }
 
@@ -2967,7 +2966,7 @@ async function handleDownload() {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images. 
-      const pdfStr = await hocrToPDF(hocrDownload, 0,-1,displayModeElem.value, rotateText, rotateBackground, [-1,-1], downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(hocrDownload, 0,-1,displayModeElem.value, rotateText, rotateBackground, {width: -1, height: -1}, downloadProgress, confThreshHigh, confThreshMed);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -2984,7 +2983,7 @@ async function handleDownload() {
 
       // If the input document is a .pdf and "Add Text to Import PDF" option is enabled, we insert the text into that pdf (rather than making a new one from scratch)
       if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
-        content = await w.overlayText([pdfOverlay, minValue, maxValue, dimsLimit[1], dimsLimit[0]]);
+        content = await w.overlayText([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
 
         // Unfortunately there currently is not a real way to track progress using the w.overlayText function, as pages are incremented using C++ (webassembly). 
         for (let i=minValue; i < maxValue+1; i++) {
@@ -2998,7 +2997,7 @@ async function handleDownload() {
         const imgArr = imgArr1.map((x) => x.src);
         await w.overlayTextImageStart([]);
         for (let i=minValue; i < maxValue+1; i++) {
-          await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit[1], dimsLimit[0]]);
+          await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit.width, dimsLimit.height]);
           downloadProgress.increment();
         }
         content = await w.overlayTextImageEnd([]);
@@ -3026,7 +3025,7 @@ async function handleDownload() {
       // The file name is only used to detect the ".pdf" extension
       const pdf = await w.openDocument(pdfEnc.buffer, "document.pdf");
 
-      const content = await w.write([pdf, minValue, maxValue, dimsLimit[1], dimsLimit[0]]);
+      const content = await w.write([pdf, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
 
       pdfBlob = new Blob([content], { type: 'application/octet-stream' });
     }

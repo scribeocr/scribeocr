@@ -18,8 +18,7 @@ function adjustMarginRange(value) {
 
 
 function adjustMarginRangeChange(value) {
-    if (typeof (globalThis.pageMetricsObj["manAdjAll"]) == "undefined") return;
-    globalThis.pageMetricsObj["manAdjAll"][currentPage.n] = (parseInt(value) - 200);
+    globalThis.pageMetricsArr[currentPage.n].manAdj = (parseInt(value) - 200);
 }
 
 
@@ -75,7 +74,7 @@ export const selectDisplayMode = function (x) {
         if (autoRotateCheckboxElem.checked) {
             currentPage.backgroundOpts.angle = 0;
         } else {
-            currentPage.backgroundOpts.angle = globalThis.pageMetricsObj["angleAll"][currentPage.n];
+            currentPage.backgroundOpts.angle = globalThis.pageMetricsArr[currentPage.n].angle;
         }
     }
 

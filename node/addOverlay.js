@@ -1,27 +1,27 @@
 // Code for adding visualization to OCR output
 // Use: `node addOverlay.js [PDF file] [OCR data file] [output directory]`
 
+import { pageMetrics } from "../js/objects/pageMetricsObjects.js";
+import { selectDefaultFontsDocument } from "../js/compareHOCR.js";
+
 import fs from "fs";
 import path from "path";
 import util from "util";
 import Worker from 'web-worker';
 globalThis.Worker = Worker;
-import { createRequire } from "module";
-globalThis.require = createRequire(import.meta.url);
 import { initMuPDFWorker } from "../mupdf/mupdf-async.js";
 import { hocrToPDF } from "../js/exportPDF.js";
-import { loadFontFamily } from "../js/fontUtils.js";
-import { initOptimizeFontWorker, optimizeFont3 } from "../js/optimizeFont.js";
+import { enableDisableFontOpt } from "../js/objects/fontObjects.js";
+import { initOptimizeFontWorker } from "../js/optimizeFont.js";
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "../js/fontStatistics.js";
 
 import Tesseract from 'tesseract.js';
 
+const { loadImage } = await import('canvas');
 
 
-globalThis.Tesseract = Tesseract;
+// globalThis.Tesseract = Tesseract;
 
-globalThis.self = globalThis;
-await import('../lib/opentype.js');
 
   // Object that keeps track of various global settings
   globalThis.globalSettings = {
@@ -43,12 +43,8 @@ async function main() {
     const backgroundArg = args[0];
     const outputDir = args[2] || "./";
     const outputPath = outputDir + "/" + path.basename(backgroundArg).replace(/\.\w{1,5}$/i, "_vis.pdf");
-
-    loadFontFamily("SansDefault");
-    loadFontFamily("SerifDefault");
     
     const backgroundPDF = /pdf$/i.test(backgroundArg);
-
   
     const w = await initMuPDFWorker();
     const fileData = await fs.readFileSync(args[0]);
@@ -58,12 +54,7 @@ async function main() {
       w["pdfDoc"] = pdfDoc;    
     }
 
-    globalThis.pageMetricsObj = {};
-    globalThis.pageMetricsObj["angleAll"] = [];
-    globalThis.pageMetricsObj["dimsAll"] = [];
-    globalThis.pageMetricsObj["leftAll"] = [];
-    globalThis.pageMetricsObj["angleAdjAll"] = [];
-    globalThis.pageMetricsObj["manAdjAll"] = [];
+    globalThis.pageMetricsArr = [];
   
     // Object that keeps track of what type of input data is present
     globalThis.inputDataModes = {
@@ -148,25 +139,12 @@ async function main() {
         } else {
           globalThis.hocrCurrent[n] = pageObj || null;
         }
-        
-        // When using the "Recognize Area" feature the XML dimensions will be smaller than the page dimensions
-        if (argsObj["mode"] == "area") {
-          globalThis.pageMetricsObj["dimsAll"][n] = [currentPage.backgroundImage.height, currentPage.backgroundImage.width];
-          globalThis.hocrCurrent[n] = globalThis.hocrCurrent[n].replace(/bbox( \d+)+/, "bbox 0 0 " + currentPage.backgroundImage.width + " " + currentPage.backgroundImage.height);
-        } else {
-          globalThis.pageMetricsObj["dimsAll"][n] = pageObj.dims;
-        }
+
+        globalThis.pageMetricsArr[n] = new pageMetrics(pageObj.dims);
+                  
+        globalThis.pageMetricsArr[n].angle = pageObj.angle;
+        globalThis.pageMetricsArr[n].left = pageObj.left;
           
-        globalThis.pageMetricsObj["angleAll"][n] = pageObj.angle;
-        globalThis.pageMetricsObj["leftAll"][n] = pageObj.left;
-        globalThis.pageMetricsObj["angleAdjAll"][n] = pageObj.angleAdj;
-  
-  
-        globalThis.pageMetricsObj["angleAll"][n] = pageObj.angle;
-        globalThis.pageMetricsObj["leftAll"][n] = pageObj.left;
-        globalThis.pageMetricsObj["angleAdjAll"][n] = pageObj.angleAdj;
-  
-        
         if(argsObj["saveMetrics"] ?? true){
           fontMetricObjsMessage[n] = event.data[0][1];
           convertPageWarn[n] = event.data[0][3];
@@ -203,7 +181,43 @@ async function main() {
     globalThis.fontMetricsObj = metricsRet.fontMetrics;
 
     if (globalThis.fontMetricsObj) setDefaultFontAuto(globalThis.fontMetricsObj);
-    await optimizeFont3(true);
+    await enableDisableFontOpt(true);
+
+    // There is currently no Node.js implementation of default font selection, as this is written around drawing in the canvas API. 
+    // Evaluate default fonts using up to 5 pages. 
+    const pageNum = Math.min(pageCount, 5);
+
+    const tessWorker = await Tesseract.createWorker();
+
+    const imgArr = [];
+
+    for (let i=0; i<pageNum; i++) {
+      // Render to 300 dpi by default
+      let dpi = 300;
+
+      const imgWidthXml = globalThis.pageMetricsArr[i].dims.width;
+
+      const imgWidthPdf = await w.pageWidth([i+1, 300]);
+      if (imgWidthPdf != imgWidthXml) {
+        dpi = 300 * (imgWidthXml / imgWidthPdf);
+      }
+
+      const img1 = await w.drawPageAsPNG([i+1, dpi, false, false]);
+
+      const angleArg = globalThis.pageMetricsArr[i].angle * (Math.PI / 180) * -1 || 0;
+
+      const res = await tessWorker.recognize(img1, {rotateRadians: angleArg}, {imageBinary : true, imageColor: false, debug: true, text: false, hocr: false, tsv: false, blocks: false});
+      
+      const img = await loadImage(res.data.imageBinary);
+
+      imgArr.push(img);
+    }
+
+    // Select best default fonts
+    const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), imgArr);
+    // Re-render current page if default font changed
+    if (change) renderPageQueue(currentPage.n);
+
 
     const pdfStr = await hocrToPDF(globalThis.hocrCurrent, 0, -1, "proof", true, false);
     const enc = new TextEncoder();
@@ -232,4 +246,3 @@ async function initOptimizeFontScheduler(workers = 3) {
   initOptimizeFontScheduler();
   
 main();
-

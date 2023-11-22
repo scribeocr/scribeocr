@@ -4,6 +4,8 @@ import { displayPage } from "../main.js";
 
 import { createCells } from "./exportWriteTabular.js";
 
+import { layoutBox } from "./objects/layoutObjects.js";
+
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
 const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
 const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
@@ -11,25 +13,6 @@ const setLayoutBoxInclusionLevelWordElem = /** @type {HTMLInputElement} */(docum
 const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
 
 const strokeWidth = 5;
-
-/**
- * @param {number} priority
- * @param {Array<number>} coords
- */
-function layoutBox(priority, coords) {
-    /** @type {number} */ 
-    this.priority = priority;
-    /** @type {Array<number>} */ 
-    this.coords = coords;
-    /** @type {string} */ 
-    this.type = "order";
-    /** @type {number} */ 
-    this.table = 0;
-    /** @type {string} */ 
-    this.inclusionRule = "majority";
-    /** @type {string} */ 
-    this.inclusionLevel = "word";
-}
   
 export function addLayoutBoxClick(type = null) {
 

@@ -46,13 +46,13 @@ const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
     const rotate = true;
 
     // Whether the page angle is already known (or needs to be detected)
-    const angleKnown = typeof (globalThis.pageMetricsObj["angleAll"]?.[n]) == "number";
+    const angleKnown = typeof (globalThis.pageMetrisArr[n].angle) == "number";
 
     // Threshold (in radians) under which page angle is considered to be effectively 0.
     const angleThresh = 0.0008726646;
 
     // Do not rotate an image that has already been rotated
-    const rotateDegrees = rotate && Math.abs(globalThis.pageMetricsObj["angleAll"][n]) > 0.05 && !globalThis.imageAll["nativeRotated"][n] ? globalThis.pageMetricsObj["angleAll"][n] * -1 || 0 : 0;
+    const rotateDegrees = rotate && Math.abs(globalThis.pageMetricsArr[n].angle) > 0.05 && !globalThis.imageAll["nativeRotated"][n] ? globalThis.pageMetricsArr[n].angle * -1 || 0 : 0;
     const rotateRadians = rotateDegrees * (Math.PI / 180);
 
     // When the image has not been loaded into an element yet, use the raw source string.
@@ -72,7 +72,7 @@ const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
 
     parseDebugInfo(res.data.debug);
 
-    if (!angleKnown) globalThis.pageMetricsObj["angleAll"][n] = res.data.rotateRadians * (180 / Math.PI) * -1;
+    if (!angleKnown) globalThis.pageMetricsArr[n].angle = res.data.rotateRadians * (180 / Math.PI) * -1;
 
     // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
     // but no significant rotation was actually detected. 
@@ -98,7 +98,7 @@ const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
 
     const argsObj = {
         "engine": engineName,
-        "angle": globalThis.pageMetricsObj["angleAll"][n],
+        "angle": globalThis.pageMetricsArr[n].angle,
         "mode": "full"
     }
 

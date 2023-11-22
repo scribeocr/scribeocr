@@ -326,7 +326,6 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
 
   const glyphI = workingFont.charToGlyph("g");
   const glyphIMetrics = glyphI.getMetrics();
-  console.log(glyphIMetrics.xMin);
 
   let fontKerningObj = new Object;
 

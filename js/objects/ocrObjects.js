@@ -1,14 +1,18 @@
-import { getFontSize } from "./textUtils.js"
 
 /**
  * @param {number} n
- * @param {Array<number>} dims
- * @global
+ * @param {dims} dims
+ * @property {number} n - Page number (index 0)
+ * @property {dims} dims - Dimensions of OCR
+ * @property {number} angle - 
+ * @property {?number} left - 
+ * @property {number} leftAdj - 
+ * @property {Array<ocrLine>} lines - 
  */
 export function ocrPage(n, dims) {
     /** @type {number} */ 
       this.n = n;
-      /** @type {Array<number>} */ 
+      /** @type {dims} */ 
       this.dims = dims;
       /** @type {number} */ 
       this.angle = 0;
@@ -72,7 +76,7 @@ export function ocrWord(line, text, bbox, id) {
     this.dropcap = false;
     /** @type {string} */ 
     this.text = text;
-    /** @type {string} */ 
+    /** @type {("normal"|"italic"|"small-caps")} */ 
     this.style = "normal";
     /** @type {?string} */ 
     this.font = null;
@@ -92,24 +96,6 @@ export function ocrWord(line, text, bbox, id) {
     this.line = line;
 }
 
-
-/**
- * Calculate font size for word.
- * Returns null for any word where the default size for the line should be used.
- * This function differs from accessing the `word.font` property in that
- * @param {ocrWord} word
- */
-const calcWordFontSize = async (word) => {
-    if (word.size) {
-        return word.size;
-    } else if (word.sup) {
-        return await getFontSize(word.font || globalSettings.defaultFont, "normal", word.bbox[3] - word.bbox[1], "1");
-    } else if (word.dropcap) {
-        return await getFontSize(word.font || globalSettings.defaultFont, "normal", word.bbox[3] - word.bbox[1], word.text.slice(0, 1));
-    } else {
-        return null;
-    }
-}
 
 /**
  * @param {ocrPage} page
@@ -210,39 +196,6 @@ const getPageText = (page) => {
     return text;
 }  
 
-// Font size, unlike other characteristics (e.g. bbox and baseline), does not come purely from pixels on the input image. 
-// This is because different fonts will create different sized characters even when the nominal "font size" is identical. 
-// Therefore, the appropriate font size must be calculated using (1) the character stats from the input image and 
-// (2) stats regarding the font being used. 
-/**
- * Get or calculate font size for line.
- * This value will either be (1) a manually set value or (2) a value calculated using line metrics.
- * @param {ocrLine} line
- */
-const calcLineFontSize = async (line) => {
-
-    if (line._size) return line._size;
-
-    if (line._sizeCalc) return line._sizeCalc;
-
-    // The font of the first word is used (if present), otherwise the default font is used.
-    const font = line.words[0]?.font || globalSettings.defaultFont;
-
-    // Font size is calculated using either (1) the ascender height or (2) the x-height.
-    // If both metrics are present both are used and the result is averaged.
-    if (line.ascHeight && !line.xHeight) {
-        line._sizeCalc = await getFontSize(font, "normal", line.ascHeight, "A");
-    } else if (!line.ascHeight && line.xHeight) {
-        line._sizeCalc = await getFontSize(font, "normal", line.xHeight, "o");
-    } else if (line.ascHeight && line.xHeight) {
-        const size1 = await getFontSize(font, "normal", line.ascHeight, "A");
-        const size2 = await getFontSize(font, "normal", line.xHeight, "o");
-        line._sizeCalc = Math.floor((size1 + size2) / 2);
-    } 
-
-    return line._sizeCalc;
-
-}
 
 // Calculates x and y adjustments to make to the coordinates due to rotation
 // These are used to correctly place boxes on the canvas when the auto-rotate option is enabled. 
@@ -260,8 +213,8 @@ function calcLineAngleAdj(line) {
             const linebox = line.bbox;
             const baseline = line.baseline;
           
-            const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
-            const shiftY = sinAngle * ((imgDims[1] - shiftX) * 0.5) || 0;
+            const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
+            const shiftY = sinAngle * ((imgDims.width - shiftX) * 0.5) || 0;
           
             const x = linebox[0];
             const y = linebox[3] + baseline[1];
@@ -300,7 +253,7 @@ function escapeXml(string) {
 }
 
 // Re-calculate bbox for line
-function calcLineBbox(line) {
+export function calcLineBbox(line) {
     const wordBoxArr = line.words.map(x => x.bbox);
     const lineBoxNew = new Array(4);
     lineBoxNew[0] = Math.min(...wordBoxArr.map(x => x[0]));
@@ -354,20 +307,20 @@ export function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
  * Rotates line bounding box (modifies in place).
  * @param {ocrLine} line
  * @param {number} angle
- * @param {?Array<number>} dims
+ * @param {?dims} dims
  */
 function rotateLine(line, angle, dims = null) {
 
     // If the angle is 0 (or very close) return early.
     if (angle <= 0.05) return;
 
-    const dims1 = dims || line.page.dims[0];
+    const dims1 = dims || line.page.dims;
 
     const sinAngle = Math.sin(angle * (Math.PI / 180));
     const cosAngle = Math.cos(angle * (Math.PI / 180));
   
-    const shiftX = sinAngle * (dims1[0] * 0.5) * -1 || 0;
-    const shiftY = sinAngle * ((dims1[1] - shiftX) * 0.5) || 0;
+    const shiftX = sinAngle * (dims1.height * 0.5) * -1 || 0;
+    const shiftY = sinAngle * ((dims1.width - shiftX) * 0.5) || 0;
   
     // Add preprocessing angle to baseline angle
     const baseline = line.baseline;
@@ -441,7 +394,6 @@ const ocr = {
     ocrPage: ocrPage,
     ocrLine: ocrLine,
     ocrWord: ocrWord,
-    calcLineFontSize : calcLineFontSize,
     calcLineAngleAdj : calcLineAngleAdj,
     calcLineBbox: calcLineBbox,
     getPageWord: getPageWord,
@@ -451,7 +403,6 @@ const ocr = {
     cloneWord: cloneWord,
     rotateLine: rotateLine,
     deletePageWord: deletePageWord,
-    calcWordFontSize: calcWordFontSize,
     replaceLigatures: replaceLigatures,
     escapeXml: escapeXml,
 }

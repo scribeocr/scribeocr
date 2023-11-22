@@ -1,14 +1,15 @@
 
-import { getFontSize, calcWordMetrics, calcCharSpacing } from "./textUtils.js"
+import { getFontSize, calcWordMetrics, calcCharSpacing, calcLineFontSize } from "./fontUtils.js"
 import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
-import ocr from "./ocrObjects.js";
-import { ITextWord } from "./fabricObjects.js";
+import ocr from "./objects/ocrObjects.js";
+import { ITextWord } from "./objects/fabricObjects.js";
+import { fontAll } from "./objects/fontObjects.js";
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
 
 
-export async function renderPage(canvas, page, defaultFont, imgDims, angle, fontObj, leftAdjX) {
+export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX) {
 
   const layoutMode = globalThis.layoutMode || false;
 
@@ -26,8 +27,8 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  const shiftX = sinAngle * (imgDims[0] * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((imgDims[1] - shiftX) * 0.5) || 0;
+  const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((imgDims.width - shiftX) * 0.5) || 0;
 
   const lines = page.lines;
 
@@ -37,7 +38,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
 
     const linebox = lineObj.bbox;
     const baseline = lineObj.baseline;
-    lineFontSize = (await ocr.calcLineFontSize(lineObj)) ||  lineFontSize;
+    lineFontSize = (await calcLineFontSize(lineObj)) ||  lineFontSize;
 
     const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
 
@@ -137,10 +138,12 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
 
       const charSpacing = await calcCharSpacing(wordText, wordFontFamily, fontStyle, wordFontSize, box_width);
 
-      const fontObjI = await fontObj[wordFontFamily][fontStyle];
-      let wordFirstGlyphMetrics = fontObjI.charToGlyph(wordText.substr(0, 1)).getMetrics();
+      const fontI = /**@type {fontContainerFont} */  (fontAll[wordFontFamily][fontStyle]);
+      const fontOpentypeI = await fontI.opentype;
 
-      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontObjI.unitsPerEm);
+      let wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
+
+      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
 
         let baselineWord;
         let visualBaseline;
@@ -179,9 +182,6 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
         const visualLeft = box[0] + angleAdjXWord + leftAdjX;
         const left = visualLeft - wordLeftBearing;
 
-        let wordFontFamilyCanvas = fontStyle == "small-caps" ? wordFontFamily + " Small Caps" : wordFontFamily;
-        let fontStyleCanvas = fontStyle == "small-caps" ? "normal" : fontStyle;
-
         const textBackgroundColor = globalThis.find.search && wordText.toLowerCase().includes(globalThis.find.search?.toLowerCase()) ? '#4278f550' : '';
 
         const textbox = new ITextWord(wordText, {
@@ -198,8 +198,8 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, font
           fill_proof: fillColorHex,
           fill_ebook: 'black',
           fill_eval: fillColorHexMatch,
-          fontFamily: wordFontFamilyCanvas,
-          fontStyle: fontStyleCanvas,
+          fontFamily: fontI.fontFaceName,
+          fontStyle: fontI.fontFaceStyle,
 
           // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
           fontFamilyLookup: wordFontFamily,

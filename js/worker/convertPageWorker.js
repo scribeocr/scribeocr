@@ -4,113 +4,18 @@
 // They should be replaced with import statements once support for imports in workers is universal or an alternative is found. 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#browser_compatibility
 
-/**
- * @param {number} priority
- * @param {Array<number>} coords
- */
-function layoutBox(priority, coords) {
-  /** @type {number} */ 
-  this.priority = priority;
-  /** @type {Array<number>} */ 
-  this.coords = coords;
-  /** @type {string} */ 
-  this.type = "order";
-  /** @type {?number} */ 
-  this.table = null;
-  /** @type {string} */ 
-  this.inclusionRule = "majority";
-  /** @type {string} */ 
-  this.inclusionLevel = "word";
-}
+const ocr = await import('../objects/ocrObjects.js');
 
-/**
- * @param {ocrLine} line
- * @param {string} text
- * @param {Array<number>} bbox
- * @param {string} id
- */
-function ocrWord(line, text, bbox, id) {
-    /** @type {boolean} */ 
-    this.sup = false;
-    /** @type {boolean} */ 
-    this.dropcap = false;
-    /** @type {string} */ 
-    this.text = text;
-    /** @type {string} */ 
-    this.style = "normal";
-    /** @type {?string} */ 
-    this.font = null;
-    /** @type {?number} */ 
-    this.size = null;
-    /** @type {number} */ 
-    this.conf = 0;
-    /** @type {Array<number>} */ 
-    this.bbox = bbox;
-    /** @type {boolean} */ 
-    this.compTruth = false;
-    /** @type {boolean} */ 
-    this.matchTruth = false;
-    /** @type {string} */ 
-    this.id = id;
-    /** @type {ocrLine} */ 
-    this.line = line;
-}
+const miscUtils = await import('../miscUtils.js');
 
-/**
- * @param {ocrPage} page
- * @param {Array<number>} bbox
- * @param {Array<number>} baseline
- * @param {number} ascHeight
- * @param {?number} xHeight
- * @property {Array<number>} bbox - bounding box for line
- * @property {Array<number>} baseline - baseline [slope, offset]
- * @property {number} ascHeight - 
- * @property {?number} xHeight - 
- * @property {Array<ocrWord>} words - words in line
- * @property {ocrPage} page - page line belongs to
- * @property {?number} _sizeCalc - calculated line font size (using `ascHeight` and `xHeight`)
- * @property {?number} _size - line font size set (set through other means)
- *  `_size` should be preferred over `_sizeCalc` when both exist.
- */
-function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
-  // These inline comments are required for types to work correctly with VSCode Intellisense.
-  // Unfortunately, the @property tags above are not sufficient.
-  /** @type {Array<number>} */ 
-  this.bbox = bbox;
-  /** @type {Array<number>} */ 
-  this.baseline = baseline;
-  /** @type {number} */ 
-  this.ascHeight = ascHeight;
-  /** @type {?number} */ 
-  this.xHeight = xHeight;
-  /** @type {Array<ocrWord>} */ 
-  this.words = [];
-  /** @type {ocrPage} */ 
-  this.page = page;
-  /** @type {?number} */ 
-  this._sizeCalc = null;
-  /** @type {?number} */
-  this._size = null;
-}
+const getRandomAlphanum = miscUtils.getRandomAlphanum;
 
-/**
- * @param {number} n
- * @param {Array<number>} dims
- */
-function ocrPage(n, dims) {
-  /** @type {number} */ 
-    this.n = n;
-    /** @type {Array<number>} */ 
-    this.dims = dims;
-    /** @type {number} */ 
-    this.angle = 0;
-    /** @type {?number} */ 
-    this.left = null;
-     /** @type {number} */ 
-    this.leftAdj = 0;
-    /** @type {Array<ocrLine>} */ 
-    this.lines = [];
-}
+const fontMetricsObjects = await import('../objects/fontMetricsObjects.js');
+
+const fontMetricsRawFont = fontMetricsObjects.fontMetricsRawFont;
+const fontMetricsRawFamily = fontMetricsObjects.fontMetricsRawFamily;
+
+const layoutBox = (await import('../objects/layoutObjects.js')).layoutBox;
 
 /**
  * Unescapes XML in a string
@@ -135,45 +40,6 @@ function unescapeXml(string) {
       .replace(/&#xa7;/g, "§")
 }
 
-// Re-calculate bbox for line
-function calcLineBbox(line) {
-    const wordBoxArr = line.words.map(x => x.bbox);
-    const lineBoxNew = new Array(4);
-    lineBoxNew[0] = Math.min(...wordBoxArr.map(x => x[0]));
-    lineBoxNew[1] = Math.min(...wordBoxArr.map(x => x[1]));
-    lineBoxNew[2] = Math.max(...wordBoxArr.map(x => x[2]));
-    lineBoxNew[3] = Math.max(...wordBoxArr.map(x => x[3]));
-    line.bbox = lineBoxNew;
-}
-
-
-function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
-  
-    const bboxOut = [...bbox];
-
-    const x = bboxOut[0] - shiftX / 2;
-    const y = bboxOut[3] - (bboxOut[3] - bboxOut[1]) / 3 - shiftY / 2;
-    
-    bboxOut[0] = bbox[0] - shiftX;
-    bboxOut[2] = bbox[2] - shiftX;
-    bboxOut[1] = bbox[1] - shiftY;
-    bboxOut[3] = bbox[3] - shiftY;
-
-    const angleAdjYInt = (1 - cosAngle) * y - sinAngle * bboxOut[0];
-
-    const xRot = x * cosAngle - sinAngle * y;
-
-    const angleAdjXInt = x - xRot;
-
-    bboxOut[0] = Math.round(bboxOut[0] - angleAdjXInt);
-    bboxOut[2] = Math.round(bboxOut[2] - angleAdjXInt);
-    bboxOut[1] = Math.round(bboxOut[1] - angleAdjYInt);
-    bboxOut[3] = Math.round(bboxOut[3] - angleAdjYInt);
-
-    return bboxOut;
-}
-
-
 /**
  * Rounds a number to six decimal places.
  * @param {number} x - The number to be rounded.
@@ -181,28 +47,6 @@ function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
  */
 function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
-}
-
-function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
-}
-
-function getRandomAlphanum(num){
-  let outArr = new Array(num);
-  for(let i=0;i<num;i++){
-    let intI = getRandomInt(1,62);
-    if(intI <= 10){
-      intI = intI + 47;
-    } else if(intI <= 36){
-      intI = intI - 10 + 64;
-    } else {
-      intI = intI - 36 + 96;
-    }
-    outArr[i] = String.fromCharCode(intI);
-  }
-  return outArr.join('');
 }
 
 // Sans/serif lookup for common font families
@@ -276,36 +120,23 @@ addEventListener('message', e => {
 });
 
 /**
- * Object containing individual observations of various character metrics.
+ * Rotates line bounding box (modifies in place).
+ * @param {ocr.ocrLine} line
+ * @param {number} angle
+ * @param {?dims} dims
  */
-function fontMetricsRawFont(){
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.width = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.height = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.desc = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.advance = {};
-  /** @type {Object.<string, Array.<number>>} */ 
-  this.kerning = {};
-  /** @type {number} */ 
-  this.obs = 0;
-}
+function rotateLine(line, angle, dims = null) {
 
-function fontMetricsRawFamily() {
-  this.normal = new fontMetricsRawFont();
-  this.italic = new fontMetricsRawFont();
-  this["small-caps"] = new fontMetricsRawFont();
-}
+  // If the angle is 0 (or very close) return early.
+  if (angle <= 0.05) return;
 
-function rotateLine(line, angle) {
+  const dims1 = dims || line.page.dims;
 
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  const shiftX = sinAngle * (line.page.dims[0] * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((line.page.dims[1] - shiftX) * 0.5) || 0;
+  const shiftX = sinAngle * (dims1.height * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((dims1.width - shiftX) * 0.5) || 0;
 
   // Add preprocessing angle to baseline angle
   const baseline = line.baseline;
@@ -315,14 +146,14 @@ function rotateLine(line, angle) {
 
   for (let i=0; i<line.words.length; i++) {
       const word = line.words[i];
-      word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
+      word.bbox = ocr.rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
   }
 
   // Re-calculate line bbox by rotating original line bbox
-  const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
+  const lineBoxRot = ocr.rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
 
   // Re-calculate line bbox by taking union of word bboxes
-  calcLineBbox(line);
+  ocr.calcLineBbox(line);
 
   // Adjust baseline
   const baselineOffsetAdj = lineBoxRot[3] - line.bbox[3];
@@ -333,7 +164,6 @@ function rotateLine(line, angle) {
   line.baseline[1] = baselineOffsetTotal;
 
 }
-
 
 
 // Includes all capital letters except for "J" and "Q"
@@ -374,7 +204,7 @@ const mean50 = arr => {
  * @param {number} n
  * @param {number} rotateAngle
  * @param {?string} engine
- * @param {Array<number>} pageDims
+ * @param {dims} pageDims
  */
 function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null) {
 
@@ -394,12 +224,12 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
     if (pageElement != null) {
       const pageDimsMatch = pageElement[0].match(/bbox \d+ \d+ (\d+) (\d+)/i);
       if (pageDimsMatch != null) {
-        pageDims = [parseInt(pageDimsMatch[2]), parseInt(pageDimsMatch[1])];
+        pageDims = { height: parseInt(pageDimsMatch[2]), width: parseInt(pageDimsMatch[1]) };
       }
     }  
   }
 
-  const pageObj = new ocrPage(n, pageDims);
+  const pageObj = new ocr.ocrPage(n, pageDims);
 
   // Test whether character-level data (class="ocrx_cinfo" in Tesseract) is present.
   const charMode = /ocrx_cinfo/.test(hocrString) ? true : false;
@@ -488,7 +318,7 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
     const lineAscHeightTess = lineAllHeightTessStr - lineDescHeightTessStr;
     const lineXHeightTess = lineAllHeightTessStr - lineDescHeightTessStr - lineAscHeightTessStr;
 
-    const lineObj = new ocrLine(pageObj, linebox, baseline, lineAscHeightTess, lineXHeightTess);
+    const lineObj = new ocr.ocrLine(pageObj, linebox, baseline, lineAscHeightTess, lineXHeightTess);
 
     let heightSmallCapsLine = [];
 
@@ -756,7 +586,7 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
 
           wordXMLCore = wordXML;
 
-          const wordObjCore = new ocrWord(lineObj, text, wordBoxCore, wordID);
+          const wordObjCore = new ocr.ocrWord(lineObj, text, wordBoxCore, wordID);
 
           if(smallCaps || italic || fontFamily != "Default"){
             wordXMLCore = wordXMLCore.slice(0, -1) + " style='";
@@ -785,7 +615,7 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
 
         const textSuper = letterArrSuper.map((x) => x[2]).join('');
 
-        const wordObjSup = new ocrWord(lineObj, textSuper, wordBoxSuper, wordID + "a");
+        const wordObjSup = new ocr.ocrWord(lineObj, textSuper, wordBoxSuper, wordID + "a");
 
         wordObjSup.conf = wordConf;
 
@@ -806,7 +636,7 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
         wordBoxCore[2] = Math.max(...bboxesCore.map(x => x[2]));
         wordBoxCore[3] = Math.max(...bboxesCore.map(x => x[3]));
 
-        const wordObj = new ocrWord(lineObj, text, wordBoxCore, wordID + "a");
+        const wordObj = new ocr.ocrWord(lineObj, text, wordBoxCore, wordID + "a");
 
         if(smallCaps || italic || fontFamily != "Default"){
           wordXML = wordXML.slice(0, -1) + " style='";
@@ -878,7 +708,7 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
       const confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/)?.[1] || "0";
       const wordConf = parseInt(confMatch) || 0;
 
-      const wordObj = new ocrWord(lineObj, wordText, wordBox, wordID + "a");
+      const wordObj = new ocr.ocrWord(lineObj, wordText, wordBox, wordID + "a");
       wordObj.style = fontStyle;
       if (fontFamily != "Default") {
         wordObj.font = fontFamily;
@@ -991,7 +821,7 @@ function convertPageHocr(hocrString, n, pageDims, rotateAngle = 0, engine = null
   pageObj.angle = Math.abs(rotateAngle) > 0.05 ? rotateAngle : Math.asin(angleRiseMedian) * (180 / Math.PI);
 
   const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
-  const shiftX = sinAngle * (pageDims[0] * 0.5) * -1 || 0;
+  const shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
 
   let leftOut = quantile(lineLeft, 0.2) - shiftX;
   let leftAdjOut = quantile(lineLeftAdj, 0.2) - shiftX - leftOut;
@@ -1029,10 +859,10 @@ const abbyyCharRegex = new RegExp(/(\<formatting[^\>]+\>\s*)?\<charParams l\=[\'
 function convertPageAbbyy(xmlPage, pageNum) {
   // Return early if character-level data is not detected.
   // Unlike Tesseract HOCR (which by default returns word-level data which we can still use), Abbyy XML returns line-level data that is not usable.
-  let pageDims = xmlPage.match(/<page width=[\'\"](\d+)[\'\"] height=[\'\"](\d+)[\'\"]/);
-  pageDims = [parseInt(pageDims[2]), parseInt(pageDims[1])];
-
-  const pageObj = new ocrPage(pageNum, pageDims);
+  let pageDimsStr = xmlPage.match(/<page width=[\'\"](\d+)[\'\"] height=[\'\"](\d+)[\'\"]/);
+  const pageDims = {height: parseInt(pageDimsStr[2]), width: parseInt(pageDimsStr[1])};
+  
+  const pageObj = new ocr.ocrPage(pageNum, pageDims);
 
   const fontMetricsObj = {};
 
@@ -1463,7 +1293,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
       pageAscHeightArr.push(lineAscHeight / lineXHeight);
     }
 
-    const lineObj = new ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAscHeight || lineAllHeight, lineXHeight);
+    const lineObj = new ocr.ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAscHeight || lineAllHeight, lineXHeight);
 
     xmlOut = xmlOut + "\">";
 
@@ -1488,7 +1318,7 @@ function convertPageAbbyy(xmlPage, pageNum) {
 
       const id = "word_" + (pageNum + 1) + "_" + (lineNum + 1) + "_" + (i + 1);
 
-      const wordObj = new ocrWord(lineObj, text[i], [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
+      const wordObj = new ocr.ocrWord(lineObj, text[i], [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
       wordObj.conf = wordSusp[i] ? 0 : 100;
 
       if (styleArr[i] == "italic") {
@@ -1576,8 +1406,8 @@ const stextCharRegex = new RegExp(/(\<font[^\>]+\>\s*)?\<char quad=[\'\"](\s*[\d
 function convertPageStext(xmlPage, pageNum) {
 
   const pageDimsMatch = xmlPage.match(/<page .+?width=[\'\"]([\d\.\-]+)[\'\"] height=[\'\"]([\d\.\-]+)[\'\"]/);
-  const pageDims = [parseInt(pageDimsMatch[2]), parseInt(pageDimsMatch[1])];
-
+  const pageDims = {height: parseInt(pageDimsMatch[2]), width: parseInt(pageDimsMatch[1])};
+  
   const fontMetricsObj = {};
 
   let lineLeft = new Array;
@@ -1587,7 +1417,7 @@ function convertPageStext(xmlPage, pageNum) {
 
   let pageAscHeightArr = [];
 
-  const pageObj = new ocrPage(pageNum, pageDims);
+  const pageObj = new ocr.ocrPage(pageNum, pageDims);
 
   /**
    * @param {string} xmlLine
@@ -1932,7 +1762,7 @@ function convertPageStext(xmlPage, pageNum) {
     // TODO: This is very back-of-the-napkin, should figure out how to be more precise.
     const letterHeightOut = fontSize * 0.6;
 
-    const lineObj = new ocrLine(pageObj, lineBoxOut, baselineOut, letterHeightOut, null);
+    const lineObj = new ocr.ocrLine(pageObj, lineBoxOut, baselineOut, letterHeightOut, null);
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
@@ -1950,7 +1780,7 @@ function convertPageStext(xmlPage, pageNum) {
 
       const wordText = unescapeXml(text[i]);
 
-      const wordObj = new ocrWord(lineObj, wordText, [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
+      const wordObj = new ocr.ocrWord(lineObj, wordText, [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
 
       // There is no confidence information in stext.
       // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).

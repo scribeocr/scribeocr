@@ -4,9 +4,9 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { calcWordMetrics } from "./textUtils.js"
+import { calcWordMetrics } from "./fontUtils.js"
 import { renderPageQueue } from "../main.js"
-import ocr from "./ocrObjects.js";
+import ocr from "./objects/ocrObjects.js";
 
 
 export function deleteSelectedWords(){
