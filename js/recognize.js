@@ -1,6 +1,6 @@
 import { parseDebugInfo } from "./fontStatistics.js";
 import { renderPDFImageCache, addDisplayLabel, setCurrentHOCR, calculateOverallMetrics } from "../main.js";
-
+import { convertPageCallback } from "./convertOCR.js";
 
 export async function recognizeAllPages(legacy = true, comb = false) {
 
@@ -22,10 +22,14 @@ export async function recognizeAllPages(legacy = true, comb = false) {
 
     const inputPages = [...Array(globalThis.imageAll["native"].length).keys()];
 
-    await Promise.allSettled(inputPages.map(async (x) => {
-        const res1 = await recognizePage(generalScheduler, x, oemText, true);
-        convertPageCallback(res1, x, legacy, oemText, false);
-    }));
+    const promiseArr = [];
+    for (let x of inputPages) {
+        promiseArr.push(recognizePage(generalScheduler, x, oemText, true).then((res1) => {
+            convertPageCallback(res1, x, legacy, oemText, false);
+        }))
+    }
+
+    await Promise.allSettled(promiseArr);
 
     if (legacy) await calculateOverallMetrics();
       

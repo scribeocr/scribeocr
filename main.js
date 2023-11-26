@@ -1143,7 +1143,7 @@ export function toggleEditButtons(disable = true) {
   }
 }
 
-function initializeProgress(id, maxValue, initValue = 0) {
+function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false) {
   const progressCollapse = document.getElementById(id);
 
   const progressCollapseObj = new bootstrap.Collapse(progressCollapse, { toggle: false });
@@ -1158,7 +1158,7 @@ function initializeProgress(id, maxValue, initValue = 0) {
 
   const progressObj = {"elem": progressBar, "value": initValue, "maxValue": maxValue, "increment": async function() {
     this.value++;
-    if ((this.value) % 5 == 0 || this.value == this.maxValue) {
+    if (alwaysUpdateUI || (this.value) % 5 == 0 || this.value == this.maxValue) {
       this.elem.setAttribute("aria-valuenow", (this.value + 1).toString());
       this.elem.setAttribute("style", "width: " + ((this.value + 1) / maxValue * 100) + "%");
       await sleep(0);
@@ -1187,7 +1187,7 @@ function hideProgress(id) {
 function hideProgress2(id) {
   const progressCollapse = document.getElementById(id);
   if (progressCollapse.getAttribute("class") == "collapse show") {
-    (new bootstrap.Collapse(document.getElementById("import-progress-collapse"))).hide()
+    (new bootstrap.Collapse(progressCollapse)).hide()
 
   // The collapsing animation needs to end before this can be hidden 
   } else if (progressCollapse.getAttribute("class") == "collapsing") {
@@ -1216,13 +1216,13 @@ async function recognizeAllClick() {
 
   // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
   if(oemMode == "legacy" || oemMode == "lstm") {
-    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
+    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length, 0, true);
     await recognizeAllPages(oemMode == "legacy", false);
 
   } else if (oemMode == "combined") {
 
     globalThis.loadCount = 0;
-    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
+    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2, 0, true);
     globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
 
     const time1a = Date.now();
