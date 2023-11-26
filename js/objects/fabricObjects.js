@@ -1,7 +1,6 @@
 import { updateWordCanvas } from "../interfaceEdit.js";
 import { calcWordMetrics } from "../fontUtils.js"
 import ocr from "./ocrObjects.js";
-import { fontAll } from "./fontObjects.js";
 
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -142,7 +141,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
                 // If only one word is selected, we can just use the values for that one word
             } else {
                 const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
-                if (!this.defaultFontFamily && Object.keys(fontAll).includes(fontFamily)) {
+                if (!this.defaultFontFamily) {
                     wordFontElem.value = fontFamily;
                 }
                 fontSizeElem.value = this.fontSize;
@@ -169,7 +168,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
             if (opt.action == "scaleX") {
                 const textboxWidth = opt.target.calcTextWidth();
 
-                const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontFamilyLookup, opt.target.fontSize, opt.target.fontStyleLookup);
+                const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontObj, opt.target.fontSize);
                 const visualWidthNew = (textboxWidth - wordMetrics["leftSideBearing"] - wordMetrics["rightSideBearing"]) * opt.target.scaleX;
 
                 let visualRightNew = opt.target.left + visualWidthNew;

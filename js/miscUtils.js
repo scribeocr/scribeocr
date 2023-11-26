@@ -209,3 +209,15 @@ export async function loadImage(url, elem) {
     elem.src = url;
   });
 }
+
+
+export function imageStrToBlob(imgStr) {
+  const imgData = new Uint8Array(atob(imgStr.split(',')[1])
+        .split('')
+        .map(c => c.charCodeAt(0)));
+
+  const imgBlob = new Blob([imgData], { type: 'application/octet-stream' });
+
+  return imgBlob;
+}
+

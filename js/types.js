@@ -29,6 +29,9 @@
 /**
  * @typedef {import("./objects/fontObjects.js").fontContainerFamily} fontContainerFamily
  */
+/**
+ * @typedef {import("./objects/fontObjects.js").fontContainerAll} fontContainerAll
+ */
 
 /**
  * @typedef {import("../lib/opentype.module.js").Font} opentype.Font
@@ -43,3 +46,9 @@
  * @property {number} height
  * @property {number} width
  */
+
+/**
+ * @typedef {import("./objects/pageMetricsObjects.js").pageMetrics} pageMetrics
+ */
+
+

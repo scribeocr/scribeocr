@@ -9,7 +9,9 @@ globalThis.d = function () {
   debugger;
 }
 
-import { importOCR, convertOCR } from "./js/importOCR.js";
+import { evalOverlapDocument } from "./js/nudge.js";
+
+import { importOCR } from "./js/importOCR.js";
 
 import { renderText } from './js/exportRenderText.js';
 import { renderHOCR } from './js/exportRenderHOCR.js';
@@ -21,12 +23,16 @@ import coords from './js/coordinates.js';
 
 import { recognizeAllPages } from "./js/recognize.js";
 
+import { selectDefaultFontsDocument } from "./js/fontEval.js";
+
+import { convertOCRAll, convertOCRPage } from "./js/convertOCR.js";
+
 import { calcLineFontSize } from "./js/fontUtils.js"
 
 import { pageMetrics } from "./js/objects/pageMetricsObjects.js";
 
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "./js/fontStatistics.js";
-import { enableDisableFontOpt } from "./js/objects/fontObjects.js";
+import { loadFontContainerAll, optimizeFontContainerFamily, fontContainerAll } from "./js/objects/fontObjects.js";
 
 import { ITextWord } from "./js/objects/fabricObjects.js";
 
@@ -48,9 +54,9 @@ import {
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
-import { initOptimizeFontWorker } from "./js/optimizeFont.js";
+// import { initOptimizeFontWorker } from "./js/optimizeFont.js";
 
-import { evalWords, compareHOCR, reorderHOCR, combineData, selectDefaultFontsDocument } from "./js/compareHOCR.js";
+import { reorderHOCR, combineData } from "./js/modifyOCR.js";
 
 import { hocrToPDF } from "./js/exportPDF.js";
 
@@ -59,7 +65,8 @@ import { simd } from "./lib/wasm-feature-detect.js";
 import Tesseract from './tess/tesseract.esm.min.js';
 
 // Debugging functions
-import { initConvertPageWorker } from './js/convertPage.js';
+// import { initConvertPageWorker } from './js/convertPage.js';
+import { initGeneralWorker } from './js/generalWorkerMain.js';
 
 // Load default settings
 import { setDefaults } from "./js/setDefaults.js";
@@ -69,10 +76,15 @@ import ocr from "./js/objects/ocrObjects.js";
 import { printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText } from "./js/debug.js";
 
 const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
-const debugPrintWordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWords'));
+const debugPrintWordsCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
+const debugPrintWordsOCRElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsOCR'));
+
 const debugEvalLineElem = /** @type {HTMLInputElement} */(document.getElementById('debugEvalLine'));
 
-debugPrintWordsElem.addEventListener('click', printSelectedWords);
+debugPrintWordsOCRElem.addEventListener('click', () => printSelectedWords(true));
+debugPrintWordsCanvasElem.addEventListener('click', () => printSelectedWords(false));
+
+
 debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
 debugEvalLineElem.addEventListener('click', evalSelectedLine);
 
@@ -127,10 +139,7 @@ globalThis.inputDataModes = {
 
 // Object that keeps track of various global settings
 globalThis.globalSettings = {
-  simdSupport: false,
   defaultFont: "SerifDefault",
-  defaultFontSans: "NimbusSanL",
-  defaultFontSerif: "NimbusRomNo9L"
 }
 
 
@@ -694,6 +703,47 @@ function findTextClick(text) {
   matchCountElem.textContent = String(find.total);
 }
 
+async function optimizeFontContainerAll() {
+  const Carlito = await optimizeFontContainerFamily(fontPrivate.Carlito);
+  const Century = await optimizeFontContainerFamily(fontPrivate.Century);
+  const NimbusRomNo9L = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L);
+  const NimbusSans = await optimizeFontContainerFamily(fontPrivate.NimbusSans);
+
+  return new fontContainerAll(Carlito, NimbusRomNo9L, NimbusSans, Century);
+}
+
+const fontPrivate = loadFontContainerAll({ normal: "Carlito-Regular.woff", italic: "Carlito-Italic.woff", smallCaps: "Carlito-SmallCaps.woff"},
+  { normal: "C059-Roman.woff", italic: "C059-Italic.woff", smallCaps: "C059-SmallCaps.woff" },
+  { normal: "NimbusRomNo9L-Reg.woff", italic: "NimbusRomNo9L-RegIta.woff", smallCaps: "NimbusRomNo9L-RegSmallCaps.woff" },
+  { normal: "NimbusSanL-Reg.woff", italic: "NimbusSanL-RegIta.woff", smallCaps: "NimbusSanL-RegSmallCaps.woff" });
+
+export const fontAll = {
+  raw: fontPrivate,
+  /**@type {?fontContainerAll}*/
+  opt: null,
+  active: fontPrivate
+}
+
+/**
+ * 
+ * @param {boolean} enable 
+ */
+async function enableDisableFontOpt(enable) {
+  // Create optimized font if this has not been done yet
+  if (enable && !fontAll.opt) {
+    fontAll.opt = await optimizeFontContainerAll();
+  }
+
+  // Enable/disable optimized font
+  if (enable && fontAll.opt) {
+    fontAll.active = fontAll.opt;
+  } else {
+    fontAll.active = fontAll.raw;
+  }
+}
+
+
+
 
 /**
  * @typedef find
@@ -1145,75 +1195,6 @@ function hideProgress2(id) {
   }
 }
 
-export async function createTesseractScheduler(workerN, config = null) {
-
-  const allConfig = config || getTesseractConfigs();
-
-  // SIMD support can be manually disabled for debugging purposes.
-  const disableSIMD = document?.getElementById("disableSIMD")?.checked;
-
-  const buildLabel = document?.getElementById("buildLabelText")?.innerHTML;
-  const buildVersion = buildLabel == "Default" ? "" : "-" + buildLabel.toLowerCase();
-
-  let workerOptions;
-  if (globalSettings.simdSupport && !disableSIMD) {
-    console.log("Using Tesseract with SIMD support (fast LSTM performance).")
-    workerOptions = { corePath: './tess/tesseract-core-simd' + buildVersion + '.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang"};
-  } else {
-    console.log("Using Tesseract without SIMD support (slow LSTM performance).")
-    workerOptions = { corePath: './tess/tesseract-core' + buildVersion + '.wasm.js', workerPath: './tess/worker.min.js', langPath: "./tess/lang" };
-  }
-
-  const scheduler = await Tesseract.createScheduler();
-
-  scheduler["workers"] = [];
-  for (let i = 0; i < workerN; i++) {
-    const w = await Tesseract.createWorker("eng", allConfig.tessedit_ocr_engine_mode, workerOptions);
-    await w.setParameters(allConfig);
-    scheduler["workers"][i] = w;
-    scheduler.addWorker(w);
-  }
-
-  // Add config object to scheduler.
-  // This does not do anything directly, but allows for easily checking what options were used at a later point.
-  scheduler["config"] = allConfig;
-
-  return (scheduler);
-
-}
-
-export function getTesseractConfigs() {
-  // Get current settings as specified by user
-  const oemConfig = oemLabelTextElem.innerHTML == "Legacy" ? Tesseract.OEM['TESSERACT_ONLY'] : Tesseract.OEM['LSTM_ONLY'];
-  const psmConfig = document.getElementById("psmLabelText")?.innerHTML == "Single Column" ? Tesseract.PSM["SINGLE_COLUMN"] : Tesseract.PSM['AUTO'];
-
-  const allConfig = {
-    tessedit_ocr_engine_mode: oemConfig,
-    tessedit_pageseg_mode: psmConfig,
-    hocr_char_boxes: '1',
-    // The Tesseract LSTM engine frequently identifies a bar character "|"
-    // This is virtually always a false positive (usually "I").
-    tessedit_char_blacklist: "|éï",
-    debug_file: "/debug.txt",
-    max_page_gradient_recognize: "100",
-    hocr_font_info: "1",
-    // classify_enable_learning: "0",
-    // classify_enable_adaptive_matcher: "0",
-    // tessedit_enable_doc_dict: "0"
-  };
-  return (allConfig);
-}
-
-// Checks scheduler to see if user has changed settings since scheduler was created
-// function checkTesseractScheduler(scheduler, config = null) {
-//   if (!scheduler?.["config"]) return false;
-//   const allConfig = config || getTesseractConfigs();
-//   delete scheduler?.["config"].rectangle;
-
-//   if (JSON.stringify(scheduler.config) === JSON.stringify(allConfig)) return true;
-//   return false;
-
-// }
 
 
 async function recognizeAllClick() {
@@ -1235,13 +1216,13 @@ async function recognizeAllClick() {
 
   // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
   if(oemMode == "legacy" || oemMode == "lstm") {
-    convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
+    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length);
     await recognizeAllPages(oemMode == "legacy", false);
 
   } else if (oemMode == "combined") {
 
     globalThis.loadCount = 0;
-    convertPageScheduler["activeProgress"] = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
+    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2);
     globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
 
     const time1a = Date.now();
@@ -1293,34 +1274,36 @@ async function recognizeAllClick() {
         confThreshMed: parseInt(confThreshMedElem.value)
       };
 
-      const res = await compareHOCR(ocrAll["Tesseract Legacy"][i]["hocr"], ocrAll["Tesseract LSTM"][i]["hocr"], globalThis.imageAll["binary"][i], globalThis.pageMetricsArr[i], compOptions);
+      const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["Tesseract Legacy"][i]["hocr"], pageB: ocrAll["Tesseract LSTM"][i]["hocr"], binaryImage: globalThis.imageAll["binary"][i].src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
       if (globalThis.debugLog === undefined) globalThis.debugLog = "";
-      globalThis.debugLog += res.debugLog;
+      globalThis.debugLog += res.data.debugLog;
 
-      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = res.page;
+      globalThis.debugImg[tessCombinedLabel][i] = res.data.debugImg;
+
+      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = res.data.page;
       globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
 
       // If the user uploaded data, compare to that as we
       if(userUploadMode) {
-        if (!globalThis.recognizeAreaScheduler) globalThis.recognizeAreaScheduler = await createTesseractScheduler(1);
         if (document.getElementById("combineMode")?.value == "conf") {
           const compOptions = {
             debugLabel: "Combined",
             supplementComp: true,
-            tessScheduler: globalThis.recognizeAreaScheduler,
             ignoreCap: ignoreCapElem.checked,
             ignorePunct: ignorePunctElem.checked,
             confThreshHigh: parseInt(confThreshHighElem.value),
             confThreshMed: parseInt(confThreshMedElem.value)    
           };
 
-          const res = await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], globalThis.imageAll["binary"][i], globalThis.pageMetricsArr[i], compOptions);
+          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i]["hocr"], pageB: ocrAll["Tesseract Combined"][i]["hocr"], binaryImage: globalThis.imageAll["binary"][i].src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = "";
-          globalThis.debugLog += res.debugLog;
+          globalThis.debugLog += res.data.debugLog;
 
-          globalThis.ocrAll["Combined"][i]["hocr"] = res.page;
+          globalThis.debugImg["Combined"][i] = res.data.debugImg;
+
+          globalThis.ocrAll["Combined"][i]["hocr"] = res.data.page;
 
         } else {
           const compOptions = {
@@ -1333,12 +1316,15 @@ async function recognizeAllClick() {
             confThreshHigh: parseInt(confThreshHighElem.value),
             confThreshMed: parseInt(confThreshMedElem.value)    
           };
-          const res = await compareHOCR(ocrAll["User Upload"][i]["hocr"], ocrAll["Tesseract Combined"][i]["hocr"], globalThis.imageAll["binary"][i], globalThis.pageMetricsArr[i], compOptions);
+
+          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i]["hocr"], pageB: ocrAll["Tesseract Combined"][i]["hocr"], binaryImage: globalThis.imageAll["binary"][i].src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = "";
-          globalThis.debugLog += res.debugLog;
+          globalThis.debugLog += res.data.debugLog;
 
-          globalThis.ocrAll["Combined"][i]["hocr"] = res.page;
+          globalThis.debugImg["Combined"][i] = res.data.debugImg;
+
+          globalThis.ocrAll["Combined"][i]["hocr"] = res.data.page;
     
         }
 
@@ -1348,6 +1334,8 @@ async function recognizeAllClick() {
     const time3b = Date.now();
     if (debugMode) console.log(`Comparison runtime: ${time3b - time3a} ms`);
   }
+
+  hideProgress2("recognize-recognize-progress-collapse");
 
   renderPageQueue(currentPage.n);
 
@@ -1400,7 +1388,7 @@ globalThis.evalStats = [];
 async function compareGroundTruthClick(n) {
 
   // When a document/recognition is still loading only the page statistics can be calculated
-  const loadMode = globalThis.loadCount && globalThis.loadCount < parseInt(convertPageScheduler["activeProgress"]?.elem?.getAttribute("aria-valuemax")) ? true : false;
+  const loadMode = globalThis.loadCount && globalThis.loadCount < parseInt(globalThis.convertPageActiveProgress?.elem?.getAttribute("aria-valuemax")) ? true : false;
 
   const evalStatsConfigNew = {};
   evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
@@ -1523,9 +1511,6 @@ async function compareGroundTruthClick(n) {
 globalThis.recognizeAreaScheduler = null;
 async function recognizeArea(imageCoords, wordMode = false) {
 
-  // Create new scheduler if one does not exist
-  if (!globalThis.recognizeAreaScheduler) globalThis.recognizeAreaScheduler = await createTesseractScheduler(1);
-
   // When a user is manually selecting words to recognize, they are assumed to be in the same block.
   const psm = wordMode ? Tesseract.PSM["SINGLE_WORD"] : Tesseract.PSM["SINGLE_BLOCK"];
 
@@ -1536,21 +1521,14 @@ async function recognizeArea(imageCoords, wordMode = false) {
 
   const inputImage = await globalThis.imageAll["native"][currentPage.n];
 
-  const res = await recognizeAreaScheduler.addJob('recognize', inputImage.src, extraConfig);
+  const res = await globalThis.generalScheduler.addJob('recognize', {image: inputImage.src, options: extraConfig});
   let hocrString = res.data.hocr;
 
   const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsArr[currentPage.n].angle) > 0.05 ? globalThis.pageMetricsArr[currentPage.n].angle : 0;
 
   const oemText = "Tesseract " + oemLabelTextElem.innerHTML;
 
-  const argsObj = {
-    "mode": "area",
-    "angle": angleArg,
-    "pageDims": globalThis.pageMetricsArr[currentPage.n].dims,
-    "engine": oemText
-  }
-
-  globalThis.convertPageScheduler.addJob("convertPage", [hocrString, currentPage.n, false, argsObj]);
+  convertOCRPage(hocrString, currentPage.n, false, "hocr", oemText, true);
 
   toggleEditButtons(false);
 
@@ -1561,7 +1539,6 @@ async function recognizeArea(imageCoords, wordMode = false) {
 async function showDebugImages() {
 
   if (!showConflictsElem.checked) {
-    ctxAlt.clearRect(0, 0, ctxAlt.canvas.width, ctxAlt.canvas.height);
     document.getElementById("g")?.setAttribute("style", "display:none");
     return;
   }
@@ -1839,7 +1816,7 @@ function addWordClick() {
       angleAdjY = angleAdjYInt + shiftY;
     }
 
-    const fontSize = await calcLineFontSize(wordObjNew.line);
+    const fontSize = await calcLineFontSize(wordObjNew.line, fontAll.active);
 
     let top = wordObjNew.line.bbox[3] + wordObjNew.line.baseline[1] + angleAdjY;
 
@@ -1861,6 +1838,7 @@ function addWordClick() {
       fontStyle: "normal",
       fontFamilyLookup: globalSettings.defaultFont,
       fontStyleLookup: "normal",
+      fontObj: fontAll[globalSettings.defaultFont].normal,
       wordID: wordIDNew,
       textBackgroundColor: textBackgroundColor,
       //line: i,
@@ -1979,11 +1957,15 @@ async function importOCRFilesSupp() {
   }
 
   globalThis.loadCount = 0;
-  convertPageScheduler["activeProgress"] = initializeProgress("import-eval-progress-collapse", pageCountHOCR);
+  globalThis.convertPageActiveProgress = initializeProgress("import-eval-progress-collapse", pageCountHOCR);
 
   toggleEditButtons(false);
 
-  convertOCR(ocrData.hocrRaw, false, ocrData.abbyyMode, ocrData.stextMode);
+  let format = "hocr";
+  if (ocrData.abbyyMode) format = "abbyy";
+  if (ocrData.stextMode) format = "stext";
+
+  convertOCRAll(ocrData.hocrRaw, false, format);
 
   uploadOCRNameElem.value = '';
   uploadOCRFileElem.value = '';
@@ -2263,7 +2245,7 @@ async function importFiles(curFiles) {
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   if (inputDataModes.imageMode || xmlModeImport || globalThis.inputDataModes.extractTextMode) {
     const progressMax = inputDataModes.imageMode && xmlModeImport ? pageCount * 2 : pageCount;
-    convertPageScheduler["activeProgress"] = initializeProgress("import-progress-collapse", progressMax);
+    globalThis.convertPageActiveProgress = initializeProgress("import-progress-collapse", progressMax);
   }
 
   for (let i = 0; i < pageCount; i++) {
@@ -2276,8 +2258,9 @@ async function importFiles(curFiles) {
       const reader = new FileReader();
       reader.addEventListener("load", () => {
         globalThis.imageAll["nativeSrc"][imageNi] = reader.result;
+        globalThis.convertPageActiveProgress.increment();
 
-        updateDataProgress();
+        // updateDataProgress();
 
         if(imageNi == 0) {
           displayPage(0);
@@ -2292,8 +2275,18 @@ async function importFiles(curFiles) {
 
   if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
     toggleEditButtons(false);
+    let format = "hocr";
+    if (abbyyMode) format = "abbyy";
+    if (stextMode) format = "stext";
+  
     // Process HOCR using web worker, reading from file first if that has not been done already
-    convertOCR(globalThis.hocrCurrentRaw, true, abbyyMode, stextMode || false);
+    convertOCRAll(globalThis.hocrCurrentRaw, true, format).then(async () => {
+      await calculateOverallMetrics();
+      hideProgress2("import-progress-collapse");
+      downloadElem.disabled = false;
+      globalThis.state.downloadReady = true;  
+    });
+
   }
 
 
@@ -2437,9 +2430,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
       // Wait for non-rotated version before replacing with promise
       const inputImage = await Promise.resolve(globalThis.imageAll["native"][n]);
 
-      const bs = await initSchedulerIfNeeded("binaryScheduler");
-
-      return bs.addJob('recognize', inputImage.src, {rotateRadians: angleArg}, {imageBinary : saveBinaryImageArg, imageColor: saveColorImageArg, debug: true, text: false, hocr: false, tsv: false, blocks: false})    
+      return globalThis.generalScheduler.addJob('recognize', {image: inputImage.src, options: {rotateRadians: angleArg}, output: {imageBinary : saveBinaryImageArg, imageColor: saveColorImageArg, debug: true, text: false, hocr: false, tsv: false, blocks: false}});   
 
     })();
 
@@ -2647,7 +2638,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
 
 
   if (mode == "screen" && currentPage.n == n && inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, globalThis.hocrCurrent[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, currentPage.leftAdjX);
+    await renderPage(canvas, globalThis.hocrCurrent[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, currentPage.leftAdjX, fontAll);
     if (currentPage.n == n && currentPage.renderNum == renderNum) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
       await selectDisplayMode(displayModeElem.value);
@@ -2728,6 +2719,7 @@ export async function displayPage(n) {
 
 }
 
+globalThis.displayPage = displayPage;
 
 async function optimizeFontClick(value) {
 
@@ -2736,13 +2728,6 @@ async function optimizeFontClick(value) {
   renderPageQueue(currentPage.n);
 }
 
-
-window["binarySchedulerInit"] = async function () {
-  // Workers take a non-trivial amount of time to started so a tradeoff exists with how many to use.
-  // Using 1 scheduler per 4 pages as a quick fix--have not benchmarked optimal number.
-  const n = Math.min(Math.ceil(globalThis.imageAll["native"].length / 4), 4);
-  return await createTesseractScheduler(n);
-}
 
 window["muPDFSchedulerInit"] = async function () {
   await initMuPDFScheduler(globalThis.pdfFile, 3);
@@ -2769,39 +2754,89 @@ async function initSchedulerIfNeeded(x) {
   return(window[x]);
 }
 
-async function initOptimizeFontScheduler(workers = 3) {
-  globalThis.optimizeFontScheduler = await Tesseract.createScheduler();
-  globalThis.optimizeFontScheduler["workers"] = new Array(workers); 
-  for (let i = 0; i < workers; i++) {
-    const w = await initOptimizeFontWorker();
+
+async function initGeneralScheduler() {
+  // Determine number of workers to use.
+  // This is the minimum of:
+  //      1. The number of cores
+  //      3. 6 (browser-imposed memory limits make going higher than 6 problematic, even on hardware that could support it)
+  const workerN = Math.min(Math.round((globalThis.navigator.hardwareConcurrency || 8) / 2), 6);
+  console.log("Using " + workerN + " workers.")
+
+  globalThis.generalScheduler = await Tesseract.createScheduler();
+  globalThis.generalScheduler["workers"] = new Array(workerN); 
+  for (let i = 0; i < workerN; i++) {
+    const w = await initGeneralWorker();
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-    globalThis.optimizeFontScheduler.addWorker(w);
-    globalThis.optimizeFontScheduler["workers"][i] = w;
+    globalThis.generalScheduler.addWorker(w);
+    globalThis.generalScheduler["workers"][i] = w;
   }
 }
 
-initOptimizeFontScheduler();
-
-async function initConvertPageScheduler(workers = 3) {
-  globalThis.convertPageScheduler = await Tesseract.createScheduler();
-  globalThis.convertPageScheduler["workers"] = new Array(workers); 
-  for (let i = 0; i < workers; i++) {
-    const w = await initConvertPageWorker();
-    w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-    globalThis.convertPageScheduler.addWorker(w);
-    globalThis.convertPageScheduler["workers"][i] = w;
-  }
-}
-
-initConvertPageScheduler();
+initGeneralScheduler();
 
 
 // Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
 // Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
 // as well as after every image is loaded (not including .pdfs). 
-export async function updateDataProgress(mainData = true, combMode = false) {
 
-  let activeProgress = convertPageScheduler["activeProgress"].elem;
+
+/**
+ * This function should be run after all of the "main" OCR data is imported.
+ * This is either all pages from the first set of imported OCR data (for user imports),
+ * or after Tesseract.js Legacy is finished running (for Tesseract.js recognition).
+ */
+export async function calculateOverallMetrics() {
+
+
+  if (inputDataModes.resumeMode) {
+    // This logic is handled elsewhere for resumeMode
+  } else {
+    // Buttons are enabled from calculateOverallFontMetrics function in this case
+    const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);
+
+    if (metricsRet.charError) {
+      const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
+      insertAlertMessage(errorHTML);
+
+    } else if (metricsRet.charWarn) {
+      const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
+      insertAlertMessage(warningHTML, false);
+
+    } else {
+      globalThis.fontMetricsObj = metricsRet.fontMetrics;
+    }
+
+    // Font optimization is still impossible when extracting text from PDFs
+    if (globalThis.fontMetricsObj && !globalThis.inputDataModes.extractTextMode) {
+      optimizeFontElem.disabled = false;
+      optimizeFontElem.checked = true;
+      setDefaultFontAuto(globalThis.fontMetricsObj);
+      await enableDisableFontOpt(true);
+    }
+
+    // Evaluate default fonts using up to 5 pages. 
+    const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
+    await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
+    // Select best default fonts
+    const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), fontAll);
+    // Re-render current page if default font changed
+    if (change) renderPageQueue(currentPage.n);
+
+  }
+
+  calculateOverallPageMetrics();
+
+}
+
+
+/**
+ * Function for updating the import/recognition progress bar.
+ * Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
+ * as well as after every image is loaded (not including .pdfs). 
+ */
+export async function updateProgressBar() {
+  let activeProgress = globalThis.convertPageActiveProgress.elem;
 
   globalThis.loadCount = globalThis.loadCount + 1;
   activeProgress.setAttribute("aria-valuenow", globalThis.loadCount);
@@ -2812,75 +2847,10 @@ export async function updateDataProgress(mainData = true, combMode = false) {
   // This can make the interface less jittery compared to updating after every loop.
   // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
   const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
-  if (globalThis.loadCount % updateInterval == 0 || globalThis.loadCount == valueMax) {
+  if (globalThis.loadCount % updateInterval == 0 || globalThis.loadCount == valueMax || globalThis.loadCount == 1) {
     activeProgress.setAttribute("style", "width: " + (globalThis.loadCount / valueMax) * 100 + "%");
   }
 
-  // The following block is either run after all recognition is done (when only 1 engine is being used), 
-  // or after the Legacy engine is done (when Legacy + LSTM are both being run).
-  // It is assumed that all Legacy recognition will finish before any LSTM recognition begins, which may change in the future. 
-  if ((!combMode && globalThis.loadCount == valueMax) || (combMode && globalThis.loadCount == globalThis.imageAll.native.length)) {
-
-    // Import progress bar is not in another collapse, so needs to be closed manually.
-    if (mainData) hideProgress2("import-progress-collapse");
-
-    // Full-document stats (including font optimization) are only calulated for the "main" data, 
-    // meaning that when alternative data is uploaded for comparison through the "evaluate" tab,
-    // those uploads to not cause new fonts to be created. 
-      // those uploads to not cause new fonts to be created. 
-    // those uploads to not cause new fonts to be created. 
-    if(inputDataModes.xmlMode[0] && mainData) {
-      // If resuming from a previous editing session font stats are already calculated
-      if (inputDataModes.resumeMode) {
-        // This logic is handled elsewhere for resumeMode
-      } else {
-        // Buttons are enabled from calculateOverallFontMetrics function in this case
-        const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);      
-      
-        if (metricsRet.charError) {
-          const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-          insertAlertMessage(errorHTML);
-
-        } else if (metricsRet.charWarn) {
-          const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-          insertAlertMessage(warningHTML, false);
-
-        } else {
-          globalThis.fontMetricsObj = metricsRet.fontMetrics;
-        }
-
-        // Font optimization is still impossible when extracting text from PDFs
-        if (globalThis.fontMetricsObj && !globalThis.inputDataModes.extractTextMode) {
-          optimizeFontElem.disabled = false;
-          optimizeFontElem.checked = true;
-          setDefaultFontAuto(globalThis.fontMetricsObj);
-          await enableDisableFontOpt(true);
-        }
-
-        // Evaluate default fonts using up to 5 pages. 
-        const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
-        await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
-        // Select best default fonts
-        const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum));
-        // Re-render current page if default font changed
-        if (change) renderPageQueue(currentPage.n);
-
-      }
-
-      calculateOverallPageMetrics();
-
-    }
-    if (!globalThis.state.downloadReady) {
-      globalThis.state.downloadReady = true;
-      downloadElem.disabled = false;
-    }
-    
-    // Render first handful of pages for pdfs so the interface starts off responsive
-    if (inputDataModes.pdfMode) {
-      renderPDFImageCache([...Array(Math.min(valueMax, 5)).keys()]);
-    }
-  }
-  
 }
 
 function calculateOverallPageMetrics() {
@@ -2966,7 +2936,7 @@ async function handleDownload() {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images. 
-      const pdfStr = await hocrToPDF(hocrDownload, 0,-1,displayModeElem.value, rotateText, rotateBackground, {width: -1, height: -1}, downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(hocrDownload, fontAll, 0,-1,displayModeElem.value, rotateText, rotateBackground, {width: -1, height: -1}, downloadProgress, confThreshHigh, confThreshMed);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -3006,7 +2976,7 @@ async function handleDownload() {
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 	    
     } else {
-      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(hocrDownload, fontAll, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
 
       // The PDF is still run through muPDF, even thought in eBook mode no background layer is added.
       // This is because muPDF cleans up the PDF we made in the previous step, including:

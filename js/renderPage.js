@@ -3,13 +3,12 @@ import { getFontSize, calcWordMetrics, calcCharSpacing, calcLineFontSize } from 
 import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
 import ocr from "./objects/ocrObjects.js";
 import { ITextWord } from "./objects/fabricObjects.js";
-import { fontAll } from "./objects/fontObjects.js";
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
 
 
-export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX) {
+export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX, fontAll) {
 
   const layoutMode = globalThis.layoutMode || false;
 
@@ -38,7 +37,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
     const linebox = lineObj.bbox;
     const baseline = lineObj.baseline;
-    lineFontSize = (await calcLineFontSize(lineObj)) ||  lineFontSize;
+    lineFontSize = (await calcLineFontSize(lineObj, fontAll.active)) ||  lineFontSize;
 
     const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
 
@@ -79,15 +78,18 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
         defaultFontFamily = false;
       }
 
+      const fontI = /**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][fontStyle]);
+      const fontOpentypeI = await fontI.opentype;
+
       let wordFontSize = wordObj.size;
       let scaleX = 1;
       if (!wordFontSize) {
         if (wordSup) {
           // All superscripts are assumed to be numbers for now
-          wordFontSize = await getFontSize(wordFontFamily, "normal", box_height, "1");
+          wordFontSize = await getFontSize(fontI, box_height, "1");
         } else if (wordDropCap) {
-          wordFontSize = await getFontSize(wordFontFamily, "normal", box_height, wordText.slice(0, 1));
-          const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
+          wordFontSize = await getFontSize(fontI, box_height, wordText.slice(0, 1));
+          const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontI, wordFontSize)).visualWidth;
           scaleX = (box_width / wordWidthFont);
     
         } else {
@@ -136,10 +138,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
       const showTextBoxBorderArg = showBoundingBoxesElem.checked || displayMode == "eval" && wordConf > confThreshHigh && !wordObj.matchTruth;
 
-      const charSpacing = await calcCharSpacing(wordText, wordFontFamily, fontStyle, wordFontSize, box_width);
-
-      const fontI = /**@type {fontContainerFont} */  (fontAll[wordFontFamily][fontStyle]);
-      const fontOpentypeI = await fontI.opentype;
+      const charSpacing = await calcCharSpacing(wordText, fontI, wordFontSize, box_width);
 
       let wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
 
@@ -200,6 +199,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
           fill_eval: fillColorHexMatch,
           fontFamily: fontI.fontFaceName,
           fontStyle: fontI.fontFaceStyle,
+          fontObj: fontI,
 
           // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
           fontFamilyLookup: wordFontFamily,

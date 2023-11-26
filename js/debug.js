@@ -1,39 +1,83 @@
-import { evalWords, calcOverlap } from "./compareHOCR.js";
+import { calcOverlap } from "./modifyOCR.js";
 import ocr from "./objects/ocrObjects.js";
-import { saveAs } from "./miscUtils.js";
+import { saveAs, imageStrToBlob } from "./miscUtils.js";
 
-export function printSelectedWords() {
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user. 
+ */
+globalThis.ctxComp0 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('h')).getContext('2d'));
+
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user. 
+ */
+globalThis.ctxComp1 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('e')).getContext('2d'));
+
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user. 
+ */
+globalThis.ctxComp2 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('f')).getContext('2d'));
+
+
+export function printSelectedWords(printOCR = true) {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
   for(let i=0; i<selectedObjects.length; i++){
-    console.log(ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], selectedObjects[i].wordID));
+    if (printOCR) {
+      console.log(ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], selectedObjects[i].wordID));
+    } else {
+      console.log(selectedObjects[i]);
+    }
   }
 }
 
-export function evalSelectedLine() {
+export async function evalSelectedLine() {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
 
   const word0 = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], selectedObjects[0].wordID);
 
-  // Make debugging canvases visible
-  document.getElementById('e')?.setAttribute("style", "");
-  document.getElementById('f')?.setAttribute("style", "");
-  document.getElementById('h')?.setAttribute("style", "");
+  const viewCanvas0 = /** @type {HTMLCanvasElement} */ (document.getElementById('e'));
+  const viewCanvas1 = /** @type {HTMLCanvasElement} */ (document.getElementById('f'));
+  const viewCanvas2 = /** @type {HTMLCanvasElement} */ (document.getElementById('h'));
 
-  evalWords(word0.line.words, [],  true).then((x) => console.log(x));
-  
+  // Make debugging canvases visible
+  viewCanvas0.setAttribute("style", "");
+  viewCanvas1.setAttribute("style", "");
+  viewCanvas2.setAttribute("style", "");
+
+  const imgElem = await imageAll.binary[currentPage.n];
+
+  const res = await generalScheduler.addJob("evalWords", {wordsA: word0.line.words, wordsB: [], binaryImage: imgElem.src, pageMetricsObj: pageMetricsArr[currentPage.n], options: {view: true}});
+
+  console.log([res.data.metricA, res.data.metricB]);
+
+  const imgBit0 = await createImageBitmap(res.data.debug.imageRaw);
+  viewCanvas0.width = imgBit0.width;
+  viewCanvas0.height = imgBit0.height;
+  ctxComp0.drawImage(imgBit0, 0, 0);
+
+  const imgBit1 = await createImageBitmap(res.data.debug.imageA);
+  viewCanvas1.width = imgBit1.width;
+  viewCanvas1.height = imgBit1.height;
+  ctxComp1.drawImage(imgBit1, 0, 0);
+
+  const imgBit2 = await createImageBitmap(res.data.debug.imageB);
+  viewCanvas2.width = imgBit2.width;
+  viewCanvas2.height = imgBit2.height;
+  ctxComp2.drawImage(imgBit2, 0, 0);
+
 }
 
 
 export function downloadImage(img, filename) {
   const imgStr = typeof(img) == "string" ? img : img.src;
-  const imgData = new Uint8Array(atob(imgStr.split(',')[1])
-        .split('')
-        .map(c => c.charCodeAt(0)));
-
-  const imgBlob = new Blob([imgData], { type: 'application/octet-stream' });
-
+  const imgBlob = imageStrToBlob(imgStr);
   saveAs(imgBlob , filename);
 }
 

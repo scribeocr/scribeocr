@@ -1,5 +1,5 @@
 import { parseDebugInfo } from "./fontStatistics.js";
-import { getTesseractConfigs, renderPDFImageCache, createTesseractScheduler, addDisplayLabel, setCurrentHOCR, updateDataProgress } from "../main.js";
+import { renderPDFImageCache, addDisplayLabel, setCurrentHOCR, calculateOverallMetrics } from "../main.js";
 
 
 export async function recognizeAllPages(legacy = true, comb = false) {
@@ -7,28 +7,28 @@ export async function recognizeAllPages(legacy = true, comb = false) {
     // Render all PDF pages to PNG if needed
     if (inputDataModes.pdfMode) await renderPDFImageCache([...Array(globalThis.imageAll["native"].length).keys()]);
 
-    // Set Tesseract configs to our defaults, except for engine specified
-    const allConfig = getTesseractConfigs();
-    allConfig.tessedit_ocr_engine_mode = legacy ? "0" : "1";
+    const oemMode = legacy ? "0" : "1";
 
-    // Determine number of workers to use.
-    // This is the minimum of:
-    //      1. The number of cores
-    //      2. The number of pages
-    //      3. 6 (browser-imposed memory limits make going higher than 6 problematic, even on hardware that could support it)
-    const workerN = Math.min(Math.round((globalThis.navigator.hardwareConcurrency || 8) / 2), Math.ceil(globalThis.imageAll["native"].length), 6);
-    console.log("Using " + workerN + " workers for OCR.")
+    const resArr = [];
+    for (let i=0; i<generalScheduler.workers.length; i++) {
+        resArr.push(generalScheduler.addJob("reinitialize", {lang: "eng", oem: oemMode}));
+    }
 
-    const scheduler = await createTesseractScheduler(workerN, allConfig);
+    // const scheduler = await createTesseractScheduler(workerN, allConfig);
 
-    const oemText = "Tesseract " + (allConfig.tessedit_ocr_engine_mode == "1" ? "LSTM" : "Legacy");
+    const oemText = "Tesseract " + (oemMode == "1" ? "LSTM" : "Legacy");
     addDisplayLabel(oemText);
     setCurrentHOCR(oemText);  
 
     const inputPages = [...Array(globalThis.imageAll["native"].length).keys()];
 
-    await Promise.allSettled(inputPages.map((x) => recognizePage(scheduler, x, oemText, true).then(() => updateDataProgress(true, comb))));
-  
+    await Promise.allSettled(inputPages.map(async (x) => {
+        const res1 = await recognizePage(generalScheduler, x, oemText, true);
+        convertPageCallback(res1, x, legacy, oemText, false);
+    }));
+
+    if (legacy) await calculateOverallMetrics();
+      
   }
   
 
@@ -46,7 +46,7 @@ const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
     const rotate = true;
 
     // Whether the page angle is already known (or needs to be detected)
-    const angleKnown = typeof (globalThis.pageMetrisArr[n].angle) == "number";
+    const angleKnown = typeof (globalThis.pageMetricsArr[n].angle) == "number";
 
     // Threshold (in radians) under which page angle is considered to be effectively 0.
     const angleThresh = 0.0008726646;
@@ -65,44 +65,36 @@ const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
     const saveBinaryImageArg = !globalThis.imageAll["binary"][n] || autoRotate && !globalThis.imageAll["binaryRotated"][n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh) ? true : false;
 
     // Run recognition
-    const res = await scheduler.addJob('recognize', inputSrc, { rotateRadians: rotateRadians, rotateAuto: !angleKnown }, {
+    const res = await scheduler.addJob('recognizeAndConvert', {image: inputSrc, options: { rotateRadians: rotateRadians, rotateAuto: !angleKnown}, output: {
         imageBinary: saveBinaryImageArg,
         imageColor: saveNativeImage, debug: true
-    });
+    }, n: n, knownAngle: globalThis.pageMetricsArr[n].angle});
 
-    parseDebugInfo(res.data.debug);
+    parseDebugInfo(res.data.recognize.debug);
 
-    if (!angleKnown) globalThis.pageMetricsArr[n].angle = res.data.rotateRadians * (180 / Math.PI) * -1;
+    if (!angleKnown) globalThis.pageMetricsArr[n].angle = res.data.recognize.rotateRadians * (180 / Math.PI) * -1;
 
     // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
     // but no significant rotation was actually detected. 
     if (saveBinaryImageArg) {
-        globalThis.imageAll["binaryRotated"][n] = Math.abs(res.data.rotateRadians) > angleThresh;
+        globalThis.imageAll["binaryRotated"][n] = Math.abs(res.data.recognize.rotateRadians) > angleThresh;
         if (globalThis.imageAll["binaryRotated"][n] || !globalThis.imageAll["binary"][n]) {
             const image = document.createElement('img');
-            image.src = res.data.imageBinary;
+            image.src = res.data.recognize.imageBinary;
             globalThis.imageAll["binary"][n] = image;
         }
     }
 
     if (saveNativeImage) {
-        globalThis.imageAll["nativeRotated"][n] = Math.abs(res.data.rotateRadians) > angleThresh;
+        globalThis.imageAll["nativeRotated"][n] = Math.abs(res.data.recognize.rotateRadians) > angleThresh;
         if (globalThis.imageAll["nativeRotated"][n]) {
             const image = document.createElement('img');
-            image.src = res.data.imageColor;
+            image.src = res.data.recognize.imageColor;
             globalThis.imageAll["native"][n] = image;
         }
     }
 
-    globalThis.hocrCurrentRaw[n] = res.data.hocr;
-
-    const argsObj = {
-        "engine": engineName,
-        "angle": globalThis.pageMetricsArr[n].angle,
-        "mode": "full"
-    }
-
-    return globalThis.convertPageScheduler.addJob("convertPage", [res.data.hocr, n, false, argsObj]);
+    return res.data.convert;
 
 }
 

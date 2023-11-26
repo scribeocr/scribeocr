@@ -1,6 +1,5 @@
 import { renderPDFImageCache } from "../main.js";
 import ocr from "./objects/ocrObjects.js";
-import { evalWords } from "./compareHOCR.js";
 import { calcLineFontSize } from "./fontUtils.js";
 
 export async function evalOverlapDocument() {
@@ -9,19 +8,27 @@ export async function evalOverlapDocument() {
     await renderPDFImageCache(Array.from({ length: globalThis.imageAll["native"].length + 1 }, (v, k) => k), null, null, "binary");
 
     let metricSum = 0;
-    let wordCt = 0;
+    let wordsTotal = 0;
+
+    const promiseArr = [];
 
     for (let i = 0; i < globalThis.hocrCurrent.length; i++) {
         const ocrPageI = globalThis.hocrCurrent[i];
-        for (let j = 0; j < ocrPageI.lines.length; j++) {
-            const ocrLineJ = ocrPageI.lines[j];
-            const metricJ = await evalWords(ocrLineJ.words, [], false);
-            metricSum = metricSum + (metricJ[0] * ocrLineJ.words.length);
-            wordCt = wordCt + ocrLineJ.words.length;
-        }
+
+        const imgElem = await globalThis.imageAll.binary[i];
+        promiseArr.push(globalThis.generalScheduler.addJob("evalPage", {page: ocrPageI, binaryImage: imgElem.src, pageMetricsObj: pageMetricsArr[i]}));
+
     }
 
-    return metricSum / wordCt;
+    const resArr = await Promise.all(promiseArr);
+
+    for (let i = 0; i < resArr.length; i++) {
+        metricSum = metricSum + resArr[i].data.metricTotal;
+        wordsTotal = wordsTotal + resArr[i].data.wordsTotal;
+    
+    }
+
+    return metricSum / wordsTotal;
 
 }
 
@@ -41,18 +48,22 @@ export async function adjustFontSizesDocument() {
             const ocrLineJ = ocrPageI.lines[j];
 
             const ocrLineJClone = ocr.cloneLine(ocrLineJ);
-            const fontSizeBase = await calcLineFontSize(ocrLineJClone);
+            const fontSizeBase = await calcLineFontSize(ocrLineJClone, fontAll.active);
             if (!fontSizeBase) continue;
             ocrLineJClone._size = fontSizeBase - 1;
 
-            const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, false, false);
+            const imgElem = await globalThis.imageAll.binary[i];
+            const res = await globalThis.generalScheduler.addJob("evalWords", {wordsA: ocrLineJ.words, wordsB: ocrLineJClone.words, binaryImage: imgElem.src, pageMetricsObj: pageMetricsArr[i], options: {view: false, useAFontSize: false}});
 
-            if (metricJ[1] < metricJ[0]) {
+
+            // const metricJ = await evalWords(ocrLineJ.words, ocrLineJClone.words, false, false);
+
+            if (res.data.metricB < res.data.metricA) {
                 ocrLineJ._size = ocrLineJClone._size;
                 improveCt = improveCt + 1;
-                console.log("Reducing font size improves results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
+                console.log("Reducing font size improves results [" + String(res.data.metricA) + " before, " + String(res.data.metricB) + " after]");
             } else {
-                console.log("Reducing font size does not improve results [" + String(metricJ[0]) + " before, " + String(metricJ[1]) + " after]");
+                console.log("Reducing font size does not improve results [" + String(res.data.metricA) + " before, " + String(res.data.metricB) + " after]");
             }
 
             totalCt = totalCt + 1;
@@ -117,7 +128,7 @@ export async function compareBaselinesLine(ocrLineJ) {
 
 export async function compareFontSizesLine(ocrLineJ) {
     const ocrLineJClone = ocr.cloneLine(ocrLineJ);
-    const fontSizeBase = await calcLineFontSize(ocrLineJClone);
+    const fontSizeBase = await calcLineFontSize(ocrLineJClone, fontAll.active);
     if (!fontSizeBase) return;
     ocrLineJClone._size = fontSizeBase - 1;
 

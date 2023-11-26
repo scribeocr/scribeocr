@@ -3,8 +3,6 @@ import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 
 import { getFontSize, calcCharSpacing, calcWordMetrics, calcLineFontSize } from "./fontUtils.js";
 
-import { fontAll } from "./objects/fontObjects.js";
-
 import ocr from "./objects/ocrObjects.js";
 
 // Function for converting from bufferArray to hex (string)
@@ -120,13 +118,13 @@ const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\
  * @param {number} confThreshHigh - 
  * @param {number} confThreshMed - 
  */
-export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = {width: -1, height: -1}, progress = null, confThreshHigh = 85, confThreshMed = 75) {
+export async function hocrToPDF(hocrArr, fontAll, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = {width: -1, height: -1}, progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
   // Only "SansDefault" and "SerifDefault" are currently considered for inclusion in PDF export,
   // as these are the only 2 fonts actually used for printing OCR text. 
   // All other font objects are used for font optimization purposes. 
 
-  const exportFontObj = { "SansDefault" : (fontAll.SansDefault), "SerifDefault" : fontAll.SerifDefault};
+  const exportFontObj = { "SansDefault" : (fontAll.active.SansDefault), "SerifDefault" : fontAll.active.SerifDefault};
 
   // Get count of various objects inserted into pdf
   let fontCount = 0;
@@ -188,7 +186,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
     const angle = globalThis.pageMetricsArr[i].angle || 0;
     let dims = globalThis.pageMetricsArr[i].dims;
 
-    pdfOut += (await ocrPageToPDF( hocrArr[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
+    pdfOut += (await ocrPageToPDF( hocrArr[i], fontAll, dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts, textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
     if (progress) progress.increment();
   }
 
@@ -231,7 +229,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = "
  * @param {number} confThreshMed 
  * @returns 
  */
-async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75) {
+async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle, rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75) {
 
   if (outputDims.width < 1) {
     outputDims = inputDims;
@@ -286,7 +284,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     const baseline = line.baseline;
     const linebox = line.bbox;
 
-    lineFontSize = (await calcLineFontSize(line)) || lineFontSize;
+    lineFontSize = (await calcLineFontSize(line, fontAll.active)) || lineFontSize;
     
     const word = words[0];
     const wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
@@ -332,7 +330,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
     textStream += fillColor + "\n";
 
-    const fontI = /**@type {fontContainerFont} */  (fontAll[wordFontFamily][fontStyle]);
+    const fontI = /**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][fontStyle]);
     const fontOpentypeI = await fontI.opentype;
 
     // Set font and font size
@@ -346,9 +344,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     if (!wordFontSize) {
       if (word.sup) {
         // All superscripts are assumed to be numbers for now
-        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
+        wordFontSize = await getFontSize(fontI, wordBox[3] - wordBox[1], "1");
       } else if (word.dropcap) {
-        wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
+        wordFontSize = await getFontSize(fontI, wordBox[3] - wordBox[1], wordText.slice(0, 1));
       } else {
         wordFontSize = lineFontSize;
       }
@@ -357,7 +355,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     let tz = 100;
     if (word.dropcap) {
       const wordWidthActual = wordBox[2] - wordBox[0];
-      const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamily, wordFontSize, fontStyle)).visualWidth;
+      const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontI, wordFontSize)).visualWidth;
       tz = (wordWidthActual / wordWidthFont) * 100;
     }
 
@@ -407,16 +405,17 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
       const wordBox = word.bbox;
 
-      const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;;
+      const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;
+      const wordFont = fontAll.active[wordFontFamily].normal;
       const fontStyle = word.style;
 
       let wordFontSize = word.size;
       if (!wordFontSize) {
         if (word.sup) {
           // All superscripts are assumed to be numbers for now
-          wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], "1");
+          wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], "1");
         } else if (word.dropcap) {
-          wordFontSize = await getFontSize(wordFontFamily, "normal", wordBox[3] - wordBox[1], wordText.slice(0, 1));
+          wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], wordText.slice(0, 1));
         } else {
           wordFontSize = lineFontSize;
         }
@@ -454,11 +453,11 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       let tz = 100;
       if (word.dropcap) {
         const wordWidthActual = wordBox[2] - wordBox[0];
-        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFontFamilyLast, wordFontSize, fontStyle)).visualWidth;
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontAll.active[wordFontFamilyLast][fontStyle], wordFontSize)).visualWidth;
         tz = (wordWidthActual / wordWidthFont) * 100;
       }  
 
-      const font = await (/**@type {fontContainerFont} */  (fontAll[wordFontFamily][fontStyle])).opentype;
+      const font = await (/**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][fontStyle])).opentype;
       const pdfFont = pdfFonts[wordFontFamily][fontStyle];
 
       let wordFirstGlyphMetrics = font.charToGlyph(wordText.substr(0, 1)).getMetrics();
@@ -511,7 +510,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
       textStream += " ] TJ\n";
 
-      charSpacing = await calcCharSpacing(wordText, wordFontFamily, fontStyle, wordFontSize, wordBox[2] - wordBox[0]) || 0;
+      charSpacing = await calcCharSpacing(wordText, fontAll.active[wordFontFamily][fontStyle], wordFontSize, wordBox[2] - wordBox[0]) || 0;
 
       if (pdfFont != pdfFontCurrent || wordFontSize != fontSizeLast) {
         textStream += pdfFont + " " + String(wordFontSize) + " Tf\n";

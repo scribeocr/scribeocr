@@ -1,8 +1,9 @@
 // Code for adding visualization to OCR output
 // Use: `node addOverlay.js [PDF file] [OCR data file] [output directory]`
 
-import { pageMetrics } from "../js/objects/pageMetricsObjects.js";
-import { selectDefaultFontsDocument } from "../js/compareHOCR.js";
+import { initGeneralWorker } from "../js/generalWorkerMain.js";
+import { selectDefaultFontsDocument } from "../js/fontEval.js";
+
 
 import fs from "fs";
 import path from "path";
@@ -11,25 +12,63 @@ import Worker from 'web-worker';
 globalThis.Worker = Worker;
 import { initMuPDFWorker } from "../mupdf/mupdf-async.js";
 import { hocrToPDF } from "../js/exportPDF.js";
-import { enableDisableFontOpt } from "../js/objects/fontObjects.js";
-import { initOptimizeFontWorker } from "../js/optimizeFont.js";
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "../js/fontStatistics.js";
+import { loadFontContainerAll, optimizeFontContainerFamily, fontContainerAll } from "../js/objects/fontObjects.js";
+import { convertOCRAll } from "../js/convertOCR.js";
+
 
 import Tesseract from 'tesseract.js';
 
 const { loadImage } = await import('canvas');
 
 
+async function optimizeFontContainerAll() {
+  const Carlito = await optimizeFontContainerFamily(fontPrivate.Carlito);
+  const Century = await optimizeFontContainerFamily(fontPrivate.Century);
+  const NimbusRomNo9L = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L);
+  const NimbusSans = await optimizeFontContainerFamily(fontPrivate.NimbusSans);
+
+  return new fontContainerAll(Carlito, NimbusRomNo9L, NimbusSans, Century);
+}
+
+const fontPrivate = loadFontContainerAll({ normal: "Carlito-Regular.woff", italic: "Carlito-Italic.woff", smallCaps: "Carlito-SmallCaps.woff"},
+  { normal: "C059-Roman.woff", italic: "C059-Italic.woff", smallCaps: "C059-SmallCaps.woff" },
+  { normal: "NimbusRomNo9L-Reg.woff", italic: "NimbusRomNo9L-RegIta.woff", smallCaps: "NimbusRomNo9L-RegSmallCaps.woff" },
+  { normal: "NimbusSanL-Reg.woff", italic: "NimbusSanL-RegIta.woff", smallCaps: "NimbusSanL-RegSmallCaps.woff" });
+
+const fontAll = {
+  raw: fontPrivate,
+  /**@type {?fontContainerAll}*/
+  opt: null,
+  active: fontPrivate
+}
+
+/**
+ * 
+ * @param {boolean} enable 
+ */
+async function enableDisableFontOpt(enable) {
+  // Create optimized font if this has not been done yet
+  if (enable && !fontAll.opt) {
+    fontAll.opt = await optimizeFontContainerAll();
+  }
+
+  // Enable/disable optimized font
+  if (enable && fontAll.opt) {
+    fontAll.active = fontAll.opt;
+  } else {
+    fontAll.active = fontAll.raw;
+  }
+}
+
+
 // globalThis.Tesseract = Tesseract;
 
 
   // Object that keeps track of various global settings
-  globalThis.globalSettings = {
-    simdSupport: false,
-    defaultFont: "SerifDefault",
-    defaultFontSans: "NimbusSanL",
-    defaultFontSerif: "NimbusRomNo9L"
-  }  
+globalThis.globalSettings = {
+  defaultFont: "SerifDefault",
+}  
 
 globalThis.fontMetricObjsMessage = [];
 globalThis.convertPageWarn = [];
@@ -72,7 +111,7 @@ async function main() {
   
     const node2 = hocrStrFirst.match(/\>([^\>]+)/)[1];
     const abbyyMode = /abbyy/i.test(node2) ? true : false;
-    const func = abbyyMode ? "convertPageAbbyy" : "convertPage";
+    const format = abbyyMode ? "abbyy" : "hocr";
 
     let hocrStrStart = "";
     let hocrStrEnd = "";
@@ -108,6 +147,11 @@ async function main() {
     }
     pageCount = pageCountImage ?? pageCountHOCR;
 
+    globalThis.layout = Array(pageCount);
+    for(let i=0;i<globalThis.layout.length;i++) {
+      globalThis.layout[i] = {default: true, boxes: {}};
+    }  
+
 
     globalThis.hocrCurrentRaw = Array(pageCount);
     for (let i = 0; i < pageCount; i++) {
@@ -116,66 +160,20 @@ async function main() {
 
     globalThis.hocrCurrent = Array(pageCount);
 
-    const url = new URL('../js/worker/convertPageWorker.js', import.meta.url);
-    const worker = new Worker(url, { type: 'module' });
+    // globalThis.generalWorker = await initGeneralWorker();
 
-    worker.onmessage = async function (event) {
-        const n = event.data[1];
-        const argsObj = event.data[2];
-
-        const pageObj = event.data[0][0];
-
-        const oemCurrent = undefined;
-		  
-        // If an OEM engine is specified, save to the appropriate object within ocrAll,
-        // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
-        // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
-        // while the recognition job is running.
-        if (argsObj["engine"] && argsObj["mode"] == "full") {
-          globalThis.ocrAll[argsObj["engine"]][n]["hocr"] = pageObj || null;
-          if (oemCurrent) {
-          globalThis.hocrCurrent[n] = pageObj || null;
-          }
-        } else {
-          globalThis.hocrCurrent[n] = pageObj || null;
-        }
-
-        globalThis.pageMetricsArr[n] = new pageMetrics(pageObj.dims);
-                  
-        globalThis.pageMetricsArr[n].angle = pageObj.angle;
-        globalThis.pageMetricsArr[n].left = pageObj.left;
-          
-        if(argsObj["saveMetrics"] ?? true){
-          fontMetricObjsMessage[n] = event.data[0][1];
-          convertPageWarn[n] = event.data[0][3];
-        }
-
-        worker.promises[event.data[event.data.length - 1]].resolve(event.data);
-      
+    const workerN = 1;
+    globalThis.generalScheduler = await Tesseract.createScheduler();
+    globalThis.generalScheduler["workers"] = new Array(workerN); 
+    for (let i = 0; i < workerN; i++) {
+      const w = await initGeneralWorker();
+      w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
+      globalThis.generalScheduler.addWorker(w);
+      globalThis.generalScheduler["workers"][i] = w;
     }
 
-    worker.promises = {};
-    worker.promiseId = 0;
-
-    function wrap(func) {
-        return function(...args) {
-            const msgArgs = args[0];
-            if(msgArgs.length == 3) msgArgs.push({});
-
-            return new Promise(function (resolve, reject) {
-                let id = worker.promiseId++;
-                worker.promises[id] = { resolve: resolve, reject: reject, func: func};
-                worker.postMessage([func, msgArgs, id]);
-            });
-        }
-    }
-
-    worker.convertPage = wrap("convertPage");
-    worker.convertPageAbbyy = wrap("convertPageAbbyy");
-
-    for (let i = 0; i < pageCount; i++) {
-        await worker[func]([globalThis.hocrCurrentRaw[i], i, abbyyMode]);
-    }
+    await convertOCRAll(globalThis.hocrCurrentRaw, true, format);
+    // await calculateOverallMetrics();
 
     const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
     globalThis.fontMetricsObj = metricsRet.fontMetrics;
@@ -214,12 +212,10 @@ async function main() {
     }
 
     // Select best default fonts
-    const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), imgArr);
-    // Re-render current page if default font changed
-    if (change) renderPageQueue(currentPage.n);
+    const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), imgArr, fontAll);
 
 
-    const pdfStr = await hocrToPDF(globalThis.hocrCurrent, 0, -1, "proof", true, false);
+    const pdfStr = await hocrToPDF(globalThis.hocrCurrent, fontAll, 0, -1, "proof", true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
@@ -232,17 +228,5 @@ async function main() {
 
 }
 
-async function initOptimizeFontScheduler(workers = 3) {
-    globalThis.optimizeFontScheduler = await Tesseract.createScheduler();
-    globalThis.optimizeFontScheduler["workers"] = new Array(workers); 
-    for (let i = 0; i < workers; i++) {
-      const w = await initOptimizeFontWorker();
-      w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-      globalThis.optimizeFontScheduler.addWorker(w);
-      globalThis.optimizeFontScheduler["workers"][i] = w;
-    }
-  }
-  
-  initOptimizeFontScheduler();
   
 main();

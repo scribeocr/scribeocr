@@ -1,7 +1,6 @@
 
-import { updateDataProgress } from "../main.js";
+// import { updateDataProgress } from "../main.js";
 import { readOcrFile } from "./miscUtils.js";
-
 
 /**
  * Import raw OCR data from files. 
@@ -103,29 +102,4 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
     return { hocrRaw: hocrRaw, fontMetricsObj: fontMetricsObj, layoutObj: layoutObj, abbyyMode: abbyyMode, stextMode: stextMode };
 
 
-}
-
-
-/**
- * Convert from raw OCR data to the internal hocr format used here
- * Currently supports .hocr (used by Tesseract), Abbyy .xml, and stext (an intermediate data format used by mupdf).
- *
- * @param {string[]} hocrRaw - Array with raw OCR data, with an element for each page
- * @param {boolean} mainData - Whether this is the "main" data that document metrics are calculated from,
- *  or supplemental data where we only care about the OCR text. 
- * @param {boolean} abbyyMode - true if the input is Abbyy .xml
- * @param {boolean} stextMode - true if the input is stext
- */
-export async function convertOCR(hocrRaw, mainData, abbyyMode, stextMode) {
-    // For each page, process HOCR using web worker
-    for (let i = 0; i < hocrRaw.length; i++) {
-
-        let func = "convertPage";
-        if (abbyyMode) {
-            func = "convertPageAbbyy";
-        } else if (stextMode) {
-            func = "convertPageStext";
-        }
-        globalThis.convertPageScheduler.addJob(func, [globalThis.hocrCurrentRaw[i], i, abbyyMode]).then(async () => { updateDataProgress(mainData) });
-    }
 }

@@ -6,7 +6,7 @@ import {
 
 import {  xlsxStrings, sheetStart, sheetEnd } from "./xlsxFiles.js";
 
-import { calcOverlap } from "./compareHOCR.js";
+import { calcOverlap } from "./modifyOCR.js";
 
 import ocr from "./objects/ocrObjects.js";
 

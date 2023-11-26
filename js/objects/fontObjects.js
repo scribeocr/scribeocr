@@ -10,15 +10,24 @@ import { checkMultiFontMode } from "../fontStatistics.js";
 // import { createRequire } from "../node_modules";
 // globalThis.require = createRequire(import.meta.url);
 
+// Node.js case
 if(typeof process === 'object') {
   globalThis.self = globalThis;
   const { createRequire } = await import("module");
   globalThis.require = createRequire(import.meta.url);
-  globalThis.__dirname = import.meta.url;  
-}
+  const { fileURLToPath } = await import("url");
+  const { dirname } = await import("path");
+  globalThis.__dirname = dirname(fileURLToPath(import.meta.url));  
+// Browser worker case
+} else if (globalThis.document === undefined) {
+  globalThis.window = {};
+} 
+
+await import('../../lib/opentype.js');
+
 
 // https://github.com/opentypejs/opentype.js/pull/579
-const opentype = await import("../../lib/opentype.module.js");
+// const opentype = await import("../../lib/opentype.module.js");
 
 /**
  * @param {string} fileName 
@@ -58,6 +67,9 @@ export function loadFontFace(fontFamily, fontStyle, src) {
 
   const fontFace = new FontFace(fontFamily, src1, { style: fontStyle });
 
+  // Fonts are stored in `document.fonts` for the main thread and `WorkerGlobalScope.fonts` for workers
+  const fontSet = globalThis.document ? globalThis.document.fonts : globalThis.fonts;
+
   // As FontFace objects are added to the document fonts as a side effect,
   // they need to be kept track of and manually deleted to correctly replace.
   if (typeof (fontFaceObj[fontFamily]) == "undefined") {
@@ -66,7 +78,7 @@ export function loadFontFace(fontFamily, fontStyle, src) {
 
   // Delete font if it already exists
   if (typeof (fontFaceObj[fontFamily][fontStyle]) != "undefined") {
-    document.fonts.delete(fontFaceObj[fontFamily][fontStyle]);
+    fontSet.delete(fontFaceObj[fontFamily][fontStyle]);
   }
 
   // Stored font for future, so it can be deleted if needed
@@ -76,11 +88,11 @@ export function loadFontFace(fontFamily, fontStyle, src) {
   fontFace.load();
 
   // Add font to document
-  document.fonts.add(fontFace);
+  fontSet.add(fontFace);
 
   // Clear fabric.js cache to delete old metrics
-  fabric.util.clearFabricFontCache(fontFamily);
-  fabric.util.clearFabricFontCache(fontFamily + " Small Caps");
+  if (globalThis.fabric) fabric.util.clearFabricFontCache(fontFamily);
+  if (globalThis.fabric) fabric.util.clearFabricFontCache(fontFamily + " Small Caps");
 
   return fontFace;
 
@@ -157,7 +169,7 @@ export function fontContainerFont(family, style, type, src, opt, kerningPairs = 
  * 
  * @param {fontContainerFamily} fontFamily 
  */
-async function optimizeFontContainerFamily(fontFamily) {
+export async function optimizeFontContainerFamily(fontFamily) {
 
 	// When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
 	// Otherwise, the "default" metric is applied to whatever font the user has selected as the default font. 
@@ -172,18 +184,18 @@ async function optimizeFontContainerFamily(fontFamily) {
   }
 
   const metricsNormal = globalThis.fontMetricsObj[fontMetricsType][fontFamily.normal.style];
-  const normalOptFont = globalThis.optimizeFontScheduler.addJob("optimizeFont", { fontData: fontFamily.normal.src, fontMetrics: metricsNormal, style: fontFamily.normal.style }).then((x) => {
-    return new fontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, x.fontData, true, x.kerningPairs);
+  const normalOptFont = globalThis.generalScheduler.addJob("optimizeFont", { fontData: fontFamily.normal.src, fontMetricsObj: metricsNormal, style: fontFamily.normal.style }).then((x) => {
+    return new fontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, x.data.fontData, true, x.data.kerningPairs);
   });
 
   const metricsItalic = globalThis.fontMetricsObj[fontMetricsType][fontFamily.italic.style];
-  const italicOptFont = globalThis.optimizeFontScheduler.addJob("optimizeFont", { fontData: fontFamily.italic.src, fontMetrics: metricsItalic, style: fontFamily.italic.style }).then((x) => {
-    return new fontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, x.fontData, true, x.kerningPairs);
+  const italicOptFont = globalThis.generalScheduler.addJob("optimizeFont", { fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style }).then((x) => {
+    return new fontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, x.data.fontData, true, x.data.kerningPairs);
   });
 
   const metricsSmallCaps = globalThis.fontMetricsObj[fontMetricsType][fontFamily["small-caps"].style];
-  const smallCapsOptFont = globalThis.optimizeFontScheduler.addJob("optimizeFont", { fontData: fontFamily["small-caps"].src, fontMetrics: metricsSmallCaps, style: fontFamily["small-caps"].style }).then((x) => {
-    return new fontContainerFont(fontFamily["small-caps"].family, fontFamily["small-caps"].style, fontFamily["small-caps"].type, x.fontData, true, x.kerningPairs);
+  const smallCapsOptFont = globalThis.generalScheduler.addJob("optimizeFont", { fontData: fontFamily["small-caps"].src, fontMetricsObj: metricsSmallCaps, style: fontFamily["small-caps"].style }).then((x) => {
+    return new fontContainerFont(fontFamily["small-caps"].family, fontFamily["small-caps"].style, fontFamily["small-caps"].type, x.data.fontData, true, x.data.kerningPairs);
   });
 
   return new fontContainerFamily(await normalOptFont, await italicOptFont, await smallCapsOptFont);
@@ -209,14 +221,18 @@ export function fontContainerFamily(fontNormal, fontItalic, fontSmallCaps) {
  * 
  * @param {string} family 
  * @param {("sans"|"serif")} type 
- * @param {string} normalSrc 
- * @param {string} italicSrc 
- * @param {string} smallCapsSrc 
+ * @param {string|ArrayBuffer} normalSrc 
+ * @param {string|ArrayBuffer} italicSrc 
+ * @param {string|ArrayBuffer} smallCapsSrc 
+ * @param {boolean} opt
+ * @param {*} normalKerningPairs 
+ * @param {*} italicKerningPairs 
+ * @param {*} smallCapsKerningPairs 
  */
-function loadFontContainerFamilyRaw(family, type, normalSrc, italicSrc, smallCapsSrc) {
-  const normal = new fontContainerFont(family, "normal", type, normalSrc, false);
-  const italic = new fontContainerFont(family, "italic", type, italicSrc, false);
-  const smallCaps = new fontContainerFont(family, "small-caps", type, smallCapsSrc, false);
+export function loadFontContainerFamily(family, type, normalSrc, italicSrc, smallCapsSrc, opt = false, normalKerningPairs = null, italicKerningPairs = null, smallCapsKerningPairs = null) {
+  const normal = new fontContainerFont(family, "normal", type, normalSrc, opt, normalKerningPairs);
+  const italic = new fontContainerFont(family, "italic", type, italicSrc, opt, italicKerningPairs);
+  const smallCaps = new fontContainerFont(family, "small-caps", type, smallCapsSrc, opt, smallCapsKerningPairs);
   return new fontContainerFamily(normal, italic, smallCaps);
 }
 
@@ -227,7 +243,7 @@ function loadFontContainerFamilyRaw(family, type, normalSrc, italicSrc, smallCap
  * @param {fontContainerFamily} fontContainerNimbusRomNo9L 
  * @param {fontContainerFamily} fontContainerNimbusSans 
  */
-function fontContainerAll(fontContainerCarlito, fontContainerNimbusRomNo9L, fontContainerNimbusSans, fontContainerCentury) {
+export function fontContainerAll(fontContainerCarlito, fontContainerNimbusRomNo9L, fontContainerNimbusSans, fontContainerCentury) {
   this.Carlito = fontContainerCarlito;
   this.Century = fontContainerCentury;
   this.NimbusRomNo9L = fontContainerNimbusRomNo9L;
@@ -237,44 +253,27 @@ function fontContainerAll(fontContainerCarlito, fontContainerNimbusRomNo9L, font
   this.Default = this.NimbusRomNo9L;
 }
 
-function loadFontContainerAllRaw() {
-  const Carlito = loadFontContainerFamilyRaw("Carlito", "sans", "Carlito-Regular.woff", "Carlito-Italic.woff", "Carlito-SmallCaps.woff");
-  const Century = loadFontContainerFamilyRaw("Century", "serif", "C059-Roman.woff", "C059-Italic.woff", "C059-SmallCaps.woff");
-  const NimbusRomNo9L = loadFontContainerFamilyRaw("NimbusRomNo9L", "serif", "NimbusRomNo9L-Reg.woff", "NimbusRomNo9L-RegIta.woff", "NimbusRomNo9L-RegSmallCaps.woff");
-  const NimbusSans = loadFontContainerFamilyRaw("NimbusSans", "sans", "NimbusSanL-Reg.woff", "NimbusSanL-RegIta.woff", "NimbusSanL-RegSmallCaps.woff");
-
-  return new fontContainerAll(Carlito, NimbusRomNo9L, NimbusSans, Century);
-}
-
-async function loadFontContainerAllOpt() {
-  const Carlito = await optimizeFontContainerFamily(fontPrivate.Carlito);
-  const Century = await optimizeFontContainerFamily(fontPrivate.Century);
-  const NimbusRomNo9L = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L);
-  const NimbusSans = await optimizeFontContainerFamily(fontPrivate.NimbusSans);
-
-  return new fontContainerAll(Carlito, NimbusRomNo9L, NimbusSans, Century);
-}
-
-const fontPrivate = loadFontContainerAllRaw();
-
-export let fontAll = fontPrivate;
-
-/**@type {?fontContainerAll} */
-let fontPrivateOpt = null;
+/**
+ * @typedef {object} fontSrc 
+ * @property {string|ArrayBuffer} normal
+ * @property {string|ArrayBuffer} italic
+ * @property {string|ArrayBuffer} smallCaps
+*/
 
 /**
  * 
- * @param {boolean} enable 
+ * @param {fontSrc} CarlitoSrc 
+ * @param {fontSrc} CenturySrc 
+ * @param {fontSrc} NimbusRomNo9LSrc 
+ * @param {fontSrc} NimbusSansSrc 
+ * @param {boolean} opt
+ * @returns 
  */
-export async function enableDisableFontOpt(enable) {
-  if (enable && !fontPrivateOpt) {
-    fontPrivateOpt = await loadFontContainerAllOpt();
-  }
+export function loadFontContainerAll(CarlitoSrc, CenturySrc, NimbusRomNo9LSrc, NimbusSansSrc, opt = false) {
+  const Carlito = loadFontContainerFamily("Carlito", "sans", CarlitoSrc.normal, CarlitoSrc.italic, CarlitoSrc.smallCaps, opt);
+  const Century = loadFontContainerFamily("Century", "serif", CenturySrc.normal, CenturySrc.italic, CenturySrc.smallCaps, opt);
+  const NimbusRomNo9L = loadFontContainerFamily("NimbusRomNo9L", "serif", NimbusRomNo9LSrc.normal, NimbusRomNo9LSrc.italic, NimbusRomNo9LSrc.smallCaps, opt);
+  const NimbusSans = loadFontContainerFamily("NimbusSans", "sans", NimbusSansSrc.normal, NimbusSansSrc.italic, NimbusSansSrc.smallCaps, opt);
 
-  if (enable && fontPrivateOpt) {
-    fontAll = await fontPrivateOpt;
-  } else {
-    fontAll = fontPrivate;
-  }
+  return new fontContainerAll(Carlito, NimbusRomNo9L, NimbusSans, Century);
 }
-

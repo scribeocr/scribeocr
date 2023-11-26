@@ -5,7 +5,7 @@
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
 import { calcWordMetrics } from "./fontUtils.js"
-import { renderPageQueue } from "../main.js"
+import { renderPageQueue, fontAll } from "../main.js"
 import ocr from "./objects/ocrObjects.js";
 
 
@@ -103,12 +103,14 @@ export async function changeWordFontSize(fontSize){
 export async function changeWordFontFamily(fontName){
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
-  let fontNameCanvas = fontName == "Default" ? globalSettings.defaultFont : fontName;
+  const fontNameLookup = fontName == "Default" ? globalSettings.defaultFont : fontName;
+
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
-    fontNameCanvas = /Small Caps$/.test(wordI.fontFamily) ? fontName + " Small Caps" : fontName;
+
+    const fontI = fontAll.active[fontNameLookup][wordI.fontStyleLookup];
 
     const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
 
@@ -123,9 +125,12 @@ export async function changeWordFontFamily(fontName){
       wordObj.font = fontName;
     }
 
-    wordI.fontFamily = fontNameCanvas;
+    wordI.fontFamily = fontI.fontFaceName;
+    wordI.fontStyle = fontI.fontFaceStyle;
+
     wordI.defaultFontFamily = fontName == "Default" ? true : false;
-    wordI.fontFamilyLookup = fontName,
+    wordI.fontFamilyLookup = fontNameLookup,
+    wordI.fontObj = fontI;
 
     await updateWordCanvas(wordI);
 
@@ -140,7 +145,7 @@ export async function changeWordFontFamily(fontName){
 export async function updateWordCanvas(wordI) {
 
   // 1. Re-calculate left position given potentially new left bearing
-  const wordMetrics = await calcWordMetrics(wordI.text, wordI.fontFamilyLookup, wordI.fontSize, wordI.fontStyleLookup);
+  const wordMetrics = await calcWordMetrics(wordI.text, wordI.fontObj, wordI.fontSize);
 
   // When the user selects multiple words at the same time, the coordinates becomes relative to the "group"
   const groupOffsetLeft = wordI?.group?.ownMatrixCache?.value[4] || 0;
@@ -153,6 +158,8 @@ export async function updateWordCanvas(wordI) {
     const kerning = (wordI.visualWidth - visualWidthNew) / (wordI.text.length - 1);
     wordI.charSpacing = kerning * 1000 / wordI.fontSize;
   }
+
+  window.canvas.requestRenderAll();
 
 }
 

@@ -10,7 +10,7 @@
  * @property {Array<ocrLine>} lines - 
  */
 export function ocrPage(n, dims) {
-    /** @type {number} */ 
+        /** @type {number} */ 
       this.n = n;
       /** @type {dims} */ 
       this.dims = dims;
@@ -22,7 +22,7 @@ export function ocrPage(n, dims) {
       this.leftAdj = 0;
       /** @type {Array<ocrLine>} */ 
       this.lines = [];
-  }
+}
   
 
 /**

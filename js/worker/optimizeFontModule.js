@@ -1,7 +1,15 @@
 
-/**
- * @typedef {import("../fontStatistics.js").fontMetricsFont} fontMetricsFont
- */
+
+// Defining "window" is needed due to bad browser/node detection in Opentype.js
+// Can hopefully remove in future version
+if (typeof process === "undefined") {
+  globalThis.window = {};
+} else {
+  await import("../../node/require.js");
+}
+
+await import('../../lib/opentype.js');
+
 
 /**
  * Rounds a number to six decimal places.
@@ -45,7 +53,6 @@ function quantile(arr, ntile) {
  * @param {boolean} transY - Transform y coordinates
  */
 function transformGlyph(glyph, func, transX = false, transY = false) {
-
   for (let j = 0; j < glyph.path.commands.length; j++) {
     let pointJ = glyph.path.commands[j];
 
@@ -66,12 +73,14 @@ function transformGlyph(glyph, func, transX = false, transY = false) {
 
 /**
  * Creates optimized version of font based on metrics provided. 
- * @param {string|ArrayBuffer} fontData
- * @param {fontMetricsFont} fontMetricsObj
- * @param {string} type - 
- * @param {boolean} adjustAllLeftBearings - 
+ * @param {Object} params
+ * @param {string|ArrayBuffer} params.fontData
+ * @param {fontMetricsFont} params.fontMetricsObj
+ * @param {string} params.style - 
+ * @param {boolean} params.adjustAllLeftBearings - 
+ * @param {boolean} params.standardizeSize
  */
-async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearings = false, standardizeSize = false) {
+export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLeftBearings = false, standardizeSize = false}) {
 
   const workingFont = typeof (fontData) == "string" ? await opentype.load(fontData) : opentype.parse(fontData, { lowMemory: false });
 
@@ -105,31 +114,31 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
   }
 
   // TODO: Adapt glyph substitution to work with new Nimbus fonts
-  // if (type == "normal" && fontMetricsObj.variants?.sans_g && /sans/i.test(workingFont.names.fontFamily.en)) {
+  // if (style == "normal" && fontMetricsObj.variants?.sans_g && /sans/i.test(workingFont.names.fontFamily.en)) {
   //   const glyphI = workingFont.charToGlyph("g");
   //   glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_g_single);
   //   scaleGlyph(glyphI, workingFont.unitsPerEm / 2000);
   // }
-  // if (type == "normal" && fontMetricsObj.variants?.sans_1 && /sans/i.test(workingFont.names.fontFamily.en)) {
+  // if (style == "normal" && fontMetricsObj.variants?.sans_1 && /sans/i.test(workingFont.names.fontFamily.en)) {
   //   const glyphI = workingFont.charToGlyph("1");
   //   glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_1_base);
   //   scaleGlyph(glyphI, workingFont.unitsPerEm / 2000);
   // }
-  // if (type == "italic" && fontMetricsObj.variants?.serif_italic_y && /libre/i.test(workingFont.names.fontFamily.en)) {
+  // if (style == "italic" && fontMetricsObj.variants?.serif_italic_y && /libre/i.test(workingFont.names.fontFamily.en)) {
   //   const glyphI = workingFont.charToGlyph("y");
   //   glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_y_min);
   // }
-  // if (type == "italic" && fontMetricsObj.variants?.serif_open_k && /libre/i.test(workingFont.names.fontFamily.en)) {
+  // if (style == "italic" && fontMetricsObj.variants?.serif_open_k && /libre/i.test(workingFont.names.fontFamily.en)) {
   //   const glyphI = workingFont.charToGlyph("k");
   //   glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_k_open);
   // }
-  // if (type == "italic" && fontMetricsObj.variants?.serif_pointy_vw && /libre/i.test(workingFont.names.fontFamily.en)) {
+  // if (style == "italic" && fontMetricsObj.variants?.serif_pointy_vw && /libre/i.test(workingFont.names.fontFamily.en)) {
   //   const glyphI1 = workingFont.charToGlyph("v");
   //   glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_v_pointed);
   //   const glyphI2 = workingFont.charToGlyph("w");
   //   glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_w_pointed);
   // }
-  // if (type == "italic" && fontMetricsObj.variants?.serif_stem_sans_pq && /libre/i.test(workingFont.names.fontFamily.en)) {
+  // if (style == "italic" && fontMetricsObj.variants?.serif_stem_sans_pq && /libre/i.test(workingFont.names.fontFamily.en)) {
   //   const glyphI1 = workingFont.charToGlyph("p");
   //   glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_p_sans_stem);
   //   const glyphI2 = workingFont.charToGlyph("q");
@@ -195,7 +204,7 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
     const scaleH1 = (x) => Math.round((x - glyphICenter) * scaleXFactor) + glyphICenter;
     const scaleH2 = (x) => Math.round(x * scaleXFactor);
 
-    if (singleStemClassB.includes(charLit) && type != "italic") {
+    if (singleStemClassB.includes(charLit) && style != "italic") {
       transformGlyph(glyphI, scaleH1, true, false);
     } else {
       transformGlyph(glyphI, scaleH2, true, false);
@@ -337,7 +346,7 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
 
     // Do not adjust pair kerning for italic "ff".
     // Given the amount of overlap between these glyphs, this metric is rarely accurate. 
-    if (key == "102,102" && type == "italic") continue;
+    if (key == "102,102" && style == "italic") continue;
 
     const nameFirst = key.match(/\w+/)[0];
     const nameSecond = key.match(/\w+$/)[0];
@@ -373,44 +382,6 @@ async function optimizeFont(fontData, fontMetricsObj, type, adjustAllLeftBearing
   // Quick fix due to bug in pdfkit (see note in renderPDF function)
   //workingFont.tables.name.postScriptName["en"] = workingFont.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
 
-  return workingFont;
+  return { fontData: workingFont.toArrayBuffer(), kerningPairs: workingFont.kerningPairs};
 
 }
-
-addEventListener('message', async (e) => {
-
-  // Defining "window" is needed due to bad browser/node detection in Opentype.js
-  // Can hopefully remove in future version
-  if (typeof process === "undefined") {
-    globalThis.window = {};
-  } else {
-    await import("../../node/require.js");
-  }
-
-  await import('../../lib/opentype.js');
-
-  
-  // const { glyphAlts } = await import('../fonts/glyphs.js');
-  // globalThis.glyphAlts = glyphAlts;
-  
-  const fontData = e.data[1].fontData;
-  const metrics = e.data[1].fontMetrics;
-  const style = e.data[1].style;
-  const adjustAllLeftBearings = e.data[1].adjustAllLeftBearings;
-  const standardizeSize = e.data[1].standardizeSize;
-  const heightSmallCaps = e.data[1].heightSmallCaps;
-  const func = e.data[0];
-
-  // Ability to create small caps fonts on the fly was removed, as we currently only support 2 fonts, so there is no need.
-  // This should be restored if the ability to use user-uploaded fonts is added in the future. 
-  if (func == "createSmallCapsFont") {
-    // const font = await createSmallCapsFont(fontData, heightSmallCaps);
-    // const fontBuffer = font.toArrayBuffer();
-    // return postMessage({ fontData: fontBuffer, id: e.data[2] }, [fontBuffer]);
-  } else {
-    const font = await optimizeFont(fontData, metrics, style, adjustAllLeftBearings, standardizeSize);
-    const fontBuffer = font.toArrayBuffer();
-    return postMessage({ fontData: fontBuffer, kerningPairs: font.kerningPairs, id: e.data[2] }, [fontBuffer]);
-  }
-
-});

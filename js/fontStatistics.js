@@ -93,12 +93,20 @@ export function checkMultiFontMode(fontMetricsObj) {
 export function setDefaultFontAuto(fontMetricsObj) {
   const multiFontMode = checkMultiFontMode(fontMetricsObj);
 
+  // Return early if the OCR data does not contain font info.
+  if (!multiFontMode) return;
+
   // Change default font to whatever named font appears more
-  if (multiFontMode) {
-    if ((fontMetricsObj["SerifDefault"]?.obs || 0) > (fontMetricsObj["SansDefault"]?.obs || 0)) {
-      globalThis.globalSettings.defaultFont = "SerifDefault";
-    } else {
-      globalThis.globalSettings.defaultFont = "SansDefault";
+  if ((fontMetricsObj["SerifDefault"]?.obs || 0) > (fontMetricsObj["SansDefault"]?.obs || 0)) {
+    globalThis.globalSettings.defaultFont = "SerifDefault";
+  } else {
+    globalThis.globalSettings.defaultFont = "SansDefault";
+  }
+
+  if (globalThis.generalScheduler) {
+    for (let i=0; i<globalThis.generalScheduler.workers.length; i++) {
+      const worker = globalThis.generalScheduler.workers[i];
+      worker.setGlobalSettings({globalSettings: globalThis.globalSettings});
     }
   }
 }
