@@ -618,7 +618,8 @@ function penalizeWord(wordStr) {
  *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created. 
  * @param {string} [params.options.debugLabel]
  * @param {boolean} [params.options.supplementComp] - Whether to run additional recognition jobs for words in `pageA` not in `pageB`
- * @param {Tesseract.Scheduler} [params.options.tessScheduler] - Tesseract scheduler to use for recognizing text.  Only needed if `supplementComp` is true.
+ * @param {Tesseract.Scheduler} [params.options.tessScheduler] - Tesseract scheduler to use for recognizing text. `tessScheduler` or `tessWorker` must be provided if `supplementComp` is `true`.
+ * @param {Tesseract.Worker} [params.options.tessWorker] - Tesseract scheduler to use for recognizing text. `tessScheduler` or `tessWorker` must be provided if `supplementComp` is `true`.
  * @param {boolean} [params.options.ignorePunct]
  * @param {boolean} [params.options.ignoreCap]
  * @param {number} [params.options.confThreshHigh]
@@ -632,10 +633,13 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
   const debugLabel = options?.debugLabel === undefined ? "" : options?.debugLabel;
   const supplementComp = options?.supplementComp === undefined ? false : options?.supplementComp;
   const tessScheduler = options?.tessScheduler === undefined ? null : options?.tessScheduler;
+  const tessWorker = options?.tessWorker === undefined ? null : options?.tessWorker;
   const ignorePunct = options?.ignorePunct === undefined ? false : options?.ignorePunct;
   const ignoreCap = options?.ignoreCap === undefined ? false : options?.ignoreCap;
   const confThreshHigh = options?.confThreshHigh === undefined ? 85 : options?.confThreshHigh;
   const confThreshMed = options?.confThreshMed === undefined ? 75 : options?.confThreshMed;
+
+  if (supplementComp && !(tessScheduler || tessWorker)) console.log("`supplementComp` enabled, but no scheduler was provided. This step will be skipped.");
 
   const n = pageA.n;
 
@@ -1006,13 +1010,15 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
   // If `supplementComp` is enabled, we run OCR for any words in pageA without an existing comparison in pageB.
   // This ensures that every word has been checked.
   // Unlike the comparisons above, this is strictly for confidence purposes--if conflicts are identified the text is not edited.
-  if (supplementComp && tessScheduler) {
+  if (supplementComp && (tessScheduler || tessWorker)) {
     for (let i = 0; i < pageAInt.lines.length; i++) {
       const line = pageAInt.lines[i];
       for (let j = 0; j < line.words.length; j++) {
         const word = line.words[j];
         if (!word.compTruth) {
-          word.matchTruth = await checkWords([word], binaryImageBit, pageMetricsObj, tessScheduler, {ignorePunct: ignorePunct, view: false});
+          const res = await checkWords([word], binaryImageBit, pageMetricsObj, {ignorePunct: ignorePunct, tessScheduler: tessScheduler, tessWorker: tessWorker, view: false});
+          debugLog += res.debugLog;
+          word.matchTruth = res.match;
           word.conf = word.matchTruth ? 100 : 0;
         }
       }
@@ -1096,13 +1102,14 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
  * @param {Array<ocrWord>} wordsA
  * @param {ImageBitmap} binaryImage
  * @param {pageMetrics} pageMetricsObj
- * @param {Tesseract.Scheduler} tessScheduler
  * @param {object} [options]
  * @param {boolean} [options.view] - TODO: make this functional or remove
  * @param {boolean} [options.ignorePunct]
  * @param {boolean} [options.ignoreCap]
+ * @param {Tesseract.Scheduler} [options.tessScheduler]
+ * @param {Tesseract.Worker} [options.tessWorker]
  */
-export async function checkWords(wordsA, binaryImage, pageMetricsObj, tessScheduler, options = {}){
+export async function checkWords(wordsA, binaryImage, pageMetricsObj, options = {}){
 
   const view = options?.view === undefined ? false : options?.view;
   const ignorePunct = options?.ignorePunct === undefined ? false : options?.ignorePunct;
@@ -1115,9 +1122,16 @@ export async function checkWords(wordsA, binaryImage, pageMetricsObj, tessSchedu
     tessedit_pageseg_mode: "6" // "Single block"
   }
 
-  const inputImage = await calcCtx.canvas.convertToBlob();
+  const inputImage = browserMode ? await calcCtx.canvas.convertToBlob() : await calcCtx.canvas.toBuffer('image/png');
 
-  const res = await tessScheduler.addJob('recognize', inputImage, extraConfig);
+  let res;
+  if (options.tessScheduler) {
+    res = (await options.tessScheduler.addJob('recognize', inputImage, extraConfig)).data;
+  } else if (options.tessWorker) {
+    res = await options.tessWorker.recognize(inputImage, extraConfig);
+  } else {
+    throw new Error ("`tessScheduler` and `tessWorker` missing. One must be provided for words to be checked.")
+  }
 
   let wordTextA = wordsA.map((x) => x.text).join(" ");
   let wordTextB = res.data.text.trim();
@@ -1136,9 +1150,9 @@ export async function checkWords(wordsA, binaryImage, pageMetricsObj, tessSchedu
     wordTextB = wordTextB.toLowerCase();
   }
 
-  console.log("Supp comparison: " + String(wordTextA == wordTextB) + " [" + wordTextA + " vs. " + wordTextB + "] for " + wordsA[0].id + " (page " + String(wordsA[0].line.page.n + 1) + ")");
+  const debugLog = "Supp comparison: " + String(wordTextA == wordTextB) + " [" + wordTextA + " vs. " + wordTextB + "] for " + wordsA[0].id + " (page " + String(wordsA[0].line.page.n + 1) + ")\n";
 
-  return wordTextA == wordTextB;
+  return { match: wordTextA == wordTextB, debugLog: debugLog};
 
 }
 

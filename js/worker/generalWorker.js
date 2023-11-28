@@ -21,7 +21,8 @@ if (browserMode) {
 const defaultConfigs = {
   // TODO: Add back support for multiple PSM modes.
   // There is already an advanced option in the UI that claims to switch this, but it currently does nothing. 
-  tessedit_pageseg_mode: Tesseract.PSM["SINGLE_COLUMN"],
+  // tessedit_pageseg_mode: Tesseract.PSM["SINGLE_COLUMN"],
+  tessedit_pageseg_mode: Tesseract.PSM.AUTO,
   hocr_char_boxes: '1',
   // The Tesseract LSTM engine frequently identifies a bar character "|"
   // This is virtually always a false positive (usually "I").
@@ -49,7 +50,6 @@ const reinitialize = async ({langs, oem}) => {
   await worker.reinitialize(langs, oem);
   await worker.setParameters(defaultConfigs);
 }
-
 
 /**
  * Asynchronously recognizes or processes an image based on specified options and parameters.
@@ -108,6 +108,11 @@ async function setGlobalSettings({globalSettings}) {
   globalThis.globalSettings = globalSettings;
 }
 
+async function compareHOCRWrap(args) {
+  args.options.tessWorker = worker;
+  return await compareHOCR(args);
+}
+
 addEventListener('message', async e => {
     const func = e.data[0];
     const args = e.data[1];
@@ -129,7 +134,7 @@ addEventListener('message', async e => {
         evalPageFont,
         evalPage,
         evalWords,
-        compareHOCR,
+        compareHOCR: compareHOCRWrap,
         nudgePageFontSize,
         nudgePageBaseline,
 

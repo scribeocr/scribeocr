@@ -88,7 +88,8 @@ async function main() {
     
     const backgroundPDF = /pdf$/i.test(backgroundArg);
 
-    const robustConfMode = true;
+    const debugMode = false;
+    const robustConfMode = process.argv.indexOf('-r') > -1;
   
     const w = await initMuPDFWorker();
     const fileData = await fs.readFileSync(args[0]);
@@ -237,19 +238,17 @@ async function main() {
     if (robustConfMode) {
 
       // Run Tesseract Legacy recognition
-      console.time("Legacy recognition");
+      if (debugMode) console.time("Legacy recognition");
       await recognizeAllPages(true, false);
-      console.timeLog("Legacy recognition");
+      if (debugMode) console.timeLog("Legacy recognition");
 
       // Run Tesseract LSTM recognition
-      console.time("LSTM recognition");
+      if (debugMode) console.time("LSTM recognition");
       await recognizeAllPages(false, false);
-      console.timeLog("LSTM recognition");
+      if (debugMode) console.timeLog("LSTM recognition");
 
       // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
       for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-
-        console.log("Running compareHOCR for " + i);
 
         const compOptions = {
           mode: "comb", 
@@ -259,7 +258,6 @@ async function main() {
   
         const imgElem = await globalThis.imageAll["binary"][i];
   
-        // const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
         const res = await compareHOCR({pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
         if (globalThis.debugLog === undefined) globalThis.debugLog = "";
@@ -277,31 +275,18 @@ async function main() {
           supplementComp: true,
           ignoreCap: true,
           ignorePunct: false,
+          tessWorker: tessWorker,
         };
 
         const imgElem = await globalThis.imageAll["binary"][i];
         
         const res = await compareHOCR({pageA: globalThis.ocrAll.active[i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
-        // if (globalThis.debugLog === undefined) globalThis.debugLog = "";
-        // globalThis.debugLog += res.debugLog;
-
         globalThis.ocrAll.active[i] = res.page;
 
       }
 
-      // globalThis.ocrAll.active = globalThis.ocrAll["Combined"];
-    }
-
-  const hocrOut = renderHOCR(globalThis.ocrAll.active, globalThis.fontMetricsObj, globalThis.layout, 0, pageCount-1);
-  fs.writeFile("combine_test.hocr", hocrOut, 'utf8', function (err) {
-    if (err) {
-      console.error('An error occurred:', err);
-    } else {
-      console.log('File saved successfully!');
-    }
-  });
-  
+    }  
 
     const pdfStr = await hocrToPDF(globalThis.ocrAll.active, fontAll, 0, -1, "proof", true, false);
     const enc = new TextEncoder();
