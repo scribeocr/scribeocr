@@ -575,5 +575,5 @@ export function updateDataPreview() {
     }
     if (addPageNumberColumnMode) extraCols.push(String(currentPage.n+1));
 
-    dataPreviewElem.innerHTML = createCells(globalThis.hocrCurrent[currentPage.n], globalThis.layout[currentPage.n], extraCols, 0, false, true).content;
+    dataPreviewElem.innerHTML = createCells(globalThis.ocrAll.active[currentPage.n], globalThis.layout[currentPage.n], extraCols, 0, false, true).content;
 }

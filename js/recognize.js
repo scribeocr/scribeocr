@@ -1,11 +1,13 @@
 import { parseDebugInfo } from "./fontStatistics.js";
-import { renderPDFImageCache, addDisplayLabel, setCurrentHOCR, calculateOverallMetrics } from "../main.js";
 import { convertPageCallback } from "./convertOCR.js";
 
-export async function recognizeAllPages(legacy = true, comb = false) {
-
-    // Render all PDF pages to PNG if needed
-    if (inputDataModes.pdfMode) await renderPDFImageCache([...Array(globalThis.imageAll["native"].length).keys()]);
+/**
+ * 
+ * @param {boolean} legacy 
+ * @param {boolean} mainData - Whether this is the "main" data that global stats are derived from.
+ *    In general, this should only be true if Tesseract Legacy is being run, and the user has not previously uploaded any data. 
+ */
+export async function recognizeAllPages(legacy = true, mainData = false) {
 
     const oemMode = legacy ? "0" : "1";
 
@@ -14,24 +16,18 @@ export async function recognizeAllPages(legacy = true, comb = false) {
         resArr.push(generalScheduler.addJob("reinitialize", {lang: "eng", oem: oemMode}));
     }
 
-    // const scheduler = await createTesseractScheduler(workerN, allConfig);
-
     const oemText = "Tesseract " + (oemMode == "1" ? "LSTM" : "Legacy");
-    addDisplayLabel(oemText);
-    setCurrentHOCR(oemText);  
 
     const inputPages = [...Array(globalThis.imageAll["native"].length).keys()];
-
     const promiseArr = [];
     for (let x of inputPages) {
         promiseArr.push(recognizePage(generalScheduler, x, oemText, true).then((res1) => {
-            convertPageCallback(res1, x, legacy, oemText, false);
+            // if(convertPageCallbackFunc) convertPageCallbackFunc(res1, x, legacy, oemText, false);
+            convertPageCallback(res1, x, mainData, oemText, false);
         }))
     }
 
-    await Promise.allSettled(promiseArr);
-
-    if (legacy) await calculateOverallMetrics();
+    await Promise.all(promiseArr);
       
   }
   
@@ -44,6 +40,8 @@ export async function recognizeAllPages(legacy = true, comb = false) {
  * @param {boolean} autoRotate - Whether the user has the "auto-rotate" mode enabled
  */
 const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
+
+    const browserMode = typeof process === "undefined";
 
     // Whether the binary image should be rotated internally by Tesseract
     // This should always be true (Tesseract results are horrible without auto-rotate) but kept as a variable for debugging purposes. 
@@ -61,7 +59,17 @@ const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
 
     // When the image has not been loaded into an element yet, use the raw source string.
     // We still use imageAll["native"] when it exists as this will have rotation applied (if applicable) while imageAll["nativeSrc"] will not.
-    const inputSrc = globalThis.imageAll["native"][n] ? (await globalThis.imageAll["native"][n]).src : globalThis.imageAll["nativeSrc"][n];
+    const inputSrc1 = await globalThis.imageAll["native"][n];
+    let inputSrc;
+    if (inputSrc1) {
+        if (inputSrc1.src) {
+            inputSrc = inputSrc1.src;
+        } else {
+            inputSrc = inputSrc1;
+        }
+    } else {
+        inputSrc = globalThis.imageAll["nativeSrc"][n];
+    }
 
     // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
     const saveNativeImage = autoRotate && !globalThis.imageAll["nativeRotated"][n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh);
@@ -83,18 +91,29 @@ const recognizePage = async (scheduler, n, engineName, autoRotate = true) => {
     if (saveBinaryImageArg) {
         globalThis.imageAll["binaryRotated"][n] = Math.abs(res.data.recognize.rotateRadians) > angleThresh;
         if (globalThis.imageAll["binaryRotated"][n] || !globalThis.imageAll["binary"][n]) {
-            const image = document.createElement('img');
-            image.src = res.data.recognize.imageBinary;
-            globalThis.imageAll["binary"][n] = image;
+            if (browserMode) {
+                const image = document.createElement('img');
+                image.src = res.data.recognize.imageBinary;
+                globalThis.imageAll["binary"][n] = image;
+            } else {
+                const { loadImage } = await import("canvas");
+                globalThis.imageAll["binary"][n] = await loadImage(res.data.recognize.imageBinary); 
+            }
         }
     }
 
     if (saveNativeImage) {
         globalThis.imageAll["nativeRotated"][n] = Math.abs(res.data.recognize.rotateRadians) > angleThresh;
         if (globalThis.imageAll["nativeRotated"][n]) {
-            const image = document.createElement('img');
-            image.src = res.data.recognize.imageColor;
-            globalThis.imageAll["native"][n] = image;
+            if (browserMode) {
+                const image = document.createElement('img');
+                image.src = res.data.recognize.imageColor;
+                globalThis.imageAll["native"][n] = image;
+            } else {
+                const { loadImage } = await import("canvas");
+                globalThis.imageAll["native"][n] = await loadImage(res.data.recognize.imageColor); 
+            }
+
         }
     }
 

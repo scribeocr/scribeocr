@@ -6,7 +6,7 @@
 import { convertPageAbbyy, convertPageHocr, convertPageStext } from "./convertPageModule.js";
 import { optimizeFont } from "./optimizeFontModule.js";
 import { loadFontContainerAll } from "../objects/fontObjects.js";
-import { evalFontPage, evalPage, evalWords, compareHOCR, setFontAll } from "./compareOCRModule.js";
+import { evalPageFont, evalPage, evalWords, compareHOCR, setFontAll, nudgePageFontSize, nudgePageBaseline } from "./compareOCRModule.js";
 
 // import Tesseract from "../../tess/tesseract.esm.min.js";
 const browserMode = typeof process === "undefined";
@@ -39,7 +39,7 @@ let oemCurrent = 1;
 
 // Custom build is currently only used for browser version, while the Node.js version uses the published npm package.
 // If recognition capabilities are ever added for the Node.js version, then we should use the same build for consistency. . 
-const tessConfig = browserMode ? { corePath: '/tess/', workerPath: '/tess/worker.min.js', legacyCore: true, legacyLang: true, workerBlobURL: false} : {};
+const tessConfig = browserMode ? { corePath: '/tess/', workerPath: '/tess/worker.min.js', legacyCore: true, legacyLang: true, workerBlobURL: false} : {legacyCore: true, legacyLang: true};
 
 const worker = await Tesseract.createWorker("eng", 1, tessConfig);
 await worker.setParameters(defaultConfigs);
@@ -126,10 +126,12 @@ addEventListener('message', async e => {
         loadFontContainerAllWorker,
 
         // OCR comparison/evaluation functions
-        evalFontPage,
+        evalPageFont,
         evalPage,
         evalWords,
         compareHOCR,
+        nudgePageFontSize,
+        nudgePageBaseline,
 
         // Recognition
         reinitialize,

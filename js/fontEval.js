@@ -6,7 +6,7 @@
  * @param {Array<HTMLImageElement>} binaryImageArr
  * @param {number} n - Number of words to compare
  */
-export async function evalFontPages(font, pageArr, binaryImageArr, n = 500) {
+export async function evalPageFonts(font, pageArr, binaryImageArr, n = 500) {
 
     const browserMode = typeof process === "undefined";
 
@@ -20,12 +20,12 @@ export async function evalFontPages(font, pageArr, binaryImageArr, n = 500) {
         // https://github.com/Automattic/node-canvas/issues/1394
         let res;
         if (!browserMode) {
-            const { evalFontPage } = await import("../js/worker/compareOCRModule.js");
+            const { evalPageFont } = await import("../js/worker/compareOCRModule.js");
 
-            res = await evalFontPage({ font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i], pageMetricsObj: globalThis.pageMetricsArr[i] });
+            res = await evalPageFont({ font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i], pageMetricsObj: globalThis.pageMetricsArr[i] });
         // Browser case
         } else {
-            res = (await generalScheduler.addJob("evalFontPage", { font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i].src, pageMetricsObj: globalThis.pageMetricsArr[i] })).data;
+            res = (await generalScheduler.addJob("evalPageFont", { font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i].src, pageMetricsObj: globalThis.pageMetricsArr[i] })).data;
         }
 
 		metricTotal = metricTotal + res.metricTotal;
@@ -73,15 +73,15 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
         await initCanvasNode();
     }
 
-	await Promise.allSettled(resArr);
+	await Promise.all(resArr);
 
-	const metricCarlito = await evalFontPages(fontAll.active.Carlito, pageArr, binaryImageArrRes);
-	const metricNimbusSans = await evalFontPages(fontAll.active.NimbusSans, pageArr, binaryImageArrRes);
+	const metricCarlito = await evalPageFonts(fontAll.active.Carlito, pageArr, binaryImageArrRes);
+	const metricNimbusSans = await evalPageFonts(fontAll.active.NimbusSans, pageArr, binaryImageArrRes);
 	console.log("metricCarlito: " + String(metricCarlito));
 	console.log("metricNimbusSans: " + String(metricNimbusSans));
 
-	const metricCentury = await evalFontPages(fontAll.active.Century, pageArr, binaryImageArrRes);
-	const metricNimbusRomNo9L = await evalFontPages(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes);
+	const metricCentury = await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes);
+	const metricNimbusRomNo9L = await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes);
 	console.log("metricCentury: " + String(metricCentury));
 	console.log("metricNimbusRomNo9L: " + String(metricNimbusRomNo9L));
 

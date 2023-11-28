@@ -68,7 +68,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
 
                 await updateWordCanvas(this);
 
-                const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], this.wordID);
+                const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], this.wordID);
 
                 if (!wordObj) {
                     console.warn("Canvas element contains ID" + this.wordID + "that does not exist in OCR data.  Skipping word.");
@@ -174,7 +174,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
                 let visualRightNew = opt.target.left + visualWidthNew;
                 let visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
 
-                const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], opt.target.wordID);
+                const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], opt.target.wordID);
 
                 if (!wordObj) {
                     console.warn("Canvas element contains ID" + opt.target.wordID + "that does not exist in OCR data.  Skipping word.");

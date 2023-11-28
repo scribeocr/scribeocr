@@ -13,10 +13,10 @@ import { pageMetrics } from "./objects/pageMetricsObjects.js";
  *  For imports of user-provided data, the first data provided should be flagged as the "main" data.
  *  For Tesseract.js recognition, the Tesseract Legacy results should be flagged as the "main" data.
  * @param {("hocr"|"abbyy"|"stext")} format - Format of raw data.  
- * @param {?string} engineName - Name of OCR engine.  
+ * @param {string} engineName - Name of OCR engine.  
  * @param {boolean} areaMode - Whether the OCR is for an area of the current page, rather than full page.
  */
-export async function convertOCRPage(ocrRaw, n, mainData, format = "hocr", engineName = null, areaMode = false) {
+export async function convertOCRPage(ocrRaw, n, mainData, format = "hocr", engineName, areaMode = false) {
 
     let func = "convertPageHocr";
     if (format == "abbyy") {
@@ -40,10 +40,10 @@ export async function convertOCRPage(ocrRaw, n, mainData, format = "hocr", engin
  *  For imports of user-provided data, the first data provided should be flagged as the "main" data.
  *  For Tesseract.js recognition, the Tesseract Legacy results should be flagged as the "main" data.
  * @param {("hocr"|"abbyy"|"stext")} format - Format of raw data.  
- * @param {?string} engineName - Name of OCR engine.  
+ * @param {string} engineName - Name of OCR engine.  
  * @param {boolean} areaMode - Whether the OCR is for an area of the current page, rather than full page.
  */
-export async function convertOCRAll(ocrRawArr, mainData, format = "hocr", engineName = null, areaMode = false) {
+export async function convertOCRAll(ocrRawArr, mainData, format = "hocr", engineName, areaMode = false) {
     // For each page, process HOCR using web worker
     const promiseArr = [];
     for (let n = 0; n < ocrRawArr.length; n++) {
@@ -67,42 +67,39 @@ export async function convertOCRAll(ocrRawArr, mainData, format = "hocr", engine
  * @param {Object} params - Object returned by `convertPage` functions
  * @param {number} n 
  * @param {boolean} mainData 
- * @param {?string} engineName - Name of OCR engine.  
+ * @param {string} engineName - Name of OCR engine.  
  * @param {boolean} areaMode - Whether the OCR is for an area of the current page, rather than full page.
  * @param {boolean} combMode - If `combMode = true`, document-wide statistics are calculated after recognition is half done (after Legacy component).
  * @returns 
  */
-export async function convertPageCallback({ pageObj, fontMetricsObj, layoutBoxes, warn }, n, mainData, engineName = null, areaMode = false, combMode = false) {
+export async function convertPageCallback({ pageObj, fontMetricsObj, layoutBoxes, warn }, n, mainData, engineName, areaMode = false, combMode = false) {
 
     // This should be true in the browser and false in Node.js.
     // Several steps are skipped when run in Node.js, relating to either the UI or browser-only features. 
     const browserMode = typeof process === "undefined";
 
-    // Detect if the new data needs to be combined with existing data.
-    // This occurs when using "recognize area" mode on a page with existing OCR data. 
+    // Handle case where (1) area mode is enabled and (2) content already exists on the current page.
+    // In this case, the new data is combined with the existing data, and the function returns early to avoid overwriting existing data.
     if (areaMode) {
-        const lines = globalThis.hocrCurrent[n].lines;
+        const lines = globalThis.ocrAll.active[n].lines;
         if (lines && lines.length > 0) {
-            combineData(pageObj, globalThis.hocrCurrent[currentPage.n], globalThis.pageMetricsArr[currentPage.n]);
+            combineData(pageObj, globalThis.ocrAll.active[currentPage.n], globalThis.pageMetricsArr[currentPage.n]);
             if (browserMode) displayPage(currentPage.n);
             return;
         }
     }
 
-    const oemCurrent = !browserMode || !engineName || areaMode || engineName == document.getElementById("displayLabelText")?.innerHTML ? true : false;
-
     // If an OEM engine is specified, save to the appropriate object within ocrAll,
-    // and only set to hocrCurrent if appropriate.  This prevents "Recognize All" from
-    // overwriting the wrong output if a user switches hocrCurrent to another OCR engine
+    // and only set to ocrAll.active if appropriate.  This prevents "Recognize All" from
+    // overwriting the wrong output if a user switches ocrAll.active to another OCR engine
     // while the recognition job is running.
-    if (engineName && !areaMode) {
-        globalThis.ocrAll[engineName][n]["hocr"] = pageObj || null;
-        if (oemCurrent) {
-            globalThis.hocrCurrent[n] = pageObj || null;
-        }
-    } else {
-        globalThis.hocrCurrent[n] = pageObj || null;
+    let oemCurrent = false;
+    if (browserMode) {
+        if (areaMode || engineName == document.getElementById("displayLabelText")?.innerHTML) oemCurrent = true;
     }
+    
+    if (engineName) globalThis.ocrAll[engineName][n] = pageObj || null;
+    // if (oemCurrent) globalThis.ocrAll.active[n] = pageObj || null;
 
     // If this is flagged as the "main" data, then save the stats.
     if (mainData && !areaMode) {

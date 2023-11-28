@@ -29,7 +29,7 @@ export function printSelectedWords(printOCR = true) {
   if (!selectedObjects) return;
   for(let i=0; i<selectedObjects.length; i++){
     if (printOCR) {
-      console.log(ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], selectedObjects[i].wordID));
+      console.log(ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], selectedObjects[i].wordID));
     } else {
       console.log(selectedObjects[i]);
     }
@@ -40,7 +40,7 @@ export async function evalSelectedLine() {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
 
-  const word0 = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], selectedObjects[0].wordID);
+  const word0 = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], selectedObjects[0].wordID);
 
   const viewCanvas0 = /** @type {HTMLCanvasElement} */ (document.getElementById('e'));
   const viewCanvas1 = /** @type {HTMLCanvasElement} */ (document.getElementById('f'));
@@ -131,8 +131,8 @@ export async function downloadImageDebug(filename_base, type = "Combined") {
 
 export function getExcludedText() {
 
-  for (let i=0; i<=globalThis.hocrCurrent.length; i++){
-    const textArr = getExcludedTextPage(globalThis.hocrCurrent[i], globalThis.layout[i]);
+  for (let i=0; i<=globalThis.ocrAll.active.length; i++){
+    const textArr = getExcludedTextPage(globalThis.ocrAll.active[i], globalThis.layout[i]);
 
     if (textArr.length > 0) {
       textArr.map((x) => console.log(x + " [Page " + String(i) + "]"));
@@ -205,3 +205,8 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 
 //     return fontOut;
 // }
+
+
+function lookupKerning(letterA, letterB) {
+  return fontMetricsObj.SerifDefault.normal.kerning[letterA.charCodeAt(0) + "," + letterB.charCodeAt(0)]
+}

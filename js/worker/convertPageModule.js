@@ -6,7 +6,7 @@
 
 // const ocr = await import('../objects/ocrObjects.js');
 
-import ocr from '../objects/ocrObjects.js';
+import ocr, { rotateBbox } from '../objects/ocrObjects.js';
 
 import { getRandomAlphanum } from '../miscUtils.js';
 
@@ -48,8 +48,8 @@ function round6(x) {
 
 // Sans/serif lookup for common font families
 // Should be added to if additional fonts are encountered
-const serifFonts = ["Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
-const sansFonts = ["Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
+const serifFonts = ["SerifDefault", "Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
+const sansFonts = ["SansDefault", "Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
@@ -117,11 +117,11 @@ function rotateLine(line, angle, dims = null) {
 
   for (let i=0; i<line.words.length; i++) {
       const word = line.words[i];
-      word.bbox = ocr.rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
+      word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
   }
 
   // Re-calculate line bbox by rotating original line bbox
-  const lineBoxRot = ocr.rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
+  const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
 
   // Re-calculate line bbox by taking union of word bboxes
   ocr.calcLineBbox(line);
@@ -288,7 +288,12 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
     const lineDescHeightTessStr = parseFloat(titleStrLine.match(/x_descenders\s+([\d\.\-]+)/)?.[1] || "0");
 
     const lineAscHeightTess = lineAllHeightTessStr - lineDescHeightTessStr;
-    const lineXHeightTess = lineAllHeightTessStr - lineDescHeightTessStr - lineAscHeightTessStr;
+
+    // When Scribe exports lines with `null` `xHeight` values to HOCR, `x_ascenders` is omitted. 
+    let lineXHeightTess = null;
+    if (lineAscHeightTessStr > 0) {
+      lineXHeightTess = lineAllHeightTessStr - lineDescHeightTessStr - lineAscHeightTessStr;
+    }
 
     const lineObj = new ocr.ocrLine(pageObj, linebox, baseline, lineAscHeightTess, lineXHeightTess);
 

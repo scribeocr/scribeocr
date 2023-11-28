@@ -3,7 +3,9 @@
 
 import { initGeneralWorker } from "../js/generalWorkerMain.js";
 import { selectDefaultFontsDocument } from "../js/fontEval.js";
-
+import { recognizeAllPages } from "../js/recognize.js";
+import { compareHOCR } from "../js/worker/compareOCRModule.js";
+import { renderHOCR } from "../js/exportRenderHOCR.js";
 
 import fs from "fs";
 import path from "path";
@@ -76,6 +78,7 @@ globalThis.convertPageWarn = [];
 const args = process.argv.slice(2);
 
 async function main() {
+
     let hocrStrFirst = fs.readFileSync(args[1], 'utf8');
     if (!hocrStrFirst) throw "Could not read file: " + args[1];
 
@@ -84,6 +87,8 @@ async function main() {
     const outputPath = outputDir + "/" + path.basename(backgroundArg).replace(/\.\w{1,5}$/i, "_vis.pdf");
     
     const backgroundPDF = /pdf$/i.test(backgroundArg);
+
+    const robustConfMode = true;
   
     const w = await initMuPDFWorker();
     const fileData = await fs.readFileSync(args[0]);
@@ -152,13 +157,21 @@ async function main() {
       globalThis.layout[i] = {default: true, boxes: {}};
     }  
 
+    globalThis.ocrAll = {
+      "active": Array(pageCount),
+      "User Upload": Array(pageCount),
+      "Tesseract Legacy": Array(pageCount),
+      "Tesseract LSTM": Array(pageCount),
+      "Tesseract Combined": Array(pageCount),
+      "Combined": Array(pageCount),
+    }
+
+    globalThis.ocrAll.active = globalThis.ocrAll["User Upload"];
 
     globalThis.hocrCurrentRaw = Array(pageCount);
     for (let i = 0; i < pageCount; i++) {
         globalThis.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
     }
-
-    globalThis.hocrCurrent = Array(pageCount);
 
     // globalThis.generalWorker = await initGeneralWorker();
 
@@ -172,8 +185,7 @@ async function main() {
       globalThis.generalScheduler["workers"][i] = w;
     }
 
-    await convertOCRAll(globalThis.hocrCurrentRaw, true, format);
-    // await calculateOverallMetrics();
+    await convertOCRAll(globalThis.hocrCurrentRaw, true, format, "User Upload");
 
     const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
     globalThis.fontMetricsObj = metricsRet.fontMetrics;
@@ -183,13 +195,21 @@ async function main() {
 
     // There is currently no Node.js implementation of default font selection, as this is written around drawing in the canvas API. 
     // Evaluate default fonts using up to 5 pages. 
-    const pageNum = Math.min(pageCount, 5);
+    const fontEvalPageN = Math.min(pageCount, 5);
 
     const tessWorker = await Tesseract.createWorker();
 
-    const imgArr = [];
+    globalThis.imageAll = {
+      native: Array(pageCount),
+      binary: Array(pageCount),
+      nativeRotated: Array(pageCount),
+      binaryRotated: Array(pageCount),
+    }
 
-    for (let i=0; i<pageNum; i++) {
+    // All pages are rendered for `robustConfMode`, otherwise images are only needed for font evaluation.
+    const renderPageN = robustConfMode ? pageCount : fontEvalPageN;
+
+    for (let i=0; i<renderPageN; i++) {
       // Render to 300 dpi by default
       let dpi = 300;
 
@@ -200,22 +220,90 @@ async function main() {
         dpi = 300 * (imgWidthXml / imgWidthPdf);
       }
 
-      const img1 = await w.drawPageAsPNG([i+1, dpi, false, false]);
+      globalThis.imageAll.native[i] = await w.drawPageAsPNG([i+1, dpi, false, false]);
 
       const angleArg = globalThis.pageMetricsArr[i].angle * (Math.PI / 180) * -1 || 0;
 
-      const res = await tessWorker.recognize(img1, {rotateRadians: angleArg}, {imageBinary : true, imageColor: false, debug: true, text: false, hocr: false, tsv: false, blocks: false});
+      const res = await tessWorker.recognize(globalThis.imageAll.native[i], {rotateRadians: angleArg}, {imageBinary : true, imageColor: false, debug: true, text: false, hocr: false, tsv: false, blocks: false});
       
       const img = await loadImage(res.data.imageBinary);
 
-      imgArr.push(img);
+      globalThis.imageAll.binary[i] = img;
     }
 
     // Select best default fonts
-    const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), imgArr, fontAll);
+    const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, fontAll);
 
+    if (robustConfMode) {
 
-    const pdfStr = await hocrToPDF(globalThis.hocrCurrent, fontAll, 0, -1, "proof", true, false);
+      // Run Tesseract Legacy recognition
+      console.time("Legacy recognition");
+      await recognizeAllPages(true, false);
+      console.timeLog("Legacy recognition");
+
+      // Run Tesseract LSTM recognition
+      console.time("LSTM recognition");
+      await recognizeAllPages(false, false);
+      console.timeLog("LSTM recognition");
+
+      // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
+      for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+
+        console.log("Running compareHOCR for " + i);
+
+        const compOptions = {
+          mode: "comb", 
+          ignoreCap: true,
+          ignorePunct: false,
+        };
+  
+        const imgElem = await globalThis.imageAll["binary"][i];
+  
+        // const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+        const res = await compareHOCR({pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+
+        if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+        globalThis.debugLog += res.debugLog;
+    
+        globalThis.ocrAll["Tesseract Combined"][i] = res.page;
+
+      }
+
+  
+      for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+
+        const compOptions = {
+          mode: "stats",
+          supplementComp: true,
+          ignoreCap: true,
+          ignorePunct: false,
+        };
+
+        const imgElem = await globalThis.imageAll["binary"][i];
+        
+        const res = await compareHOCR({pageA: globalThis.ocrAll.active[i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+
+        // if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+        // globalThis.debugLog += res.debugLog;
+
+        globalThis.ocrAll.active[i] = res.page;
+
+      }
+
+      // globalThis.ocrAll.active = globalThis.ocrAll["Combined"];
+    }
+
+  const hocrOut = renderHOCR(globalThis.ocrAll.active, globalThis.fontMetricsObj, globalThis.layout, 0, pageCount-1);
+  fs.writeFile("combine_test.hocr", hocrOut, 'utf8', function (err) {
+    if (err) {
+      console.error('An error occurred:', err);
+    } else {
+      console.log('File saved successfully!');
+    }
+  });
+  
+
+    const pdfStr = await hocrToPDF(globalThis.ocrAll.active, fontAll, 0, -1, "proof", true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");

@@ -35,10 +35,12 @@ export async function initGeneralWorker() {
 
         obj.loadFontContainerAllWorker = wrap("loadFontContainerAllWorker");
 
-        obj.evalFontPage = wrap("evalFontPage");
+        obj.evalPageFont = wrap("evalPageFont");
 		obj.evalPage = wrap("evalPage");
         obj.evalWords = wrap("evalWords");
 		obj.compareHOCR = wrap("compareHOCR");
+		obj.nudgePageFontSize = wrap("nudgePageFontSize");
+		obj.nudgePageBaseline = wrap("nudgePageBaseline");
 
 		obj.reinitialize = wrap("reinitialize");
         obj.recognize = wrap("recognize");

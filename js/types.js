@@ -51,4 +51,6 @@
  * @typedef {import("./objects/pageMetricsObjects.js").pageMetrics} pageMetrics
  */
 
-
+/**
+ * @typedef {import("./objects/imageObjects.js").compDebug} compDebug
+ */

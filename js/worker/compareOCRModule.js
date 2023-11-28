@@ -1,17 +1,18 @@
 import { getRandomAlphanum, imageStrToBlob } from "../miscUtils.js";
 import ocr from "../objects/ocrObjects.js";
 import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from "../fontUtils.js";
+import { compDebug } from "../objects/imageObjects.js";
 
 const browserMode = typeof process === "undefined";
 
 
-/** @type {OffscreenCanvasRenderingContext2D|CanvasRenderingContext2D} */
+/** @type {OffscreenCanvasRenderingContext2D} */
 let calcCtx;
-/** @type {OffscreenCanvasRenderingContext2D|CanvasRenderingContext2D} */
+/** @type {OffscreenCanvasRenderingContext2D} */
 let viewCtx0;
-/** @type {OffscreenCanvasRenderingContext2D|CanvasRenderingContext2D} */
+/** @type {OffscreenCanvasRenderingContext2D} */
 let viewCtx1;
-/** @type {OffscreenCanvasRenderingContext2D|CanvasRenderingContext2D} */
+/** @type {OffscreenCanvasRenderingContext2D} */
 let viewCtx2;
 
 // Browser case
@@ -81,6 +82,10 @@ export const initCanvasNode = async () => {
     }
   }
 
+  // This causes type errors in VSCode, as we are assigning an value of type `import('canvas').CanvasRenderingContext2D` to an object of type `OffscreenCanvasRenderingContext2D`.
+  // Leaving for now, as switching the type of `calcCtx`, `viewCtx0`, etc. to allow for either causes more errors than it solves. 
+  // The core issue is that multiple object types (the canvas and image inputs) change *together* based on environment (Node.js vs. browser),
+  // and it is unclear how to tell the type interpreter "when `calcCtx` is `import('canvas').CanvasRenderingContext2D` then the image input is always `import('canvas').Image".
   const canvasAlt = createCanvas(200, 200);
   calcCtx = canvasAlt.getContext('2d');
 
@@ -319,17 +324,45 @@ const drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFontSize
  * @param {string|ImageBitmap} img 
  */
 async function getImageBitmap(img) {
-  // In Node.js the input is assumed to be already compatible with the `canvas.drawImage` method.
-  // Additionally, `ImageBitmap` does not exist within the Node canvas package.
-  if (!browserMode) return img;
 
-  if (img instanceof ImageBitmap) {
-    return img;
+  if (img === undefined) throw new Error("Input is undefined");
+  if (img === null) throw new Error("Input is null");
+
+  if (typeof img === "string") {
+    if (browserMode) {
+      const imgBlob = imageStrToBlob(img);
+      const imgBit = await createImageBitmap(imgBlob);  
+      return imgBit;  
+    } else {
+      const { loadImage } = await import("canvas");
+      const imgBit = await loadImage(img);
+      return imgBit;
+    } 
   }
 
-  const imgBlob = imageStrToBlob(img);
-  const imgBit = await createImageBitmap(imgBlob);  
-  return imgBit;
+  // In Node.js the input is assumed to be already compatible with the `canvas.drawImage` method.
+  // Additionally, `ImageBitmap` does not exist within the Node canvas package.
+  // Second condition exists for type detection purposes. 
+  if (!browserMode && (typeof img !== "string") && (typeof img !== "number")) return img;
+
+  // if (typeof img === "number") {
+  //   const imgBit = binaryImageCache[String(img)];
+  //   if (!imgBit) throw new Error("Failed to retreive binary image through cache reference.")
+  //   return imgBit;
+  // }
+
+  // if (img instanceof ImageBitmap) {
+  //   return img;
+  // }
+
+  return img;
+
+  // const imgBlob = imageStrToBlob(img);
+  // const imgBit = await createImageBitmap(imgBlob);  
+
+  // binaryImageCache[String(img)] = imgBit;
+
+  // return imgBit;
 }
   
 /**
@@ -414,16 +447,12 @@ export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsOb
   let ctxView = view ? viewCtx1 : null;
 
   // Draw the words in wordsA
-  let x0;
-  let y0;
+  let x0 = wordsA[0].bbox[0];
+  let y0 = linebox[3] + baselineA[1] + baselineA[0] * (wordsA[0].bbox[0] - linebox[0]);;
   for (let i=0;i<wordsA.length;i++) {
     const word = wordsA[i];
     const wordIBox = word.bbox;
     const baselineY = linebox[3] + baselineA[1] + baselineA[0] * (wordIBox[0] - linebox[0]);
-    if (i == 0) {
-      x0 = wordIBox[0];
-      y0 = baselineY;
-    } 
     const x = wordIBox[0];
     const y = word.sup || word.dropcap ? wordIBox[3] : baselineY;
 
@@ -504,14 +533,17 @@ export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsOb
   
   }
 
-  let debugImg;
+  /**@type {?compDebug} */
+  let debugImg = null;
   if (view) {
     if (browserMode) {
-      debugImg = {
-        imageRaw: await viewCtx0.canvas.convertToBlob(),
-        imageA: await viewCtx1.canvas.convertToBlob(),
-        imageB: await viewCtx2.canvas.convertToBlob()
-      }
+
+      const imageRaw = await viewCtx0.canvas.convertToBlob();
+      const imageA = await viewCtx1.canvas.convertToBlob();
+      const imageB = await viewCtx2.canvas.convertToBlob();
+
+      debugImg = new compDebug(imageRaw, imageA, imageB, metricA, metricB);
+
     } else {
 
       const { dirname } = await import('path');
@@ -536,6 +568,8 @@ export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsOb
       
     }
   }
+
+
 
 
   return {metricA: metricA, metricB: metricB, debug: debugImg};
@@ -856,28 +890,11 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
                     // Apply ad-hoc penalties
                     hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
 
-                    if(debugLabel) {
+                    if(evalRes.debug) {
 
-                      const debugObj = {
-                        // Raw image
-                        imageRaw: evalRes.debug?.imageRaw,
-                        // Image + OCR "A" overlay
-                        imageA: evalRes.debug?.imageA,
-                        // Image + OCR "B" overlay
-                        imageB: evalRes.debug?.imageB,
-                        // Raw (pixel overlap) error metric "A"
-                        errorRawA: evalRes.metricA,
-                        // Raw (pixel overlap) error metric "B"
-                        errorRawB: evalRes.metricB,
-                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "A"
-                        errorAdjA: hocrAError,
-                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "B"
-                        errorAdjB: hocrBError,
-                        // OCR text "A"
-                        textA: wordA.text,
-                        // OCR text "B"
-                        textB: wordB.text
-                      }
+                      const debugObj = evalRes.debug;
+                      debugObj.errorAdjA = hocrAError;
+                      debugObj.errorAdjB = hocrBError;
 
                       debugImg.push(debugObj);
 
@@ -911,28 +928,11 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
                     // Apply ad-hoc penalties
                     hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
 
-                    if(debugLabel) {
+                    if(evalRes.debug) {
 
-                      const debugObj = {
-                        // Raw image
-                        imageRaw: evalRes.debug?.imageRaw,
-                        // Image + OCR "A" overlay
-                        imageA: evalRes.debug?.imageA,
-                        // Image + OCR "B" overlay
-                        imageB: evalRes.debug?.imageB,
-                        // Raw (pixel overlap) error metric "A"
-                        errorRawA: evalRes.metricA,
-                        // Raw (pixel overlap) error metric "B"
-                        errorRawB: evalRes.metricB,
-                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "A"
-                        errorAdjA: hocrAError,
-                        // Adjusted (pixel overlap + ad-hoc penalties) error metric "B"
-                        errorAdjB: hocrBError,
-                        // OCR text "A"
-                        textA: wordsAArr.map((x) => x.text).join(" "),
-                        // OCR text "B"
-                        textB: wordsBArr.map((x) => x.text).join(" ")
-                      }
+                      const debugObj = evalRes.debug;
+                      debugObj.errorAdjA = hocrAError;
+                      debugObj.errorAdjB = hocrBError;
 
                       debugImg.push(debugObj);
 
@@ -1147,9 +1147,10 @@ export async function checkWords(wordsA, binaryImage, pageMetricsObj, tessSchedu
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
  * @param {pageMetrics} params.pageMetricsObj 
+ * @param {?function} params.func
  * @returns 
  */
-export async function evalPage({page, binaryImage, pageMetricsObj}) {
+async function evalPageBase({page, binaryImage, pageMetricsObj, func}) {
 
   const binaryImageBit = await getImageBitmap(binaryImage);
 
@@ -1161,7 +1162,13 @@ export async function evalPage({page, binaryImage, pageMetricsObj}) {
 
   for (let j=0; j<page.lines.length; j++) {
 
-    const ocrLineJ = page.lines[j];
+    let ocrLineJ = page.lines[j];
+
+    if (func) {
+      ocrLineJ = await func(page.lines[j]);
+    } 
+
+    if (!ocrLineJ) continue;
   
     const evalRes = await evalWords({wordsA: ocrLineJ.words, binaryImage: binaryImageBit, pageMetricsObj: pageMetricsObj, options: {view: false}});
 
@@ -1174,53 +1181,151 @@ export async function evalPage({page, binaryImage, pageMetricsObj}) {
   return { wordsTotal: wordsTotal, metricTotal: metricTotal}
 }
 
-
-
 /**
  * @param {Object} params
- * @param {string} params.font 
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
  * @param {pageMetrics} params.pageMetricsObj 
  * @returns 
  */
-export async function evalFontPage({font, page, binaryImage, pageMetricsObj}) {
+export async function evalPage({page, binaryImage, pageMetricsObj}) {
+
+  return await evalPageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: null})
+}
+
+/**
+ * @param {Object} params
+ * @param {ocrPage} params.page 
+ * @param {string|ImageBitmap} params.binaryImage 
+ * @param {pageMetrics} params.pageMetricsObj 
+ * @param {string} params.font 
+ * @returns 
+ */
+export async function evalPageFont({page, binaryImage, pageMetricsObj, font}) {
+
+/**
+ * @param {ocrLine} ocrLineJ 
+ */
+  const transformLineFont = (ocrLineJ) => {
+    if (!fontAll.active) throw new Error("Fonts must be defined before running this function.");
+
+    // If the font is not set for a specific word, whether it is assumed sans/serif will be determined by the default font.
+    const lineFontType = ocrLineJ.words[0].font ? fontAll.active[ocrLineJ.words[0].font].normal.type : fontAll.active.Default.normal.type;
+  
+    if (fontAll.active[font].normal.type != lineFontType) return null;
+  
+    const ocrLineJClone = ocr.cloneLine(ocrLineJ);
+  
+    for (let i=0; i<ocrLineJClone.words.length; i++) {
+      ocrLineJClone.words[i].font = font;
+    }
+  
+    return ocrLineJClone;
+  
+  }
+
+  return await evalPageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: transformLineFont})
+}
+
+
+/**
+ * @param {Object} params
+ * @param {ocrPage} params.page 
+ * @param {string|ImageBitmap} params.binaryImage 
+ * @param {pageMetrics} params.pageMetricsObj 
+ * @param {function} params.func
+ * @param {boolean} params.view
+ * @returns 
+ */
+export async function nudgePageBase({page, binaryImage, pageMetricsObj, func, view = false}) {
 
   const binaryImageBit = await getImageBitmap(binaryImage);
 
   if (!fontAll.active) throw new Error("Fonts must be defined before running this function.");
   if (!calcCtx) throw new Error("Canvases must be defined before running this function.");
 
-  let metricTotal = 0;
-  let wordsTotal = 0;
+  let improveCt = 0;
+  let totalCt = 0;
+
+  const debugImg = [];
 
   for (let j=0; j<page.lines.length; j++) {
 
-    const ocrLineJ = page.lines[j];
+    let ocrLineJ = page.lines[j];
 
-    // If the font is not set for a specific word, whether it is assumed sans/serif will be determined by the default font.
-    const lineFontType = ocrLineJ.words[0].font ? fontAll.active[ocrLineJ.words[0].font].normal.type : fontAll.active.Default.normal.type;
-
-    if (fontAll.active[font].normal.type != lineFontType) continue;
-
-    const ocrLineJClone = ocr.cloneLine(ocrLineJ);
-
-    for (let i=0; i<ocrLineJClone.words.length; i++) {
-      ocrLineJClone.words[i].font = font;
-    }
+    async function tryNudge(x) {
+      const ocrLineJClone = ocr.cloneLine(ocrLineJ);
+      await func(ocrLineJClone, x);
   
-    const evalRes = await evalWords({wordsA: ocrLineJClone.words, binaryImage: binaryImageBit, pageMetricsObj: pageMetricsObj});
+      if (!ocrLineJClone) return;
+  
+      const evalRes = await evalWords({wordsA: ocrLineJ.words, wordsB: ocrLineJClone.words, binaryImage: binaryImageBit, pageMetricsObj: pageMetricsObj, options: {view: view, useAFontSize: false, useABaseline: false}});
+  
+      if (evalRes.debug) debugImg.push(evalRes.debug);
 
-    metricTotal = metricTotal + (evalRes.metricA * ocrLineJ.words.length);
+      if (evalRes.metricB < evalRes.metricA) {
+          return true;
+      } else {
+          return false;
+      }
+    }
 
-    wordsTotal = wordsTotal + ocrLineJ.words.length;
+    const res1 = await tryNudge(1);
+    if (res1) {
+      await func(ocrLineJ, 1);
+      improveCt = improveCt + 1;
+    } else {
+      const res2 = await tryNudge(-1);
+      if (res2) {
+        await func(ocrLineJ, -1);
+        improveCt = improveCt + 1;
+      }
+    }
+
+    totalCt = totalCt + 1;
 
   }
 
-  return { wordsTotal: wordsTotal, metricTotal: metricTotal}
+  return { page: page, improveCt: improveCt, totalCt: totalCt, debug: view ? debugImg : null}
 }
 
-// TODO: Fix types on this so type inference works correctly
+/**
+ * @param {Object} params
+ * @param {ocrPage} params.page 
+ * @param {string|ImageBitmap} params.binaryImage 
+ * @param {pageMetrics} params.pageMetricsObj 
+ * @param {boolean} params.view
+ * @returns 
+ */
+export async function nudgePageFontSize({page, binaryImage, pageMetricsObj, view = false}) {
+
+  const func = async (lineJ, x) => {
+    const fontSizeBase = await calcLineFontSize(lineJ, fontAll.active);
+    if (!fontSizeBase) return null;
+    lineJ._size = fontSizeBase + x;
+  }
+
+  return await nudgePageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: func, view: view});
+}
+
+
+/**
+ * @param {Object} params
+ * @param {ocrPage} params.page 
+ * @param {string|ImageBitmap} params.binaryImage 
+ * @param {pageMetrics} params.pageMetricsObj 
+ * @param {boolean} params.view
+ * @returns 
+ */
+export async function nudgePageBaseline({page, binaryImage, pageMetricsObj, view = false}) {
+
+  const func = async (lineJ, x) => {
+    lineJ.baseline[1] = lineJ.baseline[1] + x;
+  }
+
+  return await nudgePageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: func, view: view});
+}
+
 
 
 let fontAll = {
@@ -1242,3 +1347,6 @@ let fontAll = {
 export function setFontAll(_fontAll) {
   fontAll = _fontAll;
 }
+
+/**@type {Object<string, ImageBitmap>} */
+const binaryImageCache = {};

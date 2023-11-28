@@ -135,7 +135,7 @@ const getPageWord = (page, id) => {
 //  * @param {string} search
 //  */
 // const searchCurrentPageWords = (search) => {
-//     return searchPageWords(globalThis.hocrCurrent[currentPage.n], search);
+//     return searchPageWords(globalThis.ocrAll.active[currentPage.n], search);
 // }
 
 

@@ -14,14 +14,14 @@ import { evalOverlapDocument } from "./js/nudge.js";
 import { importOCR } from "./js/importOCR.js";
 
 import { renderText } from './js/exportRenderText.js';
-import { renderHOCR } from './js/exportRenderHOCR.js';
+import { renderHOCRBrowser } from './js/exportRenderHOCRBrowser.js';
 import { writeDocx } from './js/exportWriteDocx.js';
 import { writeXlsx } from './js/exportWriteTabular.js';
 
 import { renderPage } from './js/renderPage.js';
 import coords from './js/coordinates.js';
 
-import { recognizeAllPages } from "./js/recognize.js";
+import { recognizeAllPagesBrowser } from "./js/recognizeBrowser.js";
 
 import { selectDefaultFontsDocument } from "./js/fontEval.js";
 
@@ -531,7 +531,13 @@ document.getElementById('buildLabelOptionDefault')?.addEventListener('click', ()
 document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', () => { setBuildLabel("vanilla") });
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
-showConflictsElem.addEventListener('input', showDebugImages);
+showConflictsElem.addEventListener('input', () => {
+  if (!showConflictsElem.checked) {
+    document.getElementById("g")?.setAttribute("style", "display:none");
+  } else {
+    if (globalThis?.debugImg?.Combined?.[currentPage.n]) showDebugImages(globalThis.debugImg.Combined[currentPage.n]);
+  }
+});
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 recognizeAllElem.addEventListener('click', () => {
@@ -803,13 +809,13 @@ function findAllMatches(text) {
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
 
-  if (!globalThis.hocrCurrent[currentPage.n]) {
+  if (!globalThis.ocrAll.active[currentPage.n]) {
     find.text[currentPage.n] = "";
     return;
   }
 
   // Re-extract text from XML
-  find.text[currentPage.n] = ocr.getPageText(globalThis.hocrCurrent[currentPage.n]);
+  find.text[currentPage.n] = ocr.getPageText(globalThis.ocrAll.active[currentPage.n]);
 
   if (find.search) {
     // Count matches in current page
@@ -829,10 +835,10 @@ function updateFindStats() {
 // with every search. 
 function extractTextAll() {
 
-    const maxValue = globalThis.hocrCurrent.length;
+    const maxValue = globalThis.ocrAll.active.length;
   
     for (let g = 0; g < maxValue; g++) {
-      find.text[g] = ocr.getPageText(globalThis.hocrCurrent[g]);
+      find.text[g] = ocr.getPageText(globalThis.ocrAll.active[g]);
     }
   
 }
@@ -991,43 +997,34 @@ function setBuildLabel(x) {
 }
 
 
-export function addDisplayLabel(x) {
+/**
+ * 
+ * @param {string} label
+ */
+export function initOCRVersion(label) {
+
+  // Initialize a new array on `ocrAll` if one does not already exist
+  if (!globalThis.ocrAll[label]) {
+    globalThis.ocrAll[label] = Array(globalThis.pageCount);
+  }
+
   // Exit early if option already exists
   const existingOptions = displayLabelOptionsElem.children;
   for (let i = 0; i < existingOptions.length; i++) {
-    if (existingOptions[i].innerHTML == x) return;
+    if (existingOptions[i].innerHTML == label) return;
   }
   let option = document.createElement("a");
   option.setAttribute("class", "dropdown-item");
-  option.text = x;
+  option.text = label;
   displayLabelOptionsElem.appendChild(option);
 }
 
-globalThis.ocrAll = {};
+globalThis.ocrAll = {active: []};
 export function setCurrentHOCR(x) {
   const currentLabel = displayLabelTextElem.innerHTML.trim();
   if (!x.trim() || x == currentLabel) return;
 
-  if (currentLabel) {
-    if (!globalThis.ocrAll[currentLabel]) {
-      globalThis.ocrAll[currentLabel] = Array(globalThis.imageAll["native"].length);
-      for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-        globalThis.ocrAll[currentLabel][i] = {hocr:null};
-      }
-    }
-    for(let i=0;i<globalThis.hocrCurrent.length;i++) {
-      globalThis.ocrAll[currentLabel][i]["hocr"] = structuredClone(globalThis.hocrCurrent[i]);
-    }
-  }
-  if (!globalThis.ocrAll[x]) {
-    globalThis.ocrAll[x] = Array(globalThis.imageAll["native"].length);
-    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-      globalThis.ocrAll[x][i] = {hocr:null};
-    }
-  }
-
-  globalThis.hocrCurrent = globalThis.ocrAll[x].map((y) => y["hocr"]);
-
+  globalThis.ocrAll.active = globalThis.ocrAll[x];
   displayLabelTextElem.innerHTML = x;
 
   if (displayModeElem.value == "eval") {
@@ -1195,7 +1192,7 @@ function hideProgress2(id) {
   }
 }
 
-
+globalThis.debugImg = {};
 
 async function recognizeAllClick() {
 
@@ -1214,10 +1211,14 @@ async function recognizeAllClick() {
     }
   }
 
+  // Whether user uploaded data will be compared against in addition to both Tesseract engines
+  const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
+  const existingOCR = Object.keys(globalThis.ocrAll).length == 0;
+
   // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
   if(oemMode == "legacy" || oemMode == "lstm") {
     globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length, 0, true);
-    await recognizeAllPages(oemMode == "legacy", false);
+    await recognizeAllPagesBrowser(oemMode == "legacy", !existingOCR);
 
   } else if (oemMode == "combined") {
 
@@ -1226,21 +1227,18 @@ async function recognizeAllClick() {
     globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
 
     const time1a = Date.now();
-    await recognizeAllPages(true, true);
+    await recognizeAllPagesBrowser(true, !existingOCR);
     const time1b = Date.now();
     if (debugMode) console.log(`Tesseract Legacy runtime: ${time1b - time1a} ms`);
 
     const time2a = Date.now();
-    await recognizeAllPages(false, true);
+    await recognizeAllPagesBrowser(false, false);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract LSTM runtime: ${time2b - time2a} ms`);
 
   
-    // Whether user uploaded data will be compared against in addition to both Tesseract engines
-    const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
 
     if(debugMode) {
-      globalThis.debugImg = {};
       globalThis.debugImg["Combined"] = new Array(globalThis.imageAll["native"].length);
       for(let i=0; i < globalThis.imageAll["native"].length; i++) {
         globalThis.debugImg["Combined"][i] = [];
@@ -1248,7 +1246,7 @@ async function recognizeAllClick() {
     }
 
     if(userUploadMode) {
-      addDisplayLabel("Tesseract Combined");
+      initOCRVersion("Tesseract Combined");
       setCurrentHOCR("Tesseract Combined");  
       if (debugMode) {
         globalThis.debugImg["Tesseract Combined"] = new Array(globalThis.imageAll["native"].length);
@@ -1258,7 +1256,7 @@ async function recognizeAllClick() {
       }
     }
 
-    addDisplayLabel("Combined");
+    initOCRVersion("Combined");
     setCurrentHOCR("Combined");      
     
     const time3a = Date.now();
@@ -1274,15 +1272,17 @@ async function recognizeAllClick() {
         confThreshMed: parseInt(confThreshMedElem.value)
       };
 
-      const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["Tesseract Legacy"][i]["hocr"], pageB: ocrAll["Tesseract LSTM"][i]["hocr"], binaryImage: globalThis.imageAll["binary"][i].src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+      const imgElem = await globalThis.imageAll["binary"][i];
+
+      const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
       if (globalThis.debugLog === undefined) globalThis.debugLog = "";
       globalThis.debugLog += res.data.debugLog;
 
       globalThis.debugImg[tessCombinedLabel][i] = res.data.debugImg;
 
-      globalThis.ocrAll[tessCombinedLabel][i]["hocr"] = res.data.page;
-      globalThis.hocrCurrent[i] = ocrAll[tessCombinedLabel][i]["hocr"];
+      globalThis.ocrAll[tessCombinedLabel][i] = res.data.page;
+      globalThis.ocrAll.active[i] = ocrAll[tessCombinedLabel][i];
 
       // If the user uploaded data, compare to that as we
       if(userUploadMode) {
@@ -1296,14 +1296,15 @@ async function recognizeAllClick() {
             confThreshMed: parseInt(confThreshMedElem.value)    
           };
 
-          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i]["hocr"], pageB: ocrAll["Tesseract Combined"][i]["hocr"], binaryImage: globalThis.imageAll["binary"][i].src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+          const imgElem = await globalThis.imageAll["binary"][i];
+          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = "";
           globalThis.debugLog += res.data.debugLog;
 
           globalThis.debugImg["Combined"][i] = res.data.debugImg;
 
-          globalThis.ocrAll["Combined"][i]["hocr"] = res.data.page;
+          globalThis.ocrAll["Combined"][i] = res.data.page;
 
         } else {
           const compOptions = {
@@ -1317,18 +1318,19 @@ async function recognizeAllClick() {
             confThreshMed: parseInt(confThreshMedElem.value)    
           };
 
-          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i]["hocr"], pageB: ocrAll["Tesseract Combined"][i]["hocr"], binaryImage: globalThis.imageAll["binary"][i].src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+          const imgElem = await globalThis.imageAll["binary"][i];
+          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = "";
           globalThis.debugLog += res.data.debugLog;
 
           globalThis.debugImg["Combined"][i] = res.data.debugImg;
 
-          globalThis.ocrAll["Combined"][i]["hocr"] = res.data.page;
+          globalThis.ocrAll["Combined"][i] = res.data.page;
     
         }
 
-        globalThis.hocrCurrent[i] = ocrAll["Combined"][i]["hocr"];  
+        globalThis.ocrAll.active[i] = ocrAll["Combined"][i];  
       }
     }
     const time3b = Date.now();
@@ -1358,18 +1360,15 @@ async function recognizeAllClick() {
 function createGroundTruthClick() {
   if (!globalThis.ocrAll["Ground Truth"]) {
     globalThis.ocrAll["Ground Truth"] = Array(globalThis.imageAll["native"].length);
-    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
-      globalThis.ocrAll["Ground Truth"][i] = {hocr:null};
-    }
   }
 
-  for(let i=0;i<globalThis.hocrCurrent.length;i++) {
-    globalThis.ocrAll["Ground Truth"][i]["hocr"] = structuredClone(globalThis.hocrCurrent[i]);
+  for(let i=0;i<globalThis.ocrAll.active.length;i++) {
+    globalThis.ocrAll["Ground Truth"][i] = structuredClone(globalThis.ocrAll.active[i]);
   }
 
   // Use whatever the current HOCR is as a starting point
-  // globalThis.ocrAll["Ground Truth"]["hocr"] = structuredClone(globalThis.hocrCurrent);
-  addDisplayLabel("Ground Truth");
+  // globalThis.ocrAll["Ground Truth"] = structuredClone(globalThis.ocrAll.active);
+  initOCRVersion("Ground Truth");
   setCurrentHOCR("Ground Truth");
 
   let option = document.createElement("option");
@@ -1407,7 +1406,10 @@ async function compareGroundTruthClick(n) {
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
     globalThis.evalStats = new Array(globalThis.imageAll["native"].length);
     for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
-      const res = await compareHOCR(globalThis.hocrCurrent[i], globalThis.ocrAll["Ground Truth"][i]["hocr"], globalThis.imageAll["binary"][n], globalThis.pageMetricsArr[n], compOptions);
+
+      const imgElem = await globalThis.imageAll["binary"][i];
+      const res = (await globalThis.generalScheduler.addJob("compareHOCR", {pageA: globalThis.ocrAll.active[i], pageB: globalThis.ocrAll["Ground Truth"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions})).data;
+
       globalThis.evalStats[i] = res.metrics;
       if (globalThis.debugLog === undefined) globalThis.debugLog = "";
       globalThis.debugLog += res.debugLog;
@@ -1415,7 +1417,9 @@ async function compareGroundTruthClick(n) {
     globalThis.evalStatsConfig = evalStatsConfigNew;
   }
 
-  const res = await compareHOCR(globalThis.hocrCurrent[n], globalThis.ocrAll["Ground Truth"][n]["hocr"], globalThis.imageAll["binary"][n], globalThis.pageMetricsArr[n], compOptions);
+  const imgElem = await globalThis.imageAll["binary"][n];
+  const res = (await globalThis.generalScheduler.addJob("compareHOCR", {pageA: globalThis.ocrAll.active[n], pageB: globalThis.ocrAll["Ground Truth"][n], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[n], options: compOptions})).data;
+
   if (globalThis.debugLog === undefined) globalThis.debugLog = "";
   globalThis.debugLog += res.debugLog;
 
@@ -1536,31 +1540,31 @@ async function recognizeArea(imageCoords, wordMode = false) {
 
 }
 
-async function showDebugImages() {
-
-  if (!showConflictsElem.checked) {
-    document.getElementById("g")?.setAttribute("style", "display:none");
-    return;
-  }
+/**
+ * 
+ * @param {Array<compDebug>} imgArr 
+ */
+export async function showDebugImages(imgArr) {
 
   canvasDebug.clear();
   document.getElementById("g")?.setAttribute("style", "");
-
-  if (!globalThis.debugImg?.Combined?.[currentPage.n]) return;
-
-  const imgArr = globalThis.debugImg.Combined[currentPage.n];
 
   let top = 5;
   let leftMax = 150;
 
   for (let i=0; i<imgArr.length; i++) {
 
-    const img0 = imgArr[i]["imageRaw"];
-    const img1 = imgArr[i]["imageA"];
-    const img2 = imgArr[i]["imageB"];
+    const compDebugObj = imgArr[i];
+
+    const img0 = compDebugObj["imageRaw"];
+    const img1 = compDebugObj["imageA"];
+    const img2 = compDebugObj["imageB"];
 
     // Whether "B" option is chosen
-    const chosen = imgArr[i]["errorAdjB"] < imgArr[i]["errorAdjA"] ? 1 : 0;
+    let chosen = compDebugObj.errorRawB < compDebugObj.errorRawA;
+    if (compDebugObj.errorAdjB && compDebugObj.errorAdjA) {
+      chosen = compDebugObj.errorAdjB < compDebugObj.errorAdjA;
+    }
 
     const imgElem0 = document.createElement('img');
     await loadImage(img0, imgElem0);
@@ -1576,7 +1580,7 @@ async function showDebugImages() {
     const imgFab1 = new fabric.Image(imgElem1, {left: 5 + colWidth + 10, top: top + 15});
     const imgFab2 = new fabric.Image(imgElem2, {left: 5 + 2 * (colWidth + 10), top: top + 15});
 
-    let textbox1 = new fabric.Text(String(Math.round((imgArr[i]["errorAdjA"])*1e3)/1e3) + " [" + String(Math.round((imgArr[i]["errorRawA"])*1e3)/1e3) + "]", {
+    let textbox1 = new fabric.Text(String(Math.round((compDebugObj["errorAdjA"])*1e3)/1e3) + " [" + String(Math.round((compDebugObj["errorRawA"])*1e3)/1e3) + "]", {
       left: 5 + colWidth + 10,
       top: top,
       fill: "black",
@@ -1585,7 +1589,7 @@ async function showDebugImages() {
 
     canvasDebug.add(textbox1);
 
-    let textbox2 = new fabric.Text(String(Math.round((imgArr[i]["errorAdjB"])*1e3)/1e3) + " [" + String(Math.round((imgArr[i]["errorRawB"])*1e3)/1e3) + "]", {
+    let textbox2 = new fabric.Text(String(Math.round((compDebugObj["errorAdjB"])*1e3)/1e3) + " [" + String(Math.round((compDebugObj["errorRawB"])*1e3)/1e3) + "]", {
       left: 5 + 2 * (colWidth + 10),
       top: top,
       fill: "black",
@@ -1611,6 +1615,7 @@ async function showDebugImages() {
   canvasDebug.renderAll();
 }
 
+globalThis.showDebugImages = showDebugImages;
 
 var rect1;
 
@@ -1791,7 +1796,7 @@ function addWordClick() {
 
     const wordBox = [rectLeftHOCR, rectTopHOCR, rectRightHOCR, rectBottomHOCR];
 
-    const pageObj = new ocr.ocrPage(currentPage.n, globalThis.hocrCurrent[currentPage.n].dims);
+    const pageObj = new ocr.ocrPage(currentPage.n, globalThis.ocrAll.active[currentPage.n].dims);
     // Arbitrary values of font statistics are used since these are replaced later
     const lineObj = new ocr.ocrLine(pageObj, wordBox, [0,0], 10, null);
     pageObj.lines = [lineObj];
@@ -1799,11 +1804,11 @@ function addWordClick() {
     const wordObj = new ocr.ocrWord(lineObj, wordText, wordBox, wordIDNew);
     lineObj.words = [wordObj];
 
-    combineData(pageObj, globalThis.hocrCurrent[currentPage.n], globalThis.pageMetricsArr[currentPage.n], true, false);
+    combineData(pageObj, globalThis.ocrAll.active[currentPage.n], globalThis.pageMetricsArr[currentPage.n], true, false);
 
     // Get line word was added to in main data.
     // This will have different metrics from `lineObj` when the line was combined into an existing line.
-    const wordObjNew = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDNew);
+    const wordObjNew = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDNew);
 
     // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
     let angleAdjX = 0;
@@ -1859,9 +1864,6 @@ function addWordClick() {
   });
 }
 
-/** @type {Array<ocrPage>} */ 
-globalThis.hocrCurrent = [];
-
 /** @type {Array<pageMetrics>} */
 globalThis.pageMetricsArr = [];
 
@@ -1869,9 +1871,10 @@ globalThis.pageMetricsArr = [];
 async function clearFiles() {
 
   currentPage.n = 0;
+  globalThis.pageCount = 0;
 
   globalThis.imageAll = {};
-  globalThis.hocrCurrent = [];
+  globalThis.ocrAll.active = [];
   globalThis.layout = [];
   globalThis.fontMetricsObj = null;
   globalThis.pageMetricsArr = [];
@@ -1965,17 +1968,19 @@ async function importOCRFilesSupp() {
   if (ocrData.abbyyMode) format = "abbyy";
   if (ocrData.stextMode) format = "stext";
 
-  convertOCRAll(ocrData.hocrRaw, false, format);
+  convertOCRAll(ocrData.hocrRaw, false, format, ocrName, false);
 
   uploadOCRNameElem.value = '';
   uploadOCRFileElem.value = '';
   new bootstrap.Collapse(uploadOCRDataElem, { toggle: true })
 
-  addDisplayLabel(ocrName);
+  initOCRVersion(ocrName);
   setCurrentHOCR(ocrName);
   displayLabelTextElem.disabled = true;
 
 }
+
+globalThis.pageCount = 0;
 
 async function importFiles(curFiles) {
 
@@ -2143,12 +2148,19 @@ async function importFiles(curFiles) {
   }
 
   let existingLayout = false;
+  const oemName = "User Upload";
+
   if (xmlModeImport) {
 
     document.getElementById("combineModeOptions")?.setAttribute("style", "");
 
-    addDisplayLabel("User Upload");
-    displayLabelTextElem.innerHTML = "User Upload";
+    initOCRVersion(oemName);
+    if (!globalThis.ocrAll[oemName]) {
+      globalThis.ocrAll[oemName] = Array(globalThis.imageAll["native"].length);
+    }
+    setCurrentHOCR(oemName);
+
+    displayLabelTextElem.innerHTML = oemName;
 
     const ocrData = await importOCR(Array.from(hocrFilesAll), true);
 
@@ -2193,14 +2205,13 @@ async function importFiles(curFiles) {
     }
   }
 
-  pageCount = pageCountImage ?? pageCountHOCR;
+  globalThis.pageCount = pageCountImage ?? pageCountHOCR;
 
-  globalThis.hocrCurrent = Array(pageCount);
   globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw || Array(pageCount);
   globalThis.defaultLayout = {};
 
   if (!existingLayout) {
-    globalThis.layout = Array(pageCount);
+    globalThis.layout = Array(globalThis.pageCount);
     for(let i=0;i<globalThis.layout.length;i++) {
       globalThis.layout[i] = {default: true, boxes: {}};
     }  
@@ -2209,21 +2220,21 @@ async function importFiles(curFiles) {
   // Global object that contains arrays with page images or related properties. 
   globalThis.imageAll = {
     // Unedited images uploaded by user (unused when user provides a PDF).
-    nativeSrc: Array(pageCount),
+    nativeSrc: Array(globalThis.pageCount),
     // Native images.  When the user uploads images directly, this contains whatever they uploaded.
     // When a user uploads a pdf, this will contain the images rendered by muPDF (either grayscale or color depending on setting).
-    native: Array(pageCount),
+    native: Array(globalThis.pageCount),
     // Binarized image.
-    binary: Array(pageCount),
+    binary: Array(globalThis.pageCount),
     // Whether the native image was re-rendered with rotation applied. 
-    nativeRotated: Array(pageCount),
+    nativeRotated: Array(globalThis.pageCount),
     // Whether the binarized image was re-rendered with rotation applied. 
-    binaryRotated: Array(pageCount),
+    binaryRotated: Array(globalThis.pageCount),
     // [For pdf uploads only] Whether the "native" image was rendered in color or grayscale.
-    nativeColor: Array(pageCount)
+    nativeColor: Array(globalThis.pageCount)
   }
 
-  inputDataModes.xmlMode = new Array(pageCount);
+  inputDataModes.xmlMode = new Array(globalThis.pageCount);
   if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
     inputDataModes.xmlMode.fill(true);
   } else {
@@ -2234,7 +2245,7 @@ async function importFiles(curFiles) {
       // Render first handful of pages for pdfs so the interface starts off responsive
       // In the case of OCR data, this step is triggered elsewhere after all the data loads
       displayPage(0);
-      renderPDFImageCache([...Array(Math.min(pageCount, 5)).keys()]);
+      renderPDFImageCache([...Array(Math.min(globalThis.pageCount, 5)).keys()]);
   }
 
   let imageN = -1;
@@ -2244,11 +2255,11 @@ async function importFiles(curFiles) {
   // Both OCR data and individual images (.png or .jpeg) contribute to the import loading bar
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   if (inputDataModes.imageMode || xmlModeImport || globalThis.inputDataModes.extractTextMode) {
-    const progressMax = inputDataModes.imageMode && xmlModeImport ? pageCount * 2 : pageCount;
+    const progressMax = inputDataModes.imageMode && xmlModeImport ? globalThis.pageCount * 2 : globalThis.pageCount;
     globalThis.convertPageActiveProgress = initializeProgress("import-progress-collapse", progressMax);
   }
 
-  for (let i = 0; i < pageCount; i++) {
+  for (let i = 0; i < globalThis.pageCount; i++) {
 
     if (inputDataModes.imageMode) {
 
@@ -2280,7 +2291,7 @@ async function importFiles(curFiles) {
     if (stextMode) format = "stext";
   
     // Process HOCR using web worker, reading from file first if that has not been done already
-    convertOCRAll(globalThis.hocrCurrentRaw, true, format).then(async () => {
+    convertOCRAll(globalThis.hocrCurrentRaw, true, format, oemName).then(async () => {
       await calculateOverallMetrics();
       hideProgress2("import-progress-collapse");
       downloadElem.disabled = false;
@@ -2297,7 +2308,7 @@ async function importFiles(curFiles) {
   }
 
   pageNumElem.value = "1";
-  pageCountElem.textContent = pageCount;
+  pageCountElem.textContent = String(globalThis.pageCount);
 
 }
 
@@ -2339,7 +2350,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
   colorMode = colorMode || colorModeElem.value;
   const colorName = colorMode == "binary" ? "binary" : "native";
 
-  await Promise.allSettled(pagesArr.map((n) => {
+  await Promise.all(pagesArr.map((n) => {
 
     if (!globalThis.imageAll.native || n < 0 || n >= globalThis.imageAll.native.length) return;
 
@@ -2486,11 +2497,11 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   // (1) No data has been imported
   const noInput = !inputDataModes.xmlMode[n] && !(inputDataModes.imageMode || inputDataModes.pdfMode);
   // (2) XML data should exist but does not (yet)
-  const xmlMissing = inputDataModes.xmlMode[n] && (globalThis.hocrCurrent.length == 0 || globalThis.hocrCurrent[n] === undefined || globalThis.hocrCurrent[n] === null || globalThis.pageMetricsArr[n].dims === undefined);
+  const xmlMissing = inputDataModes.xmlMode[n] && (globalThis.ocrAll.active.length == 0 || globalThis.ocrAll.active[n] === undefined || globalThis.ocrAll.active[n] === null || globalThis.pageMetricsArr[n].dims === undefined);
   // (3) Image data should exist but does not (yet)
   const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null);
   // (4) PDF data should exist but does not (yet)
-  const pdfMissing = inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined" || globalThis.pageMetricsArr[n].dims === undefined);
+  const pdfMissing = inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined" || globalThis.pageMetricsArr[n]?.dims === undefined);
 
   if (noInput || xmlMissing || imageMissing || pdfMissing) {
     console.log("Exiting renderPageQueue early");
@@ -2510,7 +2521,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   });
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
-  if (loadXML && inputDataModes.xmlMode[n] && globalThis.hocrCurrent[n]) {
+  if (loadXML && inputDataModes.xmlMode[n] && globalThis.ocrAll.active[n]) {
     // Compare selected text to ground truth in eval mode
     if (displayModeElem.value == "eval") {
       console.time();
@@ -2638,7 +2649,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
 
 
   if (mode == "screen" && currentPage.n == n && inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, globalThis.hocrCurrent[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, currentPage.leftAdjX, fontAll);
+    await renderPage(canvas, globalThis.ocrAll.active[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, currentPage.leftAdjX, fontAll);
     if (currentPage.n == n && currentPage.renderNum == renderNum) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
       await selectDisplayMode(displayModeElem.value);
@@ -2658,7 +2669,7 @@ var working = false;
 // Function for navigating UI to arbitrary page.  Invoked by all UI elements that change page. 
 export async function displayPage(n) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered. 
-  if (isNaN(n) || n < 0 || n > (globalThis.hocrCurrent.length - 1) || working) {
+  if (isNaN(n) || n < 0 || n > (globalThis.pageCount - 1) || working) {
     console.log("Exiting from displayPage early.");
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
     pageNumElem.value = (currentPage.n + 1).toString();
@@ -2697,7 +2708,7 @@ export async function displayPage(n) {
 
   await renderPageQueue(currentPage.n);
 
-  showDebugImages();
+  if (showConflictsElem.checked && globalThis?.debugImg?.Combined?.[currentPage.n]) showDebugImages(globalThis.debugImg.Combined[currentPage.n])
 
   // Render background images 1 page ahead and behind
   const nMax = globalThis.imageAll.nativeSrc.length;
@@ -2813,13 +2824,14 @@ export async function calculateOverallMetrics() {
       optimizeFontElem.checked = true;
       setDefaultFontAuto(globalThis.fontMetricsObj);
       await enableDisableFontOpt(true);
+      renderPageQueue(currentPage.n);
     }
 
     // Evaluate default fonts using up to 5 pages. 
     const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
     await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
     // Select best default fonts
-    const change = await selectDefaultFontsDocument(globalThis.hocrCurrent.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), fontAll);
+    const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), fontAll);
     // Re-render current page if default font changed
     if (change) renderPageQueue(currentPage.n);
 
@@ -2885,10 +2897,10 @@ async function handleDownload() {
   if (download_type != "hocr" && download_type != "xlsx" && enableLayoutElem.checked) {
     // Reorder HOCR elements according to layout boxes
     for (let i=minValue; i<=maxValue; i++){
-      hocrDownload.push(reorderHOCR(globalThis.hocrCurrent[i], globalThis.layout[i]));
+      hocrDownload.push(reorderHOCR(globalThis.ocrAll.active[i], globalThis.layout[i]));
     }
   } else {
-    hocrDownload = globalThis.hocrCurrent;
+    hocrDownload = globalThis.ocrAll.active;
   }
 
   if (download_type == "pdf") {
@@ -3001,7 +3013,7 @@ async function handleDownload() {
     }
     saveAs(pdfBlob, fileName);
   } else if (download_type == "hocr") {
-    renderHOCR(globalThis.hocrCurrent, globalThis.fontMetricsObj, globalThis.layout);
+    renderHOCRBrowser(globalThis.ocrAll.active, globalThis.fontMetricsObj, globalThis.layout);
   } else if (download_type == "text") {
 
     const removeLineBreaks = reflowCheckboxElem.checked;

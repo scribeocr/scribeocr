@@ -14,7 +14,7 @@ export function deleteSelectedWords(){
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
     const wordIDI = selectedObjects[i].wordID;
-    ocr.deletePageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+    ocr.deletePageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
     window.canvas.remove(selectedObjects[i]);
     canvas.renderAll();
   }
@@ -35,7 +35,7 @@ export async function changeWordFontStyle(style){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
 
-    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
 
     if (!wordObj) {
       console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
@@ -82,7 +82,7 @@ export async function changeWordFontSize(fontSize){
 
     const wordIDI = wordI.wordID;
 
-    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
 
     if (!wordObj) {
       console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
@@ -112,7 +112,7 @@ export async function changeWordFontFamily(fontName){
 
     const fontI = fontAll.active[fontNameLookup][wordI.fontStyleLookup];
 
-    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
 
     if (!wordObj) {
       console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
@@ -172,7 +172,7 @@ export function toggleSuperSelectedWords(){
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
 
-    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
 
     if (!wordObj) {
       console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
@@ -187,6 +187,8 @@ export function toggleSuperSelectedWords(){
 }
 
 var objectsLine;
+
+const baselineRange = 50;
 export function adjustBaseline(){
 
   const selectedObjects = window.canvas.getActiveObjects();
@@ -195,7 +197,7 @@ export function adjustBaseline(){
   // For some reason the text jumps around the page when >1 word is selected
   window.canvas.setActiveObject(selectedObjects[0]);
 
-  document.getElementById("rangeBaseline").value = 100 + selectedObjects[0].baselineAdj;
+  document.getElementById("rangeBaseline").value = baselineRange + selectedObjects[0].baselineAdj;
   window.bsCollapse.show();
 
   const lineI = selectedObjects[0].line;
@@ -218,7 +220,7 @@ export function adjustBaseline(){
 export function adjustBaselineRange(value){
   for(let i=0;i<objectsLine.length;i++){
     const objectI = objectsLine[i];
-    objectI.set('top', objectI.topOrig + (parseInt(value) - 100));
+    objectI.set('top', objectI.topOrig + (parseInt(value) - baselineRange));
   }
 
   window.canvas.requestRenderAll();
@@ -233,7 +235,7 @@ export function adjustBaselineRange(value){
  */
 export function adjustBaselineRangeChange(value){
 
-  value = parseInt(value) - 100;
+  value = parseInt(value) - baselineRange;
   let valueChange = value - objectsLine[0].baselineAdj;
 
   for(let i=0;i<objectsLine.length;i++){
@@ -242,7 +244,7 @@ export function adjustBaselineRangeChange(value){
 
     wordI.set('baselineAdj', value);
 
-    const wordObj = ocr.getPageWord(globalThis.hocrCurrent[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
 
     if (!wordObj) {
       console.warn("Canvas element contains ID" + wordIDI + "that does not exist in OCR data.  Skipping word.");
