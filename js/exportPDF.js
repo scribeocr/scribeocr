@@ -292,7 +292,6 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     const wordBox = word.bbox;
 
     const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;;
-    const fontStyle = word.style;
 
     let fillColor = "0 0 0 rg";
     if (textMode == "proof") {
@@ -330,12 +329,12 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
     textStream += fillColor + "\n";
 
-    const fontI = /**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][fontStyle]);
-    const fontOpentypeI = await fontI.opentype;
+    const wordFont = /**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][word.style]);
+    const wordFontOpentype = await wordFont.opentype;
 
     // Set font and font size
-    textStream += pdfFonts[wordFontFamily][fontStyle] + " " + String(lineFontSize) + " Tf\n";
-    pdfFontCurrent = pdfFonts[wordFontFamily][fontStyle];
+    textStream += pdfFonts[wordFontFamily][word.style] + " " + String(lineFontSize) + " Tf\n";
+    pdfFontCurrent = pdfFonts[wordFontFamily][word.style];
 
     // Reset baseline to line baseline
     textStream += "0 Ts\n";
@@ -344,9 +343,9 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     if (!wordFontSize) {
       if (word.sup) {
         // All superscripts are assumed to be numbers for now
-        wordFontSize = await getFontSize(fontI, wordBox[3] - wordBox[1], "1");
+        wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], "1");
       } else if (word.dropcap) {
-        wordFontSize = await getFontSize(fontI, wordBox[3] - wordBox[1], wordText.slice(0, 1));
+        wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], wordText.slice(0, 1));
       } else {
         wordFontSize = lineFontSize;
       }
@@ -355,13 +354,13 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     let tz = 100;
     if (word.dropcap) {
       const wordWidthActual = wordBox[2] - wordBox[0];
-      const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontI, wordFontSize)).visualWidth;
+      const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFont, wordFontSize)).visualWidth;
       tz = (wordWidthActual / wordWidthFont) * 100;
     }
 
-    const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
+    const wordFirstGlyphMetrics = wordFontOpentype.charToGlyph(wordText.substr(0, 1)).getMetrics();
     
-    const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
+    const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
 
     // Move to next line
     const lineLeftAdj = wordBox[0] - wordLeftBearing * (tz / 100) + angleAdjXLine;
@@ -382,8 +381,9 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     let wordRightBearingLast = 0;
     let charSpacing = 0;
     let spacingAdj = 0;
+    let wordFontOpentypeLast = wordFontOpentype;
     let wordFontFamilyLast = wordFontFamily;
-    let fontStyleLast = fontStyle;
+    let wordStyleLast = word.style;
     let fontSizeLast = lineFontSize;
     let tsCurrent = 0;
     let tzCurrent = 100;
@@ -406,8 +406,8 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       const wordBox = word.bbox;
 
       const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;
-      const wordFont = fontAll.active[wordFontFamily].normal;
-      const fontStyle = word.style;
+      const wordFont = /**@type {fontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
+      const wordFontOpentype = await wordFont.opentype;
 
       let wordFontSize = word.size;
       if (!wordFontSize) {
@@ -453,15 +453,14 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       let tz = 100;
       if (word.dropcap) {
         const wordWidthActual = wordBox[2] - wordBox[0];
-        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontAll.active[wordFontFamilyLast][fontStyle], wordFontSize)).visualWidth;
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontAll.active[wordFontFamilyLast][word.style], wordFontSize)).visualWidth;
         tz = (wordWidthActual / wordWidthFont) * 100;
       }  
 
-      const font = await (/**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][fontStyle])).opentype;
-      const pdfFont = pdfFonts[wordFontFamily][fontStyle];
+      const pdfFont = pdfFonts[wordFontFamily][word.style];
 
-      let wordFirstGlyphMetrics = font.charToGlyph(wordText.substr(0, 1)).getMetrics();
-      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / font.unitsPerEm);
+      let wordFirstGlyphMetrics = wordFontOpentype.charToGlyph(wordText.substr(0, 1)).getMetrics();
+      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
 
       // Add space character between words
       if(j > 0) {
@@ -479,8 +478,8 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
         // The space between words determined by:
         // (1) The right bearing of the last word, (2) the left bearing of the current word, (3) the width of the space character between words,
         // (4) the current character spacing value (applied twice--both before and after the space character).
-        // const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, fontStyleLast)).visualWidth;
-        const spaceWidth = fontOpentypeI.charToGlyph(" ").advanceWidth * (fontSizeLast / fontOpentypeI.unitsPerEm);
+        // const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, wordStyleLast)).visualWidth;
+        const spaceWidth = wordFontOpentypeLast.charToGlyph(" ").advanceWidth * (fontSizeLast / wordFontOpentypeLast.unitsPerEm);
 
         const wordSpaceExpected = (spaceWidth + charSpacing * 2 + wordRightBearingLast) * (tzCurrent / 100) + wordLeftBearing;
       
@@ -493,24 +492,24 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       }
       wordBoxLast = wordBox;
       wordFontFamilyLast = wordFontFamily;
-      fontStyleLast = fontStyle;
+      wordStyleLast = word.style;
 
-      let wordLastGlyphMetrics = font.charToGlyph(wordText.substr(-1)).getMetrics();
-      wordRightBearingLast = wordLastGlyphMetrics.rightSideBearing * (wordFontSize / font.unitsPerEm);
+      let wordLastGlyphMetrics = wordFontOpentype.charToGlyph(wordText.substr(-1)).getMetrics();
+      wordRightBearingLast = wordLastGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm);
 
       // In general, we assume that (given our adjustments to character spacing) the rendered word has the same width as the image of that word.
       // However, this assumption does not hold for single-character words, as there is no space between character to adjust. 
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space. 
       // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
       if(wordText.length == 1 && !word.dropcap) {
-        spacingAdj = (wordBox[2] - wordBox[0]) - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / font.unitsPerEm));
+        spacingAdj = (wordBox[2] - wordBox[0]) - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / wordFontOpentype.unitsPerEm));
       } else {
         spacingAdj = 0;
       }
 
       textStream += " ] TJ\n";
 
-      charSpacing = await calcCharSpacing(wordText, fontAll.active[wordFontFamily][fontStyle], wordFontSize, wordBox[2] - wordBox[0]) || 0;
+      charSpacing = await calcCharSpacing(wordText, wordFont, wordFontSize, wordBox[2] - wordBox[0]) || 0;
 
       if (pdfFont != pdfFontCurrent || wordFontSize != fontSizeLast) {
         textStream += pdfFont + " " + String(wordFontSize) + " Tf\n";
@@ -536,21 +535,21 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
       // Non-ASCII and special characters are encoded/escaped using winEncodingLookup
       const wordTextArr = wordText.split("");
-      const wordTextCodeArr = wordTextArr.map((x) => String(font.charToGlyph(x).index));
       for(let i=0; i<wordTextArr.length; i++) {
         const letter = winEncodingLookup[wordTextArr[i]];
         if (letter) {
 
-          // const kern = i + 1 < wordTextArr.length ? font.kerningPairs[wordTextCodeArr[i] + "," + wordTextCodeArr[i+1]] * (-1000 / font.unitsPerEm) || 0 : 0;
-          const kern = i + 1 < wordTextArr.length ? fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(wordTextArr[i]), fontOpentypeI.charToGlyph(wordTextArr[i+1])) * (-1000 / font.unitsPerEm) || 0 : 0;
+          const kern = i + 1 < wordTextArr.length ? wordFontOpentype.getKerningValue(wordFontOpentype.charToGlyph(wordTextArr[i]), wordFontOpentype.charToGlyph(wordTextArr[i+1])) * (-1000 / wordFontOpentype.unitsPerEm) || 0 : 0;
 
           textStream += "(" + letter + ") " + String(Math.round(kern * 1e6) / 1e6) + " ";
         } else {
           // When the character is not in winEncodingLookup a space is inserted, with extra space to match the width of the missing character
-          const kern = (font.charToGlyph(wordTextArr[i]).advanceWidth - font.charToGlyph(" ").advanceWidth) * (-1000 / font.unitsPerEm) || 0;
+          const kern = (wordFontOpentype.charToGlyph(wordTextArr[i]).advanceWidth - wordFontOpentype.charToGlyph(" ").advanceWidth) * (-1000 / wordFontOpentype.unitsPerEm) || 0;
           textStream += "(" + " " + ") " + String(Math.round(kern * 1e6) / 1e6) + " ";
         }
       }
+
+      wordFontOpentypeLast = wordFontOpentype;
   
     }
 
