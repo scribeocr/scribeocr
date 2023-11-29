@@ -93,27 +93,16 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
                         // If there is no wordID then this object must be something other than a word
                         if (!wordI.wordID) continue;
 
-                        // Font style and font size consider all words in the group
-                        if (fontFamilyGroup == null) {
-                            fontFamilyGroup = wordI.fontFamily.replace(/ Small Caps/, "");
-                        } else {
-                            if (wordI.fontFamily.replace(/ Small Caps/, "") != fontFamilyGroup) {
-                                singleFontFamily = false;
-                            }
-                        }
+                        if (!fontFamilyGroup) fontFamilyGroup = wordI.fontFamilyLookup;
+                        if (fontFamilyGroup !== wordI.fontFamilyLookup) singleFontFamily = false;
 
-                        if (fontSizeGroup == null) {
-                            fontSizeGroup = wordI.fontSize;
-                        } else {
-                            if (wordI.fontSize != fontSizeGroup) {
-                                singleFontSize = false;
-                            }
-                        }
+                        if (!fontSizeGroup) fontSizeGroup = wordI.fontSize;
+                        if (fontSizeGroup !== wordI.fontSize) singleFontSize = false;
 
                         // Style toggles only consider the first word in the group
                         if (supGroup == null) supGroup = wordI.wordSup;
-                        if (italicGroup == null) italicGroup = wordI.fontStyle == "italic";
-                        if (smallCapsGroup == null) smallCapsGroup = /Small Caps/i.test(wordI.fontFamily);
+                        if (italicGroup == null) italicGroup = wordI.fontStyleLookup == "italic";
+                        if (smallCapsGroup == null) smallCapsGroup = wordI.fontStyleLookup == "small-caps";
                     }
 
                     this.group.style = {
@@ -140,19 +129,18 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
 
                 // If only one word is selected, we can just use the values for that one word
             } else {
-                const fontFamily = this.fontFamily.replace(/ Small Caps/, "");
                 if (!this.defaultFontFamily) {
-                    wordFontElem.value = fontFamily;
+                    wordFontElem.value = this.fontFamilyLookup;
                 }
                 fontSizeElem.value = this.fontSize;
                 if (this.wordSup != styleSuperElem.classList.contains("active")) {
                     styleSuperButton.toggle();
                 }
-                const italic = this.fontStyle == "italic";
+                const italic = this.fontStyleLookup == "italic";
                 if (italic != styleItalicElem.classList.contains("active")) {
                     styleItalicButton.toggle();
                 }
-                const smallCaps = /Small Caps/i.test(this.fontFamily);
+                const smallCaps = this.fontStyleLookup == "small-caps";
                 if (smallCaps != styleSmallCapsElem.classList.contains("active")) {
                     styleSmallCapsButton.toggle();
                 }
