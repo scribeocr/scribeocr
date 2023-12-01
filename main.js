@@ -723,7 +723,7 @@ async function optimizeFontContainerAll() {
 const fontPrivate = loadFontContainerAll({
 Carlito: { normal: "Carlito-Regular.woff", italic: "Carlito-Italic.woff", smallCaps: "Carlito-SmallCaps.woff"},
 Century: { normal: "C059-Roman.woff", italic: "C059-Italic.woff", smallCaps: "C059-SmallCaps.woff" },
-Garamond: { normal: "QTGaromand.woff", italic: "NewG8-Ita.woff", smallCaps: "ugmr8a-SmallCaps.woff"},
+Garamond: { normal: "QTGaromand.woff", italic: "QTGaromand-Italic.woff", smallCaps: "QTGaromand-SmallCaps.woff"},
 NimbusRomNo9L: { normal: "NimbusRomNo9L-Reg.woff", italic: "NimbusRomNo9L-RegIta.woff", smallCaps: "NimbusRomNo9L-RegSmallCaps.woff" },
 NimbusSans:  { normal: "NimbusSanL-Reg.woff", italic: "NimbusSanL-RegIta.woff", smallCaps: "NimbusSanL-RegSmallCaps.woff" }
 });
