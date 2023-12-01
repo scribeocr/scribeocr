@@ -1,7 +1,7 @@
 
 import { win1252Chars, winEncodingLookup } from "../fonts/encoding.js";
 
-import { getFontSize, calcCharSpacing, calcWordMetrics, calcLineFontSize } from "./fontUtils.js";
+import { calcWordFontSize, calcCharSpacing, calcWordMetrics } from "./fontUtils.js";
 
 import ocr from "./objects/ocrObjects.js";
 
@@ -264,8 +264,6 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
   textStream += "BT\n";
 
-  let lineFontSize = 10;
-
   // Locations are often specified using an offset against the leftmost point of the current line.
   let lineOrigin = [0,0];
 
@@ -283,8 +281,6 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
     const baseline = line.baseline;
     const linebox = line.bbox;
-
-    lineFontSize = (await calcLineFontSize(line, fontAll.active)) || lineFontSize;
     
     const word = words[0];
     const wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
@@ -332,24 +328,14 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     const wordFont = /**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][word.style]);
     const wordFontOpentype = await wordFont.opentype;
 
+    let wordFontSize = await calcWordFontSize(word, fontAll.active);
+
     // Set font and font size
-    textStream += pdfFonts[wordFontFamily][word.style] + " " + String(lineFontSize) + " Tf\n";
+    textStream += pdfFonts[wordFontFamily][word.style] + " " + String(wordFontSize) + " Tf\n";
     pdfFontCurrent = pdfFonts[wordFontFamily][word.style];
 
     // Reset baseline to line baseline
     textStream += "0 Ts\n";
-
-    let wordFontSize = word.size;
-    if (!wordFontSize) {
-      if (word.sup) {
-        // All superscripts are assumed to be numbers for now
-        wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], "1");
-      } else if (word.dropcap) {
-        wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], wordText.slice(0, 1));
-      } else {
-        wordFontSize = lineFontSize;
-      }
-    }
 
     let tz = 100;
     if (word.dropcap) {
@@ -384,7 +370,7 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     let wordFontOpentypeLast = wordFontOpentype;
     let wordFontFamilyLast = wordFontFamily;
     let wordStyleLast = word.style;
-    let fontSizeLast = lineFontSize;
+    let fontSizeLast = wordFontSize;
     let tsCurrent = 0;
     let tzCurrent = 100;
 
@@ -409,17 +395,7 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       const wordFont = /**@type {fontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
       const wordFontOpentype = await wordFont.opentype;
 
-      let wordFontSize = word.size;
-      if (!wordFontSize) {
-        if (word.sup) {
-          // All superscripts are assumed to be numbers for now
-          wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], "1");
-        } else if (word.dropcap) {
-          wordFontSize = await getFontSize(wordFont, wordBox[3] - wordBox[1], wordText.slice(0, 1));
-        } else {
-          wordFontSize = lineFontSize;
-        }
-      }
+      let wordFontSize = await calcWordFontSize(word, fontAll.active);
 
       let fillColor = "0 0 0 rg";
       if (textMode == "proof") {

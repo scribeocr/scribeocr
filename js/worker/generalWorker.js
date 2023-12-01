@@ -92,8 +92,8 @@ const fontAll = {
 setFontAll(fontAll);
   
   
-async function loadFontContainerAllWorker({CarlitoSrc, CenturySrc, NimbusRomNo9LSrc, NimbusSansSrc, opt = false}) {
-  fontAll.active = await loadFontContainerAll(CarlitoSrc, CenturySrc, NimbusRomNo9LSrc, NimbusSansSrc, opt);
+async function loadFontContainerAllWorker(src, opt) {
+  fontAll.active = await loadFontContainerAll(src, opt);
   return true;
 }
 

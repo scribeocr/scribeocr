@@ -1,5 +1,5 @@
 
-import { getFontSize, calcWordMetrics, calcCharSpacing, calcLineFontSize } from "./fontUtils.js"
+import { calcWordFontSize, calcWordMetrics, calcCharSpacing, calcLineFontSize } from "./fontUtils.js"
 import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
 import ocr from "./objects/ocrObjects.js";
 import { ITextWord } from "./objects/fabricObjects.js";
@@ -81,20 +81,12 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
       const fontI = /**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][fontStyle]);
       const fontOpentypeI = await fontI.opentype;
 
-      let wordFontSize = wordObj.size;
+      let wordFontSize = await calcWordFontSize(wordObj, fontAll.active);
+
       let scaleX = 1;
-      if (!wordFontSize) {
-        if (wordSup) {
-          // All superscripts are assumed to be numbers for now
-          wordFontSize = await getFontSize(fontI, box_height, "1");
-        } else if (wordDropCap) {
-          wordFontSize = await getFontSize(fontI, box_height, wordText.slice(0, 1));
-          const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontI, wordFontSize)).visualWidth;
-          scaleX = (box_width / wordWidthFont);
-    
-        } else {
-          wordFontSize = lineFontSize;
-        }
+      if (wordDropCap) {
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontI, wordFontSize)).visualWidth;
+        scaleX = (box_width / wordWidthFont);
       }
 
       const wordConf = wordObj.conf;

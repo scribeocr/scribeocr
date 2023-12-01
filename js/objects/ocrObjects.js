@@ -29,17 +29,19 @@ export function ocrPage(n, dims) {
  * @param {ocrPage} page
  * @param {Array<number>} bbox
  * @param {Array<number>} baseline
- * @param {number} ascHeight
- * @param {?number} xHeight
+ * @param {?number} ascHeight - Height of median ascender character
+ * @param {?number} xHeight - Height of median non-ascender/descender character
  * @property {Array<number>} bbox - bounding box for line
  * @property {Array<number>} baseline - baseline [slope, offset]
- * @property {number} ascHeight - 
+ * @property {?number} ascHeight - 
  * @property {?number} xHeight - 
  * @property {Array<ocrWord>} words - words in line
  * @property {ocrPage} page - page line belongs to
  * @property {?number} _sizeCalc - calculated line font size (using `ascHeight` and `xHeight`)
  * @property {?number} _size - line font size set (set through other means)
  *  `_size` should be preferred over `_sizeCalc` when both exist.
+ * @property {?string} raw - Raw string this object was parsed from.
+ *    Exists only for debugging purposes, should be `null` in production contexts.
  */
 export function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
     // These inline comments are required for types to work correctly with VSCode Intellisense.
@@ -48,7 +50,7 @@ export function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
     this.bbox = bbox;
     /** @type {Array<number>} */ 
     this.baseline = baseline;
-    /** @type {number} */ 
+    /** @type {?number} */ 
     this.ascHeight = ascHeight;
     /** @type {?number} */ 
     this.xHeight = xHeight;
@@ -60,6 +62,8 @@ export function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
     this._sizeCalc = null;
     /** @type {?number} */
     this._size = null;
+    /** @type {?string} */
+    this.raw = null;
   }
 
 
@@ -94,6 +98,21 @@ export function ocrWord(line, text, bbox, id) {
     this.id = id;
     /** @type {ocrLine} */ 
     this.line = line;
+    /** @type {?string} */
+    this.raw = null;
+}
+
+/**
+ * 
+ * @param {ocrLine} lineObj 
+ */
+export const getPrevLine = (lineObj) => {
+    // While lines have no unique ID, word IDs are assumed unique.
+    // Therefore, lines are identified using the ID of the first word.
+    if (!lineObj.words[0]) throw new Error("All lines must contain >=1 word");
+    const lineIndex = lineObj.page.lines.findIndex(elem => elem.words?.[0]?.id == lineObj.words[0].id);
+    if (lineIndex < 1) return null;
+    return lineObj.page.lines[lineIndex-1];
 }
 
 
@@ -399,6 +418,7 @@ const ocr = {
     getPageWord: getPageWord,
     getPageWords: getPageWords,
     getPageText: getPageText,
+    getPrevLine: getPrevLine,
     cloneLine: cloneLine,
     cloneWord: cloneWord,
     rotateLine: rotateLine,

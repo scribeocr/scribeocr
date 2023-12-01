@@ -710,18 +710,23 @@ function findTextClick(text) {
 }
 
 async function optimizeFontContainerAll() {
-  const Carlito = await optimizeFontContainerFamily(fontPrivate.Carlito);
-  const Century = await optimizeFontContainerFamily(fontPrivate.Century);
-  const NimbusRomNo9L = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L);
-  const NimbusSans = await optimizeFontContainerFamily(fontPrivate.NimbusSans);
-
-  return new fontContainerAll(Carlito, NimbusRomNo9L, NimbusSans, Century);
+  return new fontContainerAll({
+    "Carlito": await optimizeFontContainerFamily(fontPrivate.Carlito),
+    "Century": await optimizeFontContainerFamily(fontPrivate.Century),
+    "Garamond": await optimizeFontContainerFamily(fontPrivate.Garamond),
+    "NimbusRomNo9L": await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L),
+    "NimbusSans": await optimizeFontContainerFamily(fontPrivate.NimbusSans),
+  });
 }
 
-const fontPrivate = loadFontContainerAll({ normal: "Carlito-Regular.woff", italic: "Carlito-Italic.woff", smallCaps: "Carlito-SmallCaps.woff"},
-  { normal: "C059-Roman.woff", italic: "C059-Italic.woff", smallCaps: "C059-SmallCaps.woff" },
-  { normal: "NimbusRomNo9L-Reg.woff", italic: "NimbusRomNo9L-RegIta.woff", smallCaps: "NimbusRomNo9L-RegSmallCaps.woff" },
-  { normal: "NimbusSanL-Reg.woff", italic: "NimbusSanL-RegIta.woff", smallCaps: "NimbusSanL-RegSmallCaps.woff" });
+
+const fontPrivate = loadFontContainerAll({
+Carlito: { normal: "Carlito-Regular.woff", italic: "Carlito-Italic.woff", smallCaps: "Carlito-SmallCaps.woff"},
+Century: { normal: "C059-Roman.woff", italic: "C059-Italic.woff", smallCaps: "C059-SmallCaps.woff" },
+Garamond: { normal: "QTGaromand.woff", italic: "NewG8-Ita.woff", smallCaps: "ugmr8a-SmallCaps.woff"},
+NimbusRomNo9L: { normal: "NimbusRomNo9L-Reg.woff", italic: "NimbusRomNo9L-RegIta.woff", smallCaps: "NimbusRomNo9L-RegSmallCaps.woff" },
+NimbusSans:  { normal: "NimbusSanL-Reg.woff", italic: "NimbusSanL-RegIta.woff", smallCaps: "NimbusSanL-RegSmallCaps.woff" }
+});
 
 export const fontAll = {
   raw: fontPrivate,

@@ -14,6 +14,9 @@ import { fontMetricsRawFont, fontMetricsRawFamily } from '../objects/fontMetrics
 
 import { layoutBox } from '../objects/layoutObjects.js';
 
+// If enabled, raw strings are saved in OCR objects for debugging purposes.
+const debugMode = true;
+
 /**
  * Unescapes XML in a string
  * @param {String} string
@@ -297,6 +300,8 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
 
     const lineObj = new ocr.ocrLine(pageObj, linebox, baseline, lineAscHeightTess, lineXHeightTess);
 
+    if (debugMode) lineObj.raw = match;
+
     let heightSmallCapsLine = [];
 
   /**
@@ -565,6 +570,8 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
 
           const wordObjCore = new ocr.ocrWord(lineObj, text, wordBoxCore, wordID);
 
+          if (debugMode) wordObjCore.raw = match;
+
           if(smallCaps || italic || fontFamily != "Default"){
             wordXMLCore = wordXMLCore.slice(0, -1) + " style='";
             if (smallCaps) {
@@ -594,6 +601,8 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
 
         const wordObjSup = new ocr.ocrWord(lineObj, textSuper, wordBoxSuper, wordID + "a");
 
+        if (debugMode) wordObjSup.raw = match;
+
         wordObjSup.conf = wordConf;
 
         wordObjSup.sup = true;
@@ -614,6 +623,8 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
         wordBoxCore[3] = Math.max(...bboxesCore.map(x => x[3]));
 
         const wordObj = new ocr.ocrWord(lineObj, text, wordBoxCore, wordID + "a");
+
+        if (debugMode) wordObj.raw = match;
 
         if(smallCaps || italic || fontFamily != "Default"){
           wordXML = wordXML.slice(0, -1) + " style='";
@@ -714,13 +725,26 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
     const lineXHeightFinal = lineXHeightCalc && Math.abs(lineXHeightTess - lineXHeightCalc) > 2 ? lineXHeightCalc : lineXHeightTess;
 
     // Replace Tesseract font size statistics with versions calculated above
-    if (lineAscHeightCalc) {
-      lineObj.ascHeight = lineAscHeightCalc;
-      // xHeight needs to be replaced, even if the new version is null.
-      // The font size calculated downstream will be more correct using only
-      // the ascender height than using the ascender height and an 
-      // inaccurate x-height from Tesseract. 
-      lineObj.xHeight = lineXHeightCalc;
+    if (lineAscHeightCalc || lineXHeightCalc) {
+      // If the ratio between xHeight and ascHeight is implausible, and there are more observations of ascenders than x-sized characters, set x-height to null.
+      // This handles the case where, in a line of all ascenders (such as a row of numbers in a table), a small number of characters are mis-identified as x-sized characters,
+      // resulting in xheight and ascHeight calculations that are nearly identical. 
+      if (lineXHeightCalc && lineXHeightCalc * 1.1 > lineAscHeightCalc) {
+        if (lineAscHeightArr.length > lineXHeightArr.length) {
+          lineObj.ascHeight = lineAscHeightCalc;
+          lineObj.xHeight = null;
+        } else {
+          lineObj.ascHeight = null;
+          lineObj.xHeight = lineXHeightCalc;
+        }
+      } else {
+        lineObj.ascHeight = lineAscHeightCalc;
+        // xHeight needs to be replaced, even if the new version is null.
+        // The font size calculated downstream will be more correct using only
+        // the ascender height than using the ascender height and an 
+        // inaccurate x-height from Tesseract. 
+        lineObj.xHeight = lineXHeightCalc;  
+      }
     }
 
     // Normalize character metrics collected earlier, add to page-level object
@@ -1140,7 +1164,7 @@ export async function convertPageAbbyy({ocrStr, n}) {
     }
 
     let lineAllHeight = Math.max(...lineAllHeightArr);
-    let lineAscHeight = quantile(lineAscHeightArr, 0.75);
+    let lineAscHeight = quantile(lineAscHeightArr, 0.5);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
 
     // The above calculations fail for lines without any alphanumeric characters (e.g. a line that only contains a dash),
@@ -1627,7 +1651,7 @@ export async function convertPageStext({ocrStr, n}) {
     }
 
     let lineAllHeight = Math.max(...lineAllHeightArr);
-    let lineAscHeight = quantile(lineAscHeightArr, 0.75);
+    let lineAscHeight = quantile(lineAscHeightArr, 0.5);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
 
     // The above calculations fail for lines without any alphanumeric characters (e.g. a line that only contains a dash),

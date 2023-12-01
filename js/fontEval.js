@@ -57,10 +57,11 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 		for (let i = 0; i < generalScheduler.workers.length; i++) {
 			const worker = generalScheduler.workers[i];
 			const res = worker.loadFontContainerAllWorker({
-				CarlitoSrc: { normal: fontAll.active.Carlito.normal.src, italic: fontAll.active.Carlito.italic.src, smallCaps: fontAll.active.Carlito["small-caps"].src },
-				CenturySrc: { normal: fontAll.active.Century.normal.src, italic: fontAll.active.Century.italic.src, smallCaps: fontAll.active.Century["small-caps"].src },
-				NimbusRomNo9LSrc: { normal: fontAll.active.NimbusRomNo9L.normal.src, italic: fontAll.active.NimbusRomNo9L.italic.src, smallCaps: fontAll.active.NimbusRomNo9L["small-caps"].src },
-				NimbusSansSrc: { normal: fontAll.active.NimbusSans.normal.src, italic: fontAll.active.NimbusSans.italic.src, smallCaps: fontAll.active.NimbusSans["small-caps"].src },
+				"Carlito": { normal: fontAll.active.Carlito.normal.src, italic: fontAll.active.Carlito.italic.src, smallCaps: fontAll.active.Carlito["small-caps"].src },
+				"Century": { normal: fontAll.active.Century.normal.src, italic: fontAll.active.Century.italic.src, smallCaps: fontAll.active.Century["small-caps"].src },
+				"Garamond": { normal: fontAll.active.Garamond.normal.src, italic: fontAll.active.Garamond.italic.src, smallCaps: fontAll.active.Garamond["small-caps"].src },
+				"NimbusRomNo9L": { normal: fontAll.active.NimbusRomNo9L.normal.src, italic: fontAll.active.NimbusRomNo9L.italic.src, smallCaps: fontAll.active.NimbusRomNo9L["small-caps"].src },
+				"NimbusSans": { normal: fontAll.active.NimbusSans.normal.src, italic: fontAll.active.NimbusSans.italic.src, smallCaps: fontAll.active.NimbusSans["small-caps"].src },
 				opt: fontAll.active.Carlito.normal.opt
 			});
 			resArr.push(res);
@@ -81,8 +82,10 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 	console.log("metricNimbusSans: " + String(metricNimbusSans));
 
 	const metricCentury = await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes);
+	const metricGaramond = await evalPageFonts(fontAll.active.Garamond, pageArr, binaryImageArrRes);
 	const metricNimbusRomNo9L = await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes);
 	console.log("metricCentury: " + String(metricCentury));
+	console.log("metricGaramond: " + String(metricGaramond));
 	console.log("metricNimbusRomNo9L: " + String(metricNimbusRomNo9L));
 
 	let change = false;
@@ -91,8 +94,11 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 		change = true;
 	}
 
-	if (metricCentury < metricNimbusRomNo9L) {
+	if (metricCentury < metricNimbusRomNo9L && metricCentury < metricGaramond) {
 		fontAll.active.SerifDefault = fontAll.active.Century;
+		change = true;
+	} else if (metricGaramond < metricNimbusRomNo9L && metricGaramond < metricCentury) {
+		fontAll.active.SerifDefault = fontAll.active.Garamond;
 		change = true;
 	}
 

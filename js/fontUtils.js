@@ -1,6 +1,8 @@
 // This file contains utility functions for calculating statistics using Opentype.js font objects.
 // The only import/dependency this file should have (aside from importing misc utility functions) should be fontObjects.js.
 
+import { getPrevLine } from "./objects/ocrObjects.js";
+
 /**
  * Calculates font size by comparing provided character height to font metrics.
  * 
@@ -11,7 +13,7 @@
  * 
  * Note: The default value "o" corresponds to the x-height stat better than "x" does. 
  */
-export async function getFontSize(font, charHeightActual, compChar = "o"){
+async function getFontSize(font, charHeightActual, compChar = "o"){
 
   const fontOpentypeI = await font.opentype;
 
@@ -96,14 +98,18 @@ export const calcWordFontSize = async (word, fontContainer) => {
   // TODO: Figure out how to get types to work with this
   const font = fontContainer[word.font || globalSettings.defaultFont]["normal"];
 
+  // If the user manually set a size, then use that
   if (word.size) {
       return word.size;
+  // If the word is a superscript, then font size is uniquely calculated for this word
   } else if (word.sup) {
-      return await getFontSize(font, word.bbox[3] - word.bbox[1], "1");
+      return await getFontSize(font, word.bbox[3] - word.bbox[1], "A");
+  // If the word is a dropcap, then font size is uniquely calculated for this word
   } else if (word.dropcap) {
       return await getFontSize(font, word.bbox[3] - word.bbox[1], word.text.slice(0, 1));
+  // Otherwise, the line font size is used
   } else {
-      return null;
+      return await calcLineFontSize(word.line, fontContainer);
   }
 }
 
@@ -126,17 +132,45 @@ export const calcLineFontSize = async (line, fontContainer) => {
   // The font of the first word is used (if present), otherwise the default font is used.
   const font = fontContainer[line.words[0]?.font || globalSettings.defaultFont]["normal"];
 
-  // Font size is calculated using either (1) the ascender height or (2) the x-height.
-  // If both metrics are present both are used and the result is averaged.
-  if (line.ascHeight && !line.xHeight) {
-      line._sizeCalc = await getFontSize(font, line.ascHeight, "A");
+  // If both ascender height and x-height height are known, calculate the font size using both and average them.  
+  if (line.ascHeight && line.xHeight) {
+    const size1 = await getFontSize(font, line.ascHeight, "A");
+    const size2 = await getFontSize(font, line.xHeight, "o");
+    let sizeFinal = Math.floor((size1 + size2) / 2);
+
+    // Averaging `size1` and `size2` is intended to smooth out small differences in calculation error.
+    // However, in some cases `size1` and `size2` are so different that one is clearly wrong. 
+    // In this case, the font size for the previous line is calculated,
+    // and averaged with whichever of `size1` and `size2` are closer. 
+    if (Math.max(size1, size2) / Math.min(size1, size2) > 1.2) {
+      const linePrev = getPrevLine(line);
+      if (linePrev) {
+        const sizeLast = await calcLineFontSize(linePrev, fontContainer);
+        if (Math.abs(sizeLast - size2) < Math.abs(sizeLast - size1)) {
+          sizeFinal = Math.floor((sizeLast + size2) / 2);
+        } else {
+          sizeFinal = Math.floor((sizeLast + size1) / 2);
+        }
+      }
+    } 
+
+    line._sizeCalc = sizeFinal;
+  // If only x-height is known, calculate font size using x-height.
   } else if (!line.ascHeight && line.xHeight) {
-      line._sizeCalc = await getFontSize(font, line.xHeight, "o");
-  } else if (line.ascHeight && line.xHeight) {
-      const size1 = await getFontSize(font, line.ascHeight, "A");
-      const size2 = await getFontSize(font, line.xHeight, "o");
-      line._sizeCalc = Math.floor((size1 + size2) / 2);
-  } 
+    line._sizeCalc = await getFontSize(font, line.xHeight, "o");
+  // If only ascender height is known, calculate font size using ascender height.
+  } else if (line.ascHeight && !line.xHeight) {
+    line._sizeCalc = await getFontSize(font, line.ascHeight, "A");
+  } else {
+    // If no font metrics are known, use the font size from the previous line.
+    const linePrev = getPrevLine(line);
+    if (linePrev) {
+      line._sizeCalc = await calcLineFontSize(linePrev, fontContainer);
+    // If there is no previous line, as a last resort, use a hard-coded default value.
+    } else {
+      line._sizeCalc = 15;
+    }
+  }
 
   return line._sizeCalc;
 
