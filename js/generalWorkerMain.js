@@ -33,8 +33,6 @@ export async function initGeneralWorker() {
 
         obj.optimizeFont = wrap("optimizeFont");
 
-        obj.loadFontContainerAllWorker = wrap("loadFontContainerAllWorker");
-
         obj.evalPageFont = wrap("evalPageFont");
 		obj.evalPage = wrap("evalPage");
         obj.evalWords = wrap("evalWords");
@@ -46,6 +44,8 @@ export async function initGeneralWorker() {
         obj.recognize = wrap("recognize");
 		obj.recognizeAndConvert = wrap("recognizeAndConvert");
 
+		obj.loadFontContainerAllWorker = wrap("loadFontContainerAllWorker");
+		obj.setFontActiveWorker = wrap("setFontActiveWorker");
 		obj.setGlobalSettings = wrap("setGlobalSettings");
 
 	})

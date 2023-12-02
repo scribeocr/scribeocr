@@ -23,7 +23,7 @@ import coords from './js/coordinates.js';
 
 import { recognizeAllPagesBrowser } from "./js/recognizeBrowser.js";
 
-import { selectDefaultFontsDocument } from "./js/fontEval.js";
+import { selectDefaultFontsDocument, setFontAllWorker } from "./js/fontEval.js";
 
 import { convertOCRAll, convertOCRPage } from "./js/convertOCR.js";
 
@@ -740,6 +740,8 @@ export const fontAll = {
  * @param {boolean} enable 
  */
 async function enableDisableFontOpt(enable) {
+  const browserMode = typeof process === "undefined";
+
   // Create optimized font if this has not been done yet
   if (enable && !fontAll.opt) {
     fontAll.opt = await optimizeFontContainerAll();
@@ -751,6 +753,9 @@ async function enableDisableFontOpt(enable) {
   } else {
     fontAll.active = fontAll.raw;
   }
+
+  // Enable/disable optimized font in workers
+  if (browserMode) await setFontAllWorker(generalScheduler, fontAll);
 }
 
 

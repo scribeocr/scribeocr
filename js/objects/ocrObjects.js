@@ -102,6 +102,11 @@ export function ocrWord(line, text, bbox, id) {
     this.raw = null;
 }
 
+// export function ocrChar(text, bbox) {
+//     this.text = text;
+//     this.bbox = bbox;
+// }
+
 /**
  * 
  * @param {ocrLine} lineObj 

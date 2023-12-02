@@ -92,10 +92,22 @@ const fontAll = {
 setFontAll(fontAll);
   
   
-async function loadFontContainerAllWorker(src, opt) {
-  fontAll.active = await loadFontContainerAll(src, opt);
+async function loadFontContainerAllWorker({src, opt}) {
+  if (opt) {
+    fontAll.opt = await loadFontContainerAll(src, opt);
+  } else {
+    fontAll.raw = await loadFontContainerAll(src, opt);
+  }
   return true;
 }
+
+async function setFontActiveWorker(opt) {
+  if (opt) {
+    fontAll.active = fontAll.opt;
+  } else {
+    fontAll.active = fontAll.raw;
+  }
+} 
 
 globalThis.globalSettings = {
   simdSupport: false,
@@ -127,9 +139,6 @@ addEventListener('message', async e => {
         // Optimize font functions
         optimizeFont,
 
-        // Load font functions
-        loadFontContainerAllWorker,
-
         // OCR comparison/evaluation functions
         evalPageFont,
         evalPage,
@@ -144,6 +153,8 @@ addEventListener('message', async e => {
         recognizeAndConvert,
 
         // Change state of worker
+        loadFontContainerAllWorker,
+        setFontActiveWorker,
         setGlobalSettings,
       })[func](args)
         .then((x) => postMessage({data: x, id: id}));

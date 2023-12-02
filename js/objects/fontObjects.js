@@ -134,9 +134,9 @@ export function fontContainerFont(family, style, type, src, opt, kerningPairs = 
   /**@type {("normal"|"italic"|"small-caps")} */
   this.style = style;
   /**@type {boolean} */
-  this.opt = false;
+  this.opt = opt;
   /**@type {string|ArrayBuffer} */
-  this.src = typeof (src) == "string" ? relToAbsPath("../../fonts/" + src) : src;
+  this.src = typeof (src) == "string" && !/^http/i.test(src) ? relToAbsPath("../../fonts/" + src) : src;
   /**@type {Promise<opentype.Font>} */
   this.opentype = loadOpentype(this.src, kerningPairs);
   /**@type {string} */
