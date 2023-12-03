@@ -275,13 +275,13 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
   for(let i=0;i<lines.length;i++) {
 
-    const line = lines[i];
-    const words = line.words;
+    const lineObj = lines[i];
+    const words = lineObj.words;
 
     if (words.length == 0) continue;
 
-    const baseline = line.baseline;
-    const linebox = line.bbox;
+    const baseline = lineObj.baseline;
+    const linebox = lineObj.bbox;
     
     const word = words[0];
     const wordText = word.text?.replace(/&quot;/, "\"")?.replace(/&apos;/, "'")?.replace(/&lt;/, "<")?.replace(/&gt;/, ">")?.replace(/&amp;/, "&");
@@ -302,24 +302,26 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       }
     }
 
-    let angleAdjXLine = 0;
-    let angleAdjYLine = 0;
-    if (rotateBackground && Math.abs(angle ?? 0) > 0.05) {
+    // let angleAdjXLine = 0;
+    // let angleAdjYLine = 0;
+    // if (rotateBackground && Math.abs(angle ?? 0) > 0.05) {
 
-      const x = linebox[0];
-      const y = linebox[3] + baseline[1];
+    //   const x = linebox[0];
+    //   const y = linebox[3] + baseline[1];
 
-      const xRot = x * cosAngle - sinAngle * y;
-      const yRot = x * sinAngle + cosAngle * y;
+    //   const xRot = x * cosAngle - sinAngle * y;
+    //   const yRot = x * sinAngle + cosAngle * y;
 
-      const angleAdjXInt = x - xRot;
+    //   const angleAdjXInt = x - xRot;
 
-      const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
+    //   const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
 
-      angleAdjXLine = angleAdjXInt + shiftX;
-      angleAdjYLine = angleAdjYInt + shiftY;
+    //   angleAdjXLine = angleAdjXInt + shiftX;
+    //   angleAdjYLine = angleAdjYInt + shiftY;
 
-    }
+    // }
+
+    const angleAdjLine = (rotateBackground && Math.abs(angle ?? 0) > 0.05) ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
 
     
     let fillColorCurrent = fillColor;
@@ -350,8 +352,8 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
 
     // Move to next line
-    const lineLeftAdj = wordBox[0] - wordLeftBearing * (tz / 100) + angleAdjXLine;
-    const lineTopAdj = linebox[3] + baseline[1] + angleAdjYLine;
+    const lineLeftAdj = wordBox[0] - wordLeftBearing * (tz / 100) + angleAdjLine.x;
+    const lineTopAdj = linebox[3] + baseline[1] + angleAdjLine.y;
 
     if (rotateText) {
       textStream += String(cosAngle) + " " + String(-sinAngle) + " " + String(sinAngle) + " " + String(cosAngle) + " " + String(lineLeftAdj) + " " + String(outputDims.height - lineTopAdj + 1) + " Tm\n";
@@ -414,6 +416,7 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
         fillColor = word.matchTruth ? "0 1 0.5 rg" : "1 0 0 rg";
       }
 
+      // TODO: The math here is not correct, superscripts are not positioned correctly.
       const sinAngle = 0;
       const angleAdjYLine = 0;
       let angleAdjYSup = rotateText ? sinAngle * (wordBox[0] - linebox[0]) * -1 : 0;

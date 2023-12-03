@@ -8,6 +8,17 @@ import { calcWordMetrics } from "./fontUtils.js"
 import { renderPageQueue, fontAll } from "../main.js"
 import ocr from "./objects/ocrObjects.js";
 
+const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
+const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
+const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
+
+styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic') });
+styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('small-caps') });
+styleSuperElem.addEventListener('click', toggleSuperSelectedWords);
+
+const styleItalicButton = new bootstrap.Button(styleItalicElem);
+const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
+const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
 export function deleteSelectedWords(){
   const selectedObjects = window.canvas.getActiveObjects();
@@ -20,15 +31,25 @@ export function deleteSelectedWords(){
   }
 }
 
+/**
+ * 
+ * @param {("normal"|"italic"|"small-caps")} style 
+ */
 export async function changeWordFontStyle(style){
-  style = style.toLowerCase()
 
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects || selectedObjects.length == 0) return;
 
   // If first word style already matches target style, disable the style.
-  const enable = selectedObjects[0].fontStyle.toLowerCase() == style || style == "small-caps" && /small caps$/i.test(selectedObjects[0].fontFamily) ? false : true;
-  const newValueStr = enable ? style : "normal";
+  const enable = selectedObjects[0].fontStyleLookup == style ? false : true;
+  const newStyleLookup = enable ? style : "normal";
+
+  if ((newStyleLookup == "italic") != styleItalicElem.classList.contains("active")) {
+      styleItalicButton.toggle();
+  }
+  if ((newStyleLookup == "small-caps") != styleSmallCapsElem.classList.contains("active")) {
+      styleSmallCapsButton.toggle();
+  }
 
   const selectedN = selectedObjects.length;
   for(let i=0; i<selectedN; i++){
@@ -42,17 +63,16 @@ export async function changeWordFontStyle(style){
       continue;
     }
 
-    wordObj.style = newValueStr;
+    wordObj.style = newStyleLookup;
 
-    wordI.fontStyleLookup = newValueStr;
+    wordI.fontStyleLookup = newStyleLookup;
 
-    if(enable && style == "small-caps"){
-        wordI.fontFamily = wordI.fontFamily.replace(/\s+small caps$/i, "") + " Small Caps";
-        wordI.fontStyle = "normal";
-    } else {
-        wordI.fontFamily = wordI.fontFamily.replace(/\s+small caps$/i, "");
-        wordI.fontStyle = newValueStr;
-    }
+    const fontI = fontAll.active[wordI.fontFamilyLookup][newStyleLookup];
+
+    wordI.fontFamily = fontI.fontFaceName;
+    wordI.fontStyle = fontI.fontFaceStyle;
+
+    wordI.fontObj = fontI;
 
     await updateWordCanvas(wordI);
 
@@ -179,7 +199,7 @@ export function toggleSuperSelectedWords(){
       continue;
     }
 
-    wordI.wordSup = !wordI.wordSup;
+    wordObj.sup = !wordObj.sup;
 
   }
 

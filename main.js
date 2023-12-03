@@ -451,18 +451,6 @@ fontSizeElem.addEventListener('change', (event) => { changeWordFontSize(fontSize
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
 wordFontElem.addEventListener('change', (event) => { changeWordFontFamily(wordFontElem.value) });
 
-const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
-const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
-const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
-
-styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic') });
-styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('small-caps') });
-styleSuperElem.addEventListener('click', toggleSuperSelectedWords);
-
-const styleItalicButton = new bootstrap.Button(styleItalicElem);
-const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
-const styleSuperButton = new bootstrap.Button(styleSuperElem);
-
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 document.getElementById('editBaseline')?.addEventListener('click', adjustBaseline);
 
