@@ -161,19 +161,9 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     if (glyphI.name == ".notdef" || glyphI.name == "NULL") continue;
 
     let glyphIMetrics = glyphI.getMetrics();
-    let glyphIWidth = glyphIMetrics.xMax - glyphIMetrics.xMin;
+    let glyphIWidth = glyphIMetrics.xMax - glyphIMetrics.xMin;;
 
-    // Numbers are described as a proportion of ascHeight; all other characters are described as a proportion of xHeight.
-    let norm = xHeight;
-    if (/\d/.test(charLit)) {
-      if (heightCapsBelievable) {
-        norm = xHeight * fontMetricsObj["heightCaps"];
-      } else {
-        continue;
-      }
-    }
-
-    let scaleXFactor = (value * norm) / glyphIWidth;
+    let scaleXFactor = (value * xHeight) / glyphIWidth;
 
     // TODO: For simplicitly we assume the stem is located at the midpoint of the bounding box (0.35 for "f")
     // This is not always true (for example, "t" in Libre Baskerville).
@@ -353,18 +343,14 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     const indexFirst = workingFont.charToGlyphIndex(charFirst);
     const indexSecond = workingFont.charToGlyphIndex(charSecond);
 
-    // Numbers are described as a proportion of ascHeight; all other characters are described as a proportion of xHeight.
-    // For kerning the 1st character in the pair is used. 
-    let norm = xHeight;
-    if (/\d/.test(charFirst)) {
-      if (heightCapsBelievable) {
-        norm = xHeight * fontMetricsObj["heightCaps"];
-      } else {
-        continue;
-      }
+    // Kerning values are taken as the average between two measurements.
+    const value2 = fontMetricsObj.kerning2[key];
+    const fontKern1 = Math.round(value * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
+    let fontKern = fontKern1;
+    if (value2) {
+      const fontKern2 = Math.round(value2 * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
+      fontKern = Math.round((fontKern1 + fontKern2) / 2);
     }
-
-    let fontKern = Math.round(value * norm - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
 
     // For smart quotes, the maximum amount of kerning space allowed is doubled.
     // Unlike letters, some text will legitimately have a large space before/after curly quotes.

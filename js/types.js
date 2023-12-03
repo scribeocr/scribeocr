@@ -12,6 +12,10 @@
  */
 
 /**
+ * @typedef {import("./objects/ocrObjects.js").ocrChar} ocrChar
+ */
+
+/**
  * @typedef {import("./objects/fontMetricsObjects.js").fontMetricsFont} fontMetricsFont
  */
 

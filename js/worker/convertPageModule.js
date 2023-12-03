@@ -54,7 +54,7 @@ function round6(x) {
 
 /**
  * Rotates line bounding box (modifies in place).
- * @param {ocr.ocrLine} line
+ * @param {ocrLine} line
  * @param {number} angle
  * @param {?dims} dims
  */
@@ -591,14 +591,12 @@ export async function convertPageAbbyy({ocrStr, n}) {
   
   const pageObj = new ocr.ocrPage(n, pageDims);
 
-  const fontMetricsObj = {};
-
   // This condition is met for actual character errors (xml data lacks character-level data), as well as for empty pages.
   // However, the error is only shown to the user if there are no pages with valid character data.
   if (!/\<charParams/i.test(ocrStr)) {
     const warn = {"char": "char_error"};
 
-    return {pageObj: pageObj, fontMetricsObj: fontMetricsObj, layoutBoxes: {}, warn: warn};
+    return {pageObj: pageObj, fontMetricsObj: {}, layoutBoxes: {}, warn: warn};
     
   }
 
@@ -654,13 +652,13 @@ export async function convertPageAbbyy({ocrStr, n}) {
     
     // Replace character identified as tab with space (so it is split into separate word)
     // For whatever reason many non-tab values can be found in elements where isTab is true (e.g. "_", "....")
-    xmlLine = xmlLine.replaceAll(/isTab\=['"](?:1|true)['"]\s*\>[^\<]+/ig, "> ")
+    xmlLine = xmlLine.replaceAll(/isTab\=['"](?:1|true)['"][^\>]*\>[^\<]+/ig, "> ");
 
     // These regex remove blank characters that occur next to changes in formatting to avoid making too many words.
     // Note: Abbyy is inconsistent regarding where formatting elements are placed.
     // Sometimes the <format> comes after the space between words, and sometimes it comes before the space between words.
-    xmlLine = xmlLine.replaceAll(/(\<\/formatting\>\<formatting[^\>]*\>\s*)<charParams[^\>]*\>\s*\<\/charParams\>/ig, "$1")
-    xmlLine = xmlLine.replaceAll(/\<charParams[^\>]*\>\s*\<\/charParams\>(\s*\<\/formatting\>\<formatting[^\>]*\>\s*)/ig, "$1")
+    xmlLine = xmlLine.replaceAll(/(\<\/formatting\>\<formatting[^\>]*\>\s*)<charParams[^\>]*\>\s*\<\/charParams\>/ig, "$1");
+    xmlLine = xmlLine.replaceAll(/\<charParams[^\>]*\>\s*\<\/charParams\>(\s*\<\/formatting\>\<formatting[^\>]*\>\s*)/ig, "$1");
 
     // xmlLine = xmlLine.replaceAll(/(\<\/formatting\>\<formatting[^\>]*\>)(\s*<charParams[^\>]*\>\.\<\/charParams\>)\<\/formatting\>/ig, "$1")
 
@@ -703,6 +701,8 @@ export async function convertPageAbbyy({ocrStr, n}) {
 
     let bboxes = Array(wordStrArr.length);
     let text = Array(wordStrArr.length);
+
+    /**@type {Array<Array<ocrChar>>} */
     let charObjArrLine = Array(wordStrArr.length);
     text = text.fill("");
     let styleArr = Array(wordStrArr.length);
@@ -857,6 +857,8 @@ export async function convertPageAbbyy({ocrStr, n}) {
       wordObj.chars = charObjArrLine[i];
       wordObj.conf = wordSusp[i] ? 0 : 100;
 
+      console.assert(wordObj.chars.length == text[i].length, "Likely parsing error for word: " + id + ". Number of letters in text does not match number of `ocrChar` objects.")
+
       if (styleArr[i] == "italic") {
         wordObj.style = "italic";
       } else if (styleArr[i] == "small-caps") {
@@ -884,15 +886,13 @@ export async function convertPageAbbyy({ocrStr, n}) {
 
     pageObj.lines.push(lineObj);
 
-    return ([xmlOut, baselineSlope]);
+    return (["non-empty value", baselineSlope]);
   }
 
 
   let lineStrArr = ocrStr.split(/\<\/line\>/);
 
-  let xmlOut = "";
-
-  let angleRisePage = new Array();
+  let angleRisePage = [];
   for (let i = 0; i < lineStrArr.length; i++) {
     const lineInt = convertLineAbbyy(lineStrArr[i], i, n);
     if (lineInt[0] == "") continue;
@@ -919,7 +919,7 @@ export async function convertPageAbbyy({ocrStr, n}) {
   pageObj.left = leftOut;
   pageObj.leftAdj = leftAdjOut;
 
-  return pass2({pageObj: pageObj, fontMetricsObj: fontMetricsObj, layoutBoxes: boxes});
+  return pass2({pageObj: pageObj, layoutBoxes: boxes});
 
 }
 
@@ -945,8 +945,6 @@ export async function convertPageStext({ocrStr, n}) {
   const pageDimsMatch = ocrStr.match(/<page .+?width=[\'\"]([\d\.\-]+)[\'\"] height=[\'\"]([\d\.\-]+)[\'\"]/);
   const pageDims = {height: parseInt(pageDimsMatch[2]), width: parseInt(pageDimsMatch[1])};
   
-  const fontMetricsObj = {};
-
   let lineLeft = new Array;
   let lineTop = new Array;
 
@@ -1381,6 +1379,9 @@ function pass2({pageObj, layoutBoxes, warn}) {
       const letterArr = wordObj.text.split("");
       const charObjArr = wordObj.chars;
 
+      // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs. 
+      if (wordObj.chars && wordObj.chars.length != wordObj.text.length) continue;
+
       // Quotes at the start of a word are assumed to be opening quotes
       if (['"', "'"].includes(letterArr[0]) && letterArr.length > 1 && /[a-z\d]/i.test(letterArr[1])) {
         if (letterArr[0] == '"') {
@@ -1450,6 +1451,9 @@ function pass2({pageObj, layoutBoxes, warn}) {
     for (let j=0; j<lineObj.words.length; j++) {
       const wordObj = lineObj.words[j];
 
+      // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs. 
+      if (wordObj.chars && wordObj.chars.length != wordObj.text.length) continue;
+
       const letterArr = wordObj.text.split("");
       const charObjArr = wordObj.chars;
 
@@ -1473,13 +1477,16 @@ function pass2({pageObj, layoutBoxes, warn}) {
           }
         }
       }
-
+      wordObj.text = letterArr.join("");
     }
 
     for (let j=0; j<lineObj.words.length; j++) {
 
       const wordObj = lineObj.words[j];
       const wordFontFamily = wordObj.font || "Default";
+
+      // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs. 
+      if (wordObj.chars && wordObj.chars.length != wordObj.text.length) continue;
 
       // Do not include superscripts, dropcaps, and low-confidence words in statistics for font optimization.
       if (wordObj.conf < 80) continue;
@@ -1533,8 +1540,10 @@ function pass2({pageObj, layoutBoxes, warn}) {
 
               if (!fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning"][bigramUnicode]) {
                 fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning"][bigramUnicode] = [];
+                fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning2"][bigramUnicode] = [];
               }
               fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning"][bigramUnicode].push(trailingSpace / charNorm);
+              fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning2"][bigramUnicode].push((trailingSpace + charWidthNext) / charNorm);
             }
           }
   

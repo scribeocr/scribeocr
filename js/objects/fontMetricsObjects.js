@@ -22,6 +22,8 @@ export function fontMetricsFont() {
     // this.advance = {};
     /** @type {Object.<string, number>} */
     this.kerning = {};
+    /** @type {Object.<string, number>} */
+    this.kerning2 = {};
     /** @type {Object.<string, boolean>} */
     this.variants = {};
     /** @type {number} */
@@ -51,6 +53,8 @@ export function fontMetricsRawFont() {
     // this.advance = {};
     /** @type {Object.<string, Array.<number>>} */
     this.kerning = {};
+    /** @type {Object.<string, Array.<number>>} */
+    this.kerning2 = {};
     /** @type {number} */
     this.obs = 0;
 }

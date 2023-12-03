@@ -252,7 +252,7 @@ function calculateFontMetrics(fontMetricsRawFontObj){
   const fontMetricOut = new fontMetricsFont();
 
   // Take the median of each array
-  for (let prop of ["width","height","kerning"]){
+  for (let prop of ["width","height","kerning", "kerning2"]){
     for (let [key, value] of Object.entries(fontMetricsRawFontObj[prop])) {
       if (value.length > 0) {
         fontMetricOut[prop][key] = round6(quantile(value, 0.5));
@@ -271,6 +271,33 @@ function calculateFontMetrics(fontMetricsRawFontObj){
   fontMetricOut["heightCaps"] = round6(quantile(heightCapsArr, 0.5));
 
   fontMetricOut["obs"] = fontMetricsRawFontObj["obs"];
+
+  // Standardize all metrics be normalized by x-height
+  // The raw metrics may be normalized by ascHeight (for numbers) or x-height (for all other characters).
+  for (let prop of ["width","height","kerning", "kerning2"]){
+    for (let [key, value] of Object.entries(fontMetricsRawFontObj[prop])) {
+      const nameFirst = key.match(/\w+/)[0];
+      const charFirst = String.fromCharCode(parseInt(nameFirst));
+      if (/\d/.test(charFirst)) {
+        fontMetricOut[prop][key] = fontMetricOut[prop][key] * fontMetricOut["heightCaps"];
+      }
+    }  
+  }
+
+  // The `kerning2` observations contain the measurement between the end of char 1 and the end of char 2.
+  // Therefore, the width of char 2 must be subtracted to get a measurement comparable with `kerning`. 
+  for (let prop of ["kerning2"]){
+    for (let [key, value] of Object.entries(fontMetricsRawFontObj[prop])) {
+      if (value.length > 0) {
+
+        const nameSecond = key.match(/\w+$/)[0];    
+
+        const widthSecond = fontMetricOut["width"][nameSecond];
+
+        fontMetricOut[prop][key] = fontMetricOut[prop][key] - widthSecond;
+      }
+    }  
+  }
 
   return(fontMetricOut);
 }
