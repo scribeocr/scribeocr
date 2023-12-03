@@ -39,7 +39,15 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, n = 500) {
 
 let loadedRaw = false;
 let loadedOpt = false;
+
+/**
+ * 
+ * @param {*} scheduler 
+ * @param {Object<string, ?fontContainerAll>} fontAll 
+ */
 export async function setFontAllWorker(scheduler, fontAll) {
+
+	if (!fontAll.active) return;
 
 	const opt = !(typeof fontAll.active.Carlito.normal.src == 'string');
 
@@ -75,7 +83,7 @@ export async function setFontAllWorker(scheduler, fontAll) {
 	const resArr = [];
 	for (let i = 0; i < scheduler.workers.length; i++) {
 		const worker = scheduler.workers[i];
-		const res = worker.setFontActiveWorker(opt);
+		const res = worker.setFontActiveWorker({opt: opt, fontFamilySans: fontAll.active.SansDefault.normal.family, fontFamilySerif: fontAll.active.SerifDefault.normal.family});
 		resArr.push(res);
 	}
 	await Promise.all(resArr);
@@ -125,6 +133,8 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 		fontAll.active.SerifDefault = fontAll.active.Garamond;
 		change = true;
 	}
+
+	await setFontAllWorker(generalScheduler, fontAll);
 
 	return change;
 

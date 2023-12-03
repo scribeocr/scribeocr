@@ -183,7 +183,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
  * @param {?number} xHeight - If specified, values from `fontMetricsRawFontB` will be normalized by dividing by `xHeight`.
  * @returns {?fontMetricsRawFont} - Returns fontMetricsFontA after modifying in place
  */
-function unionFontMetricsFont(fontMetricsRawFontA, fontMetricsRawFontB, xHeight = null){
+export function unionFontMetricsFont(fontMetricsRawFontA, fontMetricsRawFontB, xHeight = null){
   // If one of the inputs is undefined, return early with the only valid object
   if (!fontMetricsRawFontA) {
     if (!fontMetricsRawFontB) return null;
@@ -252,7 +252,7 @@ function calculateFontMetrics(fontMetricsRawFontObj){
   const fontMetricOut = new fontMetricsFont();
 
   // Take the median of each array
-  for (let prop of ["width","height","desc","advance","kerning"]){
+  for (let prop of ["width","height","kerning"]){
     for (let [key, value] of Object.entries(fontMetricsRawFontObj[prop])) {
       if (value.length > 0) {
         fontMetricOut[prop][key] = round6(quantile(value, 0.5));

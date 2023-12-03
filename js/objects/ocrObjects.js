@@ -43,7 +43,7 @@ export function ocrPage(n, dims) {
  * @property {?string} raw - Raw string this object was parsed from.
  *    Exists only for debugging purposes, should be `null` in production contexts.
  */
-export function ocrLine(page, bbox, baseline, ascHeight, xHeight) {
+export function ocrLine(page, bbox, baseline, ascHeight = null, xHeight = null) {
     // These inline comments are required for types to work correctly with VSCode Intellisense.
     // Unfortunately, the @property tags above are not sufficient.
     /** @type {Array<number>} */ 
@@ -100,12 +100,21 @@ export function ocrWord(line, text, bbox, id) {
     this.line = line;
     /** @type {?string} */
     this.raw = null;
+    /** @type {?Array<ocrChar>} */
+    this.chars = null;
 }
 
-// export function ocrChar(text, bbox) {
-//     this.text = text;
-//     this.bbox = bbox;
-// }
+/**
+ * 
+ * @param {string} text 
+ * @param {Array<number>} bbox 
+ */
+export function ocrChar(text, bbox) {
+    /** @type {string} */ 
+    this.text = text;
+    /** @type {Array<number>} */ 
+    this.bbox = bbox;
+}
 
 /**
  * 
@@ -418,6 +427,7 @@ const ocr = {
     ocrPage: ocrPage,
     ocrLine: ocrLine,
     ocrWord: ocrWord,
+    ocrChar: ocrChar,
     calcLineAngleAdj : calcLineAngleAdj,
     calcLineBbox: calcLineBbox,
     getPageWord: getPageWord,

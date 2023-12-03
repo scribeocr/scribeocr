@@ -1,5 +1,7 @@
 
 
+import { quantile } from "../miscUtils.js";
+
 // Defining "window" is needed due to bad browser/node detection in Opentype.js
 // Can hopefully remove in future version
 if (typeof process === "undefined") {
@@ -19,25 +21,6 @@ await import('../../lib/opentype.js');
 function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
 }
-
-/**
- * Calculates the nth quantile of a given array of numbers.
- * @param {number[]} arr - The array of numbers.
- * @param {number} ntile - The quantile to calculate. Should be a value between 0 and 1.
- * @returns {number|null} The nth quantile value if the array is not empty; otherwise, null.
- */
-function quantile(arr, ntile) {
-  if (arr.length == 0) {
-    return null;
-  }
-  let arr1 = [...arr];
-  const mid = Math.floor(arr.length * ntile);
-
-  // Using sort() will convert numbers to strings by default
-  arr1.sort((a, b) => a - b);
-
-  return arr1[mid];
-};
 
 /**
  * Function that transforms a single numeric input. 
@@ -149,12 +132,12 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
   oGlyph = workingFont.charToGlyph("o").getMetrics();
   xHeight = oGlyph.yMax - oGlyph.yMin;
 
+  const heightCapsBelievable = fontMetricsObj["heightCaps"] >= 1.1;
+
   let fontAscHeight = workingFont.charToGlyph("A").getMetrics().yMax;
 
   // Define various character classes
   const lower = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"];
-
-  const upperAsc = ["1", "4", "5", "7", "A", "B", "D", "E", "F", "H", "I", "K", "L", "M", "N", "P", "R", "T", "U", "V", "W", "X", "Y", "Z"]
 
   const singleStemClassA = ["i", "l", "t", "I"];
   const singleStemClassB = ["f", "i", "j", "l", "t", "I", "J", "T"];
@@ -179,7 +162,18 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
 
     let glyphIMetrics = glyphI.getMetrics();
     let glyphIWidth = glyphIMetrics.xMax - glyphIMetrics.xMin;
-    let scaleXFactor = (value * xHeight) / glyphIWidth;
+
+    // Numbers are described as a proportion of ascHeight; all other characters are described as a proportion of xHeight.
+    let norm = xHeight;
+    if (/\d/.test(charLit)) {
+      if (heightCapsBelievable) {
+        norm = xHeight * fontMetricsObj["heightCaps"];
+      } else {
+        continue;
+      }
+    }
+
+    let scaleXFactor = (value * norm) / glyphIWidth;
 
     // TODO: For simplicitly we assume the stem is located at the midpoint of the bounding box (0.35 for "f")
     // This is not always true (for example, "t" in Libre Baskerville).
@@ -249,7 +243,7 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
   }
 
   // Adjust height for capital letters (if heightCaps is believable)
-  if (fontMetricsObj["heightCaps"] >= 1.1) {
+  if (heightCapsBelievable) {
     const capsMult = xHeight * fontMetricsObj["heightCaps"] / fontAscHeight;
     for (const key of [...Array(26).keys()].map((x) => x + 65)) {
   
@@ -264,6 +258,8 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     }  
   }
 
+  // This purposefully does not include numbers, as those are normalized differently.
+  const upperAsc = ["A", "B", "D", "E", "F", "H", "I", "K", "L", "M", "N", "P", "R", "T", "U", "V", "W", "X", "Y", "Z"]
   const upperAscCodes = upperAsc.map((x) => String(x.charCodeAt(0)));
   const charHeightKeys = Object.keys(fontMetricsObj["height"]);
   const charHeightA = round6(quantile(Object.values(fontMetricsObj["height"]).filter((element, index) => upperAscCodes.includes(charHeightKeys[index])), 0.5));
@@ -357,7 +353,18 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     const indexFirst = workingFont.charToGlyphIndex(charFirst);
     const indexSecond = workingFont.charToGlyphIndex(charSecond);
 
-    let fontKern = Math.round(value * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
+    // Numbers are described as a proportion of ascHeight; all other characters are described as a proportion of xHeight.
+    // For kerning the 1st character in the pair is used. 
+    let norm = xHeight;
+    if (/\d/.test(charFirst)) {
+      if (heightCapsBelievable) {
+        norm = xHeight * fontMetricsObj["heightCaps"];
+      } else {
+        continue;
+      }
+    }
+
+    let fontKern = Math.round(value * norm - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
 
     // For smart quotes, the maximum amount of kerning space allowed is doubled.
     // Unlike letters, some text will legitimately have a large space before/after curly quotes.

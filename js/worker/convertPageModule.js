@@ -8,11 +8,13 @@
 
 import ocr, { rotateBbox } from '../objects/ocrObjects.js';
 
-import { getRandomAlphanum } from '../miscUtils.js';
+import { getRandomAlphanum, quantile, mean50 } from '../miscUtils.js';
 
 import { fontMetricsRawFont, fontMetricsRawFamily } from '../objects/fontMetricsObjects.js';
 
 import { layoutBox } from '../objects/layoutObjects.js';
+
+import { unionFontMetricsFont, determineSansSerif } from '../fontStatistics.js';
 
 // If enabled, raw strings are saved in OCR objects for debugging purposes.
 const debugMode = true;
@@ -49,49 +51,6 @@ function round6(x) {
   return (Math.round(x * 1e6) / 1e6);
 }
 
-// Sans/serif lookup for common font families
-// Should be added to if additional fonts are encountered
-const serifFonts = ["SerifDefault", "Baskerville", "Book", "Cambria", "Century_Schoolbook", "Courier", "Garamond", "Georgia", "Times"];
-const sansFonts = ["SansDefault", "Arial", "Calibri", "Comic", "Franklin", "Helvetica", "Impact", "Tahoma", "Trebuchet", "Verdana"];
-
-const serifFontsRegex = new RegExp(serifFonts.reduce((x,y) => x + '|' + y), 'i');
-const sansFontsRegex = new RegExp(sansFonts.reduce((x,y) => x + '|' + y), 'i');
-
-/**
- * Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font or serif font.
- *
- * @param {string} fontName - The name of the font to determine the type of. If the font name 
- * is falsy, the function will return "Default".
- * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault", 
- * "SerifDefault", or "Default" (if the font type cannot be determined).
- * @throws {console.log} - Logs an error message to the console if the font is unidentified and 
- * it is not the "Default Metrics Font".
- */
-function determineSansSerif(fontName) {
-
-  let fontFamily = "Default";
-  // Font support is currently limited to 1 font for Sans and 1 font for Serif.
-  if(fontName){
-    // First, test to see if "sans" or "serif" is in the name of the font
-    if(/(^|\W|_)sans($|\W|_)/i.test(fontName)){
-      fontFamily = "SansDefault";
-    } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
-      fontFamily = "SerifDefault";
-
-    // If not, check against a list of known sans/serif fonts.
-    // This list is almost certainly incomplete, so should be added to when new fonts are encountered. 
-    } else if (serifFontsRegex.test(fontName)) {
-      fontFamily = "SerifDefault";
-    } else if (sansFontsRegex.test(fontName)) {
-      fontFamily = "SansDefault";
-    } else if (fontName != "Default Metrics Font") {
-      console.log("Unidentified font in XML: " + fontName);
-    }
-  }
-
-  return fontFamily;
-
-}
 
 /**
  * Rotates line bounding box (modifies in place).
@@ -144,34 +103,6 @@ function rotateLine(line, angle, dims = null) {
 const ascCharArr = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "b", "d", "h", "k", "l", "t", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z"]
 
-/**
- * Calculates the nth quantile of a given array of numbers.
- * @param {number[]} arr - The array of numbers.
- * @param {number} ntile - The quantile to calculate. Should be a value between 0 and 1.
- * @returns {number|null} The nth quantile value if the array is not empty; otherwise, null.
- */
-function quantile(arr, ntile) {
-  if (arr.length == 0) {
-    return null
-  }
-  const mid = Math.floor(arr.length * ntile)
-  arr.sort((a, b) => a - b);
-
-  return arr[mid];
-};
-
-const mean50 = arr => {
-  if (arr.length == 0) {
-    return null;
-  }
-  const per25 = Math.floor(arr.length / 4) - 1;
-  const per75 = Math.ceil(arr.length * 3 / 4) - 1;
-  const nums = [...arr].sort((a, b) => a - b);
-  const numsMiddle = nums.slice(per25, per75 + 1);
-
-  return numsMiddle.reduce((a, b) => a + b) / numsMiddle.length;
-  ;
-};
 
 /**
  * @param {Object} params
@@ -404,16 +335,11 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
 
       }
 
-      for (let j = 0; j < letterArr.length; j++) {
-        // let titleStrLetter = letterArr[j][1];
-        let contentStrLetter = letterArr[j][2];
-        // bboxes[j] = [...titleStrLetter.matchAll(charBboxRegex)][0].slice(1, 5).map(function (x) { return parseInt(x) });
+      const charObjArr = [];
 
-        // Calculate metrics for character
-        const charWidth = bboxes[j][2] - bboxes[j][0];
-        const charHeight = bboxes[j][3] - bboxes[j][1];
-        const expectedBaseline = (bboxes[j][0] - lineboxAdj[0]) * baseline[0] + baseline[1] + lineboxAdj[3];
-        const charDesc = expectedBaseline - bboxes[j][3]; // Number of pixels below the baseline
+      for (let j = 0; j < letterArr.length; j++) {
+
+        let contentStrLetter = letterArr[j][2];
 
         // If word is small caps, convert letters to lower case. 
         if (smallCaps && (!smallCapsTitle || j > minLetterIndex)) {
@@ -423,130 +349,9 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
         // Handle characters escaped in XML
         contentStrLetter = unescapeXml(contentStrLetter);
 
-        // Tesseract often misidentifies hyphens as other types of dashes. 
-        if (contentStrLetter == "—" && charWidth < lineXHeightTess || contentStrLetter == "–" && charWidth < (lineXHeightTess * 0.85)) {
-          // If the width of an en or em dash is shorter than it should be if correctly identified, and it is between two letters, it is replaced with a hyphen.
-          if (j > 0 && j + 1 < letterArr.length && /[A-Za-z]/.test(letterArr[j - 1][2]) && /[A-Za-z]/.test(letterArr[j + 1][2])) {
-            contentStrLetter = "-";
+        const charObj = new ocr.ocrChar(contentStrLetter, bboxes[j]);
+        charObjArr.push(charObj);
 
-            // The intent of this condition is to flag hyphens that are the last character on a line.
-            // However, as that info does not currently exist in this scope, we just check that the dash is the final character in the word at present. 
-          } else if (j + 1 == letterArr.length) {
-            contentStrLetter = "-";
-
-          // For em dashes between two numbers, replace with en dash or hyphen depending on width of character
-          } else if (contentStrLetter == "—" && j > 0 && j + 1 < letterArr.length && /\d/.test(letterArr[j - 1][2]) && /\d/.test(letterArr[j + 1][2])) {
-            if (charWidth > (lineXHeightTess * 0.8)) {
-              contentStrLetter = "–";
-            } else {
-              contentStrLetter = "-";
-            }
-          }
-
-        // Correct quotes
-        } else if(["“", "”", "‘", "’", "&#34;", "&#39;"].includes(contentStrLetter)) {
-
-          // Quotes at the beginning of a word are assumed to be opening quotes
-          if (["’", "”"].includes(contentStrLetter) && j == 0 && j + 1 < letterArr.length && /[a-z\d]/i.test(letterArr[j+1][2]) ) {
-            if(contentStrLetter == "’") {
-              contentStrLetter = "‘";
-            } else if (contentStrLetter == "”") {
-              contentStrLetter = "“";
-            }
-  
-          // Single quotes between two letters are assumed to be close quotes 
-          } else if (["‘", "&#39;"].includes(contentStrLetter) && j > 0 && j + 1 < letterArr.length && /[a-z\d]/i.test(letterArr[j+1][2]) && /[a-z\d]/i.test(letterArr[j-1][2]) ) {
-            if(contentStrLetter == "‘") {
-              contentStrLetter = "’";
-            } else if (contentStrLetter == "&#39;") {
-              contentStrLetter = "’";
-            }
-
-          // Quotes at the end of a word are assumed to be closing quotes
-          } else if (["“", "‘"].includes(contentStrLetter) && j > 0 && j + 1 == letterArr.length && /[a-z\d,]/i.test(letterArr[j-1][2]) ) {
-            if(contentStrLetter == "‘") {
-              contentStrLetter = "’";
-            } else if (contentStrLetter == "“") {
-              contentStrLetter = "”";
-            }
-          }
-        } 
-          
-        // TODO: Make this impact word bounding box calculation
-        // NOTE: This issue appears to be caused by superscripts when the page is at an angle--auto-rotate may resolve before this step. 
-        if (bboxes[j][1] > expectedBaseline && /[A-Za-z\d]/.test(contentStrLetter)) {
-          continue;
-        }
-
-        // Multiple characters within a single <ocrx_cinfo> tag have been observed from Tesseract (even when set to char-level output).
-        // May cause future issues as this code assumes one character per <ocrx_cinfo> tag.
-        let charUnicode = String(contentStrLetter.charCodeAt(0));
-
-        /** @type {'normal' | 'italic' | 'small-caps'} */
-        let style;
-        if (italic) {
-          style = "italic"
-          stylesLine["italic"] = true;
-        } else if (smallCaps) {
-          style = "small-caps";
-          stylesLine["small-caps"] = true;
-        } else {
-          style = "normal";
-          stylesLine["normal"] = true;
-        }
-
-        // const fontFamily = "Default";
-        if(!fontMetricsRawLine[fontFamily]){
-          fontMetricsRawLine[fontFamily] = new fontMetricsRawFamily();
-        }
-    
-        // Add character metrics to appropriate array(s) for later font optimization.
-        // Skip letters likely misidentified due to hallucination effect (where e.g. "v" is misidentified as "V") or small caps
-        const minCapsHeight = smallCaps ? 1.1 : 1.2; // Minimum believable caps height (as ratio to x-height)
-        if (!(/[A-Z]/.test(contentStrLetter) && (charHeight / lineXHeightTess) < minCapsHeight)) {
-          if (!fontMetricsRawLine[fontFamily][style]["width"][charUnicode]) {
-            fontMetricsRawLine[fontFamily][style]["width"][charUnicode] = [];
-            fontMetricsRawLine[fontFamily][style]["height"][charUnicode] = [];
-            fontMetricsRawLine[fontFamily][style]["desc"][charUnicode] = [];
-          }
-  
-          fontMetricsRawLine[fontFamily][style]["width"][charUnicode].push(charWidth);
-          fontMetricsRawLine[fontFamily][style]["height"][charUnicode].push(charHeight);
-          fontMetricsRawLine[fontFamily][style]["desc"][charUnicode].push((bboxes[j][3] - expectedBaseline));
-          fontMetricsRawLine[fontFamily][style]["obs"] = fontMetricsRawLine[fontFamily][style]["obs"] + 1;
-
-          // Save character heights to array for font size calculations
-          if (ascCharArr.includes(contentStrLetter)) {
-            lineAscHeightArr.push(charHeight);
-          } else if (xCharArr.includes(contentStrLetter)) {
-            lineXHeightArr.push(charHeight);
-          }
-
-          if (j == 0) {
-            cuts[j] = 0;
-          } else {
-            cuts[j] = bboxes[j][0] - bboxes[j - 1][2];
-
-            const bigramUnicode = letterArr[j - 1][2].charCodeAt(0) + "," + letterArr[j][2].charCodeAt(0);
-            const cuts_ex = cuts[j];
-
-            // Only record space between characters when text is moving forward
-            // This *should* always be true, however there are some fringe cases where this assumption does not hold,
-            // such as Tesseract identifying the same character twice. 
-            if (cuts[j] + charWidth > 0) {
-              if (!fontMetricsRawLine[fontFamily][style]["advance"][charUnicode]) {
-                fontMetricsRawLine[fontFamily][style]["advance"][charUnicode] = [];
-              }
-              fontMetricsRawLine[fontFamily][style]["advance"][charUnicode].push(cuts_ex);
-  
-              if (!fontMetricsRawLine[fontFamily][style]["kerning"][bigramUnicode]) {
-                fontMetricsRawLine[fontFamily][style]["kerning"][bigramUnicode] = [];
-              }
-              fontMetricsRawLine[fontFamily][style]["kerning"][bigramUnicode].push(cuts_ex);
-  
-            }
-          }
-        }
         text = text + contentStrLetter;
       }
       text = text ?? "";
@@ -569,6 +374,7 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
           wordXMLCore = wordXML;
 
           const wordObjCore = new ocr.ocrWord(lineObj, text, wordBoxCore, wordID);
+          wordObjCore.chars = charObjArr;
 
           if (debugMode) wordObjCore.raw = match;
 
@@ -623,6 +429,8 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
         wordBoxCore[3] = Math.max(...bboxesCore.map(x => x[3]));
 
         const wordObj = new ocr.ocrWord(lineObj, text, wordBoxCore, wordID + "a");
+
+        wordObj.chars = charObjArr;
 
         if (debugMode) wordObj.raw = match;
 
@@ -716,93 +524,6 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
       match = match.replaceAll(wordRegex, convertWord);
     }
 
-    // Note that not all of these numbers are directly comparable to the Tesseract version
-    // For example, lineAscHeightCalc is the median height of an ascender,
-    // while x_ascenders from Tesseract is [ascender height] - [x height]
-    const lineAscHeightCalc = quantile(lineAscHeightArr, 0.5);
-    const lineXHeightCalc = quantile(lineXHeightArr, 0.5);
-
-    const lineXHeightFinal = lineXHeightCalc && Math.abs(lineXHeightTess - lineXHeightCalc) > 2 ? lineXHeightCalc : lineXHeightTess;
-
-    // Replace Tesseract font size statistics with versions calculated above
-    if (lineAscHeightCalc || lineXHeightCalc) {
-      // If the ratio between xHeight and ascHeight is implausible, and there are more observations of ascenders than x-sized characters, set x-height to null.
-      // This handles the case where, in a line of all ascenders (such as a row of numbers in a table), a small number of characters are mis-identified as x-sized characters,
-      // resulting in xheight and ascHeight calculations that are nearly identical. 
-      if (lineXHeightCalc && lineXHeightCalc * 1.1 > lineAscHeightCalc) {
-        if (lineAscHeightArr.length > lineXHeightArr.length) {
-          lineObj.ascHeight = lineAscHeightCalc;
-          lineObj.xHeight = null;
-        } else {
-          lineObj.ascHeight = null;
-          lineObj.xHeight = lineXHeightCalc;
-        }
-      } else {
-        lineObj.ascHeight = lineAscHeightCalc;
-        // xHeight needs to be replaced, even if the new version is null.
-        // The font size calculated downstream will be more correct using only
-        // the ascender height than using the ascender height and an 
-        // inaccurate x-height from Tesseract. 
-        lineObj.xHeight = lineXHeightCalc;  
-      }
-    }
-
-    // Normalize character metrics collected earlier, add to page-level object
-    // This needs to happen after the corrected line x-height is calculated (as Tesseract's x-height calculation is often wrong for caps/small caps fonts)
-    if (lineXHeightFinal) {
-      for(const [family, obj] of Object.entries(fontMetricsRawLine)){
-        for(const [style, obj2] of Object.entries(obj)){
-          if (Object.keys(obj2["width"]).length == 0) continue;
-          if(!fontMetricsRawPage[family]){
-            fontMetricsRawPage[family] = new fontMetricsRawFamily();
-          }
-        }  
-      }
-
-      /**
-       * Adds observations from `fontMetricsB` into `fontMetricsA`. Modifies `fontMetricsA` in place.
-       * 
-       * @param {?fontMetricsRawFont} fontMetricsRawFontA 
-       * @param {?fontMetricsRawFont} fontMetricsRawFontB 
-       * @param {?number} xHeight - If specified, values from `fontMetricsRawFontB` will be normalized by dividing by `xHeight`.
-       * @returns {?fontMetricsRawFont} - Returns fontMetricsFontA after modifying in place
-       */
-      function unionFontMetricsFont(fontMetricsRawFontA, fontMetricsRawFontB, xHeight = null) {
-        // If one of the inputs is undefined, return early with the only valid object
-        if (!fontMetricsRawFontA) {
-          if (!fontMetricsRawFontB) return null;
-          fontMetricsRawFontA = structuredClone(fontMetricsRawFontB);
-          return fontMetricsRawFontA;
-        }
-        if (!fontMetricsRawFontB) {
-          return fontMetricsRawFontA;
-        }
-
-        if (fontMetricsRawFontB?.obs) fontMetricsRawFontA.obs = fontMetricsRawFontA.obs + fontMetricsRawFontB.obs;
-
-        for (const [prop, obj] of Object.entries(fontMetricsRawFontB)) {
-          for (const [key, value] of Object.entries(obj)) {
-            if (!fontMetricsRawFontA[prop][key]) {
-              fontMetricsRawFontA[prop][key] = [];
-            }
-            if (xHeight) {
-              const valueNorm = value.map((x) => x / xHeight).filter((x) => x);
-              Array.prototype.push.apply(fontMetricsRawFontA[prop][key], valueNorm);
-            } else {
-              Array.prototype.push.apply(fontMetricsRawFontA[prop][key], value);
-            }
-          }
-        }
-        return (fontMetricsRawFontA);
-      }
-
-      for(const [family, obj] of Object.entries(fontMetricsRawPage)){
-        for(const [style, obj2] of Object.entries(obj)){
-          unionFontMetricsFont(fontMetricsRawPage?.[family]?.[style], fontMetricsRawLine?.[family]?.[style], lineXHeightFinal);
-        }  
-      }
-    }  
-
     pageObj.lines.push(lineObj);
 
     return "";
@@ -847,7 +568,7 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
 
   const warn = {"char": charMode ? "" : "char_warning"};
 
-  return {pageObj: pageObj, fontMetricsObj: fontMetricsRawPage, layoutBoxes: {}, warn: warn};
+  return pass2({pageObj: pageObj, layoutBoxes: {}, warn: warn});
 
 }
 
@@ -886,26 +607,13 @@ export async function convertPageAbbyy({ocrStr, n}) {
   let lineLeft = new Array;
   let lineTop = new Array;
 
-  let lineAllHeightPageArr = [];
-
-  let pageAscHeightArr = [];
-
   function convertLineAbbyy(xmlLine, lineNum, n = 1) {
-    let widthPxObjLine = new Object;
-    let heightPxObjLine = new Object;
-    let cutPxObjLine = new Object;
-    let kerningPxObjLine = new Object;
-
     const stylesLine = {};
 
     // Unlike Tesseract HOCR, Abbyy XML does not provide accurate metrics for determining font size, so they are calculated here.
     // Strangely, while Abbyy XML does provide a "baseline" attribute, it is often wildly incorrect (sometimes falling outside of the bounding box entirely).
     // One guess as to why is that coordinates calculated pre-dewarping are used along with a baseline calculated post-dewarping.
     // Regardless of the reason, baseline is recalculated here.
-    let lineAscHeightArr = new Array();
-    let lineXHeightArr = new Array();
-    let lineAllHeightArr = new Array();
-    let baselineHeightArr = new Array();
     let baselineSlopeArr = new Array();
     let baselineFirst = new Array();
 
@@ -994,8 +702,8 @@ export async function convertPageAbbyy({ocrStr, n}) {
 
 
     let bboxes = Array(wordStrArr.length);
-    let cuts = Array(wordStrArr.length);
     let text = Array(wordStrArr.length);
+    let charObjArrLine = Array(wordStrArr.length);
     text = text.fill("");
     let styleArr = Array(wordStrArr.length);
     styleArr = styleArr.fill("normal");
@@ -1040,14 +748,15 @@ export async function convertPageAbbyy({ocrStr, n}) {
         dropCapFix = true;
       }
 
+      bboxes[i] = [];
 
-      bboxes[i] = new Array();
-      cuts[i] = new Array();
+      charObjArrLine[i] = []; 
 
       for (let j = 0; j < letterArr.length; j++) {
         // Skip letters placed at coordinate 0 (not sure why this happens)
         if (letterArr[j][2] == "0") { continue };
-        bboxes[i][j] = new Array();
+
+        bboxes[i][j] = [];
         bboxes[i][j].push(parseInt(letterArr[j][2]));
         bboxes[i][j].push(parseInt(letterArr[j][3]));
         bboxes[i][j].push(parseInt(letterArr[j][4]));
@@ -1055,8 +764,8 @@ export async function convertPageAbbyy({ocrStr, n}) {
 
         let letterSusp = false;
         if (letterArr[j][6] == "1" || letterArr[j][6] == "true") {
-          letterSusp = true;
           wordSusp[i] = true;
+          letterSusp = true;
         }
 
         if (dropCapFix) {
@@ -1066,36 +775,10 @@ export async function convertPageAbbyy({ocrStr, n}) {
         // Handle characters escaped in XML
         letterArr[j][7] = unescapeXml(letterArr[j][7]);
 
-        // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines
-        if (letterArr[j][7] == "¬" && i+1 == wordStrArr1.length && j+1 == letterArr.length && i > 2) {
-          letterArr[j][7] = "-";
-        } else if (["’","&apos;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
-          letterArr[j][7] = "‘";
-        } else if (["”","&quot;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
-          letterArr[j][7] = "“";
-        } else if (["‘","&apos;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
-          letterArr[j][7] = "’";
-        } else if (["“","&quot;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
-          letterArr[j][7] = "”";
-        }
-
         let contentStrLetter = letterArr[j][7];
-        text[i] = text[i] + contentStrLetter;
-
-        lineAllHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
 
         const ascChar = ascCharArr.includes(contentStrLetter);
         const xChar = xCharArr.includes(contentStrLetter);
-
-        // Record height for different types of characters (used for calculating font size)
-        // Only full sized characters are included (no superscripts)
-        if (styleArr[i] != "sup") {
-          if (ascChar) {
-            lineAscHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-          } else if (xChar) {
-            lineXHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-          }
-        }
 
         if ((ascChar || xChar) && !letterSusp && !dropCapFix && !(dropCap && i == 0)) {
           //baselineHeightArr.push(bboxes[i][j][3]);
@@ -1111,143 +794,13 @@ export async function convertPageAbbyy({ocrStr, n}) {
           }
         }
 
-        // Add character metrics to appropriate arrays (for font optimization)
-        // This step is skipped for superscripts + drop caps
-        if(["sup","dropcap"].includes(styleArr[i])) continue;
+        text[i] = text[i] + contentStrLetter;
 
-        const charUnicode = String(contentStrLetter.charCodeAt(0));
-        const charWidth = bboxes[i][j][2] - bboxes[i][j][0];
-        const charHeight = bboxes[i][j][3] - bboxes[i][j][1];
+        const charObj = new ocr.ocrChar(contentStrLetter, bboxes[i][j]);
 
-        if (!widthPxObjLine[styleArr[i]]) {
-          widthPxObjLine[styleArr[i]] = new Array();
-          heightPxObjLine[styleArr[i]] = new Array();
-        }
+        charObjArrLine[i].push(charObj);
 
-        if (widthPxObjLine[styleArr[i]][charUnicode] == null) {
-          widthPxObjLine[styleArr[i]][charUnicode] = new Array();
-          heightPxObjLine[styleArr[i]][charUnicode] = new Array();
-        }
-        widthPxObjLine[styleArr[i]][charUnicode].push(charWidth);
-        heightPxObjLine[styleArr[i]][charUnicode].push(charHeight);
-
-        if (j == 0) {
-          cuts[i][j] = 0;
-
-        // This condition avoids errors caused by skipping letters (e.g. when the x coordinate is "0")
-        } else if(bboxes[i][j]?.[0] && bboxes[i][j - 1]?.[2]){
-          cuts[i][j] = bboxes[i][j][0] - bboxes[i][j - 1][2];
-
-          const bigramUnicode = letterArr[j - 1][7].charCodeAt(0) + "," + letterArr[j][7].charCodeAt(0);
-          // Quick fix so it runs--need to figure out how to calculate x-height from Abbyy XML
-          const cuts_ex = cuts[i][j];
-
-          if (!cutPxObjLine[styleArr[i]]) {
-            cutPxObjLine[styleArr[i]] = new Array();
-          }
-
-          if (cutPxObjLine[styleArr[i]][charUnicode] == null) {
-            cutPxObjLine[styleArr[i]][charUnicode] = new Array();
-          }
-          cutPxObjLine[styleArr[i]][charUnicode].push(cuts_ex);
-
-          if (!kerningPxObjLine[styleArr[i]]) {
-            kerningPxObjLine[styleArr[i]] = new Array();
-          }
-
-          if (kerningPxObjLine[styleArr[i]][bigramUnicode] == null) {
-            kerningPxObjLine[styleArr[i]][bigramUnicode] = new Array();
-          }
-          kerningPxObjLine[styleArr[i]][bigramUnicode].push(cuts_ex);
-        }
       }
-    }
-
-    let lineAllHeight = Math.max(...lineAllHeightArr);
-    let lineAscHeight = quantile(lineAscHeightArr, 0.5);
-    const lineXHeight = quantile(lineXHeightArr, 0.5);
-
-    // The above calculations fail for lines without any alphanumeric characters (e.g. a line that only contains a dash),
-    // as this will cause the value of `lineAllHeight` to be very low, and the font size will be extremely small. 
-    // While this may seem like a fringe case, it frequently happens for tables as Abbyy make a new "<line>" element for 
-    // each individual cell. 
-    // Additionally, sometimes all letters may be skipped (for the purposes of calculating statistics), in which case
-    // the lineAllHeight will be -Infinity.
-    // Therefore, as a quick fix, whenever the lineAllHeight value is small/dubious it is replaced by the median for the page (so far),
-    // and 10 when the median cannot be calculated. 
-    // TODO: Refine this logic to reduce or eliminate the case where lineAllHeight = 10
-    if(lineAllHeight < 10 && !lineAscHeight && !lineXHeight) {
-      if (lineAllHeightPageArr.length > 0) {
-        const lineAllHeightMedian = quantile(lineAllHeightPageArr, 0.5);
-        if(lineAllHeightMedian > lineAllHeight) {
-          lineAllHeight = lineAllHeightMedian;
-        }  
-      } else {
-        lineAllHeight = 10;
-      }
-    } else {
-      lineAllHeightPageArr.push(lineAllHeight);
-    }
-
-    if(!fontMetricsObj[fontFamily]){
-      fontMetricsObj[fontFamily] = new fontMetricsRawFamily();
-    }
-
-    if (lineXHeight != null) {
-      for (const [style, obj] of Object.entries(widthPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["width"][key] == null) {
-            fontMetricsObj[fontFamily][style]["width"][key] = new Array();
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["width"][key].push(value[k] / lineXHeight);
-            fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
-          }
-        }
-      }
-
-      for (const [style, obj] of Object.entries(heightPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["height"][key] == null) {
-            fontMetricsObj[fontFamily][style]["height"][key] = new Array();
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["height"][key].push(value[k] / lineXHeight);
-          }
-        }
-      }
-
-
-      for (const [style, obj] of Object.entries(cutPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["advance"][key] == null) {
-            fontMetricsObj[fontFamily][style]["advance"][key] = new Array();
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["advance"][key].push(value[k] / lineXHeight);
-          }
-        }
-      }
-
-      for (const [style, obj] of Object.entries(kerningPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["kerning"][key] == null) {
-            fontMetricsObj[fontFamily][style]["kerning"][key] = new Array();
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["kerning"][key].push(value[k] / lineXHeight);
-          }
-        }
-      }
-
     }
 
     // While Abbyy XML already provides line bounding boxes, these have been observed to be (at times)
@@ -1270,11 +823,6 @@ export async function convertPageAbbyy({ocrStr, n}) {
     baselinePoint = baselinePoint || 0;
 
 
-    // const baselinePoint = baselineFirst[1] - lineBoxArrCalc[3] - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]) || 0;
-
-    let xmlOut = "";
-
-
     // In general, the bounding box calculated here from the individual word boundign boxes is used.
     // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
     // In this case the original line-level bounding box from Abbyy is used
@@ -1282,26 +830,7 @@ export async function convertPageAbbyy({ocrStr, n}) {
 
     const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
 
-
-    // Calculate character size metrics (x_size, x_ascenders, x_descenders)
-    // Ideally we would be able to calculate all 3 directly, however given this is not always possible,
-    // different calculations are used based on the data available.
-
-    // If no ascenders exist on the line but x-height is known, set ascender height using the median ascender height / x-height ratio for the page so far,
-    // and 1.5x the x-height as a last resort. 
-    if (lineXHeight && !(lineAscHeight && (styleArr.includes("small-caps") || (lineAscHeight > lineXHeight * 1.1) && (lineAscHeight < lineXHeight * 2)))) {
-      if(pageAscHeightArr.length >= 3) {
-        lineAscHeight = lineXHeight * quantile(pageAscHeightArr, 0.5);
-      } else {
-        lineAscHeight = Math.round(lineXHeight * 1.5);
-      }
-    } else if(lineXHeight) {
-      pageAscHeightArr.push(lineAscHeight / lineXHeight);
-    }
-
-    const lineObj = new ocr.ocrLine(pageObj, lineBoxArrOut, baselineOut, lineAscHeight || lineAllHeight, lineXHeight);
-
-    xmlOut = xmlOut + "\">";
+    const lineObj = new ocr.ocrLine(pageObj, lineBoxArrOut, baselineOut);
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
@@ -1325,6 +854,7 @@ export async function convertPageAbbyy({ocrStr, n}) {
       const id = "word_" + (n + 1) + "_" + (lineNum + 1) + "_" + (i + 1);
 
       const wordObj = new ocr.ocrWord(lineObj, text[i], [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
+      wordObj.chars = charObjArrLine[i];
       wordObj.conf = wordSusp[i] ? 0 : 100;
 
       if (styleArr[i] == "italic") {
@@ -1389,7 +919,7 @@ export async function convertPageAbbyy({ocrStr, n}) {
   pageObj.left = leftOut;
   pageObj.leftAdj = leftAdjOut;
 
-  return {pageObj: pageObj, fontMetricsObj: fontMetricsObj, layoutBoxes: boxes};
+  return pass2({pageObj: pageObj, fontMetricsObj: fontMetricsObj, layoutBoxes: boxes});
 
 }
 
@@ -1420,9 +950,6 @@ export async function convertPageStext({ocrStr, n}) {
   let lineLeft = new Array;
   let lineTop = new Array;
 
-  let lineAllHeightPageArr = [];
-
-  let pageAscHeightArr = [];
 
   const pageObj = new ocr.ocrPage(n, pageDims);
 
@@ -1446,7 +973,6 @@ export async function convertPageStext({ocrStr, n}) {
     let lineAscHeightArr = new Array();
     let lineXHeightArr = new Array();
     let lineAllHeightArr = new Array();
-    let baselineHeightArr = new Array();
     let baselineSlopeArr = new Array();
     let baselineFirst = new Array();
 
@@ -1495,7 +1021,7 @@ export async function convertPageStext({ocrStr, n}) {
 
 
     let bboxes = Array(wordStrArr.length);
-    let cuts = Array(wordStrArr.length);
+    // let cuts = Array(wordStrArr.length);
     let text = Array(wordStrArr.length);
     text = text.fill("");
     let styleArr = Array(wordStrArr.length);
@@ -1531,12 +1057,10 @@ export async function convertPageStext({ocrStr, n}) {
         }
       }
 
-      bboxes[i] = new Array();
-      cuts[i] = new Array();
+      bboxes[i] = [];
 
       for (let j = 0; j < letterArr.length; j++) {
 
-        // Math.round(parseFloat(x)) is used rather than parseInt because parseInt returns NaN for numbers without a leading digit--e.g. ".1"
         bboxes[i][j] = [];
         bboxes[i][j].push(Math.round(parseFloat(letterArr[j][2])));
         bboxes[i][j].push(Math.round(parseFloat(letterArr[j][3])));
@@ -1547,42 +1071,11 @@ export async function convertPageStext({ocrStr, n}) {
 
         // All text in stext is considered correct/high confidence
         let letterSusp = false;
-        // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines
-        if (letterArr[j][7] == "¬" && i+1 == wordStrArr.length && j+1 == letterArr.length && i > 2) {
-          letterArr[j][7] = "-";
-        } else if (["’","&apos;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
-          letterArr[j][7] = "‘";
-        } else if (["”","&quot;"].includes(letterArr[j][7]) && j == 0 && letterArr.length > 2 && /^[a-z]$/i.test(letterArr[j+1][7])) {
-          letterArr[j][7] = "“";
-        } else if (["‘","&apos;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
-          letterArr[j][7] = "’";
-        } else if (["“","&quot;"].includes(letterArr[j][7]) && j + 1 == letterArr.length && letterArr.length > 2 && (/^[a-z]$/i.test(letterArr[j-1][7]) || letterArr[j-1][7] == "," && /^[a-z]$/i.test(letterArr[j-2][7]))) {
-          letterArr[j][7] = "”";
-        }
 
         let contentStrLetter = letterArr[j][7];
         text[i] = text[i] + contentStrLetter;
 
         lineAllHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-
-        const ascChar = ascCharArr.includes(contentStrLetter);
-        const xChar = xCharArr.includes(contentStrLetter);
-
-        // Record height for different types of characters (used for calculating font size)
-        // Only full sized characters are included (no superscripts)
-        if (styleArr[i] != "sup") {
-          if (ascChar) {
-            lineAscHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-          } else if (xChar) {
-            lineXHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-          }
-        }
-
-        // Unlike for Abbyy and Tesseract (which both have actual bounding boxes that correspond to pixels), stext uses the same bounding boxes for all characters.
-        // In other words, "." and "A" will have the same bounding box if written in the same font/font size. 
-        // This means we cannot use character bounding boxes to determine the height of individual characters. 
-
-        // if ((ascChar || xChar) && !letterSusp && !(dropCap && i == 0)) {
         if (!letterSusp && !(dropCap && i == 0)) {
 
 
@@ -1598,144 +1091,7 @@ export async function convertPageStext({ocrStr, n}) {
           }
         }
 
-        // Add character metrics to appropriate arrays (for font optimization)
-        // This step is skipped for superscripts + drop caps
-        if(["sup","dropcap"].includes(styleArr[i])) continue;
-
-        const charUnicode = String(contentStrLetter.charCodeAt(0));
-        const charWidth = bboxes[i][j][2] - bboxes[i][j][0];
-        const charHeight = bboxes[i][j][3] - bboxes[i][j][1];
-
-        if (!widthPxObjLine[styleArr[i]]) {
-          widthPxObjLine[styleArr[i]] = new Array();
-          heightPxObjLine[styleArr[i]] = new Array();
-        }
-
-        if (widthPxObjLine[styleArr[i]][charUnicode] == null) {
-          widthPxObjLine[styleArr[i]][charUnicode] = new Array();
-          heightPxObjLine[styleArr[i]][charUnicode] = new Array();
-        }
-        widthPxObjLine[styleArr[i]][charUnicode].push(charWidth);
-        heightPxObjLine[styleArr[i]][charUnicode].push(charHeight);
-
-        if (j == 0) {
-          cuts[i][j] = 0;
-
-        // This condition avoids errors caused by skipping letters (e.g. when the x coordinate is "0")
-        } else if(bboxes[i][j]?.[0] && bboxes[i][j - 1]?.[2]){
-          cuts[i][j] = bboxes[i][j][0] - bboxes[i][j - 1][2];
-
-          const bigramUnicode = letterArr[j - 1][7].charCodeAt(0) + "," + letterArr[j][7].charCodeAt(0);
-          // Quick fix so it runs--need to figure out how to calculate x-height from Abbyy XML
-          const cuts_ex = cuts[i][j];
-
-          if (!cutPxObjLine[styleArr[i]]) {
-            cutPxObjLine[styleArr[i]] = new Array();
-          }
-
-          if (cutPxObjLine[styleArr[i]][charUnicode] == null) {
-            cutPxObjLine[styleArr[i]][charUnicode] = new Array();
-          }
-          cutPxObjLine[styleArr[i]][charUnicode].push(cuts_ex);
-
-          if (!kerningPxObjLine[styleArr[i]]) {
-            kerningPxObjLine[styleArr[i]] = new Array();
-          }
-
-          if (kerningPxObjLine[styleArr[i]][bigramUnicode] == null) {
-            kerningPxObjLine[styleArr[i]][bigramUnicode] = new Array();
-          }
-          kerningPxObjLine[styleArr[i]][bigramUnicode].push(cuts_ex);
-        }
       }
-    }
-
-    let lineAllHeight = Math.max(...lineAllHeightArr);
-    let lineAscHeight = quantile(lineAscHeightArr, 0.5);
-    const lineXHeight = quantile(lineXHeightArr, 0.5);
-
-    // The above calculations fail for lines without any alphanumeric characters (e.g. a line that only contains a dash),
-    // as this will cause the value of `lineAllHeight` to be very low, and the font size will be extremely small. 
-    // While this may seem like a fringe case, it frequently happens for tables as Abbyy make a new "<line>" element for 
-    // each individual cell. 
-    // Additionally, sometimes all letters may be skipped (for the purposes of calculating statistics), in which case
-    // the lineAllHeight will be -Infinity.
-    // Therefore, as a quick fix, whenever the lineAllHeight value is small/dubious it is replaced by the median for the page (so far),
-    // and 10 when the median cannot be calculated. 
-    // TODO: Refine this logic to reduce or eliminate the case where lineAllHeight = 10
-    if(lineAllHeight < 10 && !lineAscHeight && !lineXHeight) {
-      if (lineAllHeightPageArr.length > 0) {
-        const lineAllHeightMedian = quantile(lineAllHeightPageArr, 0.5);
-        if(lineAllHeightMedian > lineAllHeight) {
-          lineAllHeight = lineAllHeightMedian;
-        }  
-      } else {
-        lineAllHeight = 10;
-      }
-    } else {
-      lineAllHeightPageArr.push(lineAllHeight);
-    }
-
-
-    if(!fontMetricsObj[fontFamily]){
-      fontMetricsObj[fontFamily] = new fontMetricsRawFamily();
-    }
-
-    if (lineXHeight != null) {
-      for (const [style, obj] of Object.entries(widthPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["width"][key] == null) {
-            fontMetricsObj[fontFamily][style]["width"][key] = [];
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["width"][key].push(value[k] / lineXHeight);
-            fontMetricsObj[fontFamily][style]["obs"] = fontMetricsObj[fontFamily][style]["obs"] + 1;
-          }
-        }
-      }
-
-      for (const [style, obj] of Object.entries(heightPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["height"][key] == null) {
-            fontMetricsObj[fontFamily][style]["height"][key] = [];
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["height"][key].push(value[k] / lineXHeight);
-          }
-        }
-      }
-
-
-      for (const [style, obj] of Object.entries(cutPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["advance"][key] == null) {
-            fontMetricsObj[fontFamily][style]["advance"][key] = [];
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["advance"][key].push(value[k] / lineXHeight);
-          }
-        }
-      }
-
-      for (const [style, obj] of Object.entries(kerningPxObjLine)) {
-        for (const [key, value] of Object.entries(obj)) {
-          if (parseInt(key) < 33) { continue };
-
-          if (fontMetricsObj[fontFamily][style]["kerning"][key] == null) {
-            fontMetricsObj[fontFamily][style]["kerning"][key] = [];
-          }
-          for (let k = 0; k < value.length; k++) {
-            fontMetricsObj[fontFamily][style]["kerning"][key].push(value[k] / lineXHeight);
-          }
-        }
-      }
-
     }
 
     // NOTE: This section can probably be deleted for stext as it seems specific to Abbyy
@@ -1757,8 +1113,6 @@ export async function convertPageStext({ocrStr, n}) {
       baselinePoint = baselinePoint - baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]);
     }
     baselinePoint = baselinePoint || 0;
-
-    let xmlOut = "";
 
     // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
     // In this case the original line-level bounding box from Abbyy is used
@@ -1782,8 +1136,6 @@ export async function convertPageStext({ocrStr, n}) {
       const bboxesIBottom = Math.max(...bboxesI.map(x => x[3]));
 
       const id = "word_" + (n + 1) + "_" + (lineNum + 1) + "_" + (i + 1);
-
-      xmlOut = xmlOut + "<span class='ocrx_word' id='word_" + (n + 1) + "_" + (lineNum + 1) + "_" + (i + 1) + "' title='bbox " + bboxesILeft + " " + bboxesITop + " " + bboxesIRight + " " + bboxesIBottom;
 
       const wordText = unescapeXml(text[i]);
 
@@ -1819,20 +1171,16 @@ export async function convertPageStext({ocrStr, n}) {
     if (lettersKept == 0) return (["", 0]);
 
     pageObj.lines.push(lineObj);
-    return ([xmlOut, baselineSlope]);
+    return (["non-empty value", baselineSlope]);
   }
 
-
   let lineStrArr = ocrStr.split(/\<\/line\>/);
-
-  let xmlOut = "<div class='ocr_page'";
 
   let angleRisePage = new Array();
   for (let i = 0; i < lineStrArr.length; i++) {
     const lineInt = convertLineStext(lineStrArr[i], i, n);
     if (lineInt[0] == "") continue;
     angleRisePage.push(lineInt[1]);
-    xmlOut = xmlOut + lineInt[0];
   }
 
   let angleRiseMedian = mean50(angleRisePage) || 0;
@@ -1855,7 +1203,7 @@ export async function convertPageStext({ocrStr, n}) {
   pageObj.left = leftOut;
   pageObj.leftAdj = leftAdjOut;
 
-  return {pageObj: pageObj, fontMetricsObj: fontMetricsObj, layoutBoxes: {}};
+  return pass2({pageObj: pageObj, layoutBoxes: {}});
 
 }
 
@@ -1998,5 +1346,220 @@ function convertTableLayoutAbbyy(ocrStr) {
   }
 
   return boxes;
+
+}
+
+
+
+/**
+ * Pass 2 iterates over all words/letters in the OCR object, calculating statistics and applying corrections.
+ * All OCR objects (Tesseract/Abbyy/Stext) should be run through this function before returning.
+ * 
+ * @param {Object} params
+ * @param {ocrPage} params.pageObj 
+ * @param {Object} params.layoutBoxes
+ * @param {Object} [params.warn]
+ */
+function pass2({pageObj, layoutBoxes, warn}) {
+
+  /** @type {Object.<string, fontMetricsRawFamily>} */ 
+  const fontMetricsRawPage = {};
+
+  for (let i=0; i<pageObj.lines.length; i++) {
+    const lineObj = pageObj.lines[i];
+
+    /** @type {Array<number>} */
+    const lineAscHeightArr = [];
+    /** @type {Array<number>} */
+    const lineXHeightArr = [];
+    /** @type {Array<number>} */
+    const lineAllHeightArr = [];
+
+    for (let j=0; j<lineObj.words.length; j++) {
+      const wordObj = lineObj.words[j];
+
+      const letterArr = wordObj.text.split("");
+      const charObjArr = wordObj.chars;
+
+      // Quotes at the start of a word are assumed to be opening quotes
+      if (['"', "'"].includes(letterArr[0]) && letterArr.length > 1 && /[a-z\d]/i.test(letterArr[1])) {
+        if (letterArr[0] == '"') {
+          letterArr[0] = '“';
+          if (charObjArr) charObjArr[0].text = '“';
+        } else if (letterArr[0] == "'") {
+          letterArr[0] = '‘';
+          if (charObjArr) charObjArr[0].text = '‘';
+        }
+      }
+
+      // Quotes at the end of a word are assumed to be closing quotes
+      if (['"', "'"].includes(letterArr[letterArr.length-1]) && letterArr.length > 1 && /[a-z\d]/i.test(letterArr[letterArr.length-2])) {
+        if (letterArr[letterArr.length-1] == '"') {
+          letterArr[letterArr.length-1] = '”';
+          if (charObjArr) charObjArr[letterArr.length-1].text = '”';
+        } else if (letterArr[letterArr.length-1] == "'") {
+          letterArr[letterArr.length-1] = '’';
+          if (charObjArr) charObjArr[letterArr.length-1].text = '’';
+        }
+      }
+
+      // Single quotes between two letters are assumed to be apostrophes
+      for (let k=0; k<letterArr.length; k++) {
+        if (["'"].includes(letterArr[k]) && k > 0 && k + 1 < letterArr.length && /[a-z\d]/i.test(letterArr[k+1]) && /[a-z\d]/i.test(letterArr[k-1]) ) {
+          letterArr[k] = "’";
+          if (charObjArr) charObjArr[k].text = '’';
+        }
+      }
+
+      // Calculate statistics from character metrics, if present
+      if (wordObj.chars) {
+        for (let k=0; k<letterArr.length; k++) {
+
+          const charObj = wordObj.chars[k];
+
+          // Do not include superscripts, dropcaps, and low-confidence words in all statistics.
+          // Low-confidence words are included for font size calculations, as some lines only contain low-confidence words.
+          if (wordObj.sup || wordObj.dropcap) continue;
+
+          const contentStrLetter = letterArr[k];
+          const charHeight = charObj.bbox[3] - charObj.bbox[1];
+
+          // Save character heights to array for font size calculations
+          if (ascCharArr.includes(contentStrLetter)) {
+            lineAscHeightArr.push(charHeight);
+          } else if (xCharArr.includes(contentStrLetter)) {
+            lineXHeightArr.push(charHeight);
+          }
+
+        }  
+      }
+
+      wordObj.text = letterArr.join("");
+    }
+
+    let lineAllHeight = Math.max(...lineAllHeightArr);
+    let lineAscHeight = quantile(lineAscHeightArr, 0.5);
+    const lineXHeight = quantile(lineXHeightArr, 0.5);
+
+    if (lineAscHeight) lineObj.ascHeight = lineAscHeight || lineAllHeight;
+    if (lineAscHeight) lineObj.xHeight = lineXHeight;
+
+    // Replace all dash characters with a hyphen, en-dash or em-dash, depending on their width.
+    // OCR engines commonly use the wrong type of dash. This is especially problematic during font optimization,
+    // as it can result (for example) in a hyphen being scaled to be closer to an en-dash if the latter is more common.
+    for (let j=0; j<lineObj.words.length; j++) {
+      const wordObj = lineObj.words[j];
+
+      const letterArr = wordObj.text.split("");
+      const charObjArr = wordObj.chars;
+
+      // This step requires character-level metrics.
+      if (!charObjArr || !wordObj.line.xHeight) continue;
+
+      // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines, so this symbol is included.
+      for (let k=0; k<letterArr.length; k++) {
+        if (["-", "–", "—", "¬"].includes(letterArr[k]) && letterArr.length > 1) {
+          const charWidth = charObjArr[k].bbox[2] - charObjArr[k].bbox[0];
+          const charWidthNorm = charWidth / wordObj.line.xHeight;
+          if (charWidthNorm > 1.5) {
+            letterArr[k] = "—";
+            if (charObjArr) charObjArr[k].text = '—';
+          } else if (charWidthNorm > 0.9) {
+            letterArr[k] = "–";
+            if (charObjArr) charObjArr[k].text = '–';
+          } else {
+            letterArr[k] = "-";
+            if (charObjArr) charObjArr[k].text = '-';
+          }
+        }
+      }
+
+    }
+
+    for (let j=0; j<lineObj.words.length; j++) {
+
+      const wordObj = lineObj.words[j];
+      const wordFontFamily = wordObj.font || "Default";
+
+      // Do not include superscripts, dropcaps, and low-confidence words in statistics for font optimization.
+      if (wordObj.conf < 80) continue;
+
+      /** @type {Object.<string, fontMetricsRawFamily>} */ 
+      const fontMetricsRawLine = {};
+
+      if (wordObj.chars) {
+        for (let k=0; k<wordObj.chars.length; k++) {
+
+          const charObj = wordObj.chars[k];
+
+
+          const charHeight = charObj.bbox[3] - charObj.bbox[1];
+          const charWidth = charObj.bbox[2] - charObj.bbox[0];
+
+          // Numbers are normalized as a proportion of ascHeight, everything else is normalized as a percentage of x-height.
+          // This is because x-sized characters are more common in text, however numbers are often in "lines" with only numbers,
+          // so do not have any x-sized characters to compare to.
+          const charNorm = /\d/.test(charObj.text) ? lineObj.ascHeight : lineObj.xHeight;
+
+          if (!charNorm) continue;
+
+          // Multiple characters within a single <ocrx_cinfo> tag have been observed from Tesseract (even when set to char-level output).
+          // May cause future issues as this code assumes one character per <ocrx_cinfo> tag.
+          const charUnicode = String(charObj.text.charCodeAt(0));
+
+          if(!fontMetricsRawLine[wordFontFamily]){
+            fontMetricsRawLine[wordFontFamily] = new fontMetricsRawFamily();
+          }
+  
+          if (!fontMetricsRawLine[wordFontFamily][wordObj.style]["width"][charUnicode]) {
+            fontMetricsRawLine[wordFontFamily][wordObj.style]["width"][charUnicode] = [];
+            fontMetricsRawLine[wordFontFamily][wordObj.style]["height"][charUnicode] = [];
+          }
+  
+          fontMetricsRawLine[wordFontFamily][wordObj.style]["width"][charUnicode].push(charWidth / charNorm);
+          fontMetricsRawLine[wordFontFamily][wordObj.style]["height"][charUnicode].push(charHeight / charNorm);
+          fontMetricsRawLine[wordFontFamily][wordObj.style]["obs"] = fontMetricsRawLine[wordFontFamily][wordObj.style]["obs"] + 1;
+
+          if (k + 1 < wordObj.chars.length) {
+            const charObjNext = wordObj.chars[k+1];
+            const trailingSpace = charObjNext.bbox[0] - charObj.bbox[2];
+            const charWidthNext = charObjNext.bbox[2] - charObjNext.bbox[0];
+
+            // Only record space between characters when text is moving forward
+            // This *should* always be true, however there are some fringe cases where this assumption does not hold,
+            // such as Tesseract identifying the same character twice. 
+            if (trailingSpace + charWidthNext > 0) {
+              const bigramUnicode = charUnicode + "," + wordObj.chars[k+1].text.charCodeAt(0);
+
+              if (!fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning"][bigramUnicode]) {
+                fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning"][bigramUnicode] = [];
+              }
+              fontMetricsRawLine[wordFontFamily][wordObj.style]["kerning"][bigramUnicode].push(trailingSpace / charNorm);
+            }
+          }
+  
+
+        }
+      }
+
+      for(const [family, obj] of Object.entries(fontMetricsRawLine)){
+        for(const [style, obj2] of Object.entries(obj)){
+          if (Object.keys(obj2["width"]).length == 0) continue;
+          if(!fontMetricsRawPage[family]){
+            fontMetricsRawPage[family] = new fontMetricsRawFamily();
+          }
+        }  
+      }
+
+      for(const [family, obj] of Object.entries(fontMetricsRawPage)){
+        for(const [style, obj2] of Object.entries(obj)){
+          unionFontMetricsFont(fontMetricsRawPage?.[family]?.[style], fontMetricsRawLine?.[family]?.[style]);
+        }  
+      }
+
+    }
+  }
+
+  return {pageObj: pageObj, fontMetricsObj: fontMetricsRawPage, layoutBoxes: layoutBoxes, warn: warn};
 
 }

@@ -183,6 +183,15 @@ export async function optimizeFontContainerFamily(fontFamily) {
     }
   }
 
+  // If there are no statistics to use for optimization, create "optimized" font by simply copying the raw font without modification.
+  // This should only occur when `multiFontMode` is true, but a document contains no sans words or no serif words.
+  if (!globalThis.fontMetricsObj[fontMetricsType]) {
+    const normalOptFont = new fontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, fontFamily.normal.src, true, null);
+    const italicOptFont = new fontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, fontFamily.italic.src, true, null);
+    const smallCapsOptFont = new fontContainerFont(fontFamily["small-caps"].family, fontFamily["small-caps"].style, fontFamily["small-caps"].type, fontFamily["small-caps"].src, true, null);
+    return new fontContainerFamily(normalOptFont, italicOptFont, smallCapsOptFont);
+  }
+
   const metricsNormal = globalThis.fontMetricsObj[fontMetricsType][fontFamily.normal.style];
   const normalOptFont = globalThis.generalScheduler.addJob("optimizeFont", { fontData: fontFamily.normal.src, fontMetricsObj: metricsNormal, style: fontFamily.normal.style }).then((x) => {
     return new fontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, x.data.fontData, true, x.data.kerningPairs);

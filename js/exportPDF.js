@@ -108,6 +108,7 @@ const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\
  * Create a PDF from an array of ocrPage objects.
  *
  * @param {Array<ocrPage>} hocrArr - 
+ * @param {Object<string, ?fontContainerAll>} fontAll 
  * @param {number} minpage - 
  * @param {number} maxpage - 
  * @param {("ebook"|"eval"|"proof"|"invis")} textMode - 

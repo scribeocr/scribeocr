@@ -54,8 +54,6 @@ import {
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
-// import { initOptimizeFontWorker } from "./js/optimizeFont.js";
-
 import { reorderHOCR, combineData } from "./js/modifyOCR.js";
 
 import { hocrToPDF } from "./js/exportPDF.js";
@@ -2109,8 +2107,9 @@ async function importFiles(curFiles) {
   downloadFileName = downloadFileName + ".pdf";
   downloadFileNameElem.value = downloadFileName;
 
-  let pageCount, pageCountImage, stextMode;
+  let pageCount, pageCountImage, stextModeExtract;
   let abbyyMode = false;
+  let pageDPI;
 
   if (inputDataModes.pdfMode) {
 
@@ -2132,7 +2131,7 @@ async function importFiles(curFiles) {
       // For reasons that are unclear, a small number of pages have been rendered into massive files
       // so a hard-cap on resolution must be imposed.
       const pageWidth1 = pageDims1.map((x) => x[0]);
-      const pageDPI = pageWidth1.map((x) => 300 * 2000 / Math.max(x, 2000));
+      pageDPI = pageWidth1.map((x) => 300 * 2000 / Math.max(x, 2000));
 
       console.log("DPI " + String(pageDPI));
 
@@ -2141,14 +2140,6 @@ async function importFiles(curFiles) {
 
       for (let i=0; i<pageDims.length; i++) {
         globalThis.pageMetricsArr[i] = new pageMetrics({height: pageDims[i][0], width: pageDims[i][1]});
-      }
-
-      if (globalThis.inputDataModes.extractTextMode) {
-        stextMode = true;
-        globalThis.hocrCurrentRaw = Array(pageCountImage);
-        for (let i = 0; i < pageCountImage; i++) {
-          globalThis.hocrCurrentRaw[i] = await ms.addJob('pageTextXML', [i+1, pageDPI[i]]);
-        }
       }
     }
 
@@ -2159,8 +2150,9 @@ async function importFiles(curFiles) {
 
   let existingLayout = false;
   const oemName = "User Upload";
+  let stextMode;
 
-  if (xmlModeImport) {
+  if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
 
     document.getElementById("combineModeOptions")?.setAttribute("style", "");
 
@@ -2172,28 +2164,41 @@ async function importFiles(curFiles) {
 
     displayLabelTextElem.innerHTML = oemName;
 
-    const ocrData = await importOCR(Array.from(hocrFilesAll), true);
+    let stextModeImport;
+    if (xmlModeImport) {
+      const ocrData = await importOCR(Array.from(hocrFilesAll), true);
 
-    globalThis.hocrCurrentRaw = ocrData.hocrRaw;
+      globalThis.hocrCurrentRaw = ocrData.hocrRaw;
+  
+      // Restore font metrics and optimize font from previous session (if applicable)
+      if (ocrData.fontMetricsObj) {
+        globalThis.fontMetricsObj = ocrData.fontMetricsObj;
+        setDefaultFontAuto(ocrData.fontMetricsObj);
+        optimizeFontElem.disabled = false;
+        optimizeFontElem.checked = true;
+        await enableDisableFontOpt(true);
+      }
+  
+      // Restore layout data from previous session (if applicable)
+      if (ocrData.layoutObj) {
+        globalThis.layout = ocrData.layoutObj;
+        existingLayout = true;
+      }
 
-    // Restore font metrics and optimize font from previous session (if applicable)
-    if (ocrData.fontMetricsObj) {
-      globalThis.fontMetricsObj = ocrData.fontMetricsObj;
-      setDefaultFontAuto(ocrData.fontMetricsObj);
-      optimizeFontElem.disabled = false;
-      optimizeFontElem.checked = true;
-      await enableDisableFontOpt(true);
-    }
-
-    // Restore layout data from previous session (if applicable)
-    if (ocrData.layoutObj) {
-      globalThis.layout = ocrData.layoutObj;
-      existingLayout = true;
+      stextModeImport = ocrData.stextMode;
+      abbyyMode = ocrData.abbyyMode;
+  
+    } else {
+      const ms = await globalThis.muPDFScheduler;
+      stextModeExtract = true;
+      globalThis.hocrCurrentRaw = Array(pageCountImage);
+      for (let i = 0; i < pageCountImage; i++) {
+        globalThis.hocrCurrentRaw[i] = await ms.addJob('pageTextXML', [i+1, pageDPI[i]]);
+      }
     }
 
     // stext may be imported or extracted from an input PDF
-    stextMode = stextMode || ocrData.stextMode;
-    abbyyMode = ocrData.abbyyMode;
+    stextMode = stextModeExtract || stextModeImport;
 
     // Enable confidence threshold input boxes (only used for Tesseract)
     if (!abbyyMode && !stextMode) {
@@ -2509,9 +2514,9 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   // (2) XML data should exist but does not (yet)
   const xmlMissing = inputDataModes.xmlMode[n] && (globalThis.ocrAll.active.length == 0 || globalThis.ocrAll.active[n] === undefined || globalThis.ocrAll.active[n] === null || globalThis.pageMetricsArr[n].dims === undefined);
   // (3) Image data should exist but does not (yet)
-  const imageMissing = inputDataModes.imageMode && (globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null);
+  const imageMissing = inputDataModes.imageMode && (!globalThis.imageAll["native"] || globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null);
   // (4) PDF data should exist but does not (yet)
-  const pdfMissing = inputDataModes.pdfMode && (typeof (globalThis.muPDFScheduler) == "undefined" || globalThis.pageMetricsArr[n]?.dims === undefined);
+  const pdfMissing = inputDataModes.pdfMode && (!globalThis.imageAll["native"] || globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null || globalThis.pageMetricsArr[n]?.dims === undefined);
 
   if (noInput || xmlMissing || imageMissing || pdfMissing) {
     console.log("Exiting renderPageQueue early");
