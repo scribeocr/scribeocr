@@ -6,7 +6,7 @@
 
 // const ocr = await import('../objects/ocrObjects.js');
 
-import ocr, { rotateBbox } from '../objects/ocrObjects.js';
+import ocr, { rotateLine } from '../objects/ocrObjects.js';
 
 import { getRandomAlphanum, quantile, mean50 } from '../miscUtils.js';
 
@@ -52,53 +52,6 @@ function round6(x) {
 }
 
 
-/**
- * Rotates line bounding box (modifies in place).
- * @param {ocrLine} line
- * @param {number} angle
- * @param {?dims} dims
- */
-function rotateLine(line, angle, dims = null) {
-
-  // If the angle is 0 (or very close) return early.
-  if (angle <= 0.05) return;
-
-  const dims1 = dims || line.page.dims;
-
-  const sinAngle = Math.sin(angle * (Math.PI / 180));
-  const cosAngle = Math.cos(angle * (Math.PI / 180));
-
-  const shiftX = sinAngle * (dims1.height * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((dims1.width - shiftX) * 0.5) || 0;
-
-  // Add preprocessing angle to baseline angle
-  const baseline = line.baseline;
-  const baselineAngleRadXML = Math.atan(baseline[0]);
-  const baselineAngleRadAdj = angle * (Math.PI / 180);
-  const baselineAngleRadTotal = Math.tan(baselineAngleRadXML + baselineAngleRadAdj);
-
-  for (let i=0; i<line.words.length; i++) {
-      const word = line.words[i];
-      word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
-  }
-
-  // Re-calculate line bbox by rotating original line bbox
-  const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
-
-  // Re-calculate line bbox by taking union of word bboxes
-  ocr.calcLineBbox(line);
-
-  // Adjust baseline
-  const baselineOffsetAdj = lineBoxRot[3] - line.bbox[3];
-
-  const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
-
-  line.baseline[0] = baselineAngleRadTotal;
-  line.baseline[1] = baselineOffsetTotal;
-
-}
-
-
 // Includes all capital letters except for "J" and "Q"
 const ascCharArr = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "b", "d", "h", "k", "l", "t", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z"]
@@ -109,7 +62,8 @@ const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z
  * @param {string} params.ocrStr
  * @param {number} params.n
  * @param {?dims} params.pageDims
- * @param {number} params.rotateAngle
+ * @param {number} params.rotateAngle - The angle that the input image is rotated prior to recognition.
+ *    This is used to transform OCR coordinates back to the original coordinate space after recognizing a rotated intermediate image.
  * @param {boolean} params.keepBold
  */
 export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle = 0, keepBold = false}) {
@@ -542,7 +496,7 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
 
   pageObj.angle = Math.abs(rotateAngle) > 0.05 ? rotateAngle : Math.asin(angleRiseMedian) * (180 / Math.PI);
 
-  const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+  const sinAngle = Math.sin(pageObj.angle * (Math.PI / 180));
   const shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
 
   let leftOut = quantile(lineLeft, 0.2) - shiftX;

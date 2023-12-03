@@ -342,10 +342,10 @@ export function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
  * @param {number} angle
  * @param {?dims} dims
  */
-function rotateLine(line, angle, dims = null) {
+export function rotateLine(line, angle, dims = null) {
 
     // If the angle is 0 (or very close) return early.
-    if (angle <= 0.05) return;
+    if (Math.abs(angle) <= 0.05) return;
 
     const dims1 = dims || line.page.dims;
 
