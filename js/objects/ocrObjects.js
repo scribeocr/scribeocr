@@ -42,6 +42,7 @@ export function ocrPage(n, dims) {
  *  `_size` should be preferred over `_sizeCalc` when both exist.
  * @property {?string} raw - Raw string this object was parsed from.
  *    Exists only for debugging purposes, should be `null` in production contexts.
+ * @property {?{x: number, y: number}} _angleAdj - Cached x/y adjustments that must be made to coordinates when rotation is enabled. 
  */
 export function ocrLine(page, bbox, baseline, ascHeight = null, xHeight = null) {
     // These inline comments are required for types to work correctly with VSCode Intellisense.
@@ -64,6 +65,8 @@ export function ocrLine(page, bbox, baseline, ascHeight = null, xHeight = null) 
     this._size = null;
     /** @type {?string} */
     this.raw = null;
+    /** @type {?{x: number, y: number}} */
+    this._angleAdj = null;
   }
 
 
@@ -102,6 +105,8 @@ export function ocrWord(line, text, bbox, id) {
     this.raw = null;
     /** @type {?Array<ocrChar>} */
     this.chars = null;
+    /** @type {?{x: number, y: number}} */
+    this._angleAdj = null;
 }
 
 /**
@@ -230,10 +235,12 @@ const getPageText = (page) => {
 }  
 
 
-// Calculates x and y adjustments to make to the coordinates due to rotation
-// These are used to correctly place boxes on the canvas when the auto-rotate option is enabled. 
+/**
+ * Calculates adjustments to line x and y coordinates needed to auto-rotate the page.
+ * @param {ocrLine} line 
+ */
 function calcLineAngleAdj(line) {
-    if (line._angleAdj === undefined) {
+    if (line._angleAdj === null) {
         line._angleAdj = {x: 0, y: 0};
 
         const angle = line.page.angle;
@@ -261,6 +268,53 @@ function calcLineAngleAdj(line) {
     }
 
     return line._angleAdj;
+}
+
+/**
+ * Calculates adjustments to word x and y coordinates needed to auto-rotate the page.
+ * The numbers returned are *in addition* to the adjustment applied to the entire line (calculated by `calcLineAngleAdj`).
+ * 
+ * @param {ocrWord} word 
+ */
+function calcWordAngleAdj(word) {
+
+    if (word._angleAdj === null) {
+        word._angleAdj = {x: 0, y: 0};
+
+        const angle = word.line.page.angle;
+
+        if (Math.abs(angle ?? 0) > 0.05) {
+
+            const sinAngle = Math.sin(angle * (Math.PI / 180));
+            const cosAngle = Math.cos(angle * (Math.PI / 180));
+
+            const x = word.bbox[0] - (word.line.bbox[0]);
+            const y = word.bbox[3] - (word.line.bbox[3] + word.line.baseline[1]);
+
+            // x adjustment due to rotation for all words printed on baseline
+            const angleAdjXBaseline = x / cosAngle - x;
+
+
+            if (word.sup || word.dropcap) {
+
+
+
+                const tanAngle = sinAngle / cosAngle;
+                const angleAdjYSup = (y - (x * tanAngle)) * cosAngle - y;
+
+                const angleAdjXSup = angleAdjYSup * tanAngle;
+
+                word._angleAdj = { x: angleAdjXBaseline - angleAdjXSup, y: angleAdjYSup };
+
+
+            } else {
+                word._angleAdj = { x: angleAdjXBaseline, y: 0 };
+            }
+        }
+    }
+
+    return word._angleAdj;
+
 }
 
 /**
@@ -430,6 +484,7 @@ const ocr = {
     ocrChar: ocrChar,
     calcLineAngleAdj : calcLineAngleAdj,
     calcLineBbox: calcLineBbox,
+    calcWordAngleAdj: calcWordAngleAdj,
     getPageWord: getPageWord,
     getPageWords: getPageWords,
     getPageText: getPageText,

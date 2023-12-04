@@ -253,8 +253,8 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  const shiftX = sinAngle * (inputDims.height * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((inputDims.width - shiftX) * 0.5) || 0;
+  // const shiftX = sinAngle * (inputDims.height * 0.5) * -1 || 0;
+  // const shiftY = sinAngle * ((inputDims.width - shiftX) * 0.5) || 0;
 
   // Start 1st object: Text Content
   let textStream = "";
@@ -302,25 +302,6 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       }
     }
 
-    // let angleAdjXLine = 0;
-    // let angleAdjYLine = 0;
-    // if (rotateBackground && Math.abs(angle ?? 0) > 0.05) {
-
-    //   const x = linebox[0];
-    //   const y = linebox[3] + baseline[1];
-
-    //   const xRot = x * cosAngle - sinAngle * y;
-    //   const yRot = x * sinAngle + cosAngle * y;
-
-    //   const angleAdjXInt = x - xRot;
-
-    //   const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
-
-    //   angleAdjXLine = angleAdjXInt + shiftX;
-    //   angleAdjYLine = angleAdjYInt + shiftY;
-
-    // }
-
     const angleAdjLine = (rotateBackground && Math.abs(angle ?? 0) > 0.05) ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
 
     
@@ -367,6 +348,7 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     textStream += "[ ";
 
     let wordBoxLast = [0,0,0,0];
+    let wordBoxAdjLast = [0,0,0,0];
     let wordRightBearingLast = 0;
     let charSpacing = 0;
     let spacingAdj = 0;
@@ -416,16 +398,16 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
         fillColor = word.matchTruth ? "0 1 0.5 rg" : "1 0 0 rg";
       }
 
-      // TODO: The math here is not correct, superscripts are not positioned correctly.
-      const sinAngle = 0;
-      const angleAdjYLine = 0;
-      let angleAdjYSup = rotateText ? sinAngle * (wordBox[0] - linebox[0]) * -1 : 0;
+      const angleAdjWord = ocr.calcWordAngleAdj(word);
+
+      const wordBoxAdj = [wordBox[0] + angleAdjLine.x + angleAdjWord.x, wordBox[1] + angleAdjLine.y + angleAdjWord.y, wordBox[2] + angleAdjLine.x + angleAdjWord.x, wordBox[3] + angleAdjLine.y + angleAdjWord.y];
   
+      // TODO: Test whether the math here is correct for drop caps. 
       let ts = 0;
       if (word.sup) {
-        ts = (angleAdjYLine + (wordBox[3] - (linebox[3] + baseline[1])) + angleAdjYSup) * -1;
+        ts = (linebox[3] + baseline[1] + angleAdjLine.y) - (wordBoxAdj[3]);
       } else if(word.dropcap) {
-        ts = (linebox[3] + baseline[1]) - wordBox[3] + angleAdjYLine + angleAdjYSup;
+        ts = (linebox[3] + baseline[1]) - wordBox[3] + angleAdjLine.y + angleAdjWord.y;
       } else {
         ts = 0;
       }
@@ -442,34 +424,28 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       let wordFirstGlyphMetrics = wordFontOpentype.charToGlyph(wordText.substr(0, 1)).getMetrics();
       let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
 
+      const wordWidthAdj = (wordBox[2] - wordBox[0]) / cosAngle;
+      const wordSpaceAdj = (wordBox[0] - wordBoxLast[2]) / cosAngle;
+
       // Add space character between words
       if(j > 0) {
-        // Actual space (# of pixels in image) between end of last word's bounding box and start of this word's bounding box
-        const wordSpaceActual = wordBox[0] - wordBoxLast[2];
-
-        // When the angle is significant, words need to be spaced differently due to rotation.
-        let angleAdj = 0;
-        if(rotateText && Math.abs(angle) >= 1) {
-          angleAdj = ((wordBox[0] - wordBoxLast[0]) / cosAngle - (wordBox[0] - wordBoxLast[0]));
-        }
-        
-        const wordSpaceActualAdj = wordSpaceActual + angleAdj;
 
         // The space between words determined by:
         // (1) The right bearing of the last word, (2) the left bearing of the current word, (3) the width of the space character between words,
         // (4) the current character spacing value (applied twice--both before and after the space character).
         // const spaceWidth = (await calcWordMetrics(" ", wordFontFamilyLast, fontSizeLast, wordStyleLast)).visualWidth;
-        const spaceWidth = wordFontOpentypeLast.charToGlyph(" ").advanceWidth * (fontSizeLast / wordFontOpentypeLast.unitsPerEm);
+        const spaceWidthGlyph = wordFontOpentypeLast.charToGlyph(" ").advanceWidth * (fontSizeLast / wordFontOpentypeLast.unitsPerEm);
 
-        const wordSpaceExpected = (spaceWidth + charSpacing * 2 + wordRightBearingLast) * (tzCurrent / 100) + wordLeftBearing;
+        const wordSpaceExpected = (spaceWidthGlyph + charSpacing * 2 + wordRightBearingLast) * (tzCurrent / 100) + wordLeftBearing;
       
         // Ad-hoc adjustment needed to replicate wordSpace
         // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
-        const wordSpaceExtra = (wordSpaceActualAdj - wordSpaceExpected + spacingAdj) * (100 / tzCurrent);
+        const wordSpaceExtra = (wordSpaceAdj - wordSpaceExpected + spacingAdj) * (100 / tzCurrent);
   
         textStream += "( ) " + String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6);
 
       }
+      wordBoxAdjLast = wordBoxAdj;
       wordBoxLast = wordBox;
       wordFontFamilyLast = wordFontFamily;
       wordStyleLast = word.style;
@@ -482,14 +458,14 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space. 
       // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
       if(wordText.length == 1 && !word.dropcap) {
-        spacingAdj = (wordBox[2] - wordBox[0]) - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / wordFontOpentype.unitsPerEm));
+        spacingAdj = wordWidthAdj - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / wordFontOpentype.unitsPerEm));
       } else {
         spacingAdj = 0;
       }
 
       textStream += " ] TJ\n";
 
-      charSpacing = await calcCharSpacing(wordText, wordFont, wordFontSize, wordBox[2] - wordBox[0]) || 0;
+      charSpacing = await calcCharSpacing(wordText, wordFont, wordFontSize, wordWidthAdj) || 0;
 
       if (pdfFont != pdfFontCurrent || wordFontSize != fontSizeLast) {
         textStream += pdfFont + " " + String(wordFontSize) + " Tf\n";
@@ -509,7 +485,7 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
         tzCurrent = tz;
       }
 
-      textStream += String(Math.round(charSpacing*1e3)/1e3) + " Tc\n";
+      textStream += String(Math.round(charSpacing*1e6)/1e6) + " Tc\n";
 
       textStream += "[ ";
 

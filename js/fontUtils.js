@@ -80,7 +80,7 @@ export async function calcCharSpacing(wordText, font, fontSize, actualWidth) {
 
   const wordWidth = (await calcWordMetrics(wordText, font, fontSize))["visualWidth"];
 
-  const charSpacing = Math.round((actualWidth - wordWidth) / (wordText.length - 1)*1e3)/1e3;
+  const charSpacing = Math.round((actualWidth - wordWidth) / (wordText.length - 1)*1e6)/1e6;
 
   return charSpacing;
 

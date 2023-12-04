@@ -54,14 +54,6 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
       const box = wordObj.bbox;
 
       let box_width = box[2] - box[0];
-      let box_height = box[3] - box[1];
-
-      let angleAdjXWord = angleAdjLine.x;
-      if(enableRotation && Math.abs(angle) >= 1) {
-
-        angleAdjXWord = angleAdjXWord + ((box[0] - linebox[0]) / cosAngle - (box[0] - linebox[0]));
-
-      }
 
       const wordText = wordObj.text;
       const wordSup = wordObj.sup;
@@ -136,82 +128,65 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
       let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
 
-        let baselineWord;
-        let visualBaseline;
-        if (wordSup || wordDropCap) {
+      const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : {x : 0, y : 0};
 
-          baselineWord = box[3];
+      let visualBaseline;
+      if (wordSup || wordDropCap) {
+        visualBaseline = box[3] + angleAdjLine.y + angleAdjWord.y;
+      } else if (enableRotation) {
+        visualBaseline = linebox[3] + baseline[1] + angleAdjLine.y + angleAdjWord.y;
+      } else {
+        visualBaseline = linebox[3] + baseline[1] + baseline[0] * (box[0] - linebox[0]);
+      }
 
-          let angleAdjYWord = angleAdjLine.y;
+      // This version uses the angle from the line rather than the page
+      // const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (Math.atan(baseline[0]) * (180 / Math.PI)) : 0;
 
-          // Recalculate the angle adjustments (given different x and y coordinates)
-          if (enableRotation) {
+      const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-            const x = box[0];
-            const y = box[3];
-      
-            const xRot = x * cosAngle - sinAngle * y;
-            const yRot = x * sinAngle + cosAngle * y;
-      
-            const angleAdjXInt = x - xRot;
-            // const angleAdjYInt = y - yRot;
-      
-            // const angleAdjXInt = sinAngle * (linebox[3] + baseline[1]);
-            const angleAdjYInt = sinAngle * (box[0] + angleAdjXInt / 2) * -1;
-      
-            angleAdjXWord = angleAdjXInt + shiftX;
-            angleAdjYWord = angleAdjYInt + shiftY;
-      
-          }
+      const visualLeft = box[0] + angleAdjLine.x + angleAdjWord.x + leftAdjX;
+      const left = visualLeft - wordLeftBearing;
 
-          visualBaseline = box[3] + angleAdjYWord;
-      
-        } else {
-          visualBaseline = linebox[3] + baseline[1] + angleAdjLine.y;
-        }
+      const textBackgroundColor = globalThis.find.search && wordText.toLowerCase().includes(globalThis.find.search?.toLowerCase()) ? '#4278f550' : '';
 
-        const visualLeft = box[0] + angleAdjXWord + leftAdjX;
-        const left = visualLeft - wordLeftBearing;
+      const textbox = new ITextWord(wordText, {
+        left: left,
+        top: visualBaseline,
+        angle: angleArg,
+        word: wordObj,
+        selectable: !layoutMode,
+        leftOrig: left,
+        topOrig: visualBaseline,
+        baselineAdj: 0,
+        wordSup: wordSup,
+        originY: "bottom",
+        fill: fill_arg,
+        fill_proof: fillColorHex,
+        fill_ebook: 'black',
+        fill_eval: fillColorHexMatch,
+        fontFamily: fontI.fontFaceName,
+        fontStyle: fontI.fontFaceStyle,
+        fontObj: fontI,
 
-        const textBackgroundColor = globalThis.find.search && wordText.toLowerCase().includes(globalThis.find.search?.toLowerCase()) ? '#4278f550' : '';
+        // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
+        fontFamilyLookup: wordFontFamily,
+        fontStyleLookup: fontStyle,
+        wordID: word_id,
+        line: i,
+        visualWidth: box_width, // TODO: Is this incorrect when rotation exists? 
+        visualLeft: visualLeft,
+        visualBaseline: visualBaseline,
+        scaleX: scaleX,
+        defaultFontFamily: defaultFontFamily,
+        textBackgroundColor: textBackgroundColor,
+        //fontFamily: 'times',
+        opacity: opacity_arg,
+        charSpacing: charSpacing * 1000 / wordFontSize,
+        fontSize: wordFontSize,
+        showTextBoxBorder: showTextBoxBorderArg
+      })
 
-        const textbox = new ITextWord(wordText, {
-          left: left,
-          top: visualBaseline,
-          word: wordObj,
-          selectable: !layoutMode,
-          leftOrig: left,
-          topOrig: visualBaseline,
-          baselineAdj: 0,
-          wordSup: wordSup,
-          originY: "bottom",
-          fill: fill_arg,
-          fill_proof: fillColorHex,
-          fill_ebook: 'black',
-          fill_eval: fillColorHexMatch,
-          fontFamily: fontI.fontFaceName,
-          fontStyle: fontI.fontFaceStyle,
-          fontObj: fontI,
-
-          // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
-          fontFamilyLookup: wordFontFamily,
-          fontStyleLookup: fontStyle,
-          wordID: word_id,
-          line: i,
-          visualWidth: box_width, // TODO: Is this incorrect when rotation exists? 
-          visualLeft: visualLeft,
-          visualBaseline: visualBaseline,
-          scaleX: scaleX,
-          defaultFontFamily: defaultFontFamily,
-          textBackgroundColor: textBackgroundColor,
-          //fontFamily: 'times',
-          opacity: opacity_arg,
-          charSpacing: charSpacing * 1000 / wordFontSize,
-          fontSize: wordFontSize,
-          showTextBoxBorder: showTextBoxBorderArg
-        })
-
-        canvas.add(textbox);
+      canvas.add(textbox);
 
     }
   }
