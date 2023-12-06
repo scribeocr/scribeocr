@@ -127,7 +127,8 @@ export const calcLineFontSize = async (line, fontContainer) => {
 
   if (line._size) return line._size;
 
-  if (line._sizeCalc) return line._sizeCalc;
+  // TODO: Add back cache when there are also functions that clear cache at appropriate times.
+  // if (line._sizeCalc) return line._sizeCalc;
 
   // The font of the first word is used (if present), otherwise the default font is used.
   const font = fontContainer[line.words[0]?.font || globalSettings.defaultFont]["normal"];

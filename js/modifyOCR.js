@@ -43,7 +43,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
         if (lineNew.words.length == 0) continue;
 
         const lineNewRot = ocr.cloneLine(lineNew);
-        ocr.rotateLine(lineNewRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
+        if (pageMetricsObj.angle) ocr.rotateLine(lineNewRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
 
         // Identify the OCR line a bounding box is in (or closest line if no match exists)
         // (1) If the new line's bounding box has significant overlap with an existing line's bounding box, add to that line.
@@ -66,7 +66,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
             if (line.words.length == 0) continue;
 
             const lineRot = ocr.cloneLine(line);
-            ocr.rotateLine(lineRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
+            if (pageMetricsObj.angle) ocr.rotateLine(lineRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
 
             const left = Math.max(lineRot.bbox[0], lineNewRot.bbox[0]);
             const top = Math.max(lineRot.bbox[1], lineNewRot.bbox[1]);

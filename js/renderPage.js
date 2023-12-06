@@ -23,21 +23,13 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
 
-  const sinAngle = Math.sin(angle * (Math.PI / 180));
-  const cosAngle = Math.cos(angle * (Math.PI / 180));
-
-  const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((imgDims.width - shiftX) * 0.5) || 0;
-
   const lines = page.lines;
 
-  let lineFontSize = 10;
   for (let i = 0; i < lines.length; i++) {
     let lineObj = lines[i]
 
     const linebox = lineObj.bbox;
     const baseline = lineObj.baseline;
-    lineFontSize = (await calcLineFontSize(lineObj, fontAll.active)) ||  lineFontSize;
 
     const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
 

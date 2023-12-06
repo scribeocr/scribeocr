@@ -253,9 +253,6 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  // const shiftX = sinAngle * (inputDims.height * 0.5) * -1 || 0;
-  // const shiftY = sinAngle * ((inputDims.width - shiftX) * 0.5) || 0;
-
   // Start 1st object: Text Content
   let textStream = "";
 
@@ -288,7 +285,7 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
     const wordBox = word.bbox;
 
-    const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;;
+    const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;
 
     let fillColor = "0 0 0 rg";
     if (textMode == "proof") {
@@ -348,7 +345,6 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     textStream += "[ ";
 
     let wordBoxLast = [0,0,0,0];
-    let wordBoxAdjLast = [0,0,0,0];
     let wordRightBearingLast = 0;
     let charSpacing = 0;
     let spacingAdj = 0;
@@ -398,14 +394,13 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
         fillColor = word.matchTruth ? "0 1 0.5 rg" : "1 0 0 rg";
       }
 
-      const angleAdjWord = ocr.calcWordAngleAdj(word);
-
-      const wordBoxAdj = [wordBox[0] + angleAdjLine.x + angleAdjWord.x, wordBox[1] + angleAdjLine.y + angleAdjWord.y, wordBox[2] + angleAdjLine.x + angleAdjWord.x, wordBox[3] + angleAdjLine.y + angleAdjWord.y];
+      const angleAdjWord =  word.sup ? ocr.calcWordAngleAdj(word) : {x: 0, y: 0};
+      const angleAdjWordX = (rotateBackground && Math.abs(angle ?? 0) > 0.05) ? angleAdjWord.x : 0;
   
       // TODO: Test whether the math here is correct for drop caps. 
       let ts = 0;
       if (word.sup) {
-        ts = (linebox[3] + baseline[1] + angleAdjLine.y) - (wordBoxAdj[3]);
+        ts = (linebox[3] + baseline[1] + angleAdjLine.y) - (wordBox[3] + angleAdjLine.y + angleAdjWord.y);
       } else if(word.dropcap) {
         ts = (linebox[3] + baseline[1]) - wordBox[3] + angleAdjLine.y + angleAdjWord.y;
       } else {
@@ -440,12 +435,11 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       
         // Ad-hoc adjustment needed to replicate wordSpace
         // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
-        const wordSpaceExtra = (wordSpaceAdj - wordSpaceExpected + spacingAdj) * (100 / tzCurrent);
+        const wordSpaceExtra = (wordSpaceAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (100 / tzCurrent);
   
         textStream += "( ) " + String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6);
 
       }
-      wordBoxAdjLast = wordBoxAdj;
       wordBoxLast = wordBox;
       wordFontFamilyLast = wordFontFamily;
       wordStyleLast = word.style;
@@ -458,9 +452,9 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space. 
       // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
       if(wordText.length == 1 && !word.dropcap) {
-        spacingAdj = wordWidthAdj - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / wordFontOpentype.unitsPerEm));
+        spacingAdj = wordWidthAdj - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / wordFontOpentype.unitsPerEm)) - angleAdjWordX;
       } else {
-        spacingAdj = 0;
+        spacingAdj = 0 - angleAdjWordX;
       }
 
       textStream += " ] TJ\n";

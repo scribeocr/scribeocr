@@ -278,7 +278,8 @@ function calcLineAngleAdj(line) {
  */
 function calcWordAngleAdj(word) {
 
-    if (word._angleAdj === null) {
+    // if (word._angleAdj === null) {
+    if (true) {
         word._angleAdj = {x: 0, y: 0};
 
         const angle = word.line.page.angle;
@@ -291,23 +292,17 @@ function calcWordAngleAdj(word) {
             const x = word.bbox[0] - (word.line.bbox[0]);
             const y = word.bbox[3] - (word.line.bbox[3] + word.line.baseline[1]);
 
-            // x adjustment due to rotation for all words printed on baseline
-            const angleAdjXBaseline = x / cosAngle - x;
-
-
             if (word.sup || word.dropcap) {
-
-
 
                 const tanAngle = sinAngle / cosAngle;
                 const angleAdjYSup = (y - (x * tanAngle)) * cosAngle - y;
 
-                const angleAdjXSup = angleAdjYSup * tanAngle;
+                const angleAdjXSup = angle > 0 ? 0 : angleAdjYSup * tanAngle;
 
-                word._angleAdj = { x: angleAdjXBaseline - angleAdjXSup, y: angleAdjYSup };
-
+                word._angleAdj = { x: 0 - angleAdjXSup, y: angleAdjYSup };
 
             } else {
+                const angleAdjXBaseline = x / cosAngle - x;
                 word._angleAdj = { x: angleAdjXBaseline, y: 0 };
             }
         }
@@ -356,10 +351,10 @@ export function calcLineBbox(line) {
  * @param {Array<number>} bbox
  * @param {number} cosAngle
  * @param {number} sinAngle
- * @param {number} shiftX
- * @param {number} shiftY
+ * @param {number} width
+ * @param {number} height
  */
-export function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
+export function rotateBbox(bbox, cosAngle, sinAngle, width, height) {
 
     // This math is technically only correct when the angle is 0, as that is the only time when
     // the left/top/right/bottom bounds exactly match the corners of the rectangle the line was printed in.
@@ -368,24 +363,13 @@ export function rotateBbox(bbox, cosAngle, sinAngle, shiftX = 0, shiftY = 0) {
   
     const bboxOut = [...bbox];
 
-    const x = bboxOut[0] - shiftX / 2;
-    const y = bboxOut[3] - (bboxOut[3] - bboxOut[1]) / 3 - shiftY / 2;
-    
-    bboxOut[0] = bbox[0] - shiftX;
-    bboxOut[2] = bbox[2] - shiftX;
-    bboxOut[1] = bbox[1] - shiftY;
-    bboxOut[3] = bbox[3] - shiftY;
+    const xCenter = width / 2;
+    const yCenter = height / 2;
 
-    const angleAdjYInt = (1 - cosAngle) * y - sinAngle * bboxOut[0];
-
-    const xRot = x * cosAngle - sinAngle * y;
-
-    const angleAdjXInt = x - xRot;
-
-    bboxOut[0] = Math.round(bboxOut[0] - angleAdjXInt);
-    bboxOut[2] = Math.round(bboxOut[2] - angleAdjXInt);
-    bboxOut[1] = Math.round(bboxOut[1] - angleAdjYInt);
-    bboxOut[3] = Math.round(bboxOut[3] - angleAdjYInt);
+    bboxOut[0] = cosAngle * (bbox[0] - xCenter) - sinAngle * (bbox[3] - yCenter) + xCenter;
+    bboxOut[2] = cosAngle * (bbox[2] - xCenter) - sinAngle * (bbox[3] - yCenter) + xCenter;
+    bboxOut[1] = sinAngle * (bbox[0] - xCenter) + cosAngle * (bbox[1] - yCenter) + yCenter;
+    bboxOut[3] = sinAngle * (bbox[0] - xCenter) + cosAngle * (bbox[3] - yCenter) + yCenter;
 
     return bboxOut;
 }
@@ -405,10 +389,7 @@ export function rotateLine(line, angle, dims = null) {
 
     const sinAngle = Math.sin(angle * (Math.PI / 180));
     const cosAngle = Math.cos(angle * (Math.PI / 180));
-  
-    const shiftX = sinAngle * (dims1.height * 0.5) * -1 || 0;
-    const shiftY = sinAngle * ((dims1.width - shiftX) * 0.5) || 0;
-  
+    
     // Add preprocessing angle to baseline angle
     const baseline = line.baseline;
     const baselineAngleRadXML = Math.atan(baseline[0]);
@@ -417,11 +398,11 @@ export function rotateLine(line, angle, dims = null) {
   
     for (let i=0; i<line.words.length; i++) {
         const word = line.words[i];
-        word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, shiftX, shiftY);
+        word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, dims1.width, dims1.height);
     }
   
     // Re-calculate line bbox by rotating original line bbox
-    const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, shiftX, shiftY);
+    const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, dims1.width, dims1.height);
   
     // Re-calculate line bbox by taking union of word bboxes
     calcLineBbox(line);

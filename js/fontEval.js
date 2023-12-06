@@ -122,15 +122,18 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 
 	let change = false;
 	if (metricCarlito < metricNimbusSans) {
-		fontAll.active.SansDefault = fontAll.active.Carlito;
+		fontAll.raw.SansDefault = fontAll.raw.Carlito;
+		fontAll.opt.SansDefault = fontAll.opt.Carlito;
 		change = true;
 	}
 
 	if (metricCentury < metricNimbusRomNo9L && metricCentury < metricGaramond) {
-		fontAll.active.SerifDefault = fontAll.active.Century;
+		fontAll.raw.SerifDefault = fontAll.raw.Century;
+		fontAll.opt.SerifDefault = fontAll.opt.Century;
 		change = true;
 	} else if (metricGaramond < metricNimbusRomNo9L && metricGaramond < metricCentury) {
-		fontAll.active.SerifDefault = fontAll.active.Garamond;
+		fontAll.raw.SerifDefault = fontAll.raw.Garamond;
+		fontAll.opt.SerifDefault = fontAll.opt.Garamond;
 		change = true;
 	}
 

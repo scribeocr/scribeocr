@@ -2269,15 +2269,30 @@ async function importFiles(curFiles) {
       const imageNi = imageN + 1;
       imageN = imageN + 1;
 
+      let doneCt = 0;
+
       const reader = new FileReader();
-      reader.addEventListener("load", () => {
+      reader.addEventListener("load", async () => {
         globalThis.imageAll["nativeSrc"][imageNi] = reader.result;
+        await renderPDFImageCache([imageNi]);
+        const imgElem = await globalThis.imageAll["native"][imageNi];
+
+        globalThis.pageMetricsArr[imageNi] = new pageMetrics({height: imgElem.height, width: imgElem.width});
+
+
         globalThis.convertPageActiveProgress.increment();
 
         // updateDataProgress();
 
         if(imageNi == 0) {
           displayPage(0);
+        }
+
+        // Enable downloads now for image imports if no HOCR data exists
+        // TODO: PDF downloads are currently broken when images but not OCR text exists
+        if (!xmlModeImport && globalThis.convertPageActiveProgress.value == globalThis.convertPageActiveProgress.maxValue) {
+          downloadElem.disabled = false;
+          globalThis.state.downloadReady = true;      
         }
 
       }, false);
@@ -2361,6 +2376,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
       // Load image if either (1) it has never been loaded in the first place, or
       // (2) the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image. 
       if ((!globalThis.imageAll["native"][n] &&  globalThis.imageAll["nativeSrc"][n]) || (rotate == false && globalThis.imageAll["nativeRotated"][n] == true)) {
+        globalThis.imageAll["nativeRotated"][n] = false;
         globalThis.imageAll["native"][n] = new Promise(async function (resolve, reject) {
           const image = document.createElement('img');
           await loadImage(globalThis.imageAll["nativeSrc"][n], image);
