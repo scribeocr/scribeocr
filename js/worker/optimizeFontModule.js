@@ -224,11 +224,8 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
       glyphIMetrics = glyphI.getMetrics();
     }
 
-    // To simplify calculations, no right bearings are used.
-    glyphI.advanceWidth = glyphIMetrics.xMax;
     // leftSideBearing is not automatically updated by glyphIMetrics
     glyphI.leftSideBearing = glyphIMetrics.xMin;
-    //glyphI.rightSideBearing = 0;
 
   }
 
@@ -319,10 +316,7 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     }
   }
 
-  const glyphI = workingFont.charToGlyph("g");
-  const glyphIMetrics = glyphI.getMetrics();
-
-  let fontKerningObj = new Object;
+  let fontKerningObj = {};
 
   // Kerning is limited to +/-10% of the em size for most pairs.  Anything beyond this is likely not correct.
   let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
