@@ -337,14 +337,24 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     const indexFirst = workingFont.charToGlyphIndex(charFirst);
     const indexSecond = workingFont.charToGlyphIndex(charSecond);
 
-    // Kerning values are taken as the average between two measurements.
+    const metricsFirst = workingFont.glyphs.glyphs[indexFirst].getMetrics();
+    const metricsSecond = workingFont.glyphs.glyphs[indexSecond].getMetrics();
+
+    // Calculate target (measured) space between two characters. 
+    // This is calculated as the average between two measurements.
     const value2 = fontMetricsObj.kerning2[key];
-    const fontKern1 = Math.round(value * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
-    let fontKern = fontKern1;
+    const fontKern1 = Math.round(value * xHeight);
+    let spaceTarget = fontKern1;
     if (value2) {
-      const fontKern2 = Math.round(value2 * xHeight - Math.max(workingFont.glyphs.glyphs[indexSecond].leftSideBearing, 0));
-      fontKern = Math.round((fontKern1 + fontKern2) / 2);
+      const fontKern2 = Math.round(value2 * xHeight);
+      spaceTarget = Math.round((fontKern1 + fontKern2) / 2);
     }
+
+    // Calculate current space between these 2 glyphs (without kerning adjustments)
+    const spaceCurrent =  metricsFirst.rightSideBearing + metricsSecond.leftSideBearing;
+
+    // Calculate kerning adjustment needed
+    let fontKern = spaceTarget - spaceCurrent;
 
     // For smart quotes, the maximum amount of kerning space allowed is doubled.
     // Unlike letters, some text will legitimately have a large space before/after curly quotes.
