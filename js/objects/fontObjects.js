@@ -250,13 +250,15 @@ export function loadFontContainerFamily(family, type, normalSrc, italicSrc, smal
  * @param {fontContainerFamily} params.Carlito 
  * @param {fontContainerFamily} params.Century
  * @param {fontContainerFamily} params.Garamond 
+ * @param {fontContainerFamily} params.Palatino 
  * @param {fontContainerFamily} params.NimbusRomNo9L 
  * @param {fontContainerFamily} params.NimbusSans 
  */
-export function fontContainerAll({ Carlito, Century, Garamond, NimbusRomNo9L, NimbusSans }) {
+export function fontContainerAll({ Carlito, Century, Garamond, Palatino, NimbusRomNo9L, NimbusSans }) {
   this.Carlito = Carlito;
   this.Century = Century;
   this.Garamond = Garamond;
+  this.Palatino = Palatino;
   this.NimbusRomNo9L = NimbusRomNo9L;
   this.NimbusSans = NimbusSans;
 
@@ -276,18 +278,20 @@ export function fontContainerAll({ Carlito, Century, Garamond, NimbusRomNo9L, Ni
  * @param {Object} src
  * @param {fontSrc} src.Carlito 
  * @param {fontSrc} src.Century 
+ * @param {fontSrc} src.Palatino
  * @param {fontSrc} src.NimbusRomNo9L 
  * @param {fontSrc} src.NimbusSans 
  * @param {fontSrc} src.Garamond 
  * @param {boolean} opt
  * @returns 
  */
-export function loadFontContainerAll({ Carlito, Century, NimbusRomNo9L, NimbusSans, Garamond }, opt = false) {
+export function loadFontContainerAll({ Carlito, Century, NimbusRomNo9L, NimbusSans, Garamond, Palatino }, opt = false) {
 
   return new fontContainerAll({
     "Carlito": loadFontContainerFamily("Carlito", "sans", Carlito.normal, Carlito.italic, Carlito.smallCaps, opt),
     "Century": loadFontContainerFamily("Century", "serif", Century.normal, Century.italic, Century.smallCaps, opt),
     "Garamond": loadFontContainerFamily("Garamond", "serif", Garamond.normal, Garamond.italic, Garamond.smallCaps, opt),
+    "Palatino": loadFontContainerFamily("Palatino", "serif", Palatino.normal, Palatino.italic, Palatino.smallCaps, opt),
     "NimbusRomNo9L": loadFontContainerFamily("NimbusRomNo9L", "serif", NimbusRomNo9L.normal, NimbusRomNo9L.italic, NimbusRomNo9L.smallCaps, opt),
     "NimbusSans": loadFontContainerFamily("NimbusSans", "sans", NimbusSans.normal, NimbusSans.italic, NimbusSans.smallCaps, opt),
   })

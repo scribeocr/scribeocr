@@ -64,6 +64,7 @@ export async function setFontAllWorker(scheduler, fontAll) {
 				"Carlito": { normal: fontAll.active.Carlito.normal.src, italic: fontAll.active.Carlito.italic.src, smallCaps: fontAll.active.Carlito["small-caps"].src },
 				"Century": { normal: fontAll.active.Century.normal.src, italic: fontAll.active.Century.italic.src, smallCaps: fontAll.active.Century["small-caps"].src },
 				"Garamond": { normal: fontAll.active.Garamond.normal.src, italic: fontAll.active.Garamond.italic.src, smallCaps: fontAll.active.Garamond["small-caps"].src },
+				"Palatino": { normal: fontAll.active.Palatino.normal.src, italic: fontAll.active.Palatino.italic.src, smallCaps: fontAll.active.Palatino["small-caps"].src },
 				"NimbusRomNo9L": { normal: fontAll.active.NimbusRomNo9L.normal.src, italic: fontAll.active.NimbusRomNo9L.italic.src, smallCaps: fontAll.active.NimbusRomNo9L["small-caps"].src },
 				"NimbusSans": { normal: fontAll.active.NimbusSans.normal.src, italic: fontAll.active.NimbusSans.italic.src, smallCaps: fontAll.active.NimbusSans["small-caps"].src }},
 				opt: opt});
@@ -108,32 +109,50 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
         await initCanvasNode();
     }
 
-	const metricCarlito = await evalPageFonts(fontAll.active.Carlito, pageArr, binaryImageArrRes);
-	const metricNimbusSans = await evalPageFonts(fontAll.active.NimbusSans, pageArr, binaryImageArrRes);
-	console.log("metricCarlito: " + String(metricCarlito));
-	console.log("metricNimbusSans: " + String(metricNimbusSans));
+	const sansMetrics = {
+		Carlito: await evalPageFonts(fontAll.active.Carlito, pageArr, binaryImageArrRes),
+		NimbusSans: await evalPageFonts(fontAll.active.NimbusSans, pageArr, binaryImageArrRes),
+	} 
 
-	const metricCentury = await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes);
-	const metricGaramond = await evalPageFonts(fontAll.active.Garamond, pageArr, binaryImageArrRes);
-	const metricNimbusRomNo9L = await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes);
-	console.log("metricCentury: " + String(metricCentury));
-	console.log("metricGaramond: " + String(metricGaramond));
-	console.log("metricNimbusRomNo9L: " + String(metricNimbusRomNo9L));
+	let minKeySans = "NimbusSans";
+	let minValueSans = Number.MAX_VALUE;
+
+	for (const [key, value] of Object.entries(sansMetrics)) {
+		console.log(key + " metric: " + String(value));
+		if (value < minValueSans) {
+			minValueSans = value;
+			minKeySans = key;
+		}
+	}
 
 	let change = false;
-	if (metricCarlito < metricNimbusSans) {
-		fontAll.raw.SansDefault = fontAll.raw.Carlito;
-		fontAll.opt.SansDefault = fontAll.opt.Carlito;
+	if (minKeySans !== "NimbusSans") {
+		fontAll.raw.SansDefault = fontAll.raw[minKeySans];
+		fontAll.opt.SansDefault = fontAll.opt[minKeySans];
 		change = true;
 	}
 
-	if (metricCentury < metricNimbusRomNo9L && metricCentury < metricGaramond) {
-		fontAll.raw.SerifDefault = fontAll.raw.Century;
-		fontAll.opt.SerifDefault = fontAll.opt.Century;
-		change = true;
-	} else if (metricGaramond < metricNimbusRomNo9L && metricGaramond < metricCentury) {
-		fontAll.raw.SerifDefault = fontAll.raw.Garamond;
-		fontAll.opt.SerifDefault = fontAll.opt.Garamond;
+	const serifMetrics = {
+		Century: await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes),
+		Palatino: await evalPageFonts(fontAll.active.Palatino, pageArr, binaryImageArrRes),
+		Garamond: await evalPageFonts(fontAll.active.Garamond, pageArr, binaryImageArrRes),
+		NimbusRomNo9L: await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes),
+	} 
+
+	let minKeySerif = "NimbusRomNo9L";
+	let minValueSerif = Number.MAX_VALUE;
+
+	for (const [key, value] of Object.entries(serifMetrics)) {
+		console.log(key + " metric: " + String(value));
+		if (value < minValueSerif) {
+			minValueSerif = value;
+			minKeySerif = key;
+		}
+	}
+
+	if (minKeySerif !== "NimbusRomNo9L") {
+		fontAll.raw.SerifDefault = fontAll.raw[minKeySerif];
+		fontAll.opt.SerifDefault = fontAll.opt[minKeySerif];
 		change = true;
 	}
 
