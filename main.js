@@ -1138,7 +1138,18 @@ export function toggleEditButtons(disable = true) {
   }
 }
 
-function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false) {
+/**
+ * 
+ * @param {string} id - HTML element ID
+ * @param {number} maxValue 
+ * @param {number} initValue 
+ * @param {boolean} alwaysUpdateUI - Always update the UI every time the value increments.
+ *    If this is default, the bar is only visually updated for the every 5 values (plus the first and last).
+ *    This avoids stutters when the value is incremented quickly, so should be enabled when loading is expected to be quick.
+ * @param {boolean} autoHide - Automatically hide loading bar when it reaches 100%
+ * @returns 
+ */
+function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false, autoHide = false) {
   const progressCollapse = document.getElementById(id);
 
   const progressCollapseObj = new bootstrap.Collapse(progressCollapse, { toggle: false });
@@ -1157,6 +1168,12 @@ function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false)
       this.elem.setAttribute("aria-valuenow", (this.value + 1).toString());
       this.elem.setAttribute("style", "width: " + ((this.value + 1) / maxValue * 100) + "%");
       await sleep(0);
+    }
+    if (autoHide && this.value >= this.maxValue) {
+      // Wait for a second to hide.
+      // This is better visually, as the user has time to note that the load finished.
+      // Additionally, hiding sometimes fails entirely with no delay, if the previous animation has not yet finished. 
+      setTimeout(() => progressCollapseObj.hide(), 1000)
     }
   }} 
 
@@ -2261,7 +2278,7 @@ async function importFiles(curFiles) {
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   if (inputDataModes.imageMode || xmlModeImport || globalThis.inputDataModes.extractTextMode) {
     const progressMax = inputDataModes.imageMode && xmlModeImport ? globalThis.pageCount * 2 : globalThis.pageCount;
-    globalThis.convertPageActiveProgress = initializeProgress("import-progress-collapse", progressMax);
+    globalThis.convertPageActiveProgress = initializeProgress("import-progress-collapse", progressMax, 0, false, true);
   }
 
   for (let i = 0; i < globalThis.pageCount; i++) {
