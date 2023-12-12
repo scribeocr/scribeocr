@@ -128,7 +128,7 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 	let change = false;
 	if (minKeySans !== "NimbusSans") {
 		fontAll.raw.SansDefault = fontAll.raw[minKeySans];
-		fontAll.opt.SansDefault = fontAll.opt[minKeySans];
+		if (fontAll.opt) fontAll.opt.SansDefault = fontAll.opt[minKeySans];
 		change = true;
 	}
 
@@ -152,7 +152,7 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 
 	if (minKeySerif !== "NimbusRomNo9L") {
 		fontAll.raw.SerifDefault = fontAll.raw[minKeySerif];
-		fontAll.opt.SerifDefault = fontAll.opt[minKeySerif];
+		if (fontAll.opt) fontAll.opt.SerifDefault = fontAll.opt[minKeySerif];
 		change = true;
 	}
 
