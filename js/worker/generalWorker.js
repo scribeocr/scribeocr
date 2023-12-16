@@ -128,6 +128,8 @@ async function compareHOCRWrap(args) {
   return await compareHOCR(args);
 }
 
+postMessage({data: "ready", id: 0})
+
 addEventListener('message', async e => {
     const func = e.data[0];
     const args = e.data[1];

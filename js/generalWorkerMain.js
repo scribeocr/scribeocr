@@ -12,10 +12,14 @@ export async function initGeneralWorker() {
 		};
 		worker.promises = {};
 		worker.promiseId = 0;
+
+		const ready = new Promise(function (resolve, reject) {
+			worker.promises[0] = { resolve: resolve, reject: reject, func: "ready" };
+		});
+
 		worker.onmessage = async function (event) {
 			worker.promises[event.data.id].resolve(event.data);
 		}
-		resolve(obj);
 
 		function wrap(func) {
 			return function (...args) {
@@ -47,6 +51,8 @@ export async function initGeneralWorker() {
 		obj.loadFontContainerAllWorker = wrap("loadFontContainerAllWorker");
 		obj.setFontActiveWorker = wrap("setFontActiveWorker");
 		obj.setGlobalSettings = wrap("setGlobalSettings");
+
+		ready.then((x) => resolve(obj));
 
 	})
 };

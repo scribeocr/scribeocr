@@ -2814,12 +2814,22 @@ async function initGeneralScheduler() {
 
   globalThis.generalScheduler = await Tesseract.createScheduler();
   globalThis.generalScheduler["workers"] = new Array(workerN); 
-  for (let i = 0; i < workerN; i++) {
+
+  const addGeneralWorker = async (i) => {
     const w = await initGeneralWorker();
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
     globalThis.generalScheduler.addWorker(w);
     globalThis.generalScheduler["workers"][i] = w;
   }
+
+  // Wait for the first worker to load.
+  // This allows the files to be loaded only once, as they will be in the cache for workers 2+.
+  await addGeneralWorker(0);
+
+  const resArr = Array.from({ length: workerN }, (v, k) => k ).slice(1).map((i) => addGeneralWorker(i));
+
+  await Promise.all(resArr);
+
 }
 
 initGeneralScheduler();
