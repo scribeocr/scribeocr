@@ -263,7 +263,14 @@ zone.addEventListener(event, highlight, false);
 
 // Show new warning or error message to the user. 
 // TODO: Probably some better way to do this than parsing from text
-export function insertAlertMessage(innerHTML, error = true, divId = "alertDiv") {
+
+/**
+ * 
+ * @param {string} innerHTML - HTML content of warning/error message.
+ * @param {boolean} error - Whether this is an error message (red) or warning message (yellow)
+ * @param {string} parentElemId - ID of element to insert new message element within
+ */
+export function insertAlertMessage(innerHTML, error = true, parentElemId = "alertDiv", visible = true) {
   const warningSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
   <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
   <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
@@ -278,6 +285,12 @@ export function insertAlertMessage(innerHTML, error = true, divId = "alertDiv") 
   const chosenSVG = error ? errorSVG : warningSVG;
 
   const htmlDiv = document.createElement("div");
+  const id = "alertDiv" + getRandomAlphanum(5);
+  htmlDiv.setAttribute("id", id);
+
+  if (!visible) {
+    htmlDiv.setAttribute("style", "display:none");
+  }
 
   htmlDiv.innerHTML = `<div class="alert alert-dismissible ${error ? "alert-danger" : "alert-warning"} d-flex align-items-center show fade mb-1">
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -285,7 +298,9 @@ export function insertAlertMessage(innerHTML, error = true, divId = "alertDiv") 
   <div class="mb-0"> ${innerHTML} </div>
 </div>`;
 
-  document.getElementById(divId)?.appendChild(htmlDiv);
+  document.getElementById(parentElemId)?.appendChild(htmlDiv);
+
+  return htmlDiv;
 
 }
 
@@ -953,6 +968,7 @@ export function setFormatLabel(x) {
     downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".xlsx";
 
   }
+  enableDisableDownloadPDFAlert();
 }
 
 const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
@@ -1076,15 +1092,18 @@ document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', 
 // the user will be prompted to change display modes before downloading. 
 // This is because, while printing OCR text visibly is an intended feature (it was the original purpose of this application),
 // a user trying to add text to an image-based PDF may be surprised by this behavior. 
-let displayModeAlertShown = false;
-document.getElementById('nav-download')?.addEventListener('shown.bs.collapse', function (e) {
-  if (e.target.id != "nav-download") return;
-  if (inputDataModes.xmlMode[globalThis.currentPage.n] && !displayModeAlertShown && displayModeElem.value == "proof") {
-    insertAlertMessage("To generate a PDF with invisible OCR text, select View > Display Mode > OCR Mode before downloading.", false, "alertDownloadDiv");
-    displayModeAlertShown = true;
-  }
-})
+const pdfAlertElem = insertAlertMessage("To generate a PDF with invisible OCR text, select View > Display Mode > OCR Mode before downloading.", false, "alertDownloadDiv", false);;
+export const enableDisableDownloadPDFAlert = () => {
 
+  // Alert is enabled if (1) 
+  const enable = displayModeElem.value == "proof" && formatLabelTextElem.textContent == "PDF";
+
+  if (enable) {
+    pdfAlertElem.setAttribute("style", "");
+  } else {
+    pdfAlertElem.setAttribute("style", "display:none");
+  }
+}
 
 
 // When the navbar is "sticky", it does not automatically widen for large canvases (when the canvas size is larger than the viewport).

@@ -48,8 +48,10 @@ export async function calcWordMetrics(wordText, font, fontSize){
   for (let i=0; i<wordTextArr.length; i++) {
     const charI = wordTextArr[i];
     const charJ = wordTextArr[i+1];
-    wordWidth1 += fontOpentypeI.charToGlyph(charI).advanceWidth;
-    if (charJ) wordWidth1 += fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(charI),fontOpentypeI.charToGlyph(charJ));
+    const glyphI = fontOpentypeI.charToGlyph(charI);
+    if (glyphI.name == ".notdef") console.log(`Character ${charI} is not defined in font ${font.family} ${font.style}`);
+    wordWidth1 += glyphI.advanceWidth;
+    if (charJ) wordWidth1 += fontOpentypeI.getKerningValue(glyphI,fontOpentypeI.charToGlyph(charJ));
   }
 
   const wordLastGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(-1)).getMetrics();

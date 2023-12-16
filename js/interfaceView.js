@@ -1,4 +1,4 @@
-import { renderPageQueue } from "../main.js";
+import { renderPageQueue, enableDisableDownloadPDFAlert } from "../main.js";
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
@@ -87,5 +87,7 @@ export const selectDisplayMode = function (x) {
         canvas.setBackgroundColor(null);
         canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
     }
+
+    enableDisableDownloadPDFAlert();
 
 }
