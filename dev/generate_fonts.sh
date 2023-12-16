@@ -1,6 +1,7 @@
 raw_fonts_dir="fonts_raw"
 proc_fonts_dir="fonts"
 all_fonts=1
+temp_dir=`mktemp --directory`
 
 for file in "$raw_fonts_dir"/*.{ttf,otf,pfb}; do
     if [[ -f $file ]]; then
@@ -8,24 +9,27 @@ for file in "$raw_fonts_dir"/*.{ttf,otf,pfb}; do
         filename_without_extension="${filename%.*}"
         filename_proc=$filename_without_extension.woff
         file_proc=$proc_fonts_dir/$filename_proc
+        file_temp1=$temp_dir/$filename_without_extension.1.otf
+        file_temp2=$temp_dir/$filename_without_extension.2.otf
 
 
         ## If `all_fonts` option is 0, only fonts not already in the output directory are processed.
         # if [[ ! -e "$processed_fonts_dir/$filename" || "$all_fonts" = 1]]; then
         if [[ ! -e "$file_proc" || "$all_fonts" = 1 ]]; then
 
-            ## Step 1: Add points at extrema.
-            ## This is required to calculate accurate metrics. 
-            # fontforge -lang=ff -c "
-            #     Open(\"$file\")
-            #     Print(\$fontname)
 
-            #     foreach
-            #         AddExtrema(1)
-            #     endloop
-            #     Generate(\"$file_proc\")
-            #     Close()"
-            python dev/processFont.py "$file" "$file_proc"
+            ## Convert to .otf
+            fontforge -lang=ff -c 'Open($1); Generate($2)' $file $file_temp1
+
+            ## Subset font to contain only desired characters
+            ## The --no-layout-closure option prevents ligatures from being automatically included when all the individual characters are
+            hb-subset --no-layout-closure --output-file="$file_temp2" --text-file=dev/charSet.txt "$file_temp1"
+
+            ## For now, ligatures need to be included. 
+            ## Ligatures are not removed when rendering to canvas, so if the font does not have them the metrics will not be correct.
+            # hb-subset --output-file="$file_temp2" --text-file=dev/charSet.txt "$file_temp1"
+
+            python dev/processFont.py "$file_temp2" "$file_proc"
 
             ## Step 2: Standardize font size
             ## This makes all input fonts have the same ratio of x-height/em size, which simplifies calculations.
@@ -39,27 +43,4 @@ for file in "$raw_fonts_dir"/*.{ttf,otf,pfb}; do
     fi
 done
 
-
-
-
-
-## Standardize size and convert to woff
-# node ../node/standardizeFontSize.js ../fonts_raw/NimbusRomNo9L-Reg.otf ../fonts/NimbusRomNo9L-Reg.woff
-# node ../node/standardizeFontSize.js ../fonts_raw/NimbusRomNo9L-RegIta.otf ../fonts/NimbusRomNo9L-RegIta.woff
-
-# node ../node/standardizeFontSize.js ../fonts_raw/NimbusSanL-Reg.otf ../fonts/NimbusSanL-Reg.woff
-# node ../node/standardizeFontSize.js ../fonts_raw/NimbusSanL-RegIta.otf ../fonts/NimbusSanL-RegIta.woff
-
-## Create small caps font
-# node ../node/createSmallCapsFont.js ../fonts/NimbusRomNo9L-Reg.woff ../fonts/NimbusRomNo9L-RegSmallCaps.woff
-# node ../node/createSmallCapsFont.js ../fonts/NimbusSanL-Reg.woff ../fonts/NimbusSanL-RegSmallCaps.woff
-
-## Run through FontForge to reduce file sizes
-## FontForge produces much smaller files than Opentype.js--presumably it applies compression but Opentype.js does not.
-# fontforge -lang=ff -c 'Open($1); Generate($2)' ../fonts/NimbusRomNo9L-Reg.woff ../fonts/NimbusRomNo9L-Reg.woff
-# fontforge -lang=ff -c 'Open($1); Generate($2)' ../fonts/NimbusRomNo9L-RegIta.woff ../fonts/NimbusRomNo9L-RegIta.woff
-# fontforge -lang=ff -c 'Open($1); Generate($2)' ../fonts/NimbusRomNo9L-RegSmallCaps.woff ../fonts/NimbusRomNo9L-RegSmallCaps.woff
-
-# fontforge -lang=ff -c 'Open($1); Generate($2)' ../fonts/NimbusSanL-Reg.woff ../fonts/NimbusSanL-Reg.woff
-# fontforge -lang=ff -c 'Open($1); Generate($2)' ../fonts/NimbusSanL-RegIta.woff ../fonts/NimbusSanL-RegIta.woff
-# fontforge -lang=ff -c 'Open($1); Generate($2)' ../fonts/NimbusSanL-RegSmallCaps.woff ../fonts/NimbusSanL-RegSmallCaps.woff
+rm -rf "$temp_dir"
