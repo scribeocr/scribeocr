@@ -1,8 +1,8 @@
-const httpServer = Cypress.env('TESTSITE');
+
 
 describe('It downloads a', () => {
   beforeEach(() => {
-    cy.visit(httpServer);
+    cy.visit('/');
   })
   it('text file from a pdf with different page numbered xml', () => {
     cy.get('#openFileInput').selectFile(

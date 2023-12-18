@@ -1,8 +1,8 @@
-const httpServer = Cypress.env('TESTSITE');
+
 
 describe('It recognises and downloads a', () => {
   beforeEach(() => {
-    cy.visit(httpServer);
+    cy.visit('/');
   })
 
   // JPG Recognize -> Download 
@@ -18,7 +18,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -45,7 +45,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -67,7 +67,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -93,7 +93,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -124,7 +124,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
 
     cy.get('#nav-download-tab').click()
@@ -147,7 +147,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -174,7 +174,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -198,7 +198,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -247,7 +247,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -275,7 +275,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -328,7 +328,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -379,7 +379,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -407,7 +407,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -429,7 +429,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -455,7 +455,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -486,7 +486,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
 
     cy.get('#nav-download-tab').click()
@@ -509,7 +509,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -536,7 +536,7 @@ describe('It recognises and downloads a', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)

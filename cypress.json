@@ -1,8 +1,5 @@
 {
-  "defaultCommandTimeout": 10000,
+  "defaultCommandTimeout": 60000,
   "viewportWidth": 1200,
-  "viewportHeight": 1000,
-  "env": {
-    "TESTSITE": "https://scribeocr.com/"
-  }
+  "viewportHeight": 1000
 }

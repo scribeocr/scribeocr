@@ -1,10 +1,10 @@
-const httpServer = Cypress.env('TESTSITE');
+
 
 describe('It downloads a', () => {
   //JPG Upload -> Download 
 
   it('text file from jpg with hOCR', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile([
       'cypress/fixtures/multi_jpg/henreys_grave.xml',
       'cypress/fixtures/multi_jpg/henreys_grave.jpg'
@@ -20,7 +20,7 @@ describe('It downloads a', () => {
   })
 
   it('text file from 4 jpgs with 4 hOCRs', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile([
       'cypress/fixtures/snow_drops.xml',
       'cypress/fixtures/snow_drops.jpg',
@@ -42,7 +42,7 @@ describe('It downloads a', () => {
   })
 
   it('downloads a pdf file from jpg with hOCR (xml for browserstack but data from tess), NATIVE', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile([
       'cypress/fixtures/multi_jpg/the_past.xml',
       'cypress/fixtures/multi_jpg/the_past.jpg'
@@ -63,7 +63,7 @@ describe('It downloads a', () => {
   })
 
   it('pdf file from jpg with hOCR (xml for browserstack but data from tess), BINARY', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile([
       'cypress/fixtures/multi_jpg/the_past.xml',
       'cypress/fixtures/multi_jpg/the_past.jpg'
@@ -84,7 +84,7 @@ describe('It downloads a', () => {
   })
 
   it('pdf file from 4 jpgs with 4 hOCRs', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile([
       'cypress/fixtures/snow_drops.xml',
       'cypress/fixtures/snow_drops.jpg',
@@ -108,7 +108,7 @@ describe('It downloads a', () => {
   })
 
   it('hocr file from jpg', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile([
       'cypress/fixtures/multi_jpg/aurelia_jpg.xml',
       'cypress/fixtures/multi_jpg/aurelia.jpg',
@@ -124,7 +124,7 @@ describe('It downloads a', () => {
   })
 
   it('hocr file from 4 jpgs', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile([
       'cypress/fixtures/snow_drops.xml',
       'cypress/fixtures/snow_drops.jpg',
@@ -148,7 +148,7 @@ describe('It downloads a', () => {
   // PDF Upload -> Download 
 
   it('text file from a pdf with different page numbered xml', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile(
       ['cypress/fixtures/siegeofcorinthpo00byrorich_abbyy.xml',
         'cypress/fixtures/siegeofcorinthpo00byrorich_bw.pdf'
@@ -164,7 +164,7 @@ describe('It downloads a', () => {
   })
 
   it('text file from a pdf with compressed xml.gz', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput', { timeout: 10000 }).selectFile(
       ['cypress/fixtures/compositionserie00dowa_abbyy.gz',
         'cypress/fixtures/compositionserie00dowa.pdf'
@@ -208,7 +208,7 @@ cy.wait(250)
   // PNG Upload -> Download 
 
   it('text file from a png with hOCR', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'], { force: true })
     cy.waitImport()
     cy.get('#nav-download-tab').click()
@@ -220,7 +220,7 @@ cy.wait(250)
   })
 
   it('text file from 4 pngs with 4 hOCRs', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput').selectFile([
       'cypress/fixtures/pretty_faces.xml',
       'cypress/fixtures/pretty_faces.png',
@@ -240,7 +240,7 @@ cy.wait(250)
   })
 
   it('pdf file from a png with hOCR, BINARY', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'], { force: true })
     cy.waitImport()
 
@@ -259,7 +259,7 @@ cy.wait(250)
   })
 
   it('pdf file from a png with hOCR, NATIVE', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'], { force: true })
     cy.waitImport()
 
@@ -276,7 +276,7 @@ cy.wait(250)
   })
 
   it('pdf file from 4 pngs with 4 hOCRs', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput').selectFile([
       'cypress/fixtures/pretty_faces.xml',
       'cypress/fixtures/pretty_faces.png',
@@ -296,7 +296,7 @@ cy.wait(250)
   })
 
   it('hocr file from jpg', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'], { force: true })
     cy.waitImport()
     cy.get('#nav-download-tab').click()
@@ -309,7 +309,7 @@ cy.wait(250)
   })
 
   it('hocr file from 4 jpgs', () => {
-    cy.visit(httpServer);
+    cy.visit('/');
     cy.get('#openFileInput').selectFile([
       'cypress/fixtures/snow_drops.jpg',
       'cypress/fixtures/snow_drops.xml',

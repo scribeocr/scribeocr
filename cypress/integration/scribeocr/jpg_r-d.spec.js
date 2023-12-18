@@ -1,8 +1,8 @@
-const httpServer = Cypress.env('TESTSITE');
+
 
 describe('It recognises and downloads a', () => {
   beforeEach(() => {
-    cy.visit(httpServer);
+    cy.visit('/');
   })
 
   it('text file from a jpg with no imported ocr data', () => {

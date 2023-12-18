@@ -1,8 +1,8 @@
-const httpServer = Cypress.env('TESTSITE');
+
 
 describe('It', () => {
   beforeEach(() => {
-    cy.visit(httpServer);
+    cy.visit('/');
   })
 
   it('recognises and downloads a text file from a pdf with no imported ocr data', () => {
@@ -18,7 +18,7 @@ describe('It', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)
@@ -67,7 +67,7 @@ describe('It', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -95,7 +95,7 @@ describe('It', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-view-tab').click()
     cy.wait(250)
@@ -149,7 +149,7 @@ describe('It', () => {
       const maxValue = $el.attr('aria-valuemax');
 
       // Check if the 'aria-valuenow' attribute is equal to 'aria-valuemax'
-      cy.wrap($el, { timeout: 60000 }).should('have.attr', 'aria-valuenow', maxValue);
+      cy.wrap($el).should('have.attr', 'aria-valuenow', maxValue);
     });
     cy.get('#nav-download-tab').click()
     cy.wait(250)

@@ -27,7 +27,7 @@ require('cy-verify-downloads').addCustomCommand();
 
 // Wait for recognition to finish running
 Cypress.Commands.add('waitRecognizeAll', () => {
-    cy.get('#recognize-recognize-progress-collapse .progress-bar', { timeout: 60000 }).should(($el) => {
+    cy.get('#recognize-recognize-progress-collapse .progress-bar').should(($el) => {
         const currentValue = $el.attr('aria-valuenow');
         const maxValue = $el.attr('aria-valuemax');
         expect(currentValue).to.equal(maxValue);

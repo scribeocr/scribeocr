@@ -1,8 +1,8 @@
-const httpServer = Cypress.env('TESTSITE');
+
 
 describe('It', () => {
   beforeEach(() => {
-    cy.visit(httpServer);
+    cy.visit('/');
   })
 
   it('downloads a text file from jpg with hOCR (xml for browserstack but data from tess)', () => {
