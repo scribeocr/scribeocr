@@ -24,3 +24,33 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 require('cy-verify-downloads').addCustomCommand();
+
+// Wait for recognition to finish running
+Cypress.Commands.add('waitRecognizeAll', () => {
+    cy.get('#recognize-recognize-progress-collapse .progress-bar', { timeout: 60000 }).should(($el) => {
+        const currentValue = $el.attr('aria-valuenow');
+        const maxValue = $el.attr('aria-valuemax');
+        expect(currentValue).to.equal(maxValue);
+    });
+})
+
+// Wait for import to finish running
+Cypress.Commands.add('waitImport', () => {
+    cy.get('#import-progress-collapse .progress-bar').should(($el) => {
+        const currentValue = $el.attr('aria-valuenow');
+        const maxValue = $el.attr('aria-valuemax');
+        expect(currentValue).to.equal(maxValue);
+    });
+})
+
+
+// Cypress.Commands.add('waitImport', () => {
+//     cy.get('#recognize-recognize-progress-collapse .progress-bar').should(($el) => {
+//         cy.wrap($el).invoke('attr', 'aria-valuenow').then(currentValue => {
+//             cy.wrap($el).invoke('attr', 'aria-valuemax').then(maxValue => {
+//                 console.log(`Current value: ${currentValue}; Max value: ${maxValue}`);
+//                 expect(currentValue).to.equal(maxValue);
+//             });
+//         });
+//     });
+// })

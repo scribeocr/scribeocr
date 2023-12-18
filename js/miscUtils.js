@@ -198,13 +198,22 @@ export const saveAs = function(blob, name) {
 /**
  * Loads an image from a given URL and sets it to a specified HTML element.
  * 
- * @param {string|Blob} url - URL or blob to load. 
+ * @param {string|Blob|ArrayBuffer} src - Image source.  Accepts ArrayBuffer, Blob, or URL. 
  * @param {HTMLImageElement} elem - The image element where the loaded image will be set.
  * @returns {Promise<HTMLImageElement>} A promise that resolves with the image element when the image is loaded successfully.
  */
-export async function loadImage(url, elem) {
+export async function loadImage(src, elem) {
   return new Promise((resolve, reject) => {
-    const urlLoad = url instanceof Blob ? URL.createObjectURL(url) : url;
+    let urlLoad;
+    if (src instanceof Blob) {
+      urlLoad = URL.createObjectURL(src);
+    } else if (src instanceof ArrayBuffer) {
+      const blob = new Blob([src]);
+      urlLoad = URL.createObjectURL(blob);
+    } else {
+      urlLoad = src;
+    }
+    // const urlLoad = url instanceof Blob ? URL.createObjectURL(url) : url;
     elem.onload = () => resolve(elem);
     elem.onerror = reject;
     elem.src = urlLoad;

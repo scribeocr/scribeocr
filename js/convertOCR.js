@@ -24,6 +24,8 @@ export async function convertOCRPage(ocrRaw, n, mainData, format = "hocr", engin
     } else if (format == "stext") {
         func = "convertPageStext";
     }
+
+    await globalThis.generalScheduler.ready;
     
     const res = (await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n: n })).data;
 

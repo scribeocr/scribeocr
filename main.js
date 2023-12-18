@@ -1012,7 +1012,7 @@ function setBuildLabel(x) {
 
 
 /**
- * 
+ * Initialize a new version of OCR data (Legacy, LSTM, etc.).
  * @param {string} label
  */
 export function initOCRVersion(label) {
@@ -1183,9 +1183,10 @@ function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false,
 
   const progressObj = {"elem": progressBar, "value": initValue, "maxValue": maxValue, "increment": async function() {
     this.value++;
+    if (this.value > this.maxValue) console.log("Progress bar value >100%.");
     if (alwaysUpdateUI || (this.value) % 5 == 0 || this.value == this.maxValue) {
-      this.elem.setAttribute("aria-valuenow", (this.value + 1).toString());
-      this.elem.setAttribute("style", "width: " + ((this.value + 1) / maxValue * 100) + "%");
+      this.elem.setAttribute("aria-valuenow", this.value.toString());
+      this.elem.setAttribute("style", "width: " + (this.value / maxValue * 100) + "%");
       await sleep(0);
     }
     if (autoHide && this.value >= this.maxValue) {
@@ -1972,10 +1973,7 @@ async function importOCRFilesSupp() {
 
   const ocrData = await importOCR(Array.from(hocrFilesAll), false);
 
-  globalThis.hocrCurrentRaw = ocrData.hocrRaw;
-
   const pageCountHOCR = ocrData.hocrRaw.length;
-
 
   // Enable confidence threshold input boxes (only used for Tesseract)
   if (!ocrData.abbyyMode && !ocrData.stextMode && confThreshHighElem.disabled) {
@@ -2183,9 +2181,6 @@ async function importFiles(curFiles) {
     document.getElementById("combineModeOptions")?.setAttribute("style", "");
 
     initOCRVersion(oemName);
-    if (!globalThis.ocrAll[oemName]) {
-      globalThis.ocrAll[oemName] = Array(globalThis.imageAll["native"].length);
-    }
     setCurrentHOCR(oemName);
 
     displayLabelTextElem.innerHTML = oemName;
@@ -2195,6 +2190,13 @@ async function importFiles(curFiles) {
       const ocrData = await importOCR(Array.from(hocrFilesAll), true);
 
       globalThis.hocrCurrentRaw = ocrData.hocrRaw;
+      // Subset OCR data to avoid uncaught error that occurs when there are more pages of OCR data than image data.
+      // While this should be rare, it appears to be fairly common with Archive.org documents.
+      // TODO: Add warning message displayed to user for this.
+      if (globalThis.hocrCurrentRaw.length > pageCountImage) {
+        console.log(`Identified ${globalThis.hocrCurrentRaw.length} pages of OCR data but ${pageCountImage} pages of image/pdf data. Only first ${pageCountImage} pages will be used.`);
+        globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw.slice(0, pageCountImage);
+      }
   
       // Restore font metrics and optimize font from previous session (if applicable)
       if (ocrData.fontMetricsObj) {
@@ -2289,53 +2291,69 @@ async function importFiles(curFiles) {
       renderPDFImageCache([...Array(Math.min(globalThis.pageCount, 5)).keys()]);
   }
 
-  let imageN = -1;
-
   globalThis.loadCount = 0;
 
-  // Both OCR data and individual images (.png or .jpeg) contribute to the import loading bar
+  // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
-  if (inputDataModes.imageMode || xmlModeImport || globalThis.inputDataModes.extractTextMode) {
-    const progressMax = inputDataModes.imageMode && xmlModeImport ? globalThis.pageCount * 2 : globalThis.pageCount;
-    globalThis.convertPageActiveProgress = initializeProgress("import-progress-collapse", progressMax, 0, false, true);
+  let progressMax = 0;
+  if (inputDataModes.imageMode) progressMax = progressMax + globalThis.pageCount;
+  if (xmlModeImport) progressMax = progressMax + globalThis.pageCount;
+
+  // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
+  // Therefore, a dummy loading bar with a max of 1 is created even when progress is not meaningfully tracked.
+  let dummyLoadingBar = false;
+  if (progressMax == 0) {
+    dummyLoadingBar = true;
+    progressMax = 1;
   }
+
+
+  globalThis.convertPageActiveProgress = initializeProgress("import-progress-collapse", progressMax, 0, false, true);
 
   for (let i = 0; i < globalThis.pageCount; i++) {
 
+    // Currently, images are loaded once at a time.
+    // While this is not optimal for performance, images are required for comparison functions, 
+    // so switching to running async would require either (1) waiting for enough images to load before before continuing to the next step
+    // or (2) switching imageAll["nativeSrc"], as a whole, to store promises that can be waited for. 
     if (inputDataModes.imageMode) {
 
-      const imageNi = imageN + 1;
-      imageN = imageN + 1;
 
-      let doneCt = 0;
+      globalThis.imageAll["nativeSrc"][i] = await new Promise((resolve, reject) => {
 
-      const reader = new FileReader();
-      reader.addEventListener("load", async () => {
-        globalThis.imageAll["nativeSrc"][imageNi] = reader.result;
-        await renderPDFImageCache([imageNi]);
-        const imgElem = await globalThis.imageAll["native"][imageNi];
+        const reader = new FileReader();
 
-        globalThis.pageMetricsArr[imageNi] = new pageMetrics({height: imgElem.height, width: imgElem.width});
+        reader.onloadend = function () {
+          resolve(reader.result);
+        };
+
+        reader.onerror = function (error) {
+          reject(error);
+        };
+
+        reader.readAsDataURL(imageFilesAll[i]);
+      });
 
 
-        globalThis.convertPageActiveProgress.increment();
+      // globalThis.imageAll["nativeSrc"][i] = await imageFilesAll[i].arrayBuffer();
 
-        // updateDataProgress();
+      // const src = await imageFilesAll[i].arrayBuffer();
+      // const blob = new Blob([src]);
+      // globalThis.imageAll["nativeSrc"][i] = URL.createObjectURL(blob);
 
-        if(imageNi == 0) {
-          displayPage(0);
-        }
+      await renderPDFImageCache([i]);
+      const imgElem = await globalThis.imageAll["native"][i];
+      globalThis.pageMetricsArr[i] = new pageMetrics({height: imgElem.height, width: imgElem.width});
+      globalThis.convertPageActiveProgress.increment();
 
-        // Enable downloads now for image imports if no HOCR data exists
-        // TODO: PDF downloads are currently broken when images but not OCR text exists
-        if (!xmlModeImport && globalThis.convertPageActiveProgress.value == globalThis.convertPageActiveProgress.maxValue) {
-          downloadElem.disabled = false;
-          globalThis.state.downloadReady = true;      
-        }
+      if (i == 0) displayPage(0);
 
-      }, false);
-
-      reader.readAsDataURL(imageFilesAll[i]);
+      // Enable downloads now for image imports if no HOCR data exists
+      // TODO: PDF downloads are currently broken when images but not OCR text exists
+      if (!xmlModeImport && globalThis.convertPageActiveProgress.value == globalThis.convertPageActiveProgress.maxValue) {
+        downloadElem.disabled = false;
+        globalThis.state.downloadReady = true;      
+      }
 
     }
   }
@@ -2349,13 +2367,13 @@ async function importFiles(curFiles) {
     // Process HOCR using web worker, reading from file first if that has not been done already
     convertOCRAll(globalThis.hocrCurrentRaw, true, format, oemName).then(async () => {
       await calculateOverallMetrics();
-      hideProgress2("import-progress-collapse");
       downloadElem.disabled = false;
       globalThis.state.downloadReady = true;  
     });
 
   }
 
+  if (dummyLoadingBar) globalThis.convertPageActiveProgress.increment();
 
   // Enable downloads now for pdf imports if no HOCR data exists
   if (inputDataModes.pdfMode && !xmlModeImport) {
@@ -2834,6 +2852,11 @@ async function initGeneralScheduler() {
   globalThis.generalScheduler = await Tesseract.createScheduler();
   globalThis.generalScheduler["workers"] = new Array(workerN); 
 
+  let resReady;
+  globalThis.generalScheduler["ready"] = new Promise(function (resolve, reject) {
+    resReady = resolve;
+  });
+
   const addGeneralWorker = async (i) => {
     const w = await initGeneralWorker();
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
@@ -2848,6 +2871,8 @@ async function initGeneralScheduler() {
   const resArr = Array.from({ length: workerN }, (v, k) => k ).slice(1).map((i) => addGeneralWorker(i));
 
   await Promise.all(resArr);
+
+  resReady(true);
 
 }
 

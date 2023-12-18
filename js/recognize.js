@@ -11,9 +11,12 @@ export async function recognizeAllPages(legacy = true, mainData = false) {
 
     const oemMode = legacy ? "0" : "1";
 
+    await generalScheduler.ready;
+
     const resArr = [];
     for (let i=0; i<generalScheduler.workers.length; i++) {
-        resArr.push(generalScheduler.addJob("reinitialize", {lang: "eng", oem: oemMode}));
+        const worker = generalScheduler.workers[i];
+        resArr.push(worker.reinitialize({lang: "eng", oem: oemMode}));
     }
 
     const oemText = "Tesseract " + (oemMode == "1" ? "LSTM" : "Legacy");
