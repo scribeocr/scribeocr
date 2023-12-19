@@ -5,6 +5,21 @@ describe('It downloads a', () => {
     cy.visit('/');
   })
 
+  it('downloads a text file from jpg with hOCR (xml for browserstack but data from tess)', () => {
+    cy.get('#openFileInput').selectFile([
+      'cypress/fixtures/multi_jpg/henreys_grave.xml',
+      'cypress/fixtures/multi_jpg/henreys_grave.jpg'
+    ], { force: true })
+    cy.waitImport()
+    cy.get('#nav-download-tab').click()
+    cy.wait(250)
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionText').click()
+    cy.wait(250)
+    cy.get('#download').click()
+    cy.verifyDownload('henreys_grave.txt', { contains: true })
+  })
+
   it('text file from a png with hOCR', () => {
     cy.get('#openFileInput').selectFile(['cypress/fixtures/pretty_faces.xml', 'cypress/fixtures/pretty_faces.png'], { force: true })
     cy.waitImport()

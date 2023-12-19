@@ -5,6 +5,25 @@ describe('It recognises and downloads a', () => {
     cy.visit('/');
   })
 
+  it('text file from a jpg with no imported ocr data', () => {
+    cy.get('#openFileInput').selectFile(['cypress/fixtures/multi_jpg/aurelia.jpg'], { force: true })
+    cy.waitImport()
+
+    cy.get('#nav-recognize-tab').click()
+    cy.wait(250)
+    cy.get('#recognizeAll').click()
+
+    // cy.wait(10000)
+    cy.waitRecognizeAll()
+    cy.get('#nav-download-tab').click()
+    cy.wait(250)
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionText').click()
+    cy.wait(250)
+    cy.get('#download').click()
+    cy.verifyDownload('aurelia.txt', { contains: true })
+  })
+
   it('text file from a png with no imported ocr data', () => {
     cy.get('#openFileInput').selectFile(['cypress/fixtures/multi_png/aurelia.png'], { force: true })
     cy.waitImport()
