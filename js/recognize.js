@@ -16,8 +16,10 @@ export async function recognizeAllPages(legacy = true, mainData = false) {
     const resArr = [];
     for (let i=0; i<generalScheduler.workers.length; i++) {
         const worker = generalScheduler.workers[i];
-        resArr.push(worker.reinitialize({lang: "eng", oem: oemMode}));
+        resArr.push(worker.reinitialize({langs: "eng", oem: oemMode}));
     }
+
+    await Promise.all(resArr);
 
     const oemText = "Tesseract " + (oemMode == "1" ? "LSTM" : "Legacy");
 
