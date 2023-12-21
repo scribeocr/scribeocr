@@ -63,11 +63,7 @@ export const initCanvasNode = async () => {
       const fontPathTmp = tmpdir() + "/" + fontObj.family + "-" + fontObj.style + ".otf";
       await writeFile2(fontPathTmp, Buffer.from(fontObj.src));
 
-      if (fontObj.style == "small-caps") {
-        // registerFont(fontPathTmp, {family: fontObj.fontFaceName, style: fontObj.fontFaceStyle});
-      } else {
-        registerFont(fontPathTmp, {family: fontObj.fontFaceName, style: fontObj.fontFaceStyle});
-      }
+      registerFont(fontPathTmp, {family: fontObj.fontFaceName, style: fontObj.fontFaceStyle});
 
       // unlinkSync(fontPathTmp);
     } else {

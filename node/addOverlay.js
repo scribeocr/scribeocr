@@ -2,7 +2,7 @@
 // Use: `node addOverlay.js [PDF file] [OCR data file] [output directory]`
 
 import { initGeneralWorker } from "../js/generalWorkerMain.js";
-import { selectDefaultFontsDocument } from "../js/fontEval.js";
+import { selectDefaultFontsDocument, setFontAllWorker } from "../js/fontEval.js";
 import { recognizeAllPages } from "../js/recognize.js";
 import { compareHOCR } from "../js/worker/compareOCRModule.js";
 import { renderHOCR } from "../js/exportRenderHOCR.js";
@@ -15,29 +15,16 @@ globalThis.Worker = Worker;
 import { initMuPDFWorker } from "../mupdf/mupdf-async.js";
 import { hocrToPDF } from "../js/exportPDF.js";
 import { calculateOverallFontMetrics, setDefaultFontAuto } from "../js/fontStatistics.js";
-import { loadFontContainerAll, optimizeFontContainerFamily, fontContainerAll } from "../js/objects/fontObjects.js";
+import { loadFontContainerAllRaw, optimizeFontContainerAll, fontContainerAll,  } from "../js/objects/fontObjects.js";
 import { convertOCRAll } from "../js/convertOCR.js";
-
 
 import Tesseract from 'tesseract.js';
 
 const { loadImage } = await import('canvas');
 
+const fontPrivate = loadFontContainerAllRaw();
 
-async function optimizeFontContainerAll() {
-  const Carlito = await optimizeFontContainerFamily(fontPrivate.Carlito);
-  const Century = await optimizeFontContainerFamily(fontPrivate.Century);
-  const NimbusRomNo9L = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L);
-  const NimbusSans = await optimizeFontContainerFamily(fontPrivate.NimbusSans);
-
-  return new fontContainerAll(Carlito, NimbusRomNo9L, NimbusSans, Century);
-}
-
-const fontPrivate = loadFontContainerAll({ normal: "Carlito-Regular.woff", italic: "Carlito-Italic.woff", smallCaps: "Carlito-SmallCaps.woff"},
-  { normal: "C059-Roman.woff", italic: "C059-Italic.woff", smallCaps: "C059-SmallCaps.woff" },
-  { normal: "NimbusRomNo9L-Reg.woff", italic: "NimbusRomNo9L-RegIta.woff", smallCaps: "NimbusRomNo9L-RegSmallCaps.woff" },
-  { normal: "NimbusSanL-Reg.woff", italic: "NimbusSanL-RegIta.woff", smallCaps: "NimbusSanL-RegSmallCaps.woff" });
-
+  
 const fontAll = {
   raw: fontPrivate,
   /**@type {?fontContainerAll}*/
@@ -50,9 +37,11 @@ const fontAll = {
  * @param {boolean} enable 
  */
 async function enableDisableFontOpt(enable) {
+  const browserMode = typeof process === "undefined";
+
   // Create optimized font if this has not been done yet
   if (enable && !fontAll.opt) {
-    fontAll.opt = await optimizeFontContainerAll();
+    fontAll.opt = await optimizeFontContainerAll(fontPrivate);
   }
 
   // Enable/disable optimized font
@@ -61,11 +50,10 @@ async function enableDisableFontOpt(enable) {
   } else {
     fontAll.active = fontAll.raw;
   }
+
+  // Enable/disable optimized font in workers
+  if (browserMode) await setFontAllWorker(generalScheduler, fontAll);
 }
-
-
-// globalThis.Tesseract = Tesseract;
-
 
   // Object that keeps track of various global settings
 globalThis.globalSettings = {
@@ -174,8 +162,6 @@ async function main() {
         globalThis.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
     }
 
-    // globalThis.generalWorker = await initGeneralWorker();
-
     const workerN = 1;
     globalThis.generalScheduler = await Tesseract.createScheduler();
     globalThis.generalScheduler["workers"] = new Array(workerN); 
@@ -237,6 +223,9 @@ async function main() {
 
     if (robustConfMode) {
 
+      let wordsTotal = 0;
+      let wordsHighConf = 0;  
+
       // Run Tesseract Legacy recognition
       if (debugMode) console.time("Legacy recognition");
       await recognizeAllPages(true, false);
@@ -284,7 +273,14 @@ async function main() {
 
         globalThis.ocrAll.active[i] = res.page;
 
+        if (res?.metrics?.total && res?.metrics?.correct) {
+          wordsTotal = wordsTotal + res.metrics.total;
+          wordsHighConf = wordsHighConf + res.metrics.correct;
+        }
+
       }
+
+      console.log(`Confidence: ${wordsHighConf / wordsTotal}`);
 
     }  
 
