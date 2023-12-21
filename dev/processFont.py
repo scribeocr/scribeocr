@@ -59,23 +59,8 @@ for glyph in font.glyphs():
     ## Add extrema points to the glyph
     glyph.addExtrema("all")
 
-
-## Remove all unwanted characters
-## This significantly reduces file size for fonts that try and support every possible language. 
-# alphanumeric_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
-# punctuation_chars = set(".,;:!?()[]{}-–—_'\"/\\@*#&$%^+<=>`~|")
-
-# Adding accented characters and special letters for languages like Spanish, French, German, etc.
-# extended_latin_chars = set("ÀÁÂÄÆÃÅĀĂĄÇĆĈČĎĐÈÉÊËĒĖĘĚĜĞĠĢĤĦÌÍÎÏĪĮİĴĶĹĻĽŁŃŅŇÑÒÓÔÖŒÕØŌŐŔŖŘŚŜŞŠȘŤŢȚÙÚÛÜŪŮŰŲŴÝŶŸŹŻŽ"
-#                         "àáâäæãåāăąçćĉčďđèéêëēėęěĝğġģĥħìíîïīįıĵķĸĺļľłńņňñòóôöœõøōőŕŗřśŝşšșßťţțùúûüūůűųŵýÿŷźżž")
-
-# chars_to_keep = alphanumeric_chars.union(punctuation_chars)
-# chars_to_keep_uni = {ord(char) for char in chars_to_keep}
-
-# for glyph in font.glyphs():
-#     if glyph.unicode not in chars_to_keep_uni:
-#         font.removeGlyph(glyph)
-
+## This is necessary for `node-canvas`, as otherwise name conflicts with system fonts can be encountered. 
+font.fontname = font.fontname + "-rw"
 
 ## Save the modified font
 font.generate(output_font_path)

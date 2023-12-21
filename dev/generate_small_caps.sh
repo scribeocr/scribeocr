@@ -10,10 +10,10 @@ node node/createSmallCapsFont.js fonts/P052-Roman.woff fonts/P052-SmallCaps.woff
 
 ## Run through FontForge to reduce file sizes
 ## FontForge produces much smaller files than Opentype.js--presumably it applies compression but Opentype.js does not.
-fontforge -lang=ff -c 'Open($1); Generate($2)' fonts/NimbusRomNo9L-RegSmallCaps.woff fonts/NimbusRomNo9L-RegSmallCaps.woff
-fontforge -lang=ff -c 'Open($1); Generate($2)' fonts/NimbusSanL-RegSmallCaps.woff fonts/NimbusSanL-RegSmallCaps.woff
-fontforge -lang=ff -c 'Open($1); Generate($2)' fonts/Carlito-SmallCaps.woff fonts/Carlito-SmallCaps.woff
-fontforge -lang=ff -c 'Open($1); Generate($2)' fonts/C059-SmallCaps.woff fonts/C059-SmallCaps.woff
-# fontforge -lang=ff -c 'Open($1); Generate($2)' fonts/ugmr8a-SmallCaps.woff fonts/ugmr8a-SmallCaps.woff
-fontforge -lang=ff -c 'Open($1); Generate($2)' fonts/QTGaromand-SmallCaps.woff fonts/QTGaromand-SmallCaps.woff
-fontforge -lang=ff -c 'Open($1); Generate($2)' fonts/P052-SmallCaps.woff fonts/P052-SmallCaps.woff
+python dev/processFontSmallCaps2.py fonts/NimbusRomNo9L-RegSmallCaps.woff fonts/NimbusRomNo9L-RegSmallCaps.woff
+python dev/processFontSmallCaps2.py fonts/NimbusSanL-RegSmallCaps.woff fonts/NimbusSanL-RegSmallCaps.woff
+python dev/processFontSmallCaps2.py fonts/Carlito-SmallCaps.woff fonts/Carlito-SmallCaps.woff
+python dev/processFontSmallCaps2.py fonts/C059-SmallCaps.woff fonts/C059-SmallCaps.woff
+# dev/python processFontSmallCaps2.py fonts/ugmr8a-SmallCaps.woff fonts/ugmr8a-SmallCaps.woff
+python dev/processFontSmallCaps2.py fonts/QTGaromand-SmallCaps.woff fonts/QTGaromand-SmallCaps.woff
+python dev/processFontSmallCaps2.py fonts/P052-SmallCaps.woff fonts/P052-SmallCaps.woff
