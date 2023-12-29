@@ -10,6 +10,19 @@
       --bs-blue: #287bb5;
     }
 
+    /* The min-width should correspond to the "md" breakpoint in bootstrap. */
+    @media (max-width: 768px) {
+      /* The search bar should be absolutely positioned for desktop devices and relatively positioned for mobile. */
+      .find-collapse {
+        position: relative !important;
+      }
+
+      /* On mobile, the padding used to make the drop-down arrow opaque can cut off half of the text. */
+      .form-select {
+        padding-right: 0;
+      }
+    }
+
     html {
       overflow-y: scroll;
     }
@@ -145,7 +158,8 @@
     <div class="container-xl">
       <div class="container-fluid" id="user-controls">
         <div class="row nav-row">
-          <div class="col-8 col-xl-6" id="nav-tab-container">
+          <!-- The page navbar is moved below the page navigation if the window gets too small. -->
+          <div class="col-xl-6 order-3 order-xl-1" id="nav-tab-container">
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
 
               <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse"
@@ -168,20 +182,20 @@
 
             </div>
           </div>
-          <div class="col-4 my-auto">
-
+          <div class="col-md order-2 my-auto">
+          
             <div class="btn-group">
               <button class="btn btn-info btn-sm" id="prev">Prev</button>
               <!-- Fake button for padding purposes -->
               <button type="button" class="btn btn-secondary mx-0 px-0" disabled></button>
-
+          
               <button class="btn btn-info btn-sm" id="next">Next</button>
             </div>
             <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
-            Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
+                      Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
             <span>Page: <input type="text" id="pageNum" name="pageNum" autocomplete="off" style="width:3em"> / <span
                 id="pageCount" style="display:inline-block;min-width:0.5rem"></span></span>
-
+          
             <div class="btn-group">
               <button class="btn btn-secondary btn-sm" id="zoomMinus"><svg xmlns="http://www.w3.org/2000/svg" width="16"
                   height="16" fill="currentColor" class="bi bi-zoom-out" viewBox="0 0 16 16">
@@ -192,7 +206,7 @@
                   <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z" />
                 </svg></button>
               <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
-                    Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
+                              Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
               <input type="text" id="zoomInput" value="1000" style="width:4em">
               <button class="btn btn-secondary btn-sm" id="zoomPlus"><svg xmlns="http://www.w3.org/2000/svg" width="16"
                   height="16" fill="currentColor" class="bi bi-zoom-in" viewBox="0 0 16 16">
@@ -204,8 +218,46 @@
                     d="M6.5 3a.5.5 0 0 1 .5.5V6h2.5a.5.5 0 0 1 0 1H7v2.5a.5.5 0 0 1-1 0V7H3.5a.5.5 0 0 1 0-1H6V3.5a.5.5 0 0 1 .5-.5z" />
                 </svg></button>
             </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#editFindCollapse"
+              style="text-align:left">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search"
+                viewBox="0 0 16 16">
+                <path
+                  d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+              </svg> Find</button>
+            <div class="collapse find-collapse" id="editFindCollapse" style="padding:0;width:100%;max-width:405px;position:absolute">
+              <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
+                <input type="text" id="editFind" name="find" size="2" style="width:100%" autocomplete="off">
+          
+                <div class="" role="group" aria-label="First group">
+                  <div class="row">
+                    <div class="col col-md-6">
+                      <span><span id="matchCurrent">0</span>/<span id="matchCount">0</span></span>
+                    </div>
+                    <div class="col col-md-6">
+                      <div class="btn-group" style="width:100%">
+                        <button id="prevMatch" type="button" class="btn btn-secondary btn-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-chevron-up" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd"
+                              d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z" />
+                          </svg></button>
+                        <button id="nextMatch" type="button" class="btn btn-secondary btn-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-chevron-down" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd"
+                              d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z" />
+                          </svg></button>
+                      </div>
+                    </div>
+          
+                  </div>
+                </div>
+              </div>
+            </div>
+          
           </div>
-        </div>
+          </div>
 
         <div class="tab-content" id="nav-tabContent">
           <div class="collapse" id="nav-layout" role="tabpanel" aria-labelledby="nav-layout-tab"
@@ -213,7 +265,7 @@
             <div class="row" style="padding:0.4rem;">
               <label>Layout Boxes</label>
 
-              <div class="col col-2">
+              <div class="col col-md-2">
                 <div class="form-group mb-2">
                   <div class="btn-group" style="width:100%;">
                     <button type="button" id="addLayoutBox" class="btn btn-secondary btn-sm"
@@ -246,7 +298,7 @@
                     </svg> Delete Box</button>
                 </div>
               </div>
-              <div class="col col-2">
+              <div class="col col-md-2">
                 <div class="btn-group mb-2" style="width:100%;">
                   <button type="button" id="setLayoutBoxType" class="btn btn-secondary btn-sm dropdown-toggle"
                     data-bs-toggle="dropdown" aria-expanded="false" style="width:100%;text-align:left">
@@ -293,7 +345,7 @@
                     </div>
                 </div>
               </div>
-              <div class="col col-2">
+              <div class="col col-md-2">
                 <div class="form-group mb-2">
                   <button type="button" id="setDefaultLayout" class="btn btn-secondary btn-sm"
                     style="width:100%;text-align:left" disabled>
@@ -315,7 +367,7 @@
                 </div>
               </div>
 
-              <div class="col col-2">
+              <div class="col col-md-2">
                 <button type="button" id="showExcludedText" class="btn btn-secondary btn-sm mb-2" style="width:100%;text-align:left">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eyeglasses"
                     viewBox="0 0 16 16">
@@ -343,7 +395,7 @@
           <div class="collapse" id="nav-edit" role="tabpanel" aria-labelledby="nav-edit-tab"
             data-bs-parent="#user-controls">
             <div class="row" style="padding:0.4rem;">
-              <div class="col col-2">
+              <div class="col col-md-2">
                 <label for="wordFont">Font</label>
                 <select id="wordFont" class="form-select form-select-sm" size="1">
                   <option selected value="Default">Default</option>
@@ -356,7 +408,7 @@
                   <button class="btn btn-secondary btn-sm" id="fontPlus">+</button>
                 </div>
               </div>
-              <div class="col col-1" style="padding-right:0.25rem;">
+              <div class="col col-md-1" style="padding-right:0.25rem;">
                 <label></label>
                 <div class="mb-2 row">
                   <div class="form-group">
@@ -387,7 +439,7 @@
                   </div>
                 </div>
               </div>
-              <div class="col col-1" style="padding-left:0.25rem;">
+              <div class="col col-md-1" style="padding-left:0.25rem;">
                 <label></label>
                 <div class="mb-2 row">
                   <div class="form-group">
@@ -405,7 +457,7 @@
                   </div>
                 </div>
               </div>
-              <div class="col col-2">
+              <div class="col col-md-2">
                 <label></label>
                 <div class="row">
                   <div class="form-group">
@@ -441,7 +493,7 @@
                   </div>
                 </div>
               </div>
-              <div class="col col-2">
+              <div class="col col-md-2">
                 <label></label>
                 <div class="row">
                   <div class="form-group">
@@ -501,60 +553,18 @@
                   </div>
                 </div>
               </div>
-              <div class="col col-2">
-                <label></label>
-                <div class="row">
-                  <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
-                    href="#editFindCollapse" style="min-width:100%;text-align:left">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                      class="bi bi-search" viewBox="0 0 16 16">
-                      <path
-                        d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                    </svg> Find</button>
-                  <div class="collapse" id="editFindCollapse" style="padding:0">
-                    <div class="card card-body" style="padding:0.5rem;margin-top:0.5rem">
-                      <input type="text" id="editFind" name="find" size="2" style="width:100%" autocomplete="off">
-
-                      <div class="" role="group" aria-label="First group">
-                        <div class="row">
-                          <div class="col col-6">
-                            <span><span id="matchCurrent">0</span>/<span id="matchCount">0</span></span>
-                          </div>
-                          <div class="col col-6">
-                            <div class="btn-group" style="width:100%">
-                              <button id="prevMatch" type="button" class="btn btn-secondary btn-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                  class="bi bi-chevron-up" viewBox="0 0 16 16">
-                                  <path fill-rule="evenodd"
-                                    d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z" />
-                                </svg></button>
-                              <button id="nextMatch" type="button" class="btn btn-secondary btn-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                  class="bi bi-chevron-down" viewBox="0 0 16 16">
-                                  <path fill-rule="evenodd"
-                                    d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z" />
-                                </svg></button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
         <div class="collapse" id="nav-recognize" role="tabpanel" aria-labelledby="nav-recognize-tab"
           data-bs-parent="#user-controls">
           <div class="row" style="padding:0.4rem;">
-            <div class="col col-2" style="padding-right:0.25rem;">
+            <div class="col col-md-2" style="padding-right:0.25rem;">
               <label></label>
               <button type="button" id="recognizeAll" class="btn btn-info btn-sm" style="min-width:100%;"
                 disabled>Recognize Text</button>
             </div>
-            <div class="col col-2" id="basicRecognitionOptions">
+            <div class="col col-md-2" id="basicRecognitionOptions">
               <div style="display:inline-block">
                 <t>Speed</t>
               </div>
@@ -568,7 +578,7 @@
                 </div>
               </div>
             </div>
-            <div class="col col-2" style="display:none" id="advancedRecognitionOptions">
+            <div class="col col-md-2" style="display:none" id="advancedRecognitionOptions">
               <div>
                 <label>Options</label>
               </div>
@@ -606,7 +616,7 @@
                 </div>
               </div>
             </div>
-            <div class="col col-2" id="combineModeOptions" style="display:none">
+            <div class="col col-md-2" id="combineModeOptions" style="display:none">
               <div>
                 <label>Combine Mode:</label>
                 <a href="#" data-bs-custom-class="ttWide" class="d-inline-block"
@@ -627,7 +637,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 </select>
               </div>
             </div>
-            <div class="col col-2" id="engineCol" style="display:none">
+            <div class="col col-md-2" id="engineCol" style="display:none">
               <label>Alternative Builds</label>
               <div class="row">
                 <div class="form-group">
@@ -649,10 +659,10 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
           <div class="collapse" id="recognize-recognize-progress-collapse">
             <div class="row"
               style="padding-top:0.4rem;margin:0.4rem 0.4rem 0.4rem 0.4rem;border-top:1px solid #dadada;">
-              <div class="col col-2" style="padding-left:0">
+              <div class="col col-md-2" style="padding-left:0">
                 <div>Recognizing Text</div>
               </div>
-              <div class="col col-7">
+              <div class="col col-md-7">
                 <div class="progress" style="margin: 0.25rem;">
                   <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
                     aria-valuemin="0" aria-valuemax="100"></div>
@@ -664,7 +674,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
         <div class="collapse" id="nav-eval" role="tabpanel" aria-labelledby="nav-eval-tab"
           data-bs-parent="#user-controls">
           <div class="row">
-            <div class="col col-3">
+            <div class="col col-md-3">
               <label>Active OCR Data</label>
               <div class="row">
                 <div class="form-group">
@@ -703,7 +713,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 </div>
               </div>
             </div>
-            <div class="col col-2">
+            <div class="col col-md-2">
               <label>Evaluation</label>
               <div class="form-group">
                 <button type="button" id="createGroundTruth" class="btn btn-info btn-sm" style="width:100%" disabled>Set
@@ -849,10 +859,10 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
           </div>
           <div class="collapse" id="import-eval-progress-collapse">
             <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
-              <div class="col col-2" style="padding-left:0">
+              <div class="col col-md-2" style="padding-left:0">
                 <div>Loading Files</div>
               </div>
-              <div class="col col-7">
+              <div class="col col-md-7">
                 <div class="progress" style="margin: 0.25rem;">
                   <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
                     aria-valuemin="0" aria-valuemax="100"></div>
@@ -864,7 +874,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
         <div class="collapse" id="nav-view" role="tabpanel" aria-labelledby="nav-view-tab"
           data-bs-parent="#user-controls">
           <div class="row" style="padding:0.4rem;">
-            <div class="col col-3">
+            <div class="col col-md-3">
               <label for="displayMode">Display Mode</label>
               <select id="displayMode" class="form-control btn-sm" size="1">
                 <option selected value="proof" selected>Proofread Mode (Image + Colored Text)</option>
@@ -878,7 +888,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 <option value="binary">Binary</option>
               </select>
             </div>
-            <div class="col col-3">
+            <div class="col col-md-3">
               <label>Options</label>
               <div class="form-check form-switch">
                 <label><input class="form-check-input" type="checkbox" id="autoRotateCheckbox" checked> Auto-Rotate
@@ -901,7 +911,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 </div>
               </div>
             </div>
-            <!-- <div class="col col-2">
+            <!-- <div class="col col-md-2">
                 <label></label>
                 <div class="form-check form-switch">
                   <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show Margin</label><br>
@@ -913,7 +923,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
         <div class="collapse" id="nav-download" role="tabpanel" aria-labelledby="nav-download-tab"
           data-bs-parent="#user-controls">
           <div class="row" style="padding:0.4rem;">
-            <div class="col col-3">
+            <div class="col col-md-3">
               <label for="downloadFormat">File Name</label>
               <div class="input-group">
                 <input type="text" id="downloadFileName" class="form-control btn-sm">
@@ -923,7 +933,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 <button type="button" id="download" class="btn btn-info btn-sm" disabled>Download</button>
               </div>
             </div>
-            <div class="col col-2">
+            <div class="col col-md-2">
               <label>Options</label>
               <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
                 data-bs-original-title="Only HOCR files can be re-imported later for additional edits."
@@ -988,7 +998,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 </div>
               </div>
             </div>
-            <div id="pdfOptions" class="col col-3">
+            <div id="pdfOptions" class="col col-md-3">
               <label>PDF Options</label>
               <div class="form-check form-switch">
                 <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
@@ -998,7 +1008,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                   Import PDF</label>
               </div>
             </div>
-            <div id="textOptions" class="col col-3" style="display:none">
+            <div id="textOptions" class="col col-md-3" style="display:none">
               <label>Text Options</label>
               <div class="form-check form-switch">
                 <label><input class="form-check-input" type="checkbox" id="reflowCheckbox"> Reflow Text</label><br />
@@ -1006,7 +1016,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                   Between Pages</label>
               </div>
             </div>
-            <div id="docxOptions" class="col col-3" style="display:none">
+            <div id="docxOptions" class="col col-md-3" style="display:none">
               <label>Docx Options</label>
               <div class="form-check form-switch">
                 <label><input class="form-check-input" type="checkbox" id="docxReflowCheckbox" checked> Reflow
@@ -1015,7 +1025,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                   Between Pages</label>
               </div>
             </div>
-            <div id="xlsxOptions" class="col col-3" style="display:none">
+            <div id="xlsxOptions" class="col col-md-3" style="display:none">
               <label>Xlsx Options</label>
               <div class="form-check form-switch">
                 <label><input class="form-check-input" type="checkbox" id="xlsxFilenameColumn" checked> Add Filename
@@ -1029,10 +1039,10 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
           </div>
           <div class="collapse" id="generate-download-progress-collapse">
             <div class="row" style="padding-top:0.4rem;margin:0.4rem;border-top:1px solid #dadada;">
-              <div class="col col-2" style="padding-left:0">
+              <div class="col col-md-2" style="padding-left:0">
                 <div>Generating PDF</div>
               </div>
-              <div class="col col-7">
+              <div class="col col-md-7">
                 <div class="progress" style="margin: 0.25rem;">
                   <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
                     aria-valuemin="0" aria-valuemax="100"></div>
@@ -1044,7 +1054,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
         <div class="collapse" id="nav-about" role="tabpanel" aria-labelledby="nav-about-tab"
           data-bs-parent="#user-controls">
           <div class="row" style="padding:0.4rem;">
-            <div class="col col-3">
+            <div class="col-md col-md-3 order-last order-md-first">
               <div class="row">
                 <a href="https://github.com/Balearica/scribeocr" target="_blank" class="text-decoration-none"
                   style="color:#287bb5">
@@ -1066,7 +1076,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
               </div>
 
             </div>
-            <div class="col col-3">
+            <div class="col col-md-3">
               <div class="form-group">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
                   href="#optionalFeatures" style="min-width:100%;text-align:left">
@@ -1123,20 +1133,20 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                     </a></label>
                   <div class="row">
                     <!-- <label for="staticEmail" class="col-sm-2 col-form-label">High</label> -->
-                    <div class="col col-4">
+                    <div class="col col-md-4">
                       <label>Low</label>
                     </div>
-                    <div class="col col-4">
+                    <div class="col col-md-4">
                       <label>High</label>
                     </div>
                   </div>
                   <div class="row">
                     <!-- <label for="staticEmail" class="col-sm-2 col-form-label">High</label> -->
-                    <div class="col col-4">
+                    <div class="col col-md-4">
                       <input class="form-control btn-sm" type="text" id="confThreshHigh" name="pageNum" size="3"
                         autocomplete="off" disabled>
                     </div>
-                    <div class="col col-4">
+                    <div class="col col-md-4">
                       <input class="form-control btn-sm" type="text" id="confThreshMed" name="pageNum" size="3"
                         autocomplete="off" disabled>
                     </div>
@@ -1153,7 +1163,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 </div>
               </div>
             </div>
-            <div class="col col-3">
+            <div class="col col-md-3">
               <div class="form-group">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugInfo"
                   style="min-width:100%;text-align:left">
@@ -1185,10 +1195,10 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
         <div class="row">
           <div class="collapse" id="import-progress-collapse">
             <div class="row" style="padding-top:0.4rem;margin:0.4rem;">
-              <div class="col col-2" style="padding-left:0">
+              <div class="col col-md-2" style="padding-left:0">
                 <div>Loading Files</div>
               </div>
-              <div class="col col-7">
+              <div class="col col-md-7">
                 <div class="progress" style="margin: 0.25rem;">
                   <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0"
                     aria-valuemin="0" aria-valuemax="100"></div>
