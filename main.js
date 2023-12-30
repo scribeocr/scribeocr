@@ -96,7 +96,39 @@ var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 
 // Quick fix to get VSCode type errors to stop
 // Long-term should see if there is a way to get types to work with fabric.js
-var fabric = globalThis.fabric;
+const fabric = globalThis.fabric;
+
+// On touchscreen devices, gestures may be used to either (1) attempt to scroll or (2) manipulate the canvas. 
+// Fabric.js does not handle this well out of the box, and simply disables all scrolling when touching the canvas.
+// This means that if the user is ever fully zoomed in, they cannot "escape" and zoom out.
+// This issue is solved here by intercepting the touch event, and deciding whether it should manipulate the canvas or not.
+// The gesture is interpreted as interacting with the canvas if either (1) it is touching an object or
+// (2) the variable `globalThis.touchScrollMode` is manually set to `false`. 
+// `globalThis.touchScrollMode` should be set to `false` whenever the user needs to interact with the canvas--
+// for example, when selecting "Recognize Area", and restored to `true` afterwards.
+// This code is based on this GitHub comment:
+// https://github.com/fabricjs/fabric.js/issues/5903#issuecomment-699011321
+const isTouchScreen = navigator?.maxTouchPoints > 0 ? true : false;
+globalThis.touchScrollMode = true;
+
+const defaultOnTouchStartHandler = fabric.Canvas.prototype._onTouchStart;
+fabric.util.object.extend(fabric.Canvas.prototype, { 
+  _onTouchStart: function(e) { 
+    const target = this.findTarget(e); 
+    // if allowTouchScrolling is enabled, no object was at the
+    // the touch position and we're not in drawing mode, then 
+    // let the event skip the fabricjs canvas and do default
+    // behavior
+    if (!target && isTouchScreen && globalThis.touchScrollMode) { 
+      // returning here should allow the event to propagate and be handled
+      // normally by the browser
+      return; 
+    } 
+
+    // otherwise call the default behavior
+    defaultOnTouchStartHandler.call(this, e); 
+  } 
+});
 
 // Filtering was throwing an error when GL was enabled
 // May be worth investigating down the line as GL will be faster
@@ -162,7 +194,10 @@ globalThis.currentPage = {
 }
 
 // Define canvas
-globalThis.canvas = new fabric.Canvas('c');
+globalThis.canvas = new fabric.Canvas('c', {
+  // This allows for scrolling on mobile devices
+  allowTouchScrolling: true
+});
 globalThis.ctx = canvas.getContext('2d');
 
 // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
@@ -1028,6 +1063,7 @@ function changeZoom(value) {
 document.getElementById('navBar')?.addEventListener('click', function (e) {
   newWordInit = true;
   canvas.__eventListeners = {};
+  globalThis.touchScrollMode = true;
 }, true)
 
 
@@ -1617,7 +1653,10 @@ var rect1;
  */
 function recognizeAreaClick(wordMode = false) {
 
+  globalThis.touchScrollMode = false;
+
   canvas.on('mouse:down', function (o) {
+
     let pointer = canvas.getPointer(o.e);
     origX = pointer.x;
     origY = pointer.y;
@@ -1655,6 +1694,8 @@ function recognizeAreaClick(wordMode = false) {
   // Without this changes to active selection caused by mouse movement may change rect object.
   canvas.on('mouse:up:before', async function (o) {
 
+    globalThis.touchScrollMode = true;
+
     if(rect1.width < 4 || rect1.height < 4) {
       canvas.remove(rect1);
       return;
@@ -1680,6 +1721,7 @@ var newWordInit = true;
 var rect, origX, origY;
 function addWordClick() {
   newWordInit = false;
+  globalThis.touchScrollMode = false;
 
   canvas.on('mouse:down', function (o) {
     let pointer = canvas.getPointer(o.e);
@@ -1723,6 +1765,7 @@ function addWordClick() {
   canvas.on('mouse:up:before', async function (o) {
 
     canvas.__eventListeners = {}
+    globalThis.touchScrollMode = true;
     if (newWordInit) { return; }
     newWordInit = true;
 
