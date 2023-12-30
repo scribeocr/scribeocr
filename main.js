@@ -361,83 +361,57 @@ const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('
 
 const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
 
-export function enableRecognitionClick() {
-  if (enableRecognitionElem.checked) {
-    document.getElementById("nav-recognize-tab")?.setAttribute("style", "");
-  } else {
-    document.getElementById("nav-recognize-tab")?.setAttribute("style", "display:none");
-  }
-}
-
-enableRecognitionElem.addEventListener('click', enableRecognitionClick);
-
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 
-// If evaluate option is enabled, show tab and widen navbar to fit everything on the same row
-enableAdvancedRecognitionElem.addEventListener('click', () => {
-  if (enableAdvancedRecognitionElem.checked) {
-    document.getElementById("advancedRecognitionOptions")?.setAttribute("style", "");
-    document.getElementById("basicRecognitionOptions")?.setAttribute("style", "display:none");
-  } else {
-    document.getElementById("advancedRecognitionOptions")?.setAttribute("style", "display:none");
-    document.getElementById("basicRecognitionOptions")?.setAttribute("style", "");
-  }
-});
-
-
 const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
 
-// If evaluate option is enabled, show tab and widen navbar to fit everything on the same row
-enableEvalElem.addEventListener('click', () => {
-  if (enableEvalElem.checked) {
-    document.getElementById("nav-tab-container")?.setAttribute("class", "col-8 col-xl-7");
-    document.getElementById("nav-eval-tab")?.setAttribute("style", "");
-  } else {
-    document.getElementById("nav-tab-container")?.setAttribute("class", "col-8 col-xl-6");
-    document.getElementById("nav-eval-tab")?.setAttribute("style", "display:none");
-  }
-});
+/**
+ * Adds or removes CSS attribute `display:none` for HTML element.
+ * @param {HTMLElement} elem 
+ * @param {boolean} show 
+ */
+const showHideElem = (elem, show = true) => {
+  const styleCurrent = elem?.getAttribute("style");
+  let styleNew = styleCurrent?.replace(/display\s*:\s*\w+;?/, '') || "";
+  if (!show) styleNew = styleNew + ";display:none;";
+
+  elem?.setAttribute("style", styleNew);
+}
+
+enableEvalElem.addEventListener('click', () => showHideElem(document.getElementById("nav-eval-tab"), enableEvalElem.checked));
 
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
-// If layout option is enabled, show tab and widen navbar to fit everything on the same row
-enableLayoutElem.addEventListener('click', () => {
-  if (enableLayoutElem.checked) {
-    document.getElementById("nav-tab-container")?.setAttribute("class", "col-8 col-xl-7");
-    document.getElementById("nav-layout-tab")?.setAttribute("style", "");
-  } else {
-    document.getElementById("nav-tab-container")?.setAttribute("class", "col-8 col-xl-6");
-    document.getElementById("nav-layout-tab")?.setAttribute("style", "display:none");
-  }
+enableAdvancedRecognitionElem.addEventListener('click', () => {
+  showHideElem(document.getElementById("advancedRecognitionOptions"), enableAdvancedRecognitionElem.checked);
+  showHideElem(document.getElementById("basicRecognitionOptions"), !enableAdvancedRecognitionElem.checked);
 });
+
+export const enableRecognitionClick = () => showHideElem(document.getElementById("nav-recognize-tab"), enableRecognitionElem.checked);
+
+enableRecognitionElem.addEventListener('click', enableRecognitionClick);
+
+enableLayoutElem.addEventListener('click', () => showHideElem(document.getElementById("nav-layout-tab"), enableLayoutElem.checked));
+
 
 const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
-export function enableXlsxExportClick() {
-  if (enableXlsxExportElem.checked) {
-    // Adding layouts is required for xlsx exports
-    if (!enableLayoutElem.checked) enableLayoutElem.click();
-    document.getElementById("formatLabelOptionXlsx")?.setAttribute("style", "");
-    updateDataPreview();
-  } else {
-    document.getElementById("formatLabelOptionXlsx")?.setAttribute("style", "display:none");
-    updateDataPreview();
-  }
-}
+export const enableXlsxExportClick = () => {
+  // Adding layouts is required for xlsx exports
+  if (!enableLayoutElem.checked) enableLayoutElem.click();
+
+  showHideElem(document.getElementById("nav-recognize-tab"), enableXlsxExportElem.checked);
+
+  updateDataPreview();
+};
 
 enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
 
 
 const enableEnginesElem = /** @type {HTMLInputElement} */(document.getElementById('enableExtraEngines'));
-enableEnginesElem.addEventListener('click', () => {
-  if (enableEnginesElem.checked) {
-    document.getElementById("engineCol")?.setAttribute("style", "");
-  } else {
-    document.getElementById("engineCol")?.setAttribute("style", "display:none");
-  }
-});
 
+enableEnginesElem.addEventListener('click', () => showHideElem(document.getElementById("engineCol"), enableEnginesElem.checked));
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
