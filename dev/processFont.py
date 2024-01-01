@@ -49,6 +49,14 @@ for glyph in font.glyphs():
     glyph.round()
 
 
+## Increase the width of the space character.
+## If the space character is not large enough, significant manual adjustment will be required when writing lines with justified text to PDF.
+## Certain PDF viewers will interpret this as 2-3 space characters, so any extracted text will end up with excessive spaces. 
+## Unfortunately, making the space too large causes the highlighted region to be too large when words are selected. 
+## Therefore, the space character is widened modestly from (usually) 0.25 to 0.35.  
+font["space"].width = int(font.em * 0.35)
+font["space"].round()
+
 ## Add extrema
 ## This should be done last, as other transformations can re-introduce extrema without points. 
 for glyph in font.glyphs():
