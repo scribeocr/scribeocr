@@ -3124,3 +3124,8 @@ async function handleDownload() {
 
 // Set default settings
 setDefaults();
+
+// If running Cypress tests, signal that app is ready.
+if (window.Cypress) {
+  window.appReady = true
+}

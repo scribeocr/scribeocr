@@ -3,6 +3,7 @@
 describe('It downloads a', () => {
   beforeEach(() => {
     cy.visit('/');
+    cy.window().should('have.property', 'appReady', true);
   })
   it('text file from a pdf with different page numbered xml', () => {
     cy.get('#openFileInput').selectFile(

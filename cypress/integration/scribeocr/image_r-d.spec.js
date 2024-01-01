@@ -3,6 +3,7 @@
 describe('It recognises and downloads a', () => {
   beforeEach(() => {
     cy.visit('/');
+    cy.window().should('have.property', 'appReady', true);
   })
 
   it('text file from a jpg with no imported ocr data', () => {

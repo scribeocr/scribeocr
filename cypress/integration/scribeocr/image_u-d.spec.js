@@ -3,6 +3,7 @@
 describe('It downloads a', () => {
   beforeEach(() => {
     cy.visit('/');
+    cy.window().should('have.property', 'appReady', true);
   })
 
   it('downloads a text file from jpg with hOCR (xml for browserstack but data from tess)', () => {
