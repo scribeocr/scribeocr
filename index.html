@@ -58,6 +58,9 @@
     /* Subtract height of border from padding */
     .nav-tabs .nav-link {
       padding-bottom: calc(1rem - 3px) !important;
+      /* flex-shrink: 1 and min-width: 0 allows the entire bar to fit in one row in small mobile devices. */
+      flex-shrink: 1;
+      min-width: 0;
     }
 
     .nav a:not(.collapsed) {
@@ -161,7 +164,8 @@
 
 </head>
 
-<body>
+<!-- position:relative;overflow:hidden prevents an issue on mobile where users can "scroll" into blank space past the end of the content. -->
+<body style="position:relative;overflow:hidden">
 
   <div id="navBar" class="navbar fixed-top navbar-light bg-light py-0">
     <div class="container-xl px-0">
@@ -169,7 +173,7 @@
         <div class="row nav-row">
           <!-- The page navbar is moved below the page navigation if the window gets too small. -->
           <div class="col-xl-6 order-3 order-xl-1" id="nav-tab-container">
-            <div class="nav nav-tabs" id="nav-tab" role="tablist">
+            <div class="nav nav-tabs" id="nav-tab" role="tablist" style="flex-wrap:nowrap">
 
               <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
