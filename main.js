@@ -187,7 +187,7 @@ globalThis.globalSettings = {
 globalThis.currentPage = {
   n: 0,
   backgroundImage: null,
-  backgroundOpts: {},
+  backgroundOpts: {stroke: '#3d3d3d', strokeWidth: 3},
   leftAdjX: 0,
   renderStatus: 0,
   renderNum: 0
@@ -195,9 +195,75 @@ globalThis.currentPage = {
 
 // Define canvas
 globalThis.canvas = new fabric.Canvas('c', {
+  width: document.documentElement.clientWidth,
+  height: document.documentElement.clientHeight,
   // This allows for scrolling on mobile devices
   allowTouchScrolling: true
 });
+
+const resetCanvasEventListeners = () => {
+  canvas.__eventListeners = {};
+
+  globalThis.canvas.on('mouse:wheel', function (opt) {
+    const delta = opt.e.deltaY;
+    let zoom = globalThis.canvas.getZoom();
+    zoom *= 0.999 ** delta;
+    if (zoom > 20) zoom = 20;
+    if (zoom < 0.01) zoom = 0.01;
+
+    const pointer = canvas.getPointer(opt.e, true);
+
+    // Calculate the zoom point
+    const zoomPoint = new fabric.Point(pointer.x, pointer.y);
+
+    // Transform the view of the canvas to the zoom point
+    canvas.zoomToPoint(zoomPoint, zoom);
+
+    opt.e.preventDefault();
+    opt.e.stopPropagation();
+    globalThis.canvas.renderAll();
+  });
+
+  // Variables to track the panning
+  let isPanning = false;
+  let lastClientX = 0;
+  let lastClientY = 0;
+
+  // Event: Mouse down - check if middle button is pressed
+  globalThis.canvas.on('mouse:down:before', function (opt) {
+    if (opt.e.button === 1) { // Middle mouse button
+      isPanning = true;
+      lastClientX = opt.e.clientX;
+      lastClientY = opt.e.clientY;
+      opt.e.preventDefault();
+      opt.e.stopPropagation();
+    }
+  });
+
+  // Event: Mouse move - pan the canvas
+  globalThis.canvas.on('mouse:move', function (opt) {
+    if (isPanning) {
+      let delta = new fabric.Point(opt.e.clientX - lastClientX, opt.e.clientY - lastClientY);
+      canvas.relativePan(delta);
+
+      opt.e.preventDefault();
+      opt.e.stopPropagation();
+
+      globalThis.canvas.renderAll();
+
+      lastClientX = opt.e.clientX;
+      lastClientY = opt.e.clientY;
+    }
+  });
+
+  // Event: Mouse up - stop panning
+  globalThis.canvas.on('mouse:up:before', function (opt) {
+    isPanning = false;
+  });
+
+}
+
+
 globalThis.ctx = canvas.getContext('2d');
 
 // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
@@ -212,29 +278,6 @@ canvas.renderOnAddRemove = false;
 // Disable uniform scaling (locked aspect ratio when scaling corner point of bounding box)
 canvas.uniformScaling = false;
 
-// Show drag-and-drop interface above canvas
-(() => {
-  const uploadElement = document.createElement("fieldset");
-  uploadElement.setAttribute("class", "upload_dropZone text-center p-4");
-  uploadElement.setAttribute("id", "uploadDropZone");
-  uploadElement.setAttribute("style", "width:100%;height:100%;position:absolute;z-index:10");
-  uploadElement.innerHTML = `<legend class="visually-hidden">Image uploader</legend>
-  
-  <p class="small" style="margin-top:45%">Drag &amp; drop files inside dashed region<br><i>or</i></p>
-  <input id="upload_image_logo" data-post-name="image_logo"
-    data-post-url="https://someplace.com/image/uploads/logos/"
-    class="position-absolute invisible" type="file" multiple />
-  <input type="file" class="position-absolute invisible" id="openFileInput" multiple>
-  <label class="btn btn-info mb-3" for="openFileInput" style="min-width:8rem">Select
-    Files</label>
-  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"
-    style="display:inline!important"></div>
-  <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"></div>`
-
-  document.getElementById("c").parentElement.insertBefore(uploadElement, document.getElementById("c").parentElement.firstChild);
-
-})();
-
 const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
 openFileInputElem.addEventListener('change',  (event) => {
   if (event.target.files.length == 0) return;
@@ -244,17 +287,26 @@ openFileInputElem.addEventListener('change',  (event) => {
   document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
 });
 
-
 globalThis.zone = /** @type {HTMLInputElement} */ (document.getElementById("uploadDropZone"));
 
+let highlightActiveCt = 0;
 zone.addEventListener('dragover', (event) => {
   event.preventDefault();
-  event.target.classList.add('highlight');
+  console.log("Adding class");
+  globalThis.zone.classList.add('highlight');
+  highlightActiveCt++;
 });
 
 zone.addEventListener('dragleave', (event) => {
   event.preventDefault();
-  event.target.classList.remove('highlight');
+  // Only remove the highlight after 0.1 seconds, and only if it has not since been re-activated.
+  // This avoids flickering. 
+  const highlightActiveCtNow = highlightActiveCt;
+  setTimeout(() => {
+    if (highlightActiveCtNow == highlightActiveCt) {
+      globalThis.zone.classList.remove('highlight');
+    }
+  }, 100);
 });
 
 // This is where the drop is handled.
@@ -276,28 +328,6 @@ zone.addEventListener('drop', async (event) => {
   document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
 
 });
-
-const highlight = event => event.target.classList.add('highlight');
-
-const unhighlight = event => event.target.classList.remove('highlight');
-
-zone.addEventListener(event, highlight, false);
-
-['dragenter', 'dragover'].forEach(event => {
-    zone.addEventListener(event, highlight, false);
-});
-
-// Highlighting drop area when item is dragged over it
-['dragenter', 'dragover'].forEach(event => {
-    zone.addEventListener(event, highlight, false);
-});
-
-['dragleave', 'drop'].forEach(event => {
-    zone.addEventListener(event, unhighlight, false);
-});
-
-// Show new warning or error message to the user. 
-// TODO: Probably some better way to do this than parsing from text
 
 /**
  * 
@@ -362,16 +392,14 @@ globalThis.runOnLoad = function () {
 
 
 
-globalThis.canvasDebug = new fabric.Canvas('g');
-globalThis.ctxDebug = canvasDebug.getContext('2d');
-
-
+// globalThis.canvasDebug = new fabric.Canvas('g');
+// globalThis.ctxDebug = canvasDebug.getContext('2d');
 
 // // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
-globalThis.canvasDebug.overlayVpt = false;
+// globalThis.canvasDebug.overlayVpt = false;
 
 // // Turn off (some) automatic rendering of canvas
-canvasDebug.renderOnAddRemove = false;
+// canvasDebug.renderOnAddRemove = false;
 
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
 
@@ -387,7 +415,7 @@ prevElem.addEventListener('click', () => displayPage(currentPage.n - 1));
 const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
-colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
+colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false) });
 
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 createGroundTruthElem.addEventListener('click', createGroundTruthClick);
@@ -406,9 +434,9 @@ const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('
  * @param {HTMLElement} elem 
  * @param {boolean} show 
  */
-const showHideElem = (elem, show = true) => {
+export const showHideElem = (elem, show = true) => {
   const styleCurrent = elem?.getAttribute("style");
-  let styleNew = styleCurrent?.replace(/display\s*:\s*\w+;?/, '') || "";
+  let styleNew = styleCurrent?.replace(/;?display\s*:\s*\w+;?/, '') || "";
   if (!show) styleNew = styleNew + ";display:none;";
 
   elem?.setAttribute("style", styleNew);
@@ -487,31 +515,22 @@ document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedW
 document.getElementById('addWord')?.addEventListener('click', addWordClick);
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
-const zoomInputElem = /** @type {HTMLInputElement} */(document.getElementById('zoomInput'));
-zoomInputElem.addEventListener('change', (event) => { changeZoom(parseFloat(zoomInputElem.value)) });
-
-const zoomValueIncrement = 500;
-document.getElementById('zoomMinus')?.addEventListener('click', () => { changeZoom(parseFloat(zoomInputElem.value) - zoomValueIncrement) });
-document.getElementById('zoomPlus')?.addEventListener('click', () => { changeZoom(parseFloat(zoomInputElem.value) + zoomValueIncrement) });
-
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
 optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked) });
 
 const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
 const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-confThreshHighElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
-confThreshMedElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', false) });
+confThreshHighElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false) });
+confThreshMedElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false) });
 
-
-// const binaryCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('binaryCheckbox'));
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
 const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
-autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
-autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
-showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
-document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(currentPage.n, 'screen', false) });
+autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
+autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
+showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
+document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
@@ -607,13 +626,13 @@ showExcludedTextElem.addEventListener('click', () => getExcludedText());
 
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
-ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
+ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true) });
 
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreCap"));
-ignoreCapElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
+ignoreCapElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true) });
 
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
-ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, 'screen', true) });
+ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true) });
 
 
 const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
@@ -1033,36 +1052,18 @@ export function setCurrentHOCR(x) {
   displayLabelTextElem.innerHTML = x;
 
   if (displayModeElem.value == "eval") {
-    renderPageQueue(currentPage.n, 'screen', true);
+    renderPageQueue(currentPage.n, true);
   } else {
-    renderPageQueue(currentPage.n, 'screen', false);
+    renderPageQueue(currentPage.n, false);
   }
 
 }
-
-/**
- * Adjusts the zoom level for a page.
- *
- * @param {number} value - Desired zoom level
- */
-function changeZoom(value) {
-
-  if (isNaN(value)) return;
-
-  // Set min/max values to avoid typos causing unexpected issues
-  value = Math.max(value, 500);
-  value = Math.min(value, 5000);
-
-  zoomInputElem.value = String(value);
-  renderPageQueue(currentPage.n, "screen", false);
-}
-
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
 document.getElementById('navBar')?.addEventListener('click', function (e) {
   newWordInit = true;
-  canvas.__eventListeners = {};
+  resetCanvasEventListeners();
   globalThis.touchScrollMode = true;
 }, true)
 
@@ -1097,28 +1098,6 @@ export const enableDisableDownloadPDFAlert = () => {
   }
 }
 
-
-// When the navbar is "sticky", it does not automatically widen for large canvases (when the canvas size is larger than the viewport).
-// However, when the navbar is fixed, the canvas does not move out of the way of the navbar.
-// Therefore, the navbar is set to fixed, and the canvas is manually moved up/down when tabs are shown/collapsed.
-var tabHeightObj = { "nav-recognize": 65, "nav-eval": 89, "nav-view": 117, "nav-edit": 104, "nav-layout": 83, "nav-download": 102, "nav-about": 81 }
-
-const paddingRowElem = /**@type {HTMLElement} */(document.getElementById('paddingRow'));
-
-function adjustPaddingRow(e) {
-  if (e.target.id != this.id) return;
-  let currentHeight = parseInt(paddingRowElem.style.height.slice(0, -2));
-  if (e.type == "hide.bs.collapse") {
-    paddingRowElem.style.height = currentHeight - tabHeightObj[e.target.id] + "px";
-  } else if (e.type == "show.bs.collapse") {
-    paddingRowElem.style.height = currentHeight + tabHeightObj[e.target.id] + "px";
-  }
-}
-
-for (const [key, value] of Object.entries(tabHeightObj)) {
-  document.getElementById(key)?.addEventListener('show.bs.collapse', adjustPaddingRow);
-  document.getElementById(key)?.addEventListener('hide.bs.collapse', adjustPaddingRow);
-}
 
 document.getElementById("nav-layout")?.addEventListener('show.bs.collapse', (e) => {
   if (e.target.id != "nav-layout") return;
@@ -1711,7 +1690,7 @@ function recognizeAreaClick(wordMode = false) {
     await recognizeArea(imageCoords, wordMode);
 
     canvas.renderAll();
-    canvas.__eventListeners = {}
+    resetCanvasEventListeners();
   }, { once: true });
 
 }
@@ -1764,7 +1743,7 @@ function addWordClick() {
   // Without this changes to active selection caused by mouse movement may change rect object.
   canvas.on('mouse:up:before', async function (o) {
 
-    canvas.__eventListeners = {}
+    resetCanvasEventListeners();
     globalThis.touchScrollMode = true;
     if (newWordInit) { return; }
     newWordInit = true;
@@ -1893,7 +1872,7 @@ function addWordClick() {
     canvas.remove(rect);
     canvas.add(textbox);
     canvas.renderAll();
-    canvas.__eventListeners = {}
+    resetCanvasEventListeners();
 
   });
 }
@@ -2562,8 +2541,11 @@ globalThis.state = {
   downloadReady : false
 }
 
-// Function that handles page-level info for rendering to canvas and pdf
-export async function renderPageQueue(n, mode = "screen", loadXML = true) {
+/** @type {number} */
+let canvasDimsN = -1;
+
+// Function that handles page-level info for rendering to canvas and pdf 
+export async function renderPageQueue(n, loadXML = true) {
 
   renderPDFImageCache([n]);
 
@@ -2632,17 +2614,17 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
     }
 
     // TODO: Create a more efficient implementation of "show margin" feature
-    if (showMarginCheckboxElem.checked && mode == "screen") {
+    if (showMarginCheckboxElem.checked) {
       canvas.viewportTransform[4] = 0;
 
       canvas.clear();
 
-      if (imgDims != null) {
-        let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
-        canvas.setHeight(imgDims.height * zoomFactor);
-        canvas.setWidth(imgDims.width * zoomFactor);
-        canvas.setZoom(zoomFactor);
-      }
+      // if (imgDims != null) {
+      //   let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
+      //   canvas.setHeight(imgDims.height * zoomFactor);
+      //   canvas.setWidth(imgDims.width * zoomFactor);
+      //   canvas.setZoom(zoomFactor);
+      // }
 
       let marginLine = new fabric.Line([marginPx, 0, marginPx, imgDims.height], { stroke: 'blue', strokeWidth: 1, selectable: false, hoverCursor: 'default' });
       canvas.add(marginLine);
@@ -2676,9 +2658,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
       currentPage.backgroundOpts.left = imgDims.width * 0.5;
     }
 
-    if (mode == "screen") {
-      canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
-    }
+    // canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
 
   } else {
     currentPage.backgroundOpts.originX = "left";
@@ -2693,14 +2673,27 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   // Clear canvas if objects (anything but the background) exists
   if (canvas.getObjects().length) {
     canvas.clear()
-    canvas.__eventListeners = {};
+    resetCanvasEventListeners();
   }
 
-  if (imgDims != null) {
-    let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
-    canvas.setHeight(imgDims.height * zoomFactor);
-    canvas.setWidth(imgDims.width * zoomFactor);
-    canvas.setZoom(zoomFactor);
+  // When the page changes, the dimensions and zoom are modified.
+  // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
+  if (canvasDimsN !== n) {
+    // Re-set width/height, in case the size of the window changed since originally set.
+    canvas.setHeight(document.documentElement.clientHeight);
+    canvas.setWidth(document.documentElement.clientWidth);
+
+    // TODO: Make this more precise.
+    const interfaceHeight = 100;
+    const bottomMarginHeight = 50;
+    const targetHeight = document.documentElement.clientHeight - interfaceHeight - bottomMarginHeight;
+
+    const zoom = targetHeight / imgDims.height;
+
+    canvas.viewportTransform = [zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight];
+
+    canvasDimsN = n;
+
   }
 
   currentPage.renderStatus = 0;
@@ -2722,7 +2715,7 @@ export async function renderPageQueue(n, mode = "screen", loadXML = true) {
   }
 
 
-  if (mode == "screen" && currentPage.n == n && inputDataModes.xmlMode[n]) {
+  if (currentPage.n == n && inputDataModes.xmlMode[n]) {
     await renderPage(canvas, globalThis.ocrAll.active[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, currentPage.leftAdjX, fontAll);
     if (currentPage.n == n && currentPage.renderNum == renderNum) {
       currentPage.renderStatus = currentPage.renderStatus + 1;
@@ -2778,7 +2771,7 @@ export async function displayPage(n) {
   pageNumElem.value = (currentPage.n + 1).toString();
 
   rangeLeftMarginElem.value = 200 + globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
-  canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
+  // canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
 
   await renderPageQueue(currentPage.n);
 

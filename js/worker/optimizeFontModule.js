@@ -52,6 +52,16 @@ function transformGlyph(glyph, func, transX = false, transY = false) {
       }
     }
   }
+
+  if (transX) {
+    // leftSideBearing is not automatically updated by glyphIMetrics
+    const glyphMetrics = glyph.getMetrics();
+    glyph.leftSideBearing = glyphMetrics.xMin;
+
+    // Apply function to advanceWidth
+    glyph.advanceWidth = func(glyph.advanceWidth);
+  }
+
 }
 
 /**

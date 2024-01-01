@@ -25,7 +25,7 @@ function adjustMarginRangeChange(value) {
 function displayModeClick(x) {
 
     if (x == "eval") {
-      renderPageQueue(currentPage.n, 'screen', true);
+      renderPageQueue(currentPage.n, true);
     } else {
       selectDisplayMode(displayModeElem.value);
     }

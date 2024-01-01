@@ -1,6 +1,6 @@
 import { getRandomAlphanum } from "./miscUtils.js";
 
-import { displayPage } from "../main.js";
+import { displayPage, showHideElem } from "../main.js";
 
 import { createCells } from "./exportWriteTabular.js";
 
@@ -554,14 +554,15 @@ function renderLayoutBox(id) {
 export function updateDataPreview() {
     if (!globalThis.inputFileNames) return;
 
-    const dataPreviewElem = document.getElementById("dataPreview");
-    if (document.getElementById("enableXlsxExport").checked) {
-        dataPreviewElem.setAttribute("style", "");
-    } else {
-        dataPreviewElem.setAttribute("style", "display:none");
-        return;
-    }
+    /** @type {HTMLElement} */
+    const dataPreviewElem = /** @type {HTMLElement} */ (document.getElementById("dataPreview"));
 
+    const showDataPreview = document.getElementById("enableXlsxExport").checked;
+
+    showHideElem(dataPreviewElem, showDataPreview);
+
+    if (!showDataPreview) return;
+    
     const addFilenameMode = document.getElementById("xlsxFilenameColumn").checked;
     const addPageNumberColumnMode = document.getElementById("xlsxPageNumberColumn").checked;
   
