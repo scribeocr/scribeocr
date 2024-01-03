@@ -18,9 +18,10 @@
         position: relative !important;
       }
 
-      /* On mobile, the padding used to make the drop-down arrow opaque can cut off half of the text. */
+      /* On mobile, remove the arrow on the drop-down elements to avoid cutting off the text. */
       .form-select {
         padding-right: 0;
+        background-image: none;
       }
 
       .styleButton {
@@ -421,7 +422,7 @@
               <div class="col-1 height-helper" style="width:1px;padding:0"></div>
               <div class="col">
                 <div class="row" style="padding:0.4rem;">
-                  <div class="col col-lg-2 px-1">
+                  <div class="col col-lg-2 px-1 px-sm-2">
                     <label for="wordFont">Font</label>
                     <select id="wordFont" class="form-select form-select-sm" size="1">
                       <option selected value="Default">Default</option>
@@ -437,7 +438,7 @@
                   <div class="col-1 col-md-3 col-lg-2" style="padding-right:0.25rem;">
                     <label><span class="d-none d-md-inline-block">Style</span></label>
                     <div class="row">
-                      <div class="col-12 col-md-6 px-1 pb-2">
+                      <div class="col-12 col-md-6 px-1 px-sm-2 pb-2">
                         <button type="button" id="styleItalic" class="btn btn-secondary btn-sm styleButton"
                           style="text-align:left;width:100%;display:flex;align-items:center;height:31px" data-bs-toggle="button"
                           disabled>
@@ -447,7 +448,7 @@
                               d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z" />
                           </svg><span class="d-none d-md-inline-block">Italic</span></button>
                         </div>
-                        <div class="col-12 col-md-6 px-1 pb-2">
+                        <div class="col-12 col-md-6 px-1 px-sm-2 pb-2">
                         <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm styleButton"
                           style="text-align:left;width:100%;display:flex;align-items:center;height:31px" data-bs-toggle="button"
                           disabled>
@@ -463,7 +464,7 @@
                             </g>
                           </svg><span class="d-none d-md-inline-block">Caps</span></button>
                         </div>
-                        <div class="col-12 col-md-6 px-1 pb-2">
+                        <div class="col-12 col-md-6 px-1 px-sm-2 pb-2">
                         <button type="button" id="styleSuper" class="btn btn-secondary btn-sm styleButton"
                           style="text-align:left;width:100%;display:flex;align-items:center;height:31px" data-bs-toggle="button">
                           <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type"
@@ -482,7 +483,7 @@
                     <label class="d-none d-md-inline-block"></label>
                     <label class="ms-3 d-md-none d-inline-block" style="white-space:nowrap;">Add/Delete Word</label>
                     <div class="row ms-2">
-                      <div class="col-12 px-1 pb-2">
+                      <div class="col-12 px-1 px-sm-2 pb-2">
                         <button type="button" id="deleteWord" class="btn btn-secondary btn-sm"
                           style="width:100%;text-align:left;display:flex;white-space:nowrap" disabled>
                           <div>
@@ -495,7 +496,7 @@
                           </div>
                         </button>
                       </div>
-                      <div class="col-12 px-1 pb-2">
+                      <div class="col-12 px-1 px-sm-2 pb-2">
                         <div class="btn-group" style="width:100%;">
                           <button type="button" id="recognizeWord" class="btn btn-secondary btn-sm"
                             style="width:100%;text-align:left;white-space:nowrap">
@@ -973,7 +974,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
             <div class="col-1 height-helper" style="width:1px;padding:0"></div>
             <div class="col">
               <div class="row" style="padding:0.4rem;">
-                <div class="col col-lg-3">
+                <div class="col col-lg-3 px-1 px-sm-2">
                   <label for="downloadFormat">File Name</label>
                   <div class="input-group">
                     <input type="text" id="downloadFileName" class="form-control btn-sm">
@@ -983,7 +984,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                     <button type="button" id="download" class="btn btn-info btn-sm" disabled>Download</button>
                   </div>
                 </div>
-                <div class="col col-lg-2">
+                <div class="col col-lg-2 px-1 px-sm-2">
                   <label>Options</label>
                   <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
                     data-bs-original-title="Only HOCR files can be re-imported later for additional edits."
@@ -998,7 +999,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                     <div class="form-group">
                       <div class="dropdown">
                         <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadFormat"
-                          data-bs-toggle="dropdown" style="width:100%;text-align:left">
+                          data-bs-toggle="dropdown" style="width:100%;text-align:left;display:flex;align-items:center">
                           <svg id="formatLabelSVG" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                             fill="currentColor" class="bi bi-file-pdf" viewBox="0 0 16 16">
                             <path
@@ -1006,7 +1007,8 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                             <path
                               d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.701 19.701 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.716 5.716 0 0 1-.911-.95 11.642 11.642 0 0 0-1.997.406 11.311 11.311 0 0 1-1.021 1.51c-.29.35-.608.655-.926.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.27.27 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.647 12.647 0 0 1 1.01-.193 11.666 11.666 0 0 1-.51-.858 20.741 20.741 0 0 1-.5 1.05zm2.446.45c.15.162.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.881 3.881 0 0 0-.612-.053zM8.078 5.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z" />
                           </svg>
-                          <div style="display:inline"> Format: </div>
+                          <div class="d-inline-block d-md-none px-1">Type:</div>
+                          <div class="d-none d-md-inline-block px-1">Format:</div>
                           <div id="formatLabelText" style="display:inline">PDF</div>
                         </button>
                         <ul class="dropdown-menu">
@@ -1029,7 +1031,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                           <path
                             d="M13 0H6a2 2 0 0 0-2 2 2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2 2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm0 13V4a2 2 0 0 0-2-2H5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1zM3 4a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4z" />
                         </svg>
-                        <div id="pdfPagesLabelText" style="display:inline"> Pages: All</div>
+                        <div id="pdfPagesLabelText" style="display:inline">Pages: All</div>
                       </button>
 
                     </div>
@@ -1046,47 +1048,49 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+                <div class="col col-lg-3 ps-1 ps-sm-2">
+                  <div id="pdfOptions">
+                    <label>PDF Options</label>
+                    <div class="form-check form-switch">
+                      <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
+                      <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page
+                        Size</label>
+                      <label><input class="form-check-input" type="checkbox" id="addOverlayCheckbox" disabled> Add Text to
+                        Import PDF</label>
+                    </div>
+                  </div>
+                  <div id="textOptions" style="display:none">
+                    <label>Text Options</label>
+                    <div class="form-check form-switch">
+                      <label><input class="form-check-input" type="checkbox" id="reflowCheckbox"> Reflow
+                        Text</label><br />
+                      <label><input class="form-check-input" type="checkbox" id="pageBreaksCheckbox" checked disabled>
+                        Breaks
+                        Between Pages</label>
+                    </div>
+                  </div>
+                  <div id="docxOptions" style="display:none">
+                    <label>Docx Options</label>
+                    <div class="form-check form-switch">
+                      <label><input class="form-check-input" type="checkbox" id="docxReflowCheckbox" checked> Reflow
+                        Text</label><br />
+                      <label><input class="form-check-input" type="checkbox" id="docxPageBreaksCheckbox" checked> Breaks
+                        Between Pages</label>
+                    </div>
+                  </div>
+                  <div id="xlsxOptions" style="display:none">
+                    <label>Xlsx Options</label>
+                    <div class="form-check form-switch">
+                      <label><input class="form-check-input" type="checkbox" id="xlsxFilenameColumn" checked> Add Filename
+                        Column</label>
+                      <label><input class="form-check-input" type="checkbox" id="xlsxPageNumberColumn" checked> Add Page
+                        Number Column</label>
+                    </div>
+                  </div>
+                </div>
 
-                  </div>
-                </div>
-                <div id="pdfOptions" class="col col-lg-3">
-                  <label>PDF Options</label>
-                  <div class="form-check form-switch">
-                    <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
-                    <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize Page
-                      Size</label>
-                    <label><input class="form-check-input" type="checkbox" id="addOverlayCheckbox" disabled> Add Text to
-                      Import PDF</label>
-                  </div>
-                </div>
-                <div id="textOptions" class="col col-lg-3" style="display:none">
-                  <label>Text Options</label>
-                  <div class="form-check form-switch">
-                    <label><input class="form-check-input" type="checkbox" id="reflowCheckbox"> Reflow
-                      Text</label><br />
-                    <label><input class="form-check-input" type="checkbox" id="pageBreaksCheckbox" checked disabled>
-                      Breaks
-                      Between Pages</label>
-                  </div>
-                </div>
-                <div id="docxOptions" class="col col-lg-3" style="display:none">
-                  <label>Docx Options</label>
-                  <div class="form-check form-switch">
-                    <label><input class="form-check-input" type="checkbox" id="docxReflowCheckbox" checked> Reflow
-                      Text</label><br />
-                    <label><input class="form-check-input" type="checkbox" id="docxPageBreaksCheckbox" checked> Breaks
-                      Between Pages</label>
-                  </div>
-                </div>
-                <div id="xlsxOptions" class="col col-lg-3" style="display:none">
-                  <label>Xlsx Options</label>
-                  <div class="form-check form-switch">
-                    <label><input class="form-check-input" type="checkbox" id="xlsxFilenameColumn" checked> Add Filename
-                      Column</label>
-                    <label><input class="form-check-input" type="checkbox" id="xlsxPageNumberColumn" checked> Add Page
-                      Number Column</label>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
