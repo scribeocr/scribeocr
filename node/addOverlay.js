@@ -292,8 +292,13 @@ async function main() {
     const writeFile = util.promisify(fs.writeFile);
 
     await writeFile(outputPath, content);
-    process.exit(0);
 
+    // Terminate all workers
+    await tessWorker.terminate();
+    generalScheduler.terminate();
+    w.terminate(); 
+
+    process.exitCode = 0;
 
 }
 

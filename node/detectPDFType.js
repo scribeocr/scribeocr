@@ -28,7 +28,10 @@ async function main() {
         console.log("PDF Type: Image Native");
     }
 
-    process.exit(0);
+    // Terminate all workers
+    w.terminate(); 
+
+    process.exitCode = 0;
 
 }
 

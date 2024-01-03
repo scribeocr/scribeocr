@@ -52,6 +52,8 @@ export async function initGeneralWorker() {
 		obj.setFontActiveWorker = wrap("setFontActiveWorker");
 		obj.setGlobalSettings = wrap("setGlobalSettings");
 
+		obj.terminate = () => {return worker.terminate()};
+
 		ready.then((x) => resolve(obj));
 
 	})
