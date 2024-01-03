@@ -1,4 +1,4 @@
-import { updateWordCanvas } from "../interfaceEdit.js";
+import { updateWordCanvas } from "../ui/interfaceEdit.js";
 import { calcWordMetrics } from "../fontUtils.js"
 import ocr from "./ocrObjects.js";
 

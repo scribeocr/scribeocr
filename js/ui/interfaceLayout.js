@@ -1,10 +1,10 @@
-import { getRandomAlphanum } from "./miscUtils.js";
+import { getRandomAlphanum } from "../miscUtils.js";
 
-import { displayPage, showHideElem } from "../main.js";
+import { displayPage, showHideElem } from "../../main.js";
 
-import { createCells } from "./exportWriteTabular.js";
+import { createCells } from "../exportWriteTabular.js";
 
-import { layoutBox } from "./objects/layoutObjects.js";
+import { layoutBox } from "../objects/layoutObjects.js";
 
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
 const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));

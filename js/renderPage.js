@@ -1,6 +1,6 @@
 
 import { calcWordFontSize, calcWordMetrics, calcCharSpacing, calcLineFontSize } from "./fontUtils.js"
-import { renderLayoutBoxes, updateDataPreview } from "./interfaceLayout.js";
+import { renderLayoutBoxes, updateDataPreview } from "./ui/interfaceLayout.js";
 import ocr from "./objects/ocrObjects.js";
 import { ITextWord } from "./objects/fabricObjects.js";
 

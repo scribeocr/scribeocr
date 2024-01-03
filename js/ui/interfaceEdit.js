@@ -4,9 +4,9 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { calcWordMetrics } from "./fontUtils.js"
-import { renderPageQueue, fontAll } from "../main.js"
-import ocr from "./objects/ocrObjects.js";
+import { calcWordMetrics } from "../fontUtils.js"
+import { renderPageQueue, fontAll } from "../../main.js"
+import ocr from "../objects/ocrObjects.js";
 
 const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
 const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));

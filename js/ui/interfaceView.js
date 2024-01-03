@@ -1,25 +1,25 @@
-import { renderPageQueue, enableDisableDownloadPDFAlert } from "../main.js";
+import { renderPageQueue, enableDisableDownloadPDFAlert } from "../../main.js";
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 
-const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
-rangeLeftMarginElem.addEventListener('input', () => { adjustMarginRange(rangeLeftMarginElem.value) });
-rangeLeftMarginElem.addEventListener('mouseup', () => { adjustMarginRangeChange(rangeLeftMarginElem.value) });
+// const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
+// rangeLeftMarginElem.addEventListener('input', () => { adjustMarginRange(rangeLeftMarginElem.value) });
+// rangeLeftMarginElem.addEventListener('mouseup', () => { adjustMarginRangeChange(rangeLeftMarginElem.value) });
 
 const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
 displayModeElem.addEventListener('change', () => { displayModeClick(displayModeElem.value) });
 
 
-function adjustMarginRange(value) {
-    globalThis.canvas.viewportTransform[4] = (parseInt(value) - 200);
-    globalThis.canvas.renderAll();
-}
+// function adjustMarginRange(value) {
+//     globalThis.canvas.viewportTransform[4] = (parseInt(value) - 200);
+//     globalThis.canvas.renderAll();
+// }
 
 
-function adjustMarginRangeChange(value) {
-    globalThis.pageMetricsArr[currentPage.n].manAdj = (parseInt(value) - 200);
-}
+// function adjustMarginRangeChange(value) {
+//     globalThis.pageMetricsArr[currentPage.n].manAdj = (parseInt(value) - 200);
+// }
 
 
 function displayModeClick(x) {

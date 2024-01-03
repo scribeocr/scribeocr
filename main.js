@@ -40,17 +40,19 @@ import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences, s
 import { getAllFileEntries } from "./js/drag-and-drop.js";
 
 // Functions for various UI tabs
-import { selectDisplayMode } from "./js/interfaceView.js";
+import { selectDisplayMode } from "./js/ui/interfaceView.js";
 
 import {
   deleteSelectedWords, changeWordFontStyle, changeWordFontSize, changeWordFontFamily, toggleSuperSelectedWords,
   adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateWordCanvas
-} from "./js/interfaceEdit.js";
+} from "./js/ui/interfaceEdit.js";
 
 import {
   addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick,setLayoutBoxInclusionLevelClick, 
   updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords
-} from "./js/interfaceLayout.js"
+} from "./js/ui/interfaceLayout.js"
+
+import { canvas, resetCanvasEventListeners } from "./js/ui/interfaceCanvas.js";
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
@@ -93,6 +95,8 @@ var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggl
 var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl);
 })
+
+globalThis.canvas = canvas;
 
 // Quick fix to get VSCode type errors to stop
 // Long-term should see if there is a way to get types to work with fabric.js
@@ -193,90 +197,6 @@ globalThis.currentPage = {
   renderNum: 0
 }
 
-// Define canvas
-globalThis.canvas = new fabric.Canvas('c', {
-  width: document.documentElement.clientWidth,
-  height: document.documentElement.clientHeight,
-  // This allows for scrolling on mobile devices
-  allowTouchScrolling: true
-});
-
-const resetCanvasEventListeners = () => {
-  canvas.__eventListeners = {};
-
-  globalThis.canvas.on('mouse:wheel', function (opt) {
-    const delta = opt.e.deltaY;
-    let zoom = globalThis.canvas.getZoom();
-    zoom *= 0.999 ** delta;
-    if (zoom > 20) zoom = 20;
-    if (zoom < 0.01) zoom = 0.01;
-
-    const pointer = canvas.getPointer(opt.e, true);
-
-    // Calculate the zoom point
-    const zoomPoint = new fabric.Point(pointer.x, pointer.y);
-
-    // Transform the view of the canvas to the zoom point
-    canvas.zoomToPoint(zoomPoint, zoom);
-
-    opt.e.preventDefault();
-    opt.e.stopPropagation();
-    globalThis.canvas.renderAll();
-  });
-
-  // Variables to track the panning
-  let isPanning = false;
-  let lastClientX = 0;
-  let lastClientY = 0;
-
-  // Event: Mouse down - check if middle button is pressed
-  globalThis.canvas.on('mouse:down:before', function (opt) {
-    if (opt.e.button === 1) { // Middle mouse button
-      isPanning = true;
-      lastClientX = opt.e.clientX;
-      lastClientY = opt.e.clientY;
-      opt.e.preventDefault();
-      opt.e.stopPropagation();
-    }
-  });
-
-  // Event: Mouse move - pan the canvas
-  globalThis.canvas.on('mouse:move', function (opt) {
-    if (isPanning) {
-      let delta = new fabric.Point(opt.e.clientX - lastClientX, opt.e.clientY - lastClientY);
-      canvas.relativePan(delta);
-
-      opt.e.preventDefault();
-      opt.e.stopPropagation();
-
-      globalThis.canvas.renderAll();
-
-      lastClientX = opt.e.clientX;
-      lastClientY = opt.e.clientY;
-    }
-  });
-
-  // Event: Mouse up - stop panning
-  globalThis.canvas.on('mouse:up:before', function (opt) {
-    isPanning = false;
-  });
-
-}
-
-
-globalThis.ctx = canvas.getContext('2d');
-
-// Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
-canvas.overlayVpt = false;
-
-// Disable "bring to front" on click
-canvas.preserveObjectStacking = true;
-
-// Turn off (some) automatic rendering of canvas
-canvas.renderOnAddRemove = false;
-
-// Disable uniform scaling (locked aspect ratio when scaling corner point of bounding box)
-canvas.uniformScaling = false;
 
 const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
 openFileInputElem.addEventListener('change',  (event) => {
@@ -412,7 +332,7 @@ const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev')
 nextElem.addEventListener('click', () => displayPage(currentPage.n + 1));
 prevElem.addEventListener('click', () => displayPage(currentPage.n - 1));
 
-const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
+// const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false) });
@@ -525,11 +445,11 @@ confThreshMedElem.addEventListener('change', () => { renderPageQueue(currentPage
 
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
-const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
+// const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
+// const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
 autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
-autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
-showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
+// autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
+// showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
 document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
@@ -2614,49 +2534,49 @@ export async function renderPageQueue(n, loadXML = true) {
     }
 
     // TODO: Create a more efficient implementation of "show margin" feature
-    if (showMarginCheckboxElem.checked) {
-      canvas.viewportTransform[4] = 0;
+    // if (showMarginCheckboxElem.checked) {
+    //   canvas.viewportTransform[4] = 0;
 
-      canvas.clear();
+    //   canvas.clear();
 
-      // if (imgDims != null) {
-      //   let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
-      //   canvas.setHeight(imgDims.height * zoomFactor);
-      //   canvas.setWidth(imgDims.width * zoomFactor);
-      //   canvas.setZoom(zoomFactor);
-      // }
+    //   if (imgDims != null) {
+    //     let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
+    //     canvas.setHeight(imgDims.height * zoomFactor);
+    //     canvas.setWidth(imgDims.width * zoomFactor);
+    //     canvas.setZoom(zoomFactor);
+    //   }
 
-      let marginLine = new fabric.Line([marginPx, 0, marginPx, imgDims.height], { stroke: 'blue', strokeWidth: 1, selectable: false, hoverCursor: 'default' });
-      canvas.add(marginLine);
+    //   let marginLine = new fabric.Line([marginPx, 0, marginPx, imgDims.height], { stroke: 'blue', strokeWidth: 1, selectable: false, hoverCursor: 'default' });
+    //   canvas.add(marginLine);
 
-      let marginImage = canvas.toDataURL();
-      canvas.clear();
-      canvas.setOverlayImage(marginImage, canvas.renderAll.bind(canvas), {
-        overlayImageLeft: 100,
-        overlayImageTop: 100
-      });
+    //   let marginImage = canvas.toDataURL();
+    //   canvas.clear();
+    //   canvas.setOverlayImage(marginImage, canvas.renderAll.bind(canvas), {
+    //     overlayImageLeft: 100,
+    //     overlayImageTop: 100
+    //   });
 
-    }
+    // }
 
     currentPage.leftAdjX = 0;
-    if (autoMarginCheckboxElem.checked && leftGlobal != null) {
+    // if (autoMarginCheckboxElem.checked && leftGlobal != null) {
 
-      // Adjust page to match global margin unless it would require large transformation (likely error)
-      if (globalThis.pageMetricsArr[n].left > 0 && Math.abs(marginPx - globalThis.pageMetricsArr[n].left) < (globalThis.pageMetricsArr[currentPage.n].dims.width / 3)) {
-        currentPage.leftAdjX = marginPx - globalThis.pageMetricsArr[n].left;
-      }
+    //   // Adjust page to match global margin unless it would require large transformation (likely error)
+    //   if (globalThis.pageMetricsArr[n].left > 0 && Math.abs(marginPx - globalThis.pageMetricsArr[n].left) < (globalThis.pageMetricsArr[currentPage.n].dims.width / 3)) {
+    //     currentPage.leftAdjX = marginPx - globalThis.pageMetricsArr[n].left;
+    //   }
 
-      if (autoRotateCheckboxElem.checked) {
-        const sinAngle = Math.sin(globalThis.pageMetricsArr[n].angle * (Math.PI / 180));
-        const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
+    //   if (autoRotateCheckboxElem.checked) {
+    //     const sinAngle = Math.sin(globalThis.pageMetricsArr[n].angle * (Math.PI / 180));
+    //     const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
 
-        currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsArr[n].angleAdj || 0);
-      }
+    //     currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsArr[n].angleAdj || 0);
+    //   }
 
-      currentPage.backgroundOpts.left = imgDims.width * 0.5 + currentPage.leftAdjX;
-    } else {
-      currentPage.backgroundOpts.left = imgDims.width * 0.5;
-    }
+    //   currentPage.backgroundOpts.left = imgDims.width * 0.5 + currentPage.leftAdjX;
+    // } else {
+    //   currentPage.backgroundOpts.left = imgDims.width * 0.5;
+    // }
 
     // canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
 
@@ -2770,7 +2690,7 @@ export async function displayPage(n) {
   currentPage.n = n;
   pageNumElem.value = (currentPage.n + 1).toString();
 
-  rangeLeftMarginElem.value = 200 + globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
+  // rangeLeftMarginElem.value = 200 + globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
   // canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
 
   await renderPageQueue(currentPage.n);

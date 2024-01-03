@@ -22,6 +22,17 @@
       .form-select {
         padding-right: 0;
       }
+
+      .styleButton {
+        padding-left: 0;
+        padding-right: 0;
+        justify-content: center;
+      }
+
+      #fontSize {
+        width: 100% !important;
+      }
+
     }
 
     .collapse:not(.show):not(.collapse-nav) {
@@ -206,8 +217,11 @@
             </div>
             <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
                       Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
-            <span>Page: <input type="text" id="pageNum" name="pageNum" autocomplete="off" style="width:3em"> / <span
-                id="pageCount" style="display:inline-block;min-width:0.5rem"></span></span>
+            <div class="btn-group">
+              <span>Page: <input type="text" class="form-control btn-sm" id="pageNum" name="pageNum" autocomplete="off"
+                  style="width:3em;display:inline-block"> / <span id="pageCount"
+                  style="display:inline-block;min-width:0.5rem"></span></span>
+            </div>
             <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#editFindCollapse"
               style="text-align:left">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search"
@@ -416,26 +430,26 @@
                     </select>
                     <div class="input-group" style="padding-top:0.4rem;">
                       <button class="col col-xl-2 col-md-3 btn btn-secondary btn-sm order-0" id="fontMinus">-</button>
-                      <input type="text" class="col-12 col-xl-3 col-md-4 order-last order-md-1" id="fontSize" size="1">
+                      <input type="text" class="form-control btn-sm col-12 col-xl-3 col-md-4 order-last order-md-1 mt-2 mt-md-0" id="fontSize" size="1" style="flex:unset;width:35%">
                       <button class="col col-md-3 col-xl-2 btn btn-secondary btn-sm order-2" id="fontPlus">+</button>
                     </div>
                   </div>
-                  <div class="col col-md-3 col-lg-2" style="padding-right:0.25rem;">
-                    <label>Style</label>
+                  <div class="col-1 col-md-3 col-lg-2" style="padding-right:0.25rem;">
+                    <label><span class="d-none d-md-inline-block">Style</span></label>
                     <div class="row">
                       <div class="col-12 col-md-6 px-1 pb-2">
-                        <button type="button" id="styleItalic" class="btn btn-secondary btn-sm"
-                          style="text-align:left;width:100%;display:flex;align-items:center" data-bs-toggle="button"
+                        <button type="button" id="styleItalic" class="btn btn-secondary btn-sm styleButton"
+                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px" data-bs-toggle="button"
                           disabled>
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                             class="bi bi-type-italic" style="margin-right:4px" viewBox="0 0 16 16">
                             <path
                               d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z" />
-                          </svg> Italic</button>
-                      </div>
-                      <div class="col-12 col-md-6 px-1 pb-2">
-                        <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm"
-                          style="text-align:left;width:100%;display:flex;align-items:center" data-bs-toggle="button"
+                          </svg><span class="d-none d-md-inline-block">Italic</span></button>
+                        </div>
+                        <div class="col-12 col-md-6 px-1 pb-2">
+                        <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm styleButton"
+                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px" data-bs-toggle="button"
                           disabled>
                           <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type"
                             style="margin-right:4px" fill="currentColor">
@@ -447,11 +461,11 @@
                               <path stroke="null" id="svg_3"
                                 d="m10.10862,13.081l0.77225,-2.29546l2.84414,0l0.77307,2.29546l1.02857,0l-2.71884,-7.64143l-0.99746,0l-2.72048,7.64143l1.01875,0zm2.21111,-6.48837l1.14322,3.40347l-2.31757,0l1.1465,-3.40347l0.02784,0z" />
                             </g>
-                          </svg> Caps</button>
-                      </div>
-                      <div class="col-12 col-md-6 px-1 pb-2">
-                        <button type="button" id="styleSuper" class="btn btn-secondary btn-sm"
-                          style="text-align:left;width:100%;display:flex;align-items:center" data-bs-toggle="button">
+                          </svg><span class="d-none d-md-inline-block">Caps</span></button>
+                        </div>
+                        <div class="col-12 col-md-6 px-1 pb-2">
+                        <button type="button" id="styleSuper" class="btn btn-secondary btn-sm styleButton"
+                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px" data-bs-toggle="button">
                           <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type"
                             style="margin-right:4px" fill="currentColor">
                             <g>
@@ -460,8 +474,8 @@
                               <path stroke="null" id="svg_5"
                                 d="m7.45353,2.52791zm2.89854,1.8629l0,-0.05684c0,-0.55752 0.39693,-1.05459 1.07894,-1.05459c0.60984,0 1.0591,0.39694 1.0591,0.99776c0,0.56292 -0.3789,0.99324 -0.72802,1.37664l-2.39875,2.65767l0,0.67118l4.31217,0l0,-0.89311l-2.82095,0l0,-0.06224l1.59406,-1.79162c0.58638,-0.65314 1.11593,-1.20164 1.11593,-2.04783c-0.0009,-1.02211 -0.83356,-1.78802 -2.11008,-1.78802c-1.41905,0 -2.12902,0.95987 -2.12902,1.93957l0,0.05143l1.02662,0z" />
                             </g>
-                          </svg> Super</button>
-                      </div>
+                          </svg><span class="d-none d-md-inline-block">Super</span></button>
+                        </div>
                     </div>
                   </div>
                   <div class="col col-lg-2 p-0">
@@ -516,8 +530,10 @@
                             class="bi bi-align-middle" viewBox="0 0 16 16">
                             <path
                               d="M6 13a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v10zM1 8a.5.5 0 0 0 .5.5H6v-1H1.5A.5.5 0 0 0 1 8zm14 0a.5.5 0 0 1-.5.5H10v-1h4.5a.5.5 0 0 1 .5.5z" />
-                          </svg><span class="d-md-none d-inline-block">Adj Baseline</span><span
-                            class="d-none d-md-inline-block">Adjust Baseline</span>
+                          </svg>
+                          <span class="d-inline-block d-sm-none">Baseline</span>
+                          <span class="d-none d-sm-inline-block d-md-none">Adj Baseline</span>
+                          <span class="d-none d-md-inline-block">Adjust Baseline</span>
                         </button>
                       </div>
                     </div>
@@ -542,7 +558,7 @@
                         <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
                           <div class="form-check form-switch">
                             <label><input class="form-check-input" type="checkbox" id="smartQuotes" checked> Smart
-                              Quotes</label>
+                              Quotes
                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
                               data-bs-original-title="Automatically replace straight quotes with curly quotes based on context."
                               data-bs-placement="right">
@@ -552,17 +568,7 @@
                                   d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                               </svg>
                             </a>
-                            <label><input class="form-check-input" type="checkbox" id="optimizeFont" checked> Optimize
-                              Fonts</label>
-                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
-                              data-bs-original-title="Automatically adjusts font metrics to better match the scanned text."
-                              data-bs-placement="right">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)"
-                                class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                                <path
-                                  d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                              </svg>
-                            </a>
+                          </label>
                           </div>
                         </div>
                       </div>
@@ -927,11 +933,22 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                   <div class="form-check form-switch">
                     <label><input class="form-check-input" type="checkbox" id="autoRotateCheckbox" checked> Auto-Rotate
                       Image</label><br>
-                    <label><input class="form-check-input" type="checkbox" id="autoMarginCheckbox"> Auto-Standardize
+                      <label><input class="form-check-input" type="checkbox" id="optimizeFont" checked> Optimize
+                        Fonts</label>
+                      <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
+                        data-bs-original-title="Automatically adjusts font metrics to better match the scanned text."
+                        data-bs-placement="right">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)"
+                          class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                          <path
+                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                      </a>
+                    <!-- <label><input class="form-check-input" type="checkbox" id="autoMarginCheckbox"> Auto-Standardize
                       Left
-                      Margin</label><br>
+                      Margin</label><br> -->
                   </div>
-                  <div class="form-group">
+                  <!-- <div class="form-group">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
                       href="#adjustMargin" style="min-width:100%;text-align:left">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -944,7 +961,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                     <div class="card card-body" style="padding:0.5rem;position:relative;top:5px">
                       <input type="range" class="form-range" id="rangeLeftMargin" max="400" value="200">
                     </div>
-                  </div>
+                  </div> -->
                 </div>
               </div>
             </div>
@@ -1022,7 +1039,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                           <div class="col-5">
                             <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%">
                           </div>
-                          <div class="col-2" style="text-align:center"> to </div>
+                          <div class="col-2" style="text-align:center">-</div>
                           <div class="col-5">
                             <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%">
                           </div>
@@ -1197,8 +1214,8 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                         </div>
                       </div>
                       <div class="form-check form-switch" style="margin-top:0.4rem">
-                        <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show
-                          Margin</label><br>
+                        <!-- <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show
+                          Margin</label><br> -->
                         <label><input class="form-check-input" type="checkbox" id="showBoundingBoxes"> Show Bounding
                           Boxes</label>
                         <label><input class="form-check-input" type="checkbox" id="extractTextCheckbox"> Extract Text
@@ -1273,7 +1290,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
     <div class="container" style="position:absolute;top:100px;height:80vh">
 
       <fieldset class="upload_dropZone text-center p-4" id="uploadDropZone"
-        style="width:100%;height:100%;z-index:10;position:relative">
+        style="height:100%;z-index:10;position:relative;width:90%">
         <legend class="visually-hidden">Image uploader</legend>
 
         <div style="position:relative;top:35%">
