@@ -6,6 +6,7 @@ import { selectDefaultFontsDocument, setFontAllWorker } from "../js/fontEval.js"
 import { recognizeAllPages } from "../js/recognize.js";
 import { compareHOCR } from "../js/worker/compareOCRModule.js";
 import { renderHOCR } from "../js/exportRenderHOCR.js";
+import ocr from "../js/objects/ocrObjects.js";
 
 import fs from "fs";
 import path from "path";
@@ -63,29 +64,41 @@ globalThis.globalSettings = {
 globalThis.fontMetricObjsMessage = [];
 globalThis.convertPageWarn = [];
 
-const args = process.argv.slice(2);
+/**
+ * @param {string} func
+ * @param {Object} params
+ * @param {string} [params.pdfFile] 
+ * @param {string} [params.ocrFile]
+ * @param {string} [params.outputDir] 
+ * @param {boolean} [params.robustConfMode] 
+ * @param {boolean} [params.printConf] 
+ * 
+ */
+async function main(func, params) {
 
-async function main() {
+    let hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
+    if (!hocrStrFirst) throw "Could not read file: " + params.ocrFile;
 
-    let hocrStrFirst = fs.readFileSync(args[1], 'utf8');
-    if (!hocrStrFirst) throw "Could not read file: " + args[1];
-
-    const backgroundArg = args[0];
-    const outputDir = args[2] || "./";
-    const outputPath = outputDir + "/" + path.basename(backgroundArg).replace(/\.\w{1,5}$/i, "_vis.pdf");
+    const backgroundArg = params.pdfFile;
+    const outputDir = params.outputDir;
     
     const backgroundPDF = /pdf$/i.test(backgroundArg);
 
     const debugMode = false;
-    const robustConfMode = process.argv.indexOf('-r') > -1;
-  
-    const w = await initMuPDFWorker();
-    const fileData = await fs.readFileSync(args[0]);
+    const robustConfMode = func == "check" || params.robustConfMode || false;
+    const printConf = func == "check" || func == "conf" || params.printConf || false;
 
+    let fileData, w;
     if (backgroundPDF) {
-      const pdfDoc = await w.openDocument(fileData, "file.pdf");
-      w["pdfDoc"] = pdfDoc;    
+      w = await initMuPDFWorker();
+      fileData = await fs.readFileSync(params.pdfFile);
+
+      if (backgroundPDF) {
+        const pdfDoc = await w.openDocument(fileData, "file.pdf");
+        w["pdfDoc"] = pdfDoc;    
+      }  
     }
+
 
     globalThis.pageMetricsArr = [];
   
@@ -134,8 +147,10 @@ async function main() {
         hocrArrPages = hocrStrPages.split(/(?=\<div class\=[\'\"]ocr_page[\'\"])/);
     }
 
+    console.log("hocrArrPages.length: " + hocrArrPages.length);
+
     pageCountHOCR = hocrArrPages.length;
-    pageCountImage = backgroundPDF ? await w.countPages([fileData]) : 1;
+    if (backgroundPDF) pageCountImage = await w.countPages([fileData]);
     if (pageCountHOCR != pageCountImage) {
         console.log('Detected ' + pageCountHOCR + ' pages in OCR but ' + pageCountImage + " images.")
     }
@@ -173,6 +188,28 @@ async function main() {
     }
 
     await convertOCRAll(globalThis.hocrCurrentRaw, true, format, "User Upload");
+
+    if (func == "conf" || (printConf && !robustConfMode)) {
+      let wordsTotal = 0;
+      let wordsHighConf = 0;
+      // console.log(globalThis.hocrCurrentRaw);
+      // console.log(globalThis.ocrAll.active);
+      for (let i=0; i < globalThis.ocrAll.active.length; i++) {
+        const words = ocr.getPageWords(globalThis.ocrAll.active[i]);
+        for (let j=0; j < words.length; j++) {
+          const word = words[j];
+          wordsTotal = wordsTotal + 1;
+          if (word.conf > 85) wordsHighConf = wordsHighConf + 1;
+        }
+      }
+      console.log(`Confidence: ${wordsHighConf / wordsTotal}`);
+
+      if (func == "conf") {
+        generalScheduler.terminate();
+        process.exitCode = 0;
+        return;
+      }
+    }
 
     const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
     globalThis.fontMetricsObj = metricsRet.fontMetrics;
@@ -280,18 +317,23 @@ async function main() {
 
       }
 
-      console.log(`Confidence: ${wordsHighConf / wordsTotal}`);
+      if (printConf) console.log(`Confidence: ${wordsHighConf / wordsTotal}`);
 
     }  
 
-    const pdfStr = await hocrToPDF(globalThis.ocrAll.active, fontAll, 0, -1, "proof", true, false);
-    const enc = new TextEncoder();
-    const pdfEnc = enc.encode(pdfStr);
-    const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
-    const content = backgroundPDF ? await w.overlayText([pdfOverlay, 0, -1, -1, -1]) : await w.overlayTextImage([pdfOverlay, [fileData], 0, -1, -1, -1]);
-    const writeFile = util.promisify(fs.writeFile);
+    if (func == "overlay") {
+      const pdfStr = await hocrToPDF(globalThis.ocrAll.active, fontAll, 0, -1, "proof", true, false);
+      const enc = new TextEncoder();
+      const pdfEnc = enc.encode(pdfStr);
+      const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
+      const content = backgroundPDF ? await w.overlayText([pdfOverlay, 0, -1, -1, -1]) : await w.overlayTextImage([pdfOverlay, [fileData], 0, -1, -1, -1]);
+      const writeFile = util.promisify(fs.writeFile);
 
-    await writeFile(outputPath, content);
+      const outputPath = outputDir + "/" + path.basename(backgroundArg).replace(/\.\w{1,5}$/i, "_vis.pdf");
+  
+      await writeFile(outputPath, content);  
+    }
+
 
     // Terminate all workers
     await tessWorker.terminate();
@@ -302,5 +344,15 @@ async function main() {
 
 }
 
-  
-main();
+export const confFunc = async (ocr_file) => {
+  await main("conf", {ocrFile: ocr_file});
+}
+
+export const checkFunc = async (pdf_file, ocr_file) => {
+  await main("check", {pdfFile: pdf_file, ocrFile: ocr_file});
+}
+
+export const overlayFunc = async (pdf_file, ocr_file, output_dir, options) => {
+  await main("overlay", {pdfFile: pdf_file, ocrFile: ocr_file, outputDir: output_dir, robustConfMode: options.robust || false, printConf: options.conf || false});
+}
+
