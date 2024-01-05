@@ -136,7 +136,7 @@ export function fontContainerFont(family, style, type, src, opt, kerningPairs = 
   /**@type {boolean} */
   this.opt = opt;
   /**@type {string|ArrayBuffer} */
-  this.src = typeof (src) == "string" && !/^http/i.test(src) ? relToAbsPath("../../fonts/" + src) : src;
+  this.src = typeof (src) == "string" && !/^(\/|http)/i.test(src) ? relToAbsPath("../../fonts/" + src) : src;
   /**@type {Promise<opentype.Font>} */
   this.opentype = loadOpentype(this.src, kerningPairs);
   /**@type {string} */
