@@ -34,7 +34,13 @@ if (browserMode) {
 
 }
 
-
+let tmpUnique = null;
+export const deleteTmpDir = async () => {
+  if (tmpUnique) {
+    const { rmSync } = await import("fs");
+    rmSync(tmpUnique, { recursive: true, force: true });
+  }
+}
 
 export const initCanvasNode = async () => {
   const { isMainThread } = await import('worker_threads');
@@ -45,7 +51,7 @@ export const initCanvasNode = async () => {
   if (!fontAll.active) throw new Error("Fonts must be defined before running this function.");
 
   const { tmpdir } = await import("os");
-  const { writeFile, unlinkSync } = await import("fs");
+  const { writeFile, unlinkSync, mkdirSync } = await import("fs");
   const { promisify } = await import("util");
   const writeFile2 = promisify(writeFile);
   
@@ -60,7 +66,14 @@ export const initCanvasNode = async () => {
    */
   const registerFontObj = async (fontObj) => {
     if (typeof fontObj.src !== "string") {
-      const fontPathTmp = tmpdir() + "/" + fontObj.family + "-" + fontObj.style + ".otf";
+      // Create unique temp directory for this process only.
+      // This prevents different processes from overwriting eachother when this is run in parallel.
+      if (!tmpUnique) {
+        tmpUnique = tmpdir() + "/" + getRandomAlphanum(8);
+        mkdirSync(tmpUnique);
+      }
+
+      const fontPathTmp = tmpUnique + "/" + fontObj.family + "-" + fontObj.style + ".otf";
       await writeFile2(fontPathTmp, Buffer.from(fontObj.src));
 
       registerFont(fontPathTmp, {family: fontObj.fontFaceName, style: fontObj.fontFaceStyle});

@@ -4,7 +4,7 @@
 import { initGeneralWorker } from "../js/generalWorkerMain.js";
 import { selectDefaultFontsDocument, setFontAllWorker } from "../js/fontEval.js";
 import { recognizeAllPages } from "../js/recognize.js";
-import { compareHOCR } from "../js/worker/compareOCRModule.js";
+import { compareHOCR, deleteTmpDir } from "../js/worker/compareOCRModule.js";
 import { renderHOCR } from "../js/exportRenderHOCR.js";
 import ocr from "../js/objects/ocrObjects.js";
 
@@ -146,8 +146,6 @@ async function main(func, params) {
 
         hocrArrPages = hocrStrPages.split(/(?=\<div class\=[\'\"]ocr_page[\'\"])/);
     }
-
-    console.log("hocrArrPages.length: " + hocrArrPages.length);
 
     pageCountHOCR = hocrArrPages.length;
     if (backgroundPDF) pageCountImage = await w.countPages([fileData]);
@@ -334,6 +332,8 @@ async function main(func, params) {
       await writeFile(outputPath, content);  
     }
 
+    // Delete temp directory with fonts
+    deleteTmpDir();
 
     // Terminate all workers
     await tessWorker.terminate();
