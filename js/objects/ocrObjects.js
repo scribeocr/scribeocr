@@ -4,7 +4,7 @@
  * @param {dims} dims
  * @property {number} n - Page number (index 0)
  * @property {dims} dims - Dimensions of OCR
- * @property {number} angle - 
+ * @property {number} angle - Angle of page (degrees)
  * @property {?number} left - 
  * @property {number} leftAdj - 
  * @property {Array<ocrLine>} lines - 
@@ -14,7 +14,7 @@ export function ocrPage(n, dims) {
       this.n = n;
       /** @type {dims} */ 
       this.dims = dims;
-      /** @type {number} */ 
+      /** @type {number} - Angle of page (degrees)*/ 
       this.angle = 0;
       /** @type {?number} */ 
       this.left = null;
@@ -49,7 +49,7 @@ export function ocrLine(page, bbox, baseline, ascHeight = null, xHeight = null) 
     // Unfortunately, the @property tags above are not sufficient.
     /** @type {Array<number>} */ 
     this.bbox = bbox;
-    /** @type {Array<number>} */ 
+    /** @type {Array<number>} - baseline [slope, offset] */ 
     this.baseline = baseline;
     /** @type {?number} */ 
     this.ascHeight = ascHeight;

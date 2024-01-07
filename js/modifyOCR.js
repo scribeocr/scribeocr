@@ -159,6 +159,15 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
                 }
             }
 
+
+            // Short lines often contain baseline slope measurements that are inaccurate when the width of the line is extended (by adding more words).
+            // Therefore, when adding words to short lines, the slope is replaced with the median slope for the entire page. 
+            if (match.bbox[2] - match.bbox[0] < 300) {
+                const pageAngleRad = pageB.angle * (Math.PI / 180);
+                const pageSlope = Math.tan(pageAngleRad);
+                match.baseline[0] = pageSlope;
+            }
+
             // Recalculate bounding box for line
             ocr.calcLineBbox(match);
 
@@ -195,6 +204,8 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
                     }
                 }
             }
+
+            lineNew.page = pageB;
 
             if (afterClosest) {
                 lines.splice(lineI + 1, 0, lineNew);
