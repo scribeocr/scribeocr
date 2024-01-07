@@ -121,11 +121,9 @@ const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\
  */
 export async function hocrToPDF(hocrArr, fontAll, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = {width: -1, height: -1}, progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
-  // Only "SansDefault" and "SerifDefault" are currently considered for inclusion in PDF export,
-  // as these are the only 2 fonts actually used for printing OCR text. 
-  // All other font objects are used for font optimization purposes. 
-
-  const exportFontObj = { "SansDefault" : (fontAll.active.SansDefault), "SerifDefault" : fontAll.active.SerifDefault};
+  // TODO: Currently, all fonts are added to the PDF, and mupdf removes the unused fonts.
+  // It would likely be more performant to only add the fonts that are actually used up front. 
+  const exportFontObj = fontAll.active;
 
   // Get count of various objects inserted into pdf
   let fontCount = 0;

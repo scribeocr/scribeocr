@@ -3012,6 +3012,11 @@ async function handleDownload() {
   downloadElem.addEventListener('click', handleDownload);
 }
 
+// Expose functions in global object for debugging purposes.
+globalThis.df = {
+  "calcLineFontSize": calcLineFontSize,
+  "fontAll": fontAll,
+}
 
 // Set default settings
 setDefaults();
