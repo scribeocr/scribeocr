@@ -44,7 +44,7 @@ import { selectDisplayMode } from "./js/ui/interfaceView.js";
 
 import {
   deleteSelectedWords, changeWordFontStyle, changeWordFontSize, changeWordFontFamily, toggleSuperSelectedWords,
-  adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateWordCanvas
+  adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateWordCanvas, toggleEditButtons
 } from "./js/ui/interfaceEdit.js";
 
 import {
@@ -1029,15 +1029,6 @@ document.getElementById("nav-layout")?.addEventListener('hide.bs.collapse', (e) 
   clearLayoutBoxes();
 });
 
-
-export function toggleEditButtons(disable = true) {
-  let editButtons = ["styleItalic", "styleSmallCaps", "styleSuper", "editBaseline", "deleteWord", "addWord"];
-  for (let i = 0; i < editButtons.length; i++) {
-    const editButtonElem = /** @type {HTMLInputElement} */(document.getElementById(editButtons[i]));
-    editButtonElem.disabled = disable;
-  }
-}
-
 /**
  * 
  * @param {string} id - HTML element ID
@@ -1450,8 +1441,6 @@ async function recognizeArea(imageCoords, wordMode = false) {
 
   convertOCRPage(hocrString, currentPage.n, false, "hocr", oemText, true);
 
-  toggleEditButtons(false);
-
   return;
 
 }
@@ -1538,6 +1527,11 @@ var rect1;
  * Recognize area selected by user in Tesseract.
  * 
  * @param {boolean} wordMode - Assume selection is single word.
+ * 
+ * Note: This function assumes OCR data already exists, which this function is adding to. 
+ * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all". 
+ * Even if recognizing an page for the first time using "recognize area" did not produce an error, 
+ * it would still be problematic, as running "recognize all" afterwards would overwrite everything. 
  */
 function recognizeAreaClick(wordMode = false) {
 

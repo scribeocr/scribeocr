@@ -444,7 +444,7 @@
                 <div class="row" style="padding:0.4rem;">
                   <div class="col col-lg-2 px-1 px-sm-2">
                     <label for="wordFont">Font</label>
-                    <select id="wordFont" class="form-select form-select-sm" size="1">
+                    <select id="wordFont" class="form-select form-select-sm" size="1" disabled>
                       <option selected value="Default">Default</option>
                       <option value="SansDefault">Sans</option>
                       <option value="SerifDefault">Serif</option>
@@ -456,9 +456,9 @@
                       <option value="NimbusSans">Nimbus Sans</option>
                     </select>
                     <div class="input-group" style="padding-top:0.4rem;">
-                      <button class="col col-xl-2 col-md-3 btn btn-secondary btn-sm order-0" id="fontMinus">-</button>
-                      <input type="text" class="form-control btn-sm col-12 col-xl-3 col-md-4 order-last order-md-1 mt-2 mt-md-0" id="fontSize" size="1" style="flex:unset;width:35%">
-                      <button class="col col-md-3 col-xl-2 btn btn-secondary btn-sm order-2" id="fontPlus">+</button>
+                      <button class="col col-xl-2 col-md-3 btn btn-secondary btn-sm order-0" id="fontMinus" disabled>-</button>
+                      <input type="text" class="form-control btn-sm col-12 col-xl-3 col-md-4 order-last order-md-1 mt-2 mt-md-0" id="fontSize" size="1" style="flex:unset;width:35%" disabled>
+                      <button class="col col-md-3 col-xl-2 btn btn-secondary btn-sm order-2" id="fontPlus" disabled>+</button>
                     </div>
                   </div>
                   <div class="col-1 col-md-3 col-lg-2" style="padding-right:0.25rem;">
@@ -525,7 +525,7 @@
                       <div class="col-12 px-1 px-sm-2 pb-2">
                         <div class="btn-group" style="width:100%;">
                           <button type="button" id="recognizeWord" class="btn btn-secondary btn-sm"
-                            style="width:100%;text-align:left;white-space:nowrap">
+                            style="width:100%;text-align:left;white-space:nowrap" disabled>
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                               class="bi bi-eye" viewBox="0 0 16 16" style="margin-right:4px">
                               <path
@@ -534,8 +534,8 @@
                                 d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
                             </svg><span class="d-md-none d-inline-block">Recognize</span><span
                               class="d-none d-md-inline-block">Recognize Word</span></button>
-                          <button type="button" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split"
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                          <button type="button" id="recognizeWordDropdown" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split"
+                            data-bs-toggle="dropdown" aria-expanded="false" disabled>
                             <span class="visually-hidden">Toggle Dropdown</span>
                           </button>
                           <ul class="dropdown-menu">

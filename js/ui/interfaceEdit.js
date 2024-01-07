@@ -8,9 +8,20 @@ import { calcWordMetrics } from "../fontUtils.js"
 import { renderPageQueue, fontAll } from "../../main.js"
 import ocr from "../objects/ocrObjects.js";
 
+const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
+const fontMinusElem = /** @type {HTMLInputElement} */(document.getElementById('fontMinus'));
+const fontPlusElem = /** @type {HTMLInputElement} */(document.getElementById('fontPlus'));
+const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
+
 const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
 const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
 const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
+
+const deleteWordElem = /** @type {HTMLInputElement} */(document.getElementById('deleteWord'));
+const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
+const recognizeWordDropdownElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWordDropdown'));
+const editBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('editBaseline'));
+
 
 styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic') });
 styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('small-caps') });
@@ -277,4 +288,20 @@ export function adjustBaselineRangeChange(value){
     }
 
   }
+}
+
+export function toggleEditButtons(disable = true) {
+  wordFontElem.disabled = disable;
+  fontMinusElem.disabled = disable;
+  fontPlusElem.disabled = disable;
+  fontSizeElem.disabled = disable;
+
+  styleItalicElem.disabled = disable;
+  styleSmallCapsElem.disabled = disable;
+  styleSuperElem.disabled = disable;
+
+  deleteWordElem.disabled = disable;
+  recognizeWordElem.disabled = disable;
+  recognizeWordDropdownElem.disabled = disable;
+  editBaselineElem.disabled = disable;
 }

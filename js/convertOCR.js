@@ -83,7 +83,7 @@ export async function convertPageCallback({ pageObj, fontMetricsObj, layoutBoxes
     // Handle case where (1) area mode is enabled and (2) content already exists on the current page.
     // In this case, the new data is combined with the existing data, and the function returns early to avoid overwriting existing data.
     if (areaMode) {
-        const lines = globalThis.ocrAll.active[n].lines;
+        const lines = globalThis.ocrAll.active[n]?.lines;
         if (lines && lines.length > 0) {
             combineData(pageObj, globalThis.ocrAll.active[currentPage.n], globalThis.pageMetricsArr[currentPage.n]);
             if (browserMode) displayPage(currentPage.n);
