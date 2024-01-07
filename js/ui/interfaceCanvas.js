@@ -190,4 +190,15 @@ canvas.renderOnAddRemove = false;
 // Disable uniform scaling (locked aspect ratio when scaling corner point of bounding box)
 canvas.uniformScaling = false;
 
-export { canvas, resetCanvasEventListeners }
+
+const canvasDebug = new fabric.Canvas('g');
+globalThis.ctxDebug = canvasDebug.getContext('2d');
+
+// Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
+canvasDebug.overlayVpt = false;
+
+// Turn off (some) automatic rendering of canvas
+canvasDebug.renderOnAddRemove = false;
+
+
+export { canvas, resetCanvasEventListeners, canvasDebug }

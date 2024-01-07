@@ -52,7 +52,7 @@ import {
   updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords
 } from "./js/ui/interfaceLayout.js"
 
-import { canvas, resetCanvasEventListeners } from "./js/ui/interfaceCanvas.js";
+import { canvas, resetCanvasEventListeners, canvasDebug } from "./js/ui/interfaceCanvas.js";
 
 import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
 
@@ -310,17 +310,6 @@ globalThis.runOnLoad = function () {
 
 }
 
-
-
-// globalThis.canvasDebug = new fabric.Canvas('g');
-// globalThis.ctxDebug = canvasDebug.getContext('2d');
-
-// // Disable viewport transformations for overlay images (this prevents margin lines from moving with page)
-// globalThis.canvasDebug.overlayVpt = false;
-
-// // Turn off (some) automatic rendering of canvas
-// canvasDebug.renderOnAddRemove = false;
-
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
 
 globalThis.bsCollapse = new bootstrap.Collapse(document.getElementById("collapseRange"), { toggle: false });
@@ -482,10 +471,11 @@ document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', ()
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
   if (!showConflictsElem.checked) {
-    document.getElementById("g")?.setAttribute("style", "display:none");
+    document.getElementById("debugCanvasParentDiv")?.setAttribute("style", "display:none");
   } else {
     if (globalThis?.debugImg?.Combined?.[currentPage.n]) showDebugImages(globalThis.debugImg.Combined[currentPage.n]);
   }
+  setCanvasWidthHeightZoom(globalThis.state.imgDims, false);
 });
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
@@ -1473,7 +1463,6 @@ async function recognizeArea(imageCoords, wordMode = false) {
 export async function showDebugImages(imgArr) {
 
   canvasDebug.clear();
-  document.getElementById("g")?.setAttribute("style", "");
 
   let top = 5;
   let leftMax = 150;
@@ -2451,6 +2440,8 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
  * @property {any} promiseResolve 
  * @property {Promise<boolean>} recognizeAllPromise 
  * @property {boolean} downloadReady - whether download feature can be enabled yet
+ * @property {dims} imgDims - 
+ * @property {number} canvasDimsN - Page number that the current canvas dimensions are based off of.
  */
 /** @type {state} */
 globalThis.state = {
@@ -2458,11 +2449,45 @@ globalThis.state = {
   renderIt : 0,
   promiseResolve : undefined,
   recognizeAllPromise : Promise.resolve(true),
-  downloadReady : false
+  downloadReady : false,
+  imgDims : {width: 500, height: 500},
+  canvasDimsN: -1
 }
 
-/** @type {number} */
-let canvasDimsN = -1;
+/**
+ * 
+ * @param {dims} imgDims - Dimensions of image
+ * @param {boolean} updatePosition - Whether to reset the position/zoom of the page
+ */
+const setCanvasWidthHeightZoom = (imgDims, updatePosition = true) => {
+  const totalHeight = showConflictsElem.checked ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
+
+  // Re-set width/height, in case the size of the window changed since originally set.
+  canvas.setHeight(totalHeight);
+  canvas.setWidth(document.documentElement.clientWidth);
+
+  // TODO: Make this more precise.
+  if (updatePosition) {
+    const interfaceHeight = 100;
+    const bottomMarginHeight = 50;
+    const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
+  
+    const zoom = targetHeight / imgDims.height;
+  
+    canvas.viewportTransform = [zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight];  
+  }
+
+  if (showConflictsElem.checked) {
+    const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
+
+    canvasDebug.setHeight(debugHeight);
+    canvasDebug.setWidth(document.documentElement.clientHeight);
+
+    const debugCanvasParentDivElem = document.getElementById("debugCanvasParentDiv");
+    debugCanvasParentDivElem?.setAttribute("style", `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll`)
+  }
+
+}
 
 // Function that handles page-level info for rendering to canvas and pdf 
 export async function renderPageQueue(n, loadXML = true) {
@@ -2514,6 +2539,7 @@ export async function renderPageQueue(n, loadXML = true) {
     const backgroundImage = await globalThis.imageAll["native"][n];
     imgDims = {width: backgroundImage.width, height: backgroundImage.height};
   }
+  globalThis.state.imgDims = imgDims;
 
   // Calculate options for background image and overlay
   if (inputDataModes.xmlMode[n]) {
@@ -2525,7 +2551,7 @@ export async function renderPageQueue(n, loadXML = true) {
     currentPage.backgroundOpts.top = imgDims.height * 0.5;
 
 
-    let marginPx = Math.round(imgDims.width * leftGlobal);
+    // let marginPx = Math.round(imgDims.width * leftGlobal);
     if (autoRotateCheckboxElem.checked) {
       currentPage.backgroundOpts.angle = globalThis.pageMetricsArr[n].angle * -1 ?? 0;
 
@@ -2533,52 +2559,7 @@ export async function renderPageQueue(n, loadXML = true) {
       currentPage.backgroundOpts.angle = 0;
     }
 
-    // TODO: Create a more efficient implementation of "show margin" feature
-    // if (showMarginCheckboxElem.checked) {
-    //   canvas.viewportTransform[4] = 0;
-
-    //   canvas.clear();
-
-    //   if (imgDims != null) {
-    //     let zoomFactor = parseFloat(zoomInputElem.value) / imgDims.width;
-    //     canvas.setHeight(imgDims.height * zoomFactor);
-    //     canvas.setWidth(imgDims.width * zoomFactor);
-    //     canvas.setZoom(zoomFactor);
-    //   }
-
-    //   let marginLine = new fabric.Line([marginPx, 0, marginPx, imgDims.height], { stroke: 'blue', strokeWidth: 1, selectable: false, hoverCursor: 'default' });
-    //   canvas.add(marginLine);
-
-    //   let marginImage = canvas.toDataURL();
-    //   canvas.clear();
-    //   canvas.setOverlayImage(marginImage, canvas.renderAll.bind(canvas), {
-    //     overlayImageLeft: 100,
-    //     overlayImageTop: 100
-    //   });
-
-    // }
-
     currentPage.leftAdjX = 0;
-    // if (autoMarginCheckboxElem.checked && leftGlobal != null) {
-
-    //   // Adjust page to match global margin unless it would require large transformation (likely error)
-    //   if (globalThis.pageMetricsArr[n].left > 0 && Math.abs(marginPx - globalThis.pageMetricsArr[n].left) < (globalThis.pageMetricsArr[currentPage.n].dims.width / 3)) {
-    //     currentPage.leftAdjX = marginPx - globalThis.pageMetricsArr[n].left;
-    //   }
-
-    //   if (autoRotateCheckboxElem.checked) {
-    //     const sinAngle = Math.sin(globalThis.pageMetricsArr[n].angle * (Math.PI / 180));
-    //     const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
-
-    //     currentPage.leftAdjX = currentPage.leftAdjX - shiftX - (globalThis.pageMetricsArr[n].angleAdj || 0);
-    //   }
-
-    //   currentPage.backgroundOpts.left = imgDims.width * 0.5 + currentPage.leftAdjX;
-    // } else {
-    //   currentPage.backgroundOpts.left = imgDims.width * 0.5;
-    // }
-
-    // canvas.viewportTransform[4] = globalThis.pageMetricsArr[currentPage.n].manAdj ?? 0;
 
   } else {
     currentPage.backgroundOpts.originX = "left";
@@ -2598,21 +2579,11 @@ export async function renderPageQueue(n, loadXML = true) {
 
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
-  if (canvasDimsN !== n) {
-    // Re-set width/height, in case the size of the window changed since originally set.
-    canvas.setHeight(document.documentElement.clientHeight);
-    canvas.setWidth(document.documentElement.clientWidth);
+  if (globalThis.state.canvasDimsN !== n) {
 
-    // TODO: Make this more precise.
-    const interfaceHeight = 100;
-    const bottomMarginHeight = 50;
-    const targetHeight = document.documentElement.clientHeight - interfaceHeight - bottomMarginHeight;
+    setCanvasWidthHeightZoom(imgDims);
 
-    const zoom = targetHeight / imgDims.height;
-
-    canvas.viewportTransform = [zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight];
-
-    canvasDimsN = n;
+    globalThis.state.canvasDimsN = n;
 
   }
 

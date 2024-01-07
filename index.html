@@ -36,6 +36,26 @@
 
     }
 
+    #debugCanvasParentDiv::-webkit-scrollbar-track
+    {
+      -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+      border-radius: 10px;
+      background-color: #F5F5F5;
+    }
+
+    #debugCanvasParentDiv::-webkit-scrollbar
+    {
+      width: 6px;
+      background-color: #F5F5F5;
+    }
+
+    #debugCanvasParentDiv::-webkit-scrollbar-thumb
+    {
+      border-radius: 10px;
+      -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,.3);
+      background-color: #555;
+    }
+
     .collapse:not(.show):not(.collapse-nav) {
       display: block !important;
       visibility: hidden !important;
@@ -1318,10 +1338,12 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
   <canvas id="c" width="450" height="600"></canvas>
   <table id="dataPreview" class="dataPreview" style="display:none;margin-top:2em"></table>
   <canvas id="d" style="display:none"></canvas>
-  <canvas id="e" style="display:none"></canvas>
+    <canvas id="e" style="display:none"></canvas>
   <canvas id="h" style="display:none"></canvas>
   <canvas id="f" style="display:none"></canvas>
-  <canvas id="g" style="display:none"></canvas>
+  <div id="debugCanvasParentDiv" style="display:none">
+    <canvas id="g"></canvas>
+  </div>
   <img id="imgInvis" style="display:none;"></img>
 
   <!-- Do not delete -->
