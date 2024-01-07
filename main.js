@@ -2401,12 +2401,18 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
 
     })();
 
+    // Update progress bar after Tesseract is finished running.
+    if (progress) {
+      resPromise.then(() => {
+        progress.increment();
+      })
+    }
+
     if(saveColorImageArg){
       globalThis.imageAll["nativeRotated"][n] = Boolean(angleArg);
       globalThis.imageAll["native"][n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
         await loadImage(res.data.imageColor, image);
-        if (progress && saveBinaryImageArg != "true") progress.increment();
         return(image);
       });  
     }
@@ -2416,7 +2422,6 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
       globalThis.imageAll["binary"][n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
         await loadImage(res.data.imageBinary, image);
-        if(progress) progress.increment();
         return(image);
       });
     }
@@ -2882,27 +2887,19 @@ async function handleDownload() {
         dimsLimit.width = Math.max(dimsLimit.width, globalThis.pageMetricsArr[i].dims.width);
       }
     }
-
-    // Depending on the number of steps involved, the progress bar may be incremented when:
-    // (1) Image is rendered, (2) pdf text is generated, (3) text/image pdfs are combined. 
-    let maxValueProgress = maxValue + 1;
-    if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked && displayModeElem.value != "ebook") {
-      maxValueProgress = maxValueProgress * 2;
-    } else if (displayModeElem.value != "ebook") {
-      maxValueProgress = maxValueProgress * 3;
-    }
-
-    const downloadProgress = initializeProgress("generate-download-progress-collapse", maxValueProgress);
-    await sleep(0);
   
     const fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
     let pdfBlob;
 
     const confThreshHigh = parseInt(confThreshHighElem.value) || 85;
     const confThreshMed = parseInt(confThreshMedElem.value) || 75;
-  
-    // For proof or ocr mode the text layer needs to be combined with a background layer
+
+     // For proof or ocr mode the text layer needs to be combined with a background layer
     if (displayModeElem.value != "ebook") {
+
+      const steps = addOverlayCheckboxElem.checked ? 2 : 3;
+      const downloadProgress = initializeProgress("generate-download-progress-collapse", (maxValue + 1) * steps);
+      await sleep(0);
 
       const insertInputPDF = globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked;
       
@@ -2917,7 +2914,9 @@ async function handleDownload() {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images. 
-      const pdfStr = await hocrToPDF(hocrDownload, fontAll, 0,-1,displayModeElem.value, rotateText, rotateBackground, {width: -1, height: -1}, downloadProgress, confThreshHigh, confThreshMed);
+      // The `maxpage` argument must be set manually to `globalThis.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
+      // In all other cases, this should be equivalent to using the default argument of `-1` (which results in `hocrDownload.length` being used).
+      const pdfStr = await hocrToPDF(hocrDownload, fontAll, 0, globalThis.pageCount-1, displayModeElem.value, rotateText, rotateBackground, {width: -1, height: -1}, downloadProgress, confThreshHigh, confThreshMed);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -2957,6 +2956,10 @@ async function handleDownload() {
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 	    
     } else {
+
+      const downloadProgress = initializeProgress("generate-download-progress-collapse", maxValue + 1);
+      await sleep(0);
+
       const pdfStr = await hocrToPDF(hocrDownload, fontAll, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
 
       // The PDF is still run through muPDF, even thought in eBook mode no background layer is added.

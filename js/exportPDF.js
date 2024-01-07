@@ -118,6 +118,8 @@ const wordRegex = new RegExp(/<span class\=[\"\']ocrx_word[\s\S]+?(?:\<\/span\>\
  * @param {?any} progress - 
  * @param {number} confThreshHigh - 
  * @param {number} confThreshMed - 
+ * 
+ * A valid PDF will be created if an empty array is provided for `hocrArr`, as long as `maxpage` is set manually.
  */
 export async function hocrToPDF(hocrArr, fontAll, minpage = 0, maxpage = -1, textMode = "ebook", rotateText = false, rotateBackground = false, dimsLimit = {width: -1, height: -1}, progress = null, confThreshHigh = 85, confThreshMed = 75) {
 
@@ -137,6 +139,9 @@ export async function hocrToPDF(hocrArr, fontAll, minpage = 0, maxpage = -1, tex
   if (maxpage == -1) {
     maxpage = hocrArr.length - 1;
   }
+
+  // This can happen if (1) `hocrArr` is length 0 and (2) `maxpage` is left as the default (-1).
+  if (maxpage < 0) throw new Error("PDF with negative page count requested.");
 
   let pdfOut = "%PDF-1.7\n%¥±ë\n\n"
   
