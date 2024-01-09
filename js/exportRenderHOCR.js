@@ -33,6 +33,14 @@ export function renderHOCR(ocrData, fontMetrics, layoutData, minValue, maxValue)
 
  for (let i = minValue; i < maxValue; i++) {
   const pageObj = ocrData[i];
+
+  // Handle case where ocrPage object does not exist.
+  if (!pageObj) {
+    hocrOut += "<div class='ocr_page' title='bbox 0 0 " + pageMetricsArr[i].dims.width + " " + pageMetricsArr[i].dims.height + "'>";
+    hocrOut += "</div>";
+    continue;
+  }
+
   hocrOut += "<div class='ocr_page' title='bbox 0 0 " + pageObj.dims.width + " " + pageObj.dims.height + "'>";
   for (let j = 0; j < pageObj.lines.length; j++) {
     const lineObj = pageObj.lines[j];

@@ -185,6 +185,9 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
     }
   }
 
+  // Add final closing tags
+  if (docxMode && textStr) textStr = textStr + `</w:t></w:r></w:p>`;
+
   return textStr;
 
 }
