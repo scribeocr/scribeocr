@@ -43,14 +43,32 @@ Cypress.Commands.add('waitImport', () => {
     });
 })
 
+Cypress.Commands.add('downloadAllFormats', (basename) => {
+    // Download text
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionText').click()
+    cy.wait(250)
+    cy.get('#download').click()
+    cy.verifyDownload(basename + '.txt')
 
-// Cypress.Commands.add('waitImport', () => {
-//     cy.get('#recognize-recognize-progress-collapse .progress-bar').should(($el) => {
-//         cy.wrap($el).invoke('attr', 'aria-valuenow').then(currentValue => {
-//             cy.wrap($el).invoke('attr', 'aria-valuemax').then(maxValue => {
-//                 console.log(`Current value: ${currentValue}; Max value: ${maxValue}`);
-//                 expect(currentValue).to.equal(maxValue);
-//             });
-//         });
-//     });
-// })
+    // Download .hocr
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionHOCR').click()
+    cy.wait(250)
+    cy.get('#download').click()
+    cy.verifyDownload(basename + '.hocr')
+
+    // Download .docx
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionDocx').click()
+    cy.wait(250)
+    cy.get('#download').click()
+    cy.verifyDownload(basename + '.docx')
+
+    // Download .pdf
+    cy.get('#downloadFormat').click()
+    cy.get('#formatLabelOptionPDF').click()
+    cy.wait(250)
+    cy.get('#download').click()
+    cy.verifyDownload(basename + '.pdf')
+})
