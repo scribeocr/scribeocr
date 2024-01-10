@@ -2801,13 +2801,16 @@ export async function calculateOverallMetrics() {
       renderPageQueue(currentPage.n);
     }
 
-    // Evaluate default fonts using up to 5 pages. 
-    const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
-    await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
-    // Select best default fonts
-    const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), fontAll);
-    // Re-render current page if default font changed
-    if (change) renderPageQueue(currentPage.n);
+    // If image data exists, select the correct font by comparing to the image.
+    if (inputDataModes.imageMode || inputDataModes.pdfMode) {
+      // Evaluate default fonts using up to 5 pages. 
+      const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
+      await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
+      // Select best default fonts
+      const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), fontAll);
+      // Re-render current page if default font changed
+      if (change) renderPageQueue(currentPage.n);
+    }
 
   }
 
@@ -2941,7 +2944,7 @@ async function handleDownload() {
         }
 
       // If the input is a series of images, those images need to be inserted into a new pdf
-      } else {
+      } else if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) {
         await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked, downloadProgress);
         const imgArr1 = colorModeElem.value == "binary" ? await Promise.all(globalThis.imageAll.binary): await Promise.all(globalThis.imageAll.native);
         const imgArr = imgArr1.map((x) => x.src);
@@ -2951,7 +2954,13 @@ async function handleDownload() {
           downloadProgress.increment();
         }
         content = await w.overlayTextImageEnd([]);
-      } 
+      // Otherwise, there is only OCR data and not image data.
+      } else {
+        content = await w.write([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
+
+        // Fill up progress bar to 100%
+        for (let i=downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+      }
 
   		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 	    
