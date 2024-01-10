@@ -8,16 +8,14 @@
   },
   "type": "module",
   "devDependencies": {
+    "@playwright/test": "^1.40.1",
     "@types/bootstrap": "^5.2.9",
     "@types/fabric": "^5.3.6",
     "@types/node": "^18.0.6",
     "chai": "^5.0.0",
-    "cy-verify-downloads": "^0.1.2",
-    "cypress": "^9.5.4",
     "mocha": "^10.2.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "cypress:open": "cypress open"
   },
   "repository": {

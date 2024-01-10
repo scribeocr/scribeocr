@@ -9,3 +9,7 @@ log
 results
 jsconfig.json
 cypress/screenshots
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
