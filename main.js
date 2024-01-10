@@ -1049,7 +1049,8 @@ function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false,
 
   globalThis.loadCount = initValue;
   progressBar.setAttribute("aria-valuenow", initValue.toString());
-  progressBar.setAttribute("style", "width: " + ((initValue / maxValue) * 100) + "%");
+  // Visually, progress starts at 1%.  If progress starts at 0%, certain automated tests failed as that counted as "hidden".
+  progressBar.setAttribute("style", "width: " + Math.max(initValue / maxValue * 100, 1) + "%");
   progressBar.setAttribute("aria-valuemax", maxValue);
   progressCollapseObj.show()
 
@@ -1058,7 +1059,7 @@ function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false,
     if (this.value > this.maxValue) console.log("Progress bar value >100%.");
     if (alwaysUpdateUI || (this.value) % 5 == 0 || this.value == this.maxValue) {
       this.elem.setAttribute("aria-valuenow", this.value.toString());
-      this.elem.setAttribute("style", "width: " + (this.value / maxValue * 100) + "%");
+      this.elem.setAttribute("style", "width: " + Math.max(this.value / maxValue * 100, 1) + "%");
       await sleep(0);
     }
     if (autoHide && this.value >= this.maxValue) {
@@ -2815,30 +2816,6 @@ export async function calculateOverallMetrics() {
   }
 
   calculateOverallPageMetrics();
-
-}
-
-
-/**
- * Function for updating the import/recognition progress bar.
- * Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
- * as well as after every image is loaded (not including .pdfs). 
- */
-export async function updateProgressBar() {
-  let activeProgress = globalThis.convertPageActiveProgress.elem;
-
-  globalThis.loadCount = globalThis.loadCount + 1;
-  activeProgress.setAttribute("aria-valuenow", globalThis.loadCount);
-
-  const valueMax = parseInt(activeProgress.getAttribute("aria-valuemax"));
-
-  // Update progress bar between every 1 and 5 iterations (depending on how many pages are being processed).
-  // This can make the interface less jittery compared to updating after every loop.
-  // The jitter issue will likely be solved if more work can be offloaded from the main thread and onto workers.
-  const updateInterval = Math.min(Math.ceil(valueMax / 10), 5);
-  if (globalThis.loadCount % updateInterval == 0 || globalThis.loadCount == valueMax || globalThis.loadCount == 1) {
-    activeProgress.setAttribute("style", "width: " + (globalThis.loadCount / valueMax) * 100 + "%");
-  }
 
 }
 

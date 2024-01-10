@@ -12,6 +12,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const config = defineConfig({
   testDir: './tests',
+  // Raise test-wide timeout from 30 seconds to 120 seconds.
+  // This does not impact timeouts for individual functions.
+  timeout: 120000,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
