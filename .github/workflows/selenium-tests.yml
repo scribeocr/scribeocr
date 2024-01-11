@@ -21,6 +21,11 @@ jobs:
 
     - name: Install Dependencies
       run: npm install
+      
+    - name: Install Google Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
 
     - name: Start Chrome Driver
       uses: browser-actions/setup-chrome@latest
