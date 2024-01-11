@@ -5,8 +5,6 @@ on: [push, pull_request]
 jobs:
   run-selenium-tests:
     runs-on: ubuntu-latest
-    container: 
-      image: selenium/standalone-chrome:latest
 
     strategy:
       matrix:
@@ -20,7 +18,10 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
-
+        
+    - name: Setup Chrome
+      uses: browser-actions/setup-chrome@latest
+    
     - name: Install Dependencies
       run: npm install
       
