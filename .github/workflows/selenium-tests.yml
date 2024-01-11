@@ -23,7 +23,7 @@ jobs:
       run: npm install
       
     - name: Set up Chrome and ChromeDriver
-      uses: nanasess/setup-chromedriver@v1
+      uses: nanasess/setup-chromedriver@v2
       with:
         chromedriver-version: 'latest'
 
