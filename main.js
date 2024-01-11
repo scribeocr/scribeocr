@@ -2971,8 +2971,13 @@ async function handleDownload() {
     }
     saveAs(pdfBlob, fileName);
   } else if (download_type == "hocr") {
+    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+    await sleep(0);
     renderHOCRBrowser(globalThis.ocrAll.active, globalThis.fontMetricsObj, globalThis.layout);
+    downloadProgress.increment();
   } else if (download_type == "text") {
+    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+    await sleep(0);
 
     const removeLineBreaks = reflowCheckboxElem.checked;
     const breaksBetweenPages = pageBreaksCheckboxElem.checked;
@@ -2984,11 +2989,20 @@ async function handleDownload() {
     let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
   
     saveAs(textBlob, fileName);
+    downloadProgress.increment();
   
   } else if (download_type == "docx") {
+    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+    await sleep(0);
+
     writeDocx(hocrDownload);
+    downloadProgress.increment();
   } else if (download_type == "xlsx") {
+    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+    await sleep(0);
+
     writeXlsx(hocrDownload);
+    downloadProgress.increment();
   }
 
   downloadElem.disabled = false;

@@ -1,0 +1,38 @@
+name: Selenium Tests
+
+on: [push, pull_request]
+
+jobs:
+  run-selenium-tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Start Chrome Driver
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: latest
+
+    - name: Run Selenium Tests
+      run: npm test
+
+    - name: Upload Screenshots (if any)
+      uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        name: selenium-screenshots
+        path: path/to/your/screenshots # Replace with the path to your screenshots

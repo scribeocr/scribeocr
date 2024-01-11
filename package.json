@@ -13,10 +13,12 @@
     "@types/fabric": "^5.3.6",
     "@types/node": "^18.0.6",
     "chai": "^5.0.0",
-    "mocha": "^10.2.0"
+    "mocha": "^10.2.0",
+    "express": "^4.18.2",
+    "selenium-webdriver": "^4.16.0"
   },
   "scripts": {
-    "cypress:open": "cypress open"
+    "test": "node tests/server.js & mocha tests/upload_download.spec.js && curl http://localhost:3031/shutdown"
   },
   "repository": {
     "type": "git",

@@ -14,15 +14,15 @@ export function renderHOCRBrowser(ocrData, fontMetrics, layoutData) {
 
   const exportParser = new DOMParser();
 
-let exportXML = exportParser.parseFromString(hocrOut, "text/xml");
+  let exportXML = exportParser.parseFromString(hocrOut, "text/xml");
 
- let hocrInt = exportXML.documentElement.outerHTML;
- hocrInt = hocrInt.replaceAll(/xmlns\=[\'\"]{2}\s?/ig, "");
+  let hocrInt = exportXML.documentElement.outerHTML;
+  hocrInt = hocrInt.replaceAll(/xmlns\=[\'\"]{2}\s?/ig, "");
 
- let hocrBlob = new Blob([hocrInt], { type: 'text/plain' });
+  let hocrBlob = new Blob([hocrInt], { type: 'text/plain' });
 
- let fileName = /** @type {HTMLInputElement} */(document.getElementById("downloadFileName")).value.replace(/\.\w{1,4}$/, "") + ".hocr";
+  let fileName = /** @type {HTMLInputElement} */(document.getElementById("downloadFileName")).value.replace(/\.\w{1,4}$/, "") + ".hocr";
 
- saveAs(hocrBlob, fileName);
+  saveAs(hocrBlob, fileName);
 
 }
