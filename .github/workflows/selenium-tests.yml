@@ -5,6 +5,8 @@ on: [push, pull_request]
 jobs:
   run-selenium-tests:
     runs-on: ubuntu-latest
+    container: 
+      image: selenium/standalone-chrome:latest
 
     strategy:
       matrix:
@@ -22,12 +24,6 @@ jobs:
     - name: Install Dependencies
       run: npm install
       
-    - name: Set up Chrome and ChromeDriver
-      uses: nanasess/setup-chromedriver@v2
-      with:
-        chromedriver-version: 'latest'
-
-
     - name: Run Selenium Tests
       run: npm test
 
