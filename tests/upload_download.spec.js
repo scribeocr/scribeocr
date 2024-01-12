@@ -1,8 +1,14 @@
 import { Builder, By, until } from 'selenium-webdriver';
+import {Options} from "selenium-webdriver/chrome.js";
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));
 const port = 3031;
+
+const options = new Options();
+options.addArguments('--remote-debugging-pipe')
+
 
 class CustomSeleniumActions {
     constructor(driver) {
@@ -74,10 +80,11 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
     this.timeout(15000);
 
     before(async function () {
-        driver = await new Builder().forBrowser('chrome').build();
+        driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
         // Implicit wait -- If an element is not immediately visible, wait up to 3 seconds for it to become visible before throwing an error.
         await driver.manage().setTimeouts({ implicit: 3000, script: 60000 });
+        driver.manage().chro
         customActions = new CustomSeleniumActions(driver);
         
     });
