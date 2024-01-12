@@ -250,6 +250,43 @@ zone.addEventListener('drop', async (event) => {
 });
 
 /**
+ * Fetches an array of URLs and runs `importFiles` on the results.
+ * Intended only to be used by automated testing and not by users.
+ * 
+ * @param {Array<string>} urls
+ */
+globalThis.fetchAndImportFiles = async (urls) => {
+  // Ensure that the input is an array of strings
+  if (!Array.isArray(urls) || !urls.every(url => typeof url === 'string')) {
+    throw new Error("Input must be an array of strings");
+  }
+
+  // Fetch all URLs and convert the responses to Blobs
+  const blobPromises = urls.map(url => fetch(url).then(response => {
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+    }
+    return response.blob().then(blob => ({ blob, url }));
+  }));
+
+  // Wait for all fetches to complete
+  const blobsAndUrls = await Promise.all(blobPromises);
+
+  // Extract file name from URL and convert Blobs to File objects
+  const files = blobsAndUrls.map(({ blob, url }) => {
+    const fileName = url.split('/').pop();
+    return new File([blob], fileName, { type: blob.type });
+  });
+
+  // Call the existing importFiles function with the file array
+  importFiles(files);
+
+  document.getElementById("uploadDropZone")?.setAttribute("style", "display:none");
+
+}
+
+
+/**
  * 
  * @param {string} innerHTML - HTML content of warning/error message.
  * @param {boolean} error - Whether this is an error message (red) or warning message (yellow)
