@@ -102,7 +102,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('1 .pdf file', async function () {
         // Navigate to the page
-        await driver.get(`https://scribeocr.com/`);
+        await driver.get(`http://127.0.0.1:3031/`);
         await driver.sleep(1000);
         
         // Upload the files
@@ -117,7 +117,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('1 .png file', async function () {
         // Navigate to the page
-        await driver.get(`https://scribeocr.com/`);
+        await driver.get(`http://127.0.0.1:3031/`);
         await driver.sleep(1000);
 
         // Upload the files
@@ -133,7 +133,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('3 .png files', async function () {
         // Navigate to the page
-        await driver.get(`https://scribeocr.com/`);
+        await driver.get(`http://127.0.0.1:3031/`);
         await driver.sleep(1000);
 
         // Upload the files
