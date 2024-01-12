@@ -6,31 +6,32 @@ jobs:
   run-selenium-tests:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [14.x]
+    container:
+      image: node:19
+
+    services:
+      selenium:
+        image: selenium/standalone-chrome
+        options: --shm-size=2gb
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '19'
+          cache: 'npm'
+      - name: Update
+        run: apt-get update
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ matrix.node-version }}
-        
-    - name: Setup Chrome
-      uses: browser-actions/setup-chrome@latest
-    
-    - name: Install Dependencies
-      run: npm install
-      
-    - name: Run Selenium Tests
-      run: npm test
+      - name: Install default-jre
+        run: apt-get -y install default-jre
 
-    - name: Upload Screenshots (if any)
-      uses: actions/upload-artifact@v2
-      if: failure()
-      with:
-        name: selenium-screenshots
-        path: path/to/your/screenshots # Replace with the path to your screenshots
+      - run: npm ci
+      - run: npm run test
+        env:
+          BROWSER: ${{ github.event.inputs.browser }}
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots/
