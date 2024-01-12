@@ -8,7 +8,8 @@ const port = 3031;
 
 const options = new Options();
 options.addArguments('--remote-debugging-pipe')
-
+options.addArguments('--ignore-ssl-errors=yes')
+options.addArguments('--ignore-certificate-errors')
 
 class CustomSeleniumActions {
     constructor(driver) {
@@ -16,11 +17,11 @@ class CustomSeleniumActions {
     }
 
     async uploadFiles(files) {
-        // Upload files
-        let fileInput = await this.driver.findElement(By.id('openFileInput'));
-        const filesAbs = files.map((x) => path.join(__dirname, 'assets', x));
-        const filesAbsStr = filesAbs.join('\n');
-        await fileInput.sendKeys(filesAbsStr);
+
+        const filesAbs = files.map((x) => "https://scribeocr.com/tests/assets/" + x);
+        const jsStr = "fetchAndImportFiles([" + filesAbs.map((x) => "'" + x + "'").join(", ") + "])";
+
+        await this.driver.executeScript(jsStr);
 
         // Wait for import progress bar to fill up
         let progressBar = await this.driver.findElement(By.css('#import-progress-collapse .progress-bar'));
@@ -31,6 +32,7 @@ class CustomSeleniumActions {
             return currentValue === maxValue;
         }, 10000, 'Progress bar did not reach maximum value in time');
     } 
+
 
 
     async downloadAllFormats() {
@@ -80,19 +82,29 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
     this.timeout(15000);
 
     before(async function () {
-        driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+        //driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+        
+        const browser = "chrome"
+        // Connect to service specified in env variable or default to 'selenium'
+        const host = process.env.SELENIUM || 'selenium';
+        const server = `http://${host}:4444`;
+        driver = await new Builder()
+            .usingServer(server)
+            .forBrowser(browser)
+            .setChromeOptions(options)
+            .build();
 
         // Implicit wait -- If an element is not immediately visible, wait up to 3 seconds for it to become visible before throwing an error.
         await driver.manage().setTimeouts({ implicit: 3000, script: 60000 });
-        driver.manage().chro
         customActions = new CustomSeleniumActions(driver);
         
     });
 
     it('1 .pdf file', async function () {
         // Navigate to the page
-        await driver.get(`http://localhost:${port}`);
-
+        await driver.get(`https://scribeocr.com/`);
+        await driver.sleep(1000);
+        
         // Upload the files
         await customActions.uploadFiles([
             'henreys_grave.pdf',
@@ -105,7 +117,8 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('1 .png file', async function () {
         // Navigate to the page
-        await driver.get(`http://localhost:${port}`);
+        await driver.get(`https://scribeocr.com/`);
+        await driver.sleep(1000);
 
         // Upload the files
         await customActions.uploadFiles([
@@ -120,7 +133,8 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('3 .png files', async function () {
         // Navigate to the page
-        await driver.get(`http://localhost:${port}`);
+        await driver.get(`https://scribeocr.com/`);
+        await driver.sleep(1000);
 
         // Upload the files
         await customActions.uploadFiles([
