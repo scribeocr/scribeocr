@@ -8,11 +8,16 @@ jobs:
 
     container:
       image: node:19
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ['chrome', 'firefox']
 
     services:
       selenium:
-        image: selenium/standalone-chrome
-        options: --shm-size=2gb
+        image: selenium/standalone-${{ matrix.browser }}
+        options: --shm-size=2gb --add-host=host.docker.internal:host-gateway
 
     steps:
       - uses: actions/checkout@v3
@@ -20,18 +25,14 @@ jobs:
         with:
           node-version: '19'
           cache: 'npm'
-      - name: Update
-        run: apt-get update
-
-      - name: Install default-jre
-        run: apt-get -y install default-jre
-
+      - name: Pr2
+        run: hostname -I
       - run: npm ci
       - run: npm run test
         env:
-          BROWSER: ${{ github.event.inputs.browser }}
+          BROWSER: ${{ matrix.browser }}
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: screenshots
+          name: ${{ matrix.browser }}
           path: screenshots/

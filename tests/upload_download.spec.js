@@ -35,11 +35,14 @@ class CustomSeleniumActions {
 
 
 
+
     async downloadAllFormats() {
         // Click on the 'Download' tab
         await this.driver.findElement(By.id('nav-download-tab')).click();
+        const currentTab = await this.driver.getWindowHandle();
 
         const downloadFormat = async (format) => {
+
             // Select the requested format
             await this.driver.findElement(By.id('downloadFormat')).click();
             await this.driver.findElement(By.id(`formatLabelOption${format}`)).click();
@@ -59,8 +62,8 @@ class CustomSeleniumActions {
             // Firefox opens .pdf downloads in a new tab, so we need to switch back to the original.
             const browser = (await this.driver.getCapabilities()).getBrowserName();
             if (browser == "firefox" && format == "PDF") {
-                const windowHandles = await this.driver.getAllWindowHandles();
-                this.driver.switchTo().window(windowHandles[0]) 
+                await this.driver.sleep(500);
+                this.driver.switchTo().window(currentTab) 
             }
     
         }
@@ -80,11 +83,18 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
     let driver;
     let customActions;
     this.timeout(15000);
+    // const appURL = `http://127.0.0.1:3031/`;
+    //const appURL = `https://scribeocr.com/`;
+    const appURL = `http://172.18.0.2:3031/`;
 
     before(async function () {
         //driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
         
-        const browser = "chrome"
+        // Microsoft uses a longer name for Edge
+        let browser = process.env.BROWSER;
+        if (browser == 'edge') {
+            browser = 'MicrosoftEdge';
+        }
         // Connect to service specified in env variable or default to 'selenium'
         const host = process.env.SELENIUM || 'selenium';
         const server = `http://${host}:4444`;
@@ -102,7 +112,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('1 .pdf file', async function () {
         // Navigate to the page
-        await driver.get(`http://127.0.0.1:3031/`);
+        await driver.get(appURL);
         await driver.sleep(1000);
         
         // Upload the files
@@ -117,7 +127,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('1 .png file', async function () {
         // Navigate to the page
-        await driver.get(`http://127.0.0.1:3031/`);
+        await driver.get(appURL);
         await driver.sleep(1000);
 
         // Upload the files
@@ -133,7 +143,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
     it('3 .png files', async function () {
         // Navigate to the page
-        await driver.get(`http://127.0.0.1:3031/`);
+        await driver.get(appURL);
         await driver.sleep(1000);
 
         // Upload the files
