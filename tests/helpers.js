@@ -22,6 +22,22 @@ class CustomSeleniumActions {
         }, 10000, 'Progress bar did not reach maximum value in time');
     } 
 
+    async recognize() {
+
+        // Click on the 'Download' tab
+        await this.driver.findElement(By.id('nav-recognize-tab')).click();
+        await this.driver.findElement(By.id('recognizeAll')).click();
+
+        // Wait for recognize progress bar to fill up
+        let progressBar = await this.driver.findElement(By.css('#recognize-recognize-progress-collapse .progress-bar'));
+
+        await this.driver.wait(async () => {
+            const maxValue = await progressBar.getAttribute('aria-valuemax');
+            const currentValue = await progressBar.getAttribute('aria-valuenow');
+            return currentValue === maxValue;
+        }, 30000, 'Progress bar did not reach maximum value in time');
+    } 
+
     async downloadAllFormats() {
         // Click on the 'Download' tab
         await this.driver.findElement(By.id('nav-download-tab')).click();
