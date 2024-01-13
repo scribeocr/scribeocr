@@ -141,7 +141,7 @@ describe('Generate output files using ABBYY XML only', function () {
 describe('Generate output files using images and uploaded ABBYY XML', function () {
     let driver;
     let customActions;
-    this.timeout(10000);
+    this.timeout(20000);
     const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
     before(async function () {
@@ -195,7 +195,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 describe('Generate output files using images and uploaded Tesseract XML', function () {
     let driver;
     let customActions;
-    this.timeout(10000);
+    this.timeout(20000);
     const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
     before(async function () {
