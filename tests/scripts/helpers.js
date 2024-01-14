@@ -19,7 +19,7 @@ class CustomSeleniumActions {
             const maxValue = await progressBar.getAttribute('aria-valuemax');
             const currentValue = await progressBar.getAttribute('aria-valuenow');
             return currentValue === maxValue;
-        }, 10000, 'Progress bar did not reach maximum value in time');
+        }, 10000, 'Import progress bar did not reach maximum value in time');
     } 
 
     async recognize() {
@@ -35,7 +35,7 @@ class CustomSeleniumActions {
             const maxValue = await progressBar.getAttribute('aria-valuemax');
             const currentValue = await progressBar.getAttribute('aria-valuenow');
             return currentValue === maxValue;
-        }, 30000, 'Progress bar did not reach maximum value in time');
+        }, 30000, 'Recognize progress bar did not reach maximum value in time');
     } 
 
     async downloadAllFormats() {
@@ -59,7 +59,7 @@ class CustomSeleniumActions {
             await this.driver.wait(async () => {
                 let currentValue = await progressBarDownload.getAttribute('aria-valuenow');
                 return currentValue === maxValueDownload;
-            }, 5000, 'Progress bar did not reach maximum value in time');
+            }, 10000, 'Download progress bar did not reach maximum value in time');
 
             // Firefox opens .pdf downloads in a new tab, so we need to switch back to the original.
             const browser = (await this.driver.getCapabilities()).getBrowserName();

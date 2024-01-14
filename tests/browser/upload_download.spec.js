@@ -1,4 +1,4 @@
-import { createDriver } from "./helpers.js";
+import { createDriver } from "../scripts/helpers.js";
 
 import path from 'path';
 import { fileURLToPath } from 'url';

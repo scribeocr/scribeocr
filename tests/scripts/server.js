@@ -8,7 +8,7 @@ const app = express();
 const port = 3031;
 
 // Serve static files from the project directory
-app.use(express.static(path.resolve(__dirname, '..')));
+app.use(express.static(path.resolve(__dirname, '../..')));
 
 // Start the server
 const server = app.listen(port, () => {
