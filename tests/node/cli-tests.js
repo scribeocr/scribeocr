@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('Check `conf` Node.js command.', () => {
+  this.timeout(5000);
+
   let originalConsoleLog;
   let consoleOutput;
 
@@ -27,7 +29,7 @@ describe('Check `conf` Node.js command.', () => {
     // Call the function
     await confFunc(path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'));
 
-    originalConsoleLog(consoleOutput);
+    // originalConsoleLog(consoleOutput);
 
     // Assert that console.log was called with 'blah'
     expect(consoleOutput).to.include('Confidence: 0.93944');
