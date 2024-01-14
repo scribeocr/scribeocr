@@ -28,7 +28,7 @@ jobs:
       - name: Pr2
         run: hostname -I
       - run: npm ci
-      - run: npm run test
+      - run: npm run test:browser
         env:
           BROWSER: ${{ matrix.browser }}
           SELENIUM: selenium
