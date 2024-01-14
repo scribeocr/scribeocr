@@ -61,6 +61,10 @@ const resetCanvasEventListeners = () => {
 
 }
 
+// Filtering was throwing an error when GL was enabled
+// May be worth investigating down the line as GL will be faster
+fabric.enableGLFiltering = false;
+
 // On touchscreen devices, gestures may be used to either (1) attempt to scroll or (2) manipulate the canvas. 
 // Fabric.js does not handle this well out of the box, and simply disables all scrolling when touching the canvas.
 // This means that if the user is ever fully zoomed in, they cannot "escape" and zoom out.
