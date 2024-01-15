@@ -36,18 +36,24 @@ function round6(x) {
  * @param {boolean} transY - Transform y coordinates
  */
 function transformGlyph(glyph, func, transX = false, transY = false) {
+
+  // All values are rounded to the nearest integer.
+  // All TrueType coordinates must be integers, and while PostScript fonts do not technically need to be integers,
+  // non-integers tend to cause issues in real-world use. 
+  const funcRound = (x) => Math.round(func(x));
+
   for (let j = 0; j < glyph.path.commands.length; j++) {
     let pointJ = glyph.path.commands[j];
 
     if (pointJ.type === 'M' || pointJ.type === 'L' || pointJ.type === 'C' || pointJ.type === 'Q') {
-      if (transX) pointJ.x = func(pointJ.x);
-      if (transY) pointJ.y = func(pointJ.y);
+      if (transX) pointJ.x = funcRound(pointJ.x);
+      if (transY) pointJ.y = funcRound(pointJ.y);
       if (pointJ.type === 'C' || pointJ.type === 'Q') {
-        if (transX) pointJ.x1 = func(pointJ.x1);
-        if (transY) pointJ.y1 = func(pointJ.y1);
+        if (transX) pointJ.x1 = funcRound(pointJ.x1);
+        if (transY) pointJ.y1 = funcRound(pointJ.y1);
         if (pointJ.type === 'C') {
-          if (transX) pointJ.x2 = func(pointJ.x2);
-          if (transY) pointJ.y2 = func(pointJ.y2);
+          if (transX) pointJ.x2 = funcRound(pointJ.x2);
+          if (transY) pointJ.y2 = funcRound(pointJ.y2);
         }
       }
     }
@@ -59,8 +65,78 @@ function transformGlyph(glyph, func, transX = false, transY = false) {
     glyph.leftSideBearing = glyphMetrics.xMin;
 
     // Apply function to advanceWidth
-    glyph.advanceWidth = func(glyph.advanceWidth);
+    glyph.advanceWidth = funcRound(glyph.advanceWidth);
   }
+
+}
+
+/**
+ * Calculate pair kerning adjustments for font given provided metrics.
+ * 
+ * @param {opentype.Font} font 
+ * @param {fontMetricsFont} fontMetricsObj
+ * @param {number} xHeight
+ * @param {string} style
+ */
+const calculateKerningPairs = (font, fontMetricsObj, xHeight, style) => {
+  let fontKerningObj = {};
+
+  // Kerning is limited to +/-10% of the em size for most pairs.  Anything beyond this is likely not correct.
+  let maxKern = Math.round(font.unitsPerEm * 0.1);
+  let minKern = maxKern * -1;
+
+  for (const [key, value] of Object.entries(fontMetricsObj.kerning)) {
+
+    // Do not adjust pair kerning for italic "ff".
+    // Given the amount of overlap between these glyphs, this metric is rarely accurate. 
+    if (key == "102,102" && style == "italic") continue;
+
+    const nameFirst = key.match(/\w+/)[0];
+    const nameSecond = key.match(/\w+$/)[0];
+
+    const charFirst = String.fromCharCode(parseInt(nameFirst));
+    const charSecond = String.fromCharCode(parseInt(nameSecond));
+
+    const indexFirst = font.charToGlyphIndex(charFirst);
+    const indexSecond = font.charToGlyphIndex(charSecond);
+
+    const metricsFirst = font.glyphs.glyphs[indexFirst].getMetrics();
+    const metricsSecond = font.glyphs.glyphs[indexSecond].getMetrics();
+
+    // Calculate target (measured) space between two characters. 
+    // This is calculated as the average between two measurements.
+    const value2 = fontMetricsObj.kerning2[key];
+    const fontKern1 = Math.round(value * xHeight);
+    let spaceTarget = fontKern1;
+    if (value2) {
+      const fontKern2 = Math.round(value2 * xHeight);
+      spaceTarget = Math.round((fontKern1 + fontKern2) / 2);
+    }
+
+    // Calculate current space between these 2 glyphs (without kerning adjustments)
+    const spaceCurrent =  metricsFirst.rightSideBearing + metricsSecond.leftSideBearing;
+
+    // Calculate kerning adjustment needed
+    let fontKern = spaceTarget - spaceCurrent;
+
+    // For smart quotes, the maximum amount of kerning space allowed is doubled.
+    // Unlike letters, some text will legitimately have a large space before/after curly quotes.
+    // TODO: Handle quotes in a more systematic way (setting advance for quotes, or kerning for all letters,
+    // rather than relying on each individual pairing.)
+    if (["8220", "8216"].includes(nameFirst) || ["8221", "8217"].includes(nameSecond)) {
+      fontKern = Math.min(Math.max(fontKern, minKern), maxKern * 2);
+
+      // For pairs that commonly use ligatures ("ff", "fi", "fl") allow lower minimum
+    } else if (["102,102", "102,105", "102,108"].includes(key)) {
+      fontKern = Math.min(Math.max(fontKern, Math.round(minKern * 1.5)), maxKern);
+    } else {
+      fontKern = Math.min(Math.max(fontKern, minKern), maxKern);
+    }
+
+    fontKerningObj[indexFirst + "," + indexSecond] = fontKern;
+  }
+
+  return fontKerningObj;
 
 }
 
@@ -70,11 +146,15 @@ function transformGlyph(glyph, func, transX = false, transY = false) {
  * @param {string|ArrayBuffer} params.fontData
  * @param {fontMetricsFont} params.fontMetricsObj
  * @param {string} params.style - 
- * @param {boolean} params.adjustAllLeftBearings - 
- * @param {boolean} params.standardizeSize
+ * @param {boolean} params.adjustAllLeftBearings - Edit left bearings for all characters based on provided metrics. 
+ * @param {boolean} params.standardizeSize - Scale such that size of 'o' is 0.47x em size.
+ * @param {?number} params.targetEmSize - If non-null, font is scaled to this em size.
+ * @param {boolean} params.transGlyphs - Whether individual glyphs should be transformed based on provided metrics.
+ *    If `false`, only font-level transformations (adjusting em size and standardizing 'o' height) are performed.
  */
-export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLeftBearings = false, standardizeSize = false}) {
+export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLeftBearings = false, standardizeSize = false, targetEmSize = null, transGlyphs = true}) {
 
+  /**@type {opentype.Font} */
   const workingFont = typeof (fontData) == "string" ? await opentype.load(fontData) : opentype.parse(fontData, { lowMemory: false });
 
 
@@ -104,6 +184,20 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     } else {
       console.log("Font is not standard size ('o' 0.47x em size).  Either standardize the font ahead of time or enable `standardizeSize = true` to standardize on the fly.");
     }
+  }
+
+  if (targetEmSize && targetEmSize != workingFont.unitsPerEm) {
+    for (const [key, value] of Object.entries(workingFont.glyphs.glyphs)) {
+      transformGlyph(value, (x) => x * (targetEmSize / workingFont.unitsPerEm), true, true);
+    } 
+    workingFont.unitsPerEm = targetEmSize;
+  }
+
+  // If no glyph-level transformations are requested, return early.
+  if (!transGlyphs) {
+    workingFont.kerningPairs = calculateKerningPairs(workingFont, fontMetricsObj, xHeight, style);
+
+    return { fontData: workingFont.toArrayBuffer(), kerningPairs: workingFont.kerningPairs};  
   }
 
   // TODO: Adapt glyph substitution to work with new Nimbus fonts
@@ -326,68 +420,7 @@ export async function optimizeFont({fontData, fontMetricsObj, style, adjustAllLe
     }
   }
 
-  let fontKerningObj = {};
-
-  // Kerning is limited to +/-10% of the em size for most pairs.  Anything beyond this is likely not correct.
-  let maxKern = Math.round(workingFont.unitsPerEm * 0.1);
-  let minKern = maxKern * -1;
-
-  for (const [key, value] of Object.entries(fontMetricsObj.kerning)) {
-
-    // Do not adjust pair kerning for italic "ff".
-    // Given the amount of overlap between these glyphs, this metric is rarely accurate. 
-    if (key == "102,102" && style == "italic") continue;
-
-    const nameFirst = key.match(/\w+/)[0];
-    const nameSecond = key.match(/\w+$/)[0];
-
-    const charFirst = String.fromCharCode(parseInt(nameFirst));
-    const charSecond = String.fromCharCode(parseInt(nameSecond));
-
-    const indexFirst = workingFont.charToGlyphIndex(charFirst);
-    const indexSecond = workingFont.charToGlyphIndex(charSecond);
-
-    const metricsFirst = workingFont.glyphs.glyphs[indexFirst].getMetrics();
-    const metricsSecond = workingFont.glyphs.glyphs[indexSecond].getMetrics();
-
-    // Calculate target (measured) space between two characters. 
-    // This is calculated as the average between two measurements.
-    const value2 = fontMetricsObj.kerning2[key];
-    const fontKern1 = Math.round(value * xHeight);
-    let spaceTarget = fontKern1;
-    if (value2) {
-      const fontKern2 = Math.round(value2 * xHeight);
-      spaceTarget = Math.round((fontKern1 + fontKern2) / 2);
-    }
-
-    // Calculate current space between these 2 glyphs (without kerning adjustments)
-    const spaceCurrent =  metricsFirst.rightSideBearing + metricsSecond.leftSideBearing;
-
-    // Calculate kerning adjustment needed
-    let fontKern = spaceTarget - spaceCurrent;
-
-    // For smart quotes, the maximum amount of kerning space allowed is doubled.
-    // Unlike letters, some text will legitimately have a large space before/after curly quotes.
-    // TODO: Handle quotes in a more systematic way (setting advance for quotes, or kerning for all letters,
-    // rather than relying on each individual pairing.)
-    if (["8220", "8216"].includes(nameFirst) || ["8221", "8217"].includes(nameSecond)) {
-      fontKern = Math.min(Math.max(fontKern, minKern), maxKern * 2);
-
-      // For pairs that commonly use ligatures ("ff", "fi", "fl") allow lower minimum
-    } else if (["102,102", "102,105", "102,108"].includes(key)) {
-      fontKern = Math.min(Math.max(fontKern, Math.round(minKern * 1.5)), maxKern);
-    } else {
-      fontKern = Math.min(Math.max(fontKern, minKern), maxKern);
-    }
-
-    fontKerningObj[indexFirst + "," + indexSecond] = fontKern;
-  }
-
-
-  workingFont.kerningPairs = fontKerningObj;
-
-  // Quick fix due to bug in pdfkit (see note in renderPDF function)
-  //workingFont.tables.name.postScriptName["en"] = workingFont.tables.name.postScriptName["en"].replaceAll(/\s+/g, "");
+  workingFont.kerningPairs = calculateKerningPairs(workingFont, fontMetricsObj, xHeight, style);
 
   return { fontData: workingFont.toArrayBuffer(), kerningPairs: workingFont.kerningPairs};
 
