@@ -21,11 +21,12 @@ import { writeXlsx } from './js/exportWriteTabular.js';
 import { renderPage } from './js/renderPage.js';
 import coords from './js/coordinates.js';
 
+import { recognizePage } from "./js/recognize.js";
 import { recognizeAllPagesBrowser } from "./js/recognizeBrowser.js";
 
 import { selectDefaultFontsDocument, setFontAllWorker } from "./js/fontEval.js";
 
-import { convertOCRAll, convertOCRPage } from "./js/convertOCR.js";
+import { convertOCRAll, convertPageCallback } from "./js/convertOCR.js";
 
 import { calcLineFontSize } from "./js/fontUtils.js"
 
@@ -1219,7 +1220,6 @@ async function recognizeAllClick() {
             mode: "comb", 
             debugLabel: "Combined",
             supplementComp: true,
-            tessScheduler: globalThis.recognizeAreaScheduler,
             ignoreCap: ignoreCapElem.checked,
             ignorePunct: ignorePunctElem.checked,
             confThreshHigh: parseInt(confThreshHighElem.value),
@@ -1414,38 +1414,6 @@ async function compareGroundTruthClick(n) {
 
 }
 
-
-
-
-
-// Note: The coordinate arguments (left/top) refer to the HOCR coordinate space.
-// This does not necessarily match either the canvas coordinate space or the Tesseract coordinate space. 
-globalThis.recognizeAreaScheduler = null;
-async function recognizeArea(imageCoords, wordMode = false) {
-
-  // When a user is manually selecting words to recognize, they are assumed to be in the same block.
-  const psm = wordMode ? Tesseract.PSM["SINGLE_WORD"] : Tesseract.PSM["SINGLE_BLOCK"];
-
-  const extraConfig = {
-    rectangle: imageCoords,
-    tessedit_pageseg_mode: psm
-  }
-
-  const inputImage = await globalThis.imageAll["native"][currentPage.n];
-
-  const res = await globalThis.generalScheduler.addJob('recognize', {image: inputImage.src, options: extraConfig});
-  let hocrString = res.data.hocr;
-
-  const angleArg = globalThis.imageAll.nativeRotated[currentPage.n] && Math.abs(globalThis.pageMetricsArr[currentPage.n].angle) > 0.05 ? globalThis.pageMetricsArr[currentPage.n].angle : 0;
-
-  const oemText = "Tesseract " + oemLabelTextElem.innerHTML;
-
-  convertOCRPage(hocrString, currentPage.n, false, "hocr", oemText, true);
-
-  return;
-
-}
-
 /**
  * 
  * @param {Array<compDebug>} imgArr 
@@ -1586,12 +1554,24 @@ function recognizeAreaClick(wordMode = false) {
 
     const canvasCoords = {left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height};
 
-    // TODO: Fix this to work with binary image (binary = true)
-    const imageCoords = coords.canvasToImage(canvasCoords, currentPage.n, false);
+    // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
+    const imageRotated = true;
+    const canvasRotated = autoRotateCheckboxElem.checked;
+    const angle = globalThis.pageMetricsArr[globalThis.currentPage.n].angle || 0;
+
+    const imageCoords = coords.canvasToImage(canvasCoords, imageRotated, canvasRotated, angle);
 
     canvas.remove(rect1);
 
-    await recognizeArea(imageCoords, wordMode);
+    // When a user is manually selecting words to recognize, they are assumed to be in the same block.
+    const psm = wordMode ? Tesseract.PSM["SINGLE_WORD"] : Tesseract.PSM["SINGLE_BLOCK"];
+    const n = globalThis.currentPage.n;
+
+    const res = await recognizePage(globalThis.generalScheduler, n, {rectangle: imageCoords, tessedit_pageseg_mode: psm});
+
+    const oemText = "Tesseract " + oemLabelTextElem.innerHTML;
+
+    await convertPageCallback(res, n, false, oemText, true);
 
     canvas.renderAll();
     resetCanvasEventListeners();
@@ -1760,7 +1740,7 @@ function addWordClick() {
       fontStyle: "normal",
       fontFamilyLookup: globalSettings.defaultFont,
       fontStyleLookup: "normal",
-      fontObj: fontAll[globalSettings.defaultFont].normal,
+      fontObj: fontAll.active[globalSettings.defaultFont].normal,
       wordID: wordIDNew,
       textBackgroundColor: textBackgroundColor,
       //line: i,

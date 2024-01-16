@@ -46,18 +46,12 @@ export async function convertOCRPage(ocrRaw, n, mainData, format = "hocr", engin
  * @param {boolean} areaMode - Whether the OCR is for an area of the current page, rather than full page.
  */
 export async function convertOCRAll(ocrRawArr, mainData, format = "hocr", engineName, areaMode = false) {
-    // For each page, process HOCR using web worker
+    // For each page, process OCR using web worker
     const promiseArr = [];
     for (let n = 0; n < ocrRawArr.length; n++) {
 
-        let func = "convertPageHocr";
-        if (format == "abbyy") {
-            func = "convertPageAbbyy";
-        } else if (format == "stext") {
-            func = "convertPageStext";
-        }
-
         promiseArr.push(convertOCRPage(ocrRawArr[n], n, mainData, format, engineName, areaMode));
+        
     }
     await Promise.all(promiseArr);
 }

@@ -21,7 +21,7 @@ const deleteWordElem = /** @type {HTMLInputElement} */(document.getElementById('
 const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
 const recognizeWordDropdownElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWordDropdown'));
 const editBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('editBaseline'));
-
+const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
 
 styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic') });
 styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('small-caps') });
@@ -122,7 +122,7 @@ export async function changeWordFontSize(fontSize){
 
     wordObj.size = fontSize;
 
-    document.getElementById("fontSize").value = fontSize;
+    fontSizeElem.value = fontSize;
     wordI.fontSize = fontSize;
 
     await updateWordCanvas(wordI);
@@ -228,7 +228,7 @@ export function adjustBaseline(){
   // For some reason the text jumps around the page when >1 word is selected
   window.canvas.setActiveObject(selectedObjects[0]);
 
-  document.getElementById("rangeBaseline").value = baselineRange + selectedObjects[0].baselineAdj;
+  rangeBaselineElem.value = baselineRange + selectedObjects[0].baselineAdj;
   window.bsCollapse.show();
 
   const lineI = selectedObjects[0].line;
@@ -249,9 +249,10 @@ export function adjustBaseline(){
  * @param {string | number} value - New baseline value.
  */
 export function adjustBaselineRange(value){
+  const valueNum = typeof value === "string" ? parseInt(value) : value;
   for(let i=0;i<objectsLine.length;i++){
     const objectI = objectsLine[i];
-    objectI.set('top', objectI.topOrig + (parseInt(value) - baselineRange));
+    objectI.set('top', objectI.topOrig + (valueNum - baselineRange));
   }
 
   window.canvas.requestRenderAll();
@@ -266,14 +267,16 @@ export function adjustBaselineRange(value){
  */
 export function adjustBaselineRangeChange(value){
 
-  value = parseInt(value) - baselineRange;
-  let valueChange = value - objectsLine[0].baselineAdj;
+  const valueNum = typeof value === "string" ? parseInt(value) : value;
+
+  const valueNew = valueNum - baselineRange;
+  let valueChange = valueNew - objectsLine[0].baselineAdj;
 
   for(let i=0;i<objectsLine.length;i++){
     const wordI = objectsLine[i];
     const wordIDI = wordI.wordID;
 
-    wordI.set('baselineAdj', value);
+    wordI.set('baselineAdj', valueNew);
 
     const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
 

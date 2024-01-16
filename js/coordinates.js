@@ -50,23 +50,22 @@ function rotateBoundingBox(boundingBox, rotateAngle) {
  * Transform from coordinates in canvas to coordinates in image.
  * 
  * @param {BoundingBox} canvasCoords - Bounding box in canvas coordinates.
- * @param {number} n - Page number (index 0)
- * @param {boolean} binary - Use binary image
+ * @param {boolean} imageRotated - Whether target image is rotated.
+ * @param {boolean} canvasRotated - Whether source canvas is rotated.
+ * @param {number} angle - Angle of rotation.
  * @returns {BoundingBox} Bounding box in image coordinates. 
  * Note: Despite having a page number argument, this function only works on the current page due to the use of `currentPage.leftAdjX`
  */
-function canvasToImage(canvasCoords, n, binary = false){
-
-    const imageRotated = binary ? globalThis.imageAll.binaryRotated[n] : globalThis.imageAll.nativeRotated[n];
+function canvasToImage(canvasCoords, imageRotated, canvasRotated, angle = 0){
 
     // If the rendered image has been rotated to match the user-specified rotation setting (or the angle is so small it doesn't matter)
     // the only difference between coordinate systems is the left margin offset. 
-    if (autoRotateCheckboxElem.checked && imageRotated || !autoRotateCheckboxElem.checked && imageRotated || Math.abs(globalThis.pageMetricsArr[n].angle ?? 0) <= 0.05) {
+    if (canvasRotated && imageRotated || !canvasRotated && !imageRotated || Math.abs(angle ?? 0) <= 0.05) {
         return {left : canvasCoords.left - currentPage.leftAdjX, top: canvasCoords.top, width: canvasCoords.width, height: canvasCoords.height}
     }
 
     // Otherwise, we must also account for rotation applied by the canvas
-    const rotateAngle = autoRotateCheckboxElem.checked && !imageRotated ? globalThis.pageMetricsArr[n].angle : globalThis.pageMetricsArr[n].angle * -1;
+    const rotateAngle = canvasRotated && !imageRotated ? angle : angle * -1;
 
     canvasCoords = rotateBoundingBox(canvasCoords, rotateAngle);
 
