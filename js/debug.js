@@ -53,7 +53,10 @@ export async function evalSelectedLine() {
 
   const imgElem = await imageAll.binary[currentPage.n];
 
-  const res = await generalScheduler.addJob("evalWords", {wordsA: word0.line.words, wordsB: [], binaryImage: imgElem.src, pageMetricsObj: pageMetricsArr[currentPage.n], options: {view: true}});
+  const res = await generalScheduler.addJob("evalWords", {
+    wordsA: word0.line.words, wordsB: [], binaryImage: imgElem.src,
+    imageRotated: imageAll.binaryRotated[currentPage.n], pageMetricsObj: pageMetricsArr[currentPage.n], options: { view: true }
+  });
 
   console.log([res.data.metricA, res.data.metricB]);
 

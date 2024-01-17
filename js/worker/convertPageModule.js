@@ -64,9 +64,11 @@ const xCharArr = ["a", "c", "e", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z
  * @param {?dims} params.pageDims
  * @param {number} params.rotateAngle - The angle that the input image is rotated prior to recognition.
  *    This is used to transform OCR coordinates back to the original coordinate space after recognizing a rotated intermediate image.
- * @param {boolean} params.keepBold
+ * @param {boolean} params.keepItalic - If true, italic tags (`<em>`) are honored.  This is false by default,
+ *    as vanilla Tesseract does not recognize italic text in a way that is reliable. 
+ *    This is fixed for Legacy recognition in the included custom build of Tesseract. 
  */
-export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle = 0, keepBold = false}) {
+export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle = 0, keepItalic = false}) {
 
   rotateAngle = rotateAngle || 0;
 
@@ -122,7 +124,7 @@ export async function convertPageHocr({ocrStr, n, pageDims = null, rotateAngle =
   ocrStr = ocrStr.replaceAll(/<\/?strong>/ig, "");
 
   // The custom built-in Tesseract build should reliably identify italics (for Legacy only)
-  if (!keepBold) {
+  if (!keepItalic) {
     ocrStr = ocrStr.replaceAll(/<\/?em>/ig, "");
   }
 

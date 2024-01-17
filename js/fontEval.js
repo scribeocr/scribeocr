@@ -4,9 +4,10 @@
  * @param {fontContainerFamily} font 
  * @param {Array<ocrPage>} pageArr
  * @param {Array<HTMLImageElement>} binaryImageArr
+ * @param {Array<boolean>} binaryRotatedArr
  * @param {number} n - Number of words to compare
  */
-export async function evalPageFonts(font, pageArr, binaryImageArr, n = 500) {
+export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotatedArr, n = 500) {
 
     const browserMode = typeof process === "undefined";
 
@@ -22,10 +23,10 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, n = 500) {
         if (!browserMode) {
             const { evalPageFont } = await import("../js/worker/compareOCRModule.js");
 
-            res = await evalPageFont({ font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i], pageMetricsObj: globalThis.pageMetricsArr[i] });
+            res = await evalPageFont({ font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i], imageRotated: binaryRotatedArr[i], pageMetricsObj: globalThis.pageMetricsArr[i] });
         // Browser case
         } else {
-            res = (await generalScheduler.addJob("evalPageFont", { font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i].src, pageMetricsObj: globalThis.pageMetricsArr[i] })).data;
+            res = (await generalScheduler.addJob("evalPageFont", { font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i].src, imageRotated: binaryRotatedArr[i], pageMetricsObj: globalThis.pageMetricsArr[i] })).data;
         }
 
 		metricTotal = metricTotal + res.metricTotal;
@@ -49,7 +50,8 @@ export async function setFontAllWorker(scheduler, fontAll) {
 
 	if (!fontAll.active) return;
 
-	const opt = !(typeof fontAll.active.Carlito.normal.src == 'string');
+	// const opt = !(typeof fontAll.active.Carlito.normal.src == 'string');
+	const opt = fontAll.active.Carlito.normal.opt;
 
 	const alreadyLoaded = (!opt && loadedRaw) || (opt && loadedOpt);
 
@@ -94,14 +96,15 @@ export async function setFontAllWorker(scheduler, fontAll) {
 /**
 * @param {Array<ocrPage>} pageArr
 * @param {Array<Promise<HTMLImageElement>>|Array<Promise<Image>>} binaryImageArr
+* @param {Array<boolean>} binaryRotatedArr
 */
-export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAll) {
+export async function selectDefaultFontsDocument(pageArr, binaryImageArr, binaryRotatedArr, fontAll) {
 
     const browserMode = typeof process === "undefined";
 
 	const binaryImageArrRes = await Promise.all(binaryImageArr);
 
-	await setFontAllWorker(generalScheduler, fontAll);
+	await setFontAllWorker(globalThis.generalScheduler, fontAll);
 
     if (!browserMode) {
         const { setFontAll, initCanvasNode } = await import("../js/worker/compareOCRModule.js");
@@ -110,8 +113,8 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
     }
 
 	const sansMetrics = {
-		Carlito: await evalPageFonts(fontAll.active.Carlito, pageArr, binaryImageArrRes),
-		NimbusSans: await evalPageFonts(fontAll.active.NimbusSans, pageArr, binaryImageArrRes),
+		Carlito: await evalPageFonts(fontAll.active.Carlito, pageArr, binaryImageArrRes, binaryRotatedArr),
+		NimbusSans: await evalPageFonts(fontAll.active.NimbusSans, pageArr, binaryImageArrRes, binaryRotatedArr),
 	} 
 
 	let minKeySans = "NimbusSans";
@@ -133,10 +136,10 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 	}
 
 	const serifMetrics = {
-		Century: await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes),
-		Palatino: await evalPageFonts(fontAll.active.Palatino, pageArr, binaryImageArrRes),
-		Garamond: await evalPageFonts(fontAll.active.Garamond, pageArr, binaryImageArrRes),
-		NimbusRomNo9L: await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes),
+		Century: await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes, binaryRotatedArr),
+		Palatino: await evalPageFonts(fontAll.active.Palatino, pageArr, binaryImageArrRes, binaryRotatedArr),
+		Garamond: await evalPageFonts(fontAll.active.Garamond, pageArr, binaryImageArrRes, binaryRotatedArr),
+		NimbusRomNo9L: await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes, binaryRotatedArr),
 	} 
 
 	let minKeySerif = "NimbusRomNo9L";
@@ -156,7 +159,7 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, fontAl
 		change = true;
 	}
 
-	await setFontAllWorker(generalScheduler, fontAll);
+	await setFontAllWorker(globalThis.generalScheduler, fontAll);
 
 	return change;
 

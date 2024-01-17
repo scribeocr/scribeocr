@@ -7,28 +7,17 @@ import { convertPageCallback } from "./convertOCR.js";
  * @param {boolean} mainData - Whether this is the "main" data that global stats are derived from.
  *    In general, this should only be true if Tesseract Legacy is being run, and the user has not previously uploaded any data. 
  */
-export async function recognizeAllPages(legacy = true, mainData = false) {
-
-    const oemMode = legacy ? "0" : "1";
+export async function recognizeAllPages(legacy = true, lstm = true, mainData = false) {
 
     await globalThis.generalScheduler.ready;
-
-    const resArr = [];
-    for (let i = 0; i < globalThis.generalScheduler.workers.length; i++) {
-        const worker = globalThis.generalScheduler.workers[i];
-        resArr.push(worker.reinitialize({ langs: "eng", oem: oemMode }));
-    }
-
-    await Promise.all(resArr);
-
-    const oemText = "Tesseract " + (oemMode == "1" ? "LSTM" : "Legacy");
 
     const inputPages = [...Array(globalThis.imageAll["native"].length).keys()];
     const promiseArr = [];
     for (let x of inputPages) {
-        promiseArr.push(recognizePage(globalThis.generalScheduler, x).then((res1) => {
-            // if(convertPageCallbackFunc) convertPageCallbackFunc(res1, x, legacy, oemText, false);
-            convertPageCallback(res1, x, mainData, oemText, false);
+        promiseArr.push(recognizePage(globalThis.generalScheduler, x, legacy, lstm).then(async (res1) => {
+            
+            if (res1.legacy) await convertPageCallback(res1.legacy, x, mainData, "Tesseract Legacy", false);
+            if (res1.lstm) await convertPageCallback(res1.lstm, x, false, "Tesseract LSTM", false);
         }))
     }
 
@@ -83,7 +72,7 @@ export const calcRecognizeRotateArgs = (n) => {
  *
  * @param {number} n - Page number to recognize.
  */
-export const recognizePage = async (scheduler, n, options = {}) => {
+export const recognizePage = async (scheduler, n, legacy = true, lstm = true, options = {}) => {
 
     const browserMode = typeof process === "undefined";
 
@@ -103,13 +92,12 @@ export const recognizePage = async (scheduler, n, options = {}) => {
         inputSrc = globalThis.imageAll["nativeSrc"][n];
     }
 
-    const config = {...{ rotateRadians: rotateRadians, rotateAuto: !angleKnown }, ...options};
+    const config = {...{ rotateRadians: rotateRadians, rotateAuto: !angleKnown, legacy: legacy, lstm: lstm }, ...options};
 
     // If a smaller rectangle is being recognized, then the dimensions of the entire page must be manually specified for the rotation calculations to be correct.
     const pageDims = options && options.rectangle ? globalThis.pageMetricsArr[n].dims : null;
 
-    // Run recognition
-    const res = await scheduler.addJob('recognizeAndConvert', {
+    const res = await scheduler.addJob('recognizeAndConvert2', {
         image: inputSrc, options: config, output: {
             imageBinary: saveBinaryImageArg,
             imageColor: saveNativeImage, debug: true

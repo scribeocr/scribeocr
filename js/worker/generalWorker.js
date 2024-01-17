@@ -42,7 +42,7 @@ let oemCurrent = 1;
 // If recognition capabilities are ever added for the Node.js version, then we should use the same build for consistency. . 
 const tessConfig = browserMode ? { corePath: '/tess/', workerPath: '/tess/worker.min.js', legacyCore: true, legacyLang: true, workerBlobURL: false} : {legacyCore: true, legacyLang: true};
 
-const worker = await Tesseract.createWorker("eng", 1, tessConfig);
+const worker = await Tesseract.createWorker("eng", 2, tessConfig);
 await worker.setParameters(defaultConfigs);
 
 const reinitialize = async ({langs, oem}) => {
@@ -68,11 +68,42 @@ const recognizeAndConvert = async ({image, options, output, n, knownAngle = null
 
   const angle = knownAngle === null || knownAngle === undefined ? res1.data.rotateRadians * (180 / Math.PI) * -1 : knownAngle;
 
-  const keepBold = oemCurrent == 0 ? true : false;
+  const keepItalic = oemCurrent == 0 ? true : false;
 
-  const res2 = await convertPageHocr({ocrStr: res1.data.hocr, n: n, pageDims: pageDims, rotateAngle: angle, keepBold: keepBold});
+  const res2 = await convertPageHocr({ocrStr: res1.data.hocr, n: n, pageDims: pageDims, rotateAngle: angle, keepItalic: keepItalic});
 
   return { recognize: res1.data, convert: res2};
+}
+
+/**
+ * Asynchronously recognizes or processes an image based on specified options and parameters.
+ * 
+ * @param {Object} params - 
+ * @param {ArrayBuffer} params.image - 
+ * @param {Object} params.options - 
+ * @param {string} params.output - 
+ * @param {number} params.n - 
+ * @param {?number} [params.knownAngle] - The known angle, or `null` if the angle is not known at the time of recognition.
+ * @param {?string} [params.engineName] - 
+ * @param {?dims} [params.pageDims] - 
+ */
+const recognizeAndConvert2 = async ({image, options, output, n, knownAngle = null, pageDims = null}) => {
+  const res1 = await worker.recognize2(image, options, output);
+
+  const angle = knownAngle === null || knownAngle === undefined ? res1.data.rotateRadians * (180 / Math.PI) * -1 : knownAngle;
+
+  let resLegacy, resLSTM;
+  if (options.lstm && options.legacy) {
+    resLegacy = await convertPageHocr({ocrStr: res1.data.hocr, n: n, pageDims: pageDims, rotateAngle: angle, keepItalic: true});
+    resLSTM = await convertPageHocr({ocrStr: res1.data.hocr2, n: n, pageDims: pageDims, rotateAngle: angle, keepItalic: false});
+  } else if (!options.lstm && options.legacy) {
+    resLegacy = await convertPageHocr({ocrStr: res1.data.hocr, n: n, pageDims: pageDims, rotateAngle: angle, keepItalic: true});
+  // This condition includes both (options.lstm && !options.legacy) and the default behavior when both are false
+  } else {
+    resLSTM = await convertPageHocr({ocrStr: res1.data.hocr, n: n, pageDims: pageDims, rotateAngle: angle, keepItalic: false});
+  }  
+
+  return { recognize: res1.data, convert: {legacy: resLegacy, lstm: resLSTM}};
 }
 
 const recognize = async ({image, options, output}) => {
@@ -156,6 +187,7 @@ addEventListener('message', async e => {
         reinitialize,
         recognize,
         recognizeAndConvert,
+        recognizeAndConvert2,
 
         // Change state of worker
         loadFontContainerAllWorker,

@@ -261,15 +261,10 @@ async function main(func, params) {
       let wordsTotal = 0;
       let wordsHighConf = 0;  
 
-      // Run Tesseract Legacy recognition
-      if (debugMode) console.time("Legacy recognition");
-      await recognizeAllPages(true, false);
-      if (debugMode) console.timeLog("Legacy recognition");
-
-      // Run Tesseract LSTM recognition
-      if (debugMode) console.time("LSTM recognition");
-      await recognizeAllPages(false, false);
-      if (debugMode) console.timeLog("LSTM recognition");
+      const time2a = Date.now();
+      await recognizeAllPages(true, true, false);
+      const time2b = Date.now();
+      if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
       // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
       for(let i=0;i<globalThis.imageAll["native"].length;i++) {
@@ -282,7 +277,10 @@ async function main(func, params) {
   
         const imgElem = await globalThis.imageAll["binary"][i];
   
-        const res = await compareHOCR({pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+        const res = await compareHOCR({
+          pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src,
+          imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+        });
 
         if (globalThis.debugLog === undefined) globalThis.debugLog = "";
         globalThis.debugLog += res.debugLog;
@@ -304,7 +302,10 @@ async function main(func, params) {
 
         const imgElem = await globalThis.imageAll["binary"][i];
         
-        const res = await compareHOCR({pageA: globalThis.ocrAll.active[i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+        const res = await compareHOCR({
+          pageA: globalThis.ocrAll.active[i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src,
+          imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+        });
 
         globalThis.ocrAll.active[i] = res.page;
 

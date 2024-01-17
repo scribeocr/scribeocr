@@ -55,9 +55,10 @@ class CustomSeleniumActions {
     
             // Wait for progress bar to fill up
             const progressBarDownload = await this.driver.findElement(By.css('#generate-download-progress-collapse .progress-bar'));
-            const maxValueDownload = await progressBarDownload.getAttribute('aria-valuemax');
+            
             await this.driver.wait(async () => {
-                let currentValue = await progressBarDownload.getAttribute('aria-valuenow');
+                const maxValueDownload = await progressBarDownload.getAttribute('aria-valuemax');
+                const currentValue = await progressBarDownload.getAttribute('aria-valuenow');
                 return currentValue === maxValueDownload;
             }, 10000, 'Download progress bar did not reach maximum value in time');
 

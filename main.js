@@ -679,7 +679,7 @@ async function enableDisableFontOpt(enable) {
   }
 
   // Enable/disable optimized font in workers
-  if (browserMode) await setFontAllWorker(generalScheduler, fontAll);
+  if (browserMode) await setFontAllWorker(globalThis.generalScheduler, fontAll);
 }
 
 
@@ -1122,12 +1122,15 @@ async function recognizeAllClick() {
 
   // Whether user uploaded data will be compared against in addition to both Tesseract engines
   const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
-  const existingOCR = Object.keys(globalThis.ocrAll).length == 0;
+  const existingOCR = Object.keys(globalThis.ocrAll).filter((x) => x != "active").length > 0;
 
   // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
   if(oemMode == "legacy" || oemMode == "lstm") {
     globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length, 0, true);
-    await recognizeAllPagesBrowser(oemMode == "legacy", !existingOCR);
+    const time2a = Date.now();
+    await recognizeAllPagesBrowser(oemMode == "legacy", oemMode == "lstm", !existingOCR);
+    const time2b = Date.now();
+    if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
   } else if (oemMode == "combined") {
 
@@ -1135,17 +1138,10 @@ async function recognizeAllClick() {
     globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2, 0, true);
     globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
 
-    const time1a = Date.now();
-    await recognizeAllPagesBrowser(true, !existingOCR);
-    const time1b = Date.now();
-    if (debugMode) console.log(`Tesseract Legacy runtime: ${time1b - time1a} ms`);
-
     const time2a = Date.now();
-    await recognizeAllPagesBrowser(false, false);
+    await recognizeAllPagesBrowser(true, true, !existingOCR);
     const time2b = Date.now();
-    if (debugMode) console.log(`Tesseract LSTM runtime: ${time2b - time2a} ms`);
-
-  
+    if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
     if(debugMode) {
       globalThis.debugImg["Combined"] = new Array(globalThis.imageAll["native"].length);
@@ -1183,7 +1179,10 @@ async function recognizeAllClick() {
 
       const imgElem = await globalThis.imageAll["binary"][i];
 
-      const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+      const res = await globalThis.generalScheduler.addJob("compareHOCR", {
+        pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src,
+        imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+      });
 
       if (globalThis.debugLog === undefined) globalThis.debugLog = "";
       globalThis.debugLog += res.data.debugLog;
@@ -1206,7 +1205,10 @@ async function recognizeAllClick() {
           };
 
           const imgElem = await globalThis.imageAll["binary"][i];
-          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+          const res = await globalThis.generalScheduler.addJob("compareHOCR", {
+            pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src,
+            imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+          });
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = "";
           globalThis.debugLog += res.data.debugLog;
@@ -1227,7 +1229,10 @@ async function recognizeAllClick() {
           };
 
           const imgElem = await globalThis.imageAll["binary"][i];
-          const res = await globalThis.generalScheduler.addJob("compareHOCR", {pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions});
+          const res = await globalThis.generalScheduler.addJob("compareHOCR", {
+            pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src,
+            imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+          });
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = "";
           globalThis.debugLog += res.data.debugLog;
@@ -1316,7 +1321,10 @@ async function compareGroundTruthClick(n) {
     for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
 
       const imgElem = await globalThis.imageAll["binary"][i];
-      const res = (await globalThis.generalScheduler.addJob("compareHOCR", {pageA: globalThis.ocrAll.active[i], pageB: globalThis.ocrAll["Ground Truth"][i], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions})).data;
+      const res = (await globalThis.generalScheduler.addJob("compareHOCR", {
+        pageA: globalThis.ocrAll.active[i], pageB: globalThis.ocrAll["Ground Truth"][i], binaryImage: imgElem.src,
+        imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+      })).data;
 
       globalThis.evalStats[i] = res.metrics;
       if (globalThis.debugLog === undefined) globalThis.debugLog = "";
@@ -1326,7 +1334,10 @@ async function compareGroundTruthClick(n) {
   }
 
   const imgElem = await globalThis.imageAll["binary"][n];
-  const res = (await globalThis.generalScheduler.addJob("compareHOCR", {pageA: globalThis.ocrAll.active[n], pageB: globalThis.ocrAll["Ground Truth"][n], binaryImage: imgElem.src, pageMetricsObj: globalThis.pageMetricsArr[n], options: compOptions})).data;
+  const res = (await globalThis.generalScheduler.addJob("compareHOCR", {
+    pageA: globalThis.ocrAll.active[n], pageB: globalThis.ocrAll["Ground Truth"][n], binaryImage: imgElem.src,
+    imageRotated: globalThis.imageAll["binaryRotated"][n], pageMetricsObj: globalThis.pageMetricsArr[n], options: compOptions
+  })).data;
 
   if (globalThis.debugLog === undefined) globalThis.debugLog = "";
   globalThis.debugLog += res.debugLog;
@@ -1567,11 +1578,11 @@ function recognizeAreaClick(wordMode = false) {
     const psm = wordMode ? Tesseract.PSM["SINGLE_WORD"] : Tesseract.PSM["SINGLE_BLOCK"];
     const n = globalThis.currentPage.n;
 
-    const res = await recognizePage(globalThis.generalScheduler, n, {rectangle: imageCoords, tessedit_pageseg_mode: psm});
+    const res = await recognizePage(globalThis.generalScheduler, n, false, true, {rectangle: imageCoords, tessedit_pageseg_mode: psm});
 
     const oemText = "Tesseract " + oemLabelTextElem.innerHTML;
 
-    await convertPageCallback(res, n, false, oemText, true);
+    await convertPageCallback(res.lstm, n, false, oemText, true);
 
     canvas.renderAll();
     resetCanvasEventListeners();
@@ -2788,7 +2799,7 @@ export async function calculateOverallMetrics() {
       const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
       await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
       // Select best default fonts
-      const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), fontAll);
+      const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), globalThis.imageAll["binaryRotated"].slice(0, pageNum), fontAll);
       // Re-render current page if default font changed
       if (change) renderPageQueue(currentPage.n);
     }

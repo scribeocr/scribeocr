@@ -14,7 +14,7 @@ export async function evalOverlapDocument() {
         const ocrPageI = globalThis.ocrAll.active[i];
 
         const imgElem = await globalThis.imageAll.binary[i];
-        promiseArr.push(globalThis.generalScheduler.addJob("evalPage", {page: ocrPageI, binaryImage: imgElem.src, pageMetricsObj: pageMetricsArr[i]}));
+        promiseArr.push(globalThis.generalScheduler.addJob("evalPage", {page: ocrPageI, binaryImage: imgElem.src, imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: pageMetricsArr[i]}));
 
     }
 
@@ -50,7 +50,7 @@ export async function nudgeDoc(func, view = false) {
         const ocrPageI = globalThis.ocrAll.active[i];
 
         const imgElem = await globalThis.imageAll.binary[i];
-        promiseArr.push(globalThis.generalScheduler.addJob(func, {page: ocrPageI, binaryImage: imgElem.src, pageMetricsObj: pageMetricsArr[i], view: view}).then((res) => {
+        promiseArr.push(globalThis.generalScheduler.addJob(func, {page: ocrPageI, binaryImage: imgElem.src, imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: pageMetricsArr[i], view: view}).then((res) => {
             globalThis.ocrAll.active[i] = res.data.page;
             if (i == currentPage.n) displayPage(currentPage.n);
             improveCt = improveCt + res.data.improveCt;

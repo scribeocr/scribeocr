@@ -114,11 +114,12 @@ export const initCanvasNode = async () => {
  * Crop the image data the area containing `words` and render to the `calcCtx.canvas` canvas.
  * @param {Array<ocrWord>} words
  * @param {ImageBitmap} imageBinaryBit
- * @param {pageMetrics} pageMetricsObj
+ * @param {dims} pageDims
+ * @param {number} angle
  * @param {object} [options]
  * @param {boolean} [options.view] - Draw results on debugging canvases
  */
-const drawWordActual = async function(words, imageBinaryBit, pageMetricsObj, options = {}) {
+const drawWordActual = async function(words, imageBinaryBit, pageDims, angle, options = {}) {
 
   if (!fontAll.active) throw new Error("Fonts must be defined before running this function.");
   if (!calcCtx) throw new Error("Canvases must be defined before running this function.");
@@ -149,12 +150,9 @@ const drawWordActual = async function(words, imageBinaryBit, pageMetricsObj, opt
   const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
   const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
 
-  const angle = pageMetricsObj.angle || 0;
-
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  const pageDims = pageMetricsObj.dims;
   const shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
   const shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
 
@@ -173,7 +171,7 @@ const drawWordActual = async function(words, imageBinaryBit, pageMetricsObj, opt
 
   let angleAdjXLine = 0;
   let angleAdjYLine = 0;
-  if (Math.abs(pageMetricsObj.angle ?? 0) > 0.05) {
+  if (Math.abs(angle ?? 0) > 0.05) {
 
     const x = linebox[0];
     const y = linebox[3] + baseline[1];
@@ -273,8 +271,9 @@ const printWordOnCanvas = async (ctx, text, font, size, boxWidth, left = 0, bott
  * @param {number} lineFontSize
  * @param {?string} altText
  * @param {?CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctxView
+ * @param {boolean} imageRotated -
  */
-const drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFontSize = 0, altText = null, ctxView = null){
+const drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFontSize = 0, altText = null, ctxView = null, imageRotated = false){
 
   if (!fontAll.active) throw new Error("Fonts must be defined before running this function.");
   if (!calcCtx) throw new Error("Canvases must be defined before running this function.");
@@ -313,7 +312,12 @@ const drawWordRender = async function(word, offsetX = 0, cropY = 0, lineFontSize
 
     baselineY = baselineY - (baselineYWord - word.bbox[3]);
   
-  } 
+  } else if (!imageRotated) {
+
+    const wordboxXMid = word.bbox[0] + (word.bbox[2] - word.bbox[0]) / 2;
+
+    baselineY = word.line.bbox[3] + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox[0]);
+  }
 
   const y = baselineY - cropY;
 
@@ -383,6 +387,7 @@ async function getImageBitmap(img) {
  * @param {Array<ocrWord>} [params.wordsB] - Array of words for comparison.  Optional. 
  * @param {string|ImageBitmap} params.binaryImage - Image to compare to.  Using an ImageBitmap is more efficient
  *    when multiple compparisons are being made to the same binaryImage. 
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj
  * @param {Object} [params.options]
  * @param {boolean} [params.options.view] - Draw results on debugging canvases
@@ -391,7 +396,7 @@ async function getImageBitmap(img) {
  *   such as when `wordsA` are from Tesseract Legacy and `wordsB` are from Tesseract LSTM.
  * @param {boolean} [params.options.useABaseline]
  */
-export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsObj, options = {}}){
+export async function evalWords({wordsA, wordsB = [], binaryImage, imageRotated, pageMetricsObj, options = {}}){
 
   const binaryImageBit = await getImageBitmap(binaryImage);
 
@@ -402,9 +407,7 @@ export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsOb
   const useAFontSize = options?.useAFontSize === undefined ? true : options?.useAFontSize;
   const useABaseline = options?.useABaseline === undefined ? true : options?.useABaseline;
 
-  // const n = wordsA[0].line.page.n;
-
-  const angle = pageMetricsObj.angle || 0;
+  const angle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
 
   const cosAngle = Math.cos(angle * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(angle * -1 * (Math.PI / 180)) || 0;
@@ -445,7 +448,7 @@ export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsOb
   }
 
   // Draw the actual words (from the user-provided image)
-  const cropY = await drawWordActual([...wordsA, ...wordsB], binaryImageBit, pageMetricsObj, {view: view});
+  const cropY = await drawWordActual([...wordsA, ...wordsB], binaryImageBit, pageMetricsObj.dims, angle, {view: view});
 
   const imageDataActual = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height)["data"];
 
@@ -467,7 +470,7 @@ export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsOb
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-    await drawWordRender(word, offsetX, cropY, lineFontSizeA, null, ctxView);
+    await drawWordRender(word, offsetX, cropY, lineFontSizeA, null, ctxView, imageRotated);
   }
 
   const imageDataExpectedA = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height)["data"];
@@ -520,7 +523,7 @@ export async function evalWords({wordsA, wordsB = [], binaryImage, pageMetricsOb
   
       const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
   
-      await drawWordRender(word, offsetX, cropY, lineFontSizeB, null, ctxView);
+      await drawWordRender(word, offsetX, cropY, lineFontSizeB, null, ctxView, imageRotated);
     }
   
     const imageDataExpectedB = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height)["data"];
@@ -621,6 +624,7 @@ function penalizeWord(wordStr) {
  * @param {ocrPage} params.pageA
  * @param {ocrPage} params.pageB
  * @param {string|ImageBitmap} params.binaryImage
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj
  * @param {object} params.options
  * @param {("stats"|"comb")} [params.options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
@@ -634,7 +638,7 @@ function penalizeWord(wordStr) {
  * @param {number} [params.options.confThreshHigh]
  * @param {number} [params.options.confThreshMed]
  */
-export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, options = {}}) {
+export async function compareHOCR({pageA, pageB, binaryImage, imageRotated, pageMetricsObj, options = {}}) {
 
   const binaryImageBit = await getImageBitmap(binaryImage);
 
@@ -895,7 +899,7 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
                     const wordAClone = ocr.cloneWord(wordA);
                     wordAClone.text = wordB.text;
 
-                    const evalRes = await evalWords({wordsA: [wordA], wordsB: [wordAClone], binaryImage: binaryImageBit, pageMetricsObj: pageMetricsObj, options: {view: Boolean(debugLabel)}});
+                    const evalRes = await evalWords({wordsA: [wordA], wordsB: [wordAClone], binaryImage: binaryImageBit, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, options: {view: Boolean(debugLabel)}});
               
                     hocrAError = evalRes.metricA + penalizeWord(wordA.text);
                     hocrBError = evalRes.metricB + penalizeWord(wordB.text);
@@ -916,7 +920,7 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
                     }
                   } else if (twoToOne) {
 
-                    const evalRes = await evalWords({wordsA: wordsAArr, wordsB: wordsBArr, binaryImage: binaryImageBit, pageMetricsObj: pageMetricsObj, options: {view: Boolean(debugLabel)}});
+                    const evalRes = await evalWords({wordsA: wordsAArr, wordsB: wordsBArr, binaryImage: binaryImageBit, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, options: {view: Boolean(debugLabel)}});
 
                     const wordsAText = wordsAArr.map((x) => x.text).join("");
                     const wordsBText =  wordsBArr.map((x) => x.text).join("");
@@ -1025,7 +1029,7 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
       for (let j = 0; j < line.words.length; j++) {
         const word = line.words[j];
         if (!word.compTruth) {
-          const res = await checkWords([word], binaryImageBit, pageMetricsObj, {ignorePunct: ignorePunct, tessScheduler: tessScheduler, tessWorker: tessWorker, view: false});
+          const res = await checkWords([word], binaryImageBit, imageRotated, pageMetricsObj, {ignorePunct: ignorePunct, tessScheduler: tessScheduler, tessWorker: tessWorker, view: false});
           debugLog += res.debugLog;
           word.matchTruth = res.match;
           word.conf = word.matchTruth ? 100 : 0;
@@ -1110,6 +1114,7 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
 /**
  * @param {Array<ocrWord>} wordsA
  * @param {ImageBitmap} binaryImage
+ * @param {boolean} imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} pageMetricsObj
  * @param {object} [options]
  * @param {boolean} [options.view] - TODO: make this functional or remove
@@ -1118,14 +1123,15 @@ export async function compareHOCR({pageA, pageB, binaryImage, pageMetricsObj, op
  * @param {Tesseract.Scheduler} [options.tessScheduler]
  * @param {Tesseract.Worker} [options.tessWorker]
  */
-export async function checkWords(wordsA, binaryImage, pageMetricsObj, options = {}){
+export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsObj, options = {}){
 
   const view = options?.view === undefined ? false : options?.view;
   const ignorePunct = options?.ignorePunct === undefined ? false : options?.ignorePunct;
   const ignoreCap = options?.ignoreCap === undefined ? false : options?.ignoreCap;
 
   // Draw the actual words (from the user-provided image)
-  await drawWordActual(wordsA, binaryImage, pageMetricsObj, {view: true});
+  const angle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
+  await drawWordActual(wordsA, binaryImage, pageMetricsObj.dims, angle, {view: true});
 
   const extraConfig = {
     tessedit_pageseg_mode: "6" // "Single block"
@@ -1169,11 +1175,12 @@ export async function checkWords(wordsA, binaryImage, pageMetricsObj, options = 
  * @param {Object} params
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj 
  * @param {?function} params.func
  * @returns 
  */
-async function evalPageBase({page, binaryImage, pageMetricsObj, func}) {
+async function evalPageBase({page, binaryImage, imageRotated, pageMetricsObj, func}) {
 
   const binaryImageBit = await getImageBitmap(binaryImage);
 
@@ -1193,7 +1200,7 @@ async function evalPageBase({page, binaryImage, pageMetricsObj, func}) {
 
     if (!ocrLineJ) continue;
   
-    const evalRes = await evalWords({wordsA: ocrLineJ.words, binaryImage: binaryImageBit, pageMetricsObj: pageMetricsObj, options: {view: false}});
+    const evalRes = await evalWords({wordsA: ocrLineJ.words, binaryImage: binaryImageBit, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, options: {view: false}});
 
     metricTotal = metricTotal + (evalRes.metricA * ocrLineJ.words.length);
 
@@ -1208,23 +1215,25 @@ async function evalPageBase({page, binaryImage, pageMetricsObj, func}) {
  * @param {Object} params
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj 
  * @returns 
  */
-export async function evalPage({page, binaryImage, pageMetricsObj}) {
+export async function evalPage({page, binaryImage, imageRotated, pageMetricsObj}) {
 
-  return await evalPageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: null})
+  return await evalPageBase({page: page, binaryImage: binaryImage, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, func: null})
 }
 
 /**
  * @param {Object} params
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj 
  * @param {string} params.font 
  * @returns 
  */
-export async function evalPageFont({page, binaryImage, pageMetricsObj, font}) {
+export async function evalPageFont({page, binaryImage, imageRotated, pageMetricsObj, font}) {
 
 /**
  * @param {ocrLine} ocrLineJ 
@@ -1247,7 +1256,7 @@ export async function evalPageFont({page, binaryImage, pageMetricsObj, font}) {
   
   }
 
-  return await evalPageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: transformLineFont})
+  return await evalPageBase({page: page, binaryImage: binaryImage, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, func: transformLineFont})
 }
 
 
@@ -1255,12 +1264,13 @@ export async function evalPageFont({page, binaryImage, pageMetricsObj, font}) {
  * @param {Object} params
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj 
  * @param {function} params.func
  * @param {boolean} params.view
  * @returns 
  */
-export async function nudgePageBase({page, binaryImage, pageMetricsObj, func, view = false}) {
+export async function nudgePageBase({page, binaryImage, imageRotated, pageMetricsObj, func, view = false}) {
 
   const binaryImageBit = await getImageBitmap(binaryImage);
 
@@ -1282,7 +1292,7 @@ export async function nudgePageBase({page, binaryImage, pageMetricsObj, func, vi
   
       if (!ocrLineJClone) return;
   
-      const evalRes = await evalWords({wordsA: ocrLineJ.words, wordsB: ocrLineJClone.words, binaryImage: binaryImageBit, pageMetricsObj: pageMetricsObj, options: {view: view, useAFontSize: false, useABaseline: false}});
+      const evalRes = await evalWords({wordsA: ocrLineJ.words, wordsB: ocrLineJClone.words, binaryImage: binaryImageBit, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, options: {view: view, useAFontSize: false, useABaseline: false}});
   
       if (evalRes.debug) debugImg.push(evalRes.debug);
 
@@ -1316,11 +1326,12 @@ export async function nudgePageBase({page, binaryImage, pageMetricsObj, func, vi
  * @param {Object} params
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj 
  * @param {boolean} params.view
  * @returns 
  */
-export async function nudgePageFontSize({page, binaryImage, pageMetricsObj, view = false}) {
+export async function nudgePageFontSize({page, binaryImage, imageRotated, pageMetricsObj, view = false}) {
 
   const func = async (lineJ, x) => {
     const fontSizeBase = await calcLineFontSize(lineJ, fontAll.active);
@@ -1328,7 +1339,7 @@ export async function nudgePageFontSize({page, binaryImage, pageMetricsObj, view
     lineJ._size = fontSizeBase + x;
   }
 
-  return await nudgePageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: func, view: view});
+  return await nudgePageBase({page: page, binaryImage: binaryImage, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, func: func, view: view});
 }
 
 
@@ -1336,17 +1347,18 @@ export async function nudgePageFontSize({page, binaryImage, pageMetricsObj, view
  * @param {Object} params
  * @param {ocrPage} params.page 
  * @param {string|ImageBitmap} params.binaryImage 
+ * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {pageMetrics} params.pageMetricsObj 
  * @param {boolean} params.view
  * @returns 
  */
-export async function nudgePageBaseline({page, binaryImage, pageMetricsObj, view = false}) {
+export async function nudgePageBaseline({page, binaryImage, imageRotated, pageMetricsObj, view = false}) {
 
   const func = async (lineJ, x) => {
     lineJ.baseline[1] = lineJ.baseline[1] + x;
   }
 
-  return await nudgePageBase({page: page, binaryImage: binaryImage, pageMetricsObj: pageMetricsObj, func: func, view: view});
+  return await nudgePageBase({page: page, binaryImage: binaryImage, imageRotated: imageRotated, pageMetricsObj: pageMetricsObj, func: func, view: view});
 }
 
 
