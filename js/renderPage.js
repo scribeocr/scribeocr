@@ -1,20 +1,19 @@
-
-import { calcWordFontSize, calcWordMetrics, calcCharSpacing, calcLineFontSize } from "./fontUtils.js"
-import { renderLayoutBoxes, updateDataPreview } from "./ui/interfaceLayout.js";
-import ocr from "./objects/ocrObjects.js";
-import { ITextWord } from "./objects/fabricObjects.js";
+import {
+  calcWordFontSize, calcWordMetrics, calcCharSpacing, calcLineFontSize,
+} from './fontUtils.js';
+import { renderLayoutBoxes, updateDataPreview } from './ui/interfaceLayout.js';
+import ocr from './objects/ocrObjects.js';
+import { ITextWord } from './objects/fabricObjects.js';
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
 
-
 export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX, fontAll) {
-
   const layoutMode = globalThis.layoutMode || false;
 
   // objectCaching slows down page render speeds, and is generally not needed.
   // The exception is when working in layoutMode, where users draw semi-transparent rectangles
-  // that overlap with many of the other elements, which requires objectCaching to run smoothly. 
+  // that overlap with many of the other elements, which requires objectCaching to run smoothly.
   if (layoutMode) {
     fabric.Object.prototype.objectCaching = true;
   } else {
@@ -23,29 +22,28 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
 
-  const lines = page.lines;
+  const { lines } = page;
 
   for (let i = 0; i < lines.length; i++) {
-    let lineObj = lines[i]
+    const lineObj = lines[i];
 
     const linebox = lineObj.bbox;
-    const baseline = lineObj.baseline;
+    const { baseline } = lineObj;
 
-    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : {x : 0, y : 0};
+    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : { x: 0, y: 0 };
 
-    const words = lineObj.words;
+    const { words } = lineObj;
 
     for (let j = 0; j < words.length; j++) {
-
       const wordObj = words[j];
 
-      const fillColorHexMatch = wordObj.matchTruth ? "#00ff7b" : "#ff0000";
+      const fillColorHexMatch = wordObj.matchTruth ? '#00ff7b' : '#ff0000';
 
       if (!wordObj.text) continue;
 
       const box = wordObj.bbox;
 
-      let box_width = box[2] - box[0];
+      const box_width = box[2] - box[0];
 
       const wordText = wordObj.text;
       const wordSup = wordObj.sup;
@@ -62,10 +60,10 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
         defaultFontFamily = false;
       }
 
-      const fontI = /**@type {fontContainerFont} */  (fontAll.active[wordFontFamily][fontStyle]);
+      const fontI = /** @type {fontContainerFont} */ (fontAll.active[wordFontFamily][fontStyle]);
       const fontOpentypeI = await fontI.opentype;
 
-      let wordFontSize = await calcWordFontSize(wordObj, fontAll.active);
+      const wordFontSize = await calcWordFontSize(wordObj, fontAll.active);
 
       let scaleX = 1;
       if (wordDropCap) {
@@ -75,52 +73,52 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
       const wordConf = wordObj.conf;
 
-
       const word_id = wordObj.id;
 
       const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
       const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-      
-      const confThreshHigh = confThreshHighElem.value != "" ? parseInt(confThreshHighElem.value) : 85;
-      const confThreshMed = confThreshMedElem.value != "" ? parseInt(confThreshMedElem.value) : 75;
+
+      const confThreshHigh = confThreshHighElem.value != '' ? parseInt(confThreshHighElem.value) : 85;
+      const confThreshMed = confThreshMedElem.value != '' ? parseInt(confThreshMedElem.value) : 75;
 
       let fillColorHex;
       if (wordConf > confThreshHigh) {
-        fillColorHex = "#00ff7b";
+        fillColorHex = '#00ff7b';
       } else if (wordConf > confThreshMed) {
-        fillColorHex = "#ffc800";
+        fillColorHex = '#ffc800';
       } else {
-        fillColorHex = "#ff0000";
+        fillColorHex = '#ff0000';
       }
 
       const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
       const displayMode = displayModeElem.value;
 
-      let opacity_arg, fill_arg;
+      let opacityArg; let
+        fillArg;
       // Set current text color and opacity based on display mode selected
-      if (displayMode == "invis") {
-        opacity_arg = 0
-        fill_arg = "black"
-      } else if (displayMode == "ebook") {
-        opacity_arg = 1
-        fill_arg = "black"
-      } else if (displayMode == "eval") {
-        opacity_arg = 1;
-        fill_arg = fillColorHexMatch;
+      if (displayMode == 'invis') {
+        opacityArg = 0;
+        fillArg = 'black';
+      } else if (displayMode == 'ebook') {
+        opacityArg = 1;
+        fillArg = 'black';
+      } else if (displayMode == 'eval') {
+        opacityArg = 1;
+        fillArg = fillColorHexMatch;
       } else {
-        opacity_arg = 1
-        fill_arg = fillColorHex
+        opacityArg = 1;
+        fillArg = fillColorHex;
       }
 
-      const showTextBoxBorderArg = showBoundingBoxesElem.checked || displayMode == "eval" && wordConf > confThreshHigh && !wordObj.matchTruth;
+      const showTextBoxBorderArg = showBoundingBoxesElem.checked || displayMode == 'eval' && wordConf > confThreshHigh && !wordObj.matchTruth;
 
       const charSpacing = await calcCharSpacing(wordText, fontI, wordFontSize, box_width);
 
-      let wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
+      const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
 
-      let wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
+      const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
 
-      const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : {x : 0, y : 0};
+      const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
       let visualBaseline;
       if (wordSup || wordDropCap) {
@@ -142,7 +140,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
       const textBackgroundColor = globalThis.find.search && wordText.toLowerCase().includes(globalThis.find.search?.toLowerCase()) ? '#4278f550' : '';
 
       const textbox = new ITextWord(wordText, {
-        left: left,
+        left,
         top: visualBaseline,
         angle: angleArg,
         word: wordObj,
@@ -150,9 +148,9 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
         leftOrig: left,
         topOrig: visualBaseline,
         baselineAdj: 0,
-        wordSup: wordSup,
-        originY: "bottom",
-        fill: fill_arg,
+        wordSup,
+        originY: 'bottom',
+        fill: fillArg,
         fill_proof: fillColorHex,
         fill_ebook: 'black',
         fill_eval: fillColorHexMatch,
@@ -165,30 +163,26 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
         fontStyleLookup: fontStyle,
         wordID: word_id,
         line: i,
-        visualWidth: box_width, // TODO: Is this incorrect when rotation exists? 
-        visualLeft: visualLeft,
-        visualBaseline: visualBaseline,
-        scaleX: scaleX,
-        defaultFontFamily: defaultFontFamily,
-        textBackgroundColor: textBackgroundColor,
-        //fontFamily: 'times',
-        opacity: opacity_arg,
+        visualWidth: box_width, // TODO: Is this incorrect when rotation exists?
+        visualLeft,
+        visualBaseline,
+        scaleX,
+        defaultFontFamily,
+        textBackgroundColor,
+        // fontFamily: 'times',
+        opacity: opacityArg,
         charSpacing: charSpacing * 1000 / wordFontSize,
         fontSize: wordFontSize,
-        showTextBoxBorder: showTextBoxBorderArg
-      })
+        showTextBoxBorder: showTextBoxBorderArg,
+      });
 
       canvas.add(textbox);
-
     }
   }
 
   if (layoutMode) {
-
-    renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]), false);
-
+    renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n].boxes), false);
   }
 
   updateDataPreview();
-
 }

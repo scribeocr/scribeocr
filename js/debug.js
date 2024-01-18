@@ -1,33 +1,32 @@
-import { calcOverlap } from "./modifyOCR.js";
-import ocr from "./objects/ocrObjects.js";
-import { saveAs, imageStrToBlob } from "./miscUtils.js";
+import { calcOverlap } from './modifyOCR.js';
+import ocr from './objects/ocrObjects.js';
+import { saveAs, imageStrToBlob } from './miscUtils.js';
 
 /**
  * @global
  * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user. 
+ * @description - Used under the hood for generating overlap visualizations to display to user.
  */
 globalThis.ctxComp0 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('h')).getContext('2d'));
 
 /**
  * @global
  * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user. 
+ * @description - Used under the hood for generating overlap visualizations to display to user.
  */
 globalThis.ctxComp1 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('e')).getContext('2d'));
 
 /**
  * @global
  * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user. 
+ * @description - Used under the hood for generating overlap visualizations to display to user.
  */
 globalThis.ctxComp2 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('f')).getContext('2d'));
-
 
 export function printSelectedWords(printOCR = true) {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
-  for(let i=0; i<selectedObjects.length; i++){
+  for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
       console.log(ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], selectedObjects[i].wordID));
     } else {
@@ -47,15 +46,19 @@ export async function evalSelectedLine() {
   const viewCanvas2 = /** @type {HTMLCanvasElement} */ (document.getElementById('h'));
 
   // Make debugging canvases visible
-  viewCanvas0.setAttribute("style", "");
-  viewCanvas1.setAttribute("style", "");
-  viewCanvas2.setAttribute("style", "");
+  viewCanvas0.setAttribute('style', '');
+  viewCanvas1.setAttribute('style', '');
+  viewCanvas2.setAttribute('style', '');
 
   const imgElem = await imageAll.binary[currentPage.n];
 
-  const res = await generalScheduler.addJob("evalWords", {
-    wordsA: word0.line.words, wordsB: [], binaryImage: imgElem.src,
-    imageRotated: imageAll.binaryRotated[currentPage.n], pageMetricsObj: pageMetricsArr[currentPage.n], options: { view: true }
+  const res = await generalScheduler.addJob('evalWords', {
+    wordsA: word0.line.words,
+    wordsB: [],
+    binaryImage: imgElem.src,
+    imageRotated: imageAll.binaryRotated[currentPage.n],
+    pageMetricsObj: pageMetricsArr[currentPage.n],
+    options: { view: true },
   });
 
   console.log([res.data.metricA, res.data.metricB]);
@@ -74,55 +77,53 @@ export async function evalSelectedLine() {
   viewCanvas2.width = imgBit2.width;
   viewCanvas2.height = imgBit2.height;
   ctxComp2.drawImage(imgBit2, 0, 0);
-
 }
 
-
 export function downloadImage(img, filename) {
-  const imgStr = typeof(img) == "string" ? img : img.src;
+  const imgStr = typeof (img) === 'string' ? img : img.src;
   const imgBlob = imageStrToBlob(imgStr);
-  saveAs(imgBlob , filename);
+  saveAs(imgBlob, filename);
 }
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 
 export function downloadCanvas() {
   const canvasDataStr = canvas.toDataURL();
-  const fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + "_canvas_" + String(currentPage.n) + ".png";
+  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(currentPage.n)}.png`;
   downloadImage(canvasDataStr, fileName);
 }
 
 // Utility function for downloading all images
-export async function downloadImageAll(filename_base, type = "binary") {
-  for (let i=0; i < globalThis.imageAll[type].length; i++) {
+export async function downloadImageAll(filename_base, type = 'binary') {
+  for (let i = 0; i < globalThis.imageAll[type].length; i++) {
     const img = await globalThis.imageAll[type][i];
     const fileType = img.src.match(/^data\:image\/([a-z]+)/)?.[1];
-    if (!["png", "jpeg"].includes(fileType)) {
-      console.log("Filetype " + fileType + " is not jpeg/png; skipping.")
+    if (!['png', 'jpeg'].includes(fileType)) {
+      console.log(`Filetype ${fileType} is not jpeg/png; skipping.`);
       continue;
     }
-    const fileName = filename_base + "_" + String(i).padStart(3, "0") + "." + fileType;
-    console.log("Downloading file " + String(i) + " as " + fileName);
+    const fileName = `${filename_base}_${String(i).padStart(3, '0')}.${fileType}`;
+    console.log(`Downloading file ${String(i)} as ${fileName}`);
     downloadImage(img, fileName);
     // Not all files will be downloaded without a delay between downloads
     await new Promise((r) => setTimeout(r, 200));
   }
 }
 
-export async function downloadImageDebug(filename_base, type = "Combined") {
-  for (let i=0; i < globalThis.debugImg[type].length; i++) {
-    for (let j=0; j < globalThis.debugImg[type][i].length; j++) {
-      const wordFileName = globalThis.debugImg[type][i][j]["textA"].replace(/[^a-z0-9]/ig, "") + "_" + globalThis.debugImg[type][i][j]["textB"].replace(/[^a-z0-9]/ig, "");
-      for (let k=0; k < 2; k++) {
-        const name = ["imageRaw", "imageA", "imageB"][k];
+export async function downloadImageDebug(filename_base, type = 'Combined') {
+  for (let i = 0; i < globalThis.debugImg[type].length; i++) {
+    for (let j = 0; j < globalThis.debugImg[type][i].length; j++) {
+      const wordFileName = `${globalThis.debugImg[type][i][j].textA.replace(/[^a-z0-9]/ig, '')}_${globalThis.debugImg[type][i][j].textB.replace(/[^a-z0-9]/ig, '')}`;
+      for (let k = 0; k < 2; k++) {
+        const name = ['imageRaw', 'imageA', 'imageB'][k];
         const img = await globalThis.debugImg[type][i][j][name];
         const fileType = img.match(/^data\:image\/([a-z]+)/)?.[1];
-        if (!["png", "jpeg"].includes(fileType)) {
-          console.log("Filetype " + fileType + " is not jpeg/png; skipping.")
+        if (!['png', 'jpeg'].includes(fileType)) {
+          console.log(`Filetype ${fileType} is not jpeg/png; skipping.`);
           continue;
         }
-        const fileName = filename_base + "_" + String(i) + "_" + String(j) + "_" + String(k) + "_" + wordFileName + "." + fileType;
-        console.log("Downloading file " + String(i) + " as " + fileName);
+        const fileName = `${filename_base}_${String(i)}_${String(j)}_${String(k)}_${wordFileName}.${fileType}`;
+        console.log(`Downloading file ${String(i)} as ${fileName}`);
         downloadImage(img, fileName);
         // Not all files will be downloaded without a delay between downloads
         await new Promise((r) => setTimeout(r, 200));
@@ -131,27 +132,23 @@ export async function downloadImageDebug(filename_base, type = "Combined") {
   }
 }
 
-
 export function getExcludedText() {
-
-  for (let i=0; i<=globalThis.ocrAll.active.length; i++){
+  for (let i = 0; i <= globalThis.ocrAll.active.length; i++) {
     const textArr = getExcludedTextPage(globalThis.ocrAll.active[i], globalThis.layout[i]);
 
     if (textArr.length > 0) {
-      textArr.map((x) => console.log(x + " [Page " + String(i) + "]"));
+      textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));
     }
   }
-
 }
 
-// Get array of text that will be excluded from exports due to "exclude" layout boxes. 
-// This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point. 
+// Get array of text that will be excluded from exports due to "exclude" layout boxes.
+// This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point.
 
 /**
  * @param {ocrPage} pageA
  */
 export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
-
   const excludedArr = [];
 
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return excludedArr;
@@ -165,24 +162,23 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
     const lineA = pageA.lines[i];
 
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
-      const overlap = calcOverlap(lineA.bbox, obj["coords"]);
+      const overlap = calcOverlap(lineA.bbox, obj.coords);
       if (overlap > 0.5) {
-        if (obj["type"] == "order") {
-          priorityArr[i] = obj["priority"];
-        } else if (obj["type"] == "exclude" && applyExclude) {
-          const words = lineA.words;
-          let text = "";
-          for (let i=0; i<words.length; i++) {
-            text += words[i].text + " ";
+        if (obj.type == 'order') {
+          priorityArr[i] = obj.priority;
+        } else if (obj.type == 'exclude' && applyExclude) {
+          const { words } = lineA;
+          let text = '';
+          for (let i = 0; i < words.length; i++) {
+            text += `${words[i].text} `;
           }
-          excludedArr.push(text)
+          excludedArr.push(text);
         }
-      } 
+      }
     }
   }
 
   return excludedArr;
-
 }
 
 // function subsetFont (font) {
@@ -209,7 +205,6 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 //     return fontOut;
 // }
 
-
 function lookupKerning(letterA, letterB) {
-  return fontMetricsObj.SerifDefault.normal.kerning[letterA.charCodeAt(0) + "," + letterB.charCodeAt(0)]
+  return fontMetricsObj.SerifDefault.normal.kerning[`${letterA.charCodeAt(0)},${letterB.charCodeAt(0)}`];
 }

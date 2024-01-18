@@ -5,13 +5,7 @@
 // TODO: This file contains many miscellaneous functions and would benefit from being refactored.
 // Additionally, various data stored as global variables
 
-globalThis.d = function () {
-  debugger;
-}
-
-import { evalOverlapDocument } from "./js/nudge.js";
-
-import { importOCR } from "./js/importOCR.js";
+import { importOCR } from './js/importOCR.js';
 
 import { renderText } from './js/exportRenderText.js';
 import { renderHOCRBrowser } from './js/exportRenderHOCRBrowser.js';
@@ -21,48 +15,50 @@ import { writeXlsx } from './js/exportWriteTabular.js';
 import { renderPage } from './js/renderPage.js';
 import coords from './js/coordinates.js';
 
-import { recognizePage } from "./js/recognize.js";
-import { recognizeAllPagesBrowser } from "./js/recognizeBrowser.js";
+import { recognizePage } from './js/recognize.js';
+import { recognizeAllPagesBrowser } from './js/recognizeBrowser.js';
 
-import { selectDefaultFontsDocument, setFontAllWorker } from "./js/fontEval.js";
+import { selectDefaultFontsDocument, setFontAllWorker } from './js/fontEval.js';
 
-import { convertOCRAll, convertPageCallback } from "./js/convertOCR.js";
+import { convertOCRAll, convertPageCallback } from './js/convertOCR.js';
 
-import { calcLineFontSize } from "./js/fontUtils.js"
+import { calcLineFontSize } from './js/fontUtils.js';
 
-import { pageMetrics } from "./js/objects/pageMetricsObjects.js";
+import { pageMetrics } from './js/objects/pageMetricsObjects.js';
 
-import { calculateOverallFontMetrics, setDefaultFontAuto } from "./js/fontStatistics.js";
-import { loadFontContainerAllRaw, optimizeFontContainerAll, fontContainerAll } from "./js/objects/fontObjects.js";
+import { calculateOverallFontMetrics, setDefaultFontAuto } from './js/fontStatistics.js';
+import { loadFontContainerAllRaw, optimizeFontContainerAll } from './js/objects/fontObjects.js';
 
-import { ITextWord } from "./js/objects/fabricObjects.js";
+import { ITextWord } from './js/objects/fabricObjects.js';
 
-import { getRandomAlphanum, quantile, sleep, readOcrFile, round3, occurrences, saveAs, loadImage } from "./js/miscUtils.js";
-import { getAllFileEntries } from "./js/drag-and-drop.js";
+import {
+  getRandomAlphanum, quantile, sleep, occurrences, saveAs, loadImage,
+} from './js/miscUtils.js';
+import { getAllFileEntries } from './js/drag-and-drop.js';
 
 // Functions for various UI tabs
-import { selectDisplayMode } from "./js/ui/interfaceView.js";
+import { selectDisplayMode } from './js/ui/interfaceView.js';
 
 import {
-  deleteSelectedWords, changeWordFontStyle, changeWordFontSize, changeWordFontFamily, toggleSuperSelectedWords,
-  adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, updateWordCanvas, toggleEditButtons
-} from "./js/ui/interfaceEdit.js";
+  deleteSelectedWords, changeWordFontSize, changeWordFontFamily,
+  adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, toggleEditButtons,
+} from './js/ui/interfaceEdit.js';
 
 import {
-  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick,setLayoutBoxInclusionLevelClick, 
-  updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords
-} from "./js/ui/interfaceLayout.js"
+  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
+  updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords,
+} from './js/ui/interfaceLayout.js';
 
-import { canvas, resetCanvasEventListeners, canvasDebug } from "./js/ui/interfaceCanvas.js";
+import { canvas, resetCanvasEventListeners, canvasDebug } from './js/ui/interfaceCanvas.js';
 
-import { initMuPDFWorker } from "./mupdf/mupdf-async.js";
+import { initMuPDFWorker } from './mupdf/mupdf-async.js';
 
-import { reorderHOCR, combineData } from "./js/modifyOCR.js";
+import { reorderHOCR, combineData } from './js/modifyOCR.js';
 
-import { hocrToPDF } from "./js/exportPDF.js";
+import { hocrToPDF } from './js/exportPDF.js';
 
 // Third party libraries
-import { simd } from "./lib/wasm-feature-detect.js";
+import { simd } from './lib/wasm-feature-detect.js';
 import Tesseract from './tess/tesseract.esm.min.js';
 
 // Debugging functions
@@ -70,11 +66,17 @@ import Tesseract from './tess/tesseract.esm.min.js';
 import { initGeneralWorker } from './js/generalWorkerMain.js';
 
 // Load default settings
-import { setDefaults } from "./js/setDefaults.js";
+import { setDefaults } from './js/setDefaults.js';
 
-import ocr from "./js/objects/ocrObjects.js";
+import ocr from './js/objects/ocrObjects.js';
 
-import { printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText } from "./js/debug.js";
+import {
+  printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText,
+} from './js/debug.js';
+
+globalThis.d = () => {
+  debugger;
+};
 
 const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
 const debugPrintWordsCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
@@ -85,27 +87,22 @@ const debugEvalLineElem = /** @type {HTMLInputElement} */(document.getElementByI
 debugPrintWordsOCRElem.addEventListener('click', () => printSelectedWords(true));
 debugPrintWordsCanvasElem.addEventListener('click', () => printSelectedWords(false));
 
-
 debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
 debugEvalLineElem.addEventListener('click', evalSelectedLine);
 
-
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
-var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-  return new bootstrap.Tooltip(tooltipTriggerEl);
-})
+const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
 globalThis.canvas = canvas;
 
 // Quick fix to get VSCode type errors to stop
 // Long-term should see if there is a way to get types to work with fabric.js
-const fabric = globalThis.fabric;
+const { fabric } = globalThis;
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
-var leftGlobal;
-
+let leftGlobal;
 
 // Edit canvas.js object defaults
 // Disable movement for all fabric objects
@@ -133,14 +130,13 @@ globalThis.inputDataModes = {
   // true if user re-uploaded HOCR data created by Scribe OCR
   resumeMode: false,
   // true if stext is extracted from a PDF (rather than text layer uploaded seprately)
-  extractTextMode: false
-}
+  extractTextMode: false,
+};
 
 // Object that keeps track of various global settings
 globalThis.globalSettings = {
-  defaultFont: "SerifDefault",
-}
-
+  defaultFont: 'SerifDefault',
+};
 
 /**
  * @typedef currentPage
@@ -156,39 +152,39 @@ globalThis.globalSettings = {
 globalThis.currentPage = {
   n: 0,
   backgroundImage: null,
-  backgroundOpts: {stroke: '#3d3d3d', strokeWidth: 3},
+  backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
   leftAdjX: 0,
   renderStatus: 0,
-  renderNum: 0
-}
+  renderNum: 0,
+};
 
-globalThis.zone = /** @type {HTMLInputElement} */ (document.getElementById("uploadDropZone"));
+const zone = /** @type {HTMLInputElement} */ (document.getElementById('uploadDropZone'));
 
 const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
-openFileInputElem.addEventListener('change',  (event) => {
+openFileInputElem.addEventListener('change', (event) => {
   if (event.target.files.length == 0) return;
 
   importFiles(event.target.files);
   // This should run after importFiles so if that function fails the dropzone is not removed
-  zone.setAttribute("style", "display:none");
+  zone.setAttribute('style', 'display:none');
 });
 
 let highlightActiveCt = 0;
 zone.addEventListener('dragover', (event) => {
   event.preventDefault();
-  console.log("Adding class");
-  globalThis.zone.classList.add('highlight');
+  console.log('Adding class');
+  zone.classList.add('highlight');
   highlightActiveCt++;
 });
 
 zone.addEventListener('dragleave', (event) => {
   event.preventDefault();
   // Only remove the highlight after 0.1 seconds, and only if it has not since been re-activated.
-  // This avoids flickering. 
+  // This avoids flickering.
   const highlightActiveCtNow = highlightActiveCt;
   setTimeout(() => {
     if (highlightActiveCtNow == highlightActiveCt) {
-      globalThis.zone.classList.remove('highlight');
+      zone.classList.remove('highlight');
     }
   }, 100);
 });
@@ -197,10 +193,10 @@ zone.addEventListener('dragleave', (event) => {
 zone.addEventListener('drop', async (event) => {
   // Prevent navigation.
   event.preventDefault();
-  let items = await getAllFileEntries(event.dataTransfer.items);
+  const items = await getAllFileEntries(event.dataTransfer.items);
 
   const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => x.file(resolve, reject))));
-  const files = filesPromises.map(x => x.value);
+  const files = filesPromises.map((x) => x.value);
 
   if (files.length == 0) return;
 
@@ -209,28 +205,27 @@ zone.addEventListener('drop', async (event) => {
   importFiles(files);
 
   // This should run after importFiles so if that function fails the dropzone is not removed
-  zone.setAttribute("style", "display:none");
-
+  zone.setAttribute('style', 'display:none');
 });
 
 /**
  * Fetches an array of URLs and runs `importFiles` on the results.
  * Intended only to be used by automated testing and not by users.
- * 
+ *
  * @param {Array<string>} urls
  */
 globalThis.fetchAndImportFiles = async (urls) => {
   // Ensure that the input is an array of strings
-  if (!Array.isArray(urls) || !urls.every(url => typeof url === 'string')) {
-    throw new Error("Input must be an array of strings");
+  if (!Array.isArray(urls) || !urls.every((url) => typeof url === 'string')) {
+    throw new Error('Input must be an array of strings');
   }
 
   // Fetch all URLs and convert the responses to Blobs
-  const blobPromises = urls.map(url => fetch(url).then(response => {
+  const blobPromises = urls.map((url) => fetch(url).then((response) => {
     if (!response.ok) {
       throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
     }
-    return response.blob().then(blob => ({ blob, url }));
+    return response.blob().then((blob) => ({ blob, url }));
   }));
 
   // Wait for all fetches to complete
@@ -245,18 +240,16 @@ globalThis.fetchAndImportFiles = async (urls) => {
   // Call the existing importFiles function with the file array
   importFiles(files);
 
-  zone.setAttribute("style", "display:none");
-
-}
-
+  zone.setAttribute('style', 'display:none');
+};
 
 /**
- * 
+ *
  * @param {string} innerHTML - HTML content of warning/error message.
  * @param {boolean} error - Whether this is an error message (red) or warning message (yellow)
  * @param {string} parentElemId - ID of element to insert new message element within
  */
-export function insertAlertMessage(innerHTML, error = true, parentElemId = "alertDiv", visible = true) {
+export function insertAlertMessage(innerHTML, error = true, parentElemId = 'alertDiv', visible = true) {
   const warningSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi flex-shrink-0 me-2" viewBox=" 0 0 16 16">
   <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
   <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
@@ -270,15 +263,15 @@ export function insertAlertMessage(innerHTML, error = true, parentElemId = "aler
 
   const chosenSVG = error ? errorSVG : warningSVG;
 
-  const htmlDiv = document.createElement("div");
-  const id = "alertDiv" + getRandomAlphanum(5);
-  htmlDiv.setAttribute("id", id);
+  const htmlDiv = document.createElement('div');
+  const id = `alertDiv${getRandomAlphanum(5)}`;
+  htmlDiv.setAttribute('id', id);
 
   if (!visible) {
-    htmlDiv.setAttribute("style", "display:none");
+    htmlDiv.setAttribute('style', 'display:none');
   }
 
-  htmlDiv.innerHTML = `<div class="alert alert-dismissible ${error ? "alert-danger" : "alert-warning"} d-flex align-items-center show fade mb-1">
+  htmlDiv.innerHTML = `<div class="alert alert-dismissible ${error ? 'alert-danger' : 'alert-warning'} d-flex align-items-center show fade mb-1">
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   ${chosenSVG}
   <div class="mb-0"> ${innerHTML} </div>
@@ -287,33 +280,29 @@ export function insertAlertMessage(innerHTML, error = true, parentElemId = "aler
   document.getElementById(parentElemId)?.appendChild(htmlDiv);
 
   return htmlDiv;
-
 }
-
 
 // Content that should be run once, after all dependencies are done loading are done loading
 globalThis.runOnLoad = function () {
-
   const debugEngineVersionElem = /** @type {HTMLInputElement} */(document.getElementById('debugEngineVersion'));
 
   // Detect whether SIMD instructions are supported
-  simd().then(async function (x) {
+  simd().then(async (x) => {
     globalSettings.simdSupport = x;
     // Show error message if SIMD support is not present
     if (x) {
-      debugEngineVersionElem.innerText = "Enabled";
+      debugEngineVersionElem.innerText = 'Enabled';
     } else {
-      const warningHTML = `Fast (SIMD-enabled) version of Tesseract not supported on your device. Tesseract LSTM recognition may be slow. <a href="http://docs.scribeocr.com/faq.html#what-devices-support-the-built-in-ocr-engine" target="_blank" class="alert-link">Learn more.</a>`;
+      const warningHTML = 'Fast (SIMD-enabled) version of Tesseract not supported on your device. Tesseract LSTM recognition may be slow. <a href="http://docs.scribeocr.com/faq.html#what-devices-support-the-built-in-ocr-engine" target="_blank" class="alert-link">Learn more.</a>';
       insertAlertMessage(warningHTML, false);
-      debugEngineVersionElem.innerText = "Disabled";
+      debugEngineVersionElem.innerText = 'Disabled';
     }
   });
+};
 
-}
+const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'));
 
-const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'))
-
-globalThis.bsCollapse = new bootstrap.Collapse(document.getElementById("collapseRange"), { toggle: false });
+globalThis.bsCollapse = new bootstrap.Collapse(document.getElementById('collapseRange'), { toggle: false });
 
 // Add various event listners to HTML elements
 const nextElem = /** @type {HTMLInputElement} */(document.getElementById('next'));
@@ -325,7 +314,7 @@ prevElem.addEventListener('click', () => displayPage(currentPage.n - 1));
 // const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
-colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false) });
+colorModeElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false); });
 
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 createGroundTruthElem.addEventListener('click', createGroundTruthClick);
@@ -334,39 +323,37 @@ const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('
 
 const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
 
-
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 
 const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
 
 /**
  * Adds or removes CSS attribute `display:none` for HTML element.
- * @param {HTMLElement} elem 
- * @param {boolean} show 
+ * @param {HTMLElement} elem
+ * @param {boolean} show
  */
 export const showHideElem = (elem, show = true) => {
-  const styleCurrent = elem?.getAttribute("style");
-  let styleNew = styleCurrent?.replace(/;?display\s*:\s*\w+;?/, '') || "";
-  if (!show) styleNew = styleNew + ";display:none;";
+  const styleCurrent = elem?.getAttribute('style');
+  let styleNew = styleCurrent?.replace(/;?display\s*:\s*\w+;?/, '') || '';
+  if (!show) styleNew += ';display:none;';
 
-  elem?.setAttribute("style", styleNew);
-}
+  elem?.setAttribute('style', styleNew);
+};
 
-enableEvalElem.addEventListener('click', () => showHideElem(document.getElementById("nav-eval-tab"), enableEvalElem.checked));
+enableEvalElem.addEventListener('click', () => showHideElem(document.getElementById('nav-eval-tab'), enableEvalElem.checked));
 
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
 enableAdvancedRecognitionElem.addEventListener('click', () => {
-  showHideElem(document.getElementById("advancedRecognitionOptions"), enableAdvancedRecognitionElem.checked);
-  showHideElem(document.getElementById("basicRecognitionOptions"), !enableAdvancedRecognitionElem.checked);
+  showHideElem(document.getElementById('advancedRecognitionOptions'), enableAdvancedRecognitionElem.checked);
+  showHideElem(document.getElementById('basicRecognitionOptions'), !enableAdvancedRecognitionElem.checked);
 });
 
-export const enableRecognitionClick = () => showHideElem(document.getElementById("nav-recognize-tab"), enableRecognitionElem.checked);
+export const enableRecognitionClick = () => showHideElem(document.getElementById('nav-recognize-tab'), enableRecognitionElem.checked);
 
 enableRecognitionElem.addEventListener('click', enableRecognitionClick);
 
-enableLayoutElem.addEventListener('click', () => showHideElem(document.getElementById("nav-layout-tab"), enableLayoutElem.checked));
-
+enableLayoutElem.addEventListener('click', () => showHideElem(document.getElementById('nav-layout-tab'), enableLayoutElem.checked));
 
 const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
@@ -374,21 +361,19 @@ export const enableXlsxExportClick = () => {
   // Adding layouts is required for xlsx exports
   if (!enableLayoutElem.checked) enableLayoutElem.click();
 
-  showHideElem(document.getElementById("nav-recognize-tab"), enableXlsxExportElem.checked);
+  showHideElem(document.getElementById('nav-recognize-tab'), enableXlsxExportElem.checked);
 
   updateDataPreview();
 };
 
 enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
 
-
 const enableEnginesElem = /** @type {HTMLInputElement} */(document.getElementById('enableExtraEngines'));
 
-enableEnginesElem.addEventListener('click', () => showHideElem(document.getElementById("engineCol"), enableEnginesElem.checked));
+enableEnginesElem.addEventListener('click', () => showHideElem(document.getElementById('engineCol'), enableEnginesElem.checked));
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
-
 
 const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
@@ -399,26 +384,25 @@ uploadOCRButtonElem.addEventListener('click', importOCRFilesSupp);
 const uploadOCRLabelElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRLabel'));
 const uploadOCRDataElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRData'));
 
-uploadOCRDataElem.addEventListener('show.bs.collapse', function () {
+uploadOCRDataElem.addEventListener('show.bs.collapse', () => {
   if (!uploadOCRNameElem.value) {
-    uploadOCRNameElem.value = "OCR Data " + (displayLabelOptionsElem.childElementCount + 1);
+    uploadOCRNameElem.value = `OCR Data ${displayLabelOptionsElem.childElementCount + 1}`;
   }
-})
+});
 
-
-document.getElementById('fontMinus')?.addEventListener('click', () => { changeWordFontSize('minus') });
-document.getElementById('fontPlus')?.addEventListener('click', () => { changeWordFontSize('plus') });
+document.getElementById('fontMinus')?.addEventListener('click', () => { changeWordFontSize('minus'); });
+document.getElementById('fontPlus')?.addEventListener('click', () => { changeWordFontSize('plus'); });
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
-fontSizeElem.addEventListener('change', (event) => { changeWordFontSize(fontSizeElem.value) });
+fontSizeElem.addEventListener('change', (event) => { changeWordFontSize(fontSizeElem.value); });
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
-wordFontElem.addEventListener('change', (event) => { changeWordFontFamily(wordFontElem.value) });
+wordFontElem.addEventListener('change', (event) => { changeWordFontFamily(wordFontElem.value); });
 
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 document.getElementById('editBaseline')?.addEventListener('click', adjustBaseline);
 
 const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
-rangeBaselineElem.addEventListener('input', (event) => { adjustBaselineRange(rangeBaselineElem.value) });
-rangeBaselineElem.addEventListener('mouseup', (event) => { adjustBaselineRangeChange(rangeBaselineElem.value) });
+rangeBaselineElem.addEventListener('input', (event) => { adjustBaselineRange(rangeBaselineElem.value); });
+rangeBaselineElem.addEventListener('mouseup', (event) => { adjustBaselineRangeChange(rangeBaselineElem.value); });
 
 document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedWords);
 
@@ -426,55 +410,51 @@ document.getElementById('addWord')?.addEventListener('click', addWordClick);
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
-optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked) });
+optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked); });
 
 const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
 const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-confThreshHighElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false) });
-confThreshMedElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false) });
-
+confThreshHighElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false); });
+confThreshMedElem.addEventListener('change', () => { renderPageQueue(currentPage.n, false); });
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 // const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
 // const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
-autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
+autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false); });
 // autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
 // showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
-document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(currentPage.n, false) });
+document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(currentPage.n, false); });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
-displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className != "dropdown-item") return; setCurrentHOCR(e.target.innerHTML) });
-
-
+displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className != 'dropdown-item') return; setCurrentHOCR(e.target.innerHTML); });
 
 const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
 downloadElem.addEventListener('click', handleDownload);
 document.getElementById('pdfPagesLabel')?.addEventListener('click', updatePdfPagesLabel);
 
-document.getElementById('formatLabelOptionPDF')?.addEventListener('click', () => { setFormatLabel("pdf") });
-document.getElementById('formatLabelOptionHOCR')?.addEventListener('click', () => { setFormatLabel("hocr") });
-document.getElementById('formatLabelOptionText')?.addEventListener('click', () => { setFormatLabel("text") });
-document.getElementById('formatLabelOptionDocx')?.addEventListener('click', () => { setFormatLabel("docx") });
-document.getElementById('formatLabelOptionXlsx')?.addEventListener('click', () => { setFormatLabel("xlsx") });
+document.getElementById('formatLabelOptionPDF')?.addEventListener('click', () => { setFormatLabel('pdf'); });
+document.getElementById('formatLabelOptionHOCR')?.addEventListener('click', () => { setFormatLabel('hocr'); });
+document.getElementById('formatLabelOptionText')?.addEventListener('click', () => { setFormatLabel('text'); });
+document.getElementById('formatLabelOptionDocx')?.addEventListener('click', () => { setFormatLabel('docx'); });
+document.getElementById('formatLabelOptionXlsx')?.addEventListener('click', () => { setFormatLabel('xlsx'); });
 
-document.getElementById('oemLabelOptionLstm')?.addEventListener('click', () => { setOemLabel("lstm") });
-document.getElementById('oemLabelOptionLegacy')?.addEventListener('click', () => { setOemLabel("legacy") });
-document.getElementById('oemLabelOptionCombined')?.addEventListener('click', () => { setOemLabel("combined") });
+document.getElementById('oemLabelOptionLstm')?.addEventListener('click', () => { setOemLabel('lstm'); });
+document.getElementById('oemLabelOptionLegacy')?.addEventListener('click', () => { setOemLabel('legacy'); });
+document.getElementById('oemLabelOptionCombined')?.addEventListener('click', () => { setOemLabel('combined'); });
 
+document.getElementById('psmLabelOption3')?.addEventListener('click', () => { setPsmLabel('3'); });
+document.getElementById('psmLabelOption4')?.addEventListener('click', () => { setPsmLabel('4'); });
 
-document.getElementById('psmLabelOption3')?.addEventListener('click', () => { setPsmLabel("3") });
-document.getElementById('psmLabelOption4')?.addEventListener('click', () => { setPsmLabel("4") });
-
-document.getElementById('buildLabelOptionDefault')?.addEventListener('click', () => { setBuildLabel("default") });
-document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', () => { setBuildLabel("vanilla") });
+document.getElementById('buildLabelOptionDefault')?.addEventListener('click', () => { setBuildLabel('default'); });
+document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', () => { setBuildLabel('vanilla'); });
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
   if (!showConflictsElem.checked) {
-    document.getElementById("debugCanvasParentDiv")?.setAttribute("style", "display:none");
+    document.getElementById('debugCanvasParentDiv')?.setAttribute('style', 'display:none');
   } else {
-    if (globalThis?.debugImg?.Combined?.[currentPage.n]) showDebugImages(globalThis.debugImg.Combined[currentPage.n]);
+    showDebugImages();
   }
   setCanvasWidthHeightZoom(globalThis.state.imgDims, false);
 });
@@ -495,9 +475,9 @@ const addLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.get
 const addLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeDataColumn'));
 
 addLayoutBoxElem.addEventListener('click', () => addLayoutBoxClick());
-addLayoutBoxTypeOrderElem.addEventListener('click', () => addLayoutBoxClick("order"));
-addLayoutBoxTypeExcludeElem.addEventListener('click', () => addLayoutBoxClick("exclude"));
-addLayoutBoxTypeDataColumnElem.addEventListener('click', () => addLayoutBoxClick("dataColumn"));
+addLayoutBoxTypeOrderElem.addEventListener('click', () => addLayoutBoxClick('order'));
+addLayoutBoxTypeExcludeElem.addEventListener('click', () => addLayoutBoxClick('exclude'));
+addLayoutBoxTypeDataColumnElem.addEventListener('click', () => addLayoutBoxClick('dataColumn'));
 
 const deleteLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('deleteLayoutBox'));
 deleteLayoutBoxElem.addEventListener('click', () => deleteLayoutBoxClick());
@@ -512,51 +492,46 @@ const setLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getEl
 const setLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeExclude'));
 const setLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeDataColumn'));
 
-setLayoutBoxTypeOrderElem.addEventListener('click', () => setLayoutBoxTypeClick("order"));
-setLayoutBoxTypeExcludeElem.addEventListener('click', () => setLayoutBoxTypeClick("exclude"));
-setLayoutBoxTypeDataColumnElem.addEventListener('click', () => setLayoutBoxTypeClick("dataColumn"));
+setLayoutBoxTypeOrderElem.addEventListener('click', () => setLayoutBoxTypeClick('order'));
+setLayoutBoxTypeExcludeElem.addEventListener('click', () => setLayoutBoxTypeClick('exclude'));
+setLayoutBoxTypeDataColumnElem.addEventListener('click', () => setLayoutBoxTypeClick('dataColumn'));
 
 const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
 const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
-setLayoutBoxInclusionRuleMajorityElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick("majority"));
-setLayoutBoxInclusionRuleLeftElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick("left"));
+setLayoutBoxInclusionRuleMajorityElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick('majority'));
+setLayoutBoxInclusionRuleLeftElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick('left'));
 
 const setLayoutBoxInclusionLevelWordElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelWord'));
 const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
-setLayoutBoxInclusionLevelWordElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick("word"));
-setLayoutBoxInclusionLevelLineElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick("line"));
-
+setLayoutBoxInclusionLevelWordElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick('word'));
+setLayoutBoxInclusionLevelLineElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick('line'));
 
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
-setLayoutBoxTableElem.addEventListener('change', (event) => { setLayoutBoxTable(setLayoutBoxTableElem.value) });
-
+setLayoutBoxTableElem.addEventListener('change', (event) => { setLayoutBoxTable(setLayoutBoxTableElem.value); });
 
 const showExcludedTextElem = /** @type {HTMLInputElement} */(document.getElementById('showExcludedText'));
 showExcludedTextElem.addEventListener('click', () => getExcludedText());
 
+const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
+ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true); });
 
+const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
+ignoreCapElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true); });
 
-const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById("ignorePunct"));
-ignorePunctElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true) });
-
-const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreCap"));
-ignoreCapElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true) });
-
-const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById("ignoreExtra"));
-ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true) });
-
+const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreExtra'));
+ignoreExtraElem.addEventListener('change', () => { renderPageQueue(currentPage.n, true); });
 
 const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
 
 const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
-pdfPageMinElem.addEventListener('keyup', function (event) {
+pdfPageMinElem.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
     updatePdfPagesLabel();
   }
 });
 
 const pdfPageMaxElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
-pdfPageMaxElem.addEventListener('keyup', function (event) {
+pdfPageMaxElem.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
     updatePdfPagesLabel();
   }
@@ -565,7 +540,7 @@ pdfPageMaxElem.addEventListener('keyup', function (event) {
 const pageCountElem = /** @type {HTMLInputElement} */(document.getElementById('pageCount'));
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 
-pageNumElem.addEventListener('keyup', function (event) {
+pageNumElem.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
     displayPage(parseInt(pageNumElem.value) - 1);
   }
@@ -597,14 +572,12 @@ docxReflowCheckboxElem.addEventListener('click', (event) => {
   }
 });
 
-
 const matchCountElem = /** @type {HTMLInputElement} */(document.getElementById('matchCount'));
 const matchCurrentElem = /** @type {HTMLInputElement} */(document.getElementById('matchCurrent'));
 const prevMatchElem = /** @type {HTMLInputElement} */(document.getElementById('prevMatch'));
 const nextMatchElem = /** @type {HTMLInputElement} */(document.getElementById('nextMatch'));
 prevMatchElem.addEventListener('click', () => prevMatchClick());
 nextMatchElem.addEventListener('click', () => nextMatchClick());
-
 
 function prevMatchClick() {
   if (currentPage.n == 0) return;
@@ -617,10 +590,8 @@ function nextMatchClick() {
   if (nextPageOffset > -1) displayPage(currentPage.n + nextPageOffset + 1);
 }
 
-
-
 const editFindElem = /** @type {HTMLInputElement} */(document.getElementById('editFind'));
-editFindElem.addEventListener('keyup', function (event) {
+editFindElem.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
     const val = editFindElem.value.trim();
     findTextClick(val);
@@ -633,13 +604,12 @@ function findTextClick(text) {
   highlightCurrentPage(text);
   if (find.search) {
     // TODO: If extractTextAll takes any non-trivial amount of time to run,
-    // this should use a promise so it cannot be run twice if the user presses enter twice.  
+    // this should use a promise so it cannot be run twice if the user presses enter twice.
     if (!find.init) {
       extractTextAll();
       find.init = true;
     }
     findAllMatches(find.search);
-    
   } else {
     find.matches = [];
     find.total = 0;
@@ -649,22 +619,21 @@ function findTextClick(text) {
   matchCountElem.textContent = String(find.total);
 }
 
-
 const fontPrivate = loadFontContainerAllRaw();
 
 export const fontAll = {
   raw: fontPrivate,
-  /**@type {?fontContainerAll}*/
+  /** @type {?fontContainerAll} */
   opt: null,
-  active: fontPrivate
-}
+  active: fontPrivate,
+};
 
 /**
- * 
- * @param {boolean} enable 
+ *
+ * @param {boolean} enable
  */
 async function enableDisableFontOpt(enable) {
-  const browserMode = typeof process === "undefined";
+  const browserMode = typeof process === 'undefined';
 
   // Create optimized font if this has not been done yet
   if (enable && !fontAll.opt) {
@@ -682,9 +651,6 @@ async function enableDisableFontOpt(enable) {
   if (browserMode) await setFontAllWorker(globalThis.generalScheduler, fontAll);
 }
 
-
-
-
 /**
  * @typedef find
  * @type {object}
@@ -698,42 +664,41 @@ async function enableDisableFontOpt(enable) {
 /** @type {find} */
 globalThis.find = {
   text: [],
-  search: "",
+  search: '',
   matches: [],
   init: false,
-  total: 0
-}
+  total: 0,
+};
 
 // Highlight words that include substring in the current page
 function highlightCurrentPage(text) {
   const selectedObjects = window.canvas.getObjects();
   const selectedN = selectedObjects.length;
-  for(let i=0; i<selectedN; i++){
+  for (let i = 0; i < selectedN; i++) {
     // Using the presence of a wordID property to indicate this object represents an OCR word
     if (selectedObjects[i]?.wordID) {
-      const textI = selectedObjects[i]["text"];
+      const textI = selectedObjects[i].text;
       if (text.trim() && textI.toLowerCase().includes(text.toLowerCase())) {
         selectedObjects[i].textBackgroundColor = '#4278f550';
         selectedObjects[i].dirty = true;
       } else if (selectedObjects[i].textBackgroundColor) {
-        selectedObjects[i].textBackgroundColor = "";
+        selectedObjects[i].textBackgroundColor = '';
         selectedObjects[i].dirty = true;
       }
     }
   }
 
   canvas.renderAll();
-
 }
 
 function findAllMatches(text) {
   let total = 0;
   const matches = [];
   const maxValue = globalThis.imageAll.nativeSrc.length;
-  for (let i=0; i<maxValue; i++) {
+  for (let i = 0; i < maxValue; i++) {
     const n = occurrences(globalThis.find.text[i], text);
     matches[i] = n;
-    total = total + n;
+    total += n;
   }
   globalThis.find.matches = matches;
   globalThis.find.total = total;
@@ -742,9 +707,8 @@ function findAllMatches(text) {
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
-
   if (!globalThis.ocrAll.active[currentPage.n]) {
-    find.text[currentPage.n] = "";
+    find.text[currentPage.n] = '';
     return;
   }
 
@@ -759,135 +723,118 @@ function updateFindStats() {
 
     matchCurrentElem.textContent = calcMatchNumber(currentPage.n);
     matchCountElem.textContent = String(find.total);
-  
   }
-
 }
 
 // Extract text from XML for every page
 // We do this once (and then perform incremental updates) to avoid having to parse XML
-// with every search. 
+// with every search.
 function extractTextAll() {
+  const maxValue = globalThis.ocrAll.active.length;
 
-    const maxValue = globalThis.ocrAll.active.length;
-  
-    for (let g = 0; g < maxValue; g++) {
-      find.text[g] = ocr.getPageText(globalThis.ocrAll.active[g]);
-    }
-  
+  for (let g = 0; g < maxValue; g++) {
+    find.text[g] = ocr.getPageText(globalThis.ocrAll.active[g]);
+  }
 }
 
-// Returns string showing index of match(es) found on current page. 
+// Returns string showing index of match(es) found on current page.
 function calcMatchNumber(n) {
   const matchN = find?.matches?.[n];
   if (!matchN) {
-    return "-";
+    return '-';
   }
   // Sum of matches on all previous pages
-  const matchPrev = find.matches.slice(0,n).reduce((a, b) => a + b, 0)
+  const matchPrev = find.matches.slice(0, n).reduce((a, b) => a + b, 0);
 
   if (matchN == 1) {
     return String(matchPrev + 1);
-  } else {
-    return String(matchPrev + 1) + "-" + String(matchPrev + 1 + (matchN - 1));
   }
-
+  return `${String(matchPrev + 1)}-${String(matchPrev + 1 + (matchN - 1))}`;
 }
 
-
-
 function updatePdfPagesLabel() {
-
   let minValue = parseInt(pdfPageMinElem.value) || null;
   let maxValue = parseInt(pdfPageMaxElem.value) || null;
-  let pageCount = globalThis.imageAll.nativeSrc?.length;
+  const pageCount = globalThis.imageAll.nativeSrc?.length;
 
   minValue = Math.max(minValue, 1);
   maxValue = Math.min(maxValue, pageCount);
 
   let pagesStr;
   if (minValue > 0 && maxValue > 0 && (minValue > 1 || maxValue < pageCount)) {
-    pagesStr = " Pages: " + minValue + "–" + maxValue;
+    pagesStr = ` Pages: ${minValue}–${maxValue}`;
   } else {
-    pagesStr = " Pages: All";
+    pagesStr = ' Pages: All';
     minValue = 1;
     maxValue = pageCount;
   }
 
-  pdfPageMinElem.value = minValue ? minValue.toString() : "1";
-  pdfPageMaxElem.value = maxValue ? maxValue.toString() : "";
+  pdfPageMinElem.value = minValue ? minValue.toString() : '1';
+  pdfPageMaxElem.value = maxValue ? maxValue.toString() : '';
   document.getElementById('pdfPagesLabelText').innerText = pagesStr;
-
 }
 
-const formatLabelSVGElem = /** @type {HTMLElement} */(document.getElementById("formatLabelSVG"));
-const formatLabelTextElem = /** @type {HTMLElement} */(document.getElementById("formatLabelText"));
-const textOptionsElem = /** @type {HTMLElement} */(document.getElementById("textOptions"));
-const pdfOptionsElem = /** @type {HTMLElement} */(document.getElementById("pdfOptions"));
-const docxOptionsElem = /** @type {HTMLElement} */(document.getElementById("docxOptions"));
-const xlsxOptionsElem = /** @type {HTMLElement} */(document.getElementById("xlsxOptions"));
+const formatLabelSVGElem = /** @type {HTMLElement} */(document.getElementById('formatLabelSVG'));
+const formatLabelTextElem = /** @type {HTMLElement} */(document.getElementById('formatLabelText'));
+const textOptionsElem = /** @type {HTMLElement} */(document.getElementById('textOptions'));
+const pdfOptionsElem = /** @type {HTMLElement} */(document.getElementById('pdfOptions'));
+const docxOptionsElem = /** @type {HTMLElement} */(document.getElementById('docxOptions'));
+const xlsxOptionsElem = /** @type {HTMLElement} */(document.getElementById('xlsxOptions'));
 
 export function setFormatLabel(x) {
-  if (x.toLowerCase() == "pdf") {
+  if (x.toLowerCase() === 'pdf') {
+    textOptionsElem.setAttribute('style', 'display:none');
+    pdfOptionsElem.setAttribute('style', '');
+    docxOptionsElem.setAttribute('style', 'display:none');
+    xlsxOptionsElem.setAttribute('style', 'display:none');
 
-    textOptionsElem.setAttribute("style", "display:none");
-    pdfOptionsElem.setAttribute("style", "");
-    docxOptionsElem.setAttribute("style", "display:none");
-    xlsxOptionsElem.setAttribute("style", "display:none");
-    
     formatLabelSVGElem.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
-  <path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.266.266 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.71 12.71 0 0 1 1.01-.193 11.744 11.744 0 0 1-.51-.858 20.801 20.801 0 0 1-.5 1.05zm2.446.45c.15.163.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.876 3.876 0 0 0-.612-.053zM8.078 7.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>`
+  <path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.266.266 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.71 12.71 0 0 1 1.01-.193 11.744 11.744 0 0 1-.51-.858 20.801 20.801 0 0 1-.5 1.05zm2.446.45c.15.163.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.876 3.876 0 0 0-.612-.053zM8.078 7.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>`;
 
-  formatLabelTextElem.innerHTML = "PDF";
-    downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
-  } else if (x.toLowerCase() == "hocr") {
-    textOptionsElem.setAttribute("style", "display:none");
-    pdfOptionsElem.setAttribute("style", "display:none");
-    docxOptionsElem.setAttribute("style", "display:none");
-    xlsxOptionsElem.setAttribute("style", "display:none");
+    formatLabelTextElem.innerHTML = 'PDF';
+    downloadFileNameElem.value = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.pdf`;
+  } else if (x.toLowerCase() === 'hocr') {
+    textOptionsElem.setAttribute('style', 'display:none');
+    pdfOptionsElem.setAttribute('style', 'display:none');
+    docxOptionsElem.setAttribute('style', 'display:none');
+    xlsxOptionsElem.setAttribute('style', 'display:none');
 
-    formatLabelSVGElem.innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`
+    formatLabelSVGElem.innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`;
 
-    formatLabelTextElem.innerHTML = "HOCR";
-    downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".hocr";
-  } else if (x.toLowerCase() == "text") {
-
-    textOptionsElem.setAttribute("style", "");
-    pdfOptionsElem.setAttribute("style", "display:none");
-    docxOptionsElem.setAttribute("style", "display:none");
-    xlsxOptionsElem.setAttribute("style", "display:none");
+    formatLabelTextElem.innerHTML = 'HOCR';
+    downloadFileNameElem.value = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.hocr`;
+  } else if (x.toLowerCase() === 'text') {
+    textOptionsElem.setAttribute('style', '');
+    pdfOptionsElem.setAttribute('style', 'display:none');
+    docxOptionsElem.setAttribute('style', 'display:none');
+    xlsxOptionsElem.setAttribute('style', 'display:none');
 
     formatLabelSVGElem.innerHTML = String.raw`  <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
-  <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>`
+  <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>`;
 
-    formatLabelTextElem.innerHTML = "Text";
-    downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
-
-  } else if (x.toLowerCase() == "docx") {
-
-    textOptionsElem.setAttribute("style", "display:none");
-    pdfOptionsElem.setAttribute("style", "display:none");
-    docxOptionsElem.setAttribute("style", "");
-    xlsxOptionsElem.setAttribute("style", "display:none");
+    formatLabelTextElem.innerHTML = 'Text';
+    downloadFileNameElem.value = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.txt`;
+  } else if (x.toLowerCase() === 'docx') {
+    textOptionsElem.setAttribute('style', 'display:none');
+    pdfOptionsElem.setAttribute('style', 'display:none');
+    docxOptionsElem.setAttribute('style', '');
+    xlsxOptionsElem.setAttribute('style', 'display:none');
 
     formatLabelSVGElem.innerHTML = String.raw`  <path d="M5.485 6.879a.5.5 0 1 0-.97.242l1.5 6a.5.5 0 0 0 .967.01L8 9.402l1.018 3.73a.5.5 0 0 0 .967-.01l1.5-6a.5.5 0 0 0-.97-.242l-1.036 4.144-.997-3.655a.5.5 0 0 0-.964 0l-.997 3.655L5.485 6.88z"/>
-    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>`
-  
-    formatLabelTextElem.innerHTML = "Docx";
-    downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".docx";
+    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>`;
 
-  } else if (x.toLowerCase() == "xlsx") {
+    formatLabelTextElem.innerHTML = 'Docx';
+    downloadFileNameElem.value = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.docx`;
+  } else if (x.toLowerCase() === 'xlsx') {
+    textOptionsElem.setAttribute('style', 'display:none');
+    pdfOptionsElem.setAttribute('style', 'display:none');
+    docxOptionsElem.setAttribute('style', 'display:none');
+    xlsxOptionsElem.setAttribute('style', '');
 
-    textOptionsElem.setAttribute("style", "display:none");
-    pdfOptionsElem.setAttribute("style", "display:none");
-    docxOptionsElem.setAttribute("style", "display:none");
-    xlsxOptionsElem.setAttribute("style", "");
+    formatLabelSVGElem.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`;
 
-    formatLabelSVGElem.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`
-
-    formatLabelTextElem.innerHTML = "Xlsx";
-    downloadFileNameElem.value = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".xlsx";
-
+    formatLabelTextElem.innerHTML = 'Xlsx';
+    downloadFileNameElem.value = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.xlsx`;
   }
   enableDisableDownloadPDFAlert();
 }
@@ -897,47 +844,45 @@ const xlsxPageNumberColumnElem = /** @type {HTMLInputElement} */(document.getEle
 xlsxFilenameColumnElem.addEventListener('click', updateDataPreview);
 xlsxPageNumberColumnElem.addEventListener('click', updateDataPreview);
 
-const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById("oemLabelText"));
+const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));
 
 function setOemLabel(x) {
-  if (x.toLowerCase() == "lstm") {
-    oemLabelTextElem.innerHTML = "LSTM";
-  } else if (x.toLowerCase() == "legacy") {
-    oemLabelTextElem.innerHTML = "Legacy";
-  } else if (x.toLowerCase() == "combined") {
-    oemLabelTextElem.innerHTML = "Combined";
+  if (x.toLowerCase() === 'lstm') {
+    oemLabelTextElem.innerHTML = 'LSTM';
+  } else if (x.toLowerCase() === 'legacy') {
+    oemLabelTextElem.innerHTML = 'Legacy';
+  } else if (x.toLowerCase() === 'combined') {
+    oemLabelTextElem.innerHTML = 'Combined';
   }
 }
 
-const psmLabelTextElem = /** @type {HTMLElement} */(document.getElementById("psmLabelText"));
+const psmLabelTextElem = /** @type {HTMLElement} */(document.getElementById('psmLabelText'));
 
 function setPsmLabel(x) {
-  if (x == "3") {
-    psmLabelTextElem.innerHTML = "Automatic";
-  } else if (x == "4") {
-    psmLabelTextElem.innerHTML = "Single Column";
-  } else if (x == "8") {
-    psmLabelTextElem.innerHTML = "Single Word";
+  if (x == '3') {
+    psmLabelTextElem.innerHTML = 'Automatic';
+  } else if (x == '4') {
+    psmLabelTextElem.innerHTML = 'Single Column';
+  } else if (x == '8') {
+    psmLabelTextElem.innerHTML = 'Single Word';
   }
 }
 
-const buildLabelTextElem = /** @type {HTMLElement} */(document.getElementById("buildLabelText"));
+const buildLabelTextElem = /** @type {HTMLElement} */(document.getElementById('buildLabelText'));
 
 function setBuildLabel(x) {
-  if (x.toLowerCase() == "default") {
-    buildLabelTextElem.innerHTML = "Default";
-  } else if (x.toLowerCase() == "vanilla") {
-    buildLabelTextElem.innerHTML = "Vanilla";
+  if (x.toLowerCase() === 'default') {
+    buildLabelTextElem.innerHTML = 'Default';
+  } else if (x.toLowerCase() === 'vanilla') {
+    buildLabelTextElem.innerHTML = 'Vanilla';
   }
 }
-
 
 /**
  * Initialize a new version of OCR data (Legacy, LSTM, etc.).
  * @param {string} label
  */
 export function initOCRVersion(label) {
-
   // Initialize a new array on `ocrAll` if one does not already exist
   if (!globalThis.ocrAll[label]) {
     globalThis.ocrAll[label] = Array(globalThis.pageCount);
@@ -948,13 +893,13 @@ export function initOCRVersion(label) {
   for (let i = 0; i < existingOptions.length; i++) {
     if (existingOptions[i].innerHTML == label) return;
   }
-  let option = document.createElement("a");
-  option.setAttribute("class", "dropdown-item");
+  const option = document.createElement('a');
+  option.setAttribute('class', 'dropdown-item');
   option.text = label;
   displayLabelOptionsElem.appendChild(option);
 }
 
-globalThis.ocrAll = {active: []};
+globalThis.ocrAll = { active: [] };
 export function setCurrentHOCR(x) {
   const currentLabel = displayLabelTextElem.innerHTML.trim();
   if (!x.trim() || x == currentLabel) return;
@@ -962,56 +907,52 @@ export function setCurrentHOCR(x) {
   globalThis.ocrAll.active = globalThis.ocrAll[x];
   displayLabelTextElem.innerHTML = x;
 
-  if (displayModeElem.value == "eval") {
+  if (displayModeElem.value == 'eval') {
     renderPageQueue(currentPage.n, true);
   } else {
     renderPageQueue(currentPage.n, false);
   }
-
 }
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
-document.getElementById('navBar')?.addEventListener('click', function (e) {
+document.getElementById('navBar')?.addEventListener('click', (e) => {
   newWordInit = true;
   resetCanvasEventListeners();
   globalThis.touchScrollMode = true;
-}, true)
-
+}, true);
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
-document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', function (e) {
-  if (!e?.target || e.target.id != "nav-recognize") return;
-  hideProgress("import-eval-progress-collapse");
-  hideProgress("recognize-recognize-progress-collapse");
-})
+document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', (e) => {
+  if (!e?.target || e.target.id != 'nav-recognize') return;
+  hideProgress('import-eval-progress-collapse');
+  hideProgress('recognize-recognize-progress-collapse');
+});
 
-document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', function (e) {
-  if (e.target.id != "nav-download") return;
-  hideProgress("generate-download-progress-collapse");
-})
+document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', (e) => {
+  if (e.target.id != 'nav-download') return;
+  hideProgress('generate-download-progress-collapse');
+});
 
 // Once per session, if the user opens the "Download" tab and proofreading mode is still enabled,
-// the user will be prompted to change display modes before downloading. 
+// the user will be prompted to change display modes before downloading.
 // This is because, while printing OCR text visibly is an intended feature (it was the original purpose of this application),
-// a user trying to add text to an image-based PDF may be surprised by this behavior. 
-const pdfAlertElem = insertAlertMessage("To generate a PDF with invisible OCR text, select View > Display Mode > OCR Mode before downloading.", false, "alertDownloadDiv", false);;
+// a user trying to add text to an image-based PDF may be surprised by this behavior.
+const pdfAlertElem = insertAlertMessage('To generate a PDF with invisible OCR text, select View > Display Mode > OCR Mode before downloading.', false, 'alertDownloadDiv', false);
 export const enableDisableDownloadPDFAlert = () => {
-
-  // Alert is enabled if (1) 
-  const enable = displayModeElem.value == "proof" && formatLabelTextElem.textContent == "PDF";
+  // Alert is enabled if (1)
+  const enable = displayModeElem.value == 'proof' && formatLabelTextElem.textContent == 'PDF';
 
   if (enable) {
-    pdfAlertElem.setAttribute("style", "");
+    pdfAlertElem.setAttribute('style', '');
   } else {
-    pdfAlertElem.setAttribute("style", "display:none");
+    pdfAlertElem.setAttribute('style', 'display:none');
   }
-}
+};
 
-
-document.getElementById("nav-layout")?.addEventListener('show.bs.collapse', (e) => {
-  if (e.target.id != "nav-layout") return;
+document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) => {
+  if (e.target.id != 'nav-layout') return;
   globalThis.layoutMode = true;
 
   if (!globalThis.layout[currentPage.n]) return;
@@ -1019,84 +960,85 @@ document.getElementById("nav-layout")?.addEventListener('show.bs.collapse', (e) 
 
   toggleSelectableWords(false);
 
-  renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n]["boxes"]));
-  
+  renderLayoutBoxes(Object.keys(globalThis.layout[currentPage.n].boxes));
 });
 
-document.getElementById("nav-layout")?.addEventListener('hide.bs.collapse', (e) => {
-  if (e.target.id != "nav-layout") return;
+document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) => {
+  if (e.target.id != 'nav-layout') return;
   globalThis.layoutMode = false;
   toggleSelectableWords(true);
   clearLayoutBoxes();
 });
 
 /**
- * 
+ *
  * @param {string} id - HTML element ID
- * @param {number} maxValue 
- * @param {number} initValue 
+ * @param {number} maxValue
+ * @param {number} initValue
  * @param {boolean} alwaysUpdateUI - Always update the UI every time the value increments.
  *    If this is default, the bar is only visually updated for the every 5 values (plus the first and last).
  *    This avoids stutters when the value is incremented quickly, so should be enabled when loading is expected to be quick.
  * @param {boolean} autoHide - Automatically hide loading bar when it reaches 100%
- * @returns 
+ * @returns
  */
 function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false, autoHide = false) {
   const progressCollapse = document.getElementById(id);
 
   const progressCollapseObj = new bootstrap.Collapse(progressCollapse, { toggle: false });
 
-  const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
+  const progressBar = progressCollapse.getElementsByClassName('progress-bar')[0];
 
   globalThis.loadCount = initValue;
-  progressBar.setAttribute("aria-valuenow", initValue.toString());
+  progressBar.setAttribute('aria-valuenow', initValue.toString());
   // Visually, progress starts at 1%.  If progress starts at 0%, certain automated tests failed as that counted as "hidden".
-  progressBar.setAttribute("style", "width: " + Math.max(initValue / maxValue * 100, 1) + "%");
-  progressBar.setAttribute("aria-valuemax", maxValue);
-  progressCollapseObj.show()
+  progressBar.setAttribute('style', `width: ${Math.max(initValue / maxValue * 100, 1)}%`);
+  progressBar.setAttribute('aria-valuemax', maxValue);
+  progressCollapseObj.show();
 
-  const progressObj = {"elem": progressBar, "value": initValue, "maxValue": maxValue, "increment": async function() {
-    this.value++;
-    if (this.value > this.maxValue) console.log("Progress bar value >100%.");
-    if (alwaysUpdateUI || (this.value) % 5 == 0 || this.value == this.maxValue) {
-      this.elem.setAttribute("aria-valuenow", this.value.toString());
-      this.elem.setAttribute("style", "width: " + Math.max(this.value / maxValue * 100, 1) + "%");
-      await sleep(0);
-    }
-    if (autoHide && this.value >= this.maxValue) {
+  const progressObj = {
+    elem: progressBar,
+    value: initValue,
+    maxValue,
+    async increment() {
+      this.value++;
+      if (this.value > this.maxValue) console.log('Progress bar value >100%.');
+      if (alwaysUpdateUI || (this.value) % 5 == 0 || this.value == this.maxValue) {
+        this.elem.setAttribute('aria-valuenow', this.value.toString());
+        this.elem.setAttribute('style', `width: ${Math.max(this.value / maxValue * 100, 1)}%`);
+        await sleep(0);
+      }
+      if (autoHide && this.value >= this.maxValue) {
       // Wait for a second to hide.
       // This is better visually, as the user has time to note that the load finished.
-      // Additionally, hiding sometimes fails entirely with no delay, if the previous animation has not yet finished. 
-      setTimeout(() => progressCollapseObj.hide(), 1000)
-    }
-  }} 
+      // Additionally, hiding sometimes fails entirely with no delay, if the previous animation has not yet finished.
+        setTimeout(() => progressCollapseObj.hide(), 1000);
+      }
+    },
+  };
 
   return (progressObj);
-
 }
-
-
 
 // Hides progress bar if completed
 function hideProgress(id) {
   const progressCollapse = document.getElementById(id);
-  if (["collapse show", "collapsing"].includes(progressCollapse.getAttribute("class"))) {
-    const progressBar = progressCollapse.getElementsByClassName("progress-bar")[0];
-    if (parseInt(progressBar.getAttribute("aria-valuenow")) >= parseInt(progressBar.getAttribute("aria-valuemax"))) {
-      progressCollapse.setAttribute("class", "collapse");
+  if (['collapse show', 'collapsing'].includes(progressCollapse.getAttribute('class'))) {
+    const progressBar = progressCollapse.getElementsByClassName('progress-bar')[0];
+    if (parseInt(progressBar.getAttribute('aria-valuenow')) >= parseInt(progressBar.getAttribute('aria-valuemax'))) {
+      progressCollapse.setAttribute('class', 'collapse');
     }
   }
 }
 
-// This differs from hideProgress in that (1) the hide is animated rather than instant and (2) the collapse is hidden regardless 
-// of whether loading is complete. 
+// This differs from hideProgress in that (1) the hide is animated rather than instant and (2) the collapse is hidden regardless
+// of whether loading is complete.
 function hideProgress2(id) {
   const progressCollapse = document.getElementById(id);
-  if (progressCollapse.getAttribute("class") == "collapse show") {
-    (new bootstrap.Collapse(progressCollapse)).hide()
+  if (progressCollapse.getAttribute('class') == 'collapse show') {
+    (new bootstrap.Collapse(progressCollapse)).hide();
 
-  // The collapsing animation needs to end before this can be hidden 
-  } else if (progressCollapse.getAttribute("class") == "collapsing") {
+  // The collapsing animation needs to end before this can be hidden
+  } else if (progressCollapse.getAttribute('class') == 'collapsing') {
     setTimeout(() => hideProgress2(id), 500);
   }
 }
@@ -1104,87 +1046,86 @@ function hideProgress2(id) {
 globalThis.debugImg = {};
 
 async function recognizeAllClick() {
-
   const debugMode = true;
 
-  // User can select engine directly using advanced options, or indirectly using basic options. 
+  // User can select engine directly using advanced options, or indirectly using basic options.
   let oemMode;
-  if(enableAdvancedRecognitionElem.checked) {
+  if (enableAdvancedRecognitionElem.checked) {
     oemMode = oemLabelTextElem.innerHTML;
+  } else if (ocrQualityElem.value == '1') {
+    oemMode = 'combined';
   } else {
-    if(ocrQualityElem.value == "1") {
-      oemMode = "combined";
-    } else {
-      oemMode = "legacy";
-      setOemLabel("legacy");
-    }
+    oemMode = 'legacy';
+    setOemLabel('legacy');
   }
 
   // Whether user uploaded data will be compared against in addition to both Tesseract engines
-  const userUploadMode = Boolean(globalThis.ocrAll["User Upload"]);
-  const existingOCR = Object.keys(globalThis.ocrAll).filter((x) => x != "active").length > 0;
+  const userUploadMode = Boolean(globalThis.ocrAll['User Upload']);
+  const existingOCR = Object.keys(globalThis.ocrAll).filter((x) => x != 'active').length > 0;
 
-  // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined. 
-  if(oemMode == "legacy" || oemMode == "lstm") {
-    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length, 0, true);
+  // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined.
+  if (oemMode == 'legacy' || oemMode == 'lstm') {
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', globalThis.imageAll.native.length, 0, true);
     const time2a = Date.now();
-    await recognizeAllPagesBrowser(oemMode == "legacy", oemMode == "lstm", !existingOCR);
+    await recognizeAllPagesBrowser(oemMode == 'legacy', oemMode == 'lstm', !existingOCR);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
-
-  } else if (oemMode == "combined") {
-
+  } else if (oemMode == 'combined') {
     globalThis.loadCount = 0;
-    globalThis.convertPageActiveProgress = initializeProgress("recognize-recognize-progress-collapse", globalThis.imageAll["native"].length * 2, 0, true);
-    globalThis.fontVariantsMessage = new Array(globalThis.imageAll["native"].length);
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', globalThis.imageAll.native.length * 2, 0, true);
+    globalThis.fontVariantsMessage = new Array(globalThis.imageAll.native.length);
 
     const time2a = Date.now();
     await recognizeAllPagesBrowser(true, true, !existingOCR);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
-    if(debugMode) {
-      globalThis.debugImg["Combined"] = new Array(globalThis.imageAll["native"].length);
-      for(let i=0; i < globalThis.imageAll["native"].length; i++) {
-        globalThis.debugImg["Combined"][i] = [];
+    if (debugMode) {
+      globalThis.debugImg.Combined = new Array(globalThis.imageAll.native.length);
+      for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+        globalThis.debugImg.Combined[i] = [];
       }
     }
 
-    if(userUploadMode) {
-      initOCRVersion("Tesseract Combined");
-      setCurrentHOCR("Tesseract Combined");  
+    if (userUploadMode) {
+      initOCRVersion('Tesseract Combined');
+      setCurrentHOCR('Tesseract Combined');
       if (debugMode) {
-        globalThis.debugImg["Tesseract Combined"] = new Array(globalThis.imageAll["native"].length);
-        for(let i=0; i < globalThis.imageAll["native"].length; i++) {
-          globalThis.debugImg["Tesseract Combined"][i] = [];
+        globalThis.debugImg['Tesseract Combined'] = new Array(globalThis.imageAll.native.length);
+        for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+          globalThis.debugImg['Tesseract Combined'][i] = [];
         }
       }
     }
 
-    initOCRVersion("Combined");
-    setCurrentHOCR("Combined");      
-    
-    const time3a = Date.now();
-    for(let i=0;i<globalThis.imageAll["native"].length;i++) {
+    initOCRVersion('Combined');
+    setCurrentHOCR('Combined');
 
-      const tessCombinedLabel = userUploadMode ? "Tesseract Combined" : "Combined";
+    const time3a = Date.now();
+    for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+      const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
       const compOptions = {
-        mode: "comb", debugLabel: tessCombinedLabel,
+        mode: 'comb',
+        debugLabel: tessCombinedLabel,
         ignoreCap: ignoreCapElem.checked,
         ignorePunct: ignorePunctElem.checked,
         confThreshHigh: parseInt(confThreshHighElem.value),
-        confThreshMed: parseInt(confThreshMedElem.value)
+        confThreshMed: parseInt(confThreshMedElem.value),
       };
 
-      const imgElem = await globalThis.imageAll["binary"][i];
+      const imgElem = await globalThis.imageAll.binary[i];
 
-      const res = await globalThis.generalScheduler.addJob("compareHOCR", {
-        pageA: ocrAll["Tesseract Legacy"][i], pageB: ocrAll["Tesseract LSTM"][i], binaryImage: imgElem.src,
-        imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+      const res = await globalThis.generalScheduler.addJob('compareHOCR', {
+        pageA: ocrAll['Tesseract Legacy'][i],
+        pageB: ocrAll['Tesseract LSTM'][i],
+        binaryImage: imgElem.src,
+        imageRotated: globalThis.imageAll.binaryRotated[i],
+        pageMetricsObj: globalThis.pageMetricsArr[i],
+        options: compOptions,
       });
 
-      if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+      if (globalThis.debugLog === undefined) globalThis.debugLog = '';
       globalThis.debugLog += res.data.debugLog;
 
       globalThis.debugImg[tessCombinedLabel][i] = res.data.debugImg;
@@ -1193,64 +1134,70 @@ async function recognizeAllClick() {
       globalThis.ocrAll.active[i] = ocrAll[tessCombinedLabel][i];
 
       // If the user uploaded data, compare to that as we
-      if(userUploadMode) {
-        if (document.getElementById("combineMode")?.value == "conf") {
+      if (userUploadMode) {
+        if (document.getElementById('combineMode')?.value == 'conf') {
           const compOptions = {
-            debugLabel: "Combined",
+            debugLabel: 'Combined',
             supplementComp: true,
             ignoreCap: ignoreCapElem.checked,
             ignorePunct: ignorePunctElem.checked,
             confThreshHigh: parseInt(confThreshHighElem.value),
-            confThreshMed: parseInt(confThreshMedElem.value)    
+            confThreshMed: parseInt(confThreshMedElem.value),
           };
 
-          const imgElem = await globalThis.imageAll["binary"][i];
-          const res = await globalThis.generalScheduler.addJob("compareHOCR", {
-            pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src,
-            imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+          const imgElem = await globalThis.imageAll.binary[i];
+          const res = await globalThis.generalScheduler.addJob('compareHOCR', {
+            pageA: ocrAll['User Upload'][i],
+            pageB: ocrAll['Tesseract Combined'][i],
+            binaryImage: imgElem.src,
+            imageRotated: globalThis.imageAll.binaryRotated[i],
+            pageMetricsObj: globalThis.pageMetricsArr[i],
+            options: compOptions,
           });
 
-          if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+          if (globalThis.debugLog === undefined) globalThis.debugLog = '';
           globalThis.debugLog += res.data.debugLog;
 
-          globalThis.debugImg["Combined"][i] = res.data.debugImg;
+          globalThis.debugImg.Combined[i] = res.data.debugImg;
 
-          globalThis.ocrAll["Combined"][i] = res.data.page;
-
+          globalThis.ocrAll.Combined[i] = res.data.page;
         } else {
           const compOptions = {
-            mode: "comb", 
-            debugLabel: "Combined",
+            mode: 'comb',
+            debugLabel: 'Combined',
             supplementComp: true,
             ignoreCap: ignoreCapElem.checked,
             ignorePunct: ignorePunctElem.checked,
             confThreshHigh: parseInt(confThreshHighElem.value),
-            confThreshMed: parseInt(confThreshMedElem.value)    
+            confThreshMed: parseInt(confThreshMedElem.value),
           };
 
-          const imgElem = await globalThis.imageAll["binary"][i];
-          const res = await globalThis.generalScheduler.addJob("compareHOCR", {
-            pageA: ocrAll["User Upload"][i], pageB: ocrAll["Tesseract Combined"][i], binaryImage: imgElem.src,
-            imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+          const imgElem = await globalThis.imageAll.binary[i];
+          const res = await globalThis.generalScheduler.addJob('compareHOCR', {
+            pageA: ocrAll['User Upload'][i],
+            pageB: ocrAll['Tesseract Combined'][i],
+            binaryImage: imgElem.src,
+            imageRotated: globalThis.imageAll.binaryRotated[i],
+            pageMetricsObj: globalThis.pageMetricsArr[i],
+            options: compOptions,
           });
 
-          if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+          if (globalThis.debugLog === undefined) globalThis.debugLog = '';
           globalThis.debugLog += res.data.debugLog;
 
-          globalThis.debugImg["Combined"][i] = res.data.debugImg;
+          globalThis.debugImg.Combined[i] = res.data.debugImg;
 
-          globalThis.ocrAll["Combined"][i] = res.data.page;
-    
+          globalThis.ocrAll.Combined[i] = res.data.page;
         }
 
-        globalThis.ocrAll.active[i] = ocrAll["Combined"][i];  
+        globalThis.ocrAll.active[i] = ocrAll.Combined[i];
       }
     }
     const time3b = Date.now();
     if (debugMode) console.log(`Comparison runtime: ${time3b - time3a} ms`);
   }
 
-  hideProgress2("recognize-recognize-progress-collapse");
+  hideProgress2('recognize-recognize-progress-collapse');
 
   renderPageQueue(currentPage.n);
 
@@ -1259,34 +1206,31 @@ async function recognizeAllClick() {
   confThreshMedElem.disabled = false;
 
   // Set threshold values if not already set
-  confThreshHighElem.value = confThreshHighElem.value || "85"
-  confThreshMedElem.value = confThreshMedElem.value || "75";
+  confThreshHighElem.value = confThreshHighElem.value || '85';
+  confThreshMedElem.value = confThreshMedElem.value || '75';
 
   toggleEditButtons(false);
 
-  return(true);
-
+  return (true);
 }
 
-
-
 function createGroundTruthClick() {
-  if (!globalThis.ocrAll["Ground Truth"]) {
-    globalThis.ocrAll["Ground Truth"] = Array(globalThis.imageAll["native"].length);
+  if (!globalThis.ocrAll['Ground Truth']) {
+    globalThis.ocrAll['Ground Truth'] = Array(globalThis.imageAll.native.length);
   }
 
-  for(let i=0;i<globalThis.ocrAll.active.length;i++) {
-    globalThis.ocrAll["Ground Truth"][i] = structuredClone(globalThis.ocrAll.active[i]);
+  for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
+    globalThis.ocrAll['Ground Truth'][i] = structuredClone(globalThis.ocrAll.active[i]);
   }
 
   // Use whatever the current HOCR is as a starting point
   // globalThis.ocrAll["Ground Truth"] = structuredClone(globalThis.ocrAll.active);
-  initOCRVersion("Ground Truth");
-  setCurrentHOCR("Ground Truth");
+  initOCRVersion('Ground Truth');
+  setCurrentHOCR('Ground Truth');
 
-  let option = document.createElement("option");
-  option.text = "Evaluate Mode (Compare with Ground Truth)";
-  option.value = "eval";
+  const option = document.createElement('option');
+  option.text = 'Evaluate Mode (Compare with Ground Truth)';
+  option.value = 'eval';
   displayModeElem.add(option);
 
   createGroundTruthElem.disabled = true;
@@ -1298,48 +1242,54 @@ globalThis.evalStatsConfig = {};
 globalThis.evalStats = [];
 
 async function compareGroundTruthClick(n) {
-
   // When a document/recognition is still loading only the page statistics can be calculated
-  const loadMode = globalThis.loadCount && globalThis.loadCount < parseInt(globalThis.convertPageActiveProgress?.elem?.getAttribute("aria-valuemax")) ? true : false;
+  const loadMode = !!(globalThis.loadCount && globalThis.loadCount < parseInt(globalThis.convertPageActiveProgress?.elem?.getAttribute('aria-valuemax')));
 
   const evalStatsConfigNew = {};
-  evalStatsConfigNew["ocrActive"] = displayLabelTextElem.innerHTML;
-  evalStatsConfigNew["ignorePunct"] = ignorePunctElem.checked;
-  evalStatsConfigNew["ignoreCap"] = ignoreCapElem.checked;
-  evalStatsConfigNew["ignoreExtra"] = ignoreExtraElem.checked;
+  evalStatsConfigNew.ocrActive = displayLabelTextElem.innerHTML;
+  evalStatsConfigNew.ignorePunct = ignorePunctElem.checked;
+  evalStatsConfigNew.ignoreCap = ignoreCapElem.checked;
+  evalStatsConfigNew.ignoreExtra = ignoreExtraElem.checked;
 
   const compOptions = {
     ignoreCap: ignoreCapElem.checked,
     ignorePunct: ignorePunctElem.checked,
     confThreshHigh: parseInt(confThreshHighElem.value),
-    confThreshMed: parseInt(confThreshMedElem.value)    
+    confThreshMed: parseInt(confThreshMedElem.value),
   };
 
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
-    globalThis.evalStats = new Array(globalThis.imageAll["native"].length);
-    for (let i = 0; i < globalThis.imageAll["native"].length; i++) {
-
-      const imgElem = await globalThis.imageAll["binary"][i];
-      const res = (await globalThis.generalScheduler.addJob("compareHOCR", {
-        pageA: globalThis.ocrAll.active[i], pageB: globalThis.ocrAll["Ground Truth"][i], binaryImage: imgElem.src,
-        imageRotated: globalThis.imageAll["binaryRotated"][i], pageMetricsObj: globalThis.pageMetricsArr[i], options: compOptions
+    globalThis.evalStats = new Array(globalThis.imageAll.native.length);
+    for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+      const imgElem = await globalThis.imageAll.binary[i];
+      const res = (await globalThis.generalScheduler.addJob('compareHOCR', {
+        pageA: globalThis.ocrAll.active[i],
+        pageB: globalThis.ocrAll['Ground Truth'][i],
+        binaryImage: imgElem.src,
+        imageRotated: globalThis.imageAll.binaryRotated[i],
+        pageMetricsObj: globalThis.pageMetricsArr[i],
+        options: compOptions,
       })).data;
 
       globalThis.evalStats[i] = res.metrics;
-      if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+      if (globalThis.debugLog === undefined) globalThis.debugLog = '';
       globalThis.debugLog += res.debugLog;
     }
     globalThis.evalStatsConfig = evalStatsConfigNew;
   }
 
-  const imgElem = await globalThis.imageAll["binary"][n];
-  const res = (await globalThis.generalScheduler.addJob("compareHOCR", {
-    pageA: globalThis.ocrAll.active[n], pageB: globalThis.ocrAll["Ground Truth"][n], binaryImage: imgElem.src,
-    imageRotated: globalThis.imageAll["binaryRotated"][n], pageMetricsObj: globalThis.pageMetricsArr[n], options: compOptions
+  const imgElem = await globalThis.imageAll.binary[n];
+  const res = (await globalThis.generalScheduler.addJob('compareHOCR', {
+    pageA: globalThis.ocrAll.active[n],
+    pageB: globalThis.ocrAll['Ground Truth'][n],
+    binaryImage: imgElem.src,
+    imageRotated: globalThis.imageAll.binaryRotated[n],
+    pageMetricsObj: globalThis.pageMetricsArr[n],
+    options: compOptions,
   })).data;
 
-  if (globalThis.debugLog === undefined) globalThis.debugLog = "";
+  if (globalThis.debugLog === undefined) globalThis.debugLog = '';
   globalThis.debugLog += res.debugLog;
 
   globalThis.evalStats[n] = res.metrics;
@@ -1363,7 +1313,7 @@ async function compareGroundTruthClick(n) {
   metricCorrectLowConfWordsPageElem.innerHTML = globalThis.evalStats[n].correctLowConf;
   metricIncorrectHighConfWordsPageElem.innerHTML = globalThis.evalStats[n].incorrectHighConf;
 
-  if (evalStatsConfigNew["ignoreExtra"]) {
+  if (evalStatsConfigNew.ignoreExtra) {
     metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n].incorrect + globalThis.evalStats[n].missed) / globalThis.evalStats[n].total) * 100) / 100).toString();
   } else {
     metricWERPageElem.innerHTML = (Math.round(((globalThis.evalStats[n].incorrect + globalThis.evalStats[n].missed + globalThis.evalStats[n].extra) / globalThis.evalStats[n].total) * 100) / 100).toString();
@@ -1377,10 +1327,9 @@ async function compareGroundTruthClick(n) {
   const metricCorrectLowConfWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectLowConfWordsDoc'));
   const metricIncorrectHighConfWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectHighConfWordsDoc'));
   const metricWERDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERDoc'));
-  
+
   // Calculate and display metrics for full document
   if (!loadMode) {
-
     const evalStatsDoc = {
       total: 0,
       correct: 0,
@@ -1388,8 +1337,8 @@ async function compareGroundTruthClick(n) {
       missed: 0,
       extra: 0,
       correctLowConf: 0,
-      incorrectHighConf: 0
-    }
+      incorrectHighConf: 0,
+    };
 
     for (let i = 0; i < globalThis.evalStats.length; i++) {
       evalStatsDoc.total += globalThis.evalStats[i].total;
@@ -1409,7 +1358,7 @@ async function compareGroundTruthClick(n) {
     metricCorrectLowConfWordsDocElem.innerHTML = evalStatsDoc.correctLowConf.toString();
     metricIncorrectHighConfWordsDocElem.innerHTML = evalStatsDoc.incorrectHighConf.toString();
 
-    if (evalStatsConfigNew["ignoreExtra"]) {
+    if (evalStatsConfigNew.ignoreExtra) {
       metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed) / evalStatsDoc.total) * 100) / 100).toString();
     } else {
       metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed + evalStatsDoc.extra) / evalStatsDoc.total) * 100) / 100).toString();
@@ -1422,27 +1371,19 @@ async function compareGroundTruthClick(n) {
     metricExtraWordsDocElem.innerHTML = '';
     metricWERDocElem.innerHTML = '';
   }
-
 }
 
 /**
- * 
- * @param {Array<compDebug>} imgArr 
+ *
+ * @param {Array<compDebug>} imgArr
  */
-export async function showDebugImages(imgArr) {
-
-  canvasDebug.clear();
-
-  let top = 5;
-  let leftMax = 150;
-
-  for (let i=0; i<imgArr.length; i++) {
-
+async function drawDebugImages(imgArr, top, leftMax) {
+  for (let i = 0; i < imgArr.length; i++) {
     const compDebugObj = imgArr[i];
 
-    const img0 = compDebugObj["imageRaw"];
-    const img1 = compDebugObj["imageA"];
-    const img2 = compDebugObj["imageB"];
+    const img0 = compDebugObj.imageRaw;
+    const img1 = compDebugObj.imageA;
+    const img2 = compDebugObj.imageB;
 
     // Whether "B" option is chosen
     let chosen = compDebugObj.errorRawB < compDebugObj.errorRawA;
@@ -1460,27 +1401,29 @@ export async function showDebugImages(imgArr) {
     // Set a minimum width so the metrics are always readable
     const colWidth = Math.max(imgElem0.width, 50);
 
-    const imgFab0 = new fabric.Image(imgElem0, {left: 5, top: top + 15});
-    const imgFab1 = new fabric.Image(imgElem1, {left: 5 + colWidth + 10, top: top + 15});
-    const imgFab2 = new fabric.Image(imgElem2, {left: 5 + 2 * (colWidth + 10), top: top + 15});
+    const imgFab0 = new fabric.Image(imgElem0, { left: 5, top: top + 15 });
+    const imgFab1 = new fabric.Image(imgElem1, { left: 5 + colWidth + 10, top: top + 15 });
+    const imgFab2 = new fabric.Image(imgElem2, { left: 5 + 2 * (colWidth + 10), top: top + 15 });
 
-    let textbox1 = new fabric.Text(String(Math.round((compDebugObj["errorAdjA"])*1e3)/1e3) + " [" + String(Math.round((compDebugObj["errorRawA"])*1e3)/1e3) + "]", {
+    const textbox1 = new fabric.Text(`${String(Math.round((compDebugObj.errorAdjA) * 1e3) / 1e3)} [${String(Math.round((compDebugObj.errorRawA) * 1e3) / 1e3)}]`, {
       left: 5 + colWidth + 10,
-      top: top,
-      fill: "black",
-      fontSize: 10
+      top,
+      fill: 'black',
+      fontSize: 10,
     });
 
     canvasDebug.add(textbox1);
 
-    let textbox2 = new fabric.Text(String(Math.round((compDebugObj["errorAdjB"])*1e3)/1e3) + " [" + String(Math.round((compDebugObj["errorRawB"])*1e3)/1e3) + "]", {
+    const textbox2 = new fabric.Text(`${String(Math.round((compDebugObj.errorAdjB) * 1e3) / 1e3)} [${String(Math.round((compDebugObj.errorRawB) * 1e3) / 1e3)}]`, {
       left: 5 + 2 * (colWidth + 10),
-      top: top,
-      fill: "black",
-      fontSize: 10
+      top,
+      fill: 'black',
+      fontSize: 10,
     });
 
-    const chosenRect = new fabric.Rect({left: 5 + colWidth + 10 + chosen * (colWidth + 10) - 3, top: top + 15 - 3, width: imgElem0.width+6, height: imgElem1.height+6, fill: "#3269a8"});
+    const chosenRect = new fabric.Rect({
+      left: 5 + colWidth + 10 + chosen * (colWidth + 10) - 3, top: top + 15 - 3, width: imgElem0.width + 6, height: imgElem1.height + 6, fill: '#3269a8',
+    });
 
     canvasDebug.add(chosenRect);
     canvasDebug.add(imgFab0);
@@ -1493,6 +1436,25 @@ export async function showDebugImages(imgArr) {
     leftMax = Math.max(leftMax, 3 * colWidth + 30);
   }
 
+  return { top, leftMax };
+}
+
+/**
+ * Show comparison images for current page.
+ *
+ */
+export async function showDebugImages() {
+  canvasDebug.clear();
+
+  let top = 5;
+  let leftMax = 150;
+
+  const imgArr1 = globalThis.debugImg?.['Tesseract Combined']?.[currentPage.n];
+  const imgArr2 = globalThis.debugImg?.Combined?.[currentPage.n];
+
+  if (imgArr1) ({ top, leftMax } = await drawDebugImages(imgArr1, top, leftMax));
+  if (imgArr2) ({ top, leftMax } = await drawDebugImages(imgArr2, top, leftMax));
+
   canvasDebug.setWidth(leftMax);
   canvasDebug.setHeight(top);
 
@@ -1501,25 +1463,23 @@ export async function showDebugImages(imgArr) {
 
 globalThis.showDebugImages = showDebugImages;
 
-var rect1;
+let rect1;
 
 /**
  * Recognize area selected by user in Tesseract.
- * 
+ *
  * @param {boolean} wordMode - Assume selection is single word.
- * 
- * Note: This function assumes OCR data already exists, which this function is adding to. 
- * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all". 
- * Even if recognizing an page for the first time using "recognize area" did not produce an error, 
- * it would still be problematic, as running "recognize all" afterwards would overwrite everything. 
+ *
+ * Note: This function assumes OCR data already exists, which this function is adding to.
+ * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all".
+ * Even if recognizing an page for the first time using "recognize area" did not produce an error,
+ * it would still be problematic, as running "recognize all" afterwards would overwrite everything.
  */
 function recognizeAreaClick(wordMode = false) {
-
   globalThis.touchScrollMode = false;
 
-  canvas.on('mouse:down', function (o) {
-
-    let pointer = canvas.getPointer(o.e);
+  canvas.on('mouse:down', (o) => {
+    const pointer = canvas.getPointer(o.e);
     origX = pointer.x;
     origY = pointer.y;
     rect1 = new fabric.Rect({
@@ -1531,12 +1491,12 @@ function recognizeAreaClick(wordMode = false) {
       height: pointer.y - origY,
       angle: 0,
       fill: 'rgba(255,0,0,0.5)',
-      transparentCorners: false
+      transparentCorners: false,
     });
     canvas.add(rect1);
     canvas.renderAll();
-    canvas.on('mouse:move', function (o) {
-      let pointer = canvas.getPointer(o.e);
+    canvas.on('mouse:move', (o) => {
+      const pointer = canvas.getPointer(o.e);
 
       if (origX > pointer.x) {
         rect1.set({ left: Math.abs(pointer.x) });
@@ -1554,16 +1514,17 @@ function recognizeAreaClick(wordMode = false) {
 
   // mouse:up:before must be used so this code runs ahead of fabric internal logic.
   // Without this changes to active selection caused by mouse movement may change rect object.
-  canvas.on('mouse:up:before', async function (o) {
-
+  canvas.on('mouse:up:before', async (o) => {
     globalThis.touchScrollMode = true;
 
-    if(rect1.width < 4 || rect1.height < 4) {
+    if (rect1.width < 4 || rect1.height < 4) {
       canvas.remove(rect1);
       return;
     }
 
-    const canvasCoords = {left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height};
+    const canvasCoords = {
+      left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height,
+    };
 
     // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
     const imageRotated = true;
@@ -1575,30 +1536,30 @@ function recognizeAreaClick(wordMode = false) {
     canvas.remove(rect1);
 
     // When a user is manually selecting words to recognize, they are assumed to be in the same block.
-    const psm = wordMode ? Tesseract.PSM["SINGLE_WORD"] : Tesseract.PSM["SINGLE_BLOCK"];
-    const n = globalThis.currentPage.n;
+    const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
+    const { n } = globalThis.currentPage;
 
-    const res = await recognizePage(globalThis.generalScheduler, n, false, true, {rectangle: imageCoords, tessedit_pageseg_mode: psm});
+    const res = await recognizePage(globalThis.generalScheduler, n, false, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
 
-    const oemText = "Tesseract " + oemLabelTextElem.innerHTML;
+    const oemText = `Tesseract ${oemLabelTextElem.innerHTML}`;
 
     await convertPageCallback(res.lstm, n, false, oemText, true);
 
     canvas.renderAll();
     resetCanvasEventListeners();
   }, { once: true });
-
 }
 
 var newWordInit = true;
 
-var rect, origX, origY;
+let rect; let origX; let
+  origY;
 function addWordClick() {
   newWordInit = false;
   globalThis.touchScrollMode = false;
 
-  canvas.on('mouse:down', function (o) {
-    let pointer = canvas.getPointer(o.e);
+  canvas.on('mouse:down', (o) => {
+    const pointer = canvas.getPointer(o.e);
     origX = pointer.x;
     origY = pointer.y;
     rect = new fabric.Rect({
@@ -1610,14 +1571,13 @@ function addWordClick() {
       height: pointer.y - origY,
       angle: 0,
       fill: 'rgba(255,0,0,0.5)',
-      transparentCorners: false
+      transparentCorners: false,
     });
     canvas.add(rect);
     canvas.renderAll();
 
-    canvas.on('mouse:move', function (o) {
-
-      let pointer = canvas.getPointer(o.e);
+    canvas.on('mouse:move', (o) => {
+      const pointer = canvas.getPointer(o.e);
 
       if (origX > pointer.x) {
         rect.set({ left: Math.abs(pointer.x) });
@@ -1631,38 +1591,32 @@ function addWordClick() {
 
       canvas.renderAll();
     });
-
   });
 
   // mouse:up:before must be used so this code runs ahead of fabric internal logic.
   // Without this changes to active selection caused by mouse movement may change rect object.
-  canvas.on('mouse:up:before', async function (o) {
-
+  canvas.on('mouse:up:before', async (o) => {
     resetCanvasEventListeners();
     globalThis.touchScrollMode = true;
     if (newWordInit) { return; }
     newWordInit = true;
 
+    const fillColorHex = '#00ff7b';
 
-    let fillColorHex = "#00ff7b";
-
-    let opacity_arg, fill_arg;
-    if (displayModeElem.value == "invis") {
-      opacity_arg = 0;
-      fill_arg = "black";
-    } else if (displayModeElem.value == "ebook") {
-      opacity_arg = 1;
-      fill_arg = "black";
+    let fillArg;
+    if (displayModeElem.value == 'invis') {
+      fillArg = 'black';
+    } else if (displayModeElem.value == 'ebook') {
+      fillArg = 'black';
     } else {
-      opacity_arg = 1;
-      fill_arg = fillColorHex;
+      fillArg = fillColorHex;
     }
     // const rectLeft = rect.left + (rect?.ownMatrixCache?.value[4] || 0);
     // const rectTop = rect.top + (rect?.ownMatrixCache?.value[5] || 0);
-    const rectLeft = rect.left + (rect?.group?.left|| 0);
+    const rectLeft = rect.left + (rect?.group?.left || 0);
     const rectTop = rect.top + (rect?.group?.top || 0);
 
-    let wordText = "A";
+    const wordText = 'A';
     // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
     let angleAdjXRect = 0;
     let angleAdjYRect = 0;
@@ -1670,7 +1624,6 @@ function addWordClick() {
     let shiftX = 0;
     let shiftY = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[currentPage.n].angle ?? 0) > 0.05) {
-
       const rotateAngle = globalThis.pageMetricsArr[currentPage.n].angle;
 
       const pageDims = globalThis.pageMetricsArr[currentPage.n].dims;
@@ -1688,25 +1641,24 @@ function addWordClick() {
 
       angleAdjXRect = angleAdjXInt + shiftX;
       angleAdjYRect = angleAdjYInt + shiftY;
-
     }
 
     // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
-    let rectTopHOCR = rectTop - angleAdjYRect;
-    let rectBottomHOCR = rectTop + rect.height - angleAdjYRect;
+    const rectTopHOCR = rectTop - angleAdjYRect;
+    const rectBottomHOCR = rectTop + rect.height - angleAdjYRect;
 
-    let rectTopCoreHOCR = Math.round(rectTop + rect.height * 0.2 - angleAdjYRect);
-    let rectBottomCoreHOCR = Math.round(rectTop + rect.height * 0.8 - angleAdjYRect);
+    const rectTopCoreHOCR = Math.round(rectTop + rect.height * 0.2 - angleAdjYRect);
+    const rectBottomCoreHOCR = Math.round(rectTop + rect.height * 0.8 - angleAdjYRect);
 
-    let rectLeftHOCR = rectLeft - angleAdjXRect - currentPage.leftAdjX;
-    let rectRightHOCR = rectLeft + rect.width - angleAdjXRect - currentPage.leftAdjX;
-    let rectMidHOCR = rectLeft + rect.width * 0.5 - angleAdjXRect - currentPage.leftAdjX;
+    const rectLeftHOCR = rectLeft - angleAdjXRect - currentPage.leftAdjX;
+    const rectRightHOCR = rectLeft + rect.width - angleAdjXRect - currentPage.leftAdjX;
+    const rectMidHOCR = rectLeft + rect.width * 0.5 - angleAdjXRect - currentPage.leftAdjX;
 
     const wordBox = [rectLeftHOCR, rectTopHOCR, rectRightHOCR, rectBottomHOCR];
 
     const pageObj = new ocr.ocrPage(currentPage.n, globalThis.ocrAll.active[currentPage.n].dims);
     // Arbitrary values of font statistics are used since these are replaced later
-    const lineObj = new ocr.ocrLine(pageObj, wordBox, [0,0], 10, null);
+    const lineObj = new ocr.ocrLine(pageObj, wordBox, [0, 0], 10, null);
     pageObj.lines = [lineObj];
     const wordIDNew = getRandomAlphanum(10);
     const wordObj = new ocr.ocrWord(lineObj, wordText, wordBox, wordIDNew);
@@ -1719,56 +1671,53 @@ function addWordClick() {
     const wordObjNew = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDNew);
 
     // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
-    let angleAdjX = 0;
     let angleAdjY = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[currentPage.n].angle ?? 0) > 0.05) {
       const angleAdjXInt = sinAngle * (wordObj.line.bbox[3] + wordObj.line.baseline[1]);
       const angleAdjYInt = sinAngle * (wordObj.line.bbox[0] + angleAdjXInt / 2) * -1;
 
-      angleAdjX = angleAdjXInt + shiftX;
       angleAdjY = angleAdjYInt + shiftY;
     }
 
     const fontSize = await calcLineFontSize(wordObjNew.line, fontAll.active);
 
-    let top = wordObjNew.line.bbox[3] + wordObjNew.line.baseline[1] + angleAdjY;
+    const top = wordObjNew.line.bbox[3] + wordObjNew.line.baseline[1] + angleAdjY;
 
     const textBackgroundColor = globalThis.find.search && wordText.includes(globalThis.find.search) ? '#4278f550' : '';
 
     const textbox = new ITextWord(wordText, {
       left: rectLeft,
-      top: top,
+      top,
       word: wordObjNew,
       leftOrig: rectLeft,
       topOrig: top,
       baselineAdj: 0,
       wordSup: false,
-      originY: "bottom",
-      fill: fill_arg,
+      originY: 'bottom',
+      fill: fillArg,
       fill_proof: fillColorHex,
       fill_ebook: 'black',
       fontFamily: globalSettings.defaultFont,
-      fontStyle: "normal",
+      fontStyle: 'normal',
       fontFamilyLookup: globalSettings.defaultFont,
-      fontStyleLookup: "normal",
+      fontStyleLookup: 'normal',
       fontObj: fontAll.active[globalSettings.defaultFont].normal,
       wordID: wordIDNew,
-      textBackgroundColor: textBackgroundColor,
-      //line: i,
+      textBackgroundColor,
+      // line: i,
       visualWidth: rect.width,
       visualLeft: rectLeft,
       visualBaseline: rect.bottom,
       defaultFontFamily: true,
       opacity: 1,
-      //charSpacing: kerning * 1000 / wordFontSize
-      fontSize: fontSize
+      // charSpacing: kerning * 1000 / wordFontSize
+      fontSize,
     });
 
     canvas.remove(rect);
     canvas.add(textbox);
     canvas.renderAll();
     resetCanvasEventListeners();
-
   });
 }
 
@@ -1777,7 +1726,6 @@ globalThis.pageMetricsArr = [];
 
 // Resets the environment.
 async function clearFiles() {
-
   currentPage.n = 0;
   globalThis.pageCount = 0;
 
@@ -1803,10 +1751,10 @@ async function clearFiles() {
 
   globalThis.loadCount = 0;
 
-  canvas.clear()
-  pageCountElem.textContent = "";
-  pageNumElem.value = "";
-  downloadFileNameElem.value = "";
+  canvas.clear();
+  pageCountElem.textContent = '';
+  pageNumElem.value = '';
+  downloadFileNameElem.value = '';
   // uploaderElem.value = "";
   optimizeFontElem.checked = false;
   optimizeFontElem.disabled = true;
@@ -1825,11 +1773,9 @@ async function clearFiles() {
   setDefaultLayoutElem.disabled = true;
   revertLayoutElem.disabled = true;
   toggleEditButtons(true);
-
 }
 
 clearFiles();
-
 
 // Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
 async function importOCRFilesSupp() {
@@ -1842,7 +1788,7 @@ async function importOCRFilesSupp() {
   displayLabelTextElem.disabled = true;
 
   // In the case of 1 HOCR file
-  const singleHOCRMode = hocrFilesAll.length == 1 ? true : false;
+  const singleHOCRMode = hocrFilesAll.length == 1;
 
   const ocrData = await importOCR(Array.from(hocrFilesAll), false);
 
@@ -1852,43 +1798,41 @@ async function importOCRFilesSupp() {
   if (!ocrData.abbyyMode && !ocrData.stextMode && confThreshHighElem.disabled) {
     confThreshHighElem.disabled = false;
     confThreshMedElem.disabled = false;
-    confThreshHighElem.value = "85";
-    confThreshMedElem.value = "75";
+    confThreshHighElem.value = '85';
+    confThreshMedElem.value = '75';
   }
 
   // If both OCR data and image data are present, confirm they have the same number of pages
-  if (globalThis.imageAll["native"]) {
-    if (globalThis.imageAll["native"].length != pageCountHOCR) {
-      const warningHTML = "Page mismatch detected. Image data has " + globalThis.imageAll["native"].length + " pages while OCR data has " + pageCountHOCR + " pages.";
+  if (globalThis.imageAll.native) {
+    if (globalThis.imageAll.native.length != pageCountHOCR) {
+      const warningHTML = `Page mismatch detected. Image data has ${globalThis.imageAll.native.length} pages while OCR data has ${pageCountHOCR} pages.`;
       insertAlertMessage(warningHTML, false);
     }
   }
 
   globalThis.loadCount = 0;
-  globalThis.convertPageActiveProgress = initializeProgress("import-eval-progress-collapse", pageCountHOCR);
+  globalThis.convertPageActiveProgress = initializeProgress('import-eval-progress-collapse', pageCountHOCR);
 
   toggleEditButtons(false);
 
-  let format = "hocr";
-  if (ocrData.abbyyMode) format = "abbyy";
-  if (ocrData.stextMode) format = "stext";
+  let format = 'hocr';
+  if (ocrData.abbyyMode) format = 'abbyy';
+  if (ocrData.stextMode) format = 'stext';
 
   convertOCRAll(ocrData.hocrRaw, false, format, ocrName, false);
 
   uploadOCRNameElem.value = '';
   uploadOCRFileElem.value = '';
-  new bootstrap.Collapse(uploadOCRDataElem, { toggle: true })
+  new bootstrap.Collapse(uploadOCRDataElem, { toggle: true });
 
   initOCRVersion(ocrName);
   setCurrentHOCR(ocrName);
   displayLabelTextElem.disabled = true;
-
 }
 
 globalThis.pageCount = 0;
 
 async function importFiles(curFiles) {
-
   // It looks like the "load" event is not always triggered (when the page is refreshed).
   // This is a quick fix to make sure this function always runs.
   // if(!globalThis.runOnLoadRun){
@@ -1904,25 +1848,25 @@ async function importFiles(curFiles) {
   globalThis.pageMetricsArr = [];
 
   // Sort files into (1) HOCR files, (2) image files, or (3) unsupported using extension.
-  let imageFilesAll = [];
-  let hocrFilesAll = [];
-  let pdfFilesAll = []
-  let unsupportedFilesAll = [];
-  let unsupportedExt = {};
+  const imageFilesAll = [];
+  const hocrFilesAll = [];
+  const pdfFilesAll = [];
+  const unsupportedFilesAll = [];
+  const unsupportedExt = {};
   for (let i = 0; i < curFiles.length; i++) {
     const file = curFiles[i];
-    let fileExt = file.name.match(/\.([^\.]+)$/)?.[1].toLowerCase() || "";
+    const fileExt = file.name.match(/\.([^\.]+)$/)?.[1].toLowerCase() || '';
 
     // TODO: Investigate whether other file formats are supported (without additional changes)
     // Tesseract.js definitely supports more formats, so if the .pdfs we make also support a format,
-    // then we should be able to expand the list of supported types without issue. 
-    // Update: It looks like .bmp does not work. 
-    if (["png", "jpeg", "jpg"].includes(fileExt)) {
+    // then we should be able to expand the list of supported types without issue.
+    // Update: It looks like .bmp does not work.
+    if (['png', 'jpeg', 'jpg'].includes(fileExt)) {
       imageFilesAll.push(file);
       // All .gz files are assumed to be OCR data (xml) since all other file types can be compressed already
-    } else if (["hocr", "xml", "html", "gz", "stext"].includes(fileExt)) {
+    } else if (['hocr', 'xml', 'html', 'gz', 'stext'].includes(fileExt)) {
       hocrFilesAll.push(file);
-    } else if (["pdf"].includes(fileExt)) {
+    } else if (['pdf'].includes(fileExt)) {
       pdfFilesAll.push(file);
     } else {
       unsupportedFilesAll.push(file);
@@ -1931,25 +1875,25 @@ async function importFiles(curFiles) {
   }
 
   if (unsupportedFilesAll.length > 0) {
-    const errorText = "Import includes unsupported file types: " + Object.keys(unsupportedExt).join(", ");
+    const errorText = `Import includes unsupported file types: ${Object.keys(unsupportedExt).join(', ')}`;
     insertAlertMessage(errorText);
   }
 
-  inputDataModes.pdfMode = pdfFilesAll.length == 1 ? true : false;
-  inputDataModes.imageMode = imageFilesAll.length > 0 && !inputDataModes.pdfMode ? true : false;
+  globalThis.inputDataModes.pdfMode = pdfFilesAll.length == 1;
+  globalThis.inputDataModes.imageMode = !!(imageFilesAll.length > 0 && !globalThis.inputDataModes.pdfMode);
 
-  const xmlModeImport = hocrFilesAll.length > 0 ? true : false;
+  const xmlModeImport = hocrFilesAll.length > 0;
 
   // Extract text from PDF document
-  // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data. 
-  globalThis.inputDataModes.extractTextMode = document.getElementById("extractTextCheckbox").checked && inputDataModes.pdfMode && !xmlModeImport;
+  // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
+  globalThis.inputDataModes.extractTextMode = document.getElementById('extractTextCheckbox').checked && globalThis.inputDataModes.pdfMode && !xmlModeImport;
 
   addLayoutBoxElem.disabled = false;
   deleteLayoutBoxElem.disabled = false;
   setDefaultLayoutElem.disabled = false;
   revertLayoutElem.disabled = false;
 
-  if (inputDataModes.imageMode || inputDataModes.pdfMode) {
+  if (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode) {
     recognizeAllElem.disabled = false;
     // recognizePageElem.disabled = false;
     recognizeAreaElem.disabled = false;
@@ -1962,30 +1906,30 @@ async function importFiles(curFiles) {
     while (colorModeElemOptions.length > 0) {
       colorModeElemOptions[0].remove();
     }
-    if (inputDataModes.imageMode) {
-      let option = document.createElement("option");
-      option.text = "Native";
-      option.value = "color";
+    if (globalThis.inputDataModes.imageMode) {
+      const option = document.createElement('option');
+      option.text = 'Native';
+      option.value = 'color';
       option.selected = true;
       colorModeElem.add(option);
     } else {
-      let option = document.createElement("option");
-      option.text = "Color";
-      option.value = "color";
+      let option = document.createElement('option');
+      option.text = 'Color';
+      option.value = 'color';
       colorModeElem.add(option);
-      option = document.createElement("option");
-      option.text = "Grayscale";
-      option.value = "gray";
+      option = document.createElement('option');
+      option.text = 'Grayscale';
+      option.value = 'gray';
       option.selected = true;
       colorModeElem.add(option);
     }
-    let option = document.createElement("option");
-    option.text = "Binary";
-    option.value = "binary";
+    const option = document.createElement('option');
+    option.text = 'Binary';
+    option.value = 'binary';
     colorModeElem.add(option);
 
     // For PDF inputs, enable "Add Text to Import PDF" option
-    if(inputDataModes.pdfMode) {
+    if (globalThis.inputDataModes.pdfMode) {
       addOverlayCheckboxElem.checked = true;
       addOverlayCheckboxElem.disabled = false;
     } else {
@@ -1994,34 +1938,33 @@ async function importFiles(curFiles) {
     }
   }
 
-  imageFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
-  hocrFilesAll.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
-
+  imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+  hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
   // Set default download name
   let downloadFileName = pdfFilesAll.length > 0 ? pdfFilesAll[0].name : curFiles[0].name;
-  downloadFileName = downloadFileName.replace(/\.\w{1,4}$/, "");
-  downloadFileName = downloadFileName + ".pdf";
+  downloadFileName = downloadFileName.replace(/\.\w{1,4}$/, '');
+  downloadFileName += '.pdf';
   downloadFileNameElem.value = downloadFileName;
 
-  let pageCount, pageCountImage, stextModeExtract;
+  let pageCount; let pageCountImage; let
+    stextModeExtract;
   let abbyyMode = false;
   let pageDPI;
 
-  if (inputDataModes.pdfMode) {
-
+  if (globalThis.inputDataModes.pdfMode) {
     globalThis.pdfFile = pdfFilesAll[0];
     globalThis.inputFileNames = [globalThis.pdfFile.name];
 
     // Initialize scheduler
-    await initSchedulerIfNeeded("muPDFScheduler");
+    await initSchedulerIfNeeded('muPDFScheduler');
 
     const ms = await globalThis.muPDFScheduler;
 
     pageCountImage = await ms.addJob('countPages', []);
 
     // If no XML data is provided, page sizes are calculated using muPDF alone
-    if(!xmlModeImport) {
+    if (!xmlModeImport) {
       // Confirm that 300 dpi leads to a reasonably sized image and lower dpi if not.
       const pageDims1 = (await ms.addJob('pageSizes', [300])).slice(1);
 
@@ -2030,28 +1973,26 @@ async function importFiles(curFiles) {
       const pageWidth1 = pageDims1.map((x) => x[0]);
       pageDPI = pageWidth1.map((x) => 300 * 2000 / Math.max(x, 2000));
 
-      console.log("DPI " + String(pageDPI));
+      console.log(`DPI ${String(pageDPI)}`);
 
       // In addition to capping the resolution, also switch the width/height
-      const pageDims = pageDims1.map((x,i) => [Math.round(x[1]*pageDPI[i]/300),Math.round(x[0]*pageDPI[i]/300)]);
+      const pageDims = pageDims1.map((x, i) => [Math.round(x[1] * pageDPI[i] / 300), Math.round(x[0] * pageDPI[i] / 300)]);
 
-      for (let i=0; i<pageDims.length; i++) {
-        globalThis.pageMetricsArr[i] = new pageMetrics({height: pageDims[i][0], width: pageDims[i][1]});
+      for (let i = 0; i < pageDims.length; i++) {
+        globalThis.pageMetricsArr[i] = new pageMetrics({ height: pageDims[i][0], width: pageDims[i][1] });
       }
     }
-
-  } else if (inputDataModes.imageMode) {
-    globalThis.inputFileNames = imageFilesAll.map(x => x.name);
+  } else if (globalThis.inputDataModes.imageMode) {
+    globalThis.inputFileNames = imageFilesAll.map((x) => x.name);
     pageCountImage = imageFilesAll.length;
   }
 
   let existingLayout = false;
-  const oemName = "User Upload";
+  const oemName = 'User Upload';
   let stextMode;
 
   if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
-
-    document.getElementById("combineModeOptions")?.setAttribute("style", "");
+    document.getElementById('combineModeOptions')?.setAttribute('style', '');
 
     initOCRVersion(oemName);
     setCurrentHOCR(oemName);
@@ -2070,7 +2011,7 @@ async function importFiles(curFiles) {
         console.log(`Identified ${globalThis.hocrCurrentRaw.length} pages of OCR data but ${pageCountImage} pages of image/pdf data. Only first ${pageCountImage} pages will be used.`);
         globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw.slice(0, pageCountImage);
       }
-  
+
       // Restore font metrics and optimize font from previous session (if applicable)
       if (ocrData.fontMetricsObj) {
         globalThis.fontMetricsObj = ocrData.fontMetricsObj;
@@ -2079,7 +2020,7 @@ async function importFiles(curFiles) {
         optimizeFontElem.checked = true;
         await enableDisableFontOpt(true);
       }
-  
+
       // Restore layout data from previous session (if applicable)
       if (ocrData.layoutObj) {
         globalThis.layout = ocrData.layoutObj;
@@ -2088,13 +2029,12 @@ async function importFiles(curFiles) {
 
       stextModeImport = ocrData.stextMode;
       abbyyMode = ocrData.abbyyMode;
-  
     } else {
       const ms = await globalThis.muPDFScheduler;
       stextModeExtract = true;
       globalThis.hocrCurrentRaw = Array(pageCountImage);
       for (let i = 0; i < pageCountImage; i++) {
-        globalThis.hocrCurrentRaw[i] = await ms.addJob('pageTextXML', [i+1, pageDPI[i]]);
+        globalThis.hocrCurrentRaw[i] = await ms.addJob('pageTextXML', [i + 1, pageDPI[i]]);
       }
     }
 
@@ -2105,18 +2045,17 @@ async function importFiles(curFiles) {
     if (!abbyyMode && !stextMode) {
       confThreshHighElem.disabled = false;
       confThreshMedElem.disabled = false;
-      confThreshHighElem.value = "85";
-      confThreshMedElem.value = "75";
+      confThreshHighElem.value = '85';
+      confThreshMedElem.value = '75';
     }
-
   }
 
   const pageCountHOCR = globalThis.hocrCurrentRaw?.length;
 
   // If both OCR data and image data are present, confirm they have the same number of pages
-  if (xmlModeImport && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
+  if (xmlModeImport && (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode)) {
     if (pageCountImage != pageCountHOCR) {
-      const warningHTML = "Page mismatch detected. Image data has " + pageCountImage + " pages while OCR data has " + pageCountHOCR + " pages.";
+      const warningHTML = `Page mismatch detected. Image data has ${pageCountImage} pages while OCR data has ${pageCountHOCR} pages.`;
       insertAlertMessage(warningHTML, false);
     }
   }
@@ -2128,12 +2067,12 @@ async function importFiles(curFiles) {
 
   if (!existingLayout) {
     globalThis.layout = Array(globalThis.pageCount);
-    for(let i=0;i<globalThis.layout.length;i++) {
-      globalThis.layout[i] = {default: true, boxes: {}};
-    }  
+    for (let i = 0; i < globalThis.layout.length; i++) {
+      globalThis.layout[i] = { default: true, boxes: {} };
+    }
   }
-  
-  // Global object that contains arrays with page images or related properties. 
+
+  // Global object that contains arrays with page images or related properties.
   globalThis.imageAll = {
     // Unedited images uploaded by user (unused when user provides a PDF).
     nativeSrc: Array(globalThis.pageCount),
@@ -2142,26 +2081,26 @@ async function importFiles(curFiles) {
     native: Array(globalThis.pageCount),
     // Binarized image.
     binary: Array(globalThis.pageCount),
-    // Whether the native image was re-rendered with rotation applied. 
+    // Whether the native image was re-rendered with rotation applied.
     nativeRotated: Array(globalThis.pageCount),
-    // Whether the binarized image was re-rendered with rotation applied. 
+    // Whether the binarized image was re-rendered with rotation applied.
     binaryRotated: Array(globalThis.pageCount),
     // [For pdf uploads only] Whether the "native" image was rendered in color or grayscale.
-    nativeColor: Array(globalThis.pageCount)
-  }
+    nativeColor: Array(globalThis.pageCount),
+  };
 
-  inputDataModes.xmlMode = new Array(globalThis.pageCount);
+  globalThis.inputDataModes.xmlMode = new Array(globalThis.pageCount);
   if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
-    inputDataModes.xmlMode.fill(true);
+    globalThis.inputDataModes.xmlMode.fill(true);
   } else {
-    inputDataModes.xmlMode.fill(false);
+    globalThis.inputDataModes.xmlMode.fill(false);
   }
 
-  if (inputDataModes.pdfMode && !xmlModeImport) {
-      // Render first handful of pages for pdfs so the interface starts off responsive
-      // In the case of OCR data, this step is triggered elsewhere after all the data loads
-      displayPage(0);
-      renderPDFImageCache([...Array(Math.min(globalThis.pageCount, 5)).keys()]);
+  if (globalThis.inputDataModes.pdfMode && !xmlModeImport) {
+    // Render first handful of pages for pdfs so the interface starts off responsive
+    // In the case of OCR data, this step is triggered elsewhere after all the data loads
+    displayPage(0);
+    renderPDFImageCache([...Array(Math.min(globalThis.pageCount, 5)).keys()]);
   }
 
   globalThis.loadCount = 0;
@@ -2169,8 +2108,8 @@ async function importFiles(curFiles) {
   // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   let progressMax = 0;
-  if (inputDataModes.imageMode) progressMax = progressMax + globalThis.pageCount;
-  if (xmlModeImport) progressMax = progressMax + globalThis.pageCount;
+  if (globalThis.inputDataModes.imageMode) progressMax += globalThis.pageCount;
+  if (xmlModeImport) progressMax += globalThis.pageCount;
 
   // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
   // Therefore, a dummy loading bar with a max of 1 is created even when progress is not meaningfully tracked.
@@ -2180,20 +2119,15 @@ async function importFiles(curFiles) {
     progressMax = 1;
   }
 
-
-  globalThis.convertPageActiveProgress = initializeProgress("import-progress-collapse", progressMax, 0, false, true);
+  globalThis.convertPageActiveProgress = initializeProgress('import-progress-collapse', progressMax, 0, false, true);
 
   for (let i = 0; i < globalThis.pageCount; i++) {
-
     // Currently, images are loaded once at a time.
-    // While this is not optimal for performance, images are required for comparison functions, 
+    // While this is not optimal for performance, images are required for comparison functions,
     // so switching to running async would require either (1) waiting for enough images to load before before continuing to the next step
-    // or (2) switching imageAll["nativeSrc"], as a whole, to store promises that can be waited for. 
-    if (inputDataModes.imageMode) {
-
-
-      globalThis.imageAll["nativeSrc"][i] = await new Promise((resolve, reject) => {
-
+    // or (2) switching imageAll["nativeSrc"], as a whole, to store promises that can be waited for.
+    if (globalThis.inputDataModes.imageMode) {
+      globalThis.imageAll.nativeSrc[i] = await new Promise((resolve, reject) => {
         const reader = new FileReader();
 
         reader.onloadend = function () {
@@ -2207,7 +2141,6 @@ async function importFiles(curFiles) {
         reader.readAsDataURL(imageFilesAll[i]);
       });
 
-
       // globalThis.imageAll["nativeSrc"][i] = await imageFilesAll[i].arrayBuffer();
 
       // const src = await imageFilesAll[i].arrayBuffer();
@@ -2215,8 +2148,8 @@ async function importFiles(curFiles) {
       // globalThis.imageAll["nativeSrc"][i] = URL.createObjectURL(blob);
 
       await renderPDFImageCache([i]);
-      const imgElem = await globalThis.imageAll["native"][i];
-      globalThis.pageMetricsArr[i] = new pageMetrics({height: imgElem.height, width: imgElem.width});
+      const imgElem = await globalThis.imageAll.native[i];
+      globalThis.pageMetricsArr[i] = new pageMetrics({ height: imgElem.height, width: imgElem.width });
       globalThis.convertPageActiveProgress.increment();
 
       if (i == 0) displayPage(0);
@@ -2225,93 +2158,87 @@ async function importFiles(curFiles) {
       // TODO: PDF downloads are currently broken when images but not OCR text exists
       if (!xmlModeImport && globalThis.convertPageActiveProgress.value == globalThis.convertPageActiveProgress.maxValue) {
         downloadElem.disabled = false;
-        globalThis.state.downloadReady = true;      
+        globalThis.state.downloadReady = true;
       }
-
     }
   }
 
   if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
     toggleEditButtons(false);
-    let format = "hocr";
-    if (abbyyMode) format = "abbyy";
-    if (stextMode) format = "stext";
-  
+    let format = 'hocr';
+    if (abbyyMode) format = 'abbyy';
+    if (stextMode) format = 'stext';
+
     // Process HOCR using web worker, reading from file first if that has not been done already
     convertOCRAll(globalThis.hocrCurrentRaw, true, format, oemName).then(async () => {
       await calculateOverallMetrics();
       downloadElem.disabled = false;
-      globalThis.state.downloadReady = true;  
+      globalThis.state.downloadReady = true;
     });
-
   }
 
   if (dummyLoadingBar) globalThis.convertPageActiveProgress.increment();
 
   // Enable downloads now for pdf imports if no HOCR data exists
-  if (inputDataModes.pdfMode && !xmlModeImport) {
+  if (globalThis.inputDataModes.pdfMode && !xmlModeImport) {
     downloadElem.disabled = false;
     globalThis.state.downloadReady = true;
   }
 
-  pageNumElem.value = "1";
+  pageNumElem.value = '1';
   pageCountElem.textContent = String(globalThis.pageCount);
-
 }
 
 async function initMuPDFScheduler(file, workers = 3) {
   globalThis.muPDFScheduler = await Tesseract.createScheduler();
-  globalThis.muPDFScheduler["pngRenderCount"] = 0;
-  globalThis.muPDFScheduler["workers"] = new Array(workers); 
+  globalThis.muPDFScheduler.pngRenderCount = 0;
+  globalThis.muPDFScheduler.workers = new Array(workers);
   for (let i = 0; i < workers; i++) {
     const w = await initMuPDFWorker();
-    if(file) {
+    if (file) {
       const fileData = await file.arrayBuffer();
       const pdfDoc = await w.openDocument(fileData, file.name);
-      w["pdfDoc"] = pdfDoc;  
+      w.pdfDoc = pdfDoc;
     }
 
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
     globalThis.muPDFScheduler.addWorker(w);
-    globalThis.muPDFScheduler["workers"][i] = w;
+    globalThis.muPDFScheduler.workers[i] = w;
   }
 }
-
 
 /**
  * Renders images and stores them in cache array (or returns early if the requested image already exists).
  * Contains 2 distinct image rendering steps:
  * 1. Pages are rendered from .pdf to .png [either color or grayscale] using muPDF
  * 2. Existing .png images are processed (currently rotation and/or thresholding) using Tesseract/Leptonica
- * 
+ *
  * @async
  * @export
- * @param {number[]} pagesArr - Array of page numbers to render 
+ * @param {number[]} pagesArr - Array of page numbers to render
  * @param {boolean|null} [rotate=null] - Whether to apply rotation to the images (true/false), or no preference (null).
  * @param {Object|null} [progress=null] - A progress tracking object, which should have an `increment` method.
  * @param {string|null} [colorMode=null] - Color mode ("color", "gray", or "binary"). If left `null`, defaults to option selected in the UI.
  * @returns {Promise<void>} A promise that resolves when all the images have been processed.
  */
 export async function renderPDFImageCache(pagesArr, rotate = null, progress = null, colorMode = null) {
-
   colorMode = colorMode || colorModeElem.value;
-  const colorName = colorMode == "binary" ? "binary" : "native";
+  const colorName = colorMode == 'binary' ? 'binary' : 'native';
 
   await Promise.all(pagesArr.map((n) => {
-
     if (!globalThis.imageAll.native || n < 0 || n >= globalThis.imageAll.native.length) return;
 
-    if (inputDataModes.imageMode) {
+    if (globalThis.inputDataModes.imageMode) {
       // Load image if either (1) it has never been loaded in the first place, or
-      // (2) the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image. 
-      if ((!globalThis.imageAll["native"][n] &&  globalThis.imageAll["nativeSrc"][n]) || (rotate == false && globalThis.imageAll["nativeRotated"][n] == true)) {
-        globalThis.imageAll["nativeRotated"][n] = false;
-        globalThis.imageAll["native"][n] = new Promise(async function (resolve, reject) {
+      // (2) the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image.
+      if ((!globalThis.imageAll.native[n] && globalThis.imageAll.nativeSrc[n]) || (rotate == false && globalThis.imageAll.nativeRotated[n] == true)) {
+        globalThis.imageAll.nativeRotated[n] = false;
+        globalThis.imageAll.native[n] = new Promise(async (resolve, reject) => {
           const image = document.createElement('img');
-          await loadImage(globalThis.imageAll["nativeSrc"][n], image);
+          await loadImage(globalThis.imageAll.nativeSrc[n], image);
           resolve(image);
         });
-      } 
+      }
     }
 
     // In pdfMode, determine whether an original/unedited version of the image needs to be obtained.
@@ -2319,21 +2246,19 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
     // 1. Page has not yet been rendered
     // 2. Page was previously rendered, but in different colorMode (gray vs. color)
     // 3. Page was overwritten by rotated version, but a non-rotated version is needed
-    const renderNativePDF = inputDataModes.pdfMode && (!globalThis.imageAll["native"][n] || 
-      (colorMode != "binary" && globalThis.imageAll["nativeColor"][n] != colorMode) ||
-      rotate == false && globalThis.imageAll["nativeRotated"][n] == true) ? true : false;
+    const renderNativePDF = !!(globalThis.inputDataModes.pdfMode && (!globalThis.imageAll.native[n]
+      || (colorMode != 'binary' && globalThis.imageAll.nativeColor[n] != colorMode)
+      || rotate == false && globalThis.imageAll.nativeRotated[n] == true));
 
     // In pdfMode the page is re-rendered from the pdf
     if (renderNativePDF) {
-
-      globalThis.imageAll["nativeColor"][n] = colorModeElem.value;
-      globalThis.imageAll["nativeRotated"][n] = false;
-      globalThis.imageAll["native"][n] = new Promise(async function (resolve, reject) {
-
+      globalThis.imageAll.nativeColor[n] = colorModeElem.value;
+      globalThis.imageAll.nativeRotated[n] = false;
+      globalThis.imageAll.native[n] = new Promise(async (resolve, reject) => {
         // Initialize scheduler if one does not already exist
         // This happens when the original scheduler is killed after all pages are rendered,
         // but then the user changes from color to grayscale (or vice versa).
-        await initSchedulerIfNeeded("muPDFScheduler");
+        await initSchedulerIfNeeded('muPDFScheduler');
 
         const ms = await globalThis.muPDFScheduler;
 
@@ -2346,9 +2271,9 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
           dpi = 300 * (imgWidthXml / imgWidthPdf);
         }
 
-        const useColor = colorMode == "color" ? true : false;
+        const useColor = colorMode == 'color';
 
-        const skipText = document.getElementById("omitNativeTextCheckbox").checked;
+        const skipText = document.getElementById('omitNativeTextCheckbox').checked;
 
         const res = await ms.addJob('drawPageAsPNG', [n + 1, dpi, useColor, skipText]);
 
@@ -2356,27 +2281,26 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
         await loadImage(res, image);
 
         resolve(image);
-
       });
     }
 
     // Whether binarized image needs to be rendered
-    const renderBinary = colorMode == "binary" && !globalThis.imageAll["binary"][n];
+    const renderBinary = colorMode == 'binary' && !globalThis.imageAll.binary[n];
 
     // // Whether native image needs to be rendered
     // const renderNativeImage = colorMode == "gray" && globalThis.imageAll["nativeColor"][n] == "color";
 
     // Whether binarized image needs to be rotated (or re-rendered without rotation)
-    const rotateBinary = colorMode == "binary" && (rotate == true && !globalThis.imageAll["binaryRotated"][n] && Math.abs(globalThis.pageMetricsArr[n].angle) > 0.05 || rotate == false && globalThis.imageAll["binaryRotated"][n] == true);
+    const rotateBinary = colorMode == 'binary' && (rotate == true && !globalThis.imageAll.binaryRotated[n] && Math.abs(globalThis.pageMetricsArr[n].angle) > 0.05 || rotate == false && globalThis.imageAll.binaryRotated[n] == true);
 
     // Whether native image needs to be rotated
-    const rotateNative = colorName == "native" && (rotate == true && !globalThis.imageAll["nativeRotated"][n] && Math.abs(globalThis.pageMetricsArr[n].angle) > 0.05);
+    const rotateNative = colorName == 'native' && (rotate == true && !globalThis.imageAll.nativeRotated[n] && Math.abs(globalThis.pageMetricsArr[n].angle) > 0.05);
 
     // If nothing needs to be done, return early.
-    if (!(renderBinary || rotateBinary || rotateNative )) {
+    if (!(renderBinary || rotateBinary || rotateNative)) {
       if (progress) progress.increment();
       return;
-    };
+    }
 
     // If no preference is specified for rotation, default to true
     const angleArg = rotate != false ? globalThis.pageMetricsArr[n].angle * (Math.PI / 180) * -1 || 0 : 0;
@@ -2385,40 +2309,43 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
     const saveColorImageArg = rotateNative;
 
     const resPromise = (async () => {
-
       // Wait for non-rotated version before replacing with promise
-      const inputImage = await Promise.resolve(globalThis.imageAll["native"][n]);
+      const inputImage = await Promise.resolve(globalThis.imageAll.native[n]);
 
-      return globalThis.generalScheduler.addJob('recognize', {image: inputImage.src, options: {rotateRadians: angleArg}, output: {imageBinary : saveBinaryImageArg, imageColor: saveColorImageArg, debug: true, text: false, hocr: false, tsv: false, blocks: false}});   
-
+      return globalThis.generalScheduler.addJob('recognize', {
+        image: inputImage.src,
+        options: { rotateRadians: angleArg },
+        output: {
+          imageBinary: saveBinaryImageArg, imageColor: saveColorImageArg, debug: true, text: false, hocr: false, tsv: false, blocks: false,
+        },
+      });
     })();
 
     // Update progress bar after Tesseract is finished running.
     if (progress) {
       resPromise.then(() => {
         progress.increment();
-      })
+      });
     }
 
-    if(saveColorImageArg){
-      globalThis.imageAll["nativeRotated"][n] = Boolean(angleArg);
-      globalThis.imageAll["native"][n] = resPromise.then(async (res) => {
+    if (saveColorImageArg) {
+      globalThis.imageAll.nativeRotated[n] = Boolean(angleArg);
+      globalThis.imageAll.native[n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
         await loadImage(res.data.imageColor, image);
-        return(image);
-      });  
+        return (image);
+      });
     }
 
-    if(saveBinaryImageArg) {
-      globalThis.imageAll["binaryRotated"][n] = Boolean(angleArg);
-      globalThis.imageAll["binary"][n] = resPromise.then(async (res) => {
+    if (saveBinaryImageArg) {
+      globalThis.imageAll.binaryRotated[n] = Boolean(angleArg);
+      globalThis.imageAll.binary[n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
         await loadImage(res.data.imageBinary, image);
-        return(image);
+        return (image);
       });
     }
   }));
-
 }
 
 /**
@@ -2426,27 +2353,27 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
  *  (E.g. is a page currently rendering, is recognition currently running, etc.)
  * @typedef state
  * @type {object}
- * @property {Promise<boolean>} pageRendering 
- * @property {number} renderIt 
- * @property {any} promiseResolve 
- * @property {Promise<boolean>} recognizeAllPromise 
+ * @property {Promise<boolean>} pageRendering
+ * @property {number} renderIt
+ * @property {any} promiseResolve
+ * @property {Promise<boolean>} recognizeAllPromise
  * @property {boolean} downloadReady - whether download feature can be enabled yet
- * @property {dims} imgDims - 
+ * @property {dims} imgDims -
  * @property {number} canvasDimsN - Page number that the current canvas dimensions are based off of.
  */
 /** @type {state} */
 globalThis.state = {
-  pageRendering : Promise.resolve(true),
-  renderIt : 0,
-  promiseResolve : undefined,
-  recognizeAllPromise : Promise.resolve(true),
-  downloadReady : false,
-  imgDims : {width: 500, height: 500},
-  canvasDimsN: -1
-}
+  pageRendering: Promise.resolve(true),
+  renderIt: 0,
+  promiseResolve: undefined,
+  recognizeAllPromise: Promise.resolve(true),
+  downloadReady: false,
+  imgDims: { width: 500, height: 500 },
+  canvasDimsN: -1,
+};
 
 /**
- * 
+ *
  * @param {dims} imgDims - Dimensions of image
  * @param {boolean} updatePosition - Whether to reset the position/zoom of the page
  */
@@ -2462,10 +2389,10 @@ const setCanvasWidthHeightZoom = (imgDims, updatePosition = true) => {
     const interfaceHeight = 100;
     const bottomMarginHeight = 50;
     const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
-  
+
     const zoom = targetHeight / imgDims.height;
-  
-    canvas.viewportTransform = [zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight];  
+
+    canvas.viewportTransform = [zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight];
   }
 
   if (showConflictsElem.checked) {
@@ -2474,29 +2401,27 @@ const setCanvasWidthHeightZoom = (imgDims, updatePosition = true) => {
     canvasDebug.setHeight(debugHeight);
     canvasDebug.setWidth(document.documentElement.clientHeight);
 
-    const debugCanvasParentDivElem = document.getElementById("debugCanvasParentDiv");
-    debugCanvasParentDivElem?.setAttribute("style", `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll`)
+    const debugCanvasParentDivElem = document.getElementById('debugCanvasParentDiv');
+    debugCanvasParentDivElem?.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll`);
   }
+};
 
-}
-
-// Function that handles page-level info for rendering to canvas and pdf 
+// Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, loadXML = true) {
-
   renderPDFImageCache([n]);
 
   // Return early if there is not enough data to render a page yet
   // (1) No data has been imported
-  const noInput = !inputDataModes.xmlMode[n] && !(inputDataModes.imageMode || inputDataModes.pdfMode);
+  const noInput = !globalThis.inputDataModes.xmlMode[n] && !(globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode);
   // (2) XML data should exist but does not (yet)
-  const xmlMissing = inputDataModes.xmlMode[n] && (globalThis.ocrAll.active.length == 0 || globalThis.ocrAll.active[n] === undefined || globalThis.ocrAll.active[n] === null || globalThis.pageMetricsArr[n].dims === undefined);
+  const xmlMissing = globalThis.inputDataModes.xmlMode[n] && (globalThis.ocrAll.active.length == 0 || globalThis.ocrAll.active[n] === undefined || globalThis.ocrAll.active[n] === null || globalThis.pageMetricsArr[n].dims === undefined);
   // (3) Image data should exist but does not (yet)
-  const imageMissing = inputDataModes.imageMode && (!globalThis.imageAll["native"] || globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null);
+  const imageMissing = globalThis.inputDataModes.imageMode && (!globalThis.imageAll.native || globalThis.imageAll.native.length == 0 || globalThis.imageAll.native[n] == null);
   // (4) PDF data should exist but does not (yet)
-  const pdfMissing = inputDataModes.pdfMode && (!globalThis.imageAll["native"] || globalThis.imageAll["native"].length == 0 || globalThis.imageAll["native"][n] == null || globalThis.pageMetricsArr[n]?.dims === undefined);
+  const pdfMissing = globalThis.inputDataModes.pdfMode && (!globalThis.imageAll.native || globalThis.imageAll.native.length == 0 || globalThis.imageAll.native[n] == null || globalThis.pageMetricsArr[n]?.dims === undefined);
 
   if (noInput || xmlMissing || imageMissing || pdfMissing) {
-    console.log("Exiting renderPageQueue early");
+    console.log('Exiting renderPageQueue early');
     return;
   }
 
@@ -2506,145 +2431,134 @@ export async function renderPageQueue(n, loadXML = true) {
   // If a page is already being rendered, wait for it to complete
   await globalThis.state.pageRendering;
   // If another page has been requested already, return early
-  if(globalThis.state.renderIt != renderItI) return;
+  if (globalThis.state.renderIt != renderItI) return;
 
-  globalThis.state.pageRendering = new Promise(function(resolve, reject){
+  globalThis.state.pageRendering = new Promise((resolve, reject) => {
     globalThis.state.promiseResolve = resolve;
   });
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
-  if (loadXML && inputDataModes.xmlMode[n] && globalThis.ocrAll.active[n]) {
+  if (loadXML && globalThis.inputDataModes.xmlMode[n] && globalThis.ocrAll.active[n]) {
     // Compare selected text to ground truth in eval mode
-    if (displayModeElem.value == "eval") {
+    if (displayModeElem.value == 'eval') {
       console.time();
       await compareGroundTruthClick(n);
       console.timeEnd();
     }
-  } 
+  }
 
   // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
   let imgDims;
-  if (inputDataModes.xmlMode[n] || inputDataModes.pdfMode) {
+  if (globalThis.inputDataModes.xmlMode[n] || globalThis.inputDataModes.pdfMode) {
     imgDims = globalThis.pageMetricsArr[n].dims;
   } else {
-    const backgroundImage = await globalThis.imageAll["native"][n];
-    imgDims = {width: backgroundImage.width, height: backgroundImage.height};
+    const backgroundImage = await globalThis.imageAll.native[n];
+    imgDims = { width: backgroundImage.width, height: backgroundImage.height };
   }
   globalThis.state.imgDims = imgDims;
 
   // Calculate options for background image and overlay
-  if (inputDataModes.xmlMode[n]) {
-
-    currentPage.backgroundOpts.originX = "center";
-    currentPage.backgroundOpts.originY = "center";
+  if (globalThis.inputDataModes.xmlMode[n]) {
+    currentPage.backgroundOpts.originX = 'center';
+    currentPage.backgroundOpts.originY = 'center';
 
     currentPage.backgroundOpts.left = imgDims.width * 0.5;
     currentPage.backgroundOpts.top = imgDims.height * 0.5;
 
-
     // let marginPx = Math.round(imgDims.width * leftGlobal);
     if (autoRotateCheckboxElem.checked) {
       currentPage.backgroundOpts.angle = globalThis.pageMetricsArr[n].angle * -1 ?? 0;
-
     } else {
       currentPage.backgroundOpts.angle = 0;
     }
 
     currentPage.leftAdjX = 0;
-
   } else {
-    currentPage.backgroundOpts.originX = "left";
-    currentPage.backgroundOpts.originY = "top";
+    currentPage.backgroundOpts.originX = 'left';
+    currentPage.backgroundOpts.originY = 'top';
 
     currentPage.backgroundOpts.left = 0;
     currentPage.backgroundOpts.top = 0;
-
   }
 
   let renderNum;
   // Clear canvas if objects (anything but the background) exists
   if (canvas.getObjects().length) {
-    canvas.clear()
+    canvas.clear();
     resetCanvasEventListeners();
   }
 
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
   if (globalThis.state.canvasDimsN !== n) {
-
     setCanvasWidthHeightZoom(imgDims);
 
     globalThis.state.canvasDimsN = n;
-
   }
 
   currentPage.renderStatus = 0;
 
   // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
   // (whether by quickly changing pages or on the same page).
-  // TODO: Find a better solution. 
-  currentPage.renderNum = currentPage.renderNum + 1;
+  // TODO: Find a better solution.
+  currentPage.renderNum += 1;
   renderNum = currentPage.renderNum;
-  
-  const backgroundImage = colorModeElem.value == "binary" ? await Promise.resolve(globalThis.imageAll["binary"][n]) : await Promise.resolve(globalThis.imageAll["native"][n]);
+
+  const backgroundImage = colorModeElem.value == 'binary' ? await Promise.resolve(globalThis.imageAll.binary[n]) : await Promise.resolve(globalThis.imageAll.native[n]);
   currentPage.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
   if (currentPage.n == n && currentPage.renderNum == renderNum) {
-    currentPage.renderStatus = currentPage.renderStatus + 1;
+    currentPage.renderStatus += 1;
     selectDisplayMode(displayModeElem.value);
   } else {
     globalThis.state.promiseResolve();
     return;
   }
 
-
-  if (currentPage.n == n && inputDataModes.xmlMode[n]) {
+  if (currentPage.n == n && globalThis.inputDataModes.xmlMode[n]) {
     await renderPage(canvas, globalThis.ocrAll.active[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, currentPage.leftAdjX, fontAll);
     if (currentPage.n == n && currentPage.renderNum == renderNum) {
-      currentPage.renderStatus = currentPage.renderStatus + 1;
+      currentPage.renderStatus += 1;
       await selectDisplayMode(displayModeElem.value);
-    } 
-  } 
+    }
+  }
 
   globalThis.state.promiseResolve();
-  return;
-
 }
 
-var cacheMode = true;
-var cachePages = 3;
+const cacheMode = true;
+const cachePages = 3;
 
-var working = false;
+let working = false;
 
-// Function for navigating UI to arbitrary page.  Invoked by all UI elements that change page. 
+// Function for navigating UI to arbitrary page.  Invoked by all UI elements that change page.
 export async function displayPage(n) {
-  // Return early if (1) page does not exist or (2) another page is actively being rendered. 
+  // Return early if (1) page does not exist or (2) another page is actively being rendered.
   if (isNaN(n) || n < 0 || n > (globalThis.pageCount - 1) || working) {
-    console.log("Exiting from displayPage early.");
+    console.log('Exiting from displayPage early.');
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
     pageNumElem.value = (currentPage.n + 1).toString();
     return;
   }
 
-  // The following is a quick fix for a bug, there may be a better way to do this. 
+  // The following is a quick fix for a bug, there may be a better way to do this.
   // Without this block of code, if the user is editing a word and then changes the page,
-  // the changes are applied to the word with the same ID on the next page. 
+  // the changes are applied to the word with the same ID on the next page.
   // Simply running `canvas.discardActiveObject()` does not fix, as that function
   // does not wait for all code triggered by events to finish running.
   // Therefore, if the page is changed while an object is selected, we deselect all objects
-  // and then wait for an arbitrary amount of time for any event-related code to run. 
+  // and then wait for an arbitrary amount of time for any event-related code to run.
   if (canvas.getActiveObject()) {
-    console.log("Deselecting active object before changing pages.")
+    console.log('Deselecting active object before changing pages.');
     canvas.discardActiveObject();
     await sleep(10);
   }
 
   working = true;
 
-  if (inputDataModes.xmlMode[currentPage.n]) {
+  if (globalThis.inputDataModes.xmlMode[currentPage.n]) {
     // TODO: This is currently run whenever the page is changed.
     // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
     updateFindStats();
-
   }
 
   matchCurrentElem.textContent = calcMatchNumber(n);
@@ -2657,63 +2571,52 @@ export async function displayPage(n) {
 
   await renderPageQueue(currentPage.n);
 
-  if (showConflictsElem.checked && globalThis?.debugImg?.Combined?.[currentPage.n]) showDebugImages(globalThis.debugImg.Combined[currentPage.n])
+  if (showConflictsElem.checked) showDebugImages();
 
   // Render background images 1 page ahead and behind
   const nMax = globalThis.imageAll.nativeSrc.length;
-  if ((inputDataModes.pdfMode || inputDataModes.imageMode)&& cacheMode) {
-    let cacheArr = [...Array(cachePages).keys()].map(i => i + currentPage.n + 1).filter(x => x < nMax && x >= 0);
+  if ((globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) && cacheMode) {
+    let cacheArr = [...Array(cachePages).keys()].map((i) => i + currentPage.n + 1).filter((x) => x < nMax && x >= 0);
     if (cacheArr.length > 0) {
       renderPDFImageCache(cacheArr);
     }
-    cacheArr = [...Array(cachePages).keys()].map(i => i * -1 + currentPage.n - 1).filter(x => x < nMax && x >= 0);
+    cacheArr = [...Array(cachePages).keys()].map((i) => i * -1 + currentPage.n - 1).filter((x) => x < nMax && x >= 0);
     if (cacheArr.length > 0) {
       renderPDFImageCache(cacheArr);
     }
-
   }
 
   working = false;
-
-  return;
-
 }
 
 globalThis.displayPage = displayPage;
 
 async function optimizeFontClick(value) {
-
   await enableDisableFontOpt(value);
 
   renderPageQueue(currentPage.n);
 }
 
-
-window["muPDFSchedulerInit"] = async function () {
+window.muPDFSchedulerInit = async function () {
   await initMuPDFScheduler(globalThis.pdfFile, 3);
-  if (globalThis.imageAll["native"]) {
+  if (globalThis.imageAll.native) {
     // TODO: Fix to work with promises
-    window["muPDFScheduler"]["pngRenderCount"] = 0;
-    //window["muPDFScheduler"]["pngRenderCount"] = [...Array(imageAll["native"].length).keys()].filter((x) => typeof (imageAll["native"][x]) == "object" && (colorModeElem.value == "binary" || imageAll["native"]["nativeColor"][x] == colorModeElem.value)).length;
+    window.muPDFScheduler.pngRenderCount = 0;
   } else {
-    window["muPDFScheduler"]["pngRenderCount"] = 0;
+    window.muPDFScheduler.pngRenderCount = 0;
   }
-
-  return;
-}
+};
 
 // Function that is invoked before a scheduler is used.
 // If the scheduler already exists, resolves immediately.
 // If scheduler is being created already, return promise that resolves when that is done.
 // If scheduler does not exist and is not being created, initialize and return promise that resolves when done.
 async function initSchedulerIfNeeded(x) {
-
-  if(!window[x]){
-    window[x] = window[x + "Init"]().catch((x) => console.log(x));
+  if (!window[x]) {
+    window[x] = window[`${x}Init`]().catch((x) => console.log(x));
   }
-  return(window[x]);
+  return (window[x]);
 }
-
 
 async function initGeneralScheduler() {
   // Determine number of workers to use.
@@ -2721,13 +2624,13 @@ async function initGeneralScheduler() {
   //      1. The number of cores
   //      3. 6 (browser-imposed memory limits make going higher than 6 problematic, even on hardware that could support it)
   const workerN = Math.min(Math.round((globalThis.navigator.hardwareConcurrency || 8) / 2), 6);
-  console.log("Using " + workerN + " workers.")
+  console.log(`Using ${workerN} workers.`);
 
   globalThis.generalScheduler = await Tesseract.createScheduler();
-  globalThis.generalScheduler["workers"] = new Array(workerN); 
+  globalThis.generalScheduler.workers = new Array(workerN);
 
   let resReady;
-  globalThis.generalScheduler["ready"] = new Promise(function (resolve, reject) {
+  globalThis.generalScheduler.ready = new Promise((resolve, reject) => {
     resReady = resolve;
   });
 
@@ -2735,28 +2638,25 @@ async function initGeneralScheduler() {
     const w = await initGeneralWorker();
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
     globalThis.generalScheduler.addWorker(w);
-    globalThis.generalScheduler["workers"][i] = w;
-  }
+    globalThis.generalScheduler.workers[i] = w;
+  };
 
   // Wait for the first worker to load.
   // This allows the files to be loaded only once, as they will be in the cache for workers 2+.
   await addGeneralWorker(0);
 
-  const resArr = Array.from({ length: workerN }, (v, k) => k ).slice(1).map((i) => addGeneralWorker(i));
+  const resArr = Array.from({ length: workerN }, (v, k) => k).slice(1).map((i) => addGeneralWorker(i));
 
   await Promise.all(resArr);
 
   resReady(true);
-
 }
 
 initGeneralScheduler();
 
-
-// Function for updating the import/recognition progress bar, and running functions after all data is loaded. 
+// Function for updating the import/recognition progress bar, and running functions after all data is loaded.
 // Should be called after every .hocr page is loaded (whether using the internal engine or uploading data),
-// as well as after every image is loaded (not including .pdfs). 
-
+// as well as after every image is loaded (not including .pdfs).
 
 /**
  * This function should be run after all of the "main" OCR data is imported.
@@ -2764,22 +2664,18 @@ initGeneralScheduler();
  * or after Tesseract.js Legacy is finished running (for Tesseract.js recognition).
  */
 export async function calculateOverallMetrics() {
-
-
-  if (inputDataModes.resumeMode) {
+  if (globalThis.inputDataModes.resumeMode) {
     // This logic is handled elsewhere for resumeMode
   } else {
     // Buttons are enabled from calculateOverallFontMetrics function in this case
     const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);
 
     if (metricsRet.charError) {
-      const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
+      const errorHTML = 'No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>';
       insertAlertMessage(errorHTML);
-
     } else if (metricsRet.charWarn) {
-      const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
+      const warningHTML = 'No character-level OCR data detected. Font optimization features will be disabled. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>';
       insertAlertMessage(warningHTML, false);
-
     } else {
       globalThis.fontMetricsObj = metricsRet.fontMetrics;
     }
@@ -2794,26 +2690,25 @@ export async function calculateOverallMetrics() {
     }
 
     // If image data exists, select the correct font by comparing to the image.
-    if (inputDataModes.imageMode || inputDataModes.pdfMode) {
-      // Evaluate default fonts using up to 5 pages. 
-      const pageNum = Math.min(globalThis.imageAll["native"].length, 5);
-      await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, "binary");
+    if (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode) {
+      // Evaluate default fonts using up to 5 pages.
+      const pageNum = Math.min(globalThis.imageAll.native.length, 5);
+      await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, 'binary');
       // Select best default fonts
-      const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll["binary"].slice(0, pageNum), globalThis.imageAll["binaryRotated"].slice(0, pageNum), fontAll);
+      const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll.binary.slice(0, pageNum),
+        globalThis.imageAll.binaryRotated.slice(0, pageNum), fontAll);
       // Re-render current page if default font changed
       if (change) renderPageQueue(currentPage.n);
     }
-
   }
 
   calculateOverallPageMetrics();
-
 }
 
 function calculateOverallPageMetrics() {
   // It is possible for image resolution to vary page-to-page, so the left margin must be calculated
   // as a percent to remain visually identical between pages.
-  let leftAllPer = new Array(globalThis.pageMetricsArr.length);
+  const leftAllPer = new Array(globalThis.pageMetricsArr.length);
   for (let i = 0; i < globalThis.pageMetricsArr.length; i++) {
     leftAllPer[i] = globalThis.pageMetricsArr[i].left / globalThis.pageMetricsArr[i].dims.width;
   }
@@ -2821,84 +2716,81 @@ function calculateOverallPageMetrics() {
 }
 
 async function handleDownload() {
-
   downloadElem.removeEventListener('click', handleDownload);
   downloadElem.disabled = true;
 
   updatePdfPagesLabel();
 
-  let download_type = formatLabelTextElem?.textContent?.toLowerCase();
+  const downloadType = formatLabelTextElem?.textContent?.toLowerCase();
 
   // If recognition is currently running, wait for it to finish.
   await globalThis.state.recognizeAllPromise;
 
-  const minValue = parseInt(pdfPageMinElem.value)-1;
-  const maxValue = parseInt(pdfPageMaxElem.value)-1;
-  const pagesArr = [...Array(maxValue - minValue + 1).keys()].map(i => i + minValue);
+  const minValue = parseInt(pdfPageMinElem.value) - 1;
+  const maxValue = parseInt(pdfPageMaxElem.value) - 1;
+  const pagesArr = [...Array(maxValue - minValue + 1).keys()].map((i) => i + minValue);
 
-  /** @type {Array<ocrPage>} */ 
+  /** @type {Array<ocrPage>} */
   let hocrDownload = [];
 
-  if (download_type != "hocr" && download_type != "xlsx" && enableLayoutElem.checked) {
+  if (downloadType != 'hocr' && downloadType != 'xlsx' && enableLayoutElem.checked) {
     // Reorder HOCR elements according to layout boxes
-    for (let i=minValue; i<=maxValue; i++){
+    for (let i = minValue; i <= maxValue; i++) {
       hocrDownload.push(reorderHOCR(globalThis.ocrAll.active[i], globalThis.layout[i]));
     }
   } else {
     hocrDownload = globalThis.ocrAll.active;
   }
 
-  if (download_type == "pdf") {
-
-    let standardizeSizeMode = standardizeCheckboxElem.checked;
-    let dimsLimit = {width: -1, height: -1};
+  if (downloadType == 'pdf') {
+    const standardizeSizeMode = standardizeCheckboxElem.checked;
+    const dimsLimit = { width: -1, height: -1 };
     if (standardizeSizeMode) {
       for (let i = minValue; i <= maxValue; i++) {
         dimsLimit.height = Math.max(dimsLimit.height, globalThis.pageMetricsArr[i].dims.height);
         dimsLimit.width = Math.max(dimsLimit.width, globalThis.pageMetricsArr[i].dims.width);
       }
     }
-  
-    const fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".pdf";
+
+    const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.pdf`;
     let pdfBlob;
 
     const confThreshHigh = parseInt(confThreshHighElem.value) || 85;
     const confThreshMed = parseInt(confThreshMedElem.value) || 75;
 
-     // For proof or ocr mode the text layer needs to be combined with a background layer
-    if (displayModeElem.value != "ebook") {
-
+    // For proof or ocr mode the text layer needs to be combined with a background layer
+    if (displayModeElem.value != 'ebook') {
       const steps = addOverlayCheckboxElem.checked ? 2 : 3;
-      const downloadProgress = initializeProgress("generate-download-progress-collapse", (maxValue + 1) * steps);
+      const downloadProgress = initializeProgress('generate-download-progress-collapse', (maxValue + 1) * steps);
       await sleep(0);
 
       const insertInputPDF = globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked;
-      
+
       const rotateBackground = !insertInputPDF && autoRotateCheckboxElem.checked;
 
       const rotateText = !rotateBackground;
 
-      // Currently makes a pdf with all pages, regardless of what the user requests 
+      // Currently makes a pdf with all pages, regardless of what the user requests
       // (as the mupdf part of the code expects both the background and overlay pdf to have corresponding page numbers)
       // Consider reworking if performance hit is meaningful.
-      const invisibleText = displayModeElem.value == "invis";
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
-      // and assume that the overlay PDF is the same size as the input images. 
+      // and assume that the overlay PDF is the same size as the input images.
       // The `maxpage` argument must be set manually to `globalThis.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
       // In all other cases, this should be equivalent to using the default argument of `-1` (which results in `hocrDownload.length` being used).
-      const pdfStr = await hocrToPDF(hocrDownload, fontAll, 0, globalThis.pageCount-1, displayModeElem.value, rotateText, rotateBackground, {width: -1, height: -1}, downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(hocrDownload, fontAll, 0, globalThis.pageCount - 1, displayModeElem.value, rotateText, rotateBackground,
+        { width: -1, height: -1 }, downloadProgress, confThreshHigh, confThreshMed);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
 
-      await initSchedulerIfNeeded("muPDFScheduler");
+      await initSchedulerIfNeeded('muPDFScheduler');
 
       // const pdfOverlayBlob = new Blob([pdfStr], { type: 'application/octet-stream' });
-      const w = globalThis.muPDFScheduler["workers"][0];
+      const w = globalThis.muPDFScheduler.workers[0];
       // const fileData = await pdfOverlayBlob.arrayBuffer();
       // The file name is only used to detect the ".pdf" extension
-      const pdfOverlay = await w.openDocument(pdfEnc.buffer, "document.pdf");
+      const pdfOverlay = await w.openDocument(pdfEnc.buffer, 'document.pdf');
 
       let content;
 
@@ -2906,18 +2798,18 @@ async function handleDownload() {
       if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
         content = await w.overlayText([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
 
-        // Unfortunately there currently is not a real way to track progress using the w.overlayText function, as pages are incremented using C++ (webassembly). 
-        for (let i=minValue; i < maxValue+1; i++) {
+        // Unfortunately there currently is not a real way to track progress using the w.overlayText function, as pages are incremented using C++ (webassembly).
+        for (let i = minValue; i < maxValue + 1; i++) {
           downloadProgress.increment();
         }
 
       // If the input is a series of images, those images need to be inserted into a new pdf
       } else if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) {
         await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked, downloadProgress);
-        const imgArr1 = colorModeElem.value == "binary" ? await Promise.all(globalThis.imageAll.binary): await Promise.all(globalThis.imageAll.native);
+        const imgArr1 = colorModeElem.value == 'binary' ? await Promise.all(globalThis.imageAll.binary) : await Promise.all(globalThis.imageAll.native);
         const imgArr = imgArr1.map((x) => x.src);
         await w.overlayTextImageStart([]);
-        for (let i=minValue; i < maxValue+1; i++) {
+        for (let i = minValue; i < maxValue + 1; i++) {
           await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit.width, dimsLimit.height]);
           downloadProgress.increment();
         }
@@ -2927,14 +2819,12 @@ async function handleDownload() {
         content = await w.write([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
 
         // Fill up progress bar to 100%
-        for (let i=downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
       }
 
-  		pdfBlob = new Blob([content], { type: 'application/octet-stream' });
-	    
+      pdfBlob = new Blob([content], { type: 'application/octet-stream' });
     } else {
-
-      const downloadProgress = initializeProgress("generate-download-progress-collapse", maxValue + 1);
+      const downloadProgress = initializeProgress('generate-download-progress-collapse', maxValue + 1);
       await sleep(0);
 
       const pdfStr = await hocrToPDF(hocrDownload, fontAll, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
@@ -2949,25 +2839,25 @@ async function handleDownload() {
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
 
-      await initSchedulerIfNeeded("muPDFScheduler");
+      await initSchedulerIfNeeded('muPDFScheduler');
 
-      const w = globalThis.muPDFScheduler["workers"][0];
+      const w = globalThis.muPDFScheduler.workers[0];
 
       // The file name is only used to detect the ".pdf" extension
-      const pdf = await w.openDocument(pdfEnc.buffer, "document.pdf");
+      const pdf = await w.openDocument(pdfEnc.buffer, 'document.pdf');
 
       const content = await w.write([pdf, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
 
       pdfBlob = new Blob([content], { type: 'application/octet-stream' });
     }
     saveAs(pdfBlob, fileName);
-  } else if (download_type == "hocr") {
-    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+  } else if (downloadType == 'hocr') {
+    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
     renderHOCRBrowser(globalThis.ocrAll.active, globalThis.fontMetricsObj, globalThis.layout);
     downloadProgress.increment();
-  } else if (download_type == "text") {
-    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+  } else if (downloadType == 'text') {
+    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
 
     const removeLineBreaks = reflowCheckboxElem.checked;
@@ -2977,19 +2867,18 @@ async function handleDownload() {
 
     const textBlob = new Blob([textStr], { type: 'text/plain' });
     const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-    let fileName = downloadFileNameElem.value.replace(/\.\w{1,4}$/, "") + ".txt";
-  
+    const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.txt`;
+
     saveAs(textBlob, fileName);
     downloadProgress.increment();
-  
-  } else if (download_type == "docx") {
-    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+  } else if (downloadType == 'docx') {
+    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
 
     writeDocx(hocrDownload);
     downloadProgress.increment();
-  } else if (download_type == "xlsx") {
-    const downloadProgress = initializeProgress("generate-download-progress-collapse", 1);
+  } else if (downloadType == 'xlsx') {
+    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
 
     writeXlsx(hocrDownload);
@@ -3002,9 +2891,9 @@ async function handleDownload() {
 
 // Expose functions in global object for debugging purposes.
 globalThis.df = {
-  "calcLineFontSize": calcLineFontSize,
-  "fontAll": fontAll,
-}
+  calcLineFontSize,
+  fontAll,
+};
 
 // Set default settings
 setDefaults();

@@ -1,5 +1,5 @@
-import { saveAs } from "./miscUtils.js";
-import { renderHOCR } from "./exportRenderHOCR.js";
+import { saveAs } from './miscUtils.js';
+import { renderHOCR } from './exportRenderHOCR.js';
 
 /**
  * @param {Array<ocrPage>} ocrData - ...
@@ -11,18 +11,16 @@ export function renderHOCRBrowser(ocrData, fontMetrics, layoutData) {
 
   const hocrOut = renderHOCR(ocrData, fontMetrics, layoutData, minValue, maxValue);
 
-
   const exportParser = new DOMParser();
 
-  let exportXML = exportParser.parseFromString(hocrOut, "text/xml");
+  const exportXML = exportParser.parseFromString(hocrOut, 'text/xml');
 
   let hocrInt = exportXML.documentElement.outerHTML;
-  hocrInt = hocrInt.replaceAll(/xmlns\=[\'\"]{2}\s?/ig, "");
+  hocrInt = hocrInt.replaceAll(/xmlns\=[\'\"]{2}\s?/ig, '');
 
-  let hocrBlob = new Blob([hocrInt], { type: 'text/plain' });
+  const hocrBlob = new Blob([hocrInt], { type: 'text/plain' });
 
-  let fileName = /** @type {HTMLInputElement} */(document.getElementById("downloadFileName")).value.replace(/\.\w{1,4}$/, "") + ".hocr";
+  const fileName = /** @type {HTMLInputElement} */`${(document.getElementById('downloadFileName')).value.replace(/\.\w{1,4}$/, '')}.hocr`;
 
   saveAs(hocrBlob, fileName);
-
 }

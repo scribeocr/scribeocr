@@ -1,4 +1,3 @@
-
 // File summary:
 // Various utility functions used in other files.
 
@@ -7,13 +6,13 @@
  *
  * @param {number} min - The minimum value (inclusive).
  * @param {number} max - The maximum value (exclusive).
- * 
+ *
  * Taken from: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
  */
 export function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
+  return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
 /**
@@ -21,13 +20,13 @@ export function getRandomInt(min, max) {
  *
  * @param {number} num - The length of the alphanumeric string to generate.
  */
-export function getRandomAlphanum(num){
-  let outArr = new Array(num);
-  for(let i=0;i<num;i++){
-    let intI = getRandomInt(1,62);
-    if(intI <= 10){
-      intI = intI + 47;
-    } else if(intI <= 36){
+export function getRandomAlphanum(num) {
+  const outArr = new Array(num);
+  for (let i = 0; i < num; i++) {
+    let intI = getRandomInt(1, 62);
+    if (intI <= 10) {
+      intI += 47;
+    } else if (intI <= 36) {
       intI = intI - 10 + 64;
     } else {
       intI = intI - 36 + 96;
@@ -43,35 +42,34 @@ export function getRandomAlphanum(num){
  * @param {number} ntile - The quantile to calculate. Should be a value between 0 and 1.
  * @returns {number|null} The nth quantile value if the array is not empty; otherwise, null.
  */
-export function quantile(arr, ntile){
-  if(arr.length == 0){
+export function quantile(arr, ntile) {
+  if (arr.length == 0) {
     return null;
   }
-  let arr1 = [...arr];
+  const arr1 = [...arr];
   const mid = Math.floor(arr.length * ntile);
 
   // Using sort() will convert numbers to strings by default
   arr1.sort((a, b) => a - b);
 
   return arr1[mid];
-};
+}
 
-export const mean50 = arr => {
-  if(arr.length == 0){
+export const mean50 = (arr) => {
+  if (arr.length == 0) {
     return null;
   }
   const per25 = Math.floor(arr.length / 4) - 1;
   const per75 = Math.ceil(arr.length * 3 / 4) - 1;
   const nums = [...arr].sort((a, b) => a - b);
-  const numsMiddle = nums.slice(per25, per75+1);
+  const numsMiddle = nums.slice(per25, per75 + 1);
 
-  return numsMiddle.reduce((a, b) => a + b) / numsMiddle.length;};
+  return numsMiddle.reduce((a, b) => a + b) / numsMiddle.length;
+};
 
-
-export function sleep(ms) { return new Promise((r) =>
-    setTimeout(r, ms)); }
-
-
+export function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 // Reads OCR files, which may be compressed as .gz or uncompressed
 
@@ -81,14 +79,13 @@ export function sleep(ms) { return new Promise((r) =>
  * @param {File|string} file - OCR file to read
  * @returns {Promise<string>} - Contents of file
  */
-export function readOcrFile(file){
+export function readOcrFile(file) {
   if (typeof file === 'string') {
     return Promise.resolve(file);
-  } else if(/\.gz$/i.test(file.name)){
-    return(readTextFileGz(file));
-  } else {
-    return(readTextFile(file))
+  } if (/\.gz$/i.test(file.name)) {
+    return (readTextFileGz(file));
   }
+  return (readTextFile(file));
 }
 
 /**
@@ -99,14 +96,13 @@ export function readOcrFile(file){
  *                           or rejects with an error if reading or decompression fails.
  */
 async function readTextFileGz(file) {
-    const pako = await import('../lib/pako.esm.min.js');
-    return new Promise(async (resolve, reject) => {
-        let zip1 = await file.arrayBuffer();
-        let zip2 = await pako.inflate(zip1, {"to": "string"});
-        resolve(zip2);
-      });
+  const pako = await import('../lib/pako.esm.min.js');
+  return new Promise(async (resolve, reject) => {
+    const zip1 = await file.arrayBuffer();
+    const zip2 = await pako.inflate(zip1, { to: 'string' });
+    resolve(zip2);
+  });
 }
-
 
 /**
  * Reads the contents of a text file and returns them as a promise.
@@ -117,7 +113,7 @@ async function readTextFileGz(file) {
  */
 export function readTextFile(file) {
   return new Promise((resolve, reject) => {
-    let reader = new FileReader();
+    const reader = new FileReader();
     reader.onload = () => {
       resolve(reader.result);
     };
@@ -126,8 +122,8 @@ export function readTextFile(file) {
   });
 }
 
-export function round3(x){
-    return(Math.round(x*1e3)/1e3);
+export function round3(x) {
+  return (Math.round(x * 1e3) / 1e3);
 }
 
 /**
@@ -135,8 +131,8 @@ export function round3(x){
  * @param {number} x - The number to be rounded.
  * @returns {number} The rounded number.
  */
-export function round6(x){
-    return(Math.round(x*1e6)/1e6);
+export function round6(x) {
+  return (Math.round(x * 1e6) / 1e6);
 }
 
 /** Function that count occurrences of a substring in a string;
@@ -149,56 +145,54 @@ export function round6(x){
  * @see https://stackoverflow.com/a/7924240/938822
  */
 export function occurrences(string, subString, allowOverlapping, caseSensitive = false) {
-
-  string += "";
-  subString += "";
+  string += '';
+  subString += '';
   if (subString.length <= 0) return (string.length + 1);
 
   if (!caseSensitive) {
     string = string.toLowerCase();
     subString = subString.toLowerCase();
-  } 
+  }
 
-  var n = 0,
-      pos = 0,
-      step = allowOverlapping ? 1 : subString.length;
+  let n = 0;
+  let pos = 0;
+  const step = allowOverlapping ? 1 : subString.length;
 
   while (true) {
-      pos = string.indexOf(subString, pos);
-      if (pos >= 0) {
-          ++n;
-          pos += step;
-      } else break;
+    pos = string.indexOf(subString, pos);
+    if (pos >= 0) {
+      ++n;
+      pos += step;
+    } else break;
   }
   return n;
 }
-
 
 // Modified version of code found in FileSaver.js
 
 /**
  * Saves a Blob or a string URL as a file to the user's computer.
  * Modified version of code found in FileSaver.js.
- * 
+ *
  * @global
  * @param {Blob} blob - The Blob object to save as a file.
- * @param {string} name - File name. 
+ * @param {string} name - File name.
  */
-export const saveAs = function(blob, name) {
+export const saveAs = function (blob, name) {
   const a = document.createElement('a');
   a.download = name;
   a.href = globalThis.URL.createObjectURL(blob);
   a.dispatchEvent(new MouseEvent('click', {
     bubbles: true,
     cancelable: true,
-    view: window
+    view: window,
   }));
-}
+};
 
 /**
  * Loads an image from a given URL and sets it to a specified HTML element.
- * 
- * @param {string|Blob|ArrayBuffer} src - Image source.  Accepts ArrayBuffer, Blob, or URL. 
+ *
+ * @param {string|Blob|ArrayBuffer} src - Image source.  Accepts ArrayBuffer, Blob, or URL.
  * @param {HTMLImageElement} elem - The image element where the loaded image will be set.
  * @returns {Promise<HTMLImageElement>} A promise that resolves with the image element when the image is loaded successfully.
  */
@@ -220,14 +214,12 @@ export async function loadImage(src, elem) {
   });
 }
 
-
 export function imageStrToBlob(imgStr) {
   const imgData = new Uint8Array(atob(imgStr.split(',')[1])
-        .split('')
-        .map(c => c.charCodeAt(0)));
+    .split('')
+    .map((c) => c.charCodeAt(0)));
 
   const imgBlob = new Blob([imgData], { type: 'application/octet-stream' });
 
   return imgBlob;
 }
-

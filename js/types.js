@@ -1,4 +1,3 @@
-
 /**
  * @typedef {import("./objects/ocrObjects.js").ocrPage} ocrPage
  */

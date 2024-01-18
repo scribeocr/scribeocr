@@ -1,23 +1,22 @@
-import { quantile } from "./miscUtils.js";
-import ocr from "./objects/ocrObjects.js";
+import { quantile } from './miscUtils.js';
+import ocr from './objects/ocrObjects.js';
 
 /**
- * Convert an array of ocrPage objects to plain text, or XML for a Word document. 
+ * Convert an array of ocrPage objects to plain text, or XML for a Word document.
  *
- * @param {Array<ocrPage>} hocrCurrent - 
+ * @param {Array<ocrPage>} hocrCurrent -
  * @param {boolean} removeLineBreaks - Remove line breaks within what appears to be the same paragraph.
  *    This allows for reflowing text.
  * @param {boolean} breaksBetweenPages - Add line breaks between pages.
  * @param {boolean} docxMode - Create XML for a word document rather than plain text.
  */
 export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
-
-  let textStr = "";
+  let textStr = '';
 
   const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
   const pdfPageMaxElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
-  let minValue = parseInt(pdfPageMinElem.value);
-  let maxValue = parseInt(pdfPageMaxElem.value);
+  const minValue = parseInt(pdfPageMinElem.value);
+  const maxValue = parseInt(pdfPageMaxElem.value);
 
   let endsEarlyPrev = false;
   let startsLatePrev = false;
@@ -26,7 +25,6 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
   let newLine = false;
 
   for (let g = (minValue - 1); g < maxValue; g++) {
-
     if (!hocrCurrent[g]) continue;
 
     const pageObj = hocrCurrent[g];
@@ -45,7 +43,6 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
     let lineSpaceMedian = null;
 
     if (removeLineBreaks) {
-
       const angle = globalThis.pageMetricsArr[g].angle * -1 ?? 0;
 
       /** @type {?number} */
@@ -62,17 +59,16 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
         const sinAngle = Math.sin(angle * (Math.PI / 180));
         const cosAngle = Math.cos(angle * (Math.PI / 180));
-  
+
         const x1Rot = lineBox[0] * cosAngle - sinAngle * lineBox[3];
         const x2Rot = lineBox[2] * cosAngle - sinAngle * lineBox[3];
-  
+
         lineLeftArr.push(x1Rot);
         lineRightArr.push(x2Rot);
-        
+
         lineWidthArr.push(lineBox[2] - lineBox[0]);
 
         y2Prev = lineBox[3];
-
       }
 
       lineLeftMedian = quantile(lineLeftArr, 0.5);
@@ -82,16 +78,14 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
       lineWidthMedian = quantile(lineWidthArr, 0.5);
 
       lineSpaceMedian = quantile(lineSpaceArr, 0.5);
-
     }
 
     for (let h = 0; h < pageObj.lines.length; h++) {
-
       // Flag lines that end early (with >=10% of the line empty)
       const endsEarly = lineRightArr[h] < (lineRightMedian - lineWidthMedian * 0.1);
       // Flag lines that start late (with >=20% of the line empty)
-      // This is intended to capture floating elements (such as titles and page numbers) and not lines that are indented. 
-      const startsLate = lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.2)
+      // This is intended to capture floating elements (such as titles and page numbers) and not lines that are indented.
+      const startsLate = lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.2);
 
       // Add spaces or page breaks between lines
       if (h > 0) {
@@ -99,17 +93,17 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
           // Add a line break if the previous line ended early
           if (endsEarlyPrev || startsLatePrev) {
             newLine = true;
-          
+
           // Add a line break if there is blank space added between lines
-          } else if (lineSpaceMedian && lineSpaceArr[h-1] > (2 * lineSpaceMedian)) {
+          } else if (lineSpaceMedian && lineSpaceArr[h - 1] > (2 * lineSpaceMedian)) {
             newLine = true;
 
           // Add a line break if this line is indented
           // Requires (1) line to start to the right of the median line (by 2.5% of the median width) and
-          // (2) line to start to the right of the previous line and the next line. 
-          } else if (lineLeftMedian && (h + 1) < pageObj.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025) && lineLeftArr[h] > lineLeftArr[h-1] && lineLeftArr[h] > lineLeftArr[h+1]) {
+          // (2) line to start to the right of the previous line and the next line.
+          } else if (lineLeftMedian && (h + 1) < pageObj.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025) && lineLeftArr[h] > lineLeftArr[h - 1] && lineLeftArr[h] > lineLeftArr[h + 1]) {
             newLine = true;
-          } 
+          }
         } else {
           newLine = true;
         }
@@ -117,7 +111,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
         if (removeLineBreaks && !breaksBetweenPages) {
           if (endsEarlyPrev || startsLatePrev || lastCharEndingPunct) {
             newLine = true;
-          } 
+          }
         } else {
           newLine = true;
         }
@@ -128,42 +122,38 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
       const lineObj = pageObj.lines[h];
 
-      let fontStylePrev = "";
+      const fontStylePrev = '';
 
       for (let i = 0; i < lineObj.words.length; i++) {
         const wordObj = lineObj.words[i];
 
         if (docxMode) {
-
           let fontStyle;
-          if (wordObj.style == "italic") {
-            fontStyle = "<w:i/>";
-          } else if (wordObj.style == "small-caps") {
-            fontStyle = "<w:smallCaps/>";
+          if (wordObj.style == 'italic') {
+            fontStyle = '<w:i/>';
+          } else if (wordObj.style == 'small-caps') {
+            fontStyle = '<w:smallCaps/>';
           } else {
-            fontStyle = "";
+            fontStyle = '';
           }
 
           if (newLine || fontStyle != fontStylePrev || (h == 0 && g == 0 && i == 0)) {
-            const styleStr = fontStyle == "" ? "" : "<w:rPr>" + fontStyle + "</w:rPr>";
+            const styleStr = fontStyle == '' ? '' : `<w:rPr>${fontStyle}</w:rPr>`;
 
             if (h == 0 && g == 0 && i == 0) {
-              textStr = textStr + "<w:p><w:r>" + styleStr + "<w:t xml:space=\"preserve\">";
+              textStr = `${textStr}<w:p><w:r>${styleStr}<w:t xml:space="preserve">`;
             } else if (newLine) {
-              textStr = textStr + "</w:t></w:r></w:p><w:p><w:r>" + styleStr + "<w:t xml:space=\"preserve\">";
+              textStr = `${textStr}</w:t></w:r></w:p><w:p><w:r>${styleStr}<w:t xml:space="preserve">`;
             } else {
-              textStr = textStr + " </w:t></w:r><w:r>" + styleStr + "<w:t xml:space=\"preserve\">";
+              textStr = `${textStr} </w:t></w:r><w:r>${styleStr}<w:t xml:space="preserve">`;
             }
           } else {
-            textStr = textStr + " ";
+            textStr += ' ';
           }
-  
-        } else {
-          if (newLine) {
-            textStr = textStr + "\n";
-          } else if (h > 0 || g > 0 || i > 0) {
-            textStr = textStr + " ";
-          }
+        } else if (newLine) {
+          textStr = `${textStr}\n`;
+        } else if (h > 0 || g > 0 || i > 0) {
+          textStr = `${textStr} `;
         }
 
         newLine = false;
@@ -171,23 +161,21 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
         // DOCX is an XML format, so any escaped XML characters need to continue being escaped.
         if (docxMode) {
           // TODO: Figure out how to properly export superscripts to Word
-          textStr = textStr + ocr.escapeXml(wordObj.text);
+          textStr += ocr.escapeXml(wordObj.text);
         } else {
-          textStr = textStr + wordObj.text;
+          textStr += wordObj.text;
         }
 
         // If this is the last word on the page, check if it contains ending punctuation
-        if ((h+1) == pageObj.lines.length && (i+1) == lineObj.words.length) {
+        if ((h + 1) == pageObj.lines.length && (i + 1) == lineObj.words.length) {
           lastCharEndingPunct = /[?.!]/.test(wordObj.text);
         }
-
       }
     }
   }
 
   // Add final closing tags
-  if (docxMode && textStr) textStr = textStr + `</w:t></w:r></w:p>`;
+  if (docxMode && textStr) textStr += '</w:t></w:r></w:p>';
 
   return textStr;
-
 }
