@@ -84,8 +84,8 @@ async function main(func, params) {
   const robustConfMode = func === 'check' || params.robustConfMode || false;
   const printConf = func === 'check' || func === 'conf' || params.printConf || false;
 
-  let fileData; let
-    w;
+  let fileData;
+  let w;
   if (backgroundPDF) {
     w = await initMuPDFWorker();
     fileData = await fs.readFileSync(params.pdfFile);
@@ -341,12 +341,12 @@ async function main(func, params) {
   }
 
   // Delete temp directory with fonts
-  tmpUnique.delete();
+  await tmpUnique.delete();
 
   // Terminate all workers
   await tessWorker.terminate();
-  generalScheduler.terminate();
-  w.terminate();
+  await generalScheduler.terminate();
+  await w.terminate();
 
   process.exitCode = 0;
 }

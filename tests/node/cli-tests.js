@@ -39,7 +39,10 @@ describe('Check Node.js commands.', () => {
 
     // Replace console.log with a function to capture output
     consoleOutput = '';
-    console.log = (output) => consoleOutput += output;
+    console.log = (output) => {
+      consoleOutput += output;
+      originalConsoleLog(output);
+    };
   });
 
   afterEach(() => {

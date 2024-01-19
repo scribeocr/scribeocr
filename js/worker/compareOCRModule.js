@@ -41,6 +41,7 @@ export const tmpUnique = {
     if (!tmpUniqueDir) {
       tmpUniqueDir = `${tmpdir()}/${getRandomAlphanum(8)}`;
       mkdirSync(tmpUniqueDir);
+      console.log(`Created directory: ${tmpUniqueDir}`);
     }
     return tmpUniqueDir;
   },
@@ -48,6 +49,7 @@ export const tmpUnique = {
     if (tmpUniqueDir) {
       const { rmSync } = await import('fs');
       rmSync(tmpUniqueDir, { recursive: true, force: true });
+      console.log(`Deleted directory: ${tmpUniqueDir}`);
       tmpUniqueDir = null;
     }
   },
@@ -79,6 +81,7 @@ export const initCanvasNode = async () => {
 
       const fontPathTmp = `${tmpDir}/${fontObj.family}-${fontObj.style}.otf`;
       await writeFile2(fontPathTmp, Buffer.from(fontObj.src));
+      console.log(`Writing font to: ${fontPathTmp}`);
 
       registerFont(fontPathTmp, { family: fontObj.fontFaceName, style: fontObj.fontFaceStyle });
 
