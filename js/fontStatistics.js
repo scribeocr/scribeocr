@@ -3,17 +3,17 @@
 
 import { quantile, round6 } from './miscUtils.js';
 
-import { fontMetricsFamily, fontMetricsRawFamily, fontMetricsFont } from './objects/fontMetricsObjects.js';
+import { FontMetricsFamily, FontMetricsRawFamily, FontMetricsFont } from './objects/fontMetricsObjects.js';
 
 // import { glyphAlts } from "../fonts/glyphs.js";
 
-/** @type {Array<Object.<string, fontMetricsRawFamily>>} */
+/** @type {Array<Object.<string, FontMetricsRawFamily>>} */
 globalThis.fontMetricObjsMessage = [];
 
 /** @type {Array<Object.<string, string>>} */
 globalThis.convertPageWarn = [];
 
-/** @type {?Object.<string, fontMetricsFamily>} */
+/** @type {?Object.<string, FontMetricsFamily>} */
 globalThis.fontMetricsObj = null;
 
 // Sans/serif lookup for common font families
@@ -52,7 +52,7 @@ export function determineSansSerif(fontName) {
       fontFamily = 'SerifDefault';
     } else if (sansFontsRegex.test(fontName)) {
       fontFamily = 'SansDefault';
-    } else if (fontName != 'Default Metrics Font') {
+    } else if (fontName !== 'Default Metrics Font') {
       console.log(`Unidentified font in XML: ${fontName}`);
     }
   }
@@ -81,7 +81,7 @@ export function checkMultiFontMode(fontMetricsObj) {
 /**
  * Automatically sets the default font to whatever font is most common in the provided font metrics.
  *
- * @param {Object.<string, fontMetricsFamily>} fontMetricsObj
+ * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
  */
 export function setDefaultFontAuto(fontMetricsObj) {
   const multiFontMode = checkMultiFontMode(fontMetricsObj);
@@ -108,12 +108,12 @@ export function setDefaultFontAuto(fontMetricsObj) {
  * Combine page-level character statistics to calculate overall font metrics.
  * Run after all files (both image and OCR) have been loaded.
  *
- * @param {Array<Object.<string, fontMetricsRawFamily>>} fontMetricObjsMessage
+ * @param {Array<Object.<string, FontMetricsRawFamily>>} fontMetricObjsMessage
  * @param {Array<Object.<string, string>>} warnArr - Array of objects containing warning/error messages from convertPage
- * @returns {{charError: boolean, charWarn: boolean, fontMetrics: ?Object.<string, fontMetricsFamily>}} -
+ * @returns {{charError: boolean, charWarn: boolean, fontMetrics: ?Object.<string, FontMetricsFamily>}} -
  */
 export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
-  /** @type {Array<Object.<string, fontMetricsRawFamily>>} */
+  /** @type {Array<Object.<string, FontMetricsRawFamily>>} */
   const fontMetricObjsMessageFilter = [];
 
   // TODO: Figure out what happens if there is one blank page with no identified characters (as that would presumably trigger an error and/or warning on the page level).
@@ -123,9 +123,9 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
   let charGoodCt = 0;
   for (let i = 0; i < warnArr.length; i++) {
     const warn = warnArr[i]?.char;
-    if (warn == 'char_error') {
+    if (warn === 'char_error') {
       charErrorCt += 1;
-    } else if (warn == 'char_warning') {
+    } else if (warn === 'char_warning') {
       charWarnCt += 1;
     } else {
       charGoodCt += 1;
@@ -143,11 +143,11 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
 
   const fontMetricsRawObj = fontMetricObjsMessageFilter.reduce((x, y) => unionFontMetricsRawObj(x, y));
 
-  /** @type {Object.<string, fontMetricsFamily>} */
+  /** @type {Object.<string, FontMetricsFamily>} */
   let fontMetricsOut = {};
 
   for (const [family, obj] of Object.entries(fontMetricsRawObj)) {
-    fontMetricsOut[family] = new fontMetricsFamily();
+    fontMetricsOut[family] = new FontMetricsFamily();
     for (const [style, obj2] of Object.entries(obj)) {
       fontMetricsOut[family][style] = calculateFontMetrics(obj2);
       fontMetricsOut[family].obs = fontMetricsOut[family].obs + fontMetricsOut[family][style].obs;
@@ -164,10 +164,10 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
 /**
  * Adds observations from `fontMetricsB` into `fontMetricsA`. Modifies `fontMetricsA` in place.
  *
- * @param {?fontMetricsRawFont} fontMetricsRawFontA
- * @param {?fontMetricsRawFont} fontMetricsRawFontB
+ * @param {?FontMetricsRawFont} fontMetricsRawFontA
+ * @param {?FontMetricsRawFont} fontMetricsRawFontB
  * @param {?number} xHeight - If specified, values from `fontMetricsRawFontB` will be normalized by dividing by `xHeight`.
- * @returns {?fontMetricsRawFont} - Returns fontMetricsFontA after modifying in place
+ * @returns {?FontMetricsRawFont} - Returns fontMetricsFontA after modifying in place
  */
 export function unionFontMetricsFont(fontMetricsRawFontA, fontMetricsRawFontB, xHeight = null) {
   // If one of the inputs is undefined, return early with the only valid object
@@ -201,16 +201,16 @@ export function unionFontMetricsFont(fontMetricsRawFontA, fontMetricsRawFontB, x
 /**
  * Adds observations from `fontMetricsB` into `fontMetricsA`. Modifies `fontMetricsA` in place.
  *
- * @param {Object.<string, fontMetricsRawFamily>} fontMetricsRawObjA
- * @param {Object.<string, fontMetricsRawFamily>} fontMetricsRawObjB
- * @returns {Object.<string, fontMetricsRawFamily>} - Returns fontMetricsObjA after modifying in place
+ * @param {Object.<string, FontMetricsRawFamily>} fontMetricsRawObjA
+ * @param {Object.<string, FontMetricsRawFamily>} fontMetricsRawObjB
+ * @returns {Object.<string, FontMetricsRawFamily>} - Returns fontMetricsObjA after modifying in place
  */
 function unionFontMetricsRawObj(fontMetricsRawObjA, fontMetricsRawObjB) {
   for (const [family, obj] of Object.entries(fontMetricsRawObjB)) {
     for (const [style, obj2] of Object.entries(obj)) {
-      if (Object.keys(obj2.width).length == 0) continue;
+      if (Object.keys(obj2.width).length === 0) continue;
       if (!fontMetricsRawObjA[family]) {
-        fontMetricsRawObjA[family] = new fontMetricsRawFamily();
+        fontMetricsRawObjA[family] = new FontMetricsRawFamily();
       }
     }
   }
@@ -227,11 +227,11 @@ function unionFontMetricsRawObj(fontMetricsRawObjA, fontMetricsRawObjB) {
 /**
  * Calculates final font statistics from individual observations.
  *
- * @param {fontMetricsRawFont} fontMetricsRawFontObj
- * @returns {fontMetricsFont} -
+ * @param {FontMetricsRawFont} fontMetricsRawFontObj
+ * @returns {FontMetricsFont} -
  */
 function calculateFontMetrics(fontMetricsRawFontObj) {
-  const fontMetricOut = new fontMetricsFont();
+  const fontMetricOut = new FontMetricsFont();
 
   // Take the median of each array
   for (const prop of ['width', 'height', 'kerning', 'kerning2']) {
@@ -327,52 +327,52 @@ function calcTopFont(fontScoresChar) {
 }
 
 // Sans fonts with "1" without horizontal base: Arial, Helvetica, Impact, Trebuchet.  All serif fonts are included.
-const base_1 = ['Calibri', 'Comic', 'Franklin', 'Tahoma', 'Verdana', 'Baskerville', 'Book', 'Cambria', 'Century_Schoolbook', 'Courier', 'Garamond', 'Georgia', 'Times'];
-const base_1_regex = new RegExp(base_1.reduce((x, y) => `${x}|${y}`), 'i');
+const base1Arr = ['Calibri', 'Comic', 'Franklin', 'Tahoma', 'Verdana', 'Baskerville', 'Book', 'Cambria', 'Century_Schoolbook', 'Courier', 'Garamond', 'Georgia', 'Times'];
+const base1Regex = new RegExp(base1Arr.reduce((x, y) => `${x}|${y}`), 'i');
 
 // Fonts with double "g" are: Calibri, Franklin, Trebuchet
-const single_g = ['Arial', 'Comic', 'DejaVu', 'Helvetica', 'Impact', 'Tahoma', 'Verdana'];
-const single_g_regex = new RegExp(single_g.reduce((x, y) => `${x}|${y}`), 'i');
+const singleGArr = ['Arial', 'Comic', 'DejaVu', 'Helvetica', 'Impact', 'Tahoma', 'Verdana'];
+const singleGRegex = new RegExp(singleGArr.reduce((x, y) => `${x}|${y}`), 'i');
 
 // Fonts where italic "y" has an open counter where the lowest point is to the left of the tail
-const min_y = ['Bookman', 'Georgia'];
-const min_y_regex = new RegExp(min_y.reduce((x, y) => `${x}|${y}`), 'i');
+const minYArr = ['Bookman', 'Georgia'];
+const minYRegex = new RegExp(minYArr.reduce((x, y) => `${x}|${y}`), 'i');
 
 // Fonts where italic "k" has a closed loop
-const closed_k = ['Century_Schoolbook'];
-const closed_k_regex = new RegExp(closed_k.reduce((x, y) => `${x}|${y}`), 'i');
+const closedKArr = ['Century_Schoolbook'];
+const closedKRegex = new RegExp(closedKArr.reduce((x, y) => `${x}|${y}`), 'i');
 
 // Fonts where italic "v" and "w" is rounded (rather than pointy)
-const rounded_vw = ['Bookman', 'Century_Schoolbook', 'Georgia'];
-const rounded_vw_regex = new RegExp(rounded_vw.reduce((x, y) => `${x}|${y}`), 'i');
+const roundedVWArr = ['Bookman', 'Century_Schoolbook', 'Georgia'];
+const roundedVWRegex = new RegExp(roundedVWArr.reduce((x, y) => `${x}|${y}`), 'i');
 
-const serif_stem_serif_pq = ['Bookman', 'Century_Schoolbook', 'Courier', 'Georgia', 'Times'];
-const serif_stem_serif_pq_regex = new RegExp(serif_stem_serif_pq.reduce((x, y) => `${x}|${y}`), 'i');
+const serifStemSerifPQArr = ['Bookman', 'Century_Schoolbook', 'Courier', 'Georgia', 'Times'];
+const serifStemSerifPQRegex = new RegExp(serifStemSerifPQArr.reduce((x, y) => `${x}|${y}`), 'i');
 
 // While the majority of glyphs can be approximated by applying geometric transformations to a single sans and serif font,
 // there are some exceptions (e.g. the lowercase "g" has 2 distinct variations).
 // This function identifies variations that require switching out a glyph from the default font entirely.
 export function identifyFontVariants(fontScores, fontMetrics) {
   if (fontMetrics?.SansDefault?.normal) {
-    const sans_g = calcTopFont(fontScores?.SansDefault?.normal?.g);
-    fontMetrics.SansDefault.normal.variants.sans_g = single_g_regex.test(sans_g);
-    const sans_1 = calcTopFont(fontScores?.SansDefault?.normal?.['1']);
-    fontMetrics.SansDefault.normal.variants.sans_1 = base_1_regex.test(sans_1);
+    const sansG = calcTopFont(fontScores?.SansDefault?.normal?.g);
+    fontMetrics.SansDefault.normal.variants.sans_g = singleGRegex.test(sansG);
+    const sans1 = calcTopFont(fontScores?.SansDefault?.normal?.['1']);
+    fontMetrics.SansDefault.normal.variants.sans_1 = base1Regex.test(sans1);
   }
 
   if (fontMetrics?.SerifDefault?.italic) {
-    const min_y = calcTopFont(fontScores?.SerifDefault?.italic?.y);
-    fontMetrics.SerifDefault.italic.variants.serif_italic_y = min_y_regex.test(min_y);
-    const closed_k = calcTopFont(fontScores?.SerifDefault?.italic?.y);
-    fontMetrics.SerifDefault.italic.variants.serif_open_k = !closed_k_regex.test(closed_k);
+    const minY = calcTopFont(fontScores?.SerifDefault?.italic?.y);
+    fontMetrics.SerifDefault.italic.variants.serif_italic_y = minYRegex.test(minY);
+    const closedK = calcTopFont(fontScores?.SerifDefault?.italic?.y);
+    fontMetrics.SerifDefault.italic.variants.serif_open_k = !closedKRegex.test(closedK);
 
-    const rounded_v = calcTopFont(fontScores?.SerifDefault?.italic?.v);
-    const rounded_w = calcTopFont(fontScores?.SerifDefault?.italic?.w);
-    fontMetrics.SerifDefault.italic.variants.serif_pointy_vw = !(rounded_vw_regex.test(rounded_v) || rounded_vw_regex.test(rounded_w));
+    const roundedV = calcTopFont(fontScores?.SerifDefault?.italic?.v);
+    const roundedW = calcTopFont(fontScores?.SerifDefault?.italic?.w);
+    fontMetrics.SerifDefault.italic.variants.serif_pointy_vw = !(roundedVWRegex.test(roundedV) || roundedVWRegex.test(roundedW));
 
-    const serif_italic_p = calcTopFont(fontScores?.SerifDefault?.italic?.p);
-    const serif_italic_q = calcTopFont(fontScores?.SerifDefault?.italic?.q);
-    fontMetrics.SerifDefault.italic.variants.serif_stem_sans_pq = !(serif_stem_serif_pq_regex.test(serif_italic_p) || serif_stem_serif_pq_regex.test(serif_italic_q));
+    const serifItalicP = calcTopFont(fontScores?.SerifDefault?.italic?.p);
+    const serifItalicQ = calcTopFont(fontScores?.SerifDefault?.italic?.q);
+    fontMetrics.SerifDefault.italic.variants.serif_stem_sans_pq = !(serifStemSerifPQRegex.test(serifItalicP) || serifStemSerifPQRegex.test(serifItalicQ));
   }
 
   return fontMetrics;

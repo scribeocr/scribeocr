@@ -6,9 +6,9 @@
  * @property {number} angle - Angle of page (degrees)
  * @property {?number} left -
  * @property {number} leftAdj -
- * @property {Array<ocrLine>} lines -
+ * @property {Array<OcrLine>} lines -
  */
-export function ocrPage(n, dims) {
+export function OcrPage(n, dims) {
   /** @type {number} */
   this.n = n;
   /** @type {dims} */
@@ -19,12 +19,12 @@ export function ocrPage(n, dims) {
   this.left = null;
   /** @type {number} */
   this.leftAdj = 0;
-  /** @type {Array<ocrLine>} */
+  /** @type {Array<OcrLine>} */
   this.lines = [];
 }
 
 /**
- * @param {ocrPage} page
+ * @param {OcrPage} page
  * @param {Array<number>} bbox
  * @param {Array<number>} baseline
  * @param {?number} ascHeight - Height of median ascender character
@@ -33,8 +33,8 @@ export function ocrPage(n, dims) {
  * @property {Array<number>} baseline - baseline [slope, offset]
  * @property {?number} ascHeight -
  * @property {?number} xHeight -
- * @property {Array<ocrWord>} words - words in line
- * @property {ocrPage} page - page line belongs to
+ * @property {Array<OcrWord>} words - words in line
+ * @property {OcrPage} page - page line belongs to
  * @property {?number} _sizeCalc - calculated line font size (using `ascHeight` and `xHeight`)
  * @property {?number} _size - line font size set (set through other means)
  *  `_size` should be preferred over `_sizeCalc` when both exist.
@@ -42,7 +42,7 @@ export function ocrPage(n, dims) {
  *    Exists only for debugging purposes, should be `null` in production contexts.
  * @property {?{x: number, y: number}} _angleAdj - Cached x/y adjustments that must be made to coordinates when rotation is enabled.
  */
-export function ocrLine(page, bbox, baseline, ascHeight = null, xHeight = null) {
+export function OcrLine(page, bbox, baseline, ascHeight = null, xHeight = null) {
   // These inline comments are required for types to work correctly with VSCode Intellisense.
   // Unfortunately, the @property tags above are not sufficient.
   /** @type {Array<number>} */
@@ -53,9 +53,9 @@ export function ocrLine(page, bbox, baseline, ascHeight = null, xHeight = null) 
   this.ascHeight = ascHeight;
   /** @type {?number} */
   this.xHeight = xHeight;
-  /** @type {Array<ocrWord>} */
+  /** @type {Array<OcrWord>} */
   this.words = [];
-  /** @type {ocrPage} */
+  /** @type {OcrPage} */
   this.page = page;
   /** @type {?number} */
   this._sizeCalc = null;
@@ -68,12 +68,12 @@ export function ocrLine(page, bbox, baseline, ascHeight = null, xHeight = null) 
 }
 
 /**
- * @param {ocrLine} line
+ * @param {OcrLine} line
  * @param {string} text
  * @param {Array<number>} bbox
  * @param {string} id
  */
-export function ocrWord(line, text, bbox, id) {
+export function OcrWord(line, text, bbox, id) {
   /** @type {boolean} */
   this.sup = false;
   /** @type {boolean} */
@@ -96,11 +96,11 @@ export function ocrWord(line, text, bbox, id) {
   this.matchTruth = false;
   /** @type {string} */
   this.id = id;
-  /** @type {ocrLine} */
+  /** @type {OcrLine} */
   this.line = line;
   /** @type {?string} */
   this.raw = null;
-  /** @type {?Array<ocrChar>} */
+  /** @type {?Array<OcrChar>} */
   this.chars = null;
   /** @type {?{x: number, y: number}} */
   this._angleAdj = null;
@@ -111,7 +111,7 @@ export function ocrWord(line, text, bbox, id) {
  * @param {string} text
  * @param {Array<number>} bbox
  */
-export function ocrChar(text, bbox) {
+export function OcrChar(text, bbox) {
   /** @type {string} */
   this.text = text;
   /** @type {Array<number>} */
@@ -120,19 +120,19 @@ export function ocrChar(text, bbox) {
 
 /**
  *
- * @param {ocrLine} lineObj
+ * @param {OcrLine} lineObj
  */
 export const getPrevLine = (lineObj) => {
   // While lines have no unique ID, word IDs are assumed unique.
   // Therefore, lines are identified using the ID of the first word.
   if (!lineObj.words[0]) throw new Error('All lines must contain >=1 word');
-  const lineIndex = lineObj.page.lines.findIndex((elem) => elem.words?.[0]?.id == lineObj.words[0].id);
+  const lineIndex = lineObj.page.lines.findIndex((elem) => elem.words?.[0]?.id === lineObj.words[0].id);
   if (lineIndex < 1) return null;
   return lineObj.page.lines[lineIndex - 1];
 };
 
 /**
- * @param {ocrPage} page
+ * @param {OcrPage} page
  * @param {string} id
  */
 const getPageWord = (page, id) => {
@@ -145,34 +145,10 @@ const getPageWord = (page, id) => {
   return null;
 };
 
-// /**
-//  * @param {ocrPage} page
-//  * @param {string} search
-//  */
-// const searchPageWords = (page, search) => {
-
-//     const matchArr = [];
-//     for (let i=0; i<page.lines.length; i++) {
-//         for (let j=0; j<page.lines[i].words.length; j++) {
-//             if (page.lines[i].words[j].text.includes(search)) matchArr.push(page.lines[i].words[j]) ;
-//         }
-//     }
-
-//     return matchArr;
-// }
-
-// /**
-//  * Debugging function.  Should not be used in code.
-//  * @param {string} search
-//  */
-// const searchCurrentPageWords = (search) => {
-//     return searchPageWords(globalThis.ocrAll.active[currentPage.n], search);
-// }
-
 // TODO: When all words on a line are deleted, this should also delete the line.
 /**
  * Delete word with id on a given page.
- * @param {ocrPage} page
+ * @param {OcrPage} page
  * @param {string} id
  * TODO: This function currently needs to be called for every word deleted.
  * This leads to noticable lag when deleting a large number of words at the same time.
@@ -183,7 +159,7 @@ const deletePageWord = (page, id) => {
     for (let j = 0; j < page.lines[i].words.length; j++) {
       if (page.lines[i].words[j].id === id) {
         page.lines[i].words.splice(j, 1);
-        if (page.lines[i].words.length == 0) {
+        if (page.lines[i].words.length === 0) {
           page.lines.splice(i, 1);
         }
         return;
@@ -193,7 +169,7 @@ const deletePageWord = (page, id) => {
 };
 
 /**
- * @param {ocrPage} page
+ * @param {OcrPage} page
  */
 const getPageWords = (page) => {
   const words = [];
@@ -204,7 +180,7 @@ const getPageWords = (page) => {
 };
 
 /**
- * @param {ocrLine} line
+ * @param {OcrLine} line
  */
 const getLineText = (line) => {
   let text = '';
@@ -215,7 +191,7 @@ const getLineText = (line) => {
 };
 
 /**
- * @param {ocrPage} page
+ * @param {OcrPage} page
  */
 const getPageText = (page) => {
   let text = '';
@@ -228,7 +204,7 @@ const getPageText = (page) => {
 
 /**
  * Calculates adjustments to line x and y coordinates needed to auto-rotate the page.
- * @param {ocrLine} line
+ * @param {OcrLine} line
  */
 function calcLineAngleAdj(line) {
   if (line._angleAdj === null) {
@@ -264,7 +240,7 @@ function calcLineAngleAdj(line) {
  * Calculates adjustments to word x and y coordinates needed to auto-rotate the page.
  * The numbers returned are *in addition* to the adjustment applied to the entire line (calculated by `calcLineAngleAdj`).
  *
- * @param {ocrWord} word
+ * @param {OcrWord} word
  */
 function calcWordAngleAdj(word) {
   // if (word._angleAdj === null) {
@@ -321,7 +297,7 @@ function escapeXml(string) {
 }
 
 // Re-calculate bbox for line
-export function calcLineBbox(line) {
+function calcLineBbox(line) {
   const wordBoxArr = line.words.map((x) => x.bbox);
   const lineBoxNew = new Array(4);
   lineBoxNew[0] = Math.min(...wordBoxArr.map((x) => x[0]));
@@ -340,7 +316,7 @@ export function calcLineBbox(line) {
  * @param {number} width
  * @param {number} height
  */
-export function rotateBbox(bbox, cosAngle, sinAngle, width, height) {
+function rotateBbox(bbox, cosAngle, sinAngle, width, height) {
   // This math is technically only correct when the angle is 0, as that is the only time when
   // the left/top/right/bottom bounds exactly match the corners of the rectangle the line was printed in.
   // This is generally fine for words (as words are generally short),
@@ -361,11 +337,11 @@ export function rotateBbox(bbox, cosAngle, sinAngle, width, height) {
 
 /**
  * Rotates line bounding box (modifies in place).
- * @param {ocrLine} line
+ * @param {OcrLine} line
  * @param {number} angle
  * @param {?dims} dims
  */
-export function rotateLine(line, angle, dims = null) {
+function rotateLine(line, angle, dims = null) {
   // If the angle is 0 (or very close) return early.
   if (Math.abs(angle) <= 0.05) return;
 
@@ -403,13 +379,13 @@ export function rotateLine(line, angle, dims = null) {
 /**
  * Clones line and included words.  Does not clone page.
  * Should be used rather than `structuredClone` for performance reasons.
- * @param {ocrLine} line
+ * @param {OcrLine} line
  */
 function cloneLine(line) {
-  const lineNew = new ocrLine(line.page, line.bbox.slice(), line.baseline.slice(), line.ascHeight, line.xHeight);
+  const lineNew = new OcrLine(line.page, line.bbox.slice(), line.baseline.slice(), line.ascHeight, line.xHeight);
   for (let i = 0; i < line.words.length; i++) {
     const word = line.words[i];
-    const wordNew = new ocrWord(lineNew, word.text, word.bbox, word.id);
+    const wordNew = new OcrWord(lineNew, word.text, word.bbox, word.id);
     wordNew.conf = word.conf;
     wordNew.sup = word.sup;
     wordNew.dropcap = word.dropcap;
@@ -426,10 +402,10 @@ function cloneLine(line) {
 /**
  * Clones word.  Does not clone line or page.
  * Should be used rather than `structuredClone` for performance reasons.
- * @param {ocrWord} word
+ * @param {OcrWord} word
  */
 function cloneWord(word) {
-  const wordNew = new ocrWord(word.line, word.text, word.bbox.slice(), word.id);
+  const wordNew = new OcrWord(word.line, word.text, word.bbox.slice(), word.id);
   wordNew.conf = word.conf;
   wordNew.sup = word.sup;
   wordNew.dropcap = word.dropcap;
@@ -442,10 +418,10 @@ function cloneWord(word) {
 }
 
 const ocr = {
-  ocrPage,
-  ocrLine,
-  ocrWord,
-  ocrChar,
+  OcrPage,
+  OcrLine,
+  OcrWord,
+  OcrChar,
   calcLineAngleAdj,
   calcLineBbox,
   calcWordAngleAdj,

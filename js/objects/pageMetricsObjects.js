@@ -16,7 +16,7 @@
  * is based on the median line slope for that particular OCR data, whereas the `angle` property of `pageMetrics` should
  * represent the true page angle of the underlying page.
  */
-export function pageMetrics(dims) {
+export function PageMetrics(dims) {
   /** @type {?number} */
   this.angle = null;
   /** @type {dims} */

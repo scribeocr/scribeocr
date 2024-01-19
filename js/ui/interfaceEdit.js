@@ -1,10 +1,12 @@
+/* eslint-disable import/no-cycle */
+
 // File summary:
 // Functions called by the buttons in the "Edit" tab (used for editing words).
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
 import { calcWordMetrics } from '../fontUtils.js';
-import { renderPageQueue, fontAll } from '../../main.js';
+import { renderPageQueue, fontAll, cp } from '../../main.js';
 import ocr from '../objects/ocrObjects.js';
 
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -35,7 +37,7 @@ export function deleteSelectedWords() {
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordIDI = selectedObjects[i].wordID;
-    ocr.deletePageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
+    ocr.deletePageWord(globalThis.ocrAll.active[cp.n], wordIDI);
     window.canvas.remove(selectedObjects[i]);
     canvas.renderAll();
   }
@@ -65,7 +67,7 @@ export async function changeWordFontStyle(style) {
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
 
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
 
     if (!wordObj) {
       console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
@@ -108,7 +110,7 @@ export async function changeWordFontSize(fontSize) {
 
     const wordIDI = wordI.wordID;
 
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
 
     if (!wordObj) {
       console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
@@ -137,7 +139,7 @@ export async function changeWordFontFamily(fontName) {
 
     const fontI = fontAll.active[fontNameLookup][wordI.fontStyleLookup];
 
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
 
     if (!wordObj) {
       console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
@@ -192,7 +194,7 @@ export function toggleSuperSelectedWords() {
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
 
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
 
     if (!wordObj) {
       console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
@@ -202,7 +204,7 @@ export function toggleSuperSelectedWords() {
     wordObj.sup = !wordObj.sup;
   }
 
-  renderPageQueue(currentPage.n);
+  renderPageQueue(cp.n);
 }
 
 let objectsLine;
@@ -262,7 +264,7 @@ export function adjustBaselineRangeChange(value) {
 
     wordI.set('baselineAdj', valueNew);
 
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], wordIDI);
+    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
 
     if (!wordObj) {
       console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);

@@ -23,9 +23,9 @@ export function calcOverlap(boxA, boxB) {
 /**
  * Adds lines from a new page to an existing page.
  * Based on overlap between bounding boxes, lines may be added or combined with existing lines.
- * @param {ocrPage} pageA - New page
- * @param {ocrPage} pageB - Existing page
- * @param {pageMetrics} pageMetricsObj - Page metrics
+ * @param {OcrPage} pageA - New page
+ * @param {OcrPage} pageB - Existing page
+ * @param {PageMetrics} pageMetricsObj - Page metrics
  * @param {boolean} replaceFontSize - Whether font size stats in the new line(s) should be replaced by font size in previous line.
  *  This option is used when the user manually adds a word, as the manually-drawn box will only roughly correspond to font size.
  * @param {boolean} editWordIds - Edit word IDs in `pageB` by appending random characters to the end.
@@ -38,7 +38,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
   for (let i = 0; i < linesNew.length; i++) {
     const lineNew = linesNew[i];
 
-    if (lineNew.words.length == 0) continue;
+    if (lineNew.words.length === 0) continue;
 
     const lineNewRot = ocr.cloneLine(lineNew);
     if (pageMetricsObj.angle) ocr.rotateLine(lineNewRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
@@ -61,7 +61,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
     for (lineI = 0; lineI < lines.length; lineI++) {
       const line = lines[lineI];
 
-      if (line.words.length == 0) continue;
+      if (line.words.length === 0) continue;
 
       const lineRot = ocr.cloneLine(line);
       if (pageMetricsObj.angle) ocr.rotateLine(lineRot, pageMetricsObj.angle * -1, pageMetricsObj.dims);
@@ -176,7 +176,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
         // If this is the first/last line on the page, assume the textbox height is the "A" height.
         // This is done because when a first/last line is added manually, it is often page numbers,
         // and is often not the same font size as other lines.
-        if (lineI == 0 || lineI + 1 == lines.length) {
+        if (lineI === 0 || lineI + 1 === lines.length) {
           lineNew.ascHeight = lineNew.bbox[3] - lineNew.bbox[1];
           lineNew.xHeight = null;
 
@@ -207,14 +207,14 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
 }
 
 /**
- * @param {ocrPage} page
+ * @param {OcrPage} page
  * @param {boolean} applyExclude
  * @param {boolean} editInPlace
  */
 export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = false) {
   const pageInt = editInPlace ? page : structuredClone(page);
 
-  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return pageInt;
+  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return pageInt;
 
   const hocrALines = pageInt.lines;
   const linesNew = [];
@@ -231,9 +231,9 @@ export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = 
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
       const overlap = calcOverlap(lineBoxA, obj.coords);
       if (overlap > 0.5) {
-        if (obj.type == 'order') {
+        if (obj.type === 'order') {
           priorityArr[i] = obj.priority;
-        } else if (obj.type == 'exclude' && applyExclude) {
+        } else if (obj.type === 'exclude' && applyExclude) {
           // Priority "11" is used to remove lines
           priorityArr[i] = 11;
         }
@@ -243,7 +243,7 @@ export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = 
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j < priorityArr.length; j++) {
-      if (priorityArr[j] == i) {
+      if (priorityArr[j] === i) {
         linesNew.push(hocrALines[j]);
       }
     }

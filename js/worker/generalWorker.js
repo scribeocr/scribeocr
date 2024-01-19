@@ -15,6 +15,7 @@ const browserMode = typeof process === 'undefined';
 if (browserMode) {
   globalThis.Tesseract = (await import('../../tess/tesseract.esm.min.js')).default;
 } else {
+  // eslint-disable-next-line import/no-relative-packages
   globalThis.Tesseract = await import('tesseract.js/src/index.js');
 }
 
@@ -71,7 +72,7 @@ const recognizeAndConvert = async ({
 
   const angle = knownAngle === null || knownAngle === undefined ? res1.data.rotateRadians * (180 / Math.PI) * -1 : knownAngle;
 
-  const keepItalic = oemCurrent == 0;
+  const keepItalic = oemCurrent === 0;
 
   const res2 = await convertPageHocr({
     ocrStr: res1.data.hocr, n, pageDims, rotateAngle: angle, keepItalic,
@@ -128,11 +129,11 @@ const recognize = async ({ image, options, output }) => {
 };
 
 const fontAll = {
-  /** @type {?fontContainerAll} */
+  /** @type {?FontContainerAll} */
   raw: null,
-  /** @type {?fontContainerAll} */
+  /** @type {?FontContainerAll} */
   opt: null,
-  /** @type {?fontContainerAll} */
+  /** @type {?FontContainerAll} */
   active: null,
 };
 

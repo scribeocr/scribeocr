@@ -1,9 +1,9 @@
 import ocr from './objects/ocrObjects.js';
-import { round6, saveAs } from './miscUtils.js';
+import { round6 } from './miscUtils.js';
 
 /**
  *
- * @param {Array<ocrPage>} ocrData
+ * @param {Array<OcrPage>} ocrData
  * @param {*} fontMetrics
  * @param {*} layoutData
  * @param {number} minValue
@@ -52,25 +52,25 @@ export function renderHOCR(ocrData, fontMetrics, layoutData, minValue, maxValue)
         hocrOut += `<span class='ocrx_word' id='${wordObj.id}' title='bbox ${wordObj.bbox[0]} ${wordObj.bbox[1]} ${wordObj.bbox[2]} ${wordObj.bbox[3]}`;
         hocrOut += `;x_wconf ${wordObj.conf}`;
 
-        if (wordObj.font && wordObj.font != 'Default') {
+        if (wordObj.font && wordObj.font !== 'Default') {
           hocrOut += `;x_font ${wordObj.font}`;
         }
 
-        hocrOut += "\'";
+        hocrOut += "'";
 
         // TODO: Why are we representing font family and style using the `style` HTML element here?
         // This is not how Tesseract does things, and our own parsing script does not appear to be written to re-import it properly.
         // Add "style" attribute (if applicable)
-        if (['italic', 'small-caps'].includes(wordObj.style) || (wordObj.font && wordObj.font != 'Default')) {
+        if (['italic', 'small-caps'].includes(wordObj.style) || (wordObj.font && wordObj.font !== 'Default')) {
           hocrOut = `${hocrOut} style='`;
 
-          if (wordObj.style == 'italic') {
+          if (wordObj.style === 'italic') {
             hocrOut = `${hocrOut}font-style:italic;`;
-          } else if (wordObj.style == 'small-caps') {
+          } else if (wordObj.style === 'small-caps') {
             hocrOut = `${hocrOut}font-variant:small-caps;`;
           }
 
-          if (wordObj.font && wordObj.font != 'Default') {
+          if (wordObj.font && wordObj.font !== 'Default') {
             hocrOut = `${hocrOut}font-family:${wordObj.font}`;
           }
 
@@ -81,9 +81,9 @@ export function renderHOCR(ocrData, fontMetrics, layoutData, minValue, maxValue)
 
         // Add word text, along with any formatting that uses nested elements rather than attributes
         if (wordObj.sup) {
-          hocrOut = `${hocrOut}<sup>${ocr.escapeXml(wordObj.text)}</sup>` + '</span>';
+          hocrOut = `${hocrOut}<sup>${ocr.escapeXml(wordObj.text)}</sup></span>`;
         } else if (wordObj.dropcap) {
-          hocrOut = `${hocrOut}<span class='ocr_dropcap'>${ocr.escapeXml(wordObj.text)}</span>` + '</span>';
+          hocrOut = `${hocrOut}<span class='ocr_dropcap'>${ocr.escapeXml(wordObj.text)}</span></span>`;
         } else {
           hocrOut = `${hocrOut + ocr.escapeXml(wordObj.text)}</span>`;
         }

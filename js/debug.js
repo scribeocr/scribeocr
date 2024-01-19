@@ -28,7 +28,7 @@ export function printSelectedWords(printOCR = true) {
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
-      console.log(ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], selectedObjects[i].wordID));
+      console.log(ocr.getPageWord(globalThis.ocrAll.active[cp.n], selectedObjects[i].wordID));
     } else {
       console.log(selectedObjects[i]);
     }
@@ -39,7 +39,7 @@ export async function evalSelectedLine() {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
 
-  const word0 = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], selectedObjects[0].wordID);
+  const word0 = ocr.getPageWord(globalThis.ocrAll.active[cp.n], selectedObjects[0].wordID);
 
   const viewCanvas0 = /** @type {HTMLCanvasElement} */ (document.getElementById('e'));
   const viewCanvas1 = /** @type {HTMLCanvasElement} */ (document.getElementById('f'));
@@ -50,14 +50,14 @@ export async function evalSelectedLine() {
   viewCanvas1.setAttribute('style', '');
   viewCanvas2.setAttribute('style', '');
 
-  const imgElem = await imageAll.binary[currentPage.n];
+  const imgElem = await imageAll.binary[cp.n];
 
   const res = await generalScheduler.addJob('evalWords', {
     wordsA: word0.line.words,
     wordsB: [],
     binaryImage: imgElem.src,
-    imageRotated: imageAll.binaryRotated[currentPage.n],
-    pageMetricsObj: pageMetricsArr[currentPage.n],
+    imageRotated: imageAll.binaryRotated[cp.n],
+    pageMetricsObj: pageMetricsArr[cp.n],
     options: { view: true },
   });
 
@@ -89,7 +89,7 @@ const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElement
 
 export function downloadCanvas() {
   const canvasDataStr = canvas.toDataURL();
-  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(currentPage.n)}.png`;
+  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
   downloadImage(canvasDataStr, fileName);
 }
 
@@ -146,7 +146,7 @@ export function getExcludedText() {
 // This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point.
 
 /**
- * @param {ocrPage} pageA
+ * @param {OcrPage} pageA
  */
 export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
   const excludedArr = [];

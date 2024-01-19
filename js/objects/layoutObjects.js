@@ -2,7 +2,7 @@
  * @param {number} priority
  * @param {Array<number>} coords
  */
-export function layoutBox(priority, coords) {
+export function LayoutBox(priority, coords) {
   /** @type {number} */
   this.priority = priority;
   /** @type {Array<number>} */

@@ -1,26 +1,4 @@
 import { parseDebugInfo } from './fontStatistics.js';
-import { convertPageCallback } from './convertOCR.js';
-
-/**
- *
- * @param {boolean} legacy
- * @param {boolean} mainData - Whether this is the "main" data that global stats are derived from.
- *    In general, this should only be true if Tesseract Legacy is being run, and the user has not previously uploaded any data.
- */
-export async function recognizeAllPages(legacy = true, lstm = true, mainData = false) {
-  await globalThis.generalScheduler.ready;
-
-  const inputPages = [...Array(globalThis.imageAll.native.length).keys()];
-  const promiseArr = [];
-  for (const x of inputPages) {
-    promiseArr.push(recognizePage(globalThis.generalScheduler, x, legacy, lstm).then(async (res1) => {
-      if (res1.legacy) await convertPageCallback(res1.legacy, x, mainData, 'Tesseract Legacy', false);
-      if (res1.lstm) await convertPageCallback(res1.lstm, x, false, 'Tesseract LSTM', false);
-    }));
-  }
-
-  await Promise.all(promiseArr);
-}
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.

@@ -4,7 +4,7 @@ import ocr from './objects/ocrObjects.js';
 /**
  * Convert an array of ocrPage objects to plain text, or XML for a Word document.
  *
- * @param {Array<ocrPage>} hocrCurrent -
+ * @param {Array<OcrPage>} hocrCurrent -
  * @param {boolean} removeLineBreaks - Remove line breaks within what appears to be the same paragraph.
  *    This allows for reflowing text.
  * @param {boolean} breaksBetweenPages - Add line breaks between pages.
@@ -101,7 +101,8 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
           // Add a line break if this line is indented
           // Requires (1) line to start to the right of the median line (by 2.5% of the median width) and
           // (2) line to start to the right of the previous line and the next line.
-          } else if (lineLeftMedian && (h + 1) < pageObj.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025) && lineLeftArr[h] > lineLeftArr[h - 1] && lineLeftArr[h] > lineLeftArr[h + 1]) {
+          } else if (lineLeftMedian && (h + 1) < pageObj.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025)
+            && lineLeftArr[h] > lineLeftArr[h - 1] && lineLeftArr[h] > lineLeftArr[h + 1]) {
             newLine = true;
           }
         } else {
@@ -129,18 +130,18 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
         if (docxMode) {
           let fontStyle;
-          if (wordObj.style == 'italic') {
+          if (wordObj.style === 'italic') {
             fontStyle = '<w:i/>';
-          } else if (wordObj.style == 'small-caps') {
+          } else if (wordObj.style === 'small-caps') {
             fontStyle = '<w:smallCaps/>';
           } else {
             fontStyle = '';
           }
 
-          if (newLine || fontStyle != fontStylePrev || (h == 0 && g == 0 && i == 0)) {
+          if (newLine || fontStyle !== fontStylePrev || (h === 0 && g === 0 && i === 0)) {
             const styleStr = fontStyle == '' ? '' : `<w:rPr>${fontStyle}</w:rPr>`;
 
-            if (h == 0 && g == 0 && i == 0) {
+            if (h === 0 && g === 0 && i === 0) {
               textStr = `${textStr}<w:p><w:r>${styleStr}<w:t xml:space="preserve">`;
             } else if (newLine) {
               textStr = `${textStr}</w:t></w:r></w:p><w:p><w:r>${styleStr}<w:t xml:space="preserve">`;
@@ -167,7 +168,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
         }
 
         // If this is the last word on the page, check if it contains ending punctuation
-        if ((h + 1) == pageObj.lines.length && (i + 1) == lineObj.words.length) {
+        if ((h + 1) === pageObj.lines.length && (i + 1) === lineObj.words.length) {
           lastCharEndingPunct = /[?.!]/.test(wordObj.text);
         }
       }

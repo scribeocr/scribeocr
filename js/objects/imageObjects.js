@@ -16,7 +16,7 @@
  * "Adjusted" errors are calculated by applying ad-hoc adjustments to raw errors.  The intent of these adjustments is to penalize patterns of letters
  * that are visually similar to other letters but unlikely to occur in correct recognition results.
  */
-export function compDebug(imageRaw, imageA, imageB, errorRawA, errorRawB) {
+export function CompDebug(imageRaw, imageA, imageB, errorRawA, errorRawB) {
   /** @type {Blob} */
   this.imageRaw = imageRaw;
   /** @type {Blob} */

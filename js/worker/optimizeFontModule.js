@@ -69,7 +69,7 @@ function transformGlyph(glyph, func, transX = false, transY = false) {
  * Calculate pair kerning adjustments for font given provided metrics.
  *
  * @param {opentype.Font} font
- * @param {fontMetricsFont} fontMetricsObj
+ * @param {FontMetricsFont} fontMetricsObj
  * @param {number} xHeight
  * @param {string} style
  */
@@ -137,7 +137,7 @@ const calculateKerningPairs = (font, fontMetricsObj, xHeight, style) => {
  * Creates optimized version of font based on metrics provided.
  * @param {Object} params
  * @param {string|ArrayBuffer} params.fontData
- * @param {fontMetricsFont} params.fontMetricsObj
+ * @param {FontMetricsFont} params.fontMetricsObj
  * @param {string} params.style -
  * @param {boolean} params.adjustAllLeftBearings - Edit left bearings for all characters based on provided metrics.
  * @param {boolean} params.standardizeSize - Scale such that size of 'o' is 0.47x em size.
@@ -301,7 +301,7 @@ export async function optimizeFont({
       const leftBearingCorrect = 0;
       // xMin is automatically updated by getMetrics, leftSideBearing is not
       const leftBearingAct = glyphIMetrics.xMin;
-      if (isFinite(leftBearingCorrect) && leftBearingAct !== undefined) {
+      if (Number.isFinite(leftBearingCorrect) && leftBearingAct !== undefined) {
         shiftX = leftBearingCorrect - leftBearingAct;
 
         // Reset shiftX to 0 if resulting advance would be very small or negative

@@ -1,9 +1,11 @@
 import { saveAs } from './miscUtils.js';
 import { renderHOCR } from './exportRenderHOCR.js';
 
+const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
+
 /**
- * @param {Array<ocrPage>} ocrData - ...
- * @param {Object.<string, fontMetricsFamily>} fontMetrics
+ * @param {Array<OcrPage>} ocrData - ...
+ * @param {Object.<string, FontMetricsFamily>} fontMetrics
  */
 export function renderHOCRBrowser(ocrData, fontMetrics, layoutData) {
   const minValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMin')).value) - 1;
@@ -16,11 +18,11 @@ export function renderHOCRBrowser(ocrData, fontMetrics, layoutData) {
   const exportXML = exportParser.parseFromString(hocrOut, 'text/xml');
 
   let hocrInt = exportXML.documentElement.outerHTML;
-  hocrInt = hocrInt.replaceAll(/xmlns\=[\'\"]{2}\s?/ig, '');
+  hocrInt = hocrInt.replaceAll(/xmlns=['"]{2}\s?/ig, '');
 
   const hocrBlob = new Blob([hocrInt], { type: 'text/plain' });
 
-  const fileName = /** @type {HTMLInputElement} */`${(document.getElementById('downloadFileName')).value.replace(/\.\w{1,4}$/, '')}.hocr`;
+  const fileName = /** @type {HTMLInputElement} */`${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.hocr`;
 
   saveAs(hocrBlob, fileName);
 }

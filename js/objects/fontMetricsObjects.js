@@ -4,14 +4,14 @@
  * @property {Object.<string, number>} height - height of glyph as proportion of x-height
  * @property {Object.<string, number>} kerning -
  * @property {Object.<string, boolean>} variants -
- * @property {ocrPage} heightCaps -
+ * @property {OcrPage} heightCaps -
  * @property {?number} obs - Number of observations used to calculate statistics
  *
  * Note: The "x-height" metric referred to above is actually closer to the height of the "o" character.
  * This is because most characters used for this calculation are slightly larger than "x",
  * and Tesseract does not take this into account when performing this calculation.
  */
-export function fontMetricsFont() {
+export function FontMetricsFont() {
   /** @type {Object.<string, number>} */
   this.width = {};
   /** @type {Object.<string, number>} */
@@ -32,17 +32,17 @@ export function fontMetricsFont() {
   this.obs = 0;
 }
 
-export function fontMetricsFamily() {
-  this.normal = new fontMetricsFont();
-  this.italic = new fontMetricsFont();
-  this['small-caps'] = new fontMetricsFont();
+export function FontMetricsFamily() {
+  this.normal = new FontMetricsFont();
+  this.italic = new FontMetricsFont();
+  this['small-caps'] = new FontMetricsFont();
   this.obs = 0;
 }
 
 /**
  * Object containing individual observations of various character metrics.
  */
-export function fontMetricsRawFont() {
+export function FontMetricsRawFont() {
   /** @type {Object.<string, Array.<number>>} */
   this.width = {};
   /** @type {Object.<string, Array.<number>>} */
@@ -59,8 +59,8 @@ export function fontMetricsRawFont() {
   this.obs = 0;
 }
 
-export function fontMetricsRawFamily() {
-  this.normal = new fontMetricsRawFont();
-  this.italic = new fontMetricsRawFont();
-  this['small-caps'] = new fontMetricsRawFont();
+export function FontMetricsRawFamily() {
+  this.normal = new FontMetricsRawFont();
+  this.italic = new FontMetricsRawFont();
+  this['small-caps'] = new FontMetricsRawFont();
 }

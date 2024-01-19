@@ -13,7 +13,7 @@ import ocr from './objects/ocrObjects.js';
 import { saveAs } from './miscUtils.js';
 
 /**
- * @param {ocrPage} pageObj
+ * @param {OcrPage} pageObj
  */
 export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return { content: '', rows: 0 };
@@ -40,7 +40,7 @@ export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xl
 // TODO: This currently creates junk rows with only punctuation, as those bounding boxes are so small they often do not overlap with other lines.
 /**
  * Convert a single table into HTML or Excel XML rows
- * @param {ocrPage} pageObj
+ * @param {OcrPage} pageObj
  */
 function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
   const wordArr = [];

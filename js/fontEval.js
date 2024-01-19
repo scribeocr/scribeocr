@@ -1,7 +1,7 @@
 /**
  *
- * @param {fontContainerFamily} font
- * @param {Array<ocrPage>} pageArr
+ * @param {FontContainerFamily} font
+ * @param {Array<OcrPage>} pageArr
  * @param {Array<HTMLImageElement>} binaryImageArr
  * @param {Array<boolean>} binaryRotatedArr
  * @param {number} n - Number of words to compare
@@ -44,7 +44,7 @@ let loadedOpt = false;
 /**
  *
  * @param {*} scheduler
- * @param {Object<string, ?fontContainerAll>} fontAll
+ * @param {Object<string, ?FontContainerAll>} fontAll
  */
 export async function setFontAllWorker(scheduler, fontAll) {
   if (!fontAll.active) return;
@@ -95,7 +95,7 @@ export async function setFontAllWorker(scheduler, fontAll) {
 }
 
 /**
-* @param {Array<ocrPage>} pageArr
+* @param {Array<OcrPage>} pageArr
 * @param {Array<Promise<HTMLImageElement>>|Array<Promise<Image>>} binaryImageArr
 * @param {Array<boolean>} binaryRotatedArr
 */

@@ -16,7 +16,7 @@ const docxPageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getE
 /**
  * Create a Word document from an array of ocrPage objects.
  *
- * @param {Array<ocrPage>} hocrCurrent -
+ * @param {Array<OcrPage>} hocrCurrent -
  */
 export async function writeDocx(hocrCurrent) {
   const removeLineBreaks = docxReflowCheckboxElem.checked;

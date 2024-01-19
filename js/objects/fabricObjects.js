@@ -1,4 +1,7 @@
+/* eslint-disable import/no-cycle */
+
 import { updateWordCanvas } from '../ui/interfaceEdit.js';
+import { cp } from '../../main.js';
 import { calcWordMetrics } from '../fontUtils.js';
 import ocr from './ocrObjects.js';
 
@@ -58,7 +61,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
 
     this.on('editing:exited', async function () {
       if (this.hasStateChanged) {
-        if (document.getElementById('smartQuotes').checked && /[\'\"]/.test(this.text)) {
+        if (document.getElementById('smartQuotes').checked && /['"]/.test(this.text)) {
           let textInt = this.text;
           textInt = textInt.replace(/(^|[-–—])\'/, '$1‘');
           textInt = textInt.replace(/(^|[-–—])\"/, '$1“');
@@ -70,7 +73,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
 
         await updateWordCanvas(this);
 
-        const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], this.wordID);
+        const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], this.wordID);
 
         if (!wordObj) {
           console.warn(`Canvas element contains ID${this.wordID}that does not exist in OCR data.  Skipping word.`);
@@ -164,7 +167,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
         const visualRightNew = opt.target.left + visualWidthNew;
         const visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
 
-        const wordObj = ocr.getPageWord(globalThis.ocrAll.active[currentPage.n], opt.target.wordID);
+        const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], opt.target.wordID);
 
         if (!wordObj) {
           console.warn(`Canvas element contains ID${opt.target.wordID}that does not exist in OCR data.  Skipping word.`);

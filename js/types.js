@@ -1,39 +1,39 @@
 /**
- * @typedef {import("./objects/ocrObjects.js").ocrPage} ocrPage
+ * @typedef {import("./objects/ocrObjects.js").OcrPage} OcrPage
  */
 
 /**
- * @typedef {import("./objects/ocrObjects.js").ocrLine} ocrLine
+ * @typedef {import("./objects/ocrObjects.js").OcrLine} OcrLine
  */
 
 /**
- * @typedef {import("./objects/ocrObjects.js").ocrWord} ocrWord
+ * @typedef {import("./objects/ocrObjects.js").OcrWord} OcrWord
  */
 
 /**
- * @typedef {import("./objects/ocrObjects.js").ocrChar} ocrChar
+ * @typedef {import("./objects/ocrObjects.js").OcrChar} OcrChar
  */
 
 /**
- * @typedef {import("./objects/fontMetricsObjects.js").fontMetricsFont} fontMetricsFont
+ * @typedef {import("./objects/fontMetricsObjects.js").FontMetricsFont} FontMetricsFont
  */
 
 /**
- * @typedef {import("./objects/fontMetricsObjects.js").fontMetricsFamily} fontMetricsFamily
+ * @typedef {import("./objects/fontMetricsObjects.js").FontMetricsFamily} FontMetricsFamily
  */
 /**
- * @typedef {import("./objects/fontMetricsObjects.js").fontMetricsRawFont} fontMetricsRawFont
- */
-
-/**
- * @typedef {import("./objects/fontObjects.js").fontContainerFont} fontContainerFont
+ * @typedef {import("./objects/fontMetricsObjects.js").FontMetricsRawFont} FontMetricsRawFont
  */
 
 /**
- * @typedef {import("./objects/fontObjects.js").fontContainerFamily} fontContainerFamily
+ * @typedef {import("./objects/fontObjects.js").FontContainerFont} FontContainerFont
+ */
+
+/**
+ * @typedef {import("./objects/fontObjects.js").FontContainerFamily} FontContainerFamily
  */
 /**
- * @typedef {import("./objects/fontObjects.js").fontContainerAll} fontContainerAll
+ * @typedef {import("./objects/fontObjects.js").FontContainerAll} FontContainerAll
  */
 
 /**
@@ -51,9 +51,9 @@
  */
 
 /**
- * @typedef {import("./objects/pageMetricsObjects.js").pageMetrics} pageMetrics
+ * @typedef {import("./objects/pageMetricsObjects.js").PageMetrics} PageMetrics
  */
 
 /**
- * @typedef {import("./objects/imageObjects.js").compDebug} compDebug
+ * @typedef {import("./objects/imageObjects.js").CompDebug} CompDebug
  */

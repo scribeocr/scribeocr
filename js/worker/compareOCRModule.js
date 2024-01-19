@@ -1,7 +1,10 @@
+// Disable linter rule.  Many async functions in this files draw on the canvas (a side effect) so need to be run one at a time.
+/* eslint-disable no-await-in-loop */
+
 import { getRandomAlphanum, imageStrToBlob } from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
-import { compDebug } from '../objects/imageObjects.js';
+import { CompDebug } from '../objects/imageObjects.js';
 
 const browserMode = typeof process === 'undefined';
 
@@ -66,7 +69,7 @@ export const initCanvasNode = async () => {
 
   /**
    *
-   * @param {fontContainerFont} fontObj
+   * @param {FontContainerFont} fontObj
    */
   const registerFontObj = async (fontObj) => {
     if (typeof fontObj.src !== 'string') {
@@ -111,14 +114,14 @@ export const initCanvasNode = async () => {
 
 /**
  * Crop the image data the area containing `words` and render to the `calcCtx.canvas` canvas.
- * @param {Array<ocrWord>} words
+ * @param {Array<OcrWord>} words
  * @param {ImageBitmap} imageBinaryBit
  * @param {dims} pageDims
  * @param {number} angle
  * @param {object} [options]
  * @param {boolean} [options.view] - Draw results on debugging canvases
  */
-const drawWordActual = async function (words, imageBinaryBit, pageDims, angle, options = {}) {
+const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = {}) => {
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
 
@@ -136,7 +139,7 @@ const drawWordActual = async function (words, imageBinaryBit, pageDims, angle, o
   const fontStyle = words[0].style;
   const wordFontFamily = words[0].font || globalSettings.defaultFont;
 
-  const fontI = /** @type {fontContainerFont} */ (fontAll.active[wordFontFamily][fontStyle]);
+  const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][fontStyle]);
   const fontOpentypeI = await fontI.opentype;
   calcCtx.font = `${fontI.fontFaceStyle} ${1000}px ${fontI.fontFaceName}`;
 
@@ -219,7 +222,7 @@ const drawWordActual = async function (words, imageBinaryBit, pageDims, angle, o
  *
  * @param {CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctx
  * @param {string} text
- * @param {fontContainerFont} font
+ * @param {FontContainerFont} font
  * @param {number} size
  * @param {number} boxWidth
  * @param {number} left
@@ -227,7 +230,7 @@ const drawWordActual = async function (words, imageBinaryBit, pageDims, angle, o
  * @param {string} fillStyle
  */
 const printWordOnCanvas = async (ctx, text, font, size, boxWidth, left = 0, bottom = 0, fillStyle = 'black') => {
-  // const fontI = /**@type {fontContainerFont} */  (fontAll.active[font][style]);
+  // const fontI = /**@type {FontContainerFont} */  (fontAll.active[font][style]);
   const fontOpentypeI = await font.opentype;
 
   ctx.font = `${font.fontFaceStyle} ${size}px ${font.fontFaceName}`;
@@ -246,7 +249,8 @@ const printWordOnCanvas = async (ctx, text, font, size, boxWidth, left = 0, bott
 
     if (i + 1 < wordTextArr.length) {
       const advance = fontOpentypeI.charToGlyph(wordTextArr[i]).advanceWidth * (size / fontOpentypeI.unitsPerEm);
-      const kern = i + 1 < wordTextArr.length ? fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(wordTextArr[i]), fontOpentypeI.charToGlyph(wordTextArr[i + 1])) * (size / fontOpentypeI.unitsPerEm) || 0 : 0;
+      const kern = i + 1 < wordTextArr.length ? fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(wordTextArr[i]),
+        fontOpentypeI.charToGlyph(wordTextArr[i + 1])) * (size / fontOpentypeI.unitsPerEm) || 0 : 0;
       leftI += advance;
       leftI += kern;
       leftI += charSpacing;
@@ -257,7 +261,7 @@ const printWordOnCanvas = async (ctx, text, font, size, boxWidth, left = 0, bott
 /**
  * Print word on `ctxCanvas`.
  *
- * @param {ocrWord} word
+ * @param {OcrWord} word
  * @param {number} offsetX
  * @param {number} cropY
  * @param {number} lineFontSize
@@ -282,7 +286,7 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
 
   const wordFontFamily = word.font || globalSettings.defaultFont;
 
-  const fontI = /** @type {fontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
+  const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
   const fontOpentypeI = await fontI.opentype;
 
   // Set canvas to correct font and size
@@ -368,12 +372,12 @@ async function getImageBitmap(img) {
  * Optionally, an alternative array of OCR results (for the same underlying text)
  * can be provided for comparison purposes.
  * @param {Object} params
- * @param {Array<ocrWord>} params.wordsA - Array of words
- * @param {Array<ocrWord>} [params.wordsB] - Array of words for comparison.  Optional.
+ * @param {Array<OcrWord>} params.wordsA - Array of words
+ * @param {Array<OcrWord>} [params.wordsB] - Array of words for comparison.  Optional.
  * @param {string|ImageBitmap} params.binaryImage - Image to compare to.  Using an ImageBitmap is more efficient
  *    when multiple compparisons are being made to the same binaryImage.
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @param {Object} [params.options]
  * @param {boolean} [params.options.view] - Draw results on debugging canvases
  * @param {boolean} [params.options.useAFontSize] - Use font size from `wordsA` when printing `wordsB`
@@ -461,7 +465,7 @@ export async function evalWords({
 
   const imageDataExpectedA = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
 
-  if (imageDataActual.length != imageDataExpectedA.length) {
+  if (imageDataActual.length !== imageDataExpectedA.length) {
     console.log('Actual and expected images are different sizes');
     debugger;
   }
@@ -470,9 +474,9 @@ export async function evalWords({
   let totalA = 0;
   let lastMatch = false;
   for (let i = 0; i < imageDataActual.length; i++) {
-    if (imageDataActual[i] != 255 || imageDataExpectedA[i] != 255) {
+    if (imageDataActual[i] !== 255 || imageDataExpectedA[i] !== 255) {
       totalA += 1;
-      if (imageDataActual[i] == 255 || imageDataExpectedA[i] == 255) {
+      if (imageDataActual[i] === 255 || imageDataExpectedA[i] === 255) {
         if (lastMatch) {
           diffA += 0.5;
         } else {
@@ -506,7 +510,7 @@ export async function evalWords({
       word.style = wordsA[0].style;
 
       const baselineY = linebox[3] + baselineB[1] + baselineB[0] * (word.bbox[0] - linebox[0]);
-      if (i == 0) {
+      if (i === 0) {
         x0 = word.bbox[0];
         y0 = baselineY;
       }
@@ -526,9 +530,9 @@ export async function evalWords({
     let totalB = 0;
     let lastMatch = false;
     for (let i = 0; i < imageDataActual.length; i++) {
-      if (imageDataActual[i] != 255 || imageDataExpectedB[i] != 255) {
+      if (imageDataActual[i] !== 255 || imageDataExpectedB[i] !== 255) {
         totalB += 1;
-        if (imageDataActual[i] == 255 || imageDataExpectedB[i] == 255) {
+        if (imageDataActual[i] === 255 || imageDataExpectedB[i] === 255) {
           if (lastMatch) {
             diffB += 0.5;
           } else {
@@ -544,7 +548,7 @@ export async function evalWords({
     metricB = diffB / totalB;
   }
 
-  /** @type {?compDebug} */
+  /** @type {?CompDebug} */
   let debugImg = null;
   if (view) {
     if (browserMode) {
@@ -552,7 +556,7 @@ export async function evalWords({
       const imageA = await viewCtx1.canvas.convertToBlob();
       const imageB = await viewCtx2.canvas.convertToBlob();
 
-      debugImg = new compDebug(imageRaw, imageA, imageB, metricA, metricB);
+      debugImg = new CompDebug(imageRaw, imageA, imageB, metricA, metricB);
     } else {
       const { dirname } = await import('path');
       const { createWriteStream, writeFileSync } = await import('fs');
@@ -606,11 +610,11 @@ function penalizeWord(wordStr) {
  * Checks words in pageA against words in pageB.  Edits `compTruth` and `matchTruth` attributes of words in `pageA` in place
  * and returns additional data depending on `mode`.
  * @param {object} params
- * @param {ocrPage} params.pageA
- * @param {ocrPage} params.pageB
+ * @param {OcrPage} params.pageA
+ * @param {OcrPage} params.pageB
  * @param {string|ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @param {object} params.options
  * @param {("stats"|"comb")} [params.options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
  *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created.
@@ -914,7 +918,7 @@ export async function compareHOCR({
                   //    For example, the "-" in a negative number may be a different word, or the digits before and after the decimal point may be split into separate words.
                   //    TODO: It may be worth investigating if this issue can be improved in the engine.
                   //  1. Punctuation characters should not be their own word (e.g. quotes should come before/after alphanumeric characters)
-                  if (wordsAText == wordsBText) {
+                  if (wordsAText === wordsBText) {
                     if (wordsAArr.map((x) => /[a-z]/i.test(x.text)).filter((x) => !x).length > 0 || wordsBArr.map((x) => /[a-z]/i.test(x.text)).filter((x) => !x).length > 0) {
                       hocrAError += (wordsAArr.length - 1) * 0.05;
                       hocrBError += (wordsBArr.length - 1) * 0.05;
@@ -1084,10 +1088,10 @@ export async function compareHOCR({
 }
 
 /**
- * @param {Array<ocrWord>} wordsA
+ * @param {Array<OcrWord>} wordsA
  * @param {ImageBitmap} binaryImage
  * @param {boolean} imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} pageMetricsObj
+ * @param {PageMetrics} pageMetricsObj
  * @param {object} [options]
  * @param {boolean} [options.view] - TODO: make this functional or remove
  * @param {boolean} [options.ignorePunct]
@@ -1136,17 +1140,17 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
     wordTextB = wordTextB.toLowerCase();
   }
 
-  const debugLog = `Supp comparison: ${String(wordTextA == wordTextB)} [${wordTextA} vs. ${wordTextB}] for ${wordsA[0].id} (page ${String(wordsA[0].line.page.n + 1)})\n`;
+  const debugLog = `Supp comparison: ${String(wordTextA === wordTextB)} [${wordTextA} vs. ${wordTextB}] for ${wordsA[0].id} (page ${String(wordsA[0].line.page.n + 1)})\n`;
 
-  return { match: wordTextA == wordTextB, debugLog };
+  return { match: wordTextA === wordTextB, debugLog };
 }
 
 /**
  * @param {Object} params
- * @param {ocrPage} params.page
+ * @param {OcrPage} params.page
  * @param {string|ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @param {?function} params.func
  * @returns
  */
@@ -1184,10 +1188,10 @@ async function evalPageBase({
 
 /**
  * @param {Object} params
- * @param {ocrPage} params.page
+ * @param {OcrPage} params.page
  * @param {string|ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @returns
  */
 export async function evalPage({
@@ -1200,10 +1204,10 @@ export async function evalPage({
 
 /**
  * @param {Object} params
- * @param {ocrPage} params.page
+ * @param {OcrPage} params.page
  * @param {string|ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @param {string} params.font
  * @returns
  */
@@ -1211,7 +1215,7 @@ export async function evalPageFont({
   page, binaryImage, imageRotated, pageMetricsObj, font,
 }) {
 /**
- * @param {ocrLine} ocrLineJ
+ * @param {OcrLine} ocrLineJ
  */
   const transformLineFont = (ocrLineJ) => {
     if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
@@ -1219,7 +1223,7 @@ export async function evalPageFont({
     // If the font is not set for a specific word, whether it is assumed sans/serif will be determined by the default font.
     const lineFontType = ocrLineJ.words[0].font ? fontAll.active[ocrLineJ.words[0].font].normal.type : fontAll.active.Default.normal.type;
 
-    if (fontAll.active[font].normal.type != lineFontType) return null;
+    if (fontAll.active[font].normal.type !== lineFontType) return null;
 
     const ocrLineJClone = ocr.cloneLine(ocrLineJ);
 
@@ -1237,10 +1241,10 @@ export async function evalPageFont({
 
 /**
  * @param {Object} params
- * @param {ocrPage} params.page
+ * @param {OcrPage} params.page
  * @param {string|ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @param {function} params.func
  * @param {boolean} params.view
  * @returns
@@ -1301,10 +1305,10 @@ export async function nudgePageBase({
 
 /**
  * @param {Object} params
- * @param {ocrPage} params.page
+ * @param {OcrPage} params.page
  * @param {string|ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @param {boolean} params.view
  * @returns
  */
@@ -1324,10 +1328,10 @@ export async function nudgePageFontSize({
 
 /**
  * @param {Object} params
- * @param {ocrPage} params.page
+ * @param {OcrPage} params.page
  * @param {string|ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {pageMetrics} params.pageMetricsObj
+ * @param {PageMetrics} params.pageMetricsObj
  * @param {boolean} params.view
  * @returns
  */
@@ -1344,20 +1348,20 @@ export async function nudgePageBaseline({
 }
 
 let fontAll = {
-  /** @type {?fontContainerAll} */
+  /** @type {?FontContainerAll} */
   raw: null,
-  /** @type {?fontContainerAll} */
+  /** @type {?FontContainerAll} */
   opt: null,
-  /** @type {?fontContainerAll} */
+  /** @type {?FontContainerAll} */
   active: null,
 };
 
 /**
  *
  * @param {Object} _fontAll
- * @param {?fontContainerAll} _fontAll.raw
- * @param {?fontContainerAll} _fontAll.opt
- * @param {?fontContainerAll} _fontAll.active
+ * @param {?FontContainerAll} _fontAll.raw
+ * @param {?FontContainerAll} _fontAll.opt
+ * @param {?FontContainerAll} _fontAll.active
  */
 export function setFontAll(_fontAll) {
   fontAll = _fontAll;

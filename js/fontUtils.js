@@ -6,7 +6,7 @@ import { getPrevLine } from './objects/ocrObjects.js';
 /**
  * Calculates font size by comparing provided character height to font metrics.
  *
- * @param {fontContainerFont} font
+ * @param {FontContainerFont} font
  * @param {number} charHeightActual - Actual, measured height of character in pixels.
  * @param {string} [compChar='o'] - Character to compare `charHeightActual` against (default is 'o').
  * @returns {Promise<number>} A promise that resolves to the calculated font size.
@@ -31,7 +31,7 @@ async function getFontSize(font, charHeightActual, compChar = 'o') {
  */
 /**
  * @param {string} wordText
- * @param {fontContainerFont} font
+ * @param {FontContainerFont} font
  * @param {number} fontSize
  * @async
  * @return {Promise<WordMetrics>}
@@ -46,7 +46,7 @@ export async function calcWordMetrics(wordText, font, fontSize) {
     const charI = wordTextArr[i];
     const charJ = wordTextArr[i + 1];
     const glyphI = fontOpentypeI.charToGlyph(charI);
-    if (glyphI.name == '.notdef') console.log(`Character ${charI} is not defined in font ${font.family} ${font.style}`);
+    if (glyphI.name === '.notdef') console.log(`Character ${charI} is not defined in font ${font.family} ${font.style}`);
     wordWidth1 += glyphI.advanceWidth;
     if (charJ) wordWidth1 += fontOpentypeI.getKerningValue(glyphI, fontOpentypeI.charToGlyph(charJ));
   }
@@ -68,7 +68,7 @@ export async function calcWordMetrics(wordText, font, fontSize) {
  * Calculates char spacing required for the specified word to be rendered at specified width.
  *
  * @param {string} wordText -
- * @param {fontContainerFont} font
+ * @param {FontContainerFont} font
  * @param {number} fontSize -
  * @param {number} actualWidth - The actual width the word should be scaled to
  */
@@ -86,8 +86,8 @@ export async function calcCharSpacing(wordText, font, fontSize, actualWidth) {
  * Calculate font size for word.
  * Returns null for any word where the default size for the line should be used.
  * This function differs from accessing the `word.font` property in that
- * @param {ocrWord} word
- * @param {fontContainerAll} fontContainer
+ * @param {OcrWord} word
+ * @param {FontContainerAll} fontContainer
  */
 export const calcWordFontSize = async (word, fontContainer) => {
   // TODO: Figure out how to get types to work with this
@@ -114,8 +114,8 @@ export const calcWordFontSize = async (word, fontContainer) => {
 /**
 * Get or calculate font size for line.
 * This value will either be (1) a manually set value or (2) a value calculated using line metrics.
-* @param {ocrLine} line
- * @param {fontContainerAll} fontContainer
+* @param {OcrLine} line
+ * @param {FontContainerAll} fontContainer
 */
 export const calcLineFontSize = async (line, fontContainer) => {
   if (line._size) return line._size;

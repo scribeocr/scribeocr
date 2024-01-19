@@ -1,10 +1,12 @@
+/* eslint-disable import/no-cycle */
+
 import { getRandomAlphanum } from '../miscUtils.js';
 
-import { displayPage, showHideElem } from '../../main.js';
+import { displayPage, showHideElem, cp } from '../../main.js';
 
 import { createCells } from '../exportWriteTabular.js';
 
-import { layoutBox } from '../objects/layoutObjects.js';
+import { LayoutBox } from '../objects/layoutObjects.js';
 
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
 const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
@@ -14,6 +16,10 @@ const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(docum
 
 const strokeWidth = 5;
 
+/**
+ *
+ * @param {?string} type
+ */
 export function addLayoutBoxClick(type = null) {
   if (type) {
     // Set default to whatever type was last selected
@@ -61,7 +67,7 @@ export function addLayoutBoxClick(type = null) {
     });
 
     // Maximum priority for boxes that already exist
-    maxPriority = Math.max(...Object.values(globalThis.layout[currentPage.n].boxes).map((x) => x.priority), 0);
+    maxPriority = Math.max(...Object.values(globalThis.layout[cp.n].boxes).map((x) => x.priority), 0);
 
     canvas.add(rect);
 
@@ -97,12 +103,12 @@ export function addLayoutBoxClick(type = null) {
         // Stroke impacts the right/bottom coordinates, so needs to be subtraced
         const bbox = [Math.min(origX, pointer.x), Math.min(origY, pointer.y), Math.max(origX, pointer.x), Math.max(origY, pointer.y)];
 
-        globalThis.layout[currentPage.n].boxes[id] = new layoutBox(maxPriority + 1, bbox);
+        globalThis.layout[cp.n].boxes[id] = new LayoutBox(maxPriority + 1, bbox);
         canvas.remove(rect);
 
         init = true;
 
-        globalThis.layout[currentPage.n].boxes[id].type = type;
+        globalThis.layout[cp.n].boxes[id].type = type;
         renderLayoutBox(id);
         updateDataPreview();
       }
@@ -137,17 +143,17 @@ export function getSelectedLayoutBoxIds() {
 // Given an array of layout box ids on current page,
 // delete both the related canvas objects and underlying data.
 export function deleteLayoutBoxes(ids, deleteData = true, renderAll = true) {
-  if (ids.length == 0) return;
+  if (ids.length === 0) return;
 
   // Delete boxes in underlying data structure
   if (deleteData) {
     for (let i = 0; i < ids.length; i++) {
-      delete globalThis.layout[currentPage.n].boxes[ids[i]];
+      delete globalThis.layout[cp.n].boxes[ids[i]];
     }
   }
 
   // Delete relevant objects on canvas
-  globalThis.layout[currentPage.n].default = false;
+  globalThis.layout[cp.n].default = false;
 
   const allObjects = window.canvas.getObjects();
   const n = allObjects.length;
@@ -197,8 +203,8 @@ export function toggleSelectableWords(selectable = true) {
 }
 
 export function setDefaultLayoutClick() {
-  globalThis.layout[currentPage.n].default = true;
-  globalThis.defaultLayout = structuredClone(globalThis.layout[currentPage.n].boxes);
+  globalThis.layout[cp.n].default = true;
+  globalThis.defaultLayout = structuredClone(globalThis.layout[cp.n].boxes);
   for (let i = 0; i < globalThis.layout.length; i++) {
     if (globalThis.layout[i].default) {
       globalThis.layout[i].boxes = structuredClone(globalThis.defaultLayout);
@@ -207,27 +213,27 @@ export function setDefaultLayoutClick() {
 }
 
 export function revertLayoutClick() {
-  globalThis.layout[currentPage.n].default = true;
-  globalThis.layout[currentPage.n].boxes = structuredClone(globalThis.defaultLayout);
-  displayPage(currentPage.n);
+  globalThis.layout[cp.n].default = true;
+  globalThis.layout[cp.n].boxes = structuredClone(globalThis.defaultLayout);
+  displayPage(cp.n);
   updateDataPreview();
 }
 
 export function setLayoutBoxTypeClick(type) {
   const ids = getSelectedLayoutBoxIds();
 
-  if (ids.length == 0) return;
+  if (ids.length === 0) return;
 
   const idsChange = [];
 
   for (let i = 0; i < ids.length; i++) {
-    if (globalThis.layout[currentPage.n].boxes[ids[i]].type != type) {
+    if (globalThis.layout[cp.n].boxes[ids[i]].type !== type) {
       idsChange.push(ids[i]);
-      globalThis.layout[currentPage.n].boxes[ids[i]].type = type;
+      globalThis.layout[cp.n].boxes[ids[i]].type = type;
     }
   }
 
-  if (idsChange.length == 0) return;
+  if (idsChange.length === 0) return;
 
   deleteLayoutBoxes(idsChange, false, false);
 
@@ -237,18 +243,18 @@ export function setLayoutBoxTypeClick(type) {
 export function setLayoutBoxTable(table) {
   const ids = getSelectedLayoutBoxIds();
 
-  if (ids.length == 0) return;
+  if (ids.length === 0) return;
 
   const idsChange = [];
 
   for (let i = 0; i < ids.length; i++) {
-    if (globalThis.layout[currentPage.n].boxes[ids[i]].table != parseInt(table) - 1) {
+    if (globalThis.layout[cp.n].boxes[ids[i]].table !== parseInt(table) - 1) {
       idsChange.push(ids[i]);
-      globalThis.layout[currentPage.n].boxes[ids[i]].table = parseInt(table) - 1;
+      globalThis.layout[cp.n].boxes[ids[i]].table = parseInt(table) - 1;
     }
   }
 
-  if (idsChange.length == 0) return;
+  if (idsChange.length === 0) return;
 
   deleteLayoutBoxes(idsChange, false, false);
 
@@ -258,14 +264,14 @@ export function setLayoutBoxTable(table) {
 export function setLayoutBoxInclusionRuleClick(rule) {
   const ids = getSelectedLayoutBoxIds();
 
-  if (ids.length == 0) return;
+  if (ids.length === 0) return;
 
   const idsChange = [];
 
   for (let i = 0; i < ids.length; i++) {
-    if (globalThis.layout[currentPage.n].boxes[ids[i]].inclusionRule != rule) {
+    if (globalThis.layout[cp.n].boxes[ids[i]].inclusionRule !== rule) {
       idsChange.push(ids[i]);
-      globalThis.layout[currentPage.n].boxes[ids[i]].inclusionRule = rule;
+      globalThis.layout[cp.n].boxes[ids[i]].inclusionRule = rule;
     }
   }
 
@@ -275,14 +281,14 @@ export function setLayoutBoxInclusionRuleClick(rule) {
 export function setLayoutBoxInclusionLevelClick(rule) {
   const ids = getSelectedLayoutBoxIds();
 
-  if (ids.length == 0) return;
+  if (ids.length === 0) return;
 
   const idsChange = [];
 
   for (let i = 0; i < ids.length; i++) {
-    if (globalThis.layout[currentPage.n].boxes[ids[i]].inclusionLevel != rule) {
+    if (globalThis.layout[cp.n].boxes[ids[i]].inclusionLevel !== rule) {
       idsChange.push(ids[i]);
-      globalThis.layout[currentPage.n].boxes[ids[i]].inclusionLevel = rule;
+      globalThis.layout[cp.n].boxes[ids[i]].inclusionLevel = rule;
     }
   }
 
@@ -290,7 +296,7 @@ export function setLayoutBoxInclusionLevelClick(rule) {
 }
 
 export function renderLayoutBoxes(ids, renderAll = true) {
-  if (ids.length == 0) return;
+  if (ids.length === 0) return;
 
   for (let i = 0; i < ids.length; i++) {
     renderLayoutBox(ids[i]);
@@ -300,7 +306,7 @@ export function renderLayoutBoxes(ids, renderAll = true) {
 }
 
 function renderLayoutBox(id) {
-  const obj = globalThis.layout[currentPage.n].boxes[id];
+  const obj = globalThis.layout[cp.n].boxes[id];
 
   const origX = obj.coords[0];
   const origY = obj.coords[1];
@@ -311,9 +317,9 @@ function renderLayoutBox(id) {
 
   // "Order" boxes are blue, "exclude" boxes are red, data columns are different colors for each table
   let fill = 'rgba(255,0,0,0.25)';
-  if (obj.type == 'order') {
+  if (obj.type === 'order') {
     fill = 'rgba(0,0,255,0.25)';
-  } else if (obj.type == 'dataColumn') {
+  } else if (obj.type === 'dataColumn') {
     fill = colors[obj.table % colors.length];
   }
 
@@ -351,13 +357,13 @@ function renderLayoutBox(id) {
       for (let i = 0; i < this.group._objects.length; i++) {
         const objI = this.group._objects[i];
 
-        if (!(objI.id && objI.scribeType == 'layoutRect')) continue;
+        if (!(objI.id && objI.scribeType === 'layoutRect')) continue;
 
-        const obj = globalThis.layout[currentPage.n].boxes[objI.id];
+        const obj = globalThis.layout[cp.n].boxes[objI.id];
 
         if (!obj) continue;
 
-        if (obj.type == 'dataColumn') {
+        if (obj.type === 'dataColumn') {
           if (tableGroup == null) {
             tableGroup = obj.table;
           } else if (tableGroup != obj.table) {
@@ -378,16 +384,16 @@ function renderLayoutBox(id) {
 
       if (tableGroup !== null) {
         setLayoutBoxTableElem.disabled = false;
-        if (singleTableGroup && isFinite(tableGroup)) {
+        if (singleTableGroup && Number.isFinite(tableGroup)) {
           setLayoutBoxTableElem.value = String(tableGroup + 1);
         }
       }
 
       if (inclusionRule !== null) {
-        if (singleInclusionRule && inclusionRule == 'left') {
+        if (singleInclusionRule && inclusionRule === 'left') {
           setLayoutBoxInclusionRuleLeftElem.checked = true;
           setLayoutBoxInclusionRuleMajorityElem.checked = false;
-        } else if (singleInclusionRule && inclusionRule == 'majority') {
+        } else if (singleInclusionRule && inclusionRule === 'majority') {
           setLayoutBoxInclusionRuleLeftElem.checked = false;
           setLayoutBoxInclusionRuleMajorityElem.checked = true;
         } else {
@@ -397,10 +403,10 @@ function renderLayoutBox(id) {
       }
 
       if (inclusionLevel !== null) {
-        if (singleInclusionLevel && inclusionLevel == 'line') {
+        if (singleInclusionLevel && inclusionLevel === 'line') {
           setLayoutBoxInclusionLevelLineElem.checked = true;
           setLayoutBoxInclusionLevelWordElem.checked = false;
-        } else if (singleInclusionLevel && inclusionLevel == 'word') {
+        } else if (singleInclusionLevel && inclusionLevel === 'word') {
           setLayoutBoxInclusionLevelLineElem.checked = false;
           setLayoutBoxInclusionLevelWordElem.checked = true;
         } else {
@@ -409,16 +415,17 @@ function renderLayoutBox(id) {
         }
       }
     } else {
-      const obj = globalThis.layout[currentPage.n].boxes[this.id];
+      /** @type {LayoutBox} */
+      const obj = globalThis.layout[cp.n].boxes[this.id];
 
-      if (obj.type == 'dataColumn') {
+      if (obj.type === 'dataColumn') {
         setLayoutBoxTableElem.disabled = false;
-        if (isFinite(obj.table)) setLayoutBoxTableElem.value = String(obj.table + 1);
+        if (Number.isFinite(obj.table)) setLayoutBoxTableElem.value = String(obj.table + 1);
 
-        if (obj.inclusionRule == 'left') {
+        if (obj.inclusionRule === 'left') {
           setLayoutBoxInclusionRuleLeftElem.checked = true;
           setLayoutBoxInclusionRuleMajorityElem.checked = false;
-        } else if (obj.inclusionRule == 'majority') {
+        } else if (obj.inclusionRule === 'majority') {
           setLayoutBoxInclusionRuleLeftElem.checked = false;
           setLayoutBoxInclusionRuleMajorityElem.checked = true;
         } else {
@@ -426,10 +433,10 @@ function renderLayoutBox(id) {
           setLayoutBoxInclusionRuleMajorityElem.checked = false;
         }
 
-        if (obj.inclusionLevel == 'line') {
+        if (obj.inclusionLevel === 'line') {
           setLayoutBoxInclusionLevelLineElem.checked = true;
           setLayoutBoxInclusionLevelWordElem.checked = false;
-        } else if (obj.inclusionLevel == 'word') {
+        } else if (obj.inclusionLevel === 'word') {
           setLayoutBoxInclusionLevelLineElem.checked = false;
           setLayoutBoxInclusionLevelWordElem.checked = true;
         } else {
@@ -447,7 +454,7 @@ function renderLayoutBox(id) {
 
   // "Order" boxes include a textbox for displaying and editing the priority of that box
   let textbox;
-  if (obj.type == 'order') {
+  if (obj.type === 'order') {
     textbox = new fabric.IText(String(obj.priority), {
       left: Math.round(origX + width * 0.5),
       top: Math.round(origY + height * 0.5),
@@ -481,7 +488,7 @@ function renderLayoutBox(id) {
     textbox.on('editing:exited', async function (obj) {
       if (this.hasStateChanged) {
         const { id } = this;
-        globalThis.layout[currentPage.n].boxes[id].priority = parseInt(this.text);
+        globalThis.layout[cp.n].boxes[id].priority = parseInt(this.text);
       }
     });
   }
@@ -501,12 +508,13 @@ function renderLayoutBox(id) {
     const groupOffsetTop = target?.group?.ownMatrixCache?.value[5] || 0;
 
     // Stroke impacts the right/bottom coordinates, so needs to be subtraced
-    globalThis.layout[currentPage.n].boxes[id].coords = [target.aCoords.tl.x + groupOffsetLeft, target.aCoords.tl.y + groupOffsetTop, target.aCoords.br.x + groupOffsetLeft - strokeWidth, target.aCoords.br.y + groupOffsetTop - strokeWidth];
+    globalThis.layout[cp.n].boxes[id].coords = [target.aCoords.tl.x + groupOffsetLeft, target.aCoords.tl.y + groupOffsetTop,
+      target.aCoords.br.x + groupOffsetLeft - strokeWidth, target.aCoords.br.y + groupOffsetTop - strokeWidth];
     updateDataPreview();
   }
 
   canvas.add(rect);
-  if (obj.type == 'order') canvas.add(textbox);
+  if (obj.type === 'order') canvas.add(textbox);
 }
 
 // Update tabular data preview table
@@ -532,10 +540,10 @@ export function updateDataPreview() {
     if (inputDataModes.pdfMode) {
       extraCols.push(globalThis.inputFileNames[0]);
     } else {
-      extraCols.push(globalThis.inputFileNames[currentPage.n]);
+      extraCols.push(globalThis.inputFileNames[cp.n]);
     }
   }
-  if (addPageNumberColumnMode) extraCols.push(String(currentPage.n + 1));
+  if (addPageNumberColumnMode) extraCols.push(String(cp.n + 1));
 
-  dataPreviewElem.innerHTML = createCells(globalThis.ocrAll.active[currentPage.n], globalThis.layout[currentPage.n], extraCols, 0, false, true).content;
+  dataPreviewElem.innerHTML = createCells(globalThis.ocrAll.active[cp.n], globalThis.layout[cp.n], extraCols, 0, false, true).content;
 }

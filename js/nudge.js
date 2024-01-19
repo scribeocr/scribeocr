@@ -51,14 +51,14 @@ export async function nudgeDoc(func, view = false) {
       page: ocrPageI, binaryImage: imgElem.src, imageRotated: globalThis.imageAll.binaryRotated[i], pageMetricsObj: pageMetricsArr[i], view,
     }).then((res) => {
       globalThis.ocrAll.active[i] = res.data.page;
-      if (i == currentPage.n) displayPage(currentPage.n);
+      if (i == cp.n) displayPage(cp.n);
       improveCt += res.data.improveCt;
       totalCt += res.data.totalCt;
       if (res.data.debug) globalThis.debugImg.nudge[i] = res.data.debug;
     }));
   }
 
-  const resArr = await Promise.all(promiseArr);
+  await Promise.all(promiseArr);
 
   if (view) showDebugImages();
 
