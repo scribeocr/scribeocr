@@ -16,18 +16,18 @@ import { saveAs } from './miscUtils.js';
  * @param {OcrPage} pageObj
  */
 export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
-  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length == 0) return { content: '', rows: 0 };
+  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return { content: '', rows: 0 };
 
   const tableIndexes = [...new Set(Object.values(layoutObj.boxes).map((x) => x.table))];
 
-  if (tableIndexes.length == 0) return { content: '', rows: 0 };
+  if (tableIndexes.length === 0) return { content: '', rows: 0 };
 
   let textStr = '';
   let rowIndex = startRow;
   let rowCount = 0;
   for (const i of tableIndexes) {
     // Filter layout boxes to specific table
-    const boxesArg = Object.values(layoutObj.boxes).filter((x) => x.type === 'dataColumn' && x.table == i);
+    const boxesArg = Object.values(layoutObj.boxes).filter((x) => x.type === 'dataColumn' && x.table === i);
     const cellsSingle = createCellsSingle(pageObj, boxesArg, extraCols, rowIndex, xlsxMode, htmlMode);
     textStr += cellsSingle.content;
     rowIndex += cellsSingle.rows;
@@ -68,7 +68,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
 
       if (obj.inclusionLevel !== 'line') continue;
 
-      const overlap = obj.inclusionRule == 'left' ? calcOverlap(lineBoxALeft, obj.coords) : calcOverlap(lineObj.bbox, obj.coords);
+      const overlap = obj.inclusionRule === 'left' ? calcOverlap(lineBoxALeft, obj.coords) : calcOverlap(lineObj.bbox, obj.coords);
       if (overlap > 0.5) {
         for (let k = 0; k < lineObj.words.length; k++) {
           const wordObj = lineObj.words[k];
@@ -94,7 +94,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
 
         const wordBoxALeft = [wordObj.bbox[0], wordObj.bbox[1], wordObj.bbox[0] + 1, wordObj.bbox[3]];
 
-        const overlap = obj.inclusionRule == 'left' ? calcOverlap(wordBoxALeft, obj.coords) : calcOverlap(wordObj.bbox, obj.coords);
+        const overlap = obj.inclusionRule === 'left' ? calcOverlap(wordBoxALeft, obj.coords) : calcOverlap(wordObj.bbox, obj.coords);
 
         if (overlap > 0.5) {
           wordArr.push(wordObj);
@@ -111,8 +111,8 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
   const colArr = [];
   for (let i = 0; i <= boxesArr.length; i++) {
     for (let j = 0; j < wordPriorityArr.length; j++) {
-      if (wordPriorityArr[j] == i) {
-        if (i != lastCol) {
+      if (wordPriorityArr[j] === i) {
+        if (i !== lastCol) {
           colArr.push([]);
           lastCol = i;
         }
@@ -191,7 +191,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
       const words = dataObj[`${String(i)},${String(j)}`];
 
       // In xlsx, empty cells are omitted entirely.  For other formats they are included.
-      if (!words || words.length == 0) {
+      if (!words || words.length === 0) {
         if (htmlMode) {
           textStr += '<td/>';
         }
@@ -222,10 +222,10 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
             fontStyle = '';
           }
 
-          if (fontStyle != fontStylePrev || k == 0) {
-            const styleStr = fontStyle == '' ? '' : `<rPr>${fontStyle}</rPr>`;
+          if (fontStyle !== fontStylePrev || k === 0) {
+            const styleStr = fontStyle === '' ? '' : `<rPr>${fontStyle}</rPr>`;
 
-            if (k == 0) {
+            if (k === 0) {
               textStr = `${textStr}<r>${styleStr}<t xml:space="preserve">`;
             } else {
               textStr = `${textStr} </t></r><r>${styleStr}<t xml:space="preserve">`;

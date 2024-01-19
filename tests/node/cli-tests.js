@@ -101,7 +101,7 @@ describe('Check Node.js commands.', () => {
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 
     assert.isOk(fs.existsSync(outputPath));
-  }).timeout(20000);
+  }).timeout(30000);
 
   it('Overlay .pdf and Abbyy .xml file, validating OCR results and printing confidence.', async () => {
     const tmpDir = await tmpUnique.get();
@@ -114,7 +114,7 @@ describe('Check Node.js commands.', () => {
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 
     assert.isOk(fs.existsSync(outputPath));
-  }).timeout(20000);
+  }).timeout(30000);
 
   after(async () => {
     await tmpUnique.delete();

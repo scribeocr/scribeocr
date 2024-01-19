@@ -789,7 +789,7 @@ export async function compareHOCR({
               hocrBOverlapAWords[wordB.id][wordA.id] = 1;
 
               // TODO: Account for cases without 1-to-1 mapping between bounding boxes
-              if (wordTextA == wordTextB) {
+              if (wordTextA === wordTextB) {
                 const wordAOrig = ocr.getPageWord(pageA, wordA.id);
 
                 console.assert(wordAOrig || mode !== 'stats', 'Could not identify `wordAOrig`, stats may not be accurate.');
@@ -803,7 +803,7 @@ export async function compareHOCR({
                   hocrACorrect[wordA.id] = 1;
                   hocrBCorrect[wordB.id] = 1;
                 }
-              } else if (mode == 'comb') {
+              } else if (mode === 'comb') {
                 wordA.conf = 0;
                 wordA.matchTruth = false;
 
@@ -1016,7 +1016,7 @@ export async function compareHOCR({
   // In addition to not making sense, the statistics below will not be properly calculated when `mode == "comb"` and errors will be thrown if attempted.
   // The core issue is that pageAInt is being actively edited `mode == "comb"`.
   // Therefore, `hocrAOverlap` ends up including words not in `pageA`, so `ocr.getPageWord(pageA, overlappingWordsA[i]);` returns `null`.
-  if (mode == 'comb') {
+  if (mode === 'comb') {
     return {
       page: pageAInt, metrics: {}, debugLog, debugImg,
     };
