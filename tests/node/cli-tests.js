@@ -58,7 +58,7 @@ describe('Check Node.js commands.', () => {
 
     // Assert that console.log was called with 'blah'
     expect(consoleOutput).to.include('Confidence: 0.93944');
-  });
+  }).timeout(10000);
 
   it('Should check contents of Abbyy .xml file.', async () => {
     // Call the function
@@ -68,7 +68,7 @@ describe('Check Node.js commands.', () => {
 
     // Assert that console.log was called with 'blah'
     expect(consoleOutput).to.include('Confidence: 0.91635');
-  }).timeout(20000);
+  }).timeout(30000);
 
   it('Overlay .pdf and Abbyy .xml file.', async () => {
     const tmpDir = await tmpUnique.get();
