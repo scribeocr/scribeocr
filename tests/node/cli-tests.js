@@ -41,7 +41,7 @@ describe('Check Node.js commands.', () => {
     consoleOutput = '';
     console.log = (output) => {
       consoleOutput += output;
-      originalConsoleLog(output);
+      // originalConsoleLog(output);
     };
   });
 
