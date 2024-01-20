@@ -78,6 +78,27 @@ globalThis.d = () => {
   debugger;
 };
 
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user.
+ */
+globalThis.ctxComp0 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('h')).getContext('2d'));
+
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user.
+ */
+globalThis.ctxComp1 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('e')).getContext('2d'));
+
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user.
+ */
+globalThis.ctxComp2 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('f')).getContext('2d'));
+
 const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
 const debugPrintWordsCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
 const debugPrintWordsOCRElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsOCR'));

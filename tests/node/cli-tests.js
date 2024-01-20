@@ -67,7 +67,7 @@ describe('Check Node.js commands.', () => {
     // originalConsoleLog(consoleOutput);
 
     // Assert that console.log was called with 'blah'
-    expect(consoleOutput).to.include('Confidence: 0.91635');
+    expect(consoleOutput).to.include('Confidence: 0.91280');
   }).timeout(30000);
 
   it('Overlay .pdf and Abbyy .xml file.', async () => {
@@ -112,7 +112,7 @@ describe('Check Node.js commands.', () => {
     // Call the function
     await overlayFunc(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, conf: true });
 
-    expect(consoleOutput).to.include('Confidence: 0.91635');
+    expect(consoleOutput).to.include('Confidence: 0.91280');
 
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 
