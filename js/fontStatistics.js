@@ -251,6 +251,7 @@ function calculateFontMetrics(fontMetricsRawFontObj) {
   }
 
   fontMetricOut.heightCaps = round6(quantile(heightCapsArr, 0.5));
+  fontMetricOut.obsCaps = heightCapsArr.length;
 
   fontMetricOut.obs = fontMetricsRawFontObj.obs;
 

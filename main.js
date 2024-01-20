@@ -72,7 +72,7 @@ import ocr from './js/objects/ocrObjects.js';
 
 import {
   printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText,
-} from './js/debug.js';
+} from './js/ui/interfaceDebug.js';
 
 globalThis.d = () => {
   debugger;
@@ -1454,9 +1454,11 @@ export async function showDebugImages() {
 
   const imgArr1 = globalThis.debugImg?.['Tesseract Combined']?.[cp.n];
   const imgArr2 = globalThis.debugImg?.Combined?.[cp.n];
+  const imgArr3 = globalThis.debugImg?.recognizeArea?.[cp.n];
 
   if (imgArr1) ({ top, leftMax } = await drawDebugImages(imgArr1, top, leftMax));
   if (imgArr2) ({ top, leftMax } = await drawDebugImages(imgArr2, top, leftMax));
+  if (imgArr3) ({ top, leftMax } = await drawDebugImages(imgArr3, top, leftMax));
 
   canvasDebug.setWidth(leftMax);
   canvasDebug.setHeight(top);
@@ -1542,13 +1544,46 @@ function recognizeAreaClick(wordMode = false) {
     const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
     const n = cp.n;
 
-    const res = await recognizePage(globalThis.generalScheduler, n, false, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
+    const res0 = await recognizePage(globalThis.generalScheduler, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
 
-    const {
-      pageObj, fontMetricsObj, layoutBoxes, warn,
-    } = res.lstm;
+    const pageObjLSTM = res0.lstm.pageObj;
+    const pageObjLegacy = res0.legacy.pageObj;
 
-    combineData(pageObj, globalThis.ocrAll.active[n], globalThis.pageMetricsArr[n]);
+    const debugLabel = 'recognizeArea';
+
+    if (debugLabel && !globalThis.debugImg[debugLabel]) {
+      globalThis.debugImg[debugLabel] = new Array(globalThis.imageAll.native.length);
+      for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+        globalThis.debugImg[debugLabel][i] = [];
+      }
+    }
+
+    const compOptions = {
+      mode: 'comb',
+      debugLabel,
+      ignoreCap: ignoreCapElem.checked,
+      ignorePunct: ignorePunctElem.checked,
+      confThreshHigh: parseInt(confThreshHighElem.value),
+      confThreshMed: parseInt(confThreshMedElem.value),
+    };
+
+    const imgElem = await globalThis.imageAll.binary[n];
+
+    const res = await globalThis.generalScheduler.addJob('compareHOCR', {
+      pageA: pageObjLegacy,
+      pageB: pageObjLSTM,
+      binaryImage: imgElem.src,
+      imageRotated: globalThis.imageAll.binaryRotated[n],
+      pageMetricsObj: globalThis.pageMetricsArr[n],
+      options: compOptions,
+    });
+
+    if (globalThis.debugLog === undefined) globalThis.debugLog = '';
+    globalThis.debugLog += res.data.debugLog;
+
+    globalThis.debugImg[debugLabel][n].push(...res.data.debugImg);
+
+    combineData(res.data.page, globalThis.ocrAll.active[n], globalThis.pageMetricsArr[n]);
 
     if (n === cp.n) displayPage(cp.n);
 
@@ -1557,7 +1592,7 @@ function recognizeAreaClick(wordMode = false) {
   }, { once: true });
 }
 
-var newWordInit = true;
+let newWordInit = true;
 
 let rect; let origX; let
   origY;

@@ -49,16 +49,16 @@ export function deleteSelectedWords() {
  */
 export async function changeWordFontStyle(style) {
   const selectedObjects = window.canvas.getActiveObjects();
-  if (!selectedObjects || selectedObjects.length == 0) return;
+  if (!selectedObjects || selectedObjects.length === 0) return;
 
   // If first word style already matches target style, disable the style.
-  const enable = selectedObjects[0].fontStyleLookup != style;
+  const enable = selectedObjects[0].fontStyleLookup !== style;
   const newStyleLookup = enable ? style : 'normal';
 
-  if ((newStyleLookup == 'italic') != styleItalicElem.classList.contains('active')) {
+  if ((newStyleLookup === 'italic') !== styleItalicElem.classList.contains('active')) {
     styleItalicButton.toggle();
   }
-  if ((newStyleLookup == 'small-caps') != styleSmallCapsElem.classList.contains('active')) {
+  if ((newStyleLookup === 'small-caps') !== styleSmallCapsElem.classList.contains('active')) {
     styleSmallCapsButton.toggle();
   }
 
@@ -92,10 +92,10 @@ export async function changeWordFontStyle(style) {
 
 export async function changeWordFontSize(fontSize) {
   const selectedObjects = window.canvas.getActiveObjects();
-  if (!selectedObjects || selectedObjects.length == 0) return;
-  if (fontSize == 'plus') {
+  if (!selectedObjects || selectedObjects.length === 0) return;
+  if (fontSize === 'plus') {
     fontSize = parseFloat(selectedObjects[0].fontSize) + 1;
-  } else if (fontSize == 'minus') {
+  } else if (fontSize === 'minus') {
     fontSize = parseFloat(selectedObjects[0].fontSize) - 1;
   }
 
@@ -130,7 +130,7 @@ export async function changeWordFontSize(fontSize) {
 export async function changeWordFontFamily(fontName) {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
-  const fontNameLookup = fontName == 'Default' ? globalSettings.defaultFont : fontName;
+  const fontNameLookup = fontName === 'Default' ? globalSettings.defaultFont : fontName;
 
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
@@ -155,8 +155,8 @@ export async function changeWordFontFamily(fontName) {
     wordI.fontFamily = fontI.fontFaceName;
     wordI.fontStyle = fontI.fontFaceStyle;
 
-    wordI.defaultFontFamily = fontName == 'Default';
-    wordI.fontFamilyLookup = fontNameLookup,
+    wordI.defaultFontFamily = fontName === 'Default';
+    wordI.fontFamilyLookup = fontNameLookup;
     wordI.fontObj = fontI;
 
     await updateWordCanvas(wordI);
@@ -188,7 +188,7 @@ export async function updateWordCanvas(wordI) {
 
 export function toggleSuperSelectedWords() {
   const selectedObjects = window.canvas.getActiveObjects();
-  if (!selectedObjects || selectedObjects.length == 0) return;
+  if (!selectedObjects || selectedObjects.length === 0) return;
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
@@ -212,7 +212,7 @@ let objectsLine;
 const baselineRange = 50;
 export function adjustBaseline() {
   const selectedObjects = window.canvas.getActiveObjects();
-  if (!selectedObjects || selectedObjects.length == 0) return;
+  if (!selectedObjects || selectedObjects.length === 0) return;
 
   // For some reason the text jumps around the page when >1 word is selected
   window.canvas.setActiveObject(selectedObjects[0]);
@@ -221,7 +221,7 @@ export function adjustBaseline() {
   window.bsCollapse.show();
 
   const lineI = selectedObjects[0].line;
-  objectsLine = canvas.getObjects().filter((x) => x.line == lineI);
+  objectsLine = canvas.getObjects().filter((x) => x.line === lineI);
 
   for (let i = 0; i < objectsLine.length; i++) {
     objectsLine[i].objectCaching = true;

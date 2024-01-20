@@ -83,7 +83,7 @@ const calculateKerningPairs = (font, fontMetricsObj, xHeight, style) => {
   for (const [key, value] of Object.entries(fontMetricsObj.kerning)) {
     // Do not adjust pair kerning for italic "ff".
     // Given the amount of overlap between these glyphs, this metric is rarely accurate.
-    if (key == '102,102' && style == 'italic') continue;
+    if (key === '102,102' && style === 'italic') continue;
 
     const nameFirst = key.match(/\w+/)[0];
     const nameSecond = key.match(/\w+$/)[0];
@@ -179,7 +179,7 @@ export async function optimizeFont({
     }
   }
 
-  if (targetEmSize && targetEmSize != workingFont.unitsPerEm) {
+  if (targetEmSize && targetEmSize !== workingFont.unitsPerEm) {
     for (const [key, value] of Object.entries(workingFont.glyphs.glyphs)) {
       transformGlyph(value, (x) => x * (targetEmSize / workingFont.unitsPerEm), true, true);
     }
@@ -228,7 +228,7 @@ export async function optimizeFont({
   oGlyph = workingFont.charToGlyph('o').getMetrics();
   xHeight = oGlyph.yMax - oGlyph.yMin;
 
-  const heightCapsBelievable = fontMetricsObj.heightCaps >= 1.1;
+  const heightCapsBelievable = fontMetricsObj.obsCaps >= 10 && fontMetricsObj.heightCaps >= 1.1 && fontMetricsObj.heightCaps < 2;
 
   const fontAscHeight = workingFont.charToGlyph('A').getMetrics().yMax;
 
@@ -253,7 +253,7 @@ export async function optimizeFont({
 
     const glyphI = workingFont.charToGlyph(charLit);
 
-    if (glyphI.name == '.notdef' || glyphI.name == 'NULL') continue;
+    if (glyphI.name === '.notdef' || glyphI.name === 'NULL') continue;
 
     let glyphIMetrics = glyphI.getMetrics();
     const glyphIWidth = glyphIMetrics.xMax - glyphIMetrics.xMin;
@@ -264,7 +264,7 @@ export async function optimizeFont({
     // This is not always true (for example, "t" in Libre Baskerville).
     // Look into whether there is a low(ish) effort way of finding the visual center for real.
 
-    const glyphICenterPoint = charLit == 'f' ? 0.35 : 0.5;
+    const glyphICenterPoint = charLit === 'f' ? 0.35 : 0.5;
 
     const glyphICenter = Math.max(glyphIMetrics.xMin, 0) + Math.round(glyphIWidth * glyphICenterPoint);
     const glyphIWidthQuarter = Math.round(glyphIWidth / 4);
@@ -283,7 +283,7 @@ export async function optimizeFont({
     const scaleH1 = (x) => Math.round((x - glyphICenter) * scaleXFactor) + glyphICenter;
     const scaleH2 = (x) => Math.round(x * scaleXFactor);
 
-    if (singleStemClassB.includes(charLit) && style != 'italic') {
+    if (singleStemClassB.includes(charLit) && style !== 'italic') {
       transformGlyph(glyphI, scaleH1, true, false);
     } else {
       transformGlyph(glyphI, scaleH2, true, false);
@@ -339,26 +339,32 @@ export async function optimizeFont({
   const upperAsc = ['A', 'B', 'D', 'E', 'F', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'R', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
   const upperAscCodes = upperAsc.map((x) => String(x.charCodeAt(0)));
   const charHeightKeys = Object.keys(fontMetricsObj.height);
-  const charHeightA = round6(quantile(Object.values(fontMetricsObj.height).filter((element, index) => upperAscCodes.includes(charHeightKeys[index])), 0.5));
+  const heightAscArr = Object.values(fontMetricsObj.height).filter((element, index) => upperAscCodes.includes(charHeightKeys[index]));
 
-  // Brackets are here so this is block scoped.
-  { // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
-    // Adjust height of capital J (which often has a height greater than other capital letters)
-    // All height from "J" above that of "A" is assumed to occur under the baseline
-    const actJMult = Math.max(round6(fontMetricsObj.height[74]) / charHeightA, 0);
-    const fontJMetrics = workingFont.charToGlyph('J').getMetrics();
-    const fontAMetrics = workingFont.charToGlyph('A').getMetrics();
-    const fontJMult = Math.max((fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin), 1);
-    const actFontJMult = actJMult / fontJMult;
+  // At least 10 observations are required to adjust from the default.
+  if (heightAscArr.length >= 10) {
+    const heightAscMedian0 = quantile(heightAscArr, 0.5);
+    if (heightAscMedian0) {
+      const charHeightA = round6(heightAscMedian0);
 
-    if (Math.abs(1 - actFontJMult) > 0.02) {
-      const glyphI = workingFont.charToGlyph('J');
-      const glyphIMetrics = glyphI.getMetrics();
-      const yAdj = Math.round(glyphIMetrics.yMax - (glyphIMetrics.yMax * actFontJMult));
+      // TODO: Extend similar logic to apply to other descenders such as "p" and "q"
+      // Adjust height of capital J (which often has a height greater than other capital letters)
+      // All height from "J" above that of "A" is assumed to occur under the baseline
+      const actJMult = Math.max(round6(fontMetricsObj.height[74]) / charHeightA, 0);
+      const fontJMetrics = workingFont.charToGlyph('J').getMetrics();
+      const fontAMetrics = workingFont.charToGlyph('A').getMetrics();
+      const fontJMult = Math.max((fontJMetrics.yMax - fontJMetrics.yMin) / (fontAMetrics.yMax - fontAMetrics.yMin), 1);
+      const actFontJMult = actJMult / fontJMult;
 
-      const transDescFunc = (x) => Math.round(x * actFontJMult + yAdj);
+      if (Math.abs(1 - actFontJMult) > 0.02) {
+        const glyphI = workingFont.charToGlyph('J');
+        const glyphIMetrics = glyphI.getMetrics();
+        const yAdj = Math.round(glyphIMetrics.yMax - (glyphIMetrics.yMax * actFontJMult));
 
-      transformGlyph(glyphI, transDescFunc, false, true);
+        const transDescFunc = (x) => Math.round(x * actFontJMult + yAdj);
+
+        transformGlyph(glyphI, transDescFunc, false, true);
+      }
     }
   }
 

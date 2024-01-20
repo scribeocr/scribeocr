@@ -1306,6 +1306,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
           const charHeight = charObj.bbox[3] - charObj.bbox[1];
 
           // Save character heights to array for font size calculations
+          lineAllHeightArr.push(charHeight);
           if (ascCharArr.includes(contentStrLetter)) {
             lineAscHeightArr.push(charHeight);
           } else if (xCharArr.includes(contentStrLetter)) {
@@ -1321,8 +1322,13 @@ function pass2({ pageObj, layoutBoxes, warn }) {
     const lineAscHeight = quantile(lineAscHeightArr, 0.5);
     const lineXHeight = quantile(lineXHeightArr, 0.5);
 
-    if (lineAscHeight) lineObj.ascHeight = lineAscHeight || lineAllHeight;
-    if (lineAscHeight) lineObj.xHeight = lineXHeight;
+    // TODO: For Tesseract these are often already filled in by the engine.
+    // While the calculated values are more reliable, we may want to defer to the Tesseract values at some point as a fallback.
+    if (lineAscHeight) lineObj.ascHeight = lineAscHeight;
+    if (lineXHeight) lineObj.xHeight = lineXHeight;
+
+    // If neither ascHeight nor xHeight are known, total height is assumed to represent ascHeight, on the grounds that it is better than nothing.
+    if (!lineAscHeight && !lineXHeight) lineObj.ascHeight = lineAllHeight;
 
     // Replace all dash characters with a hyphen, en-dash or em-dash, depending on their width.
     // OCR engines commonly use the wrong type of dash. This is especially problematic during font optimization,

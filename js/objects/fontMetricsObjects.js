@@ -6,6 +6,7 @@
  * @property {Object.<string, boolean>} variants -
  * @property {OcrPage} heightCaps -
  * @property {?number} obs - Number of observations used to calculate statistics
+ * @property {?number} obsCaps - Number of observations used to calculate heightCaps
  *
  * Note: The "x-height" metric referred to above is actually closer to the height of the "o" character.
  * This is because most characters used for this calculation are slightly larger than "x",
@@ -30,6 +31,8 @@ export function FontMetricsFont() {
   this.heightCaps = 1.3;
   /** @type {number} */
   this.obs = 0;
+  /** @type {number} */
+  this.obsCaps = 0;
 }
 
 export function FontMetricsFamily() {

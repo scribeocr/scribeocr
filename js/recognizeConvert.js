@@ -5,7 +5,7 @@ import { parseDebugInfo } from './fontStatistics.js';
  *
  * @param {number} n - Page number to recognize.
  */
-export const calcRecognizeRotateArgs = (n) => {
+export const calcRecognizeRotateArgs = (n, areaMode) => {
   // Whether the binary image should be rotated internally by Tesseract
   // This should always be true (Tesseract results are horrible without auto-rotate) but kept as a variable for debugging purposes.
   const rotate = true;
@@ -25,10 +25,15 @@ export const calcRecognizeRotateArgs = (n) => {
   const rotateDegrees = rotate && angle && Math.abs(angle || 0) > 0.05 && !globalThis.imageAll.nativeRotated[n] ? angle * -1 : 0;
   const rotateRadians = rotateDegrees * (Math.PI / 180);
 
-  // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
-  const saveNativeImage = autoRotate && !globalThis.imageAll.nativeRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh);
+  let saveNativeImage = false;
+  let saveBinaryImageArg = false;
 
-  const saveBinaryImageArg = !!(!globalThis.imageAll.binary[n] || autoRotate && !globalThis.imageAll.binaryRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh));
+  // Images are not saved when using "recognize area" as these intermediate images are cropped.
+  if (!areaMode) {
+    // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
+    if (autoRotate && !globalThis.imageAll.nativeRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveNativeImage = true;
+    if (!globalThis.imageAll.binary[n] || autoRotate && !globalThis.imageAll.binaryRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
+  }
 
   return {
     angleThresh,
@@ -44,12 +49,12 @@ export const calcRecognizeRotateArgs = (n) => {
  *
  * @param {number} n - Page number to recognize.
  */
-export const recognizePage = async (scheduler, n, legacy = true, lstm = true, options = {}) => {
+export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, options = {}) => {
   const browserMode = typeof process === 'undefined';
 
   const {
     angleThresh, angleKnown, rotateRadians, saveNativeImage, saveBinaryImageArg,
-  } = calcRecognizeRotateArgs(n);
+  } = calcRecognizeRotateArgs(n, areaMode);
 
   // When the image has not been loaded into an element yet, use the raw source string.
   // We still use imageAll["native"] when it exists as this will have rotation applied (if applicable) while imageAll["nativeSrc"] will not.

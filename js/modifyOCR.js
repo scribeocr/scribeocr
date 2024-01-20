@@ -84,7 +84,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
           matchXOverlap = xOverlap;
           match = line;
           // If this line has no horizontal overlap, but no other line has either, then we check the distance to the nearest line
-        } else if (xOverlap == 0 && matchXOverlap == 0) {
+        } else if (xOverlap === 0 && matchXOverlap === 0) {
           const xDist = Math.min(Math.abs(lineRot.bbox[2] - lineNewRot.bbox[0]), Math.abs(lineRot.bbox[0] - lineNewRot.bbox[2]));
           // If this is the closest line (so far), make this line the new working hypothesis
           if (xDist < matchXDist) {
@@ -118,7 +118,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
     // (2) the horizontal gap between matched lines is >2x the vertical gap to the nearest preceding/following line.
     // This is intended to eliminate cases when new words are inserted into the wrong column and/or floating element
     // (possibly on the other side of the page) just because vertical overlap exists.
-    if (match && matchXOverlap == 0 && matchXDist > 2 * yDistMin && pageB.dims.width * 0.05 < matchXDist) match = undefined;
+    if (match && matchXOverlap === 0 && matchXDist > 2 * yDistMin && pageB.dims.width * 0.05 < matchXDist) match = undefined;
 
     const wordsNew = lineNew.words;
 

@@ -43,7 +43,7 @@ export function getRandomAlphanum(num) {
  * @returns {number|null} The nth quantile value if the array is not empty; otherwise, null.
  */
 export function quantile(arr, ntile) {
-  if (arr.length == 0) {
+  if (arr.length === 0) {
     return null;
   }
   const arr1 = [...arr];

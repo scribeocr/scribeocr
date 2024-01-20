@@ -25,7 +25,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   const inputPages = [...Array(globalThis.imageAll.native.length).keys()];
   const promiseArr = [];
   for (const x of inputPages) {
-    promiseArr.push(recognizePage(globalThis.generalScheduler, x, legacy, lstm).then(async (res1) => {
+    promiseArr.push(recognizePage(globalThis.generalScheduler, x, legacy, lstm, false).then(async (res1) => {
       if (res1.legacy) await convertPageCallbackBrowser(res1.legacy, x, mainData, 'Tesseract Legacy');
       if (res1.lstm) await convertPageCallbackBrowser(res1.lstm, x, false, 'Tesseract LSTM');
     }));
