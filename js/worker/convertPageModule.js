@@ -1328,7 +1328,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
     if (lineXHeight) lineObj.xHeight = lineXHeight;
 
     // If neither ascHeight nor xHeight are known, total height is assumed to represent ascHeight, on the grounds that it is better than nothing.
-    if (!lineAscHeight && !lineXHeight) lineObj.ascHeight = lineAllHeight;
+    if (!lineAscHeight && !lineXHeight && lineAllHeight && Number.isFinite(lineAllHeight)) lineObj.ascHeight = lineAllHeight;
 
     // Replace all dash characters with a hyphen, en-dash or em-dash, depending on their width.
     // OCR engines commonly use the wrong type of dash. This is especially problematic during font optimization,
