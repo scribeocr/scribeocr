@@ -66,7 +66,7 @@ import Tesseract from './tess/tesseract.esm.min.js';
 import { initGeneralWorker } from './js/generalWorkerMain.js';
 
 // Load default settings
-import { setDefaults } from './js/setDefaults.js';
+import { setDefaults } from './js/ui/setDefaults.js';
 
 import ocr from './js/objects/ocrObjects.js';
 

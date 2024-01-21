@@ -29,7 +29,7 @@ const sansFontsRegex = new RegExp(sansFonts.reduce((x, y) => `${x}|${y}`), 'i');
 /**
  * Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font or serif font.
  *
- * @param {string} fontName - The name of the font to determine the type of. If the font name
+ * @param {string|null|undefined} fontName - The name of the font to determine the type of. If the font name
  * is falsy, the function will return "Default".
  * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault",
  * "SerifDefault", or "Default" (if the font type cannot be determined).
@@ -292,7 +292,7 @@ export function parseDebugInfo(debugTxt) {
   if (!fontLines) return;
 
   // Filter statement added as this regex fails for some lines where the "letter" has multiple characters (possibly non-ASCII punctuation)
-  const fontArr = fontLines.map((x) => x.match(/Modal Font: ([^;]+?); Letter: (.); Font: ([^;]+?); Score: (\d+)/)).filter((x) => x?.length == 5);
+  const fontArr = fontLines.map((x) => x.match(/Modal Font: ([^;]+?); Letter: (.); Font: ([^;]+?); Score: (\d+)/)).filter((x) => x?.length === 5);
 
   for (let i = 0; i < fontArr.length; i++) {
     const modalFont = fontArr[i][1];
@@ -306,7 +306,7 @@ export function parseDebugInfo(debugTxt) {
     if (!globalThis.fontScores[modalFontFamily][style][char]) globalThis.fontScores[modalFontFamily][style][char] = {};
     if (!globalThis.fontScores[modalFontFamily][style][char][font]) globalThis.fontScores[modalFontFamily][style][char][font] = 0;
 
-    globalThis.fontScores[modalFontFamily][style][char][font] = globalThis.fontScores[modalFontFamily][style][char][font] + score;
+    globalThis.fontScores[modalFontFamily][style][char][font] += score;
   }
 }
 

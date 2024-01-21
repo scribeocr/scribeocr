@@ -177,6 +177,7 @@ async function compareHOCRWrap(args) {
 
 postMessage({ data: 'ready', id: 0 });
 
+// eslint-disable-next-line no-restricted-globals
 addEventListener('message', async (e) => {
   const func = e.data[0];
   const args = e.data[1];

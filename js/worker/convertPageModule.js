@@ -138,7 +138,7 @@ export async function convertPageHocr({
    */
   function convertLine(match) {
     const titleStrLine = match.match(/title=['"]([^'"]+)/)?.[1];
-    if (!titleStrLine) return;
+    if (!titleStrLine) return '';
 
     const linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
 
@@ -222,7 +222,7 @@ export async function convertPageHocr({
         const wordBboxesBottom = letterArrSub.map((x) => parseInt(x[1].match(/\d+ \d+ \d+ (\d+)/)[1]));
 
         // Check for small caps words in title case (first letter larger than all following letters)
-        if (Math.min(...letterArrSub.map((x) => x[1].match(/\d+ (\d+)/)[1]).map((x) => Math.sign((x - wordBboxesBottom[0]) + ((wordBboxesBottom[0] - wordBboxesTop[0]) * 0.90))).slice(1)) == 1) {
+        if (Math.min(...letterArrSub.map((x) => x[1].match(/\d+ (\d+)/)[1]).map((x) => Math.sign((x - wordBboxesBottom[0]) + ((wordBboxesBottom[0] - wordBboxesTop[0]) * 0.90))).slice(1)) === 1) {
           smallCaps = true;
           smallCapsTitle = true;
           for (let i = 1; i < wordBboxesTop.length; i++) {
@@ -303,7 +303,6 @@ export async function convertPageHocr({
       if (letterArrSuper.length > 0) {
         // Calculate new bounding boxes
 
-        let wordXMLCore = '';
         if (text) {
           const bboxesCore = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5));
           const wordBoxCore = new Array(4);
@@ -312,15 +311,12 @@ export async function convertPageHocr({
           wordBoxCore[2] = Math.max(...bboxesCore.map((x) => x[2]));
           wordBoxCore[3] = Math.max(...bboxesCore.map((x) => x[3]));
 
-          wordXMLCore = wordXML;
-
           const wordObjCore = new ocr.OcrWord(lineObj, text, wordBoxCore, wordID);
           wordObjCore.chars = charObjArr;
 
           if (debugMode) wordObjCore.raw = match;
 
           if (smallCaps || italic || fontFamily !== 'Default') {
-            wordXMLCore = `${wordXMLCore.slice(0, -1)} style='`;
             if (smallCaps) {
               wordObjCore.style = 'small-caps';
             } else if (italic) {
@@ -357,7 +353,7 @@ export async function convertPageHocr({
 
         return '';
       }
-      if (text == '') return ('');
+      if (text === '') return ('');
 
       const bboxesCore = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/)?.slice(1, 5).map((y) => parseInt(y)));
       const wordBoxCore = new Array(4);
@@ -1008,7 +1004,8 @@ export async function convertPageStext({ ocrStr, n }) {
 
     // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
     // In this case the original line-level bounding box from Abbyy is used
-    const lineBoxOut = Number.isFinite(lineBoxArrCalc[0]) && Number.isFinite(lineBoxArrCalc[1]) && Number.isFinite(lineBoxArrCalc[2]) && Number.isFinite(lineBoxArrCalc[3]) ? lineBoxArrCalc : lineBoxArr.slice(2, 6);
+    const lineBoxOut = Number.isFinite(lineBoxArrCalc[0]) && Number.isFinite(lineBoxArrCalc[1]) && Number.isFinite(lineBoxArrCalc[2])
+      && Number.isFinite(lineBoxArrCalc[3]) ? lineBoxArrCalc : lineBoxArr.slice(2, 6);
 
     const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
 
@@ -1188,7 +1185,7 @@ function convertTableLayoutAbbyy(ocrStr) {
       // This filter is intended to remove cells that span multiple rows.
       const colRightMax = [];
       for (let j = 0; j < colRightArr.length; j++) {
-        const colRightArrJ = j + 1 == colRightArr.length ? colRightArr[j] : colRightArr[j].filter((x) => x < colLeftMin[j + 1]);
+        const colRightArrJ = j + 1 === colRightArr.length ? colRightArr[j] : colRightArr[j].filter((x) => x < colLeftMin[j + 1]);
         colRightMax.push(Math.max(...colRightArrJ));
       }
 
@@ -1196,7 +1193,7 @@ function convertTableLayoutAbbyy(ocrStr) {
       tableBoxes = {};
       for (let j = 0; j < colLeftArr.length; j++) {
         let cellLeft;
-        if (j == 0) {
+        if (j === 0) {
           cellLeft = tableCoords[0];
         } else if (!Number.isFinite(colRightMax[j - 1])) {
           cellLeft = Math.round(colLeftMin[j]);
@@ -1205,7 +1202,7 @@ function convertTableLayoutAbbyy(ocrStr) {
         }
 
         let cellRight;
-        if (j + 1 == colLeftArr.length) {
+        if (j + 1 === colLeftArr.length) {
           cellRight = tableCoords[2];
         } else if (!Number.isFinite(colRightMax[j])) {
           cellRight = colLeftMin[j + 1];
@@ -1261,14 +1258,14 @@ function pass2({ pageObj, layoutBoxes, warn }) {
       const charObjArr = wordObj.chars;
 
       // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
-      if (wordObj.chars && wordObj.chars.length != wordObj.text.length) continue;
+      if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
 
       // Quotes at the start of a word are assumed to be opening quotes
       if (['"', "'"].includes(letterArr[0]) && letterArr.length > 1 && /[a-z\d]/i.test(letterArr[1])) {
-        if (letterArr[0] == '"') {
+        if (letterArr[0] === '"') {
           letterArr[0] = '“';
           if (charObjArr) charObjArr[0].text = '“';
-        } else if (letterArr[0] == "'") {
+        } else if (letterArr[0] === "'") {
           letterArr[0] = '‘';
           if (charObjArr) charObjArr[0].text = '‘';
         }
@@ -1276,10 +1273,10 @@ function pass2({ pageObj, layoutBoxes, warn }) {
 
       // Quotes at the end of a word are assumed to be closing quotes
       if (['"', "'"].includes(letterArr[letterArr.length - 1]) && letterArr.length > 1 && /[a-z\d]/i.test(letterArr[letterArr.length - 2])) {
-        if (letterArr[letterArr.length - 1] == '"') {
+        if (letterArr[letterArr.length - 1] === '"') {
           letterArr[letterArr.length - 1] = '”';
           if (charObjArr) charObjArr[letterArr.length - 1].text = '”';
-        } else if (letterArr[letterArr.length - 1] == "'") {
+        } else if (letterArr[letterArr.length - 1] === "'") {
           letterArr[letterArr.length - 1] = '’';
           if (charObjArr) charObjArr[letterArr.length - 1].text = '’';
         }

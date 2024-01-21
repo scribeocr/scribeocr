@@ -311,7 +311,7 @@ export async function optimizeFont({
       }
     }
 
-    if (shiftX != 0) {
+    if (shiftX !== 0) {
       const shiftH = (x) => x + shiftX;
       transformGlyph(glyphI, shiftH, true, false);
       glyphIMetrics = glyphI.getMetrics();
