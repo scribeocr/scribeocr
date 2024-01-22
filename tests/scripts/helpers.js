@@ -61,7 +61,7 @@ class CustomSeleniumActions {
 
       // Firefox opens .pdf downloads in a new tab, so we need to switch back to the original.
       const browser = (await this.driver.getCapabilities()).getBrowserName();
-      if (browser == 'firefox' && format == 'PDF') {
+      if (browser === 'firefox' && format === 'PDF') {
         await this.driver.sleep(500);
         this.driver.switchTo().window(currentTab);
       }
@@ -80,7 +80,7 @@ export const createDriver = async () => {
   let browser = process.env.BROWSER || 'chrome';
 
   // Microsoft uses a longer name for Edge
-  if (browser == 'edge') {
+  if (browser === 'edge') {
     browser = 'MicrosoftEdge';
   }
 

@@ -871,9 +871,9 @@ export async function convertPageStext({ ocrStr, n }) {
     // Strangely, while Abbyy XML does provide a "baseline" attribute, it is often wildly incorrect (sometimes falling outside of the bounding box entirely).
     // One guess as to why is that coordinates calculated pre-dewarping are used along with a baseline calculated post-dewarping.
     // Regardless of the reason, baseline is recalculated here.
-    const lineAllHeightArr = {};
-    const baselineSlopeArr = {};
-    const baselineFirst = {};
+    const lineAllHeightArr = [];
+    const baselineSlopeArr = [];
+    const baselineFirst = [];
 
     const xmlLinePreChar = xmlLine.match(/^[\s\S]*?(?=<char)/)?.[0];
     if (!xmlLinePreChar) { return (''); }
@@ -915,7 +915,7 @@ export async function convertPageStext({ ocrStr, n }) {
     // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
     const wordStrArr = xmlLine.split(stextSplitRegex);
 
-    if (wordStrArr.length == 0) return (['', 0]);
+    if (wordStrArr.length === 0) return (['', 0]);
 
     const bboxes = Array(wordStrArr.length);
     // let cuts = Array(wordStrArr.length);
