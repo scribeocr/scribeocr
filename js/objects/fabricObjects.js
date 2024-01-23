@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 
-import { updateWordCanvas } from '../ui/interfaceEdit.js';
+import { updateWordCanvas } from '../browser/interfaceEdit.js';
 import { cp } from '../../main.js';
 import { calcWordMetrics } from '../fontUtils.js';
 import ocr from './ocrObjects.js';

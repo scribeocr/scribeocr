@@ -14,7 +14,7 @@ import { renderHOCRBrowser } from './js/exportRenderHOCRBrowser.js';
 import { writeDocx } from './js/exportWriteDocx.js';
 import { writeXlsx } from './js/exportWriteTabular.js';
 
-import { renderPage } from './js/ui/renderPageCanvas.js';
+import { renderPage } from './js/browser/renderPageCanvas.js';
 import coords from './js/coordinates.js';
 
 import { recognizePage } from './js/recognizeConvert.js';
@@ -32,24 +32,24 @@ import { loadFontContainerAllRaw, optimizeFontContainerAll } from './js/objects/
 import { ITextWord } from './js/objects/fabricObjects.js';
 
 import {
-  getRandomAlphanum, quantile, sleep, occurrences, saveAs, loadImage,
+  getRandomAlphanum, quantile, sleep, occurrences, saveAs, loadImage, readTextFile,
 } from './js/miscUtils.js';
 import { getAllFileEntries } from './js/drag-and-drop.js';
 
 // Functions for various UI tabs
-import { selectDisplayMode } from './js/ui/interfaceView.js';
+import { selectDisplayMode } from './js/browser/interfaceView.js';
 
 import {
   deleteSelectedWords, changeWordFontSize, changeWordFontFamily,
   adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, toggleEditButtons,
-} from './js/ui/interfaceEdit.js';
+} from './js/browser/interfaceEdit.js';
 
 import {
   addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
   updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords,
-} from './js/ui/interfaceLayout.js';
+} from './js/browser/interfaceLayout.js';
 
-import { canvas, resetCanvasEventListeners, canvasDebug } from './js/ui/interfaceCanvas.js';
+import { canvas, resetCanvasEventListeners, canvasDebug } from './js/browser/interfaceCanvas.js';
 
 import { initMuPDFWorker } from './mupdf/mupdf-async.js';
 
@@ -66,13 +66,13 @@ import Tesseract from './tess/tesseract.esm.min.js';
 import { initGeneralWorker } from './js/generalWorkerMain.js';
 
 // Load default settings
-import { setDefaults } from './js/ui/setDefaults.js';
+import { setDefaults } from './js/browser/setDefaults.js';
 
 import ocr from './js/objects/ocrObjects.js';
 
 import {
   printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText,
-} from './js/ui/interfaceDebug.js';
+} from './js/browser/interfaceDebug.js';
 
 globalThis.d = () => {
   debugger;
@@ -1914,6 +1914,7 @@ async function importFiles(curFiles) {
   const imageFilesAll = [];
   const hocrFilesAll = [];
   const pdfFilesAll = [];
+  const layoutFilesAll = [];
   const unsupportedFilesAll = [];
   const unsupportedExt = {};
   for (let i = 0; i < curFiles.length; i++) {
@@ -1931,6 +1932,8 @@ async function importFiles(curFiles) {
       hocrFilesAll.push(file);
     } else if (['pdf'].includes(fileExt)) {
       pdfFilesAll.push(file);
+    } else if (['layout'].includes(fileExt)) {
+      layoutFilesAll.push(file);
     } else {
       unsupportedFilesAll.push(file);
       unsupportedExt[fileExt] = true;
@@ -2219,7 +2222,7 @@ async function importFiles(curFiles) {
 
       // Enable downloads now for image imports if no HOCR data exists
       // TODO: PDF downloads are currently broken when images but not OCR text exists
-      if (!xmlModeImport && globalThis.convertPageActiveProgress.value == globalThis.convertPageActiveProgress.maxValue) {
+      if (!xmlModeImport && globalThis.convertPageActiveProgress.value === globalThis.convertPageActiveProgress.maxValue) {
         downloadElem.disabled = false;
         globalThis.state.downloadReady = true;
       }
@@ -2234,10 +2237,13 @@ async function importFiles(curFiles) {
 
     // Process HOCR using web worker, reading from file first if that has not been done already
     convertOCRAllBrowser(globalThis.hocrCurrentRaw, true, format, oemName).then(async () => {
+      if (layoutFilesAll.length > 0) await readLayoutFile(layoutFilesAll[0]);
       await calculateOverallMetrics();
       downloadElem.disabled = false;
       globalThis.state.downloadReady = true;
     });
+  } else if (layoutFilesAll.length > 0) {
+    await readLayoutFile(layoutFilesAll[0]);
   }
 
   if (dummyLoadingBar) globalThis.convertPageActiveProgress.increment();
@@ -2250,6 +2256,43 @@ async function importFiles(curFiles) {
 
   pageNumElem.value = '1';
   pageCountElem.textContent = String(globalThis.pageCount);
+}
+
+/**
+ * Function to read layout files.
+ * Must be run after dimensions exist in `pageMetricsArr`.
+ *
+ * @param {File} file
+ */
+async function readLayoutFile(file) {
+  const layoutStr = await readTextFile(file);
+  try {
+    const layoutObj = JSON.parse(layoutStr);
+
+    // Layout files may optionally provide an attribute named `system` which contains `length` and `height` used for the full page.
+    // These are used to normalize the coorinates, and are necessary when the layout analysis uses a different coordinate
+    // system compared to the coordinates used here.
+    for (let i = 0; i < layoutObj.length; i++) {
+      const layoutObjIBoxes = layoutObj[i]?.boxes;
+      if (!layoutObjIBoxes) continue;
+      for (const [key, value] of Object.entries(layoutObjIBoxes)) {
+        const width = value?.system?.width;
+        const height = value?.system?.height;
+        if (width && height) {
+          value.coords[0] *= (globalThis.pageMetricsArr[i].dims.width / width);
+          value.coords[2] *= (globalThis.pageMetricsArr[i].dims.width / width);
+
+          value.coords[1] *= (globalThis.pageMetricsArr[i].dims.height / height);
+          value.coords[3] *= (globalThis.pageMetricsArr[i].dims.height / height);
+        }
+      }
+    }
+
+    globalThis.layout = layoutObj;
+  } catch (e) {
+    console.log('Unable to parse contents of layout file.');
+    console.log(e);
+  }
 }
 
 async function initMuPDFScheduler(file, workers = 3) {

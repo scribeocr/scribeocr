@@ -38,7 +38,9 @@ function unescapeXml(string) {
     .replace(/&#x201d;/g, '”')
     .replace(/&#x2018;/g, '‘')
     .replace(/&#x2019;/g, '’')
-    .replace(/&#xa7;/g, '§');
+    .replace(/&#xa7;/g, '§')
+    // Soft hyphen
+    .replace(/&#xad;/g, '-');
 }
 
 /**

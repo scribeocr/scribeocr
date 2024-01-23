@@ -20,8 +20,12 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
   let abbyyMode = false;
   let stextMode = false;
 
-  let hocrStrPages; let hocrArrPages; let pageCountHOCR; let hocrRaw; let fontMetricsObj; let
-    layoutObj;
+  let hocrStrPages;
+  let hocrArrPages;
+  let pageCountHOCR;
+  let hocrRaw;
+  let fontMetricsObj;
+  let layoutObj;
 
   if (singleHOCRMode) {
     const hocrStrAll = await readOcrFile(hocrFilesAll[0]);
