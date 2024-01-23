@@ -27,7 +27,7 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
     const hocrStrAll = await readOcrFile(hocrFilesAll[0]);
 
     // Check whether input is Abbyy XML
-    const node2 = hocrStrAll.match(/\>([^\>]+)/)[1];
+    const node2 = hocrStrAll.match(/>([^>]+)/)[1];
     abbyyMode = !!/abbyy/i.test(node2);
     stextMode = !!/<document name/.test(node2);
 
@@ -44,8 +44,8 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
         inputDataModes.resumeMode = /<meta name=["']font-metrics["']/i.test(hocrStrAll);
 
         if (inputDataModes.resumeMode) {
-          const fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-          const contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
+          const fontMetricsStr = hocrStrAll.match(/<meta name=["']font-metrics["'][^<]+/i)[0];
+          const contentStr = fontMetricsStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)[1].replace(/&quot;/g, '"');
           fontMetricsObj = JSON.parse(contentStr);
         }
 
@@ -53,14 +53,14 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
         const layoutDataExists = /<meta name=["']layout["']/i.test(hocrStrAll);
 
         if (layoutDataExists) {
-          const layoutStr = hocrStrAll.match(/\<meta name\=[\"\']layout[\"\'][^\<]+/i)[0];
-          const contentStr = layoutStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
+          const layoutStr = hocrStrAll.match(/<meta name=["']layout["'][^<]+/i)[0];
+          const contentStr = layoutStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)[1].replace(/&quot;/g, '"');
           layoutObj = JSON.parse(contentStr);
         }
       }
 
-      hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
-      hocrStrEnd = hocrStrAll.match(/\<\/body\>[\s\S]*$/)[0];
+      hocrStrStart = hocrStrAll.match(/[\s\S]*?<body>/)[0];
+      hocrStrEnd = hocrStrAll.match(/<\/body>[\s\S]*$/)[0];
       hocrStrPages = hocrStrAll.replace(/[\s\S]*?<body>/, '');
       hocrStrPages = hocrStrPages.replace(/<\/body>[\s\S]*$/, '');
       hocrStrPages = hocrStrPages.trim();
@@ -79,7 +79,7 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
 
     // Check whether input is Abbyy XML using the first file
     const hocrStrFirst = await readOcrFile(hocrFilesAll[0]);
-    const node2 = hocrStrFirst.match(/\>([^\>]+)/)[1];
+    const node2 = hocrStrFirst.match(/>([^>]+)/)[1];
     abbyyMode = !!/abbyy/i.test(node2);
 
     for (let i = 0; i < pageCountHOCR; i++) {

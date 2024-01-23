@@ -10,9 +10,9 @@
  * Taken from: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
  */
 export function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
+  const minI = Math.ceil(min);
+  const maxI = Math.floor(max);
+  return Math.floor(Math.random() * (maxI - minI) + minI); // The maximum is exclusive and the minimum is inclusive
 }
 
 /**
@@ -56,7 +56,7 @@ export function quantile(arr, ntile) {
 }
 
 export const mean50 = (arr) => {
-  if (arr.length == 0) {
+  if (arr.length === 0) {
     return null;
   }
   const per25 = Math.floor(arr.length / 4) - 1;

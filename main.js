@@ -380,7 +380,7 @@ export const enableXlsxExportClick = () => {
   // Adding layouts is required for xlsx exports
   if (!enableLayoutElem.checked) enableLayoutElem.click();
 
-  showHideElem(document.getElementById('nav-recognize-tab'), enableXlsxExportElem.checked);
+  showHideElem(formatLabelOptionXlsxElem, enableXlsxExportElem.checked);
 
   updateDataPreview();
 };
@@ -412,16 +412,16 @@ uploadOCRDataElem.addEventListener('show.bs.collapse', () => {
 document.getElementById('fontMinus')?.addEventListener('click', () => { changeWordFontSize('minus'); });
 document.getElementById('fontPlus')?.addEventListener('click', () => { changeWordFontSize('plus'); });
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
-fontSizeElem.addEventListener('change', (event) => { changeWordFontSize(fontSizeElem.value); });
+fontSizeElem.addEventListener('change', () => { changeWordFontSize(fontSizeElem.value); });
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
-wordFontElem.addEventListener('change', (event) => { changeWordFontFamily(wordFontElem.value); });
+wordFontElem.addEventListener('change', () => { changeWordFontFamily(wordFontElem.value); });
 
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 document.getElementById('editBaseline')?.addEventListener('click', adjustBaseline);
 
 const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
-rangeBaselineElem.addEventListener('input', (event) => { adjustBaselineRange(rangeBaselineElem.value); });
-rangeBaselineElem.addEventListener('mouseup', (event) => { adjustBaselineRangeChange(rangeBaselineElem.value); });
+rangeBaselineElem.addEventListener('input', () => { adjustBaselineRange(rangeBaselineElem.value); });
+rangeBaselineElem.addEventListener('mouseup', () => { adjustBaselineRangeChange(rangeBaselineElem.value); });
 
 document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedWords);
 
@@ -429,7 +429,7 @@ document.getElementById('addWord')?.addEventListener('click', addWordClick);
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
-optimizeFontElem.addEventListener('click', (event) => { optimizeFontClick(optimizeFontElem.checked); });
+optimizeFontElem.addEventListener('click', () => { optimizeFontClick(optimizeFontElem.checked); });
 
 const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
 const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
@@ -446,17 +446,23 @@ document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { 
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
-displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className != 'dropdown-item') return; setCurrentHOCR(e.target.innerHTML); });
+displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className !== 'dropdown-item') return; setCurrentHOCR(e.target.innerHTML); });
 
 const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
 downloadElem.addEventListener('click', handleDownload);
 document.getElementById('pdfPagesLabel')?.addEventListener('click', updatePdfPagesLabel);
 
-document.getElementById('formatLabelOptionPDF')?.addEventListener('click', () => { setFormatLabel('pdf'); });
-document.getElementById('formatLabelOptionHOCR')?.addEventListener('click', () => { setFormatLabel('hocr'); });
-document.getElementById('formatLabelOptionText')?.addEventListener('click', () => { setFormatLabel('text'); });
-document.getElementById('formatLabelOptionDocx')?.addEventListener('click', () => { setFormatLabel('docx'); });
-document.getElementById('formatLabelOptionXlsx')?.addEventListener('click', () => { setFormatLabel('xlsx'); });
+const formatLabelOptionPDFElem = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPDF'));
+const formatLabelOptionHOCRElem = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHOCR'));
+const formatLabelOptionTextElem = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionText'));
+const formatLabelOptionDocxElem = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionDocx'));
+const formatLabelOptionXlsxElem = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionXlsx'));
+
+formatLabelOptionPDFElem.addEventListener('click', () => { setFormatLabel('pdf'); });
+formatLabelOptionHOCRElem.addEventListener('click', () => { setFormatLabel('hocr'); });
+formatLabelOptionTextElem.addEventListener('click', () => { setFormatLabel('text'); });
+formatLabelOptionDocxElem.addEventListener('click', () => { setFormatLabel('docx'); });
+formatLabelOptionXlsxElem.addEventListener('click', () => { setFormatLabel('xlsx'); });
 
 document.getElementById('oemLabelOptionLstm')?.addEventListener('click', () => { setOemLabel('lstm'); });
 document.getElementById('oemLabelOptionLegacy')?.addEventListener('click', () => { setOemLabel('legacy'); });
@@ -526,7 +532,7 @@ setLayoutBoxInclusionLevelWordElem.addEventListener('click', () => setLayoutBoxI
 setLayoutBoxInclusionLevelLineElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick('line'));
 
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
-setLayoutBoxTableElem.addEventListener('change', (event) => { setLayoutBoxTable(setLayoutBoxTableElem.value); });
+setLayoutBoxTableElem.addEventListener('change', () => { setLayoutBoxTable(setLayoutBoxTableElem.value); });
 
 const showExcludedTextElem = /** @type {HTMLInputElement} */(document.getElementById('showExcludedText'));
 showExcludedTextElem.addEventListener('click', () => getExcludedText());
@@ -772,12 +778,13 @@ function calcMatchNumber(n) {
 }
 
 function updatePdfPagesLabel() {
-  let minValue = parseInt(pdfPageMinElem.value) || null;
-  let maxValue = parseInt(pdfPageMaxElem.value) || null;
   const pageCount = globalThis.imageAll.nativeSrc?.length;
 
-  minValue = Math.max(minValue, 1);
-  maxValue = Math.min(maxValue, pageCount);
+  let minValue = parseInt(pdfPageMinElem.value);
+  let maxValue = parseInt(pdfPageMaxElem.value);
+
+  if (!minValue || minValue < 0) minValue = 1;
+  if (!maxValue || maxValue > pageCount) maxValue = pageCount;
 
   let pagesStr;
   if (minValue > 0 && maxValue > 0 && (minValue > 1 || maxValue < pageCount)) {
@@ -1015,7 +1022,7 @@ function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false,
   progressBar.setAttribute('aria-valuenow', initValue.toString());
   // Visually, progress starts at 1%.  If progress starts at 0%, certain automated tests failed as that counted as "hidden".
   progressBar.setAttribute('style', `width: ${Math.max(initValue / maxValue * 100, 1)}%`);
-  progressBar.setAttribute('aria-valuemax', maxValue);
+  progressBar.setAttribute('aria-valuemax', String(maxValue));
   progressCollapseObj.show();
 
   const progressObj = {
@@ -2561,7 +2568,7 @@ export async function renderPageQueue(n, loadXML = true) {
   cp.renderNum += 1;
   renderNum = cp.renderNum;
 
-  const backgroundImage = colorModeElem.value == 'binary' ? await Promise.resolve(globalThis.imageAll.binary[n]) : await Promise.resolve(globalThis.imageAll.native[n]);
+  const backgroundImage = colorModeElem.value === 'binary' ? await Promise.resolve(globalThis.imageAll.binary[n]) : await Promise.resolve(globalThis.imageAll.native[n]);
   cp.backgroundImage = new fabric.Image(backgroundImage, { objectCaching: false });
   if (cp.n === n && cp.renderNum === renderNum) {
     cp.renderStatus += 1;

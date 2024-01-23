@@ -90,13 +90,21 @@ export async function changeWordFontStyle(style) {
   window.canvas.renderAll();
 }
 
-export async function changeWordFontSize(fontSize) {
+/**
+ *
+ * @param {string} fontSizeStr - String containing (1) 'plus', (2) 'minus', or (3) a numeric size.
+ */
+export async function changeWordFontSize(fontSizeStr) {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects || selectedObjects.length === 0) return;
-  if (fontSize === 'plus') {
+
+  let fontSize;
+  if (fontSizeStr === 'plus') {
     fontSize = parseFloat(selectedObjects[0].fontSize) + 1;
-  } else if (fontSize === 'minus') {
+  } else if (fontSizeStr === 'minus') {
     fontSize = parseFloat(selectedObjects[0].fontSize) - 1;
+  } else {
+    fontSize = parseFloat(fontSizeStr);
   }
 
   const selectedN = selectedObjects.length;
@@ -119,7 +127,7 @@ export async function changeWordFontSize(fontSize) {
 
     wordObj.size = fontSize;
 
-    fontSizeElem.value = fontSize;
+    fontSizeElem.value = String(fontSize);
     wordI.fontSize = fontSize;
 
     await updateWordCanvas(wordI);
@@ -273,7 +281,7 @@ export function adjustBaselineRangeChange(value) {
 
     // Adjust baseline offset for line
     if (i === 0) {
-      wordObj.line.baseline[1] = wordObj.line.baseline[1] + valueChange;
+      wordObj.line.baseline[1] += valueChange;
     }
   }
 }

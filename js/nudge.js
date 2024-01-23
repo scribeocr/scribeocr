@@ -1,4 +1,4 @@
-import { renderPDFImageCache, displayPage, showDebugImages } from '../main.js';
+import { renderPDFImageCache, showDebugImages } from '../main.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images
@@ -32,6 +32,9 @@ export async function evalOverlapDocument() {
 
 globalThis.evalOverlapDocument = evalOverlapDocument;
 
+// TODO: The canvas should be updated after this function is run if run on the current page.
+// The core logic should not happen within this function, as that would prevent it from running in Node.js.
+// Should probably be either a callback or browser-only wrapper function.
 export async function nudgeDoc(func, view = false) {
   // Render binarized versions of images
   await renderPDFImageCache(Array.from({ length: globalThis.imageAll.native.length + 1 }, (v, k) => k), null, null, 'binary');
@@ -51,7 +54,6 @@ export async function nudgeDoc(func, view = false) {
       page: ocrPageI, binaryImage: imgElem.src, imageRotated: globalThis.imageAll.binaryRotated[i], pageMetricsObj: pageMetricsArr[i], view,
     }).then((res) => {
       globalThis.ocrAll.active[i] = res.data.page;
-      if (i == cp.n) displayPage(cp.n);
       improveCt += res.data.improveCt;
       totalCt += res.data.totalCt;
       if (res.data.debug) globalThis.debugImg.nudge[i] = res.data.debug;

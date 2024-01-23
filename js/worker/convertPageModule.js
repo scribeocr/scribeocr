@@ -429,7 +429,7 @@ export async function convertPageHocr({
       let fontStyle = 'normal';
       if (styleStr && /italic/i.test(styleStr)) {
         fontStyle = 'italic';
-      } else if (styleStr && /small\-caps/i.test(styleStr)) {
+      } else if (styleStr && /small-caps/i.test(styleStr)) {
         fontStyle = 'small-caps';
       }
 
@@ -703,14 +703,14 @@ export async function convertPageAbbyy({ ocrStr, n }) {
           // To calculate the slope of the baseline (and therefore image angle) the position of each glyph that starts (approximately) on the
           // baseline is compared to the first such glyph.  This is less precise than a true "best fit" approach, but hopefully with enough data
           // points it will all average out.
-          if (baselineFirst.length == 0) {
+          if (baselineFirst.length === 0) {
             baselineFirst.push(bboxes[i][j][0], bboxes[i][j][3]);
           } else {
             baselineSlopeArr.push((bboxes[i][j][3] - baselineFirst[1]) / (bboxes[i][j][0] - baselineFirst[0]));
           }
         }
 
-        text[i] = text[i] + contentStrLetter;
+        text[i] += contentStrLetter;
 
         const charObj = new ocr.OcrChar(contentStrLetter, bboxes[i][j]);
 
@@ -1403,7 +1403,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
 
           fontMetricsRawLine[wordFontFamily][wordObj.style].width[charUnicode].push(charWidth / charNorm);
           fontMetricsRawLine[wordFontFamily][wordObj.style].height[charUnicode].push(charHeight / charNorm);
-          fontMetricsRawLine[wordFontFamily][wordObj.style].obs = fontMetricsRawLine[wordFontFamily][wordObj.style].obs + 1;
+          fontMetricsRawLine[wordFontFamily][wordObj.style].obs += 1;
 
           if (k + 1 < wordObj.chars.length) {
             const charObjNext = wordObj.chars[k + 1];

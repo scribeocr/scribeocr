@@ -63,11 +63,11 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
       if (this.hasStateChanged) {
         if (document.getElementById('smartQuotes').checked && /['"]/.test(this.text)) {
           let textInt = this.text;
-          textInt = textInt.replace(/(^|[-–—])\'/, '$1‘');
-          textInt = textInt.replace(/(^|[-–—])\"/, '$1“');
-          textInt = textInt.replace(/\'(?=$|[-–—])/, '’');
-          textInt = textInt.replace(/\"(?=$|[-–—])/, '”');
-          textInt = textInt.replace(/([a-z])\'(?=[a-z]$)/i, '$1’');
+          textInt = textInt.replace(/(^|[-–—])'/, '$1‘');
+          textInt = textInt.replace(/(^|[-–—])"/, '$1“');
+          textInt = textInt.replace(/'(?=$|[-–—])/, '’');
+          textInt = textInt.replace(/"(?=$|[-–—])/, '”');
+          textInt = textInt.replace(/([a-z])'(?=[a-z]$)/i, '$1’');
           this.text = textInt;
         }
 
@@ -106,8 +106,8 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
 
             // Style toggles only consider the first word in the group
             if (supGroup == null) supGroup = wordI.wordSup;
-            if (italicGroup == null) italicGroup = wordI.fontStyleLookup == 'italic';
-            if (smallCapsGroup == null) smallCapsGroup = wordI.fontStyleLookup == 'small-caps';
+            if (italicGroup == null) italicGroup = wordI.fontStyleLookup === 'italic';
+            if (smallCapsGroup == null) smallCapsGroup = wordI.fontStyleLookup === 'small-caps';
           }
 
           this.group.style = {
@@ -121,13 +121,13 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
           wordFontElem.value = this.group.style.fontFamily;
           fontSizeElem.value = this.group.style.fontSize;
 
-          if (this.group.style.sup != styleSuperElem.classList.contains('active')) {
+          if (this.group.style.sup !== styleSuperElem.classList.contains('active')) {
             styleSuperButton.toggle();
           }
-          if (this.group.style.italic != styleItalicElem.classList.contains('active')) {
+          if (this.group.style.italic !== styleItalicElem.classList.contains('active')) {
             styleItalicButton.toggle();
           }
-          if (this.group.style.smallCaps != styleSmallCapsElem.classList.contains('active')) {
+          if (this.group.style.smallCaps !== styleSmallCapsElem.classList.contains('active')) {
             styleSmallCapsButton.toggle();
           }
         }
@@ -138,15 +138,15 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
           wordFontElem.value = this.fontFamilyLookup;
         }
         fontSizeElem.value = this.fontSize;
-        if (this.wordSup != styleSuperElem.classList.contains('active')) {
+        if (this.wordSup !== styleSuperElem.classList.contains('active')) {
           styleSuperButton.toggle();
         }
-        const italic = this.fontStyleLookup == 'italic';
-        if (italic != styleItalicElem.classList.contains('active')) {
+        const italic = this.fontStyleLookup === 'italic';
+        if (italic !== styleItalicElem.classList.contains('active')) {
           styleItalicButton.toggle();
         }
-        const smallCaps = this.fontStyleLookup == 'small-caps';
-        if (smallCaps != styleSmallCapsElem.classList.contains('active')) {
+        const smallCaps = this.fontStyleLookup === 'small-caps';
+        if (smallCaps !== styleSmallCapsElem.classList.contains('active')) {
           styleSmallCapsButton.toggle();
         }
       }
@@ -158,7 +158,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
       rangeBaselineElem.value = '100';
     });
     this.on('modified', async (opt) => {
-      if (opt.action == 'scaleX') {
+      if (opt.action === 'scaleX') {
         const textboxWidth = opt.target.calcTextWidth();
 
         const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontObj, opt.target.fontSize);
@@ -174,13 +174,13 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
         } else {
           const leftDelta = Math.round(opt.target.left - opt.target.leftOrig);
           const rightDelta = Math.round(visualRightNew - visualRightOrig);
-          wordObj.bbox[0] = wordObj.bbox[0] + leftDelta;
-          wordObj.bbox[2] = wordObj.bbox[2] + rightDelta;
+          wordObj.bbox[0] += leftDelta;
+          wordObj.bbox[2] += rightDelta;
         }
 
         if (opt.target.text.length > 1) {
           const widthDelta = visualWidthNew - opt.target.visualWidth;
-          if (widthDelta != 0) {
+          if (widthDelta !== 0) {
             const charSpacingDelta = (widthDelta / (opt.target.text.length - 1)) * 1000 / opt.target.fontSize;
             opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
             opt.target.scaleX = 1;
