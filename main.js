@@ -2798,8 +2798,21 @@ export async function calculateOverallMetrics() {
       // Evaluate default fonts using up to 5 pages.
       const pageNum = Math.min(globalThis.imageAll.native.length, 5);
       await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, 'binary');
+
+      // User-uploaded data and Tesseract Legacy are prioritized when running font optimization.
+      // If this was not the case, the LSTM results would be used when running recognition in "Quality" mode,
+      // as that would be the "active" data by the time this is run.
+      const ocrKeys = Object.keys(globalThis.ocrAll).filter((x) => x !== 'active');
+
+      let ocrFontEval = globalThis.ocrAll.active;
+      if (ocrKeys.includes('User Upload')) {
+        ocrFontEval = globalThis.ocrAll['User Upload'];
+      } else if (ocrKeys.includes('Tesseract Legacy')) {
+        ocrFontEval = globalThis.ocrAll['Tesseract Legacy'];
+      }
+
       // Select best default fonts
-      const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, pageNum), globalThis.imageAll.binary.slice(0, pageNum),
+      const change = await selectDefaultFontsDocument(ocrFontEval.slice(0, pageNum), globalThis.imageAll.binary.slice(0, pageNum),
         globalThis.imageAll.binaryRotated.slice(0, pageNum), fontAll);
       // Re-render current page if default font changed
       if (change) renderPageQueue(cp.n);
