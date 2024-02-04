@@ -28,9 +28,16 @@ const defaultConfigs = {
   // The Tesseract LSTM engine frequently identifies a bar character "|"
   // This is virtually always a false positive (usually "I").
   tessedit_char_blacklist: '|éï',
-  debug_file: '/debug.txt',
+  // debug_file: '/debug.txt',
   max_page_gradient_recognize: '100',
   hocr_font_info: '1',
+  // This option disables an undesirable behavior where Tesseract categorizes blobs *of any size* as noise,
+  // simply because they are too rectangular.  This option should always be enabled outside of debugging purposes.
+  textord_noise_area_ratio: '1',
+  // Table detection appears to interfere with the layout analysis of some documents with multi-column layouts,
+  // causing columns to be combined into a single line.  This should be investigated in more detail,
+  // but disabling as it does not seem to improve results even when the input document is a table.
+  textord_tabfind_find_tables: '0',
   // classify_enable_learning: "0",
   // classify_enable_adaptive_matcher: "0",
   // tessedit_enable_doc_dict: "0"
