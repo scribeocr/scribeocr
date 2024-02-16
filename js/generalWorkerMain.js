@@ -16,7 +16,7 @@ export async function initGeneralWorker() {
     });
 
     worker.onmessage = async function (event) {
-      worker.promises[event.data.id].resolve(event.data);
+      worker.promises[event.data.id].resolve(event.data.data);
     };
 
     function wrap(func) {
@@ -26,6 +26,22 @@ export async function initGeneralWorker() {
           worker.promises[id] = { resolve, reject, func };
           worker.postMessage([func, args[0], id]);
         });
+      };
+    }
+
+    function wrap2(func) {
+      return function (...args) {
+        const id = worker.promiseId++;
+        const promiseB = new Promise((resolve, reject) => {
+          worker.promises[`${id}b`] = { resolve, reject, func };
+        });
+
+        const promiseA = new Promise((resolve, reject) => {
+          worker.promises[id] = { resolve, reject, func };
+          worker.postMessage([func, args[0], id]);
+        });
+
+        return [promiseA, promiseB];
       };
     }
 
@@ -45,7 +61,7 @@ export async function initGeneralWorker() {
     obj.reinitialize = wrap('reinitialize');
     obj.recognize = wrap('recognize');
     obj.recognizeAndConvert = wrap('recognizeAndConvert');
-    obj.recognizeAndConvert2 = wrap('recognizeAndConvert2');
+    obj.recognizeAndConvert2 = wrap2('recognizeAndConvert2');
 
     obj.loadFontContainerAllWorker = wrap('loadFontContainerAllWorker');
     obj.setFontActiveWorker = wrap('setFontActiveWorker');
@@ -53,6 +69,52 @@ export async function initGeneralWorker() {
 
     obj.terminate = () => worker.terminate();
 
-    ready.then((x) => resolve(obj));
+    ready.then(() => resolve(obj));
   });
+}
+
+export class GeneralScheduler {
+  constructor(scheduler) {
+    this.scheduler = scheduler;
+    /**
+     * @param {Parameters<typeof import('./worker/compareOCRModule.js').compareHOCR>[0]} args
+     * @returns {ReturnType<typeof import('./worker/compareOCRModule.js').compareHOCR>}
+     */
+    this.compareHOCR = async (args) => (await this.scheduler.addJob('compareHOCR', args));
+    /**
+     * @param {Parameters<typeof import('./worker/optimizeFontModule.js').optimizeFont>[0]} args
+     * @returns {ReturnType<typeof import('./worker/optimizeFontModule.js').optimizeFont>}
+     */
+    this.optimizeFont = async (args) => (await this.scheduler.addJob('optimizeFont', args));
+    /**
+     * @param {Parameters<typeof import('./worker/generalWorker.js').recognize>[0]} args
+     * @returns {ReturnType<typeof import('./worker/generalWorker.js').recognize>}
+     */
+    this.recognize = async (args) => (await this.scheduler.addJob('recognize', args));
+    /**
+     * @param {Parameters<typeof import('./worker/generalWorker.js').recognizeAndConvert>[0]} args
+     * @returns {ReturnType<typeof import('./worker/generalWorker.js').recognizeAndConvert>}
+     */
+    this.recognizeAndConvert = async (args) => (await this.scheduler.addJob('recognizeAndConvert', args));
+    /**
+     * @param {Parameters<typeof import('./worker/generalWorker.js').recognizeAndConvert2>[0]} args
+     * @returns {Promise<[ReturnType<typeof import('./worker/generalWorker.js').recognizeAndConvert>, ReturnType<typeof import('./worker/generalWorker.js').recognizeAndConvert>]>}
+     */
+    this.recognizeAndConvert2 = async (args) => (await this.scheduler.addJob('recognizeAndConvert2', args));
+    /**
+     * @param {Parameters<typeof import('./worker/compareOCRModule.js').evalPage>[0]} args
+     * @returns {ReturnType<typeof import('./worker/compareOCRModule.js').evalPage>}
+     */
+    this.evalPage = async (args) => (await this.scheduler.addJob('evalPage', args));
+    /**
+     * @param {Parameters<typeof import('./worker/compareOCRModule.js').evalWords>[0]} args
+     * @returns {ReturnType<typeof import('./worker/compareOCRModule.js').evalWords>}
+     */
+    this.evalWords = async (args) => (await this.scheduler.addJob('evalWords', args));
+    /**
+     * @param {Parameters<typeof import('./worker/compareOCRModule.js').evalPageFont>[0]} args
+     * @returns {ReturnType<typeof import('./worker/compareOCRModule.js').evalPageFont>}
+     */
+    this.evalPageFont = async (args) => (await this.scheduler.addJob('evalPageFont', args));
+  }
 }

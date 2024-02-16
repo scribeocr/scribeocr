@@ -610,8 +610,7 @@ function penalizeWord(wordStr) {
 }
 
 /**
- * Checks words in pageA against words in pageB.  Edits `compTruth` and `matchTruth` attributes of words in `pageA` in place
- * and returns additional data depending on `mode`.
+ * Checks words in pageA against words in pageB.
  * @param {object} params
  * @param {OcrPage} params.pageA
  * @param {OcrPage} params.pageB
@@ -661,18 +660,21 @@ export async function compareHOCR({
   const hocrBCorrect = {};
 
   // Reset all comparison-related fields in input page
-  ocr.getPageWords(pageA).map((x) => {
+  ocr.getPageWords(pageA).forEach((x) => {
     x.compTruth = false;
     x.matchTruth = false;
   });
 
   // Create copy of `pageA` so original is not edited
+  // This was originally necessary before this function was run in a separate worker--not sure if necessary anymore since data is already cloned when sent to worker.
   const pageAInt = structuredClone(pageA);
 
   // Reset conf in cloned page only
-  ocr.getPageWords(pageAInt).map((x) => {
-    x.conf = 0;
-  });
+  if (mode === 'comb') {
+    ocr.getPageWords(pageAInt).forEach((x) => {
+      x.conf = 0;
+    });
+  }
 
   // TODO: This assumes that the lines are in a specific order, which may not always be the case.
   //    Add a sorting step or otherwise make more robust.
@@ -708,17 +710,10 @@ export async function compareHOCR({
           // If option is set to ignore punctuation and the current "word" conly contains punctuation,
           // exit early with options that will result in the word being printed in green.
           if (ignorePunct && !wordA.text.replace(/[\W_]/g, '')) {
-            const wordAOrig = ocr.getPageWord(pageA, wordA.id);
-            console.assert(wordAOrig || mode !== 'stats', 'Could not identify `wordAOrig`, stats may not be accurate.');
-            if (wordAOrig) {
-              wordAOrig.compTruth = true;
-              wordAOrig.matchTruth = true;
-
-              wordA.compTruth = true;
-              wordA.matchTruth = true;
-              wordA.conf = 100;
-              hocrACorrect[wordA.id] = 1;
-            }
+            wordA.compTruth = true;
+            wordA.matchTruth = true;
+            if (mode === 'comb') wordA.conf = 100;
+            hocrACorrect[wordA.id] = 1;
           }
 
           const wordBoxA = wordA.bbox;
@@ -793,19 +788,11 @@ export async function compareHOCR({
 
               // TODO: Account for cases without 1-to-1 mapping between bounding boxes
               if (wordTextA === wordTextB) {
-                const wordAOrig = ocr.getPageWord(pageA, wordA.id);
-
-                console.assert(wordAOrig || mode !== 'stats', 'Could not identify `wordAOrig`, stats may not be accurate.');
-                if (wordAOrig) {
-                  wordAOrig.compTruth = true;
-                  wordAOrig.matchTruth = true;
-
-                  wordA.compTruth = true;
-                  wordA.matchTruth = true;
-                  wordA.conf = 100;
-                  hocrACorrect[wordA.id] = 1;
-                  hocrBCorrect[wordB.id] = 1;
-                }
+                wordA.compTruth = true;
+                wordA.matchTruth = true;
+                if (mode === 'comb') wordA.conf = 100;
+                hocrACorrect[wordA.id] = 1;
+                hocrBCorrect[wordB.id] = 1;
               } else if (mode === 'comb') {
                 wordA.conf = 0;
                 wordA.matchTruth = false;
@@ -870,8 +857,6 @@ export async function compareHOCR({
                 // because the overlap metrics often fail in this case.
                 // E.g. the letter "ö" (o with umlaut) may overlap better with "ii" than "o".
                 const replaceII = /[a-hj-z]ii[a-hj-z]/i.test(wordA.text);
-
-                const replaceMetrics = false;
 
                 let hocrAError = 0;
                 let hocrBError = 0;
@@ -1021,7 +1006,7 @@ export async function compareHOCR({
   // Therefore, `hocrAOverlap` ends up including words not in `pageA`, so `ocr.getPageWord(pageA, overlappingWordsA[i]);` returns `null`.
   if (mode === 'comb') {
     return {
-      page: pageAInt, metrics: {}, debugLog, debugImg,
+      page: pageAInt, metrics: null, debugLog, debugImg,
     };
   }
 
@@ -1075,6 +1060,7 @@ export async function compareHOCR({
     }
   }
 
+  /** @type {EvalMetrics} */
   const metricsRet = {
     total: totalCountB,
     correct: correctCount,

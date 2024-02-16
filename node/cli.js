@@ -6,11 +6,14 @@ import path from 'path';
 import util from 'util';
 import Worker from 'web-worker';
 import Tesseract from 'tesseract.js';
-import { initGeneralWorker } from '../js/generalWorkerMain.js';
+import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
 import { selectDefaultFontsDocument, setFontAllWorker } from '../js/fontEval.js';
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
 import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
 import ocr from '../js/objects/ocrObjects.js';
+import { reduceEvalMetrics } from '../js/miscUtils.js';
+import { importOCR } from '../js/importOCR.js';
+import { PageMetrics } from '../js/objects/pageMetricsObjects.js';
 
 import { initMuPDFWorker } from '../mupdf/mupdf-async.js';
 import { hocrToPDF } from '../js/exportPDF.js';
@@ -39,7 +42,7 @@ async function enableDisableFontOpt(enable) {
 
   // Create optimized font if this has not been done yet
   if (enable && !fontAll.opt) {
-    fontAll.opt = await optimizeFontContainerAll(fontPrivate);
+    fontAll.opt = await optimizeFontContainerAll(fontPrivate, globalThis.fontMetricsObj);
   }
 
   // Enable/disable optimized font
@@ -72,31 +75,8 @@ globalThis.convertPageWarn = [];
  *
  */
 async function main(func, params) {
-  const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
-  if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
-
-  const backgroundArg = params.pdfFile;
-  const outputDir = params.outputDir;
-
-  const backgroundPDF = /pdf$/i.test(backgroundArg);
-
-  const debugMode = false;
-  const robustConfMode = func === 'check' || params.robustConfMode || false;
-  const printConf = func === 'check' || func === 'conf' || params.printConf || false;
-
-  let fileData;
-  let w;
-  if (backgroundPDF) {
-    w = await initMuPDFWorker();
-    fileData = await fs.readFileSync(params.pdfFile);
-
-    if (backgroundPDF) {
-      const pdfDoc = await w.openDocument(fileData, 'file.pdf');
-      w.pdfDoc = pdfDoc;
-    }
-  }
-
-  globalThis.pageMetricsArr = [];
+  // const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
+  // if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
 
   // Object that keeps track of what type of input data is present
   globalThis.inputDataModes = {
@@ -110,44 +90,55 @@ async function main(func, params) {
     resumeMode: false,
   };
 
-  const hocrStrAll = hocrStrFirst;
-
-  const node2 = hocrStrFirst.match(/\>([^\>]+)/)[1];
-  const abbyyMode = !!/abbyy/i.test(node2);
-  const format = abbyyMode ? 'abbyy' : 'hocr';
-
-  let hocrStrStart = '';
-  let hocrStrEnd = '';
-  let hocrStrPages; let hocrArrPages; let pageCount; let pageCountImage; let
-    pageCountHOCR;
-
-  if (abbyyMode) {
-    hocrArrPages = hocrStrAll.split(/(?=<page)/).slice(1);
-  } else {
-    // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-    inputDataModes.resumeMode = /<meta name=["']font-metrics["']/i.test(hocrStrAll);
-
-    if (inputDataModes.resumeMode) {
-      const fontMetricsStr = hocrStrAll.match(/\<meta name\=[\"\']font\-metrics[\"\'][^\<]+/i)[0];
-      const contentStr = fontMetricsStr.match(/content\=[\"\']([\s\S]+?)(?=[\"\']\s{0,5}\/?\>)/i)[1].replace(/&quot;/g, '"');
-      globalThis.fontMetricsObj = JSON.parse(contentStr);
+  let format;
+  if (['conf', 'check', 'eval', 'overlay'].includes(func)) {
+    if (params.ocrFile) {
+      const ocr1 = await importOCR([params.ocrFile]);
+      globalThis.hocrCurrentRaw = ocr1.hocrRaw;
+      format = ocr1.abbyyMode ? 'abbyy' : 'hocr';
+    } else {
+      throw new Error(`OCR file required for function ${func} but not provided.`);
     }
-
-    hocrStrStart = hocrStrAll.match(/[\s\S]*?\<body\>/)[0];
-    hocrStrEnd = hocrStrAll.match(/\<\/body\>[\s\S]*$/)[0];
-    hocrStrPages = hocrStrAll.replace(/[\s\S]*?<body>/, '');
-    hocrStrPages = hocrStrPages.replace(/<\/body>[\s\S]*$/, '');
-    hocrStrPages = hocrStrPages.trim();
-
-    hocrArrPages = hocrStrPages.split(/(?=<div class=['"]ocr_page['"])/);
   }
 
-  pageCountHOCR = hocrArrPages.length;
-  if (backgroundPDF) pageCountImage = await w.countPages([fileData]);
+  const backgroundArg = params.pdfFile;
+  const outputDir = params.outputDir;
+
+  const backgroundPDF = /pdf$/i.test(backgroundArg);
+  const backgroundImage = backgroundArg && !backgroundPDF;
+
+  const debugMode = false;
+  const robustConfMode = func === 'check' || params.robustConfMode || false;
+  const printConf = func === 'check' || func === 'conf' || params.printConf || false;
+
+  let fileData;
+  let w;
+  if (backgroundPDF || backgroundImage) {
+    fileData = await fs.readFileSync(params.pdfFile);
+
+    if (backgroundPDF) {
+      w = await initMuPDFWorker();
+      const pdfDoc = await w.openDocument(fileData, 'file.pdf');
+      w.pdfDoc = pdfDoc;
+    }
+  }
+
+  globalThis.pageMetricsArr = [];
+
+  const pageCountHOCR = globalThis.hocrCurrentRaw ? globalThis.hocrCurrentRaw.length : 0;
+  let pageCountImage;
+  if (backgroundPDF) {
+    pageCountImage = await w.countPages([fileData]);
+  } else if (backgroundImage) {
+    pageCountImage = 1;
+    if (!globalThis.hocrCurrentRaw) {
+      globalThis.pageMetricsArr[0] = new PageMetrics({ height: 0, width: 0 });
+    }
+  }
   if (pageCountHOCR !== pageCountImage) {
     console.log(`Detected ${pageCountHOCR} pages in OCR but ${pageCountImage} images.`);
   }
-  pageCount = pageCountImage ?? pageCountHOCR;
+  const pageCount = pageCountImage ?? pageCountHOCR;
 
   globalThis.layout = Array(pageCount);
   for (let i = 0; i < globalThis.layout.length; i++) {
@@ -165,10 +156,8 @@ async function main(func, params) {
 
   globalThis.ocrAll.active = globalThis.ocrAll['User Upload'];
 
-  globalThis.hocrCurrentRaw = Array(pageCount);
-  for (let i = 0; i < pageCount; i++) {
-    globalThis.hocrCurrentRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
-  }
+  /** @type {Array<EvalMetrics>} */
+  const evalMetricsArr = [];
 
   const workerN = 1;
   globalThis.generalScheduler = await Tesseract.createScheduler();
@@ -180,13 +169,13 @@ async function main(func, params) {
     globalThis.generalScheduler.workers[i] = w;
   }
 
-  await convertOCRAllNode(globalThis.hocrCurrentRaw, true, format, 'User Upload');
+  globalThis.gs = new GeneralScheduler(globalThis.generalScheduler);
+
+  if (globalThis.hocrCurrentRaw) await convertOCRAllNode(globalThis.hocrCurrentRaw, true, format, 'User Upload');
 
   if (func === 'conf' || (printConf && !robustConfMode)) {
     let wordsTotal = 0;
     let wordsHighConf = 0;
-    // console.log(globalThis.hocrCurrentRaw);
-    // console.log(globalThis.ocrAll.active);
     for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
       const words = ocr.getPageWords(globalThis.ocrAll.active[i]);
       for (let j = 0; j < words.length; j++) {
@@ -207,8 +196,10 @@ async function main(func, params) {
   const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
   globalThis.fontMetricsObj = metricsRet.fontMetrics;
 
-  if (globalThis.fontMetricsObj) setDefaultFontAuto(globalThis.fontMetricsObj);
-  await enableDisableFontOpt(true);
+  if (globalThis.fontMetricsObj) {
+    setDefaultFontAuto(globalThis.fontMetricsObj);
+    await enableDisableFontOpt(true);
+  }
 
   // There is currently no Node.js implementation of default font selection, as this is written around drawing in the canvas API.
   // Evaluate default fonts using up to 5 pages.
@@ -224,27 +215,32 @@ async function main(func, params) {
   };
 
   // All pages are rendered for `robustConfMode`, otherwise images are only needed for font evaluation.
-  const renderPageN = robustConfMode ? pageCount : fontEvalPageN;
+  const runRecognition = robustConfMode || func === 'eval';
+  const renderPageN = runRecognition ? pageCount : fontEvalPageN;
 
   for (let i = 0; i < renderPageN; i++) {
+    if (backgroundPDF) {
     // Render to 300 dpi by default
-    let dpi = 300;
+      let dpi = 300;
 
-    const imgWidthXml = globalThis.pageMetricsArr[i].dims.width;
+      const imgWidthXml = globalThis.pageMetricsArr[i].dims.width;
 
-    const imgWidthPdf = await w.pageWidth([i + 1, 300]);
-    if (imgWidthPdf !== imgWidthXml) {
-      dpi = 300 * (imgWidthXml / imgWidthPdf);
+      const imgWidthPdf = await w.pageWidth([i + 1, 300]);
+      if (imgWidthPdf !== imgWidthXml) {
+        dpi = 300 * (imgWidthXml / imgWidthPdf);
+      }
+
+      // Render page from PDF as image
+      globalThis.imageAll.native[i] = await w.drawPageAsPNG([i + 1, dpi, false, false]);
+    } else if (backgroundImage) {
+      globalThis.imageAll.native[i] = `data:image/png;base64,${fileData.toString('base64')}`;
     }
-
-    // Render page from PDF as image
-    globalThis.imageAll.native[i] = await w.drawPageAsPNG([i + 1, dpi, false, false]);
 
     // If recognition is not being run, binarize and rotate the images now.
     // If recognition is being run, this will happen at that step.
-    if (!robustConfMode) {
+    if (!runRecognition) {
       // Use Tesseract to (1) binarize and (2) rotate the native image.
-      const angleArg = globalThis.pageMetricsArr[i].angle * (Math.PI / 180) * -1 || 0;
+      const angleArg = globalThis.pageMetricsArr?.[i]?.angle * (Math.PI / 180) * -1 || 0;
 
       const res = await tessWorker.recognize(globalThis.imageAll.native[i], { rotateRadians: angleArg }, {
         imageBinary: true, imageColor: false, debug: true, text: false, hocr: false, tsv: false, blocks: false,
@@ -257,14 +253,30 @@ async function main(func, params) {
     }
   }
 
-  if (robustConfMode) {
-    let wordsTotal = 0;
-    let wordsHighConf = 0;
+  // TODO: (1) Find out why font data is not being imported correctly from .hocr files.
+  // (2) Use Tesseract Legacy font data when (1) recognition is being run anyway and (2) no font metrics data exists already.
+  if (robustConfMode || func === 'eval' || func === 'recognize') {
+    // If font metrics are missing, then Tesseract Legacy is used as the "main" data.
+    // If font metrics are present (from a user upload), those are used instead.
+    const missingFontMetrics = !globalThis.fontMetricsObj;
 
     const time2a = Date.now();
-    await recognizeAllPagesNode(true, true, false);
+    await recognizeAllPagesNode(true, true, missingFontMetrics);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
+
+    if (func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Legacy'];
+
+    if (missingFontMetrics) {
+      const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
+      globalThis.fontMetricsObj = metricsRet.fontMetrics;
+
+      if (globalThis.fontMetricsObj) {
+        console.log('Calculating metrics');
+        setDefaultFontAuto(globalThis.fontMetricsObj);
+        await enableDisableFontOpt(true);
+      }
+    }
 
     // Select best default fonts
     const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, globalThis.imageAll.binaryRotated, fontAll);
@@ -291,8 +303,12 @@ async function main(func, params) {
       globalThis.debugLog += res.debugLog;
 
       globalThis.ocrAll['Tesseract Combined'][i] = res.page;
-    }
 
+      if (func === 'recognize') console.log(ocr.getPageText(res.page));
+    }
+  }
+
+  if (robustConfMode || func === 'eval') {
     for (let i = 0; i < globalThis.imageAll.native.length; i++) {
       const compOptions = {
         mode: 'stats',
@@ -304,9 +320,14 @@ async function main(func, params) {
 
       const imgElem = await globalThis.imageAll.binary[i];
 
+      // In "check" mode, the provided OCR is being compared against OCR from the built-in engine.
+      // In "eval" mode, the OCR from the built-in engine is compared against provided ground truth OCR data.
+      const pageA = func === 'eval' ? globalThis.ocrAll['Tesseract Combined'][i] : globalThis.ocrAll.active[i];
+      const pageB = func === 'eval' ? globalThis.ocrAll.active[i] : globalThis.ocrAll['Tesseract Combined'][i];
+
       const res = await compareHOCR({
-        pageA: globalThis.ocrAll.active[i],
-        pageB: ocrAll['Tesseract Combined'][i],
+        pageA,
+        pageB,
         binaryImage: imgElem.src,
         imageRotated: globalThis.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
@@ -315,13 +336,26 @@ async function main(func, params) {
 
       globalThis.ocrAll.active[i] = res.page;
 
-      if (res?.metrics?.total && res?.metrics?.correct) {
-        wordsTotal += res.metrics.total;
-        wordsHighConf += res.metrics.correct;
-      }
+      if (res.metrics) evalMetricsArr.push(res.metrics);
     }
 
-    if (printConf) console.log(`Confidence: ${wordsHighConf / wordsTotal}`);
+    const evalMetricsDoc = reduceEvalMetrics(evalMetricsArr);
+
+    if (func === 'eval') {
+      const ignoreExtra = true;
+      let metricWER;
+      if (ignoreExtra) {
+        metricWER = Math.round(((evalMetricsDoc.incorrect + evalMetricsDoc.missed) / evalMetricsDoc.total) * 100) / 100;
+      } else {
+        metricWER = Math.round(((evalMetricsDoc.incorrect + evalMetricsDoc.missed + evalMetricsDoc.extra)
+        / evalMetricsDoc.total) * 100) / 100;
+      }
+      console.log(`Word Error Rate: ${metricWER}`);
+    }
+
+    if (printConf) {
+      console.log(`Confidence: ${evalMetricsDoc.correct / evalMetricsDoc.total}`);
+    }
   } else {
     // Select best default fonts
     const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, globalThis.imageAll.binaryRotated, fontAll);
@@ -346,7 +380,7 @@ async function main(func, params) {
   // Terminate all workers
   await tessWorker.terminate();
   await generalScheduler.terminate();
-  await w.terminate();
+  if (w) await w.terminate();
 
   process.exitCode = 0;
 }
@@ -359,8 +393,16 @@ export const checkFunc = async (pdfFile, ocrFile) => {
   await main('check', { pdfFile, ocrFile });
 };
 
+export const evalFunc = async (pdfFile, ocrFile) => {
+  await main('eval', { pdfFile, ocrFile });
+};
+
 export const overlayFunc = async (pdfFile, ocrFile, outputDir, options) => {
   await main('overlay', {
     pdfFile, ocrFile, outputDir, robustConfMode: options?.robust || false, printConf: options?.conf || false,
   });
+};
+
+export const recognizeFunc = async (pdfFile) => {
+  await main('recognize', { pdfFile });
 };

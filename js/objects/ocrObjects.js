@@ -80,7 +80,7 @@ export function OcrWord(line, text, bbox, id) {
   this.dropcap = false;
   /** @type {string} */
   this.text = text;
-  /** @type {("normal"|"italic"|"small-caps")} */
+  /** @type {string} */
   this.style = 'normal';
   /** @type {?string} */
   this.font = null;

@@ -32,7 +32,7 @@ await import('../../lib/opentype.js');
  */
 export function relToAbsPath(fileName) {
   const url = new URL(fileName, import.meta.url);
-  return url.protocol == 'file:' ? url.host + url.pathname : url.href;
+  return url.protocol === 'file:' ? url.host + url.pathname : url.href;
 }
 
 /**
@@ -53,7 +53,7 @@ const fontFaceObj = {};
  * If a FontFace already exists with the same name, it is deleted and replaced.
  *
  * @param {string} fontFamily - Font family name
- * @param {("normal"|"italic")} fontStyle - Font style.  May only be "normal" or "italic",
+ * @param {string} fontStyle - Font style.  May only be "normal" or "italic",
  *   as small-caps fonts should be loaded as a "normal" variant with a different font name.
  * @param {string|ArrayBuffer} src - Font source
  */
@@ -95,13 +95,13 @@ export function loadFontFace(fontFamily, fontStyle, src) {
 /**
  *
  * @param {string} family
- * @param {("normal"|"italic"|"small-caps")} style
+ * @param {string} style
  * @param {("sans"|"serif")} type
  * @param {string|ArrayBuffer} src
  * @param {boolean} opt
  * @param {*} kerningPairs - Kerning paris to re-apply
  * @property {string} family -
- * @property {("normal"|"italic"|"small-caps")} style -
+ * @property {string} style -
  * @property {string|ArrayBuffer} src
  * @property {Promise<opentype.Font>} opentype -
  * @property {string} fontFaceName -
@@ -122,7 +122,7 @@ export function FontContainerFont(family, style, type, src, opt, kerningPairs = 
 
   /** @type {string} */
   this.family = family;
-  /** @type {("normal"|"italic"|"small-caps")} */
+  /** @type {string} */
   this.style = style;
   /** @type {boolean} */
   this.opt = opt;
@@ -132,8 +132,8 @@ export function FontContainerFont(family, style, type, src, opt, kerningPairs = 
   this.opentype = loadOpentype(this.src, kerningPairs);
   /** @type {string} */
   this.fontFaceName = fontFaceName;
-  /** @type {("normal"|"italic")} */
-  this.fontFaceStyle = this.style == 'italic' ? 'italic' : 'normal';
+  /** @type {string} */
+  this.fontFaceStyle = this.style === 'italic' ? 'italic' : 'normal';
   /** @type {("sans"|"serif")} */
   this.type = type;
 
@@ -158,11 +158,14 @@ export function FontContainerFont(family, style, type, src, opt, kerningPairs = 
 /**
  *
  * @param {FontContainerFamily} fontFamily
+ * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
  */
-export async function optimizeFontContainerFamily(fontFamily) {
+export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
+  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
+
   // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
   // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font.
-  globalSettings.multiFontMode = checkMultiFontMode(globalThis.fontMetricsObj);
+  globalSettings.multiFontMode = checkMultiFontMode(fontMetricsObj);
   let fontMetricsType = 'Default';
   if (globalSettings.multiFontMode) {
     if (fontFamily.normal.type === 'sans') {
@@ -174,24 +177,24 @@ export async function optimizeFontContainerFamily(fontFamily) {
 
   // If there are no statistics to use for optimization, create "optimized" font by simply copying the raw font without modification.
   // This should only occur when `multiFontMode` is true, but a document contains no sans words or no serif words.
-  if (!globalThis.fontMetricsObj[fontMetricsType]) {
+  if (!fontMetricsObj[fontMetricsType]) {
     const normalOptFont = new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, fontFamily.normal.src, true, null);
     const italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, fontFamily.italic.src, true, null);
     const smallCapsOptFont = new FontContainerFont(fontFamily['small-caps'].family, fontFamily['small-caps'].style, fontFamily['small-caps'].type, fontFamily['small-caps'].src, true, null);
     return new FontContainerFamily(normalOptFont, italicOptFont, smallCapsOptFont);
   }
 
-  const metricsNormal = globalThis.fontMetricsObj[fontMetricsType][fontFamily.normal.style];
-  const normalOptFont = globalThis.generalScheduler.addJob('optimizeFont', { fontData: fontFamily.normal.src, fontMetricsObj: metricsNormal, style: fontFamily.normal.style })
-    .then((x) => new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, x.data.fontData, true, x.data.kerningPairs));
+  const metricsNormal = fontMetricsObj[fontMetricsType][fontFamily.normal.style];
+  const normalOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.normal.src, fontMetricsObj: metricsNormal, style: fontFamily.normal.style })
+    .then((x) => new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, x.fontData, true, x.kerningPairs));
 
-  const metricsItalic = globalThis.fontMetricsObj[fontMetricsType][fontFamily.italic.style];
-  const italicOptFont = globalThis.generalScheduler.addJob('optimizeFont', { fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style })
-    .then((x) => new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, x.data.fontData, true, x.data.kerningPairs));
+  const metricsItalic = fontMetricsObj[fontMetricsType][fontFamily.italic.style];
+  const italicOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style })
+    .then((x) => new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, x.fontData, true, x.kerningPairs));
 
-  const metricsSmallCaps = globalThis.fontMetricsObj[fontMetricsType][fontFamily['small-caps'].style];
-  const smallCapsOptFont = globalThis.generalScheduler.addJob('optimizeFont', { fontData: fontFamily['small-caps'].src, fontMetricsObj: metricsSmallCaps, style: fontFamily['small-caps'].style })
-    .then((x) => new FontContainerFont(fontFamily['small-caps'].family, fontFamily['small-caps'].style, fontFamily['small-caps'].type, x.data.fontData, true, x.data.kerningPairs));
+  const metricsSmallCaps = fontMetricsObj[fontMetricsType][fontFamily['small-caps'].style];
+  const smallCapsOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily['small-caps'].src, fontMetricsObj: metricsSmallCaps, style: fontFamily['small-caps'].style })
+    .then((x) => new FontContainerFont(fontFamily['small-caps'].family, fontFamily['small-caps'].style, fontFamily['small-caps'].type, x.fontData, true, x.kerningPairs));
 
   return new FontContainerFamily(await normalOptFont, await italicOptFont, await smallCapsOptFont);
 }
@@ -288,15 +291,16 @@ export function loadFontContainerAll({
 /**
  * Optimize all fonts.
  * @param {FontContainerAll} fontPrivate
+ * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
  */
-export async function optimizeFontContainerAll(fontPrivate) {
+export async function optimizeFontContainerAll(fontPrivate, fontMetricsObj) {
   return new FontContainerAll({
-    Carlito: await optimizeFontContainerFamily(fontPrivate.Carlito),
-    Century: await optimizeFontContainerFamily(fontPrivate.Century),
-    Garamond: await optimizeFontContainerFamily(fontPrivate.Garamond),
-    Palatino: await optimizeFontContainerFamily(fontPrivate.Palatino),
-    NimbusRomNo9L: await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L),
-    NimbusSans: await optimizeFontContainerFamily(fontPrivate.NimbusSans),
+    Carlito: await optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj),
+    Century: await optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj),
+    Garamond: await optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj),
+    Palatino: await optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj),
+    NimbusRomNo9L: await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj),
+    NimbusSans: await optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj),
   });
 }
 

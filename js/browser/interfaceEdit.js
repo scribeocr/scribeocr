@@ -45,7 +45,7 @@ export function deleteSelectedWords() {
 
 /**
  *
- * @param {("normal"|"italic"|"small-caps")} style
+ * @param {string} style
  */
 export async function changeWordFontStyle(style) {
   const selectedObjects = window.canvas.getActiveObjects();

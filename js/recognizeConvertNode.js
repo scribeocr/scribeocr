@@ -7,9 +7,12 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
   const inputPages = [...Array(globalThis.imageAll.native.length).keys()];
   const promiseArr = [];
   for (const x of inputPages) {
-    promiseArr.push(recognizePage(globalThis.generalScheduler, x, legacy, lstm, false).then(async (res1) => {
-      if (res1.legacy) await convertPageCallbackNode(res1.legacy, x, mainData, 'Tesseract Legacy');
-      if (res1.lstm) await convertPageCallbackNode(res1.lstm, x, false, 'Tesseract LSTM');
+    promiseArr.push(recognizePage(globalThis.gs, x, legacy, lstm, false).then(async (resArr) => {
+      const res0 = await resArr[0];
+      const res1 = await resArr[1];
+
+      if (res0.convert.legacy) await convertPageCallbackNode(res0.convert.legacy, x, mainData, 'Tesseract Legacy');
+      if (res1.convert.lstm) await convertPageCallbackNode(res1.convert.lstm, x, false, 'Tesseract LSTM');
     }));
   }
 
@@ -71,7 +74,7 @@ async function convertOCRPageNode(ocrRaw, n, mainData, format, engineName) {
 
   await globalThis.generalScheduler.ready;
 
-  const res = (await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n })).data;
+  const res = await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n });
 
   await convertPageCallbackNode(res, n, mainData, engineName);
 }

@@ -1,4 +1,5 @@
 import { parseDebugInfo } from './fontStatistics.js';
+import { GeneralScheduler } from './generalWorkerMain.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -47,7 +48,11 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
 /**
  * Run recognition on a page and save the results, including OCR data and (possibly) auto-rotated images, to the appropriate global array.
  *
+ * @param {GeneralScheduler} scheduler
  * @param {number} n - Page number to recognize.
+ * @param {boolean} legacy -
+ * @param {boolean} lstm -
+ * @param {boolean} areaMode -
  */
 export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, options = {}) => {
   const browserMode = typeof process === 'undefined';
@@ -80,7 +85,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   // If a smaller rectangle is being recognized, then the dimensions of the entire page must be manually specified for the rotation calculations to be correct.
   const pageDims = options && options.rectangle ? globalThis.pageMetricsArr[n].dims : null;
 
-  const res = await scheduler.addJob('recognizeAndConvert2', {
+  const resArr = await scheduler.recognizeAndConvert2({
     image: inputSrc,
     options: config,
     output: {
@@ -93,39 +98,41 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
     pageDims,
   });
 
-  parseDebugInfo(res.data.recognize.debug);
+  const res0 = await resArr[0];
 
-  if (!angleKnown) globalThis.pageMetricsArr[n].angle = res.data.recognize.rotateRadians * (180 / Math.PI) * -1;
+  parseDebugInfo(res0.recognize.debug);
+
+  if (!angleKnown) globalThis.pageMetricsArr[n].angle = res0.recognize.rotateRadians * (180 / Math.PI) * -1;
 
   // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
   // but no significant rotation was actually detected.
   if (saveBinaryImageArg) {
-    globalThis.imageAll.binaryRotated[n] = Math.abs(res.data.recognize.rotateRadians) > angleThresh;
+    globalThis.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians) > angleThresh;
     if (globalThis.imageAll.binaryRotated[n] || !globalThis.imageAll.binary[n]) {
       if (browserMode) {
         const image = document.createElement('img');
-        image.src = res.data.recognize.imageBinary;
+        image.src = res0.recognize.imageBinary;
         globalThis.imageAll.binary[n] = image;
       } else {
         const { loadImage } = await import('canvas');
-        globalThis.imageAll.binary[n] = await loadImage(res.data.recognize.imageBinary);
+        globalThis.imageAll.binary[n] = await loadImage(res0.recognize.imageBinary);
       }
     }
   }
 
   if (saveNativeImage) {
-    globalThis.imageAll.nativeRotated[n] = Math.abs(res.data.recognize.rotateRadians) > angleThresh;
+    globalThis.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians) > angleThresh;
     if (globalThis.imageAll.nativeRotated[n]) {
       if (browserMode) {
         const image = document.createElement('img');
-        image.src = res.data.recognize.imageColor;
+        image.src = res0.recognize.imageColor;
         globalThis.imageAll.native[n] = image;
       } else {
         const { loadImage } = await import('canvas');
-        globalThis.imageAll.native[n] = await loadImage(res.data.recognize.imageColor);
+        globalThis.imageAll.native[n] = await loadImage(res0.recognize.imageColor);
       }
     }
   }
 
-  return res.data.convert;
+  return resArr;
 };

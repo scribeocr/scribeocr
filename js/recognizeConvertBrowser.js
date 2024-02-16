@@ -20,20 +20,69 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
     setCurrentHOCR(oemText);
   }
 
+  // 'Tesseract Latest' includes the last version of Tesseract to run.
+  // It exists only so that data can be consistently displayed during recognition,
+  // should never be enabled after recognition is complete, and should never be editable by the user.
+  initOCRVersion('Tesseract Latest');
+  setCurrentHOCR('Tesseract Latest');
+
   await globalThis.generalScheduler.ready;
 
+  // If Legacy and LSTM are both requested, LSTM completion is tracked by a second array of promises (`promisesB`).
+  // In this case, `convertPageCallbackBrowser` and `calculateOverallMetrics` can be run after the Legacy recognition is finished,
+  // however this function only returns after all recognition is completed.
+  // This provides no performance benefit in absolute terms, however halves the amount of time the user has to wait
+  // before seeing the initial recognition results.
   const inputPages = [...Array(globalThis.imageAll.native.length).keys()];
-  const promiseArr = [];
-  for (const x of inputPages) {
-    promiseArr.push(recognizePage(globalThis.generalScheduler, x, legacy, lstm, false).then(async (res1) => {
-      if (res1.legacy) await convertPageCallbackBrowser(res1.legacy, x, mainData, 'Tesseract Legacy');
-      if (res1.lstm) await convertPageCallbackBrowser(res1.lstm, x, false, 'Tesseract LSTM');
+  const promisesA = [];
+  const resolvesA = [];
+  const promisesB = [];
+  const resolvesB = [];
+
+  for (let i = 0; i < inputPages.length; i++) {
+    promisesA.push(new Promise((resolve, reject) => {
+      resolvesA[i] = { resolve, reject };
+    }));
+    promisesB.push(new Promise((resolve, reject) => {
+      resolvesB[i] = { resolve, reject };
     }));
   }
 
-  await Promise.all(promiseArr);
+  for (const x of inputPages) {
+    recognizePage(globalThis.gs, x, legacy, lstm, false).then(async (resArr) => {
+      const res0 = await resArr[0];
+
+      if (legacy) {
+        await convertPageCallbackBrowser(res0.convert.legacy, x, mainData, 'Tesseract Legacy');
+        resolvesA[x].resolve();
+      } else if (lstm) {
+        await convertPageCallbackBrowser(res0.convert.lstm, x, false, 'Tesseract LSTM');
+        resolvesA[x].resolve();
+      }
+
+      if (legacy && lstm) {
+        (async () => {
+          const res1 = await resArr[1];
+          await convertPageCallbackBrowser(res1.convert.lstm, x, false, 'Tesseract LSTM');
+          resolvesB[x].resolve();
+        })();
+      }
+    });
+  }
+
+  await Promise.all(promisesA);
 
   if (mainData) await calculateOverallMetrics();
+
+  if (legacy && lstm) await Promise.all(promisesB);
+
+  if (lstm) {
+    const oemText = 'Tesseract LSTM';
+    setCurrentHOCR(oemText);
+  } else {
+    const oemText = 'Tesseract Legacy';
+    setCurrentHOCR(oemText);
+  }
 }
 
 /**
@@ -49,13 +98,9 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 export async function convertPageCallbackBrowser({
   pageObj, fontMetricsObj, layoutBoxes, warn,
 }, n, mainData, engineName) {
-  // If an OEM engine is specified, save to the appropriate object within ocrAll,
-  // and only set to ocrAll.active if appropriate.  This prevents "Recognize All" from
-  // overwriting the wrong output if a user switches ocrAll.active to another OCR engine
-  // while the recognition job is running.
-  const oemCurrent = engineName === document.getElementById('displayLabelText')?.innerHTML;
-
   if (engineName) globalThis.ocrAll[engineName][n] = pageObj;
+
+  if (['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName)) globalThis.ocrAll['Tesseract Latest'][n] = pageObj;
 
   // If this is flagged as the "main" data, then save the stats.
   if (mainData) {
@@ -77,7 +122,13 @@ export async function convertPageCallbackBrowser({
   if (Object.keys(globalThis.layout[n].boxes).length === 0) globalThis.layout[n].boxes = layoutBoxes;
 
   // If this is the page the user has open, render it to the canvas
-  if (n === cp.n && oemCurrent) displayPage(cp.n);
+  const oemActive = document.getElementById('displayLabelText')?.innerHTML;
+
+  // Display the page if either (1) this is the currently active OCR or (2) this is Tesseract Legacy and Tesseract LSTM is active, but does not exist yet.
+  // The latter condition occurs briefly whenever recognition is run in "Quality" mode.
+  const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
+
+  if (n === cp.n && displayOCR) displayPage(cp.n);
 
   globalThis.convertPageActiveProgress.increment();
 }
@@ -104,7 +155,7 @@ async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName) {
 
   await globalThis.generalScheduler.ready;
 
-  const res = (await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n })).data;
+  const res = await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n });
 
   await convertPageCallbackBrowser(res, n, mainData, engineName);
 }

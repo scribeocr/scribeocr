@@ -139,10 +139,10 @@ const calculateKerningPairs = (font, fontMetricsObj, xHeight, style) => {
  * @param {string|ArrayBuffer} params.fontData
  * @param {FontMetricsFont} params.fontMetricsObj
  * @param {string} params.style -
- * @param {boolean} params.adjustAllLeftBearings - Edit left bearings for all characters based on provided metrics.
- * @param {boolean} params.standardizeSize - Scale such that size of 'o' is 0.47x em size.
- * @param {?number} params.targetEmSize - If non-null, font is scaled to this em size.
- * @param {boolean} params.transGlyphs - Whether individual glyphs should be transformed based on provided metrics.
+ * @param {boolean} [params.adjustAllLeftBearings] - Edit left bearings for all characters based on provided metrics.
+ * @param {boolean} [params.standardizeSize] - Scale such that size of 'o' is 0.47x em size.
+ * @param {?number} [params.targetEmSize] - If non-null, font is scaled to this em size.
+ * @param {boolean} [params.transGlyphs] - Whether individual glyphs should be transformed based on provided metrics.
  *    If `false`, only font-level transformations (adjusting em size and standardizing 'o' height) are performed.
  */
 export async function optimizeFont({

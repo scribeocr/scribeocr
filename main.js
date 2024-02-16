@@ -63,7 +63,7 @@ import Tesseract from './tess/tesseract.esm.min.js';
 
 // Debugging functions
 // import { initConvertPageWorker } from './js/convertPage.js';
-import { initGeneralWorker } from './js/generalWorkerMain.js';
+import { initGeneralWorker, GeneralScheduler } from './js/generalWorkerMain.js';
 
 // Load default settings
 import { setDefaults } from './js/browser/setDefaults.js';
@@ -662,7 +662,7 @@ async function enableDisableFontOpt(enable) {
 
   // Create optimized font if this has not been done yet
   if (enable && !fontAll.opt) {
-    fontAll.opt = await optimizeFontContainerAll(fontPrivate);
+    fontAll.opt = await optimizeFontContainerAll(fontPrivate, globalThis.fontMetricsObj);
   }
 
   // Enable/disable optimized font
@@ -918,6 +918,9 @@ export function initOCRVersion(label) {
     globalThis.ocrAll[label] = Array(globalThis.pageCount);
   }
 
+  // Exit early for 'Tesseract Latest'. This is used under the hood and users should not see it.
+  if (label === 'Tesseract Latest') return;
+
   // Exit early if option already exists
   const existingOptions = displayLabelOptionsElem.children;
   for (let i = 0; i < existingOptions.length; i++) {
@@ -1103,7 +1106,6 @@ async function recognizeAllClick() {
   } else if (oemMode === 'combined') {
     globalThis.loadCount = 0;
     globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', globalThis.imageAll.native.length * 2, 0, true);
-    globalThis.fontVariantsMessage = new Array(globalThis.imageAll.native.length);
 
     const time2a = Date.now();
     await recognizeAllPagesBrowser(true, true, !existingOCR);
@@ -1146,9 +1148,9 @@ async function recognizeAllClick() {
 
       const imgElem = await globalThis.imageAll.binary[i];
 
-      const res = await globalThis.generalScheduler.addJob('compareHOCR', {
-        pageA: ocrAll['Tesseract Legacy'][i],
-        pageB: ocrAll['Tesseract LSTM'][i],
+      const res = await globalThis.gs.compareHOCR({
+        pageA: globalThis.ocrAll['Tesseract Legacy'][i],
+        pageB: globalThis.ocrAll['Tesseract LSTM'][i],
         binaryImage: imgElem.src,
         imageRotated: globalThis.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
@@ -1156,11 +1158,11 @@ async function recognizeAllClick() {
       });
 
       if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-      globalThis.debugLog += res.data.debugLog;
+      globalThis.debugLog += res.debugLog;
 
-      globalThis.debugImg[tessCombinedLabel][i] = res.data.debugImg;
+      globalThis.debugImg[tessCombinedLabel][i] = res.debugImg;
 
-      globalThis.ocrAll[tessCombinedLabel][i] = res.data.page;
+      globalThis.ocrAll[tessCombinedLabel][i] = res.page;
       globalThis.ocrAll.active[i] = ocrAll[tessCombinedLabel][i];
 
       // If the user uploaded data, compare to that as we
@@ -1176,7 +1178,7 @@ async function recognizeAllClick() {
           };
 
           const imgElem = await globalThis.imageAll.binary[i];
-          const res = await globalThis.generalScheduler.addJob('compareHOCR', {
+          const res = await globalThis.gs.compareHOCR({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgElem.src,
@@ -1186,11 +1188,11 @@ async function recognizeAllClick() {
           });
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-          globalThis.debugLog += res.data.debugLog;
+          globalThis.debugLog += res.debugLog;
 
-          globalThis.debugImg.Combined[i] = res.data.debugImg;
+          globalThis.debugImg.Combined[i] = res.debugImg;
 
-          globalThis.ocrAll.Combined[i] = res.data.page;
+          globalThis.ocrAll.Combined[i] = res.page;
         } else {
           const compOptions = {
             mode: 'comb',
@@ -1203,7 +1205,7 @@ async function recognizeAllClick() {
           };
 
           const imgElem = await globalThis.imageAll.binary[i];
-          const res = await globalThis.generalScheduler.addJob('compareHOCR', {
+          const res = await globalThis.globalThis.gs.compareHOCR({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgElem.src,
@@ -1213,11 +1215,11 @@ async function recognizeAllClick() {
           });
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-          globalThis.debugLog += res.data.debugLog;
+          globalThis.debugLog += res.debugLog;
 
-          globalThis.debugImg.Combined[i] = res.data.debugImg;
+          globalThis.debugImg.Combined[i] = res.debugImg;
 
-          globalThis.ocrAll.Combined[i] = res.data.page;
+          globalThis.ocrAll.Combined[i] = res.page;
         }
 
         globalThis.ocrAll.active[i] = ocrAll.Combined[i];
@@ -1272,6 +1274,8 @@ globalThis.evalStatsConfig = {};
 globalThis.evalStats = [];
 
 async function compareGroundTruthClick(n) {
+  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
+
   // When a document/recognition is still loading only the page statistics can be calculated
   const loadMode = !!(globalThis.loadCount && globalThis.loadCount < parseInt(globalThis.convertPageActiveProgress?.elem?.getAttribute('aria-valuemax')));
 
@@ -1289,18 +1293,21 @@ async function compareGroundTruthClick(n) {
   };
 
   // Compare all pages if this has not been done already
-  if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) != JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length == 0) {
+  if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) !== JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length === 0) {
     globalThis.evalStats = new Array(globalThis.imageAll.native.length);
     for (let i = 0; i < globalThis.imageAll.native.length; i++) {
       const imgElem = await globalThis.imageAll.binary[i];
-      const res = (await globalThis.generalScheduler.addJob('compareHOCR', {
+
+      const res = await globalThis.gs.compareHOCR({
         pageA: globalThis.ocrAll.active[i],
         pageB: globalThis.ocrAll['Ground Truth'][i],
         binaryImage: imgElem.src,
         imageRotated: globalThis.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
-      })).data;
+      });
+
+      globalThis.ocrAll.active[i] = res.page;
 
       globalThis.evalStats[i] = res.metrics;
       if (globalThis.debugLog === undefined) globalThis.debugLog = '';
@@ -1310,15 +1317,16 @@ async function compareGroundTruthClick(n) {
   }
 
   const imgElem = await globalThis.imageAll.binary[n];
-  const res = (await globalThis.generalScheduler.addJob('compareHOCR', {
+  const res = await globalThis.gs.compareHOCR({
     pageA: globalThis.ocrAll.active[n],
     pageB: globalThis.ocrAll['Ground Truth'][n],
     binaryImage: imgElem.src,
     imageRotated: globalThis.imageAll.binaryRotated[n],
     pageMetricsObj: globalThis.pageMetricsArr[n],
     options: compOptions,
-  })).data;
+  });
 
+  globalThis.ocrAll.active[n] = res.page;
   if (globalThis.debugLog === undefined) globalThis.debugLog = '';
   globalThis.debugLog += res.debugLog;
 
@@ -1548,6 +1556,7 @@ function recognizeAreaClick(wordMode = false) {
   // mouse:up:before must be used so this code runs ahead of fabric internal logic.
   // Without this changes to active selection caused by mouse movement may change rect object.
   canvas.on('mouse:up:before', async (o) => {
+    if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
     globalThis.touchScrollMode = true;
 
     if (rect1.width < 4 || rect1.height < 4) {
@@ -1572,10 +1581,18 @@ function recognizeAreaClick(wordMode = false) {
     const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
     const n = cp.n;
 
-    const res0 = await recognizePage(globalThis.generalScheduler, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
+    const res0 = await recognizePage(globalThis.gs, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
 
-    const pageObjLSTM = res0.lstm.pageObj;
-    const pageObjLegacy = res0.legacy.pageObj;
+    const resLegacy = await res0[0];
+    const resLSTM = await res0[1];
+
+    const debug = false;
+    if (debug) {
+      console.log(resLegacy.data.recognize);
+    }
+
+    const pageObjLSTM = resLSTM.data.convert.lstm.pageObj;
+    const pageObjLegacy = resLegacy.data.convert.legacy.pageObj;
 
     const debugLabel = 'recognizeArea';
 
@@ -1597,7 +1614,7 @@ function recognizeAreaClick(wordMode = false) {
 
     const imgElem = await globalThis.imageAll.binary[n];
 
-    const res = await globalThis.generalScheduler.addJob('compareHOCR', {
+    const res = await globalThis.gs.compareHOCR({
       pageA: pageObjLegacy,
       pageB: pageObjLSTM,
       binaryImage: imgElem.src,
@@ -1607,11 +1624,11 @@ function recognizeAreaClick(wordMode = false) {
     });
 
     if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-    globalThis.debugLog += res.data.debugLog;
+    globalThis.debugLog += res.debugLog;
 
-    globalThis.debugImg[debugLabel][n].push(...res.data.debugImg);
+    globalThis.debugImg[debugLabel][n].push(...res.debugImg);
 
-    combineData(res.data.page, globalThis.ocrAll.active[n], globalThis.pageMetricsArr[n]);
+    combineData(res.page, globalThis.ocrAll.active[n], globalThis.pageMetricsArr[n]);
 
     if (n === cp.n) displayPage(cp.n);
 
@@ -2419,7 +2436,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
       // Wait for non-rotated version before replacing with promise
       const inputImage = await Promise.resolve(globalThis.imageAll.native[n]);
 
-      return globalThis.generalScheduler.addJob('recognize', {
+      return globalThis.gs.recognize({
         image: inputImage.src,
         options: { rotateRadians: angleArg },
         output: {
@@ -2439,7 +2456,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
       globalThis.imageAll.nativeRotated[n] = Boolean(angleArg);
       globalThis.imageAll.native[n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
-        await loadImage(res.data.imageColor, image);
+        await loadImage(res.imageColor, image);
         return (image);
       });
     }
@@ -2448,7 +2465,7 @@ export async function renderPDFImageCache(pagesArr, rotate = null, progress = nu
       globalThis.imageAll.binaryRotated[n] = Boolean(angleArg);
       globalThis.imageAll.binary[n] = resPromise.then(async (res) => {
         const image = document.createElement('img');
-        await loadImage(res.data.imageBinary, image);
+        await loadImage(res.imageBinary, image);
         return (image);
       });
     }
@@ -2517,12 +2534,14 @@ const setCanvasWidthHeightZoom = (imgDims, updatePosition = true) => {
 export async function renderPageQueue(n, loadXML = true) {
   renderPDFImageCache([n]);
 
+  let ocrData = globalThis.ocrAll.active?.[n];
+
   // Return early if there is not enough data to render a page yet
   // (1) No data has been imported
   const noInput = !globalThis.inputDataModes.xmlMode[n] && !(globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode);
   // (2) XML data should exist but does not (yet)
   const xmlMissing = globalThis.inputDataModes.xmlMode[n]
-    && (globalThis.ocrAll.active.length === 0 || globalThis.ocrAll.active[n] === undefined || globalThis.ocrAll.active[n] === null || globalThis.pageMetricsArr[n].dims === undefined);
+    && (ocrData === undefined || ocrData === null || globalThis.pageMetricsArr[n].dims === undefined);
   // (3) Image data should exist but does not (yet)
   const imageMissing = globalThis.inputDataModes.imageMode && (!globalThis.imageAll.native || globalThis.imageAll.native.length === 0 || globalThis.imageAll.native[n] == null);
   // (4) PDF data should exist but does not (yet)
@@ -2547,11 +2566,13 @@ export async function renderPageQueue(n, loadXML = true) {
   });
 
   // Parse the relevant XML (relevant for both Canvas and PDF)
-  if (loadXML && globalThis.inputDataModes.xmlMode[n] && globalThis.ocrAll.active[n]) {
+  if (loadXML && globalThis.inputDataModes.xmlMode[n] && ocrData) {
     // Compare selected text to ground truth in eval mode
     if (displayModeElem.value === 'eval') {
       console.time();
       await compareGroundTruthClick(n);
+      // ocrData must be re-assigned after comparing to ground truth or it will not update.
+      ocrData = globalThis.ocrAll.active?.[n];
       console.timeEnd();
     }
   }
@@ -2621,8 +2642,9 @@ export async function renderPageQueue(n, loadXML = true) {
     return;
   }
 
+  // The active OCR version may have changed, so this needs to be re-checked.
   if (cp.n === n && globalThis.inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, globalThis.ocrAll.active[n], globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, 0, fontAll);
+    await renderPage(canvas, ocrData, globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, 0, fontAll);
     if (cp.n === n && cp.renderNum === renderNum) {
       cp.renderStatus += 1;
       await selectDisplayMode(displayModeElem.value);
@@ -2722,7 +2744,10 @@ async function initSchedulerIfNeeded(x) {
   return (window[x]);
 }
 
-async function initGeneralScheduler() {
+/** @type {?GeneralScheduler} */
+globalThis.gs = null;
+
+export async function initGeneralScheduler() {
   // Determine number of workers to use.
   // This is the minimum of:
   //      1. The number of cores
@@ -2753,6 +2778,8 @@ async function initGeneralScheduler() {
 
   await Promise.all(resArr);
 
+  globalThis.gs = new GeneralScheduler(globalThis.generalScheduler);
+
   resReady(true);
 }
 
@@ -2775,10 +2802,12 @@ export async function calculateOverallMetrics() {
     const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);
 
     if (metricsRet.charError) {
-      const errorHTML = 'No character-level OCR data detected. Abbyy XML is only supported with character-level data. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>';
+      const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
+      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
       insertAlertMessage(errorHTML);
     } else if (metricsRet.charWarn) {
-      const warningHTML = 'No character-level OCR data detected. Font optimization features will be disabled. <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>';
+      const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. 
+      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
       insertAlertMessage(warningHTML, false);
     } else {
       globalThis.fontMetricsObj = metricsRet.fontMetrics;

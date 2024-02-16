@@ -34,7 +34,7 @@ export async function evalSelectedLine() {
 
   const imgElem = await imageAll.binary[cp.n];
 
-  const res = await generalScheduler.addJob('evalWords', {
+  const res = await globalThis.gs.evalPage({
     wordsA: word0.line.words,
     wordsB: [],
     binaryImage: imgElem.src,

@@ -57,3 +57,14 @@
 /**
  * @typedef {import("./objects/imageObjects.js").CompDebug} CompDebug
  */
+
+/**
+ * @typedef {Object} EvalMetrics
+ * @property {number} total
+ * @property {number} correct
+ * @property {number} incorrect
+ * @property {number} missed
+ * @property {number} extra
+ * @property {number} correctLowConf
+ * @property {number} incorrectHighConf
+ */

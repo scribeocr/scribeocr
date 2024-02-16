@@ -236,7 +236,7 @@ export async function convertPageHocr({
         } else {
           const letterHeightArr = wordBboxesBottom.map((x, y) => x - wordBboxesTop[y]);
           const heightSmallCapsLineMedian = quantile(heightSmallCapsLine, 0.5);
-          if (heightSmallCapsLineMedian && letterHeightArr.filter((x) => x > heightSmallCapsLineMedian * 1.1).length == 0) {
+          if (heightSmallCapsLineMedian && letterHeightArr.filter((x) => x > heightSmallCapsLineMedian * 1.1).length === 0) {
             smallCaps = true;
           }
         }
@@ -1126,7 +1126,7 @@ function convertTableLayoutAbbyy(ocrStr) {
 
     const firstRowCells = firstRow?.match(/<cell[\s\S]+?(?:<\/cell>\s*)/ig);
 
-    if (leftLast == null || leftLast == undefined || !firstRowCells) {
+    if (leftLast === null || leftLast === undefined || !firstRowCells) {
       console.warn('Failed to parse table:');
       console.warn(table);
       continue;
@@ -1134,7 +1134,7 @@ function convertTableLayoutAbbyy(ocrStr) {
 
     for (let j = 0; j < firstRowCells.length; j++) {
       const cell = firstRowCells[j];
-      const cellWidth = parseInt(cell.match(/width=[\'\"](\d+)[\'\"]/)?.[1]);
+      const cellWidth = parseInt(cell.match(/width=['"](\d+)['"]/)?.[1]);
 
       const id = getRandomAlphanum(10);
 

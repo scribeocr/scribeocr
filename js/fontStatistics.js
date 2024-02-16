@@ -60,12 +60,16 @@ export function determineSansSerif(fontName) {
   return fontFamily;
 }
 
-// Checks whether `multiFontMode` should be enabled or disabled.
-// Usually (including when the built-in OCR engine is used) we will have metrics for individual font families,
-// which are used to optimize the appropriate fonts ("multiFontMode" is `true` in this case).
-// However, it is possible for the user to upload input data with character-level positioning information
-// but no font identification information for most or all words.
-// If this is encountered the "default" metric is applied to the default font ("multiFontMode" is `false` in this case).
+/**
+ * Checks whether `multiFontMode` should be enabled or disabled.
+ * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
+ *
+ * Usually (including when the built-in OCR engine is used) we will have metrics for individual font families,
+ * which are used to optimize the appropriate fonts ("multiFontMode" is `true` in this case).
+ * However, it is possible for the user to upload input data with character-level positioning information
+ * but no font identification information for most or all words.
+ * If this is encountered the "default" metric is applied to the default font ("multiFontMode" is `false` in this case).
+ */
 export function checkMultiFontMode(fontMetricsObj) {
   let defaultFontObs = 0;
   let namedFontObs = 0;
@@ -113,6 +117,8 @@ export function setDefaultFontAuto(fontMetricsObj) {
  * @returns {{charError: boolean, charWarn: boolean, fontMetrics: ?Object.<string, FontMetricsFamily>}} -
  */
 export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
+  if (fontMetricObjsMessage.length === 0) return { charWarn: false, charError: false, fontMetrics: null };
+
   /** @type {Array<Object.<string, FontMetricsRawFamily>>} */
   const fontMetricObjsMessageFilter = [];
 
@@ -135,9 +141,9 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
 
   // The UI warning/error messages cannot be thrown within this function,
   // as that would make this file break when imported into contexts that do not have the main UI.
-  if (charGoodCt == 0 && charErrorCt > 0) {
+  if (charGoodCt === 0 && charErrorCt > 0) {
     return { charWarn: false, charError: true, fontMetrics: null };
-  } if (charGoodCt == 0 && charWarnCt > 0) {
+  } if (charGoodCt === 0 && charWarnCt > 0) {
     return { charWarn: true, charError: false, fontMetrics: null };
   }
 

@@ -190,4 +190,7 @@ canvasDebug.overlayVpt = false;
 // Turn off (some) automatic rendering of canvas
 canvasDebug.renderOnAddRemove = false;
 
+// Run once to add event listners (so zoom works)
+resetCanvasEventListeners();
+
 export { canvas, resetCanvasEventListeners, canvasDebug };

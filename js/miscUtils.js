@@ -79,7 +79,13 @@ export function sleep(ms) {
  * @param {File|string} file - OCR file to read
  * @returns {Promise<string>} - Contents of file
  */
-export function readOcrFile(file) {
+export async function readOcrFile(file) {
+  const browserMode = typeof process === 'undefined';
+  if (!browserMode) {
+    const fs = await import('fs');
+    return fs.readFileSync(file, 'utf8');
+  }
+
   if (typeof file === 'string') {
     return Promise.resolve(file);
   } if (/\.gz$/i.test(file.name)) {
@@ -223,3 +229,27 @@ export function imageStrToBlob(imgStr) {
 
   return imgBlob;
 }
+
+/**
+ * Reduces an array of EvalMetrics objects into a single EvalMetrics object
+ * by summing all of the corresponding properties.
+ * @param {Array<EvalMetrics>} evalMetricsArr - Array of EvalMetrics objects.
+ * @returns {EvalMetrics} A single EvalMetrics object with summed properties.
+ */
+export const reduceEvalMetrics = (evalMetricsArr) => evalMetricsArr.reduce((acc, curr) => ({
+  total: acc.total + curr.total,
+  correct: acc.correct + curr.correct,
+  incorrect: acc.incorrect + curr.incorrect,
+  missed: acc.missed + curr.missed,
+  extra: acc.extra + curr.extra,
+  correctLowConf: acc.correctLowConf + curr.correctLowConf,
+  incorrectHighConf: acc.incorrectHighConf + curr.incorrectHighConf,
+}), {
+  total: 0,
+  correct: 0,
+  incorrect: 0,
+  missed: 0,
+  extra: 0,
+  correctLowConf: 0,
+  incorrectHighConf: 0,
+});

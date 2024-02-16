@@ -26,9 +26,9 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
       });
       // Browser case
     } else {
-      res = (await generalScheduler.addJob('evalPageFont', {
+      res = await globalThis.gs.evalPageFont({
         font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i].src, imageRotated: binaryRotatedArr[i], pageMetricsObj: globalThis.pageMetricsArr[i],
-      })).data;
+      });
     }
 
     metricTotal += res.metricTotal;

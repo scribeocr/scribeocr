@@ -13,7 +13,7 @@ export async function evalOverlapDocument() {
     const ocrPageI = globalThis.ocrAll.active[i];
 
     const imgElem = await globalThis.imageAll.binary[i];
-    promiseArr.push(globalThis.generalScheduler.addJob('evalPage', {
+    promiseArr.push(globalThis.gs.evalPage({
       page: ocrPageI, binaryImage: imgElem.src, imageRotated: globalThis.imageAll.binaryRotated[i], pageMetricsObj: pageMetricsArr[i],
     }));
   }
