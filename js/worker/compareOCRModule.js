@@ -558,23 +558,19 @@ export async function evalWords({
       const imageRaw = await viewCtx0.canvas.convertToBlob();
       const imageA = await viewCtx1.canvas.convertToBlob();
       const imageB = await viewCtx2.canvas.convertToBlob();
+      const dims = { width: viewCtx0.canvas.width, height: viewCtx0.canvas.height };
 
-      debugImg = new CompDebug(imageRaw, imageA, imageB, metricA, metricB);
+      debugImg = new CompDebug(imageRaw, imageA, imageB, dims, metricA, metricB);
     } else {
-      const { dirname } = await import('path');
-      const { createWriteStream, writeFileSync } = await import('fs');
+      const { loadImage } = await import('canvas');
 
-      // const filePath0 = __dirname + '/../../dev/debug/test_0_' +  wordsA[0].id + "_" + wordsA[0].font + '.png';
-      // const buffer0 = viewCtx0.canvas.toBuffer('image/png');
-      // writeFileSync(filePath0, buffer0);
+      const imageRaw = await loadImage(viewCtx0.canvas.toBuffer('image/png'));
+      const imageA = await loadImage(viewCtx1.canvas.toBuffer('image/png'));
+      const imageB = await loadImage(viewCtx2.canvas.toBuffer('image/png'));
 
-      const filePath1 = `${__dirname}/../../dev/debug/test_1_${wordsA[0].id}_${wordsA[0].font}.png`;
-      const buffer1 = viewCtx1.canvas.toBuffer('image/png');
-      writeFileSync(filePath1, buffer1);
+      const dims = { width: viewCtx0.canvas.width, height: viewCtx0.canvas.height };
 
-      // const filePath2 = __dirname + '/../../dev/debug/test_2_' +  wordsA[0].id + "_" + wordsA[0].font + '.png';
-      // const buffer2 = viewCtx2.canvas.toBuffer('image/png');
-      // writeFileSync(filePath2, buffer2);
+      debugImg = new CompDebug(imageRaw, imageA, imageB, dims, metricA, metricB);
     }
   }
 

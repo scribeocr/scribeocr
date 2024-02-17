@@ -120,6 +120,26 @@ export function FontContainerFont(family, style, type, src, opt, kerningPairs = 
   if (opt) fontFaceName += ' Opt';
   if (style === 'small-caps') fontFaceName += ' Small Caps';
 
+  /**
+   *
+   * @param {string|ArrayBuffer} src
+   */
+  const getFontAbsPath = (src) => { // eslint-disable-line no-shadow
+    // Do not edit `src` if it is already an ArrayBuffer rather than a path.
+    if (typeof (src) !== 'string') return src;
+    // Do not edit `src` if it is already an absolute URL
+    if (/^(\/|http)/i.test(src)) return src;
+
+    // Alternative .ttf versions of the fonts are used for Node.js, as `node-canvas` does not currently (reliably) support .woff files.
+    // See https://github.com/Automattic/node-canvas/issues/1737
+    if (typeof process === 'object') {
+      const srcTtf = src.replace(/\.\w{1,5}$/i, '.ttf');
+      return relToAbsPath(`../../fonts_ttf/${srcTtf}`);
+    }
+
+    return relToAbsPath(`../../fonts/${src}`);
+  };
+
   /** @type {string} */
   this.family = family;
   /** @type {string} */
@@ -127,7 +147,7 @@ export function FontContainerFont(family, style, type, src, opt, kerningPairs = 
   /** @type {boolean} */
   this.opt = opt;
   /** @type {string|ArrayBuffer} */
-  this.src = typeof (src) === 'string' && !/^(\/|http)/i.test(src) ? relToAbsPath(`../../fonts/${src}`) : src;
+  this.src = getFontAbsPath(src);
   /** @type {Promise<opentype.Font>} */
   this.opentype = loadOpentype(this.src, kerningPairs);
   /** @type {string} */

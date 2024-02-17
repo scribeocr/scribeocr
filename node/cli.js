@@ -1,7 +1,7 @@
 // Code for adding visualization to OCR output
 // Use: `node addOverlay.js [PDF file] [OCR data file] [output directory]`
 
-import fs from 'fs';
+import fs, { write } from 'fs';
 import path from 'path';
 import util from 'util';
 import Worker from 'web-worker';
@@ -19,6 +19,7 @@ import { initMuPDFWorker } from '../mupdf/mupdf-async.js';
 import { hocrToPDF } from '../js/exportPDF.js';
 import { calculateOverallFontMetrics, setDefaultFontAuto } from '../js/fontStatistics.js';
 import { loadFontContainerAllRaw, optimizeFontContainerAll } from '../js/objects/fontObjects.js';
+import { drawDebugImages } from '../js/debug.js';
 
 globalThis.Worker = Worker;
 
@@ -32,6 +33,28 @@ const fontAll = {
   opt: null,
   active: fontPrivate,
 };
+
+const saveCompImages = false;
+
+/** @type {CanvasRenderingContext2D} */
+let ctxDebug;
+if (saveCompImages) {
+  const { createCanvas } = await import('canvas');
+  const canvasAlt = createCanvas(200, 200);
+  ctxDebug = canvasAlt.getContext('2d');
+}
+
+/**
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<Array<CompDebug>>} debugImgArr
+ * @param {string} filePath
+ */
+async function writeDebugImages(ctx, debugImgArr, filePath) {
+  await drawDebugImages(ctx, debugImgArr);
+  const buffer0 = ctx.canvas.toBuffer('image/png');
+  fs.writeFileSync(filePath, buffer0);
+}
 
 /**
  *
@@ -53,7 +76,7 @@ async function enableDisableFontOpt(enable) {
   }
 
   // Enable/disable optimized font in workers
-  if (browserMode) await setFontAllWorker(generalScheduler, fontAll);
+  if (browserMode) await setFontAllWorker(globalThis.generalScheduler, fontAll);
 }
 
 // Object that keeps track of various global settings
@@ -104,7 +127,7 @@ async function main(func, params) {
   const backgroundArg = params.pdfFile;
   const outputDir = params.outputDir;
 
-  const backgroundPDF = /pdf$/i.test(backgroundArg);
+  const backgroundPDF = backgroundArg && /pdf$/i.test(backgroundArg);
   const backgroundImage = backgroundArg && !backgroundPDF;
 
   const debugMode = false;
@@ -187,13 +210,13 @@ async function main(func, params) {
     console.log(`Confidence: ${wordsHighConf / wordsTotal}`);
 
     if (func === 'conf') {
-      generalScheduler.terminate();
+      globalThis.generalScheduler.terminate();
       process.exitCode = 0;
       return;
     }
   }
 
-  const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
+  const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);
   globalThis.fontMetricsObj = metricsRet.fontMetrics;
 
   if (globalThis.fontMetricsObj) {
@@ -268,13 +291,13 @@ async function main(func, params) {
     if (func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Legacy'];
 
     if (missingFontMetrics) {
-      const metricsRet = calculateOverallFontMetrics(fontMetricObjsMessage, globalThis.convertPageWarn);
+      const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);
       globalThis.fontMetricsObj = metricsRet.fontMetrics;
 
       if (globalThis.fontMetricsObj) {
         console.log('Calculating metrics');
         setDefaultFontAuto(globalThis.fontMetricsObj);
-        await enableDisableFontOpt(true);
+        await enableDisableFontOpt(false);
       }
     }
 
@@ -287,12 +310,13 @@ async function main(func, params) {
         mode: 'comb',
         ignoreCap: true,
         ignorePunct: false,
+        debugLabel: saveCompImages ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
       const imgElem = await globalThis.imageAll.binary[i];
       const res = await compareHOCR({
-        pageA: ocrAll['Tesseract Legacy'][i],
-        pageB: ocrAll['Tesseract LSTM'][i],
+        pageA: globalThis.ocrAll['Tesseract Legacy'][i],
+        pageB: globalThis.ocrAll['Tesseract LSTM'][i],
         binaryImage: imgElem.src,
         imageRotated: globalThis.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
@@ -302,10 +326,18 @@ async function main(func, params) {
       if (globalThis.debugLog === undefined) globalThis.debugLog = '';
       globalThis.debugLog += res.debugLog;
 
+      if (saveCompImages && res.debugImg.length > 0) {
+        const filePath = `${__dirname}/../../dev/debug/legacy_lstm_comp_${i}.png`;
+        await writeDebugImages(ctxDebug, [res.debugImg], filePath);
+      }
+
       globalThis.ocrAll['Tesseract Combined'][i] = res.page;
 
       if (func === 'recognize') console.log(ocr.getPageText(res.page));
     }
+  } else {
+    // Select best default fonts
+    const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, globalThis.imageAll.binaryRotated, fontAll);
   }
 
   if (robustConfMode || func === 'eval') {
@@ -356,9 +388,6 @@ async function main(func, params) {
     if (printConf) {
       console.log(`Confidence: ${evalMetricsDoc.correct / evalMetricsDoc.total}`);
     }
-  } else {
-    // Select best default fonts
-    const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, globalThis.imageAll.binaryRotated, fontAll);
   }
 
   if (func === 'overlay') {
@@ -379,7 +408,7 @@ async function main(func, params) {
 
   // Terminate all workers
   await tessWorker.terminate();
-  await generalScheduler.terminate();
+  await globalThis.generalScheduler.terminate();
   if (w) await w.terminate();
 
   process.exitCode = 0;

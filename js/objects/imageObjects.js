@@ -3,6 +3,7 @@
  * @param {Blob} imageRaw
  * @param {Blob} imageA
  * @param {Blob} imageB
+ * @param {dims} dims
  * @param {number} errorRawA
  * @param {number} errorRawB
  * @property {Blob} imageRaw
@@ -16,13 +17,15 @@
  * "Adjusted" errors are calculated by applying ad-hoc adjustments to raw errors.  The intent of these adjustments is to penalize patterns of letters
  * that are visually similar to other letters but unlikely to occur in correct recognition results.
  */
-export function CompDebug(imageRaw, imageA, imageB, errorRawA, errorRawB) {
+export function CompDebug(imageRaw, imageA, imageB, dims, errorRawA, errorRawB) {
   /** @type {Blob} */
   this.imageRaw = imageRaw;
   /** @type {Blob} */
   this.imageA = imageA;
   /** @type {Blob} */
   this.imageB = imageB;
+  /** @type {dims} */
+  this.dims = dims;
   /** @type {number} */
   this.errorRawA = errorRawA;
   /** @type {number} */

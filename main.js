@@ -31,6 +31,8 @@ import { loadFontContainerAllRaw, optimizeFontContainerAll } from './js/objects/
 
 import { ITextWord } from './js/objects/fabricObjects.js';
 
+import { drawDebugImages } from './js/debug.js';
+
 import {
   getRandomAlphanum, quantile, sleep, occurrences, saveAs, loadImage, readTextFile,
 } from './js/miscUtils.js';
@@ -49,7 +51,7 @@ import {
   updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords,
 } from './js/browser/interfaceLayout.js';
 
-import { canvas, resetCanvasEventListeners, canvasDebug } from './js/browser/interfaceCanvas.js';
+import { canvas, resetCanvasEventListeners } from './js/browser/interfaceCanvas.js';
 
 import { initMuPDFWorker } from './mupdf/mupdf-async.js';
 
@@ -77,6 +79,13 @@ import {
 globalThis.d = () => {
   debugger;
 };
+
+/**
+ * @global
+ * @type {CanvasRenderingContext2D}
+ * @description - Used under the hood for generating overlap visualizations to display to user.
+ */
+globalThis.ctxDebug = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('g')).getContext('2d'));
 
 /**
  * @global
@@ -1076,6 +1085,9 @@ function hideProgress2(id) {
   }
 }
 
+/**
+ * @type {{[key: string]: Array<Array<CompDebug>>}}
+ */
 globalThis.debugImg = {};
 
 async function recognizeAllClick() {
@@ -1167,7 +1179,7 @@ async function recognizeAllClick() {
 
       // If the user uploaded data, compare to that as we
       if (userUploadMode) {
-        if (document.getElementById('combineMode')?.value == 'conf') {
+        if (document.getElementById('combineMode')?.value === 'conf') {
           const compOptions = {
             debugLabel: 'Combined',
             supplementComp: true,
@@ -1412,94 +1424,19 @@ async function compareGroundTruthClick(n) {
   }
 }
 
-/**
- *
- * @param {Array<CompDebug>} imgArr
- */
-async function drawDebugImages(imgArr, top, leftMax) {
-  for (let i = 0; i < imgArr.length; i++) {
-    const compDebugObj = imgArr[i];
-
-    const img0 = compDebugObj.imageRaw;
-    const img1 = compDebugObj.imageA;
-    const img2 = compDebugObj.imageB;
-
-    // Whether "B" option is chosen
-    let chosen = compDebugObj.errorRawB < compDebugObj.errorRawA;
-    if (compDebugObj.errorAdjB && compDebugObj.errorAdjA) {
-      chosen = compDebugObj.errorAdjB < compDebugObj.errorAdjA;
-    }
-
-    const imgElem0 = document.createElement('img');
-    await loadImage(img0, imgElem0);
-    const imgElem1 = document.createElement('img');
-    await loadImage(img1, imgElem1);
-    const imgElem2 = document.createElement('img');
-    await loadImage(img2, imgElem2);
-
-    // Set a minimum width so the metrics are always readable
-    const colWidth = Math.max(imgElem0.width, 50);
-
-    const imgFab0 = new fabric.Image(imgElem0, { left: 5, top: top + 15 });
-    const imgFab1 = new fabric.Image(imgElem1, { left: 5 + colWidth + 10, top: top + 15 });
-    const imgFab2 = new fabric.Image(imgElem2, { left: 5 + 2 * (colWidth + 10), top: top + 15 });
-
-    const textbox1 = new fabric.Text(`${String(Math.round((compDebugObj.errorAdjA) * 1e3) / 1e3)} [${String(Math.round((compDebugObj.errorRawA) * 1e3) / 1e3)}]`, {
-      left: 5 + colWidth + 10,
-      top,
-      fill: 'black',
-      fontSize: 10,
-    });
-
-    canvasDebug.add(textbox1);
-
-    const textbox2 = new fabric.Text(`${String(Math.round((compDebugObj.errorAdjB) * 1e3) / 1e3)} [${String(Math.round((compDebugObj.errorRawB) * 1e3) / 1e3)}]`, {
-      left: 5 + 2 * (colWidth + 10),
-      top,
-      fill: 'black',
-      fontSize: 10,
-    });
-
-    const chosenRect = new fabric.Rect({
-      left: 5 + colWidth + 10 + chosen * (colWidth + 10) - 3, top: top + 15 - 3, width: imgElem0.width + 6, height: imgElem1.height + 6, fill: '#3269a8',
-    });
-
-    canvasDebug.add(chosenRect);
-    canvasDebug.add(imgFab0);
-    canvasDebug.add(imgFab1);
-    canvasDebug.add(imgFab2);
-    canvasDebug.add(textbox1);
-    canvasDebug.add(textbox2);
-
-    top += imgElem1.height + 25;
-    leftMax = Math.max(leftMax, 3 * colWidth + 30);
-  }
-
-  return { top, leftMax };
-}
-
-/**
- * Show comparison images for current page.
- *
- */
 export async function showDebugImages() {
-  canvasDebug.clear();
+  /** @type {Array<Array<CompDebug>>} */
+  const debugImgArr = [];
 
-  let top = 5;
-  let leftMax = 150;
+  const compDebugArr1 = globalThis.debugImg?.['Tesseract Combined']?.[cp.n];
+  const compDebugArr2 = globalThis.debugImg?.Combined?.[cp.n];
+  const compDebugArr3 = globalThis.debugImg?.recognizeArea?.[cp.n];
 
-  const imgArr1 = globalThis.debugImg?.['Tesseract Combined']?.[cp.n];
-  const imgArr2 = globalThis.debugImg?.Combined?.[cp.n];
-  const imgArr3 = globalThis.debugImg?.recognizeArea?.[cp.n];
+  if (compDebugArr1 && compDebugArr1.length > 0) debugImgArr.push(compDebugArr1);
+  if (compDebugArr2 && compDebugArr2.length > 0) debugImgArr.push(compDebugArr2);
+  if (compDebugArr3 && compDebugArr3.length > 0) debugImgArr.push(compDebugArr3);
 
-  if (imgArr1) ({ top, leftMax } = await drawDebugImages(imgArr1, top, leftMax));
-  if (imgArr2) ({ top, leftMax } = await drawDebugImages(imgArr2, top, leftMax));
-  if (imgArr3) ({ top, leftMax } = await drawDebugImages(imgArr3, top, leftMax));
-
-  canvasDebug.setWidth(leftMax);
-  canvasDebug.setHeight(top);
-
-  canvasDebug.renderAll();
+  if (debugImgArr.length > 0) await drawDebugImages(globalThis.ctxDebug, debugImgArr);
 }
 
 globalThis.showDebugImages = showDebugImages;
@@ -2521,9 +2458,6 @@ const setCanvasWidthHeightZoom = (imgDims, updatePosition = true) => {
 
   if (showConflictsElem.checked) {
     const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
-
-    canvasDebug.setHeight(debugHeight);
-    canvasDebug.setWidth(document.documentElement.clientHeight);
 
     const debugCanvasParentDivElem = document.getElementById('debugCanvasParentDiv');
     debugCanvasParentDivElem?.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll`);
