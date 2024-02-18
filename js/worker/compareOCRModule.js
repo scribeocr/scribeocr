@@ -163,11 +163,12 @@ const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = 
   const wordsBox = words.map((x) => x.bbox);
 
   // Union of all bounding boxes
-  const wordBoxUnion = new Array(4);
-  wordBoxUnion[0] = Math.min(...wordsBox.map((x) => x[0]));
-  wordBoxUnion[1] = Math.min(...wordsBox.map((x) => x[1]));
-  wordBoxUnion[2] = Math.max(...wordsBox.map((x) => x[2]));
-  wordBoxUnion[3] = Math.max(...wordsBox.map((x) => x[3]));
+  const wordBoxUnion = {
+    left: Math.min(...wordsBox.map((x) => x.left)),
+    top: Math.min(...wordsBox.map((x) => x.top)),
+    right: Math.max(...wordsBox.map((x) => x.right)),
+    bottom: Math.max(...wordsBox.map((x) => x.bottom)),
+  };
 
   // All words are assumed to be on the same line
   const linebox = words[0].line.bbox;
@@ -176,33 +177,33 @@ const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = 
   let angleAdjXLine = 0;
   let angleAdjYLine = 0;
   if (Math.abs(angle ?? 0) > 0.05) {
-    const x = linebox[0];
-    const y = linebox[3] + baseline[1];
+    const x = linebox.left;
+    const y = linebox.bottom + baseline[1];
 
     const xRot = x * cosAngle - sinAngle * y;
     const yRot = x * sinAngle + cosAngle * y;
 
     const angleAdjXInt = x - xRot;
 
-    const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
+    const angleAdjYInt = sinAngle * (linebox.left + angleAdjXInt / 2) * -1;
 
     angleAdjXLine = angleAdjXInt + shiftX;
     angleAdjYLine = angleAdjYInt + shiftY;
   }
 
-  const angleAdjXWord = Math.abs(angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (wordBoxUnion[0] - linebox[0]) : angleAdjXLine;
+  const angleAdjXWord = Math.abs(angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (wordBoxUnion.left - linebox.left) : angleAdjXLine;
 
   // We crop to the dimensions of the font (fontAsc and fontDesc) rather than the image bounding box.
-  const height = fontAsc && fontDesc ? fontAsc + fontDesc : wordBoxUnion[3] - wordBoxUnion[1] + 1;
-  const width = wordBoxUnion[2] - wordBoxUnion[0] + 1;
+  const height = fontAsc && fontDesc ? fontAsc + fontDesc : wordBoxUnion.bottom - wordBoxUnion.top + 1;
+  const width = wordBoxUnion.right - wordBoxUnion.left + 1;
 
-  const cropY = linebox[3] + baseline[1] - fontAsc - 1;
+  const cropY = linebox.bottom + baseline[1] - fontAsc - 1;
   const cropYAdj = cropY + angleAdjYLine;
 
   calcCtx.canvas.height = height;
   calcCtx.canvas.width = width;
 
-  calcCtx.drawImage(imageBinaryBit, wordBoxUnion[0] + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
+  calcCtx.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
 
   if (view) {
     viewCtx0.canvas.height = height;
@@ -212,9 +213,9 @@ const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = 
     viewCtx2.canvas.height = height;
     viewCtx2.canvas.width = width;
 
-    viewCtx0.drawImage(imageBinaryBit, wordBoxUnion[0] + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
-    viewCtx1.drawImage(imageBinaryBit, wordBoxUnion[0] + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
-    viewCtx2.drawImage(imageBinaryBit, wordBoxUnion[0] + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
+    viewCtx0.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
+    viewCtx1.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
+    viewCtx2.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
   }
 
   return cropY;
@@ -300,28 +301,28 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
 
   const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
 
-  let baselineY = word.line.bbox[3] + word.line.baseline[1];
+  let baselineY = word.line.bbox.bottom + word.line.baseline[1];
 
   if (word.sup) {
-    const wordboxXMid = word.bbox[0] + (word.bbox[2] - word.bbox[0]) / 2;
+    const wordboxXMid = word.bbox.left + (word.bbox.right - word.bbox.left) / 2;
 
-    const baselineYWord = word.line.bbox[3] + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox[0]);
+    const baselineYWord = word.line.bbox.bottom + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox.left);
 
-    baselineY -= (baselineYWord - word.bbox[3]);
+    baselineY -= (baselineYWord - word.bbox.bottom);
   } else if (!imageRotated) {
-    const wordboxXMid = word.bbox[0] + (word.bbox[2] - word.bbox[0]) / 2;
+    const wordboxXMid = word.bbox.left + (word.bbox.right - word.bbox.left) / 2;
 
-    baselineY = word.line.bbox[3] + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox[0]);
+    baselineY = word.line.bbox.bottom + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox.left);
   }
 
   const y = baselineY - cropY;
 
   const left = 1 - wordLeftBearing + offsetX;
 
-  await printWordOnCanvas(calcCtx, word.text, fontI, wordFontSize, word.bbox[2] - word.bbox[0], left, y);
+  await printWordOnCanvas(calcCtx, word.text, fontI, wordFontSize, word.bbox.right - word.bbox.left, left, y);
 
   if (ctxView) {
-    await printWordOnCanvas(ctxView, word.text, fontI, wordFontSize, word.bbox[2] - word.bbox[0], left, y, 'red');
+    await printWordOnCanvas(ctxView, word.text, fontI, wordFontSize, word.bbox.right - word.bbox.left, left, y, 'red');
   }
 };
 
@@ -416,18 +417,6 @@ export async function evalWords({
     lineFontSizeB = lineFontSizeBCalc || lineFontSizeA;
   }
 
-  const wordsABox = wordsA.map((x) => x.bbox);
-  const wordsBBox = wordsB.map((x) => x.bbox);
-
-  const wordsAllBox = [...wordsABox, ...wordsBBox];
-
-  // Union of all bounding boxes
-  const wordBoxUnion = new Array(4);
-  wordBoxUnion[0] = Math.min(...wordsAllBox.map((x) => x[0]));
-  wordBoxUnion[1] = Math.min(...wordsAllBox.map((x) => x[1]));
-  wordBoxUnion[2] = Math.max(...wordsAllBox.map((x) => x[2]));
-  wordBoxUnion[3] = Math.max(...wordsAllBox.map((x) => x[3]));
-
   // All words are assumed to be on the same line
   const linebox = wordsA[0].line.bbox;
   const baselineA = wordsA[0].line.baseline;
@@ -452,14 +441,14 @@ export async function evalWords({
   let ctxView = view ? viewCtx1 : null;
 
   // Draw the words in wordsA
-  let x0 = wordsA[0].bbox[0];
-  let y0 = linebox[3] + baselineA[1] + baselineA[0] * (wordsA[0].bbox[0] - linebox[0]);
+  let x0 = wordsA[0].bbox.left;
+  let y0 = linebox.bottom + baselineA[1] + baselineA[0] * (wordsA[0].bbox.left - linebox.left);
   for (let i = 0; i < wordsA.length; i++) {
     const word = wordsA[i];
     const wordIBox = word.bbox;
-    const baselineY = linebox[3] + baselineA[1] + baselineA[0] * (wordIBox[0] - linebox[0]);
-    const x = wordIBox[0];
-    const y = word.sup || word.dropcap ? wordIBox[3] : baselineY;
+    const baselineY = linebox.bottom + baselineA[1] + baselineA[0] * (wordIBox.left - linebox.left);
+    const x = wordIBox.left;
+    const y = word.sup || word.dropcap ? wordIBox.bottom : baselineY;
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
@@ -512,13 +501,13 @@ export async function evalWords({
       // Set style to whatever it is for wordsA.  This is based on the assumption that "A" is Tesseract Legacy and "B" is Tesseract LSTM (which does not have useful style info).
       word.style = wordsA[0].style;
 
-      const baselineY = linebox[3] + baselineB[1] + baselineB[0] * (word.bbox[0] - linebox[0]);
+      const baselineY = linebox.bottom + baselineB[1] + baselineB[0] * (word.bbox.left - linebox.left);
       if (i === 0) {
-        x0 = word.bbox[0];
+        x0 = word.bbox.left;
         y0 = baselineY;
       }
-      const x = word.bbox[0];
-      const y = word.sup || word.dropcap ? word.bbox[3] : baselineY;
+      const x = word.bbox.left;
+      const y = word.sup || word.dropcap ? word.bbox.bottom : baselineY;
 
       const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
@@ -688,13 +677,13 @@ export async function compareHOCR({
       const lineBoxB = lineB.bbox;
 
       // If top of line A is below bottom of line B, move to next line B
-      if (lineBoxA[1] > lineBoxB[3]) {
+      if (lineBoxA.top > lineBoxB.bottom) {
         // minLineB = minLineB + 1;
         continue;
 
         // If top of line B is below bottom of line A, move to next line A
         // (We assume no match is possible for any B)
-      } else if (lineBoxB[1] > lineBoxA[3]) {
+      } else if (lineBoxB.top > lineBoxA.bottom) {
         continue;
 
         // Otherwise, there is possible overlap
@@ -720,16 +709,16 @@ export async function compareHOCR({
 
           // Remove 10% from all sides of bounding box
           // This prevents small overlapping (around the edges) from triggering a comparison
-          const wordBoxAWidth = wordBoxA[2] - wordBoxA[0];
-          const wordBoxAHeight = wordBoxA[3] - wordBoxA[1];
+          const wordBoxAWidth = wordBoxA.right - wordBoxA.left;
+          const wordBoxAHeight = wordBoxA.bottom - wordBoxA.top;
 
           const wordBoxACore = JSON.parse(JSON.stringify(wordBoxA));
 
-          wordBoxACore[0] = wordBoxA[0] + Math.round(wordBoxAWidth * 0.1);
-          wordBoxACore[2] = wordBoxA[2] - Math.round(wordBoxAWidth * 0.1);
+          wordBoxACore.left = wordBoxA.left + Math.round(wordBoxAWidth * 0.1);
+          wordBoxACore.right = wordBoxA.right - Math.round(wordBoxAWidth * 0.1);
 
-          wordBoxACore[1] = wordBoxA[1] + Math.round(wordBoxAHeight * 0.1);
-          wordBoxACore[3] = wordBoxA[3] - Math.round(wordBoxAHeight * 0.1);
+          wordBoxACore.top = wordBoxA.top + Math.round(wordBoxAHeight * 0.1);
+          wordBoxACore.bottom = wordBoxA.bottom - Math.round(wordBoxAHeight * 0.1);
 
           for (let l = minWordB; l < lineB.words.length; l++) {
             const wordB = lineB.words[l];
@@ -737,30 +726,30 @@ export async function compareHOCR({
 
             // Remove 10% from all sides of ground truth bounding box
             // This prevents small overlapping (around the edges) from triggering a comparison
-            const wordBoxBWidth = wordBoxB[2] - wordBoxB[0];
-            const wordBoxBHeight = wordBoxB[3] - wordBoxB[1];
+            const wordBoxBWidth = wordBoxB.right - wordBoxB.left;
+            const wordBoxBHeight = wordBoxB.bottom - wordBoxB.top;
 
             const wordBoxBCore = JSON.parse(JSON.stringify(wordBoxB));
 
-            wordBoxBCore[0] = wordBoxB[0] + Math.round(wordBoxBWidth * 0.1);
-            wordBoxBCore[2] = wordBoxB[2] - Math.round(wordBoxBWidth * 0.1);
+            wordBoxBCore.left = wordBoxB.left + Math.round(wordBoxBWidth * 0.1);
+            wordBoxBCore.right = wordBoxB.right - Math.round(wordBoxBWidth * 0.1);
 
-            wordBoxBCore[1] = wordBoxB[1] + Math.round(wordBoxBHeight * 0.1);
-            wordBoxBCore[3] = wordBoxB[3] - Math.round(wordBoxBHeight * 0.1);
+            wordBoxBCore.top = wordBoxB.top + Math.round(wordBoxBHeight * 0.1);
+            wordBoxBCore.bottom = wordBoxB.bottom - Math.round(wordBoxBHeight * 0.1);
 
             // If left of word A is past right of word B, move to next word B
-            if (wordBoxACore[0] > wordBoxBCore[2]) {
+            if (wordBoxACore.left > wordBoxBCore.right) {
               minWordB += 1;
               continue;
 
               // If left of word B is past right of word A, move to next word B
-            } else if (wordBoxBCore[0] > wordBoxACore[2]) {
+            } else if (wordBoxBCore.left > wordBoxACore.right) {
               continue;
 
               // Otherwise, overlap is likely
             } else {
               // Check for overlap using word height
-              if (wordBoxACore[1] > wordBoxBCore[3] || wordBoxBCore[1] > wordBoxACore[3]) {
+              if (wordBoxACore.top > wordBoxBCore.bottom || wordBoxBCore.top > wordBoxACore.bottom) {
                 continue;
               }
 
@@ -798,7 +787,7 @@ export async function compareHOCR({
                 wordA.matchTruth = false;
 
                 // Check if there is a 1-to-1 comparison between words (this is usually true)
-                const oneToOne = Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxA[2]) < (wordBoxA[2] - wordBoxA[0]) * 0.1;
+                const oneToOne = Math.abs(wordBoxB.left - wordBoxA.left) + Math.abs(wordBoxB.right - wordBoxA.right) < (wordBoxA.right - wordBoxA.left) * 0.1;
 
                 let twoToOne = false;
                 const wordsAArr = [];
@@ -806,11 +795,11 @@ export async function compareHOCR({
 
                 // If there is no 1-to-1 comparison, check if a 2-to-1 comparison is possible using the next word in either dataset
                 if (!oneToOne) {
-                  if (wordBoxA[2] < wordBoxB[2]) {
+                  if (wordBoxA.right < wordBoxB.right) {
                     const wordANext = lineA.words[k + 1];
                     if (wordANext) {
                       const wordBoxANext = wordANext.bbox;
-                      if (Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxB[2] - wordBoxANext[2]) < (wordBoxANext[2] - wordBoxA[0]) * 0.1) {
+                      if (Math.abs(wordBoxB.left - wordBoxA.left) + Math.abs(wordBoxB.right - wordBoxANext.right) < (wordBoxANext.right - wordBoxA.left) * 0.1) {
                         twoToOne = true;
                         wordsAArr.push(wordA);
                         wordsAArr.push(wordANext);
@@ -825,7 +814,7 @@ export async function compareHOCR({
                     const wordBNext = lineB.words[l + 1];
                     if (wordBNext) {
                       const wordBoxBNext = wordBNext.bbox;
-                      if (Math.abs(wordBoxB[0] - wordBoxA[0]) + Math.abs(wordBoxA[2] - wordBoxBNext[2]) < (wordBoxBNext[2] - wordBoxA[0]) * 0.1) {
+                      if (Math.abs(wordBoxB.left - wordBoxA.left) + Math.abs(wordBoxA.right - wordBoxBNext.right) < (wordBoxBNext.right - wordBoxA.left) * 0.1) {
                         twoToOne = true;
                         wordsAArr.push(wordA);
                         wordsBArr.push(wordB);

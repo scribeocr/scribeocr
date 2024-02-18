@@ -98,10 +98,10 @@ export const calcWordFontSize = async (word, fontContainer) => {
     return word.size;
   // If the word is a superscript, then font size is uniquely calculated for this word
   } if (word.sup) {
-    return await getFontSize(font, word.bbox[3] - word.bbox[1], 'A');
+    return await getFontSize(font, word.bbox.bottom - word.bbox.top, 'A');
   // If the word is a dropcap, then font size is uniquely calculated for this word
   } if (word.dropcap) {
-    return await getFontSize(font, word.bbox[3] - word.bbox[1], word.text.slice(0, 1));
+    return await getFontSize(font, word.bbox.bottom - word.bbox.top, word.text.slice(0, 1));
   // Otherwise, the line font size is used
   }
   return await calcLineFontSize(word.line, fontContainer);

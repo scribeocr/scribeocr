@@ -51,6 +51,14 @@
  */
 
 /**
+ * @typedef {object} bbox
+ * @property {number} left
+ * @property {number} right
+ * @property {number} top
+ * @property {number} bottom
+ */
+
+/**
  * @typedef {import("./objects/pageMetricsObjects.js").PageMetrics} PageMetrics
  */
 

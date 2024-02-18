@@ -40,16 +40,14 @@ export function renderHOCR(ocrData, fontMetrics, layoutData, minValue, maxValue)
     }
 
     hocrOut += `<div class='ocr_page' title='bbox 0 0 ${pageObj.dims.width} ${pageObj.dims.height}'>`;
-    for (let j = 0; j < pageObj.lines.length; j++) {
-      const lineObj = pageObj.lines[j];
-      hocrOut += `<span class='ocr_line' title="bbox ${lineObj.bbox[0]} ${lineObj.bbox[1]} ${lineObj.bbox[2]} ${lineObj.bbox[3]}`;
+    for (const lineObj of pageObj.lines) {
+      hocrOut += `<span class='ocr_line' title="bbox ${lineObj.bbox.left} ${lineObj.bbox.top} ${lineObj.bbox.right} ${lineObj.bbox.bottom}`;
       hocrOut += `; baseline ${round6(lineObj.baseline[0])} ${Math.round(lineObj.baseline[1])}`;
       hocrOut += `; x_size ${lineObj.ascHeight}`;
       if (lineObj.xHeight) hocrOut += `; x_ascenders ${lineObj.ascHeight - lineObj.xHeight}`;
       hocrOut += '">';
-      for (let k = 0; k < lineObj.words.length; k++) {
-        const wordObj = lineObj.words[k];
-        hocrOut += `<span class='ocrx_word' id='${wordObj.id}' title='bbox ${wordObj.bbox[0]} ${wordObj.bbox[1]} ${wordObj.bbox[2]} ${wordObj.bbox[3]}`;
+      for (const wordObj of lineObj.words) {
+        hocrOut += `<span class='ocrx_word' id='${wordObj.id}' title='bbox ${wordObj.bbox.left} ${wordObj.bbox.top} ${wordObj.bbox.right} ${wordObj.bbox.bottom}`;
         hocrOut += `;x_wconf ${wordObj.conf}`;
 
         if (wordObj.font && wordObj.font !== 'Default') {

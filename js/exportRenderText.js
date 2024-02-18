@@ -50,25 +50,26 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
       for (let h = 0; h < pageObj.lines.length; h++) {
         const lineObj = pageObj.lines[h];
+        if (!lineObj) continue;
 
         const lineBox = lineObj.bbox;
 
         if (y2Prev !== null) {
-          lineSpaceArr.push(lineBox[3] - y2Prev);
+          lineSpaceArr.push(lineBox.bottom - y2Prev);
         }
 
         const sinAngle = Math.sin(angle * (Math.PI / 180));
         const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-        const x1Rot = lineBox[0] * cosAngle - sinAngle * lineBox[3];
-        const x2Rot = lineBox[2] * cosAngle - sinAngle * lineBox[3];
+        const x1Rot = lineBox.left * cosAngle - sinAngle * lineBox.bottom;
+        const x2Rot = lineBox.top * cosAngle - sinAngle * lineBox.bottom;
 
         lineLeftArr.push(x1Rot);
         lineRightArr.push(x2Rot);
 
-        lineWidthArr.push(lineBox[2] - lineBox[0]);
+        lineWidthArr.push(lineBox.right - lineBox.left);
 
-        y2Prev = lineBox[3];
+        y2Prev = lineBox.bottom;
       }
 
       lineLeftMedian = quantile(lineLeftArr, 0.5);
@@ -127,19 +128,18 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
       for (let i = 0; i < lineObj.words.length; i++) {
         const wordObj = lineObj.words[i];
+        if (!wordObj) continue;
 
         if (docxMode) {
-          let fontStyle;
+          let fontStyle = '';
           if (wordObj.style === 'italic') {
             fontStyle = '<w:i/>';
           } else if (wordObj.style === 'small-caps') {
             fontStyle = '<w:smallCaps/>';
-          } else {
-            fontStyle = '';
           }
 
           if (newLine || fontStyle !== fontStylePrev || (h === 0 && g === 0 && i === 0)) {
-            const styleStr = fontStyle == '' ? '' : `<w:rPr>${fontStyle}</w:rPr>`;
+            const styleStr = fontStyle === '' ? '' : `<w:rPr>${fontStyle}</w:rPr>`;
 
             if (h === 0 && g === 0 && i === 0) {
               textStr = `${textStr}<w:p><w:r>${styleStr}<w:t xml:space="preserve">`;

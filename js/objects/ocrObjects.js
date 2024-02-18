@@ -25,11 +25,11 @@ export function OcrPage(n, dims) {
 
 /**
  * @param {OcrPage} page
- * @param {Array<number>} bbox
+ * @param {bbox} bbox
  * @param {Array<number>} baseline
  * @param {?number} ascHeight - Height of median ascender character
  * @param {?number} xHeight - Height of median non-ascender/descender character
- * @property {Array<number>} bbox - bounding box for line
+ * @property {bbox} bbox - bounding box for line
  * @property {Array<number>} baseline - baseline [slope, offset]
  * @property {?number} ascHeight -
  * @property {?number} xHeight -
@@ -45,7 +45,7 @@ export function OcrPage(n, dims) {
 export function OcrLine(page, bbox, baseline, ascHeight = null, xHeight = null) {
   // These inline comments are required for types to work correctly with VSCode Intellisense.
   // Unfortunately, the @property tags above are not sufficient.
-  /** @type {Array<number>} */
+  /** @type {bbox} */
   this.bbox = bbox;
   /** @type {Array<number>} - baseline [slope, offset] */
   this.baseline = baseline;
@@ -70,7 +70,7 @@ export function OcrLine(page, bbox, baseline, ascHeight = null, xHeight = null) 
 /**
  * @param {OcrLine} line
  * @param {string} text
- * @param {Array<number>} bbox
+ * @param {bbox} bbox
  * @param {string} id
  */
 export function OcrWord(line, text, bbox, id) {
@@ -88,7 +88,7 @@ export function OcrWord(line, text, bbox, id) {
   this.size = null;
   /** @type {number} */
   this.conf = 0;
-  /** @type {Array<number>} */
+  /** @type {bbox} */
   this.bbox = bbox;
   /** @type {boolean} */
   this.compTruth = false;
@@ -109,12 +109,12 @@ export function OcrWord(line, text, bbox, id) {
 /**
  *
  * @param {string} text
- * @param {Array<number>} bbox
+ * @param {bbox} bbox
  */
 export function OcrChar(text, bbox) {
   /** @type {string} */
   this.text = text;
-  /** @type {Array<number>} */
+  /** @type {bbox} */
   this.bbox = bbox;
 }
 
@@ -222,12 +222,12 @@ function calcLineAngleAdj(line) {
       const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
       const shiftY = sinAngle * ((imgDims.width - shiftX) * 0.5) || 0;
 
-      const x = linebox[0];
-      const y = linebox[3] + baseline[1];
+      const x = linebox.left;
+      const y = linebox.bottom + baseline[1];
 
       const xRot = x * cosAngle - sinAngle * y;
       const angleAdjXInt = x - xRot;
-      const angleAdjYInt = sinAngle * (linebox[0] + angleAdjXInt / 2) * -1;
+      const angleAdjYInt = sinAngle * (linebox.left + angleAdjXInt / 2) * -1;
 
       line._angleAdj = { x: angleAdjXInt + shiftX, y: angleAdjYInt + shiftY };
     }
@@ -253,8 +253,8 @@ function calcWordAngleAdj(word) {
       const sinAngle = Math.sin(angle * (Math.PI / 180));
       const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-      const x = word.bbox[0] - (word.line.bbox[0]);
-      const y = word.bbox[3] - (word.line.bbox[3] + word.line.baseline[1]);
+      const x = word.bbox.left - word.line.bbox.left;
+      const y = word.bbox.bottom - (word.line.bbox.bottom + word.line.baseline[1]);
 
       if (word.sup || word.dropcap) {
         const tanAngle = sinAngle / cosAngle;
@@ -296,21 +296,23 @@ function escapeXml(string) {
     .replace(/>/g, '&gt;');
 }
 
-// Re-calculate bbox for line
+/**
+ * Re-calculate bbox for line
+ * @param {OcrLine} line
+ */
 function calcLineBbox(line) {
   const wordBoxArr = line.words.map((x) => x.bbox);
-  const lineBoxNew = new Array(4);
-  lineBoxNew[0] = Math.min(...wordBoxArr.map((x) => x[0]));
-  lineBoxNew[1] = Math.min(...wordBoxArr.map((x) => x[1]));
-  lineBoxNew[2] = Math.max(...wordBoxArr.map((x) => x[2]));
-  lineBoxNew[3] = Math.max(...wordBoxArr.map((x) => x[3]));
-  line.bbox = lineBoxNew;
+
+  line.bbox.left = Math.min(...wordBoxArr.map((x) => x.left));
+  line.bbox.top = Math.min(...wordBoxArr.map((x) => x.top));
+  line.bbox.right = Math.max(...wordBoxArr.map((x) => x.right));
+  line.bbox.bottom = Math.max(...wordBoxArr.map((x) => x.bottom));
 }
 
 /**
  * Rotates bounding box.
  * Should not be used for lines--use `rotateLine` instead.
- * @param {Array<number>} bbox
+ * @param {bbox} bbox
  * @param {number} cosAngle
  * @param {number} sinAngle
  * @param {number} width
@@ -322,15 +324,15 @@ function rotateBbox(bbox, cosAngle, sinAngle, width, height) {
   // This is generally fine for words (as words are generally short),
   // but results in significantly incorrect results for lines.
 
-  const bboxOut = [...bbox];
+  const bboxOut = { ...bbox };
 
   const xCenter = width / 2;
   const yCenter = height / 2;
 
-  bboxOut[0] = cosAngle * (bbox[0] - xCenter) - sinAngle * (bbox[3] - yCenter) + xCenter;
-  bboxOut[2] = cosAngle * (bbox[2] - xCenter) - sinAngle * (bbox[3] - yCenter) + xCenter;
-  bboxOut[1] = sinAngle * (bbox[0] - xCenter) + cosAngle * (bbox[1] - yCenter) + yCenter;
-  bboxOut[3] = sinAngle * (bbox[0] - xCenter) + cosAngle * (bbox[3] - yCenter) + yCenter;
+  bboxOut[0] = cosAngle * (bbox.left - xCenter) - sinAngle * (bbox.bottom - yCenter) + xCenter;
+  bboxOut[2] = cosAngle * (bbox.right - xCenter) - sinAngle * (bbox.bottom - yCenter) + xCenter;
+  bboxOut[1] = sinAngle * (bbox.left - xCenter) + cosAngle * (bbox.top - yCenter) + yCenter;
+  bboxOut[3] = sinAngle * (bbox.left - xCenter) + cosAngle * (bbox.bottom - yCenter) + yCenter;
 
   return bboxOut;
 }
@@ -368,7 +370,7 @@ function rotateLine(line, angle, dims = null) {
   calcLineBbox(line);
 
   // Adjust baseline
-  const baselineOffsetAdj = lineBoxRot[3] - line.bbox[3];
+  const baselineOffsetAdj = lineBoxRot[3] - line.bbox.bottom;
 
   const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
 
@@ -382,9 +384,8 @@ function rotateLine(line, angle, dims = null) {
  * @param {OcrLine} line
  */
 function cloneLine(line) {
-  const lineNew = new OcrLine(line.page, line.bbox.slice(), line.baseline.slice(), line.ascHeight, line.xHeight);
-  for (let i = 0; i < line.words.length; i++) {
-    const word = line.words[i];
+  const lineNew = new OcrLine(line.page, { ...line.bbox }, line.baseline.slice(), line.ascHeight, line.xHeight);
+  for (const word of line.words) {
     const wordNew = new OcrWord(lineNew, word.text, word.bbox, word.id);
     wordNew.conf = word.conf;
     wordNew.sup = word.sup;
@@ -405,7 +406,7 @@ function cloneLine(line) {
  * @param {OcrWord} word
  */
 function cloneWord(word) {
-  const wordNew = new OcrWord(word.line, word.text, word.bbox.slice(), word.id);
+  const wordNew = new OcrWord(word.line, word.text, { ...word.bbox }, word.id);
   wordNew.conf = word.conf;
   wordNew.sup = word.sup;
   wordNew.dropcap = word.dropcap;

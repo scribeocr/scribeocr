@@ -312,7 +312,7 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
     let tz = 100;
     if (word.dropcap) {
-      const wordWidthActual = wordBox[2] - wordBox[0];
+      const wordWidthActual = wordBox.right - wordBox.left;
       const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), wordFont, wordFontSize)).visualWidth;
       tz = (wordWidthActual / wordWidthFont) * 100;
     }
@@ -322,8 +322,8 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
     const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
 
     // Move to next line
-    const lineLeftAdj = wordBox[0] - wordLeftBearing * (tz / 100) + angleAdjLine.x;
-    const lineTopAdj = linebox[3] + baseline[1] + angleAdjLine.y;
+    const lineLeftAdj = wordBox.left - wordLeftBearing * (tz / 100) + angleAdjLine.x;
+    const lineTopAdj = linebox.bottom + baseline[1] + angleAdjLine.y;
 
     if (rotateText) {
       textStream += `${String(cosAngle)} ${String(-sinAngle)} ${String(sinAngle)} ${String(cosAngle)} ${String(lineLeftAdj)} ${String(outputDims.height - lineTopAdj + 1)} Tm\n`;
@@ -336,7 +336,9 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
 
     textStream += '[ ';
 
-    let wordBoxLast = [0, 0, 0, 0];
+    let wordBoxLast = {
+      left: 0, top: 0, right: 0, bottom: 0,
+    };
     let wordRightBearingLast = 0;
     let charSpacing = 0;
     let spacingAdj = 0;
@@ -394,16 +396,16 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       // TODO: Test whether the math here is correct for drop caps.
       let ts = 0;
       if (word.sup) {
-        ts = (linebox[3] + baseline[1] + angleAdjLine.y) - (wordBox[3] + angleAdjLine.y + angleAdjWord.y);
+        ts = (linebox.bottom + baseline[1] + angleAdjLine.y) - (wordBox.bottom + angleAdjLine.y + angleAdjWord.y);
       } else if (word.dropcap) {
-        ts = (linebox[3] + baseline[1]) - wordBox[3] + angleAdjLine.y + angleAdjWord.y;
+        ts = (linebox.bottom + baseline[1]) - wordBox.bottom + angleAdjLine.y + angleAdjWord.y;
       } else {
         ts = 0;
       }
 
       let tz = 100;
       if (word.dropcap) {
-        const wordWidthActual = wordBox[2] - wordBox[0];
+        const wordWidthActual = wordBox.right - wordBox.left;
         const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontAll.active[wordFontFamilyLast][word.style], wordFontSize)).visualWidth;
         tz = (wordWidthActual / wordWidthFont) * 100;
       }
@@ -413,8 +415,8 @@ async function ocrPageToPDF(pageObj, fontAll, inputDims, outputDims, firstObjInd
       const wordFirstGlyphMetrics = wordFontOpentype.charToGlyph(wordText.substr(0, 1)).getMetrics();
       const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
 
-      const wordWidthAdj = (wordBox[2] - wordBox[0]) / cosAngle;
-      const wordSpaceAdj = (wordBox[0] - wordBoxLast[2]) / cosAngle;
+      const wordWidthAdj = (wordBox.right - wordBox.left) / cosAngle;
+      const wordSpaceAdj = (wordBox.left - wordBoxLast.right) / cosAngle;
 
       // Add space character between words
       if (j > 0) {

@@ -1086,7 +1086,7 @@ function hideProgress2(id) {
 }
 
 /**
- * @type {{[key: string]: Array<Array<CompDebug>>}}
+ * @type {{[key: string]: Array<Array<CompDebugBrowser>>}}
  */
 globalThis.debugImg = {};
 
@@ -1191,8 +1191,8 @@ async function recognizeAllClick() {
 
           const imgElem = await globalThis.imageAll.binary[i];
           const res = await globalThis.gs.compareHOCR({
-            pageA: ocrAll['User Upload'][i],
-            pageB: ocrAll['Tesseract Combined'][i],
+            pageA: globalThis.ocrAll['User Upload'][i],
+            pageB: globalThis.ocrAll['Tesseract Combined'][i],
             binaryImage: imgElem.src,
             imageRotated: globalThis.imageAll.binaryRotated[i],
             pageMetricsObj: globalThis.pageMetricsArr[i],
@@ -1218,8 +1218,8 @@ async function recognizeAllClick() {
 
           const imgElem = await globalThis.imageAll.binary[i];
           const res = await globalThis.globalThis.gs.compareHOCR({
-            pageA: ocrAll['User Upload'][i],
-            pageB: ocrAll['Tesseract Combined'][i],
+            pageA: globalThis.ocrAll['User Upload'][i],
+            pageB: globalThis.ocrAll['Tesseract Combined'][i],
             binaryImage: imgElem.src,
             imageRotated: globalThis.imageAll.binaryRotated[i],
             pageMetricsObj: globalThis.pageMetricsArr[i],
@@ -1525,11 +1525,11 @@ function recognizeAreaClick(wordMode = false) {
 
     const debug = false;
     if (debug) {
-      console.log(resLegacy.data.recognize);
+      console.log(resLegacy.recognize);
     }
 
-    const pageObjLSTM = resLSTM.data.convert.lstm.pageObj;
-    const pageObjLegacy = resLegacy.data.convert.legacy.pageObj;
+    const pageObjLSTM = resLSTM.convert.lstm.pageObj;
+    const pageObjLegacy = resLegacy.convert.legacy.pageObj;
 
     const debugLabel = 'recognizeArea';
 
@@ -1674,7 +1674,9 @@ function addWordClick() {
     const rectLeftHOCR = rectLeft - angleAdjXRect;
     const rectRightHOCR = rectLeft + rect.width - angleAdjXRect;
 
-    const wordBox = [rectLeftHOCR, rectTopHOCR, rectRightHOCR, rectBottomHOCR];
+    const wordBox = {
+      left: rectLeftHOCR, top: rectTopHOCR, right: rectRightHOCR, bottom: rectBottomHOCR,
+    };
 
     const pageObj = new ocr.OcrPage(cp.n, globalThis.ocrAll.active[cp.n].dims);
     // Arbitrary values of font statistics are used since these are replaced later
@@ -1693,15 +1695,15 @@ function addWordClick() {
     // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
     let angleAdjY = 0;
     if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[cp.n].angle ?? 0) > 0.05) {
-      const angleAdjXInt = sinAngle * (wordObj.line.bbox[3] + wordObj.line.baseline[1]);
-      const angleAdjYInt = sinAngle * (wordObj.line.bbox[0] + angleAdjXInt / 2) * -1;
+      const angleAdjXInt = sinAngle * (wordObj.line.bbox.bottom + wordObj.line.baseline[1]);
+      const angleAdjYInt = sinAngle * (wordObj.line.bbox.left + angleAdjXInt / 2) * -1;
 
       angleAdjY = angleAdjYInt + shiftY;
     }
 
     const fontSize = await calcLineFontSize(wordObjNew.line, fontAll.active);
 
-    const top = wordObjNew.line.bbox[3] + wordObjNew.line.baseline[1] + angleAdjY;
+    const top = wordObjNew.line.bbox.bottom + wordObjNew.line.baseline[1] + angleAdjY;
 
     const textBackgroundColor = search.search && wordText.includes(search.search) ? '#4278f550' : '';
 
@@ -1724,7 +1726,6 @@ function addWordClick() {
       fontObj: fontAll.active[globalSettings.defaultFont].normal,
       wordID: wordIDNew,
       textBackgroundColor,
-      // line: i,
       visualWidth: rect.width,
       visualLeft: rectLeft,
       visualBaseline: rect.bottom,

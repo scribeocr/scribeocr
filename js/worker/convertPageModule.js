@@ -142,7 +142,11 @@ export async function convertPageHocr({
     const titleStrLine = match.match(/title=['"]([^'"]+)/)?.[1];
     if (!titleStrLine) return '';
 
-    const linebox = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
+    const linebox1 = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
+
+    const linebox = {
+      left: linebox1[0], top: linebox1[1], right: linebox1[2], bottom: linebox1[3],
+    };
 
     // The baseline can be missing in the case of vertical text (textangle present instead)
     const baselineMatch = [...titleStrLine.matchAll(/baseline(\s+[\d.-]+)(\s+[\d.-]+)/g)][0];
@@ -153,10 +157,10 @@ export async function convertPageHocr({
 
     // Only calculate baselines from lines 200px+.
     // This avoids short "lines" (e.g. page numbers) that often report wild values.
-    if ((linebox[2] - linebox[0]) >= 200) {
+    if ((linebox.right - linebox.left) >= 200) {
       angleRisePage.push(baseline[0]);
-      lineLeft.push(linebox[0]);
-      lineTop.push(linebox[1]);
+      lineLeft.push(linebox.left);
+      lineTop.push(linebox.top);
     }
 
     // Line font size metrics as reported by Tesseract.
@@ -245,12 +249,12 @@ export async function convertPageHocr({
       const bboxes = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5).map((y) => parseInt(y)));
 
       // Adjust box such that top/bottom approximate those coordinates at the leftmost point
-      const lineboxAdj = linebox.slice();
+      const lineboxAdj = { ...linebox };
 
       if (baseline[0] < 0) {
-        lineboxAdj[1] -= (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
+        lineboxAdj.top -= (lineboxAdj.right - lineboxAdj.left) * baseline[0];
       } else {
-        lineboxAdj[3] -= (lineboxAdj[2] - lineboxAdj[0]) * baseline[0];
+        lineboxAdj.bottom -= (lineboxAdj.right - lineboxAdj.left) * baseline[0];
       }
 
       // Tesseract does not split superscript footnote references into separate words, so that happens here
@@ -259,8 +263,8 @@ export async function convertPageHocr({
       if (/\d$/i.test(wordStr)) {
         const numsN = wordStr.match(/\d+$/)[0].length;
 
-        const expectedBaseline = (bboxes[0][0] + (bboxes[bboxes.length - 1][2] - bboxes[0][0]) / 2 - lineboxAdj[0]) * baseline[0] + baseline[1] + lineboxAdj[3];
-        const lineAscHeight = expectedBaseline - lineboxAdj[1];
+        const expectedBaseline = (bboxes[0][0] + (bboxes[bboxes.length - 1][2] - bboxes[0][0]) / 2 - lineboxAdj.left) * baseline[0] + baseline[1] + lineboxAdj.bottom;
+        const lineAscHeight = expectedBaseline - lineboxAdj.top;
 
         let baseN = 0;
         for (let i = bboxes.length - 1; i >= 0; i--) {
@@ -292,7 +296,11 @@ export async function convertPageHocr({
         // Handle characters escaped in XML
         contentStrLetter = unescapeXml(contentStrLetter);
 
-        const charObj = new ocr.OcrChar(contentStrLetter, bboxes[j]);
+        const bbox = {
+          left: bboxes[j][0], top: bboxes[j][1], right: bboxes[j][2], bottom: bboxes[j][3],
+        };
+
+        const charObj = new ocr.OcrChar(contentStrLetter, bbox);
         charObjArr.push(charObj);
 
         text += contentStrLetter;
@@ -307,11 +315,13 @@ export async function convertPageHocr({
 
         if (text) {
           const bboxesCore = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5));
-          const wordBoxCore = new Array(4);
-          wordBoxCore[0] = Math.min(...bboxesCore.map((x) => x[0]));
-          wordBoxCore[1] = Math.min(...bboxesCore.map((x) => x[1]));
-          wordBoxCore[2] = Math.max(...bboxesCore.map((x) => x[2]));
-          wordBoxCore[3] = Math.max(...bboxesCore.map((x) => x[3]));
+
+          const wordBoxCore = {
+            left: Math.min(...bboxesCore.map((x) => x[0])),
+            top: Math.min(...bboxesCore.map((x) => x[1])),
+            right: Math.max(...bboxesCore.map((x) => x[2])),
+            bottom: Math.max(...bboxesCore.map((x) => x[3])),
+          };
 
           const wordObjCore = new ocr.OcrWord(lineObj, text, wordBoxCore, wordID);
           wordObjCore.chars = charObjArr;
@@ -335,11 +345,13 @@ export async function convertPageHocr({
         }
 
         const bboxesSuper = letterArrSuper.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/)?.slice(1, 5).map((y) => parseInt(y)));
-        const wordBoxSuper = new Array(4);
-        wordBoxSuper[0] = Math.min(...bboxesSuper.map((x) => x[0]));
-        wordBoxSuper[1] = Math.min(...bboxesSuper.map((x) => x[1]));
-        wordBoxSuper[2] = Math.max(...bboxesSuper.map((x) => x[2]));
-        wordBoxSuper[3] = Math.max(...bboxesSuper.map((x) => x[3]));
+
+        const wordBoxSuper = {
+          left: Math.min(...bboxesSuper.map((x) => x[0])),
+          top: Math.min(...bboxesSuper.map((x) => x[1])),
+          right: Math.max(...bboxesSuper.map((x) => x[2])),
+          bottom: Math.max(...bboxesSuper.map((x) => x[3])),
+        };
 
         const textSuper = letterArrSuper.map((x) => x[2]).join('');
 
@@ -358,11 +370,13 @@ export async function convertPageHocr({
       if (text === '') return ('');
 
       const bboxesCore = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/)?.slice(1, 5).map((y) => parseInt(y)));
-      const wordBoxCore = new Array(4);
-      wordBoxCore[0] = Math.min(...bboxesCore.map((x) => x[0]));
-      wordBoxCore[1] = Math.min(...bboxesCore.map((x) => x[1]));
-      wordBoxCore[2] = Math.max(...bboxesCore.map((x) => x[2]));
-      wordBoxCore[3] = Math.max(...bboxesCore.map((x) => x[3]));
+
+      const wordBoxCore = {
+        left: Math.min(...bboxesCore.map((x) => x[0])),
+        top: Math.min(...bboxesCore.map((x) => x[1])),
+        right: Math.max(...bboxesCore.map((x) => x[2])),
+        bottom: Math.max(...bboxesCore.map((x) => x[3])),
+      };
 
       const wordObj = new ocr.OcrWord(lineObj, text, wordBoxCore, `${wordID}a`);
 
@@ -420,7 +434,14 @@ export async function convertPageHocr({
         return '';
       }
 
-      const wordBox = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d-]+)(\s+[\d-]+)?(\s+[\d-]+)?(\s+[\d-]+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
+      const wordBox1 = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d-]+)(\s+[\d-]+)?(\s+[\d-]+)?(\s+[\d-]+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
+
+      const wordBox = {
+        left: wordBox1[0],
+        top: wordBox1[1],
+        right: wordBox1[2],
+        bottom: wordBox1[3],
+      };
 
       const fontName = match.match(/^[^>]+?x_font\s*([\w-]+)/)?.[1];
 
@@ -714,7 +735,11 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
         text[i] += contentStrLetter;
 
-        const charObj = new ocr.OcrChar(contentStrLetter, bboxes[i][j]);
+        const bbox = {
+          left: bboxes[i][j][0], top: bboxes[i][j][1], right: bboxes[i][j][2], bottom: bboxes[i][j][3],
+        };
+
+        const charObj = new ocr.OcrChar(contentStrLetter, bbox);
 
         charObjArrLine[i].push(charObj);
       }
@@ -747,7 +772,11 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
     const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
 
-    const lineObj = new ocr.OcrLine(pageObj, lineBoxArrOut, baselineOut);
+    const bbox = {
+      left: lineBoxArrOut[0], top: lineBoxArrOut[1], right: lineBoxArrOut[2], bottom: lineBoxArrOut[3],
+    };
+
+    const lineObj = new ocr.OcrLine(pageObj, bbox, baselineOut);
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
@@ -768,9 +797,13 @@ export async function convertPageAbbyy({ ocrStr, n }) {
         continue;
       }
 
+      const bbox = {
+        left: bboxesILeft, top: bboxesITop, right: bboxesIRight, bottom: bboxesIBottom,
+      };
+
       const id = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
 
-      const wordObj = new ocr.OcrWord(lineObj, text[i], [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
+      const wordObj = new ocr.OcrWord(lineObj, text[i], bbox, id);
       wordObj.chars = charObjArrLine[i];
       wordObj.conf = wordSusp[i] ? 0 : 100;
 
@@ -1006,31 +1039,39 @@ export async function convertPageStext({ ocrStr, n }) {
 
     // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
     // In this case the original line-level bounding box from Abbyy is used
-    const lineBoxOut = Number.isFinite(lineBoxArrCalc[0]) && Number.isFinite(lineBoxArrCalc[1]) && Number.isFinite(lineBoxArrCalc[2])
+    const lineBoxOut1 = Number.isFinite(lineBoxArrCalc[0]) && Number.isFinite(lineBoxArrCalc[1]) && Number.isFinite(lineBoxArrCalc[2])
       && Number.isFinite(lineBoxArrCalc[3]) ? lineBoxArrCalc : lineBoxArr.slice(2, 6);
+
+    const lineBbox = {
+      left: lineBoxOut1[0], top: lineBoxOut1[1], right: lineBoxOut1[2], bottom: lineBoxOut1[3],
+    };
 
     const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
 
     // TODO: This is very back-of-the-napkin, should figure out how to be more precise.
     const letterHeightOut = fontSize * 0.6;
 
-    const lineObj = new ocr.OcrLine(pageObj, lineBoxOut, baselineOut, letterHeightOut, null);
+    const lineObj = new ocr.OcrLine(pageObj, lineBbox, baselineOut, letterHeightOut, null);
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
       if (text[i].trim() == '') { continue; }
       const bboxesI = bboxes[i];
 
-      const bboxesILeft = Math.min(...bboxesI.map((x) => x[0]));
-      const bboxesIRight = Math.max(...bboxesI.map((x) => x[2]));
-      const bboxesITop = Math.min(...bboxesI.map((x) => x[1]));
-      const bboxesIBottom = Math.max(...bboxesI.map((x) => x[3]));
+      const bboxesILeft = Math.min(...bboxesI.map((x) => x.left));
+      const bboxesIRight = Math.max(...bboxesI.map((x) => x.right));
+      const bboxesITop = Math.min(...bboxesI.map((x) => x.top));
+      const bboxesIBottom = Math.max(...bboxesI.map((x) => x.bottom));
 
       const id = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
 
       const wordText = unescapeXml(text[i]);
 
-      const wordObj = new ocr.OcrWord(lineObj, wordText, [bboxesILeft, bboxesITop, bboxesIRight, bboxesIBottom], id);
+      const bbox = {
+        left: bboxesILeft, top: bboxesITop, right: bboxesIRight, bottom: bboxesIBottom,
+      };
+
+      const wordObj = new ocr.OcrWord(lineObj, wordText, bbox, id);
 
       // There is no confidence information in stext.
       // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
@@ -1243,9 +1284,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
   /** @type {Object.<string, FontMetricsRawFamily>} */
   const fontMetricsRawPage = {};
 
-  for (let i = 0; i < pageObj.lines.length; i++) {
-    const lineObj = pageObj.lines[i];
-
+  for (const lineObj of pageObj.lines) {
     /** @type {Array<number>} */
     const lineAscHeightArr = [];
     /** @type {Array<number>} */
@@ -1253,9 +1292,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
     /** @type {Array<number>} */
     const lineAllHeightArr = [];
 
-    for (let j = 0; j < lineObj.words.length; j++) {
-      const wordObj = lineObj.words[j];
-
+    for (const wordObj of lineObj.words) {
       const letterArr = wordObj.text.split('');
       const charObjArr = wordObj.chars;
 
@@ -1302,7 +1339,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
           if (wordObj.sup || wordObj.dropcap) continue;
 
           const contentStrLetter = letterArr[k];
-          const charHeight = charObj.bbox[3] - charObj.bbox[1];
+          const charHeight = charObj.bbox.bottom - charObj.bbox.top;
 
           // Save character heights to array for font size calculations
           lineAllHeightArr.push(charHeight);
@@ -1332,9 +1369,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
     // Replace all dash characters with a hyphen, en-dash or em-dash, depending on their width.
     // OCR engines commonly use the wrong type of dash. This is especially problematic during font optimization,
     // as it can result (for example) in a hyphen being scaled to be closer to an en-dash if the latter is more common.
-    for (let j = 0; j < lineObj.words.length; j++) {
-      const wordObj = lineObj.words[j];
-
+    for (const wordObj of lineObj.words) {
       // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
       if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
 
@@ -1347,7 +1382,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
       // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines, so this symbol is included.
       for (let k = 0; k < letterArr.length; k++) {
         if (['-', '–', '—', '¬'].includes(letterArr[k]) && letterArr.length > 1) {
-          const charWidth = charObjArr[k].bbox[2] - charObjArr[k].bbox[0];
+          const charWidth = charObjArr[k].bbox.right - charObjArr[k].bbox.left;
           const charWidthNorm = charWidth / wordObj.line.xHeight;
           if (charWidthNorm > 1.5) {
             letterArr[k] = '—';
@@ -1364,8 +1399,7 @@ function pass2({ pageObj, layoutBoxes, warn }) {
       wordObj.text = letterArr.join('');
     }
 
-    for (let j = 0; j < lineObj.words.length; j++) {
-      const wordObj = lineObj.words[j];
+    for (const wordObj of lineObj.words) {
       const wordFontFamily = wordObj.font || 'Default';
 
       // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
@@ -1380,8 +1414,8 @@ function pass2({ pageObj, layoutBoxes, warn }) {
         for (let k = 0; k < wordObj.chars.length; k++) {
           const charObj = wordObj.chars[k];
 
-          const charHeight = charObj.bbox[3] - charObj.bbox[1];
-          const charWidth = charObj.bbox[2] - charObj.bbox[0];
+          const charHeight = charObj.bbox.bottom - charObj.bbox.top;
+          const charWidth = charObj.bbox.right - charObj.bbox.left;
 
           // Numbers are normalized as a proportion of ascHeight, everything else is normalized as a percentage of x-height.
           // This is because x-sized characters are more common in text, however numbers are often in "lines" with only numbers,
@@ -1409,8 +1443,8 @@ function pass2({ pageObj, layoutBoxes, warn }) {
 
           if (k + 1 < wordObj.chars.length) {
             const charObjNext = wordObj.chars[k + 1];
-            const trailingSpace = charObjNext.bbox[0] - charObj.bbox[2];
-            const charWidthNext = charObjNext.bbox[2] - charObjNext.bbox[0];
+            const trailingSpace = charObjNext.bbox.left - charObj.bbox.right;
+            const charWidthNext = charObjNext.bbox.right - charObjNext.bbox.left;
 
             // Only record space between characters when text is moving forward
             // This *should* always be true, however there are some fringe cases where this assumption does not hold,

@@ -174,8 +174,8 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
         } else {
           const leftDelta = Math.round(opt.target.left - opt.target.leftOrig);
           const rightDelta = Math.round(visualRightNew - visualRightOrig);
-          wordObj.bbox[0] += leftDelta;
-          wordObj.bbox[2] += rightDelta;
+          wordObj.bbox.left += leftDelta;
+          wordObj.bbox.right += rightDelta;
         }
 
         if (opt.target.text.length > 1) {

@@ -1,11 +1,11 @@
 /**
  * @param {number} priority
- * @param {Array<number>} coords
+ * @param {bbox} coords
  */
 export function LayoutBox(priority, coords) {
   /** @type {number} */
   this.priority = priority;
-  /** @type {Array<number>} */
+  /** @type {bbox} */
   this.coords = coords;
   /** @type {string} */
   this.type = 'order';

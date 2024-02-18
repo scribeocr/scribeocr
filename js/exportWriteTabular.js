@@ -58,7 +58,9 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
     ocr.rotateLine(lineObj, pageObj.angle * -1, pageObj.dims);
 
     // First, check for overlap with line-level boxes.
-    const lineBoxALeft = [lineObj.bbox[0], lineObj.bbox[1], lineObj.bbox[0] + 1, lineObj.bbox[3]];
+    const lineBoxALeft = {
+      left: lineObj.bbox.left, top: lineObj.bbox.top, right: lineObj.bbox.left + 1, bottom: lineObj.bbox.bottom,
+    };
 
     let boxFound = false;
     // It is possible for a single line to match the inclusion criteria for multiple boxes.
@@ -84,15 +86,15 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
     if (boxFound) continue;
 
     // Second, check for overlap on the word-level boxes.
-    for (let k = 0; k < lineObj.words.length; k++) {
-      const wordObj = lineObj.words[k];
-
+    for (const wordObj of lineObj.words) {
       for (let j = 0; j < boxesArr.length; j++) {
         const obj = boxesArr[j];
 
         if (obj.inclusionLevel !== 'word') continue;
 
-        const wordBoxALeft = [wordObj.bbox[0], wordObj.bbox[1], wordObj.bbox[0] + 1, wordObj.bbox[3]];
+        const wordBoxALeft = {
+          left: wordObj.bbox.left, top: wordObj.bbox.top, right: wordObj.bbox.left + 1, bottom: wordObj.bbox.bottom,
+        };
 
         const overlap = obj.inclusionRule === 'left' ? calcOverlap(wordBoxALeft, obj.coords) : calcOverlap(wordObj.bbox, obj.coords);
 
@@ -123,9 +125,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
 
   // For each array, sort all words by lower bound.
   // The following steps assume that the words are ordered.
-  for (let i = 0; i < colArr.length; i++) {
-    colArr[i].sort((a, b) => a.box[3] - b.box[3]);
-  }
+  colArr.forEach((x) => x.sort((a, b) => a.box.bottom - b.box.bottom));
 
   // Create rows
   let rowIndex = 0;
@@ -145,8 +145,10 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
   while (!indexArr.every((x, index) => x == lengthArr[index])) {
     // Identify highest unassigned word
     const compArrBox = indexArr.map((x, index) => colArr[index][x]);
-    compArrBox.sort((a, b) => a.box[3] - b.box[3]);
-    const rowBox = [0, 0, 5000, compArrBox[0].box[3]];
+    compArrBox.sort((a, b) => a.box.bottom - b.box.bottom);
+    const rowBox = {
+      left: 0, top: 0, right: 5000, bottom: compArrBox[0].box.bottom,
+    };
 
     for (let i = 0; i < indexArr.length; i++) {
       for (let j = indexArr[i]; j < colArr[i].length; j++) {
@@ -199,7 +201,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
       }
 
       // Sort left to right so words are printed in the correct order
-      words.sort((a, b) => a.bbox[0] - b.bbox[0]);
+      words.sort((a, b) => a.bbox.left - b.bbox.left);
 
       if (xlsxMode) {
         textStr += `<c r="${letters[j + extraCols.length]}${String(startRow + i + 1)}" t="inlineStr"><is>`;

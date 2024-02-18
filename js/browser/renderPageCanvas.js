@@ -4,13 +4,23 @@ import {
   calcWordFontSize, calcWordMetrics, calcCharSpacing,
 } from '../fontUtils.js';
 import { renderLayoutBoxes, updateDataPreview } from './interfaceLayout.js';
-import ocr from '../objects/ocrObjects.js';
+import ocr, { OcrPage } from '../objects/ocrObjects.js';
 import { ITextWord } from '../objects/fabricObjects.js';
 import { cp, search } from '../../main.js';
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
 
+/**
+ *
+ * @param {*} canvas
+ * @param {OcrPage} page
+ * @param {*} defaultFont
+ * @param {*} imgDims
+ * @param {*} angle
+ * @param {*} leftAdjX
+ * @param {*} fontAll
+ */
 export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX, fontAll) {
   const layoutMode = globalThis.layoutMode || false;
 
@@ -25,28 +35,20 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
 
-  const { lines } = page;
-
-  for (let i = 0; i < lines.length; i++) {
-    const lineObj = lines[i];
-
+  for (const lineObj of page.lines) {
     const linebox = lineObj.bbox;
     const { baseline } = lineObj;
 
     const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : { x: 0, y: 0 };
 
-    const { words } = lineObj;
-
-    for (let j = 0; j < words.length; j++) {
-      const wordObj = words[j];
-
+    for (const wordObj of lineObj.words) {
       const fillColorHexMatch = wordObj.matchTruth ? '#00ff7b' : '#ff0000';
 
       if (!wordObj.text) continue;
 
       const box = wordObj.bbox;
 
-      const boxWidth = box[2] - box[0];
+      const boxWidth = box.right - box.left;
 
       const wordText = wordObj.text;
       const wordSup = wordObj.sup;
@@ -125,11 +127,11 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
       let visualBaseline;
       if (wordSup || wordDropCap) {
-        visualBaseline = box[3] + angleAdjLine.y + angleAdjWord.y;
+        visualBaseline = box.bottom + angleAdjLine.y + angleAdjWord.y;
       } else if (enableRotation) {
-        visualBaseline = linebox[3] + baseline[1] + angleAdjLine.y + angleAdjWord.y;
+        visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
       } else {
-        visualBaseline = linebox[3] + baseline[1] + baseline[0] * (box[0] - linebox[0]);
+        visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
       }
 
       // This version uses the angle from the line rather than the page
@@ -137,7 +139,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
       const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-      const visualLeft = box[0] + angleAdjLine.x + angleAdjWord.x + leftAdjX;
+      const visualLeft = box.left + angleAdjLine.x + angleAdjWord.x + leftAdjX;
       const left = visualLeft - wordLeftBearing;
 
       const textBackgroundColor = search.search && wordText.toLowerCase().includes(search.search?.toLowerCase()) ? '#4278f550' : '';
@@ -165,7 +167,6 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
         fontFamilyLookup: wordFontFamily,
         fontStyleLookup: fontStyle,
         wordID: wordId,
-        line: i,
         visualWidth: boxWidth, // TODO: Is this incorrect when rotation exists?
         visualLeft,
         visualBaseline,
