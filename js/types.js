@@ -55,10 +55,6 @@
  */
 
 /**
- * @typedef {import("./objects/imageObjects.js").CompDebug} CompDebug
- */
-
-/**
  * @typedef {Object} EvalMetrics
  * @property {number} total
  * @property {number} correct
@@ -67,4 +63,42 @@
  * @property {number} extra
  * @property {number} correctLowConf
  * @property {number} incorrectHighConf
+ */
+
+/**
+ * Represents a comparison debug object with image data and error metrics.
+ *
+ * @typedef {Object} CompDebugBrowser
+ * @property {'browser'} context
+ * @property {Blob} imageRaw - The raw image blob.
+ * @property {Blob} imageA - The first image blob for comparison.
+ * @property {Blob} imageB - The second image blob for comparison.
+ * @property {dims} dims - Dimensions object specifying size or other dimensional data.
+ * @property {number} errorRawA - Raw error of "A" words, calculated purely based on visual overlap.
+ * @property {number} errorRawB - Raw error of "B" words, similar to errorRawA.
+ * @property {?number} errorAdjA - Adjusted error of "A" words. Null until calculated.
+ * @property {?number} errorAdjB - Adjusted error of "B" words. Null until calculated.
+ *
+ * Raw errors are calculated purely based on visual overlap. Words where most pixels overlap with the underlying image will have low raw error.
+ * Adjusted errors are calculated by applying ad-hoc adjustments to raw errors. The intent of these adjustments is to penalize patterns of letters
+ * that are visually similar to other letters but unlikely to occur in correct recognition results.
+ */
+
+/**
+ * Represents a comparison debug object with image data and error metrics.
+ *
+ * @typedef {Object} CompDebugNode
+ * @property {'node'} context
+ * @property {import('canvas').Image} imageRaw - The raw image.
+ * @property {import('canvas').Image} imageA - The first image for comparison.
+ * @property {import('canvas').Image} imageB - The second image for comparison.
+ * @property {dims} dims - Dimensions object specifying size or other dimensional data.
+ * @property {number} errorRawA - Raw error of "A" words, calculated purely based on visual overlap.
+ * @property {number} errorRawB - Raw error of "B" words, similar to errorRawA.
+ * @property {?number} errorAdjA - Adjusted error of "A" words. Null until calculated.
+ * @property {?number} errorAdjB - Adjusted error of "B" words. Null until calculated.
+ *
+ * Raw errors are calculated purely based on visual overlap. Words where most pixels overlap with the underlying image will have low raw error.
+ * Adjusted errors are calculated by applying ad-hoc adjustments to raw errors. The intent of these adjustments is to penalize patterns of letters
+ * that are visually similar to other letters but unlikely to occur in correct recognition results.
  */

@@ -4,7 +4,7 @@
 import { getRandomAlphanum, imageStrToBlob } from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
-import { CompDebug } from '../objects/imageObjects.js';
+// import { CompDebug } from '../objects/imageObjects.js';
 
 const browserMode = typeof process === 'undefined';
 
@@ -551,7 +551,7 @@ export async function evalWords({
     metricB = diffB / totalB;
   }
 
-  /** @type {?CompDebug} */
+  /** @type {?CompDebugBrowser|CompDebugNode} */
   let debugImg = null;
   if (view) {
     if (browserMode) {
@@ -560,7 +560,9 @@ export async function evalWords({
       const imageB = await viewCtx2.canvas.convertToBlob();
       const dims = { width: viewCtx0.canvas.width, height: viewCtx0.canvas.height };
 
-      debugImg = new CompDebug(imageRaw, imageA, imageB, dims, metricA, metricB);
+      debugImg = {
+        context: 'browser', imageRaw, imageA, imageB, dims, errorRawA: metricA, errorRawB: metricB, errorAdjA: null, errorAdjB: null,
+      };
     } else {
       const { loadImage } = await import('canvas');
 
@@ -570,7 +572,9 @@ export async function evalWords({
 
       const dims = { width: viewCtx0.canvas.width, height: viewCtx0.canvas.height };
 
-      debugImg = new CompDebug(imageRaw, imageA, imageB, dims, metricA, metricB);
+      debugImg = {
+        context: 'node', imageRaw, imageA, imageB, dims, errorRawA: metricA, errorRawB: metricB, errorAdjA: null, errorAdjB: null,
+      };
     }
   }
 

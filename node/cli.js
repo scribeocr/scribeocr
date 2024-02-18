@@ -36,7 +36,7 @@ const fontAll = {
 
 const saveCompImages = false;
 
-/** @type {CanvasRenderingContext2D} */
+/** @type {import('canvas').CanvasRenderingContext2D} */
 let ctxDebug;
 if (saveCompImages) {
   const { createCanvas } = await import('canvas');
@@ -46,12 +46,12 @@ if (saveCompImages) {
 
 /**
  *
- * @param {CanvasRenderingContext2D} ctx
- * @param {Array<Array<CompDebug>>} debugImgArr
+ * @param {import('canvas').CanvasRenderingContext2D} ctx
+ * @param {Array<Array<CompDebugNode>>} compDebugArrArr
  * @param {string} filePath
  */
-async function writeDebugImages(ctx, debugImgArr, filePath) {
-  await drawDebugImages(ctx, debugImgArr);
+async function writeDebugImages(ctx, compDebugArrArr, filePath) {
+  await drawDebugImages({ ctx, compDebugArrArr, context: 'node' });
   const buffer0 = ctx.canvas.toBuffer('image/png');
   fs.writeFileSync(filePath, buffer0);
 }
@@ -297,7 +297,7 @@ async function main(func, params) {
       if (globalThis.fontMetricsObj) {
         console.log('Calculating metrics');
         setDefaultFontAuto(globalThis.fontMetricsObj);
-        await enableDisableFontOpt(false);
+        await enableDisableFontOpt(true);
       }
     }
 

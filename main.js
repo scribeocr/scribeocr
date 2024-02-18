@@ -1425,18 +1425,18 @@ async function compareGroundTruthClick(n) {
 }
 
 export async function showDebugImages() {
-  /** @type {Array<Array<CompDebug>>} */
-  const debugImgArr = [];
+  /** @type {Array<Array<CompDebugBrowser>>} */
+  const compDebugArrArr = [];
 
   const compDebugArr1 = globalThis.debugImg?.['Tesseract Combined']?.[cp.n];
   const compDebugArr2 = globalThis.debugImg?.Combined?.[cp.n];
   const compDebugArr3 = globalThis.debugImg?.recognizeArea?.[cp.n];
 
-  if (compDebugArr1 && compDebugArr1.length > 0) debugImgArr.push(compDebugArr1);
-  if (compDebugArr2 && compDebugArr2.length > 0) debugImgArr.push(compDebugArr2);
-  if (compDebugArr3 && compDebugArr3.length > 0) debugImgArr.push(compDebugArr3);
+  if (compDebugArr1 && compDebugArr1.length > 0) compDebugArrArr.push(compDebugArr1);
+  if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);
+  if (compDebugArr3 && compDebugArr3.length > 0) compDebugArrArr.push(compDebugArr3);
 
-  if (debugImgArr.length > 0) await drawDebugImages(globalThis.ctxDebug, debugImgArr);
+  if (compDebugArrArr.length > 0) await drawDebugImages({ ctx: globalThis.ctxDebug, compDebugArrArr, context: 'browser' });
 }
 
 globalThis.showDebugImages = showDebugImages;
