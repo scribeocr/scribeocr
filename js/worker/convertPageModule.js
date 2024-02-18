@@ -1058,10 +1058,10 @@ export async function convertPageStext({ ocrStr, n }) {
       if (text[i].trim() == '') { continue; }
       const bboxesI = bboxes[i];
 
-      const bboxesILeft = Math.min(...bboxesI.map((x) => x.left));
-      const bboxesIRight = Math.max(...bboxesI.map((x) => x.right));
-      const bboxesITop = Math.min(...bboxesI.map((x) => x.top));
-      const bboxesIBottom = Math.max(...bboxesI.map((x) => x.bottom));
+      const bboxesILeft = Math.min(...bboxesI.map((x) => x[0]));
+      const bboxesIRight = Math.max(...bboxesI.map((x) => x[2]));
+      const bboxesITop = Math.min(...bboxesI.map((x) => x[1]));
+      const bboxesIBottom = Math.max(...bboxesI.map((x) => x[3]));
 
       const id = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
 
