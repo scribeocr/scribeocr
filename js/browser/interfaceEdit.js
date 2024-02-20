@@ -6,7 +6,8 @@
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
 import { calcWordMetrics } from '../fontUtils.js';
-import { renderPageQueue, fontAll, cp } from '../../main.js';
+import { renderPageQueue, cp } from '../../main.js';
+import { fontAll } from '../fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
 
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -228,8 +229,12 @@ export function adjustBaseline() {
   rangeBaselineElem.value = baselineRange + selectedObjects[0].baselineAdj;
   window.bsCollapse.show();
 
-  const lineI = selectedObjects[0].line;
-  objectsLine = canvas.getObjects().filter((x) => x.line === lineI);
+  // Unlikely identify lines using the ID of the first word on the line.
+  const lineI = selectedObjects[0]?.word?.line?.words[0]?.id;
+
+  console.assert(lineI !== undefined, 'Failed to identify line for word.');
+
+  objectsLine = canvas.getObjects().filter((x) => x?.word?.line?.words[0]?.id === lineI);
 
   for (let i = 0; i < objectsLine.length; i++) {
     objectsLine[i].objectCaching = true;

@@ -20,14 +20,17 @@ import coords from './js/coordinates.js';
 import { recognizePage } from './js/recognizeConvert.js';
 import { recognizeAllPagesBrowser, convertOCRAllBrowser } from './js/recognizeConvertBrowser.js';
 
-import { selectDefaultFontsDocument, setFontAllWorker } from './js/fontEval.js';
+import { selectDefaultFontsDocument, validateOptimizedFonts } from './js/fontEval.js';
+import { fontAll, enableDisableFontOpt } from './js/fontContainer.js';
+import { optimizeFontContainerAll } from './js/objects/fontObjects.js';
 
 import { calcLineFontSize } from './js/fontUtils.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 
-import { calculateOverallFontMetrics, setDefaultFontAuto } from './js/fontStatistics.js';
-import { loadFontContainerAllRaw, optimizeFontContainerAll } from './js/objects/fontObjects.js';
+import {
+  calcFontMetricsAll, checkCharWarn, setDefaultFontAuto,
+} from './js/fontStatistics.js';
 
 import { ITextWord } from './js/objects/fabricObjects.js';
 
@@ -653,38 +656,6 @@ function findTextClick(text) {
   matchCountElem.textContent = String(search.total);
 }
 
-const fontPrivate = loadFontContainerAllRaw();
-
-export const fontAll = {
-  raw: fontPrivate,
-  /** @type {?FontContainerAll} */
-  opt: null,
-  active: fontPrivate,
-};
-
-/**
- *
- * @param {boolean} enable
- */
-async function enableDisableFontOpt(enable) {
-  const browserMode = typeof process === 'undefined';
-
-  // Create optimized font if this has not been done yet
-  if (enable && !fontAll.opt) {
-    fontAll.opt = await optimizeFontContainerAll(fontPrivate, globalThis.fontMetricsObj);
-  }
-
-  // Enable/disable optimized font
-  if (enable && fontAll.opt) {
-    fontAll.active = fontAll.opt;
-  } else {
-    fontAll.active = fontAll.raw;
-  }
-
-  // Enable/disable optimized font in workers
-  if (browserMode) await setFontAllWorker(globalThis.generalScheduler, fontAll);
-}
-
 /**
  * @typedef find
  * @type {object}
@@ -1086,7 +1057,7 @@ function hideProgress2(id) {
 }
 
 /**
- * @type {{[key: string]: Array<Array<CompDebugBrowser>>}}
+ * @type {{[key: string]: Array<Array<CompDebugBrowser>> | undefined}}
  */
 globalThis.debugImg = {};
 
@@ -1140,6 +1111,47 @@ async function recognizeAllClick() {
           globalThis.debugImg['Tesseract Combined'][i] = [];
         }
       }
+    }
+
+    if (!existingOCR) {
+      // A new version of OCR data is created for font optimization and validation purposes.
+      // This version has the bounding box and style data from the Legacy data, however uses the text from the LSTM data whenever conflicts occur.
+      // Additionally, confidence is set to 0 when conflicts occur. Using this version benefits both font optimiztion and validation.
+      // For optimization, using this version rather than Tesseract Legacy excludes data that conflicts with Tesseract LSTM and is therefore likely incorrect,
+      // as low-confidence words are excluded when calculating overall character metrics.
+      // For validation, this version is superior to both Legacy and LSTM, as it combines the more accurate bounding boxes/style data from Legacy
+      // with the more accurate (on average) text data from LSTM.
+
+      initOCRVersion('Tesseract Combined Temp');
+      for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+        const compOptions1 = {
+          mode: 'comb',
+          evalConflicts: false,
+        };
+
+        const imgElem = await globalThis.imageAll.binary[i];
+
+        const res1 = await globalThis.gs.compareHOCR({
+          pageA: globalThis.ocrAll['Tesseract Legacy'][i],
+          pageB: globalThis.ocrAll['Tesseract LSTM'][i],
+          binaryImage: imgElem.src,
+          imageRotated: globalThis.imageAll.binaryRotated[i],
+          pageMetricsObj: globalThis.pageMetricsArr[i],
+          options: compOptions1,
+        });
+
+        globalThis.ocrAll['Tesseract Combined Temp'][i] = res1.page;
+      }
+
+      // Evaluate default fonts using up to 5 pages.
+      const pageNum = Math.min(globalThis.imageAll.native.length, 5);
+      await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, 'binary');
+
+      await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp']);
+
+      // Select best default fonts
+      const change = await validateOptimizedFonts(globalThis.ocrAll['Tesseract Combined Temp'].slice(0, pageNum), globalThis.imageAll.binary.slice(0, pageNum),
+        globalThis.imageAll.binaryRotated.slice(0, pageNum), fontAll);
     }
 
     initOCRVersion('Combined');
@@ -1755,7 +1767,6 @@ async function clearFiles() {
   globalThis.layout = [];
   globalThis.fontMetricsObj = null;
   globalThis.pageMetricsArr = [];
-  globalThis.fontMetricObjsMessage = [];
   globalThis.convertPageWarn = [];
 
   if (globalThis.binaryScheduler) {
@@ -2034,9 +2045,10 @@ async function importFiles(curFiles) {
       }
 
       // Restore font metrics and optimize font from previous session (if applicable)
-      if (ocrData.fontMetricsObj) {
+      if (ocrData.fontMetricsObj && Object.keys(ocrData.fontMetricsObj).length > 0) {
         globalThis.fontMetricsObj = ocrData.fontMetricsObj;
         setDefaultFontAuto(ocrData.fontMetricsObj);
+        fontAll.opt = await optimizeFontContainerAll(fontAll.raw, globalThis.fontMetricsObj);
         optimizeFontElem.disabled = false;
         optimizeFontElem.checked = true;
         await enableDisableFontOpt(true);
@@ -2193,7 +2205,9 @@ async function importFiles(curFiles) {
     // Process HOCR using web worker, reading from file first if that has not been done already
     convertOCRAllBrowser(globalThis.hocrCurrentRaw, true, format, oemName).then(async () => {
       if (layoutFilesAll.length > 0) await readLayoutFile(layoutFilesAll[0]);
-      await calculateOverallMetrics();
+      await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
+      await calculateOverallPageMetrics();
+      await runFontOptimization(globalThis.ocrAll.active);
       downloadElem.disabled = false;
       globalThis.state.downloadReady = true;
     });
@@ -2725,68 +2739,55 @@ initGeneralScheduler();
 // as well as after every image is loaded (not including .pdfs).
 
 /**
- * This function should be run after all of the "main" OCR data is imported.
- * This is either all pages from the first set of imported OCR data (for user imports),
- * or after Tesseract.js Legacy is finished running (for Tesseract.js recognition).
+ *
+ * @param {Array<OcrPage>} pageArr
  */
-export async function calculateOverallMetrics() {
-  if (globalThis.inputDataModes.resumeMode) {
-    // This logic is handled elsewhere for resumeMode
-  } else {
-    // Buttons are enabled from calculateOverallFontMetrics function in this case
-    const metricsRet = calculateOverallFontMetrics(globalThis.fontMetricObjsMessage, globalThis.convertPageWarn);
+export async function runFontOptimization(pageArr) {
+  const metricsRet = calcFontMetricsAll(pageArr);
 
-    if (metricsRet.charError) {
-      const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
-      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-      insertAlertMessage(errorHTML);
-    } else if (metricsRet.charWarn) {
-      const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. 
-      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-      insertAlertMessage(warningHTML, false);
-    } else {
-      globalThis.fontMetricsObj = metricsRet.fontMetrics;
-    }
+  globalThis.fontMetricsObj = metricsRet.fontMetrics;
 
-    // Font optimization is still impossible when extracting text from PDFs
-    if (globalThis.fontMetricsObj && !globalThis.inputDataModes.extractTextMode) {
-      optimizeFontElem.disabled = false;
-      optimizeFontElem.checked = true;
-      setDefaultFontAuto(globalThis.fontMetricsObj);
-      await enableDisableFontOpt(true);
-      renderPageQueue(cp.n);
-    }
-
-    // If image data exists, select the correct font by comparing to the image.
-    if (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode) {
-      // Evaluate default fonts using up to 5 pages.
-      const pageNum = Math.min(globalThis.imageAll.native.length, 5);
-      await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, 'binary');
-
-      // User-uploaded data and Tesseract Legacy are prioritized when running font optimization.
-      // If this was not the case, the LSTM results would be used when running recognition in "Quality" mode,
-      // as that would be the "active" data by the time this is run.
-      const ocrKeys = Object.keys(globalThis.ocrAll).filter((x) => x !== 'active');
-
-      let ocrFontEval = globalThis.ocrAll.active;
-      if (ocrKeys.includes('User Upload')) {
-        ocrFontEval = globalThis.ocrAll['User Upload'];
-      } else if (ocrKeys.includes('Tesseract Legacy')) {
-        ocrFontEval = globalThis.ocrAll['Tesseract Legacy'];
-      }
-
-      // Select best default fonts
-      const change = await selectDefaultFontsDocument(ocrFontEval.slice(0, pageNum), globalThis.imageAll.binary.slice(0, pageNum),
-        globalThis.imageAll.binaryRotated.slice(0, pageNum), fontAll);
-      // Re-render current page if default font changed
-      if (change) renderPageQueue(cp.n);
-    }
+  // Font optimization is still impossible when extracting text from PDFs
+  if (globalThis.fontMetricsObj && Object.keys(globalThis.fontMetricsObj).length > 0 && !globalThis.inputDataModes.extractTextMode) {
+    optimizeFontElem.disabled = false;
+    optimizeFontElem.checked = true;
+    setDefaultFontAuto(globalThis.fontMetricsObj);
+    fontAll.opt = await optimizeFontContainerAll(fontAll.raw, globalThis.fontMetricsObj);
+    await enableDisableFontOpt(true);
+    renderPageQueue(cp.n);
   }
 
-  calculateOverallPageMetrics();
+  // If image data exists, select the correct font by comparing to the image.
+  if (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode) {
+    // Evaluate default fonts using up to 5 pages.
+    const pageNum = Math.min(globalThis.imageAll.native.length, 5);
+    await renderPDFImageCache(Array.from({ length: pageNum }, (v, k) => k), null, null, 'binary');
+
+    // User-uploaded data and Tesseract Legacy are prioritized when running font optimization.
+    // If this was not the case, the LSTM results would be used when running recognition in "Quality" mode,
+    // as that would be the "active" data by the time this is run.
+    const ocrKeys = Object.keys(globalThis.ocrAll).filter((x) => x !== 'active');
+
+    let ocrFontEval = globalThis.ocrAll.active;
+    if (ocrKeys.includes('User Upload')) {
+      ocrFontEval = globalThis.ocrAll['User Upload'];
+    } else if (ocrKeys.includes('Tesseract Legacy')) {
+      ocrFontEval = globalThis.ocrAll['Tesseract Legacy'];
+    }
+
+    // Select best default fonts
+    const change = await selectDefaultFontsDocument(ocrFontEval.slice(0, pageNum), globalThis.imageAll.binary.slice(0, pageNum),
+      globalThis.imageAll.binaryRotated.slice(0, pageNum), fontAll);
+      // Re-render current page if default font changed
+    if (change) renderPageQueue(cp.n);
+  }
 }
 
-function calculateOverallPageMetrics() {
+/**
+ * This function calculates a global left margin, which is not currently used.
+ * Leaving the code for now in case this is useful in the future.
+ */
+export function calculateOverallPageMetrics() {
   // It is possible for image resolution to vary page-to-page, so the left margin must be calculated
   // as a percent to remain visually identical between pages.
   const leftAllPer = new Array(globalThis.pageMetricsArr.length);

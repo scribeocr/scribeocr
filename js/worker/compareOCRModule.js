@@ -61,7 +61,7 @@ export const initCanvasNode = async () => {
   // The Node.js canvas package does not currently support worke threads
   // https://github.com/Automattic/node-canvas/issues/1394
   if (!isMainThread) throw new Error('node-canvas is not currently supported on worker threads.');
-  if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
+  if (!fontAll.raw) throw new Error('Fonts must be defined before running this function.');
 
   const { writeFile } = await import('fs');
   const { promisify } = await import('util');
@@ -91,10 +91,21 @@ export const initCanvasNode = async () => {
     }
   };
 
-  for (const [key1, value1] of Object.entries(fontAll.active)) {
+  // All fonts must be registered before the canvas is created, so all raw and optimized fonts are loaded.
+  // Even when using optimized fonts, at least one raw font is needed to compare against optimized version.
+  for (const [key1, value1] of Object.entries(fontAll.raw)) {
     if (['Default', 'SansDefault', 'SerifDefault'].includes(key1)) continue;
     for (const [key2, value2] of Object.entries(value1)) {
       await registerFontObj(value2);
+    }
+  }
+
+  if (fontAll.opt) {
+    for (const [key1, value1] of Object.entries(fontAll.opt)) {
+      if (['Default', 'SansDefault', 'SerifDefault'].includes(key1)) continue;
+      for (const [key2, value2] of Object.entries(value1)) {
+        await registerFontObj(value2);
+      }
     }
   }
 
@@ -586,6 +597,11 @@ function penalizeWord(wordStr) {
   // If this penalty becomes an issue, a whitelist of dictionary words containing "ii" can be added
   if (/ii/.test(wordStr)) penalty += 0.05;
 
+  // Penalize single-letter word "m"
+  // When Tesseract Legacy incorrectly combines letters, resulting wide "character" is usually identified as "m".
+  // Therefore, "m" as a single word is likely a short word like "to" that was not segmented correctly.
+  if (/^m$/.test(wordStr)) penalty += 0.05;
+
   // Penalize digit between two letters
   // This usually indicates a letter is being misidentified as "0" or "1"
   if (/[a-z]\d[a-z]/i.test(wordStr)) penalty += 0.05;
@@ -610,6 +626,8 @@ function penalizeWord(wordStr) {
  * @param {("stats"|"comb")} [params.options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
  *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created.
  * @param {string} [params.options.debugLabel]
+ * @param {boolean} [params.options.evalConflicts] - Whether to evaluate word quality on conflicts. If `false` the text from `pageB` is always assumed correct.
+ *    This option is useful for combining the style from Tesseract Legacy with the text from Tesseract LSTM.
  * @param {boolean} [params.options.supplementComp] - Whether to run additional recognition jobs for words in `pageA` not in `pageB`
  * @param {Tesseract.Scheduler} [params.options.tessScheduler] - Tesseract scheduler to use for recognizing text. `tessScheduler` or `tessWorker` must be provided if `supplementComp` is `true`.
  * @param {Tesseract.Worker} [params.options.tessWorker] - Tesseract scheduler to use for recognizing text. `tessScheduler` or `tessWorker` must be provided if `supplementComp` is `true`.
@@ -625,6 +643,7 @@ export async function compareHOCR({
 
   const mode = options?.mode === undefined ? 'stats' : options?.mode;
   const debugLabel = options?.debugLabel === undefined ? '' : options?.debugLabel;
+  const evalConflicts = options?.evalConflicts === undefined ? true : options?.evalConflicts;
   const supplementComp = options?.supplementComp === undefined ? false : options?.supplementComp;
   const tessScheduler = options?.tessScheduler === undefined ? null : options?.tessScheduler;
   const tessWorker = options?.tessWorker === undefined ? null : options?.tessWorker;
@@ -658,7 +677,6 @@ export async function compareHOCR({
   // This was originally necessary before this function was run in a separate worker--not sure if necessary anymore since data is already cloned when sent to worker.
   const pageAInt = structuredClone(pageA);
 
-  // Reset conf in cloned page only
   if (mode === 'comb') {
     ocr.getPageWords(pageAInt).forEach((x) => {
       x.conf = 0;
@@ -850,7 +868,9 @@ export async function compareHOCR({
                 let hocrAError = 0;
                 let hocrBError = 0;
 
-                if (oneToOne) {
+                if (!evalConflicts) {
+                  hocrAError = 1;
+                } else if (oneToOne) {
                   // TODO: Figure out how to compare between small caps/non small-caps words (this is the only relevant style as it is the only style LSTM detects)
 
                   // Clone hocrAWord and set text content equal to hocrBWord
@@ -926,6 +946,10 @@ export async function compareHOCR({
                       debugLog += `Replacing word ${wordA.text} with word ${wordB.text}\n`;
                       wordA.text = wordB.text;
 
+                      // Erase character-level data rather than replacing it, as the LSTM data is not expected to be accurate.
+                      // There should eventually be an option to disable this when Tesseract Combined is the "B" data and user-provided data is the "A".
+                      wordA.chars = null;
+
                       // Switch to small caps/non-small caps based on style of replacement word.
                       // This is not relevant for italics as the LSTM engine does not detect italics.
                       if (wordB.style === 'small-caps' && wordA.style !== 'small-caps') {
@@ -936,21 +960,25 @@ export async function compareHOCR({
                     } else {
                       const wordsBArrRep = wordsBArr.map((x) => ocr.cloneWord(x));
 
-                      // const styleStrWordA = hocrAWord.getAttribute('style');
-
-                      for (let i = 0; i < wordsBArrRep.length; i++) {
+                      wordsBArrRep.forEach((x) => {
                         // Use style from word A (assumed to be Tesseract Legacy)
-                        wordsBArrRep[i].style = wordA.style;
+                        x.style = wordA.style;
 
                         // Set confidence to 0
-                        wordsBArrRep[i].conf = 0;
+                        x.conf = 0;
 
-                        wordsBArrRep[i].compTruth = true;
-                        wordsBArrRep[i].matchTruth = false;
+                        // Erase character-level data rather than replacing it, as the LSTM data is not expected to be accurate.
+                        // There should eventually be an option to disable this when Tesseract Combined is the "B" data and user-provided data is the "A".
+                        x.chars = null;
+
+                        x.compTruth = true;
+                        x.matchTruth = false;
+
+                        x.line = lineA;
 
                         // Change ID to prevent duplicates
-                        wordsBArrRep[i].id = `${wordsBArrRep[i].id}b`;
-                      }
+                        x.id += 'b';
+                      });
 
                       // Replace "A" words with "B" words
                       lineA.words.splice(k, wordsAArr.length, ...wordsBArrRep);
@@ -973,7 +1001,7 @@ export async function compareHOCR({
   // If `supplementComp` is enabled, we run OCR for any words in pageA without an existing comparison in pageB.
   // This ensures that every word has been checked.
   // Unlike the comparisons above, this is strictly for confidence purposes--if conflicts are identified the text is not edited.
-  if (supplementComp && (tessScheduler || tessWorker)) {
+  if (supplementComp && (tessScheduler || tessWorker) && evalConflicts) {
     for (let i = 0; i < pageAInt.lines.length; i++) {
       const line = pageAInt.lines[i];
       for (let j = 0; j < line.words.length; j++) {
@@ -1198,6 +1226,11 @@ export async function evalPageFont({
   const transformLineFont = (ocrLineJ) => {
     if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
 
+    if (!ocrLineJ.words[0]) {
+      console.log('Line has 0 words, this should not happen.');
+      return ocr.cloneLine(ocrLineJ);
+    }
+
     // If the font is not set for a specific word, whether it is assumed sans/serif will be determined by the default font.
     const lineFontType = ocrLineJ.words[0].font ? fontAll.active[ocrLineJ.words[0].font].normal.type : fontAll.active.Default.normal.type;
 
@@ -1205,9 +1238,9 @@ export async function evalPageFont({
 
     const ocrLineJClone = ocr.cloneLine(ocrLineJ);
 
-    for (let i = 0; i < ocrLineJClone.words.length; i++) {
-      ocrLineJClone.words[i].font = font;
-    }
+    ocrLineJClone.words.forEach((x) => {
+      x.font = font;
+    });
 
     return ocrLineJClone;
   };
@@ -1240,14 +1273,12 @@ export async function nudgePageBase({
 
   const debugImg = [];
 
-  for (let j = 0; j < page.lines.length; j++) {
-    const ocrLineJ = page.lines[j];
-
-    async function tryNudge(x) {
+  for (const ocrLineJ of page.lines) {
+    const tryNudge = async (x) => {
       const ocrLineJClone = ocr.cloneLine(ocrLineJ);
       await func(ocrLineJClone, x);
 
-      if (!ocrLineJClone) return;
+      if (!ocrLineJClone) return false;
 
       const evalRes = await evalWords({
         wordsA: ocrLineJ.words, wordsB: ocrLineJClone.words, binaryImage: binaryImageBit, imageRotated, pageMetricsObj, options: { view, useAFontSize: false, useABaseline: false },
@@ -1259,7 +1290,7 @@ export async function nudgePageBase({
         return true;
       }
       return false;
-    }
+    };
 
     const res1 = await tryNudge(1);
     if (res1) {
@@ -1295,7 +1326,7 @@ export async function nudgePageFontSize({
 }) {
   const func = async (lineJ, x) => {
     const fontSizeBase = await calcLineFontSize(lineJ, fontAll.active);
-    if (!fontSizeBase) return null;
+    if (!fontSizeBase) return;
     lineJ._size = fontSizeBase + x;
   };
 
@@ -1317,7 +1348,7 @@ export async function nudgePageBaseline({
   page, binaryImage, imageRotated, pageMetricsObj, view = false,
 }) {
   const func = async (lineJ, x) => {
-    lineJ.baseline[1] = lineJ.baseline[1] + x;
+    lineJ.baseline[1] += x;
   };
 
   return await nudgePageBase({

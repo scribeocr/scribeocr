@@ -7,9 +7,6 @@ import { FontMetricsFamily, FontMetricsRawFamily, FontMetricsFont } from './obje
 
 // import { glyphAlts } from "../fonts/glyphs.js";
 
-/** @type {Array<Object.<string, FontMetricsRawFamily>>} */
-globalThis.fontMetricObjsMessage = [];
-
 /** @type {Array<Object.<string, string>>} */
 globalThis.convertPageWarn = [];
 
@@ -109,45 +106,58 @@ export function setDefaultFontAuto(fontMetricsObj) {
 }
 
 /**
- * Combine page-level character statistics to calculate overall font metrics.
- * Run after all files (both image and OCR) have been loaded.
+ * Display warning/error message to user if missing character-level data.
  *
- * @param {Array<Object.<string, FontMetricsRawFamily>>} fontMetricObjsMessage
  * @param {Array<Object.<string, string>>} warnArr - Array of objects containing warning/error messages from convertPage
- * @returns {{charError: boolean, charWarn: boolean, fontMetrics: ?Object.<string, FontMetricsFamily>}} -
+ * @param {function(string, boolean=): void} errorFunc - Function used to throw warning/error message.
  */
-export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
-  if (fontMetricObjsMessage.length === 0) return { charWarn: false, charError: false, fontMetrics: null };
-
-  /** @type {Array<Object.<string, FontMetricsRawFamily>>} */
-  const fontMetricObjsMessageFilter = [];
-
+export function checkCharWarn(warnArr, errorFunc) {
   // TODO: Figure out what happens if there is one blank page with no identified characters (as that would presumably trigger an error and/or warning on the page level).
   // Make sure the program still works in that case for both Tesseract and Abbyy.
-  let charErrorCt = 0;
-  let charWarnCt = 0;
-  let charGoodCt = 0;
-  for (let i = 0; i < warnArr.length; i++) {
-    const warn = warnArr[i]?.char;
-    if (warn === 'char_error') {
-      charErrorCt += 1;
-    } else if (warn === 'char_warning') {
-      charWarnCt += 1;
-    } else {
-      charGoodCt += 1;
-      fontMetricObjsMessageFilter.push(fontMetricObjsMessage[i]);
-    }
-  }
+
+  const charErrorCt = warnArr.filter((x) => x?.char === 'char_error').length;
+  const charWarnCt = warnArr.filter((x) => x?.char === 'char_warning').length;
+  const charGoodCt = warnArr.length - charErrorCt - charWarnCt;
+
+  const browserMode = typeof process === 'undefined';
 
   // The UI warning/error messages cannot be thrown within this function,
   // as that would make this file break when imported into contexts that do not have the main UI.
   if (charGoodCt === 0 && charErrorCt > 0) {
-    return { charWarn: false, charError: true, fontMetrics: null };
+    if (browserMode) {
+      const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
+      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
+      errorFunc(errorHTML);
+    } else {
+      const errorText = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
+      See: https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why`;
+      errorFunc(errorText);
+    }
   } if (charGoodCt === 0 && charWarnCt > 0) {
-    return { charWarn: true, charError: false, fontMetrics: null };
+    if (browserMode) {
+      const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. 
+      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
+      errorFunc(warningHTML);
+    } else {
+      const errorText = `No character-level OCR data detected. Font optimization features will be disabled. 
+      See: https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why`;
+      errorFunc(errorText);
+    }
   }
+}
 
-  const fontMetricsRawObj = fontMetricObjsMessageFilter.reduce((x, y) => unionFontMetricsRawObj(x, y));
+/**
+ * Combine page-level character statistics to calculate overall font metrics.
+ * Run after all files (both image and OCR) have been loaded.
+ *
+ * @param {Array<OcrPage>} pageArr
+ * @param {Array<Object.<string, string>>} warnArr - Array of objects containing warning/error messages from convertPage
+ * @returns {{charError: boolean, charWarn: boolean, fontMetrics: ?Object.<string, FontMetricsFamily>}} -
+ */
+export function calcFontMetricsAll(pageArr) {
+  const pageMetricsArr = pageArr.map((x) => calcFontMetricsPage(x));
+
+  const fontMetricsRawObj = pageMetricsArr.reduce((x, y) => unionFontMetricsRawObj(x, y));
 
   /** @type {Object.<string, FontMetricsFamily>} */
   let fontMetricsOut = {};
@@ -156,7 +166,7 @@ export function calculateOverallFontMetrics(fontMetricObjsMessage, warnArr) {
     fontMetricsOut[family] = new FontMetricsFamily();
     for (const [style, obj2] of Object.entries(obj)) {
       fontMetricsOut[family][style] = calculateFontMetrics(obj2);
-      fontMetricsOut[family].obs = fontMetricsOut[family].obs + fontMetricsOut[family][style].obs;
+      fontMetricsOut[family].obs += fontMetricsOut[family][style].obs;
     }
   }
 
@@ -383,4 +393,98 @@ export function identifyFontVariants(fontScores, fontMetrics) {
   }
 
   return fontMetrics;
+}
+
+/**
+ *
+ * @param {Object} params
+ * @param {OcrPage} params.pageObj
+ */
+function calcFontMetricsPage(pageObj) {
+  /** @type {Object.<string, FontMetricsRawFamily>} */
+  const fontMetricsRawPage = {};
+
+  for (const lineObj of pageObj.lines) {
+    for (const wordObj of lineObj.words) {
+      const wordFontFamily = wordObj.font || 'Default';
+
+      // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
+      if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
+
+      // Do not include superscripts, dropcaps, and low-confidence words in statistics for font optimization.
+      if (wordObj.conf < 80) continue;
+      /** @type {Object.<string, FontMetricsRawFamily>} */
+      const fontMetricsRawLine = {};
+
+      if (wordObj.chars) {
+        for (let k = 0; k < wordObj.chars.length; k++) {
+          const charObj = wordObj.chars[k];
+
+          const charHeight = charObj.bbox.bottom - charObj.bbox.top;
+          const charWidth = charObj.bbox.right - charObj.bbox.left;
+
+          // Numbers are normalized as a proportion of ascHeight, everything else is normalized as a percentage of x-height.
+          // This is because x-sized characters are more common in text, however numbers are often in "lines" with only numbers,
+          // so do not have any x-sized characters to compare to.
+          const charNorm = /\d/.test(charObj.text) ? lineObj.ascHeight : lineObj.xHeight;
+
+          if (!charNorm) continue;
+
+          // Multiple characters within a single <ocrx_cinfo> tag have been observed from Tesseract (even when set to char-level output).
+          // May cause future issues as this code assumes one character per <ocrx_cinfo> tag.
+          const charUnicode = String(charObj.text.charCodeAt(0));
+
+          if (!fontMetricsRawLine[wordFontFamily]) {
+            fontMetricsRawLine[wordFontFamily] = new FontMetricsRawFamily();
+          }
+
+          if (!fontMetricsRawLine[wordFontFamily][wordObj.style].width[charUnicode]) {
+            fontMetricsRawLine[wordFontFamily][wordObj.style].width[charUnicode] = [];
+            fontMetricsRawLine[wordFontFamily][wordObj.style].height[charUnicode] = [];
+          }
+
+          fontMetricsRawLine[wordFontFamily][wordObj.style].width[charUnicode].push(charWidth / charNorm);
+          fontMetricsRawLine[wordFontFamily][wordObj.style].height[charUnicode].push(charHeight / charNorm);
+          fontMetricsRawLine[wordFontFamily][wordObj.style].obs += 1;
+
+          if (k + 1 < wordObj.chars.length) {
+            const charObjNext = wordObj.chars[k + 1];
+            const trailingSpace = charObjNext.bbox.left - charObj.bbox.right;
+            const charWidthNext = charObjNext.bbox.right - charObjNext.bbox.left;
+
+            // Only record space between characters when text is moving forward
+            // This *should* always be true, however there are some fringe cases where this assumption does not hold,
+            // such as Tesseract identifying the same character twice.
+            if (trailingSpace + charWidthNext > 0) {
+              const bigramUnicode = `${charUnicode},${wordObj.chars[k + 1].text.charCodeAt(0)}`;
+
+              if (!fontMetricsRawLine[wordFontFamily][wordObj.style].kerning[bigramUnicode]) {
+                fontMetricsRawLine[wordFontFamily][wordObj.style].kerning[bigramUnicode] = [];
+                fontMetricsRawLine[wordFontFamily][wordObj.style].kerning2[bigramUnicode] = [];
+              }
+              fontMetricsRawLine[wordFontFamily][wordObj.style].kerning[bigramUnicode].push(trailingSpace / charNorm);
+              fontMetricsRawLine[wordFontFamily][wordObj.style].kerning2[bigramUnicode].push((trailingSpace + charWidthNext) / charNorm);
+            }
+          }
+        }
+      }
+
+      for (const [family, obj] of Object.entries(fontMetricsRawLine)) {
+        for (const [style, obj2] of Object.entries(obj)) {
+          if (Object.keys(obj2.width).length === 0) continue;
+          if (!fontMetricsRawPage[family]) {
+            fontMetricsRawPage[family] = new FontMetricsRawFamily();
+          }
+        }
+      }
+
+      for (const [family, obj] of Object.entries(fontMetricsRawPage)) {
+        for (const [style, obj2] of Object.entries(obj)) {
+          unionFontMetricsFont(fontMetricsRawPage?.[family]?.[style], fontMetricsRawLine?.[family]?.[style]);
+        }
+      }
+    }
+  }
+
+  return fontMetricsRawPage;
 }

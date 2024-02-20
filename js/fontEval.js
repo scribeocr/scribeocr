@@ -1,3 +1,5 @@
+import { enableDisableFontOpt } from './fontContainer.js';
+
 /**
  *
  * @param {FontContainerFamily} font
@@ -98,6 +100,7 @@ export async function setFontAllWorker(scheduler, fontAll) {
 * @param {Array<OcrPage>} pageArr
 * @param {Array<Promise<HTMLImageElement>>|Array<Promise<Image>>} binaryImageArr
 * @param {Array<boolean>} binaryRotatedArr
+* @param {*} fontAll
 */
 export async function selectDefaultFontsDocument(pageArr, binaryImageArr, binaryRotatedArr, fontAll) {
   const debug = false;
@@ -163,5 +166,78 @@ export async function selectDefaultFontsDocument(pageArr, binaryImageArr, binary
 
   await setFontAllWorker(globalThis.generalScheduler, fontAll);
 
+  return change;
+}
+
+/**
+* @param {Array<OcrPage>} pageArr
+* @param {Array<Promise<HTMLImageElement>>|Array<Promise<Image>>} binaryImageArr
+* @param {Array<boolean>} binaryRotatedArr
+* @param {*} fontAll
+*/
+export async function validateOptimizedFonts(pageArr, binaryImageArr, binaryRotatedArr, fontAll) {
+  const debug = false;
+  const binaryImageArrRes = await Promise.all(binaryImageArr);
+
+  // The metrics for the optimized fonts must be re-calculated since the active OCR data may have changed since `selectDefaultFontsDocument` was run.
+  const sansMetricOpt = await evalPageFonts(fontAll.active.SansDefault, pageArr, binaryImageArrRes, binaryRotatedArr);
+  const serifMetricOpt = await evalPageFonts(fontAll.active.SerifDefault, pageArr, binaryImageArrRes, binaryRotatedArr);
+
+  if (debug) console.log(`Optimized SansDefault metric: ${String(sansMetricOpt)}`);
+  if (debug) console.log(`Optimized SerifDefault metric: ${String(serifMetricOpt)}`);
+
+  // Disable optimized fonts
+  await enableDisableFontOpt(false);
+
+  // Re-calculate with unoptimized fonts
+  const sansMetrics = {
+    Carlito: await evalPageFonts(fontAll.active.Carlito, pageArr, binaryImageArrRes, binaryRotatedArr),
+    NimbusSans: await evalPageFonts(fontAll.active.NimbusSans, pageArr, binaryImageArrRes, binaryRotatedArr),
+  };
+
+  let minKeySans = 'NimbusSans';
+  let minValueSans = Number.MAX_VALUE;
+
+  for (const [key, value] of Object.entries(sansMetrics)) {
+    if (debug) console.log(`${key} metric: ${String(value)}`);
+    if (value < minValueSans) {
+      minValueSans = value;
+      minKeySans = key;
+    }
+  }
+
+  let change = false;
+  if (sansMetricOpt > minValueSans) {
+    fontAll.raw.SansDefault = fontAll.raw[minKeySans];
+    // TODO: Think about the best way to remove optimized fonts, this only removes one.
+    if (fontAll.opt) fontAll.opt.SansDefault = fontAll.raw[minKeySans];
+    change = true;
+  }
+
+  const serifMetrics = {
+    Century: await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes, binaryRotatedArr),
+    Palatino: await evalPageFonts(fontAll.active.Palatino, pageArr, binaryImageArrRes, binaryRotatedArr),
+    Garamond: await evalPageFonts(fontAll.active.Garamond, pageArr, binaryImageArrRes, binaryRotatedArr),
+    NimbusRomNo9L: await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes, binaryRotatedArr),
+  };
+
+  let minKeySerif = 'NimbusRomNo9L';
+  let minValueSerif = Number.MAX_VALUE;
+
+  for (const [key, value] of Object.entries(serifMetrics)) {
+    if (debug) console.log(`${key} metric: ${String(value)}`);
+    if (value < minValueSerif) {
+      minValueSerif = value;
+      minKeySerif = key;
+    }
+  }
+
+  if (minKeySerif !== 'NimbusRomNo9L') {
+    fontAll.raw.SerifDefault = fontAll.raw[minKeySerif];
+    if (fontAll.opt) fontAll.opt.SerifDefault = fontAll.opt[minKeySerif];
+    change = true;
+  }
+
+  if (!change) await enableDisableFontOpt(true);
   return change;
 }

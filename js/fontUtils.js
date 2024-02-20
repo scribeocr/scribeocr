@@ -2,24 +2,58 @@
 // The only import/dependency this file should have (aside from importing misc utility functions) should be fontObjects.js.
 
 import { getPrevLine } from './objects/ocrObjects.js';
+import { quantile } from './miscUtils.js';
 
 /**
  * Calculates font size by comparing provided character height to font metrics.
  *
  * @param {FontContainerFont} font
- * @param {number} charHeightActual - Actual, measured height of character in pixels.
- * @param {string} [compChar='o'] - Character to compare `charHeightActual` against (default is 'o').
+ * @param {number} heightActual - Actual, measured height of text in pixels.
+ * @param {string} text - Text to compare `heightActual` against.
  * @returns {Promise<number>} A promise that resolves to the calculated font size.
  *
- * Note: The default value "o" corresponds to the x-height stat better than "x" does.
+ * Note: When calculating font size from x-height, `text` should be set to "o" rather than "x".
+ * Despite the name, what Tesseract (and this application) are actually calculating is closer to "o" than "x".
  */
-async function getFontSize(font, charHeightActual, compChar = 'o') {
+async function getFontSize(font, heightActual, text) {
   const fontOpentypeI = await font.opentype;
 
-  const charMetrics = fontOpentypeI.charToGlyph(compChar).getMetrics();
-  const charHeight = (charMetrics.yMax - charMetrics.yMin) * (1 / fontOpentypeI.unitsPerEm);
+  const textArr = text.split('');
+  const charMetricsFirst = fontOpentypeI.charToGlyph(textArr[0]).getMetrics();
+  let yMin = charMetricsFirst.yMin;
+  let yMax = charMetricsFirst.yMax;
 
-  return Math.round(charHeightActual / charHeight);
+  for (let i = 1; i < textArr.length; i++) {
+    const charMetrics = fontOpentypeI.charToGlyph(textArr[i]).getMetrics();
+    if (charMetrics.yMin < yMin) yMin = charMetrics.yMin;
+    if (charMetrics.yMax > yMax) yMax = charMetrics.yMax;
+  }
+
+  const textHeight = (yMax - yMin) * (1 / fontOpentypeI.unitsPerEm);
+
+  return Math.round(heightActual / textHeight);
+}
+
+/**
+ * Calculates font size for an array of words using the most granular bounding box available (character or word-level) rather than using line-level metrics.
+ * @param {Array<OcrWord>} wordArr
+ * @param {FontContainerFont} font
+ * @returns {Promise<number|null>} A promise that resolves to the calculated font size.
+ *
+ */
+async function calcWordFontSizePrecise(wordArr, font) {
+  if (wordArr[0].chars && wordArr[0].chars.length > 0) {
+    const charArr = wordArr.map((x) => x.chars).flat();
+    const charArrFiltered = charArr.filter((x) => x && /[A-Za-z0-9]/.test(x.text));
+    const fontSizeCharArr = await Promise.all(charArrFiltered.map((x) => getFontSize(font, x.bbox.bottom - x.bbox.top, x.text)));
+    const fontSizeCharMedian = quantile(fontSizeCharArr, 0.5);
+    return fontSizeCharMedian;
+  }
+
+  const wordArrFiltered = wordArr.filter((x) => x && /[A-Za-z0-9]/.test(x.text));
+  const fontSizeWordArr = await Promise.all(wordArrFiltered.map((x) => getFontSize(font, x.bbox.bottom - x.bbox.top, x.text)));
+  const fontSizeWordMedian = quantile(fontSizeWordArr, 0.5);
+  return fontSizeWordMedian;
 }
 
 /**
@@ -97,12 +131,9 @@ export const calcWordFontSize = async (word, fontContainer) => {
   if (word.size) {
     return word.size;
   // If the word is a superscript, then font size is uniquely calculated for this word
-  } if (word.sup) {
-    return await getFontSize(font, word.bbox.bottom - word.bbox.top, 'A');
+  } if (word.sup || word.dropcap) {
+    return await getFontSize(font, word.bbox.bottom - word.bbox.top, word.text);
   // If the word is a dropcap, then font size is uniquely calculated for this word
-  } if (word.dropcap) {
-    return await getFontSize(font, word.bbox.bottom - word.bbox.top, word.text.slice(0, 1));
-  // Otherwise, the line font size is used
   }
   return await calcLineFontSize(word.line, fontContainer);
 };
@@ -125,6 +156,15 @@ export const calcLineFontSize = async (line, fontContainer) => {
 
   // The font of the first word is used (if present), otherwise the default font is used.
   const font = fontContainer[line.words[0]?.font || globalSettings.defaultFont].normal;
+
+  // Aggregate line-level metrics are unlikely to be correct for short lines, so calculate the size precisely.
+  if (line.words.length <= 3) {
+    const fontSizeCalc = await calcWordFontSizePrecise(line.words, font);
+    if (fontSizeCalc) {
+      line._sizeCalc = fontSizeCalc;
+      return line._sizeCalc;
+    }
+  }
 
   // If both ascender height and x-height height are known, calculate the font size using both and average them.
   if (line.ascHeight && line.xHeight) {

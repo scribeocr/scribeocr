@@ -36,7 +36,6 @@ export async function convertPageCallbackNode({
 
   // If this is flagged as the "main" data, then save the stats.
   if (mainData) {
-    globalThis.fontMetricObjsMessage[n] = fontMetricsObj;
     globalThis.convertPageWarn[n] = warn;
 
     // The page metrics object may have been initialized earlier through some other method (e.g. using PDF info).

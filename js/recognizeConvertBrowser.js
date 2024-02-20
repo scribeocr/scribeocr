@@ -1,8 +1,11 @@
+/* eslint-disable import/no-cycle */
+
 import {
-  renderPDFImageCache, initOCRVersion, setCurrentHOCR, calculateOverallMetrics, cp,
+  renderPDFImageCache, initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage,
 } from '../main.js';
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
+import { checkCharWarn } from './fontStatistics.js';
 
 export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false) {
   // Render all PDF pages to PNG if needed
@@ -29,7 +32,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   await globalThis.generalScheduler.ready;
 
   // If Legacy and LSTM are both requested, LSTM completion is tracked by a second array of promises (`promisesB`).
-  // In this case, `convertPageCallbackBrowser` and `calculateOverallMetrics` can be run after the Legacy recognition is finished,
+  // In this case, `convertPageCallbackBrowser` and `calculateOverallPageMetrics` can be run after the Legacy recognition is finished,
   // however this function only returns after all recognition is completed.
   // This provides no performance benefit in absolute terms, however halves the amount of time the user has to wait
   // before seeing the initial recognition results.
@@ -72,7 +75,10 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 
   await Promise.all(promisesA);
 
-  if (mainData) await calculateOverallMetrics();
+  if (mainData) {
+    await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
+    await calculateOverallPageMetrics();
+  }
 
   if (legacy && lstm) await Promise.all(promisesB);
 
@@ -96,7 +102,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
  * @returns
  */
 export async function convertPageCallbackBrowser({
-  pageObj, fontMetricsObj, layoutBoxes, warn,
+  pageObj, layoutBoxes, warn,
 }, n, mainData, engineName) {
   if (engineName) globalThis.ocrAll[engineName][n] = pageObj;
 
@@ -104,7 +110,6 @@ export async function convertPageCallbackBrowser({
 
   // If this is flagged as the "main" data, then save the stats.
   if (mainData) {
-    globalThis.fontMetricObjsMessage[n] = fontMetricsObj;
     globalThis.convertPageWarn[n] = warn;
 
     // The page metrics object may have been initialized earlier through some other method (e.g. using PDF info).

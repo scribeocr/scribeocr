@@ -519,7 +519,9 @@ export async function convertPageHocr({
 
   const warn = { char: charMode ? '' : 'char_warning' };
 
-  return pass2({ pageObj, layoutBoxes: {}, warn });
+  pass2(pageObj);
+
+  return { pageObj, layoutBoxes: {}, warn };
 }
 
 const abbyyDropCapRegex = /<par dropCapCharsCount=['"](\d*)/i;
@@ -867,7 +869,9 @@ export async function convertPageAbbyy({ ocrStr, n }) {
   pageObj.left = leftOut;
   pageObj.leftAdj = leftAdjOut;
 
-  return pass2({ pageObj, layoutBoxes: boxes });
+  pass2(pageObj);
+
+  return { pageObj, layoutBoxes: boxes };
 }
 
 const stextSplitRegex = /(?:<char[^>]*?c=['"]\s+['"]\/>)|(?:<\/font>\s*(?=<font))/ig;
@@ -1001,7 +1005,7 @@ export async function convertPageStext({ ocrStr, n }) {
         const letterSusp = false;
 
         const contentStrLetter = letterArr[j][7];
-        text[i] = text[i] + contentStrLetter;
+        text[i] += contentStrLetter;
 
         lineAllHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
         if (!letterSusp && !(dropCap && i === 0)) {
@@ -1133,7 +1137,9 @@ export async function convertPageStext({ ocrStr, n }) {
   pageObj.left = leftOut;
   pageObj.leftAdj = leftAdjOut;
 
-  return pass2({ pageObj, layoutBoxes: {} });
+  pass2(pageObj);
+
+  return { pageObj, layoutBoxes: {} };
 }
 
 /**
@@ -1276,13 +1282,10 @@ function convertTableLayoutAbbyy(ocrStr) {
  * All OCR objects (Tesseract/Abbyy/Stext) should be run through this function before returning.
  *
  * @param {Object} params
- * @param {OcrPage} params.pageObj
- * @param {Object} params.layoutBoxes
- * @param {Object} [params.warn]
+ * @param {OcrPage} params.pageObj - Page object to apply corrections to. Edited in place.
  */
-function pass2({ pageObj, layoutBoxes, warn }) {
+function pass2(pageObj) {
   /** @type {Object.<string, FontMetricsRawFamily>} */
-  const fontMetricsRawPage = {};
 
   for (const lineObj of pageObj.lines) {
     /** @type {Array<number>} */
@@ -1370,7 +1373,9 @@ function pass2({ pageObj, layoutBoxes, warn }) {
     // OCR engines commonly use the wrong type of dash. This is especially problematic during font optimization,
     // as it can result (for example) in a hyphen being scaled to be closer to an en-dash if the latter is more common.
     for (const wordObj of lineObj.words) {
-      // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
+      // Sometimes a single `ocrChar` letter object will contain multiple actual letters. Skipping to avoid entire program crashing if this occurs.
+      // This generally occurs due to Tesseract returning a "character" that is actually multiple characters, so there is nothing we can do here.
+      // This can also occur when there is a bug in the parser--notably when a certain unicode/HTML character code is not being unescaped propertly.
       if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
 
       const letterArr = wordObj.text.split('');
@@ -1382,7 +1387,15 @@ function pass2({ pageObj, layoutBoxes, warn }) {
       // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines, so this symbol is included.
       for (let k = 0; k < letterArr.length; k++) {
         if (['-', '–', '—', '¬'].includes(letterArr[k]) && letterArr.length > 1) {
-          const charWidth = charObjArr[k].bbox.right - charObjArr[k].bbox.left;
+          let charWidth = charObjArr[k].bbox.right - charObjArr[k].bbox.left;
+
+          // If the gap between the previous character and next character is shorter than the supposed width of the dash character, use that width instead.
+          // This should never occur in valid data, however can happen for Tesseract LSTM, which frequently gets character-level bounding boxes wrong.
+          if (charObjArr[k - 1] && charObjArr[k + 1]) {
+            const charWidth2 = charObjArr[k + 1].bbox.left - charObjArr[k - 1].bbox.right;
+            charWidth = Math.min(charWidth, charWidth2);
+          }
+
           const charWidthNorm = charWidth / wordObj.line.xHeight;
           if (charWidthNorm > 1.5) {
             letterArr[k] = '—';
@@ -1398,89 +1411,5 @@ function pass2({ pageObj, layoutBoxes, warn }) {
       }
       wordObj.text = letterArr.join('');
     }
-
-    for (const wordObj of lineObj.words) {
-      const wordFontFamily = wordObj.font || 'Default';
-
-      // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
-      if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
-
-      // Do not include superscripts, dropcaps, and low-confidence words in statistics for font optimization.
-      if (wordObj.conf < 80) continue;
-      /** @type {Object.<string, FontMetricsRawFamily>} */
-      const fontMetricsRawLine = {};
-
-      if (wordObj.chars) {
-        for (let k = 0; k < wordObj.chars.length; k++) {
-          const charObj = wordObj.chars[k];
-
-          const charHeight = charObj.bbox.bottom - charObj.bbox.top;
-          const charWidth = charObj.bbox.right - charObj.bbox.left;
-
-          // Numbers are normalized as a proportion of ascHeight, everything else is normalized as a percentage of x-height.
-          // This is because x-sized characters are more common in text, however numbers are often in "lines" with only numbers,
-          // so do not have any x-sized characters to compare to.
-          const charNorm = /\d/.test(charObj.text) ? lineObj.ascHeight : lineObj.xHeight;
-
-          if (!charNorm) continue;
-
-          // Multiple characters within a single <ocrx_cinfo> tag have been observed from Tesseract (even when set to char-level output).
-          // May cause future issues as this code assumes one character per <ocrx_cinfo> tag.
-          const charUnicode = String(charObj.text.charCodeAt(0));
-
-          if (!fontMetricsRawLine[wordFontFamily]) {
-            fontMetricsRawLine[wordFontFamily] = new FontMetricsRawFamily();
-          }
-
-          if (!fontMetricsRawLine[wordFontFamily][wordObj.style].width[charUnicode]) {
-            fontMetricsRawLine[wordFontFamily][wordObj.style].width[charUnicode] = [];
-            fontMetricsRawLine[wordFontFamily][wordObj.style].height[charUnicode] = [];
-          }
-
-          fontMetricsRawLine[wordFontFamily][wordObj.style].width[charUnicode].push(charWidth / charNorm);
-          fontMetricsRawLine[wordFontFamily][wordObj.style].height[charUnicode].push(charHeight / charNorm);
-          fontMetricsRawLine[wordFontFamily][wordObj.style].obs += 1;
-
-          if (k + 1 < wordObj.chars.length) {
-            const charObjNext = wordObj.chars[k + 1];
-            const trailingSpace = charObjNext.bbox.left - charObj.bbox.right;
-            const charWidthNext = charObjNext.bbox.right - charObjNext.bbox.left;
-
-            // Only record space between characters when text is moving forward
-            // This *should* always be true, however there are some fringe cases where this assumption does not hold,
-            // such as Tesseract identifying the same character twice.
-            if (trailingSpace + charWidthNext > 0) {
-              const bigramUnicode = `${charUnicode},${wordObj.chars[k + 1].text.charCodeAt(0)}`;
-
-              if (!fontMetricsRawLine[wordFontFamily][wordObj.style].kerning[bigramUnicode]) {
-                fontMetricsRawLine[wordFontFamily][wordObj.style].kerning[bigramUnicode] = [];
-                fontMetricsRawLine[wordFontFamily][wordObj.style].kerning2[bigramUnicode] = [];
-              }
-              fontMetricsRawLine[wordFontFamily][wordObj.style].kerning[bigramUnicode].push(trailingSpace / charNorm);
-              fontMetricsRawLine[wordFontFamily][wordObj.style].kerning2[bigramUnicode].push((trailingSpace + charWidthNext) / charNorm);
-            }
-          }
-        }
-      }
-
-      for (const [family, obj] of Object.entries(fontMetricsRawLine)) {
-        for (const [style, obj2] of Object.entries(obj)) {
-          if (Object.keys(obj2.width).length === 0) continue;
-          if (!fontMetricsRawPage[family]) {
-            fontMetricsRawPage[family] = new FontMetricsRawFamily();
-          }
-        }
-      }
-
-      for (const [family, obj] of Object.entries(fontMetricsRawPage)) {
-        for (const [style, obj2] of Object.entries(obj)) {
-          unionFontMetricsFont(fontMetricsRawPage?.[family]?.[style], fontMetricsRawLine?.[family]?.[style]);
-        }
-      }
-    }
   }
-
-  return {
-    pageObj, fontMetricsObj: fontMetricsRawPage, layoutBoxes, warn,
-  };
 }
