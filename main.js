@@ -347,6 +347,25 @@ prevElem.addEventListener('click', () => displayPage(cp.n - 1));
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
 
+const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
+showDebugVisElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
+
+const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
+showDebugLegendElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
+
+showDebugLegendElem.addEventListener('input', () => {
+  const legendCanvasParentDivElem = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
+  if (!showDebugLegendElem.checked) {
+    showHideElem(legendCanvasParentDivElem, false);
+  } else {
+    showHideElem(legendCanvasParentDivElem, true);
+  }
+  setCanvasWidthHeightZoom(globalThis.state.imgDims, false);
+});
+
+const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+selectDebugVisElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
+
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 createGroundTruthElem.addEventListener('click', createGroundTruthClick);
 

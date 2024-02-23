@@ -1260,13 +1260,40 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                 </div>
                 <div class="col col-lg-3">
                   <div class="form-group">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugVis"
+                      style="min-width:100%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16">
+                        <path transform="rotate(90, 8, 8)" d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001m-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708z"/>
+                      </svg> Debugging Visualizations</button>
+                  </div>
+                  <div class="collapse" id="debugVis">
+                    <div class="card card-body" style="padding:0.5rem;position:relative;top:5px">
+                      <div class="form-check form-switch">
+                          <label><input class="form-check-input" type="checkbox" id="showDebugVis"> Enable ScrollView
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title="" data-bs-original-title="Creates visualizations for understanding Tesseract page segmentation. Must be enabled prior to recognition." data-bs-placement="right">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)" class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"></path>
+                            </svg>
+                          </a></label>  
+                          <label><input class="form-check-input" type="checkbox" id="showDebugLegend"> Show ScrollView Legend</label>  
+                      </div>
+                        <div>ScrollView Visualization:</div>
+                        <select id="selectDebugVis" class="form-select form-select-sm" size="1" disabled="">
+                          <option selected="" value="None">None</option>
+                        </select>
+                    </div>
+                  </div>
+
+
+
+                  <div class="form-group" style="margin-top:0.4rem">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugInfo"
                       style="min-width:100%;text-align:left">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                         class="bi bi-screwdriver" viewBox="0 0 16 16">
                         <path
                           d="M0 .995.995 0l3.064 2.19a.995.995 0 0 1 .417.809v.07c0 .264.105.517.291.704l5.677 5.676.909-.303a.995.995 0 0 1 1.018.24l3.338 3.339a.995.995 0 0 1 0 1.406L14.13 15.71a.995.995 0 0 1-1.406 0l-3.337-3.34a.995.995 0 0 1-.24-1.018l.302-.909-5.676-5.677a.995.995 0 0 0-.704-.291H3a.995.995 0 0 1-.81-.417L0 .995Zm11.293 9.595a.497.497 0 1 0-.703.703l2.984 2.984a.497.497 0 0 0 .703-.703l-2.984-2.984Z" />
-                      </svg> Debugging</button>
+                      </svg> Debugging (Misc)</button>
                   </div>
                   <div class="collapse" id="debugInfo">
                     <div class="card card-body" style="padding:0.5rem;position:relative;top:5px">
@@ -1288,6 +1315,9 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                         style="width:100%;text-align:left">Evaluate Line</button>
                     </div>
                   </div>
+
+
+                  
                 </div>
               </div>
             </div>
@@ -1339,6 +1369,9 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
       </fieldset>
     </div>
 
+  </div>
+  <div class="container" id="legendCanvasParentDiv" style="position:absolute;right:0;height:80vh;width:20vw;top:20vh;z-index:10;display:none">
+    <canvas id="legendCanvas"></canvas>
   </div>
 
 

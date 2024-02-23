@@ -1,0 +1,3 @@
+[submodule "scrollview-web"]
+	path = scrollview-web
+	url = git@github.com:scribeocr/scrollview-web.git

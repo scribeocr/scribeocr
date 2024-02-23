@@ -53,8 +53,10 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
  * @param {boolean} legacy -
  * @param {boolean} lstm -
  * @param {boolean} areaMode -
+ * @param {Object<string, string>} options -
+ * @param {boolean} [debugVis=false] - Generate instructions for debugging visualizations.
  */
-export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, options = {}) => {
+export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, options = {}, debugVis = false) => {
   const browserMode = typeof process === 'undefined';
 
   const {
@@ -92,6 +94,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
       imageBinary: saveBinaryImageArg,
       imageColor: saveNativeImage,
       debug: true,
+      debugVis,
     },
     n,
     knownAngle: globalThis.pageMetricsArr[n].angle,
@@ -107,7 +110,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
   // but no significant rotation was actually detected.
   if (saveBinaryImageArg) {
-    globalThis.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians) > angleThresh;
+    globalThis.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
     if (globalThis.imageAll.binaryRotated[n] || !globalThis.imageAll.binary[n]) {
       if (browserMode) {
         const image = document.createElement('img');
@@ -121,7 +124,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   }
 
   if (saveNativeImage) {
-    globalThis.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians) > angleThresh;
+    globalThis.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
     if (globalThis.imageAll.nativeRotated[n]) {
       if (browserMode) {
         const image = document.createElement('img');

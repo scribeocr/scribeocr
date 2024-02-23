@@ -10,6 +10,10 @@ import { cp, search } from '../../main.js';
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
+const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
+const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+
+const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
 
 /**
  *
@@ -34,6 +38,28 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
   }
 
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
+
+  if (showDebugVisElem.checked && selectDebugVisElem.value !== 'None') {
+    if (!globalThis.visInstructions[cp.n][selectDebugVisElem.value]) {
+      console.log('Requested debugging visualization does not exist');
+      return;
+    }
+    canvas.overlayVpt = true;
+    const imgInstance = new fabric.Image(globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvas);
+    canvas.setOverlayImage(imgInstance, canvas.renderAll.bind(canvas), {
+      originX: 'left',
+      originY: 'top',
+    });
+    const offscreenCanvasLegend = globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvasLegend;
+    if (offscreenCanvasLegend) {
+      ctxLegend.canvas.width = offscreenCanvasLegend.width;
+      ctxLegend.canvas.height = offscreenCanvasLegend.height;
+      ctxLegend.drawImage(offscreenCanvasLegend, 0, 0);
+    }
+    return;
+  }
+  // Clear overlay
+  canvas.setOverlayImage();
 
   for (const lineObj of page.lines) {
     const linebox = lineObj.bbox;

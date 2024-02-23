@@ -7,6 +7,13 @@ import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
 
+const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
+const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
+const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+
+/** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>} */
+globalThis.visInstructions = [];
+
 export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false) {
   // Render all PDF pages to PNG if needed
   if (inputDataModes.pdfMode) await renderPDFImageCache([...Array(globalThis.imageAll.native.length).keys()]);
@@ -51,9 +58,30 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
     }));
   }
 
+  const config = {};
+
   for (const x of inputPages) {
-    recognizePage(globalThis.gs, x, legacy, lstm, false).then(async (resArr) => {
+    recognizePage(globalThis.gs, x, legacy, lstm, false, config, showDebugVisElem.checked).then(async (resArr) => {
       const res0 = await resArr[0];
+
+      if (res0.recognize.debugVis) {
+        const ScrollViewBrowser = (await import('../../scrollview-web/src/ScrollViewBrowser.js')).ScrollViewBrowser;
+        const sv = new ScrollViewBrowser(true);
+        await sv.processVisStr(res0.recognize.debugVis);
+        globalThis.visInstructions[x] = sv.getAll(true);
+
+        // Enable the select element and add the options the first time this is run.
+        if (selectDebugVisElem.options.length === 1) {
+          showDebugLegendElem.disabled = false;
+          selectDebugVisElem.disabled = false;
+          Object.keys(globalThis.visInstructions[x]).forEach((x) => {
+            const opt = document.createElement('option');
+            opt.value = x;
+            opt.innerHTML = x;
+            selectDebugVisElem.appendChild(opt);
+          });
+        }
+      }
 
       if (legacy) {
         await convertPageCallbackBrowser(res0.convert.legacy, x, mainData, 'Tesseract Legacy');
