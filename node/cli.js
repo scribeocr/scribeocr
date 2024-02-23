@@ -7,8 +7,8 @@ import util from 'util';
 import Worker from 'web-worker';
 import Tesseract from 'tesseract.js';
 import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
-import { selectDefaultFontsDocument, validateOptimizedFonts } from '../js/fontEval.js';
-import { fontAll, enableDisableFontOpt } from '../js/fontContainer.js';
+import { runFontOptimization } from '../js/fontEval.js';
+import { fontAll } from '../js/fontContainer.js';
 
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
 import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
@@ -19,8 +19,6 @@ import { PageMetrics } from '../js/objects/pageMetricsObjects.js';
 
 import { initMuPDFWorker } from '../mupdf/mupdf-async.js';
 import { hocrToPDF } from '../js/exportPDF.js';
-import { calcFontMetricsAll, setDefaultFontAuto } from '../js/fontStatistics.js';
-import { loadFontContainerAllRaw, optimizeFontContainerAll } from '../js/objects/fontObjects.js';
 import { drawDebugImages } from '../js/debug.js';
 
 globalThis.Worker = Worker;
@@ -186,19 +184,6 @@ async function main(func, params) {
     }
   }
 
-  // TODO: What happens when user-provided data does not contain character-level metrics?
-  // Does optimization still occur when Tesseract is run?
-  if (globalThis.ocrAll.active[0]) {
-    const metricsRet = calcFontMetricsAll(globalThis.ocrAll.active);
-    globalThis.fontMetricsObj = metricsRet.fontMetrics;
-  }
-
-  if (globalThis.fontMetricsObj) {
-    setDefaultFontAuto(globalThis.fontMetricsObj);
-    fontAll.opt = await optimizeFontContainerAll(fontAll.raw, globalThis.fontMetricsObj);
-    await enableDisableFontOpt(true);
-  }
-
   // There is currently no Node.js implementation of default font selection, as this is written around drawing in the canvas API.
   // Evaluate default fonts using up to 5 pages.
   const fontEvalPageN = Math.min(pageCount, 5);
@@ -254,12 +239,8 @@ async function main(func, params) {
   // TODO: (1) Find out why font data is not being imported correctly from .hocr files.
   // (2) Use Tesseract Legacy font data when (1) recognition is being run anyway and (2) no font metrics data exists already.
   if (robustConfMode || func === 'eval' || func === 'recognize') {
-    // If font metrics are missing, then Tesseract Legacy is used as the "main" data.
-    // If font metrics are present (from a user upload), those are used instead.
-    const missingFontMetrics = !globalThis.fontMetricsObj;
-
     const time2a = Date.now();
-    await recognizeAllPagesNode(true, true, missingFontMetrics);
+    await recognizeAllPagesNode(true, true, true);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
@@ -267,21 +248,6 @@ async function main(func, params) {
     // Conceptually speaking, it probably makes more sense to use LSTM as that is higher quality on average and is not "overfitted" due to being
     // used for font optimization.
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Legacy'];
-
-    if (missingFontMetrics) {
-      const metricsRet = calcFontMetricsAll(globalThis.ocrAll.active);
-      globalThis.fontMetricsObj = metricsRet.fontMetrics;
-
-      if (globalThis.fontMetricsObj) {
-        console.log('Calculating metrics');
-        setDefaultFontAuto(globalThis.fontMetricsObj);
-        fontAll.opt = await optimizeFontContainerAll(fontAll.raw, globalThis.fontMetricsObj);
-        await enableDisableFontOpt(true);
-      }
-    }
-
-    // Select best default fonts
-    await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, globalThis.imageAll.binaryRotated, fontAll);
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < globalThis.imageAll.native.length; i++) {
@@ -305,7 +271,7 @@ async function main(func, params) {
 
     // Switching active data here for consistency with browser version.
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Combined Temp'];
-    await validateOptimizedFonts(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, globalThis.imageAll.binaryRotated, fontAll);
+    await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], globalThis.imageAll.binary, globalThis.imageAll.binaryRotated);
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < globalThis.imageAll.native.length; i++) {
@@ -339,8 +305,7 @@ async function main(func, params) {
       if (func === 'recognize') console.log(ocr.getPageText(res.page));
     }
   } else {
-    // Select best default fonts
-    const change = await selectDefaultFontsDocument(globalThis.ocrAll.active.slice(0, fontEvalPageN), globalThis.imageAll.binary, globalThis.imageAll.binaryRotated, fontAll);
+    await runFontOptimization(globalThis.ocrAll.active, globalThis.imageAll.binary, globalThis.imageAll.binaryRotated);
   }
 
   if (robustConfMode || func === 'eval') {
