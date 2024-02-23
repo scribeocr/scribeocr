@@ -329,10 +329,10 @@ function rotateBbox(bbox, cosAngle, sinAngle, width, height) {
   const xCenter = width / 2;
   const yCenter = height / 2;
 
-  bboxOut[0] = cosAngle * (bbox.left - xCenter) - sinAngle * (bbox.bottom - yCenter) + xCenter;
-  bboxOut[2] = cosAngle * (bbox.right - xCenter) - sinAngle * (bbox.bottom - yCenter) + xCenter;
-  bboxOut[1] = sinAngle * (bbox.left - xCenter) + cosAngle * (bbox.top - yCenter) + yCenter;
-  bboxOut[3] = sinAngle * (bbox.left - xCenter) + cosAngle * (bbox.bottom - yCenter) + yCenter;
+  bboxOut.left = cosAngle * (bbox.left - xCenter) - sinAngle * (bbox.bottom - yCenter) + xCenter;
+  bboxOut.right = cosAngle * (bbox.right - xCenter) - sinAngle * (bbox.bottom - yCenter) + xCenter;
+  bboxOut.top = sinAngle * (bbox.left - xCenter) + cosAngle * (bbox.top - yCenter) + yCenter;
+  bboxOut.bottom = sinAngle * (bbox.left - xCenter) + cosAngle * (bbox.bottom - yCenter) + yCenter;
 
   return bboxOut;
 }
@@ -370,7 +370,7 @@ function rotateLine(line, angle, dims = null) {
   calcLineBbox(line);
 
   // Adjust baseline
-  const baselineOffsetAdj = lineBoxRot[3] - line.bbox.bottom;
+  const baselineOffsetAdj = lineBoxRot.bottom - line.bbox.bottom;
 
   const baselineOffsetTotal = baseline[1] + baselineOffsetAdj;
 
