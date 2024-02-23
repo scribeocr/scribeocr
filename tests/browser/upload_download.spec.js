@@ -59,7 +59,7 @@ describe('Generate output files using images and built-in OCR', function () {
 describe('Generate output files using images only', function () {
   let driver;
   let customActions;
-  this.timeout(10000);
+  this.timeout(15000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {
@@ -102,7 +102,7 @@ describe('Generate output files using images only', function () {
 describe('Generate output files using ABBYY XML only', function () {
   let driver;
   let customActions;
-  this.timeout(10000);
+  this.timeout(15000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {

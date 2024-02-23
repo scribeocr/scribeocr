@@ -123,7 +123,7 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr) {
   }
 
   // If image data exists, select the correct font by comparing to the image.
-  if (imageArr && imageRotatedArr) {
+  if (imageArr && imageRotatedArr && imageArr[0]) {
     // Evaluate default fonts using up to 5 pages.
     const pageNum = Math.min(imageArr.length, 5);
 
