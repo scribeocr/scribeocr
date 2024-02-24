@@ -384,7 +384,7 @@ const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('
  */
 export const showHideElem = (elem, show = true) => {
   const styleCurrent = elem?.getAttribute('style');
-  let styleNew = styleCurrent?.replace(/;?display\s*:\s*\w+;?/, '') || '';
+  let styleNew = styleCurrent?.replace(/;?display\s*:\s*\w+/, '') || '';
   if (!show) styleNew += ';display:none;';
 
   elem?.setAttribute('style', styleNew);

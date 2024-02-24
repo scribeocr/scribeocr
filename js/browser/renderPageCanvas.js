@@ -55,6 +55,8 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
       ctxLegend.canvas.width = offscreenCanvasLegend.width;
       ctxLegend.canvas.height = offscreenCanvasLegend.height;
       ctxLegend.drawImage(offscreenCanvasLegend, 0, 0);
+    } else {
+      ctxLegend.clearRect(0, 0, ctxLegend.canvas.width, ctxLegend.canvas.height);
     }
     return;
   }
