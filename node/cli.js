@@ -54,6 +54,9 @@ globalThis.globalSettings = {
 
 globalThis.convertPageWarn = [];
 
+/** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>} */
+globalThis.visInstructions = [];
+
 /**
  * @param {string} func
  * @param {Object} params
@@ -198,7 +201,7 @@ async function main(func, params) {
   };
 
   // All pages are rendered for `robustConfMode`, otherwise images are only needed for font evaluation.
-  const runRecognition = robustConfMode || func === 'eval';
+  const runRecognition = robustConfMode || func === 'eval' || func === 'debug';
   const renderPageN = runRecognition ? pageCount : fontEvalPageN;
 
   for (let i = 0; i < renderPageN; i++) {
@@ -234,6 +237,24 @@ async function main(func, params) {
       globalThis.imageAll.binary[i] = img;
       globalThis.imageAll.binaryRotated[i] = true;
     }
+  }
+
+  if (func === 'debug') {
+    const writeCanvasNodeAll = (await import('../../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
+
+    await recognizeAllPagesNode(true, false, true, true);
+    globalThis.visInstructions.forEach((x) => {
+      const pageNumSuffix = globalThis.visInstructions.length > 1 ? `_${x}` : '';
+      const outputBase = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '')}${pageNumSuffix}`;
+      writeCanvasNodeAll(x, outputBase);
+    });
+    // Terminate all workers
+    await tessWorker.terminate();
+    await globalThis.generalScheduler.terminate();
+    if (w) await w.terminate();
+
+    process.exitCode = 0;
+    return;
   }
 
   // TODO: (1) Find out why font data is not being imported correctly from .hocr files.
@@ -402,4 +423,10 @@ export const overlayFunc = async (pdfFile, ocrFile, outputDir, options) => {
 
 export const recognizeFunc = async (pdfFile) => {
   await main('recognize', { pdfFile });
+};
+
+export const debugFunc = async (pdfFile, outputDir) => {
+  await main('debug', {
+    pdfFile, outputDir,
+  });
 };

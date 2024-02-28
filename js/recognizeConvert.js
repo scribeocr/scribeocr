@@ -103,6 +103,9 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
 
   const res0 = await resArr[0];
 
+  // const printDebug = true;
+  // if (printDebug) console.log(res0.recognize.debug);
+
   parseDebugInfo(res0.recognize.debug);
 
   if (!angleKnown) globalThis.pageMetricsArr[n].angle = res0.recognize.rotateRadians * (180 / Math.PI) * -1;

@@ -11,7 +11,7 @@ const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
 
-/** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>} */
+/** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>} */
 globalThis.visInstructions = [];
 
 export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false) {

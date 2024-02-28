@@ -1,18 +1,25 @@
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 
-export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false) {
+export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
   await globalThis.generalScheduler.ready;
 
   const inputPages = [...Array(globalThis.imageAll.native.length).keys()];
   const promiseArr = [];
   for (const x of inputPages) {
-    promiseArr.push(recognizePage(globalThis.gs, x, legacy, lstm, false).then(async (resArr) => {
+    promiseArr.push(recognizePage(globalThis.gs, x, legacy, lstm, false, {}, debug).then(async (resArr) => {
       const res0 = await resArr[0];
-      const res1 = await resArr[1];
+      const res1 = legacy && lstm ? await resArr[1] : undefined;
+
+      if (res0.recognize.debugVis) {
+        const ScrollViewNode = (await import('../../scrollview-web/src/ScrollViewNode.js')).ScrollViewNode;
+        const sv = new ScrollViewNode();
+        await sv.processVisStr(res0.recognize.debugVis);
+        globalThis.visInstructions[x] = sv.getAll(true);
+      }
 
       if (res0.convert.legacy) await convertPageCallbackNode(res0.convert.legacy, x, mainData, 'Tesseract Legacy');
-      if (res1.convert.lstm) await convertPageCallbackNode(res1.convert.lstm, x, false, 'Tesseract LSTM');
+      if (res1 && res1.convert.lstm) await convertPageCallbackNode(res1.convert.lstm, x, false, 'Tesseract LSTM');
     }));
   }
 

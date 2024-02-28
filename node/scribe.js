@@ -1,5 +1,5 @@
 import {
-  confFunc, checkFunc, overlayFunc, evalFunc, recognizeFunc,
+  confFunc, checkFunc, overlayFunc, evalFunc, recognizeFunc, debugFunc,
 } from './cli.js';
 
 const { Command } = require('commander');
@@ -41,5 +41,12 @@ program
   .argument('<ocr_file>', 'Input OCR file.  Accepts .hocr and Abbyy .xml (with character-level data enabled).')
   .description('Calculate confidence metric for OCR data using existing confidence info in the provided data.')
   .action(recognizeFunc);
+
+program
+  .command('debug')
+  .argument('<pdf_file>', 'Input PDF file.')
+  .argument('[output_dir]', 'Directory for output file(s).', '.')
+  .description('Generate and write Tesseract debugging images.')
+  .action(debugFunc);
 
 program.parse(process.argv);
