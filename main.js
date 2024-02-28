@@ -79,6 +79,10 @@ import {
   printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText,
 } from './js/browser/interfaceDebug.js';
 
+import { df } from './js/browser/debugGlobals.js';
+
+globalThis.df = df;
+
 globalThis.d = () => {
   debugger;
 };
@@ -524,6 +528,9 @@ const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementByI
 recognizeAreaElem.addEventListener('click', () => recognizeAreaClick(false));
 const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
 recognizeWordElem.addEventListener('click', () => recognizeAreaClick(true));
+
+const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
+debugPrintCoordsElem.addEventListener('click', () => recognizeAreaClick(true, true));
 
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
 const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
@@ -1474,14 +1481,15 @@ let rect1;
 /**
  * Recognize area selected by user in Tesseract.
  *
- * @param {boolean} wordMode - Assume selection is single word.
+ * @param {boolean} [wordMode=false] - Assume selection is single word.
+ * @param {boolean} [printCoordsOnly=false] - Print rect coords only, do not run recognition. Used for debugging.
  *
  * Note: This function assumes OCR data already exists, which this function is adding to.
  * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all".
  * Even if recognizing an page for the first time using "recognize area" did not produce an error,
  * it would still be problematic, as running "recognize all" afterwards would overwrite everything.
  */
-function recognizeAreaClick(wordMode = false) {
+function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
   globalThis.touchScrollMode = false;
 
   canvas.on('mouse:down', (o) => {
@@ -1521,7 +1529,6 @@ function recognizeAreaClick(wordMode = false) {
   // mouse:up:before must be used so this code runs ahead of fabric internal logic.
   // Without this changes to active selection caused by mouse movement may change rect object.
   canvas.on('mouse:up:before', async (o) => {
-    if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
     globalThis.touchScrollMode = true;
 
     if (rect1.width < 4 || rect1.height < 4) {
@@ -1542,10 +1549,16 @@ function recognizeAreaClick(wordMode = false) {
 
     canvas.remove(rect1);
 
+    if (printCoordsOnly) {
+      console.log(imageCoords);
+      return;
+    }
+
     // When a user is manually selecting words to recognize, they are assumed to be in the same block.
     const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
     const n = cp.n;
 
+    if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
     const res0 = await recognizePage(globalThis.gs, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
 
     const resLegacy = await res0[0];
@@ -2956,12 +2969,6 @@ async function handleDownload() {
   downloadElem.disabled = false;
   downloadElem.addEventListener('click', handleDownload);
 }
-
-// Expose functions in global object for debugging purposes.
-globalThis.df = {
-  calcLineFontSize,
-  fontAll,
-};
 
 // Set default settings
 setDefaults();
