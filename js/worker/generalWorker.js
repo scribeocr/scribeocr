@@ -145,8 +145,7 @@ export const recognizeAndConvert2 = async ({
     resLegacy = await convertPageHocr({
       ocrStr: res0.data.hocr, n, pageDims, rotateAngle: angle, keepItalic: true,
     });
-  // This condition includes both (options.lstm && !options.legacy) and the default behavior when both are false
-  } else {
+  } else if (options.lstm && !options.legacy) {
     resLSTM = await convertPageHocr({
       ocrStr: res0.data.hocr, n, pageDims, rotateAngle: angle, keepItalic: false,
     });

@@ -46,6 +46,7 @@ program
   .command('debug')
   .argument('<pdf_file>', 'Input PDF file.')
   .argument('[output_dir]', 'Directory for output file(s).', '.')
+  .option('--list <items>', 'Comma separated list of visualizations to include.', (value) => value.split(','))
   .description('Generate and write Tesseract debugging images.')
   .action(debugFunc);
 

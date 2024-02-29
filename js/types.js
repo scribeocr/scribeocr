@@ -45,6 +45,10 @@
  */
 
 /**
+ * @typedef {import("./generalWorkerMain.js").GeneralScheduler} GeneralScheduler
+ */
+
+/**
  * @typedef {object} dims
  * @property {number} height
  * @property {number} width

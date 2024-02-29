@@ -1,5 +1,4 @@
 import { parseDebugInfo } from './fontStatistics.js';
-import { GeneralScheduler } from './generalWorkerMain.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -87,10 +86,21 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   // If a smaller rectangle is being recognized, then the dimensions of the entire page must be manually specified for the rotation calculations to be correct.
   const pageDims = options && options.rectangle ? globalThis.pageMetricsArr[n].dims : null;
 
+  // If `legacy` and `lstm` are both `false`, recognition is not run, but layout analysis is.
+  // This combination of options would be set for debug mode, where the point of running Tesseract
+  // is to get debugging images for layout analysis rather than get text.
+  const runRecognition = legacy || lstm;
+
   const resArr = await scheduler.recognizeAndConvert2({
     image: inputSrc,
     options: config,
     output: {
+      // text, blocks, hocr, and tsv must all be `false` to disable recognition
+      text: runRecognition,
+      blocks: runRecognition,
+      hocr: runRecognition,
+      tsv: runRecognition,
+      layoutBlocks: !runRecognition,
       imageBinary: saveBinaryImageArg,
       imageColor: saveNativeImage,
       debug: true,

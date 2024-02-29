@@ -63,6 +63,7 @@ globalThis.visInstructions = [];
  * @param {string} [params.pdfFile]
  * @param {string} [params.ocrFile]
  * @param {string} [params.outputDir]
+ * @param {Array<string>} [params.list]
  * @param {boolean} [params.robustConfMode]
  * @param {boolean} [params.printConf]
  *
@@ -242,11 +243,20 @@ async function main(func, params) {
   if (func === 'debug') {
     const writeCanvasNodeAll = (await import('../../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
 
-    await recognizeAllPagesNode(true, false, true, true);
+    console.log('Running recognizeAllPagesNode');
+    await recognizeAllPagesNode(false, false, false, true);
+    console.log('Done running recognizeAllPagesNode');
     globalThis.visInstructions.forEach((x) => {
+      /** @type {typeof x} */
+      const visFilter = {};
+      for (const key of Object.keys(x)) {
+        if (!params.list?.length || params.list.includes(key)) {
+          visFilter[key] = x[key];
+        }
+      }
       const pageNumSuffix = globalThis.visInstructions.length > 1 ? `_${x}` : '';
       const outputBase = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '')}${pageNumSuffix}`;
-      writeCanvasNodeAll(x, outputBase);
+      writeCanvasNodeAll(visFilter, outputBase);
     });
     // Terminate all workers
     await tessWorker.terminate();
@@ -425,8 +435,8 @@ export const recognizeFunc = async (pdfFile) => {
   await main('recognize', { pdfFile });
 };
 
-export const debugFunc = async (pdfFile, outputDir) => {
+export const debugFunc = async (pdfFile, outputDir, options) => {
   await main('debug', {
-    pdfFile, outputDir,
+    pdfFile, outputDir, list: options?.list,
   });
 };
