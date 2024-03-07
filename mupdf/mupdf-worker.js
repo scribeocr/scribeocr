@@ -120,9 +120,22 @@ let ready = false;
     mupdf.outlineDown = Module.cwrap('outlineDown', 'number', ['number']);
     mupdf.outlineNext = Module.cwrap('outlineNext', 'number', ['number']);
     mupdf.checkNativeText = Module.cwrap('checkNativeText', 'number', ['number']);
+	mupdf.writeDocument = Module.cwrap('writeDocument', 'null', []);
     postMessage("READY");
     ready = true;
   };
+
+
+mupdf.cleanFile = function (data) {
+	FS.writeFile("test_1.pdf", data)
+	// Module.FS_createDataFile("/", "test_1.pdf", data, 1, 1, 1)
+	mupdf.writeDocument();
+	let content = FS.readFile("/test_2.pdf");
+
+	FS.unlink("/test_1.pdf");
+	FS.unlink("/test_2.pdf");
+	return content;
+}
 
 
 mupdf.overlayText = function (doc1, doc2, minpage, maxpage, pagewidth, pageheight) {

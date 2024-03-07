@@ -65,7 +65,7 @@ export async function initMuPDFWorker() {
 			return function(...args) {
 				return new Promise(function (resolve, reject) {
 					// Add the PDF as the first argument for most functions
-					if(!["openDocument"].includes(func)){
+					if(!["openDocument", "cleanFile"].includes(func)){
 						// Remove job number (appended by Tesseract scheduler function)
 						//args = args.slice(0,-1)
 
@@ -107,6 +107,7 @@ export async function initMuPDFWorker() {
 		mupdf.overlayTextImage = wrap("overlayTextImage");
 		mupdf.checkNativeText = wrap("checkNativeText");
 		mupdf.write = wrap("write");
+		mupdf.cleanFile = wrap("cleanFile");
 		mupdf.terminate = function () { worker.terminate(); }
 	})
 };
