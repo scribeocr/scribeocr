@@ -177,8 +177,9 @@ export async function changeWordFontFamily(fontName) {
 // Whenever a user edits a word in any way (including content and font/style),
 // the position and character spacing need to be re-calculated so they still overlay with the background image.
 export async function updateWordCanvas(wordI) {
+  const fontOpentype = await wordI.fontObj.opentype;
   // 1. Re-calculate left position given potentially new left bearing
-  const wordMetrics = await calcWordMetrics(wordI.text, wordI.fontObj, wordI.fontSize);
+  const wordMetrics = await calcWordMetrics(wordI.text, fontOpentype, wordI.fontSize);
 
   // When the user selects multiple words at the same time, the coordinates becomes relative to the "group"
   const groupOffsetLeft = wordI?.group?.ownMatrixCache?.value[4] || 0;

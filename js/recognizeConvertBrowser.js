@@ -14,7 +14,14 @@ const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementB
 /** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>} */
 globalThis.visInstructions = [];
 
-export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false) {
+/**
+ *
+ * @param {boolean} legacy
+ * @param {boolean} lstm
+ * @param {boolean} mainData
+ * @param {Array<string>} langArr
+ */
+export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false, langArr = ['eng']) {
   // Render all PDF pages to PNG if needed
   if (inputDataModes.pdfMode) await renderPDFImageCache([...Array(globalThis.imageAll.native.length).keys()]);
 
@@ -37,6 +44,10 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   setCurrentHOCR('Tesseract Latest');
 
   await globalThis.generalScheduler.ready;
+
+  const resArr = globalThis.generalScheduler.workers.map((x) => x.setLanguage({ langs: langArr }));
+
+  await Promise.allSettled(resArr);
 
   // If Legacy and LSTM are both requested, LSTM completion is tracked by a second array of promises (`promisesB`).
   // In this case, `convertPageCallbackBrowser` and `calculateOverallPageMetrics` can be run after the Legacy recognition is finished,

@@ -5,6 +5,8 @@ import { quantile, round6 } from './miscUtils.js';
 
 import { FontMetricsFamily, FontMetricsRawFamily, FontMetricsFont } from './objects/fontMetricsObjects.js';
 
+import { checkMultiFontMode } from './objects/fontObjects.js';
+
 // import { glyphAlts } from "../fonts/glyphs.js";
 
 /** @type {Array<Object.<string, string>>} */
@@ -55,26 +57,6 @@ export function determineSansSerif(fontName) {
   }
 
   return fontFamily;
-}
-
-/**
- * Checks whether `multiFontMode` should be enabled or disabled.
- * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
- *
- * Usually (including when the built-in OCR engine is used) we will have metrics for individual font families,
- * which are used to optimize the appropriate fonts ("multiFontMode" is `true` in this case).
- * However, it is possible for the user to upload input data with character-level positioning information
- * but no font identification information for most or all words.
- * If this is encountered the "default" metric is applied to the default font ("multiFontMode" is `false` in this case).
- */
-export function checkMultiFontMode(fontMetricsObj) {
-  let defaultFontObs = 0;
-  let namedFontObs = 0;
-  if (fontMetricsObj.Default?.obs) { defaultFontObs += fontMetricsObj.Default?.obs; }
-  if (fontMetricsObj.SerifDefault?.obs) { namedFontObs += fontMetricsObj.SerifDefault?.obs; }
-  if (fontMetricsObj.SansDefault?.obs) { namedFontObs += fontMetricsObj.SansDefault?.obs; }
-
-  return namedFontObs > defaultFontObs;
 }
 
 // Automatically sets the default font to whatever font is most common per globalThis.fontMetricsObj

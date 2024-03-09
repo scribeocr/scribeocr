@@ -142,7 +142,7 @@ const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = 
   const view = options?.view === undefined ? false : options?.view;
 
   // The font/style from the first word is used for the purposes of font metrics
-  const lineFontSize = await calcLineFontSize(words[0].line, fontAll.active);
+  const lineFontSize = await calcLineFontSize(words[0].line);
 
   if (!lineFontSize) {
     // This condition should not occur as checks are implemented in the code that calls this function.
@@ -256,7 +256,7 @@ const printWordOnCanvas = async (ctx, text, font, size, boxWidth, left = 0, bott
 
   const wordTextArr = text.split('');
 
-  const charSpacing = await calcCharSpacing(text, font, size, boxWidth);
+  const charSpacing = await calcCharSpacing(text, fontOpentypeI, size, boxWidth);
 
   let leftI = left;
   for (let i = 0; i < wordTextArr.length; i++) {
@@ -288,11 +288,11 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
 
-  lineFontSize = lineFontSize || (await calcLineFontSize(word.line, fontAll.active)) || 10;
+  lineFontSize = lineFontSize || (await calcLineFontSize(word.line)) || 10;
 
   const wordText = altText ? ocr.replaceLigatures(altText) : ocr.replaceLigatures(word.text);
 
-  const wordFontSize = (await calcWordFontSize(word, fontAll.active)) || lineFontSize;
+  const wordFontSize = (await calcWordFontSize(word)) || lineFontSize;
 
   if (!wordFontSize) {
     console.log('Font size not found');
@@ -403,6 +403,19 @@ async function getImageBitmap(img) {
 export async function evalWords({
   wordsA, wordsB = [], binaryImage, imageRotated, pageMetricsObj, options = {},
 }) {
+  // This code cannot currently handle non-Latin characters.
+  // Therefore, if any Chinese words are in either set of words,
+  // `wordsB` are determined correct by default.
+  let anyChinese = false;
+  wordsA.forEach((x) => {
+    if (x.lang === 'chi_sim') anyChinese = true;
+  });
+  wordsB.forEach((x) => {
+    if (x.lang === 'chi_sim') anyChinese = true;
+  });
+
+  if (anyChinese) return { metricA: 1, metricB: 0, debug: null };
+
   const binaryImageBit = await getImageBitmap(binaryImage);
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
@@ -417,14 +430,14 @@ export async function evalWords({
   const cosAngle = Math.cos(angle * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(angle * -1 * (Math.PI / 180)) || 0;
 
-  const lineFontSizeA = await calcLineFontSize(wordsA[0].line, fontAll.active);
+  const lineFontSizeA = await calcLineFontSize(wordsA[0].line);
 
   // If font size cannot be accurately calculated, do not bother comparing.
   if (!lineFontSizeA) return { metricA: 1, metricB: 1 };
 
   let lineFontSizeB = lineFontSizeA;
   if (!useAFontSize && wordsB?.[0]) {
-    const lineFontSizeBCalc = await calcLineFontSize(wordsB[0].line, fontAll.active);
+    const lineFontSizeBCalc = await calcLineFontSize(wordsB[0].line);
     lineFontSizeB = lineFontSizeBCalc || lineFontSizeA;
   }
 
@@ -1325,7 +1338,7 @@ export async function nudgePageFontSize({
   page, binaryImage, imageRotated, pageMetricsObj, view = false,
 }) {
   const func = async (lineJ, x) => {
-    const fontSizeBase = await calcLineFontSize(lineJ, fontAll.active);
+    const fontSizeBase = await calcLineFontSize(lineJ);
     if (!fontSizeBase) return;
     lineJ._size = fontSizeBase + x;
   };

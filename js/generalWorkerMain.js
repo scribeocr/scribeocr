@@ -59,6 +59,7 @@ export async function initGeneralWorker() {
     obj.nudgePageBaseline = wrap('nudgePageBaseline');
 
     obj.reinitialize = wrap('reinitialize');
+    obj.setLanguage = wrap('setLanguage');
     obj.recognize = wrap('recognize');
     obj.recognizeAndConvert = wrap('recognizeAndConvert');
     obj.recognizeAndConvert2 = wrap2('recognizeAndConvert2');
@@ -91,6 +92,11 @@ export class GeneralScheduler {
      * @returns {ReturnType<typeof import('./worker/generalWorker.js').recognize>}
      */
     this.recognize = async (args) => (await this.scheduler.addJob('recognize', args));
+    /**
+     * @param {Parameters<typeof import('./worker/generalWorker.js').setLanguage>[0]} args
+     * @returns {ReturnType<typeof import('./worker/generalWorker.js').setLanguage>}
+     */
+    this.setLanguage = async (args) => (await this.scheduler.addJob('setLanguage', args));
     /**
      * @param {Parameters<typeof import('./worker/generalWorker.js').recognizeAndConvert>[0]} args
      * @returns {ReturnType<typeof import('./worker/generalWorker.js').recognizeAndConvert>}

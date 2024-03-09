@@ -7,6 +7,7 @@ import { renderLayoutBoxes, updateDataPreview } from './interfaceLayout.js';
 import ocr, { OcrPage } from '../objects/ocrObjects.js';
 import { ITextWord } from '../objects/fabricObjects.js';
 import { cp, search } from '../../main.js';
+import { fontAll } from '../fontContainer.js';
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
@@ -23,9 +24,8 @@ const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvas
  * @param {*} imgDims
  * @param {*} angle
  * @param {*} leftAdjX
- * @param {*} fontAll
  */
-export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX, fontAll) {
+export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX) {
   const layoutMode = globalThis.layoutMode || false;
 
   // objectCaching slows down page render speeds, and is generally not needed.
@@ -93,14 +93,14 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
         defaultFontFamily = false;
       }
 
-      const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][fontStyle]);
+      const fontI = /** @type {FontContainerFont} */ (wordObj.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontAll.active[wordFontFamily][fontStyle]);
       const fontOpentypeI = await fontI.opentype;
 
-      const wordFontSize = await calcWordFontSize(wordObj, fontAll.active);
+      const wordFontSize = await calcWordFontSize(wordObj);
 
       let scaleX = 1;
       if (wordDropCap) {
-        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontI, wordFontSize)).visualWidth;
+        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontOpentypeI, wordFontSize)).visualWidth;
         scaleX = (boxWidth / wordWidthFont);
       }
 
@@ -145,7 +145,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
       const showTextBoxBorderArg = showBoundingBoxesElem.checked || displayMode === 'eval' && wordConf > confThreshHigh && !wordObj.matchTruth;
 
-      const charSpacing = await calcCharSpacing(wordText, fontI, wordFontSize, boxWidth);
+      const charSpacing = await calcCharSpacing(wordText, fontOpentypeI, wordFontSize, boxWidth);
 
       const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
 

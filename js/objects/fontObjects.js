@@ -3,7 +3,6 @@
 // To make sure what the user sees on the canvas matches the final pdf output,
 // all fonts should have an identical OpenType.js and FontFace version.
 
-import { checkMultiFontMode } from '../fontStatistics.js';
 // import opentype from "../lib/opentype.module.js";
 
 // import { createRequire } from "../node_modules";
@@ -33,6 +32,26 @@ await import('../../lib/opentype.js');
 export function relToAbsPath(fileName) {
   const url = new URL(fileName, import.meta.url);
   return url.protocol === 'file:' ? url.host + url.pathname : url.href;
+}
+
+/**
+ * Checks whether `multiFontMode` should be enabled or disabled.
+ * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
+ *
+ * Usually (including when the built-in OCR engine is used) we will have metrics for individual font families,
+ * which are used to optimize the appropriate fonts ("multiFontMode" is `true` in this case).
+ * However, it is possible for the user to upload input data with character-level positioning information
+ * but no font identification information for most or all words.
+ * If this is encountered the "default" metric is applied to the default font ("multiFontMode" is `false` in this case).
+ */
+export function checkMultiFontMode(fontMetricsObj) {
+  let defaultFontObs = 0;
+  let namedFontObs = 0;
+  if (fontMetricsObj.Default?.obs) { defaultFontObs += fontMetricsObj.Default?.obs; }
+  if (fontMetricsObj.SerifDefault?.obs) { namedFontObs += fontMetricsObj.SerifDefault?.obs; }
+  if (fontMetricsObj.SansDefault?.obs) { namedFontObs += fontMetricsObj.SansDefault?.obs; }
+
+  return namedFontObs > defaultFontObs;
 }
 
 /**

@@ -21,6 +21,8 @@ import { initMuPDFWorker } from '../mupdf/mupdf-async.js';
 import { hocrToPDF } from '../js/exportPDF.js';
 import { drawDebugImages } from '../js/debug.js';
 
+const writeFile = util.promisify(fs.writeFile);
+
 globalThis.Worker = Worker;
 
 const { loadImage } = await import('canvas');
@@ -97,6 +99,8 @@ async function main(func, params) {
 
   const backgroundArg = params.pdfFile;
   const outputDir = params.outputDir;
+
+  if (outputDir) fs.mkdirSync(outputDir, { recursive: true });
 
   const backgroundPDF = backgroundArg && /pdf$/i.test(backgroundArg);
   const backgroundImage = backgroundArg && !backgroundPDF;
@@ -390,12 +394,11 @@ async function main(func, params) {
   }
 
   if (func === 'overlay') {
-    const pdfStr = await hocrToPDF(globalThis.ocrAll.active, fontAll, 0, -1, 'proof', true, false);
+    const pdfStr = await hocrToPDF(globalThis.ocrAll.active, 0, -1, 'proof', true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, 'document.pdf');
     const content = backgroundPDF ? await w.overlayText([pdfOverlay, 0, -1, -1, -1]) : await w.overlayTextImage([pdfOverlay, [fileData], 0, -1, -1, -1]);
-    const writeFile = util.promisify(fs.writeFile);
 
     const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '_vis.pdf')}`;
 

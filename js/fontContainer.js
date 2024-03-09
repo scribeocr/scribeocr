@@ -1,16 +1,21 @@
-import { loadFontContainerAllRaw, optimizeFontContainerAll } from './objects/fontObjects.js';
+import { loadFontContainerAllRaw, FontContainerFont } from './objects/fontObjects.js';
 
 const fontPrivate = loadFontContainerAllRaw();
 
-/**
- * @this {{[key: string]: ?FontContainerAll}}
- */
 export const fontAll = {
   raw: fontPrivate,
   /** @type {?FontContainerAll} */
   opt: null,
   active: fontPrivate,
+  supp: {
+    /** @type {?FontContainerFont} */
+    chi_sim: null,
+  },
 };
+
+export function loadChiSimFont() {
+  fontAll.supp.chi_sim = new FontContainerFont('NotoSansSC', 'normal', 'sans', 'NotoSansSC-Regular.ttf', false, null);
+}
 
 /**
  *
@@ -41,7 +46,7 @@ let loadedOpt = false;
 /**
  *
  * @param {*} scheduler
- * @param {Object<string, ?FontContainerAll>} fontAll
+ * @param {typeof fontAll} fontAll
  */
 export async function setFontAllWorker(scheduler, fontAll) {
   if (!fontAll.active) return;

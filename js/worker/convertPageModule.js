@@ -72,8 +72,8 @@ export async function convertPageHocr({
   ocrStr, n, pageDims = null, rotateAngle = 0, keepItalic = false,
 }) {
   rotateAngle = rotateAngle || 0;
-  /** @type {Object.<string, FontMetricsRawFamily>} */
-  const fontMetricsRawPage = {};
+
+  let currentLang = 'eng';
 
   const angleRisePage = [];
   const lineLeft = [];
@@ -103,12 +103,9 @@ export async function convertPageHocr({
   // The JavaScript regex engine does not support matching start/end tags (some other engines do), so the end of words and lines are detected
   // through a hard-coded number of </span> end tags.  The only difference charMode should make on the expressions below is the number of
   // consecutive </span> tags required.
-  let lineRegex;
+  let lineRegex = /<span class=["']ocr_line[\s\S]+?(?:<\/span>\s*){2}/ig;
   if (charMode) {
-    // lineRegex = new RegExp(/<span class\=[\"\']ocr_line[\s\S]+?(?:\<\/span\>\s*){3}/, "ig");
     lineRegex = /<span class=["']ocr_line[\s\S]+?(?:<\/span>\s*)(?:<\/em>\s*)?(?:<\/span>\s*){2}/ig;
-  } else {
-    lineRegex = /<span class=["']ocr_line[\s\S]+?(?:<\/span>\s*){2}/ig;
   }
 
   const wordRegexCharLevel = /<span class=["']ocrx_word[\s\S]+?(?:<\/span>\s*)(?:<\/em>\s*)?(?:<\/span>\s*){1}/ig;
@@ -201,14 +198,14 @@ export async function convertPageHocr({
 
       const wordID = match.match(/id=['"]([^'"]*)['"]/i)?.[1];
 
+      const wordLang = match.match(/lang=['"]([^'"]*)['"]/i)?.[1] || currentLang;
+
       const fontName = match.match(/^[^>]+?x_font\s*([\w-]+)/)?.[1];
 
       const fontFamily = determineSansSerif(fontName);
 
       const it = match.matchAll(charRegex);
       let letterArr = [...it];
-      // let bboxes = Array(letterArr.length);
-      const cuts = Array(letterArr.length);
 
       // Unlike Abbyy, which generally identifies small caps as lowercase letters (and identifies small cap text explicitly as a formatting property),
       // Tesseract (at least the Legacy model) reports them as upper-case letters.
@@ -257,29 +254,32 @@ export async function convertPageHocr({
         lineboxAdj.bottom -= (lineboxAdj.right - lineboxAdj.left) * baseline[0];
       }
 
-      // Tesseract does not split superscript footnote references into separate words, so that happens here
+      // Tesseract does not split superscript footnote references into separate words, so that happens here.
+      // This should only happen for Latin languages.
       let letterArrSuper = [];
+      if (!['chi_sim', 'chi_tra'].includes(wordLang)) {
       // if (/^\W?[a-z]/i.test(wordStr) && /\d$/i.test(wordStr)) {
-      if (/\d$/i.test(wordStr)) {
-        const numsN = wordStr.match(/\d+$/)[0].length;
+        if (/\d$/i.test(wordStr)) {
+          const numsN = wordStr.match(/\d+$/)[0].length;
 
-        const expectedBaseline = (bboxes[0][0] + (bboxes[bboxes.length - 1][2] - bboxes[0][0]) / 2 - lineboxAdj.left) * baseline[0] + baseline[1] + lineboxAdj.bottom;
-        const lineAscHeight = expectedBaseline - lineboxAdj.top;
+          const expectedBaseline = (bboxes[0][0] + (bboxes[bboxes.length - 1][2] - bboxes[0][0]) / 2 - lineboxAdj.left) * baseline[0] + baseline[1] + lineboxAdj.bottom;
+          const lineAscHeight = expectedBaseline - lineboxAdj.top;
 
-        let baseN = 0;
-        for (let i = bboxes.length - 1; i >= 0; i--) {
-          if (bboxes[i][3] < expectedBaseline - lineAscHeight / 4) {
-            baseN++;
-          } else {
-            break;
+          let baseN = 0;
+          for (let i = bboxes.length - 1; i >= 0; i--) {
+            if (bboxes[i][3] < expectedBaseline - lineAscHeight / 4) {
+              baseN++;
+            } else {
+              break;
+            }
           }
-        }
 
-        const superN = Math.min(numsN, baseN);
+          const superN = Math.min(numsN, baseN);
 
-        if (superN > 0) {
-          letterArrSuper = letterArr.slice(letterArr.length - superN, letterArr.length);
-          letterArr = letterArr.slice(0, letterArr.length - superN);
+          if (superN > 0) {
+            letterArrSuper = letterArr.slice(letterArr.length - superN, letterArr.length);
+            letterArr = letterArr.slice(0, letterArr.length - superN);
+          }
         }
       }
 
@@ -300,15 +300,27 @@ export async function convertPageHocr({
           left: bboxes[j][0], top: bboxes[j][1], right: bboxes[j][2], bottom: bboxes[j][3],
         };
 
-        const charObj = new ocr.OcrChar(contentStrLetter, bbox);
-        charObjArr.push(charObj);
+        // For Chinese, every "character" in the .hocr should be its own word.
+        // Tesseract LSTM already does this, however Tesseract Legacy combines entire lines into the same "word",
+        // which makes good alignment impossible.
+        if (wordLang === 'chi_sim') {
+          const wordObj = new ocr.OcrWord(lineObj, contentStrLetter, bbox, `${wordID}_${j}`);
+          wordObj.conf = wordConf;
+          wordObj.lang = wordLang;
 
-        text += contentStrLetter;
+          lineObj.words.push(wordObj);
+        } else {
+          const charObj = new ocr.OcrChar(contentStrLetter, bbox);
+          charObjArr.push(charObj);
+
+          text += contentStrLetter;
+        }
       }
+
+      if (wordLang === 'chi_sim') return '';
+
       text = text ?? '';
       text = text.trim();
-
-      let wordXML = match.match(wordElementRegex)[0];
 
       if (letterArrSuper.length > 0) {
         // Calculate new bounding boxes
@@ -325,6 +337,7 @@ export async function convertPageHocr({
 
           const wordObjCore = new ocr.OcrWord(lineObj, text, wordBoxCore, wordID);
           wordObjCore.chars = charObjArr;
+          wordObjCore.lang = wordLang;
 
           if (debugMode) wordObjCore.raw = match;
 
@@ -356,6 +369,7 @@ export async function convertPageHocr({
         const textSuper = letterArrSuper.map((x) => x[2]).join('');
 
         const wordObjSup = new ocr.OcrWord(lineObj, textSuper, wordBoxSuper, `${wordID}a`);
+        wordObjSup.lang = wordLang;
 
         if (debugMode) wordObjSup.raw = match;
 
@@ -379,13 +393,13 @@ export async function convertPageHocr({
       };
 
       const wordObj = new ocr.OcrWord(lineObj, text, wordBoxCore, `${wordID}a`);
+      wordObj.lang = wordLang;
 
       wordObj.chars = charObjArr;
 
       if (debugMode) wordObj.raw = match;
 
       if (smallCaps || italic || fontFamily !== 'Default') {
-        wordXML = `${wordXML.slice(0, -1)} style='`;
         if (smallCaps) {
           wordObj.style = 'small-caps';
         } else if (italic) {
@@ -429,6 +443,8 @@ export async function convertPageHocr({
 
       const titleStrWord = match.match(/title=['"]([^'"]+)/)?.[1];
 
+      const wordLang = match.match(/lang=['"]([^'"]*)['"]/i)?.[1] || currentLang;
+
       if (!titleStrWord) {
         console.log(`Unable to process word, skipping: ${match}`);
         return '';
@@ -460,6 +476,8 @@ export async function convertPageHocr({
       const wordConf = parseInt(confMatch) || 0;
 
       const wordObj = new ocr.OcrWord(lineObj, wordText, wordBox, `${wordID}a`);
+      wordObj.lang = wordLang;
+
       wordObj.style = fontStyle;
       if (fontFamily !== 'Default') {
         wordObj.font = fontFamily;
@@ -482,6 +500,18 @@ export async function convertPageHocr({
 
     return '';
   }
+
+  /**
+   * @param {string} match
+   */
+  const convertPar = (match) => {
+    const parLang = match.match(/^.+?lang=['"]([^'"]*)['"]/i)?.[1];
+    if (parLang) currentLang = parLang;
+    match.replaceAll(lineRegex, convertLine);
+    return '';
+  };
+
+  ocrStr = ocrStr.replaceAll(/<p class=["']ocr_par[\s\S]+?(?:<\/p>\s*)/ig, convertPar);
 
   ocrStr = ocrStr.replaceAll(lineRegex, convertLine);
 

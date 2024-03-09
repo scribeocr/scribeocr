@@ -161,7 +161,8 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
       if (opt.action === 'scaleX') {
         const textboxWidth = opt.target.calcTextWidth();
 
-        const wordMetrics = await calcWordMetrics(opt.target.text, opt.target.fontObj, opt.target.fontSize);
+        const fontOpentype = await opt.target.fontObj.opentype;
+        const wordMetrics = await calcWordMetrics(opt.target.text, fontOpentype, opt.target.fontSize);
         const visualWidthNew = (textboxWidth - wordMetrics.leftSideBearing - wordMetrics.rightSideBearing) * opt.target.scaleX;
 
         const visualRightNew = opt.target.left + visualWidthNew;

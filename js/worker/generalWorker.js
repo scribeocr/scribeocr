@@ -52,7 +52,8 @@ const initConfigs = {
   // load_bigram_dawg: '0',
 };
 
-let oemCurrent = 1;
+let oemCurrent = 2;
+let langArrCurrent = ['eng'];
 
 // Custom build is currently only used for browser version, while the Node.js version uses the published npm package.
 // If recognition capabilities are ever added for the Node.js version, then we should use the same build for consistency. .
@@ -60,13 +61,28 @@ const tessConfig = browserMode ? {
   corePath: '/tess/', workerPath: '/tess/worker.min.js', legacyCore: true, legacyLang: true, workerBlobURL: false,
 } : { legacyCore: true, legacyLang: true };
 
-const worker = await Tesseract.createWorker('eng', 2, tessConfig, initConfigs);
+const worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
 await worker.setParameters(defaultConfigs);
 
 const reinitialize = async ({ langs, oem }) => {
   oemCurrent = oem;
   await worker.reinitialize(langs, oem, initConfigs);
   await worker.setParameters(defaultConfigs);
+};
+
+/**
+ * Re-initialize with new language, or do nothing if the desired language is already set.
+ * @param {Object} param
+ * @param {Array<string>|string} param.langs
+ * @returns
+ */
+export const setLanguage = async ({ langs }) => {
+  const langArr = typeof langs === 'string' ? langs.split('+') : langs;
+
+  if (JSON.stringify(langArr) === JSON.stringify(langArrCurrent)) return;
+
+  await reinitialize({ langs: langArr, oem: oemCurrent });
+  langArrCurrent = langArr;
 };
 
 /**
@@ -249,6 +265,7 @@ addEventListener('message', async (e) => {
 
     // Recognition
     reinitialize,
+    setLanguage,
     recognize,
     recognizeAndConvert,
 
