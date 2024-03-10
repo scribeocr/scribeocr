@@ -413,6 +413,9 @@ export async function evalWords({
   wordsB.forEach((x) => {
     if (x.lang === 'chi_sim') anyChinese = true;
   });
+  // Also skip if the first word in the line, which are used for various calculations, are Chinese.
+  if (wordsA[0].line.words[0].lang === 'chi_sim') anyChinese = true;
+  if (wordsB[0] && wordsB[0].line.words[0].lang === 'chi_sim') anyChinese = true;
 
   if (anyChinese) return { metricA: 1, metricB: 0, debug: null };
 

@@ -17,6 +17,11 @@ export async function subsetFont(font, charArr = []) {
   // Add the notdef glyph at the start of the subset.
   glyphs.push(font.glyphs.get(0));
 
+  // Always add the space character.
+  // The PDF writer may use space characters for spacing purposes,
+  // even if no literal space characters are in the data.
+  if (!charArr.includes(' ')) glyphs.push(font.charToGlyph(' '));
+
   charArr.forEach((x) => {
     const glyph = font.charToGlyph(x);
     if (glyph) glyphs.push(glyph);
@@ -191,6 +196,22 @@ export const calcLineFontSize = async (line) => {
   // The font of the first word is used (if present), otherwise the default font is used.
   /** @type {FontContainerFont} */
   const font = nonLatin ? fontAll.supp.chi_sim : fontAll.active[line.words[0]?.font || globalSettings.defaultFont].normal;
+
+  // This condition should be handled even if not expected to occur,
+  // as some fonts (Chinese) are not loaded synchronously with the main application,
+  // and not finding a font should not result in a crash.
+  if (!font) {
+    // If no font metrics are known, use the font size from the previous line.
+    const linePrev = getPrevLine(line);
+    if (linePrev) {
+      line._sizeCalc = await calcLineFontSize(linePrev);
+    // If there is no previous line, as a last resort, use a hard-coded default value.
+    } else {
+      line._sizeCalc = 15;
+    }
+    return line._sizeCalc;
+  }
+
   const fontOpentype = await font.opentype;
 
   // Aggregate line-level metrics are unlikely to be correct for short lines, so calculate the size precisely.
