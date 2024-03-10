@@ -1,6 +1,8 @@
 import { win1252Chars, winEncodingLookup } from '../fonts/encoding.js';
 
-import { calcWordFontSize, calcCharSpacing, calcWordMetrics } from './fontUtils.js';
+import {
+  calcWordFontSize, calcCharSpacing, calcWordMetrics, subsetFont,
+} from './fontUtils.js';
 import { fontAll } from './fontContainer.js';
 
 import { hex, createFontObjType0 } from './exportPDFMisc.js';
@@ -139,10 +141,16 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     }
   }
 
+  /** @type {?import('opentype.js').Font} */
+  let fontChiSimExport = null;
   if (fontAll.supp.chi_sim) {
     pdfFonts.NotoSansSC = {};
     const font = await fontAll.supp.chi_sim.opentype;
-    pdfOut += createFontObjType0(font, 3 + fontI * 3);
+
+    const charArr = ocr.getDistinctChars(hocrArr);
+    fontChiSimExport = await subsetFont(font, charArr);
+
+    pdfOut += createFontObjType0(fontChiSimExport, 3 + fontI * 3);
 
     pdfFonts.NotoSansSC.normal = `/F${String(fontI)}`;
     pdfFontsStr += `/F${String(fontI)} ${String(3 + fontI * 3)} 0 R\n`;
@@ -170,7 +178,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
 
     // eslint-disable-next-line no-await-in-loop
     pdfOut += (await ocrPageToPDF(hocrArr[i], dims, dimsLimit, 3 + fontObjCount + 1 + (i - minpage) * 2, 2, pageResourceStr, pdfFonts,
-      textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed));
+      textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed, fontChiSimExport));
     if (progress) progress.increment();
   }
 
@@ -210,10 +218,11 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
  * @param {boolean} rotateBackground
  * @param {number} confThreshHigh
  * @param {number} confThreshMed
+ * @param {?import('opentype.js').Font} fontChiSim
  * @returns
  */
 async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle,
-  rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75) {
+  rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75, fontChiSim = null) {
   if (outputDims.width < 1) {
     outputDims = inputDims;
   }
@@ -288,7 +297,13 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
     const wordFont = /** @type {FontContainerFont} */ (word.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontAll.active[wordFontFamily][word.style]);
 
-    const wordFontOpentype = await wordFont.opentype;
+    const wordFontOpentype = await (word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype);
+
+    if (!wordFontOpentype) {
+      const fontNameMessage = word.lang === 'chi_sim' ? 'chi_sim' : `${wordFontFamily} (${word.style})`;
+      console.log(`Skipping word due to missing font (${fontNameMessage})`);
+      continue;
+    }
 
     const wordFontSize = await calcWordFontSize(word);
 
@@ -362,7 +377,13 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
       const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;
       const wordFont = /** @type {FontContainerFont} */ (word.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontAll.active[wordFontFamily][word.style]);
-      const wordFontOpentype = await wordFont.opentype;
+      const wordFontOpentype = await (word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype);
+
+      if (!wordFontOpentype) {
+        const fontNameMessage = word.lang === 'chi_sim' ? 'chi_sim' : `${wordFontFamily} (${word.style})`;
+        console.log(`Skipping word due to missing font (${fontNameMessage})`);
+        continue;
+      }
 
       const wordFontSize = await calcWordFontSize(word);
 
@@ -497,7 +518,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
             kern = Math.round((wordSpaceNextAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (-1000 / wordFontSize));
           }
           if (word.lang === 'chi_sim') {
-            console.log(`kern: ${kern}`);
             textStream += `<${letter}> ${String(Math.round(kern * 1e6) / 1e6)} `;
           } else {
             textStream += `(${letter}) ${String(Math.round(kern * 1e6) / 1e6)} `;

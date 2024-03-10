@@ -182,6 +182,25 @@ const getPageWords = (page) => {
 };
 
 /**
+ * Return an array of all characters used in the provided OCR data.
+ * Used for subsetting fonts to only the necessary characters.
+ * @param {Array<OcrPage>} ocrPageArr
+ */
+const getDistinctChars = (ocrPageArr) => {
+  const charsAll = {};
+  for (const ocrPage of ocrPageArr) {
+    for (const ocrLine of ocrPage.lines) {
+      for (const ocrWord of ocrLine.words) {
+        ocrWord.text.split('').forEach((x) => {
+          charsAll[x] = true;
+        });
+      }
+    }
+  }
+  return Object.keys(charsAll);
+};
+
+/**
  * @param {OcrLine} line
  */
 const getLineText = (line) => {
@@ -432,6 +451,7 @@ const ocr = {
   calcWordAngleAdj,
   getPageWord,
   getPageWords,
+  getDistinctChars,
   getPageText,
   getPrevLine,
   cloneLine,

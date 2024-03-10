@@ -6,6 +6,39 @@ import { quantile } from './miscUtils.js';
 import { fontAll } from './fontContainer.js';
 
 /**
+ *
+ * @param {import('opentype.js').Font} font
+ * @param {Array<string>} charArr
+ * @returns
+ */
+export async function subsetFont(font, charArr = []) {
+  const glyphs = [];
+
+  // Add the notdef glyph at the start of the subset.
+  glyphs.push(font.glyphs.get(0));
+
+  charArr.forEach((x) => {
+    const glyph = font.charToGlyph(x);
+    if (glyph) glyphs.push(glyph);
+  });
+
+  // The relevant table is sometimes but not always in a property named `windows`.
+  const namesTable = font.names.windows || font.names;
+
+  // Create a new font with the subsetted glyphs.
+  const subset = new opentype.Font({
+    familyName: namesTable.postScriptName.en,
+    styleName: namesTable.fontSubfamily.en,
+    unitsPerEm: font.unitsPerEm,
+    ascender: font.ascender,
+    descender: font.descender,
+    glyphs,
+  });
+
+  return subset;
+}
+
+/**
  * Calculates font size by comparing provided character height to font metrics.
  *
  * @param {import('opentype.js').Font} fontOpentype

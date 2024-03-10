@@ -40,8 +40,11 @@ export function createFontObjType0(font, firstObjIndex) {
   // Start 1st object: Font Dictionary
   let objOut = `${String(firstObjIndex)} 0 obj\n<</Type/Font/Subtype/Type0`;
 
+  // The relevant table is sometimes but not always in a property named `windows`.
+  const namesTable = font.names.windows || font.names;
+
   // Add font name
-  objOut += `\n/BaseFont/${font.tables.name.postScriptName.en}`;
+  objOut += `\n/BaseFont/${namesTable.postScriptName.en}`;
 
   objOut += '/Encoding/Identity-H';
 
@@ -64,7 +67,7 @@ export function createFontObjType0(font, firstObjIndex) {
   // Start 3rd object: FontDescriptor
   objOut += `${String(firstObjIndex + 2)} 0 obj\n`;
 
-  objOut += `<</Type/FontDescriptor/FontName/${font.tables.name.postScriptName.en}/FontBBox[-1002 -1048 2928 1808]/ItalicAngle 0/Ascent 1160/Descent -288/StemV 80/Flags 32`;
+  objOut += `<</Type/FontDescriptor/FontName/${namesTable.postScriptName.en}/FontBBox[-1002 -1048 2928 1808]/ItalicAngle 0/Ascent 1160/Descent -288/StemV 80/Flags 32`;
 
   objOut += `/FontFile3 ${firstObjIndex + 4} 0 R>>`;
 
@@ -90,7 +93,7 @@ export function createFontObjType0(font, firstObjIndex) {
 
   objOut += '<</Type/Font/Subtype/CIDFontType2/CIDSystemInfo<</Registry(Adobe)/Ordering(Identity)/Supplement 0>>';
 
-  objOut += `/BaseFont/${font.tables.name.postScriptName.en}/FontDescriptor ${String(firstObjIndex + 2)} 0 R`;
+  objOut += `/BaseFont/${namesTable.postScriptName.en}/FontDescriptor ${String(firstObjIndex + 2)} 0 R`;
 
   // objOut += `/W ${String(firstObjIndex + 3)} 0 R`;
 
