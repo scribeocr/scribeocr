@@ -2,7 +2,10 @@
 
 // import tess from "../../tess/tesseract.js/src/worker-script/browser/index.js";
 
-import { convertPageAbbyy, convertPageHocr, convertPageStext } from './convertPageModule.js';
+import { convertPageHocr } from './convertPageHocr.js';
+import { convertPageAbbyy } from './convertPageAbbyy.js';
+import { convertPageStext } from './convertPageStext.js';
+
 import { optimizeFont } from './optimizeFontModule.js';
 import { loadFontContainerAll } from '../objects/fontObjects.js';
 import {
@@ -153,7 +156,7 @@ export const recognizeAndConvert2 = async ({
         ocrStr: res1.data.hocr2, n, pageDims, rotateAngle: angle, keepItalic: false,
       });
 
-      const xB = { recognize: res0.data, convert: { legacy: null, lstm: resLSTM } };
+      const xB = { recognize: res1.data, convert: { legacy: null, lstm: resLSTM } };
 
       postMessage({ data: xB, id: `${id}b` });
     })();

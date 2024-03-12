@@ -195,7 +195,6 @@ export async function recognizeAllClick() {
       globalThis.debugImg[tessCombinedLabel][i] = res.debugImg;
 
       globalThis.ocrAll[tessCombinedLabel][i] = res.page;
-      globalThis.ocrAll.active[i] = ocrAll[tessCombinedLabel][i];
 
       // If the user uploaded data, compare to that as we
       if (userUploadMode) {
@@ -253,8 +252,6 @@ export async function recognizeAllClick() {
 
           globalThis.ocrAll.Combined[i] = res.page;
         }
-
-        globalThis.ocrAll.active[i] = ocrAll.Combined[i];
       }
     }
     const time3b = Date.now();

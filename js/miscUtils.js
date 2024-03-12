@@ -71,6 +71,31 @@ export function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/**
+ * Unescapes XML in a string
+ * @param {String} string
+ * @return {String}
+ */
+export function unescapeXml(string) {
+  return string.replace(/&amp;/, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&#34;/g, '"')
+    .replace(/&#x2014;/g, '—')
+    .replace(/&#x8211;/g, '–')
+    .replace(/&#x201c;/g, '“')
+    .replace(/&#x201d;/g, '”')
+    .replace(/&#x2018;/g, '‘')
+    .replace(/&#x2019;/g, '’')
+    .replace(/&#xa7;/g, '§')
+    // Soft hyphen
+    .replace(/&#xad;/g, '-');
+}
+
 // Reads OCR files, which may be compressed as .gz or uncompressed
 
 /**

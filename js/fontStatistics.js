@@ -379,8 +379,7 @@ export function identifyFontVariants(fontScores, fontMetrics) {
 
 /**
  *
- * @param {Object} params
- * @param {OcrPage} params.pageObj
+ * @param {OcrPage} pageObj
  */
 function calcFontMetricsPage(pageObj) {
   /** @type {Object.<string, FontMetricsRawFamily>} */
@@ -394,7 +393,7 @@ function calcFontMetricsPage(pageObj) {
       if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
 
       // Do not include superscripts, dropcaps, and low-confidence words in statistics for font optimization.
-      if (wordObj.conf < 80) continue;
+      if (wordObj.conf < 80 || wordObj.lang === 'chi_sim') continue;
       /** @type {Object.<string, FontMetricsRawFamily>} */
       const fontMetricsRawLine = {};
 

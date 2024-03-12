@@ -348,7 +348,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     let wordRightBearingLast = 0;
     let charSpacing = 0;
     let spacingAdj = 0;
+    let kernSpacing = false;
     let wordFontOpentypeLast = wordFontOpentype;
+    let wordFontOpentypeLastLang = word.lang;
     let wordFontFamilyLast = wordFontFamily;
     let wordStyleLast = word.style;
     let fontSizeLast = wordFontSize;
@@ -433,7 +435,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       const wordSpaceAdj = (wordBox.left - wordBoxLast.right) / cosAngle;
 
       // Add space character between words
-      if (j > 0 && word.lang !== 'chi_sim') {
+      if (j > 0 && !kernSpacing) {
         // The space between words determined by:
         // (1) The right bearing of the last word, (2) the left bearing of the current word, (3) the width of the space character between words,
         // (4) the current character spacing value (applied twice--both before and after the space character).
@@ -445,8 +447,15 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
         const wordSpaceExtra = (wordSpaceAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (100 / tzCurrent);
 
-        textStream += `( ) ${String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
+        if (wordFontOpentypeLastLang === 'chi_sim') {
+          const spaceChar = wordFontOpentype.charToGlyphIndex(' ').toString(16).padStart(4, '0');
+          textStream += `<${spaceChar}> ${String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
+        } else {
+          textStream += `( ) ${String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
+        }
       }
+      kernSpacing = false;
+
       wordBoxLast = wordBox;
       wordFontFamilyLast = wordFontFamily;
       wordStyleLast = word.style;
@@ -501,8 +510,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
             const char2 = wordFontOpentype.charToGlyph(wordTextArr[k + 1]);
             kern = wordFontOpentype.getKerningValue(char1, char2) * (-1000 / wordFontOpentype.unitsPerEm);
 
-          // For Chinese kerning values are used rather than spaces between words
-          } else if (word.lang === 'chi_sim' && j + 1 < words.length) {
+          // Between two Chinese characters, kerning values are used rather than spaces
+          } else if (word.lang === 'chi_sim' && j + 1 < words.length && words[j + 1].lang === 'chi_sim') {
+            kernSpacing = true;
             const wordNext = words[j + 1];
             const wordSpaceNextAdj = (wordNext.bbox.left - wordBox.right) / cosAngle;
 
@@ -536,6 +546,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       }
 
       wordFontOpentypeLast = wordFontOpentype;
+      wordFontOpentypeLastLang = word.lang;
     }
 
     textStream += ' ] TJ\n';

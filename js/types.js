@@ -17,6 +17,9 @@
 /**
  * @typedef {import("./objects/fontMetricsObjects.js").FontMetricsFont} FontMetricsFont
  */
+/**
+ * @typedef {import("./objects/fontMetricsObjects.js").FontMetricsRawFamily} FontMetricsRawFamily
+ */
 
 /**
  * @typedef {import("./objects/fontMetricsObjects.js").FontMetricsFamily} FontMetricsFamily

@@ -396,7 +396,7 @@ export const showHideElem = (elem, show = true) => {
   elem?.setAttribute('style', styleNew);
 };
 
-enableEvalElem.addEventListener('click', () => showHideElem(document.getElementById('nav-eval-tab'), enableEvalElem.checked));
+enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab')), enableEvalElem.checked));
 
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
@@ -405,11 +405,11 @@ enableAdvancedRecognitionElem.addEventListener('click', () => {
   showHideElem(document.getElementById('basicRecognitionOptions'), !enableAdvancedRecognitionElem.checked);
 });
 
-export const enableRecognitionClick = () => showHideElem(document.getElementById('nav-recognize-tab'), enableRecognitionElem.checked);
+export const enableRecognitionClick = () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-recognize-tab')), enableRecognitionElem.checked);
 
 enableRecognitionElem.addEventListener('click', enableRecognitionClick);
 
-enableLayoutElem.addEventListener('click', () => showHideElem(document.getElementById('nav-layout-tab'), enableLayoutElem.checked));
+enableLayoutElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab')), enableLayoutElem.checked));
 
 const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
@@ -993,7 +993,7 @@ export const enableDisableDownloadPDFAlert = () => {
 };
 
 document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) => {
-  if (e.target.id != 'nav-layout') return;
+  if (e.target.id !== 'nav-layout') return;
   globalThis.layoutMode = true;
 
   if (!globalThis.layout[cp.n]) return;
@@ -1005,7 +1005,7 @@ document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) 
 });
 
 document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) => {
-  if (e.target.id != 'nav-layout') return;
+  if (e.target.id !== 'nav-layout') return;
   globalThis.layoutMode = false;
   toggleSelectableWords(true);
   clearLayoutBoxes();
@@ -1132,6 +1132,9 @@ async function compareGroundTruthClick(n) {
         options: compOptions,
       });
 
+      // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
+      // rather than the currently active OCR.
+      // Assigning to "active" will overwrite whatever version the user currently has open.
       globalThis.ocrAll.active[i] = res.page;
 
       globalThis.evalStats[i] = res.metrics;
@@ -1151,6 +1154,9 @@ async function compareGroundTruthClick(n) {
     options: compOptions,
   });
 
+  // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
+  // rather than the currently active OCR.
+  // Assigning to "active" will overwrite whatever version the user currently has open.
   globalThis.ocrAll.active[n] = res.page;
   if (globalThis.debugLog === undefined) globalThis.debugLog = '';
   globalThis.debugLog += res.debugLog;

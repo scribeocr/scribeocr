@@ -114,7 +114,15 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   const res0 = await resArr[0];
 
   // const printDebug = true;
-  // if (printDebug) console.log(res0.recognize.debug);
+  // if (printDebug && browserMode) {
+  //   if (legacy && lstm) {
+  //     resArr[1].then((res1) => {
+  //       console.log(res1.recognize.debug);
+  //     });
+  //   } else {
+  //     console.log(res0.recognize.debug);
+  //   }
+  // }
 
   parseDebugInfo(res0.recognize.debug);
 
