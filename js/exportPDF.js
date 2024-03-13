@@ -519,7 +519,11 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
             const wordGlyphMetrics = wordFontOpentype.charToGlyph(wordText.substr(-1)).getMetrics();
             const wordNextGlyphMetrics = wordFontOpentype.charToGlyph(wordNext.text.substr(0, 1)).getMetrics();
 
-            const wordRightBearing = wordGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm);
+            // Currently, all characters in the Chinese fonts have a full em advance, including small latin characters like ",".
+            // This is possibly happening because the PDF font object created here does not include widths in the dictionary (/W or /DW),
+            // so the default of 1000 units is used for everything.
+            // const wordRightBearing = wordGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm);
+            const wordRightBearing = (wordFontOpentype.unitsPerEm - wordGlyphMetrics.xMax) * (wordFontSize / wordFontOpentype.unitsPerEm);
 
             const wordNextLeftBearing = wordNextGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
 
