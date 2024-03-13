@@ -129,6 +129,8 @@ debugPrintWordsCanvasElem.addEventListener('click', () => printSelectedWords(fal
 debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
 debugEvalLineElem.addEventListener('click', evalSelectedLine);
 
+const humanReadablePDFElem = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
+
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -2670,7 +2672,7 @@ async function handleDownload() {
 
       // If the input document is a .pdf and "Add Text to Import PDF" option is enabled, we insert the text into that pdf (rather than making a new one from scratch)
       if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
-        content = await w.overlayText([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
+        content = await w.overlayText([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height, humanReadablePDFElem.checked]);
 
         // Unfortunately there currently is not a real way to track progress using the w.overlayText function, as pages are incremented using C++ (webassembly).
         for (let i = minValue; i < maxValue + 1; i++) {
@@ -2682,7 +2684,7 @@ async function handleDownload() {
         await renderPDFImageCache(pagesArr, autoRotateCheckboxElem.checked, downloadProgress);
         const imgArr1 = colorModeElem.value === 'binary' ? await Promise.all(globalThis.imageAll.binary) : await Promise.all(globalThis.imageAll.native);
         const imgArr = imgArr1.map((x) => x.src);
-        await w.overlayTextImageStart([]);
+        await w.overlayTextImageStart([humanReadablePDFElem.checked]);
         for (let i = minValue; i < maxValue + 1; i++) {
           await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit.width, dimsLimit.height]);
           downloadProgress.increment();
@@ -2690,7 +2692,7 @@ async function handleDownload() {
         content = await w.overlayTextImageEnd([]);
       // Otherwise, there is only OCR data and not image data.
       } else {
-        content = await w.write([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
+        content = await w.write([pdfOverlay, minValue, maxValue, dimsLimit.width, dimsLimit.height, humanReadablePDFElem.checked]);
 
         // Fill up progress bar to 100%
         for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
@@ -2720,7 +2722,7 @@ async function handleDownload() {
       // The file name is only used to detect the ".pdf" extension
       const pdf = await w.openDocument(pdfEnc.buffer, 'document.pdf');
 
-      const content = await w.write([pdf, minValue, maxValue, dimsLimit.width, dimsLimit.height]);
+      const content = await w.write([pdf, minValue, maxValue, dimsLimit.width, dimsLimit.height, humanReadablePDFElem.checked]);
 
       pdfBlob = new Blob([content], { type: 'application/octet-stream' });
     }

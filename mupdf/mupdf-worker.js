@@ -103,12 +103,12 @@ let ready = false;
     mupdf.pageLinksJSON = Module.cwrap('pageLinks', 'string', ['number', 'number', 'number']);
     mupdf.doDrawPageAsPNG = Module.cwrap('doDrawPageAsPNG', 'null', ['number', 'number', 'number', 'number']);
       mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number', 'number']);
-    mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
+    mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number', 'number']);
     mupdf.overlayPDFTextImageStart = Module.cwrap('overlayPDFTextImageStart', 'null', ['number']);
     mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number']);
     mupdf.overlayPDFTextImageEnd = Module.cwrap('overlayPDFTextImageEnd', 'null', ['number']);
-    mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number']);
-	mupdf.writePDF = Module.cwrap('writePDF', 'null', ['number', 'number', 'number', 'number']);
+    mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
+	mupdf.writePDF = Module.cwrap('writePDF', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
     mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
     mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
     wasm_pageText = Module.cwrap('pageText', 'string', ['number', 'number', 'number', 'number', 'number']);
@@ -138,19 +138,16 @@ mupdf.cleanFile = function (data) {
 }
 
 
-mupdf.overlayText = function (doc1, doc2, minpage, maxpage, pagewidth, pageheight) {
-	// Module.FS_createDataFile("/", "test_1.pdf", data, 1, 1, 1);
-	// mupdf.writeDocument();
-	mupdf.overlayPDFText(doc1, doc2, minpage, maxpage, pagewidth, pageheight);
+mupdf.overlayText = function (doc1, doc2, minpage, maxpage, pagewidth, pageheight, humanReadable = false) {
+	mupdf.overlayPDFText(doc1, doc2, minpage, maxpage, pagewidth, pageheight, humanReadable);
 	const content = FS.readFile("/download.pdf");
 
 	FS.unlink("/download.pdf");
-	// FS.unlink("/test_2.pdf");
 	return content;
 }
 
-mupdf.overlayTextImageStart = function(doc) {
-	mupdf.overlayPDFTextImageStart();
+mupdf.overlayTextImageStart = function(doc, humanReadable = false) {
+	mupdf.overlayPDFTextImageStart(humanReadable);
 }
 
 // doc is ignored (the active document is always the first argument, although not used here)
@@ -161,14 +158,13 @@ mupdf.overlayTextImageAddPage = function (doc, doc1, image, i, pagewidth, pagehe
 	Module.FS_createDataFile("/", String(i) + ".png", imgData, 1, 1, 1);
 
 	mupdf.overlayPDFTextImageAddPage(doc1, i, pagewidth, pageheight);
-	// mupdf.overlayPDFTextImage(doc1, i, i, pagewidth, pageheight);
 
 	FS.unlink(String(i) + ".png");
 
 }
 
 // doc is ignored (the active document is always the first argument, although not used here)
-mupdf.overlayTextImage = function (doc, doc1, imageArr, minpage, maxpage, pagewidth, pageheight) {
+mupdf.overlayTextImage = function (doc, doc1, imageArr, minpage, maxpage, pagewidth, pageheight, humanReadable = false) {
 	for(let i=0;i<imageArr.length;i++) {
 		const pageNum = i + minpage;
 		let imgData;
@@ -183,7 +179,7 @@ mupdf.overlayTextImage = function (doc, doc1, imageArr, minpage, maxpage, pagewi
 		Module.FS_createDataFile("/", String(pageNum) + ".png", imgData, 1, 1, 1);
 	}
 
-	mupdf.overlayPDFTextImage(doc1, minpage, maxpage, pagewidth, pageheight);
+	mupdf.overlayPDFTextImage(doc1, minpage, maxpage, pagewidth, pageheight, humanReadable);
 	let content = FS.readFile("/download.pdf");
 
 	for(let i=0;i<imageArr.length;i++) {
@@ -203,9 +199,9 @@ mupdf.overlayTextImageEnd = function(doc) {
 	return content;
 }
 
-mupdf.write = function (doc, doc1, minpage, maxpage, pagewidth, pageheight) {
+mupdf.write = function (doc, doc1, minpage, maxpage, pagewidth, pageheight, humanReadable = false) {
 
-	mupdf.writePDF(doc1, minpage, maxpage, pagewidth, pageheight);
+	mupdf.writePDF(doc1, minpage, maxpage, pagewidth, pageheight, humanReadable);
 	let content = FS.readFile("/download.pdf");
 
 	FS.unlink("/download.pdf");
