@@ -1121,6 +1121,9 @@ async function compareGroundTruthClick(n) {
 
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) !== JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length === 0) {
+  // Render binarized versions of images
+    await renderPDFImageCache(Array.from({ length: globalThis.imageAll.native.length + 1 }, (v, k) => k), null, null, 'binary');
+
     globalThis.evalStats = new Array(globalThis.imageAll.native.length);
     for (let i = 0; i < globalThis.imageAll.native.length; i++) {
       const imgElem = await globalThis.imageAll.binary[i];

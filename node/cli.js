@@ -369,6 +369,14 @@ async function main(func, params) {
         options: compOptions,
       });
 
+      // In robustConfMode, the comparison with Tesseract OCR should replace the original confidence metrics.
+      // This is set here because `compareHOCR` (in "stats" mode) only sets the `matchTruth` attribute, but does not edit `conf`.
+      if (robustConfMode) {
+        ocr.getPageWords(res.page).forEach((x) => {
+          x.conf = x.matchTruth ? 100 : 0;
+        });
+      }
+
       globalThis.ocrAll.active[i] = res.page;
 
       if (res.metrics) evalMetricsArr.push(res.metrics);
