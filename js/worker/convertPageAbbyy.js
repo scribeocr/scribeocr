@@ -4,6 +4,8 @@ import {
   getRandomAlphanum, quantile, mean50, round6, unescapeXml,
 } from '../miscUtils.js';
 
+import { LayoutBox } from '../objects/layoutObjects.js';
+
 import { pass2, ascCharArr, xCharArr } from './convertPageShared.js';
 
 import { determineSansSerif } from '../fontStatistics.js';
