@@ -1557,7 +1557,7 @@ function addWordClick() {
       fill: fillArg,
       fill_proof: fillColorHex,
       fill_ebook: 'black',
-      fontFamily: globalSettings.defaultFont,
+      fontFamily: fontAll.active[globalSettings.defaultFont].normal.fontFaceName,
       fontStyle: 'normal',
       fontFamilyLookup: globalSettings.defaultFont,
       fontStyleLookup: 'normal',
