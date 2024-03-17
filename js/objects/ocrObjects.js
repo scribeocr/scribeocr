@@ -463,7 +463,7 @@ const ocr = {
   cloneLine,
   cloneWord,
   rotateLine,
-  deletePageWord,
+  deletePageWords,
   replaceLigatures,
   escapeXml,
 };
