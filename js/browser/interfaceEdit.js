@@ -36,12 +36,16 @@ const styleSuperButton = new bootstrap.Button(styleSuperElem);
 export function deleteSelectedWords() {
   const selectedObjects = window.canvas.getActiveObjects();
   const selectedN = selectedObjects.length;
+  const selectedIds = [];
+
   for (let i = 0; i < selectedN; i++) {
     const wordIDI = selectedObjects[i].wordID;
-    ocr.deletePageWord(globalThis.ocrAll.active[cp.n], wordIDI);
+    selectedIds.push(wordIDI);
     window.canvas.remove(selectedObjects[i]);
-    canvas.renderAll();
   }
+  window.canvas.discardActiveObject();
+  window.canvas.renderAll();
+  ocr.deletePageWords(globalThis.ocrAll.active[cp.n], selectedIds);
 }
 
 /**

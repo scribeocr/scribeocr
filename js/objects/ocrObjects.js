@@ -147,24 +147,30 @@ const getPageWord = (page, id) => {
   return null;
 };
 
-// TODO: When all words on a line are deleted, this should also delete the line.
 /**
  * Delete word with id on a given page.
  * @param {OcrPage} page
- * @param {string} id
- * TODO: This function currently needs to be called for every word deleted.
- * This leads to noticable lag when deleting a large number of words at the same time.
- * Rewrite to handle multiple words.
+ * @param {Array<string>} ids
  */
-const deletePageWord = (page, id) => {
+const deletePageWords = (page, ids) => {
   for (let i = 0; i < page.lines.length; i++) {
     for (let j = 0; j < page.lines[i].words.length; j++) {
-      if (page.lines[i].words[j].id === id) {
+      const idsIndex = ids.indexOf(page.lines[i].words[j].id);
+      if (idsIndex >= 0) {
+        // Delete the ID from the list
+        ids.splice(idsIndex, 1);
         page.lines[i].words.splice(j, 1);
+        // Subtract 1 from j to account for the fact that the array just got one element shorter
+        j--;
         if (page.lines[i].words.length === 0) {
           page.lines.splice(i, 1);
+        // If there are still words in this line, re-calculate the line bounding box.
+        // To avoid duplicative calculations this only happens once at the end of the line or after all ids have been deleted.
+        } else if (j + 1 === page.lines[i].words.length || ids.length === 0) {
+          ocr.calcLineBbox(page.lines[i]);
         }
-        return;
+        // Return if all ids have been deleted.
+        if (ids.length === 0) return;
       }
     }
   }
