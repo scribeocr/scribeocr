@@ -1,6 +1,8 @@
 /* eslint-disable import/no-cycle */
 
-import { renderPageQueue, enableDisableDownloadPDFAlert, cp } from '../../main.js';
+import { renderPageQueue, cp } from '../../main.js';
+import { imageCont } from '../imageContainer.js';
+import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
@@ -56,7 +58,7 @@ export const selectDisplayMode = (x) => {
   });
 
   // Edit rotation for images that have already been rotated
-  if (colorModeElem.value === 'binary' && globalThis.imageAll.binaryRotated[cp.n] || colorModeElem.value !== 'binary' && globalThis.imageAll.nativeRotated[cp.n]) {
+  if (colorModeElem.value === 'binary' && imageCont.imageAll.binaryRotated[cp.n] || colorModeElem.value !== 'binary' && imageCont.imageAll.nativeRotated[cp.n]) {
     // If rotation is requested,
     if (autoRotateCheckboxElem.checked) {
       cp.backgroundOpts.angle = 0;

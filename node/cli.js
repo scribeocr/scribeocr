@@ -8,7 +8,7 @@ import Worker from 'web-worker';
 import Tesseract from 'tesseract.js';
 import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
 import { runFontOptimization } from '../js/fontEval.js';
-import { fontAll } from '../js/fontContainer.js';
+import { imageCont } from '../js/imageContainer.js';
 
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
 import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
@@ -17,15 +17,12 @@ import { reduceEvalMetrics } from '../js/miscUtils.js';
 import { importOCR } from '../js/importOCR.js';
 import { PageMetrics } from '../js/objects/pageMetricsObjects.js';
 
-import { initMuPDFWorker } from '../mupdf/mupdf-async.js';
 import { hocrToPDF } from '../js/exportPDF.js';
 import { drawDebugImages } from '../js/debug.js';
 
 const writeFile = util.promisify(fs.writeFile);
 
 globalThis.Worker = Worker;
-
-const { loadImage } = await import('canvas');
 
 const saveCompImages = false;
 
@@ -109,30 +106,27 @@ async function main(func, params) {
   const robustConfMode = func === 'check' || params.robustConfMode || false;
   const printConf = func === 'check' || func === 'conf' || params.printConf || false;
 
+  const pageCountHOCR = globalThis.hocrCurrentRaw ? globalThis.hocrCurrentRaw.length : 0;
+  globalThis.pageMetricsArr = [];
+
   let fileData;
   let w;
+  let pageCountImage;
   if (backgroundPDF || backgroundImage) {
     fileData = await fs.readFileSync(params.pdfFile);
 
     if (backgroundPDF) {
-      w = await initMuPDFWorker();
-      const pdfDoc = await w.openDocument(fileData, 'file.pdf');
-      w.pdfDoc = pdfDoc;
+      await imageCont.openMainPDF(fileData);
+      pageCountImage = imageCont.pageCount;
+    } else {
+      pageCountImage = 1;
+      imageCont.imageAll.nativeStr[0] = `data:image/png;base64,${fileData.toString('base64')}`;
+      if (!globalThis.hocrCurrentRaw) {
+        globalThis.pageMetricsArr[0] = new PageMetrics({ height: 0, width: 0 });
+      }
     }
   }
 
-  globalThis.pageMetricsArr = [];
-
-  const pageCountHOCR = globalThis.hocrCurrentRaw ? globalThis.hocrCurrentRaw.length : 0;
-  let pageCountImage;
-  if (backgroundPDF) {
-    pageCountImage = await w.countPages([fileData]);
-  } else if (backgroundImage) {
-    pageCountImage = 1;
-    if (!globalThis.hocrCurrentRaw) {
-      globalThis.pageMetricsArr[0] = new PageMetrics({ height: 0, width: 0 });
-    }
-  }
   if (pageCountHOCR !== pageCountImage) {
     console.log(`Detected ${pageCountHOCR} pages in OCR but ${pageCountImage} images.`);
   }
@@ -198,51 +192,15 @@ async function main(func, params) {
 
   const tessWorker = await Tesseract.createWorker();
 
-  globalThis.imageAll = {
-    native: Array(pageCount),
-    binary: Array(pageCount),
-    nativeRotated: Array(pageCount),
-    binaryRotated: Array(pageCount),
-  };
-
   // All pages are rendered for `robustConfMode`, otherwise images are only needed for font evaluation.
   const runRecognition = robustConfMode || func === 'eval' || func === 'debug';
   const renderPageN = runRecognition ? pageCount : fontEvalPageN;
 
-  for (let i = 0; i < renderPageN; i++) {
-    if (backgroundPDF) {
-    // Render to 300 dpi by default
-      let dpi = 300;
+  if (backgroundPDF) await imageCont.renderImageRange(0, renderPageN - 1);
 
-      const imgWidthXml = globalThis.pageMetricsArr[i].dims.width;
-
-      const imgWidthPdf = await w.pageWidth([i + 1, 300]);
-      if (imgWidthPdf !== imgWidthXml) {
-        dpi = 300 * (imgWidthXml / imgWidthPdf);
-      }
-
-      // Render page from PDF as image
-      globalThis.imageAll.native[i] = await w.drawPageAsPNG([i + 1, dpi, false, false]);
-    } else if (backgroundImage) {
-      globalThis.imageAll.native[i] = `data:image/png;base64,${fileData.toString('base64')}`;
-    }
-
-    // If recognition is not being run, binarize and rotate the images now.
-    // If recognition is being run, this will happen at that step.
-    if (!runRecognition) {
-      // Use Tesseract to (1) binarize and (2) rotate the native image.
-      const angleArg = globalThis.pageMetricsArr?.[i]?.angle * (Math.PI / 180) * -1 || 0;
-
-      const res = await tessWorker.recognize(globalThis.imageAll.native[i], { rotateRadians: angleArg }, {
-        imageBinary: true, imageColor: false, debug: true, text: false, hocr: false, tsv: false, blocks: false,
-      });
-
-      const img = await loadImage(res.data.imageBinary);
-
-      globalThis.imageAll.binary[i] = img;
-      globalThis.imageAll.binaryRotated[i] = true;
-    }
-  }
+  // If recognition is not being run, binarize and rotate the images now.
+  // If recognition is being run, this will happen at that step.
+  if (!runRecognition) await imageCont.renderImageRange(0, renderPageN - 1, 'binary');
 
   if (func === 'debug') {
     const writeCanvasNodeAll = (await import('../../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
@@ -265,7 +223,7 @@ async function main(func, params) {
     // Terminate all workers
     await tessWorker.terminate();
     await globalThis.generalScheduler.terminate();
-    if (w) await w.terminate();
+    imageCont.clear();
 
     process.exitCode = 0;
     return;
@@ -285,18 +243,18 @@ async function main(func, params) {
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Legacy'];
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+    for (let i = 0; i < imageCont.imageAll.native.length; i++) {
       const compOptions = {
         mode: 'comb',
         evalConflicts: false,
       };
 
-      const imgElem = await globalThis.imageAll.binary[i];
+      const imgElem = await imageCont.imageAll.binary[i];
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgElem.src,
-        imageRotated: globalThis.imageAll.binaryRotated[i],
+        binaryImage: imgElem,
+        imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -306,10 +264,10 @@ async function main(func, params) {
 
     // Switching active data here for consistency with browser version.
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Combined Temp'];
-    await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], globalThis.imageAll.binary, globalThis.imageAll.binaryRotated);
+    await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binary, imageCont.imageAll.binaryRotated);
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+    for (let i = 0; i < imageCont.imageAll.native.length; i++) {
       const compOptions = {
         mode: 'comb',
         ignoreCap: true,
@@ -317,12 +275,12 @@ async function main(func, params) {
         debugLabel: saveCompImages ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgElem = await globalThis.imageAll.binary[i];
+      const imgElem = await imageCont.imageAll.binary[i];
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgElem.src,
-        imageRotated: globalThis.imageAll.binaryRotated[i],
+        binaryImage: imgElem,
+        imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -340,11 +298,11 @@ async function main(func, params) {
       if (func === 'recognize') console.log(ocr.getPageText(res.page));
     }
   } else {
-    await runFontOptimization(globalThis.ocrAll.active, globalThis.imageAll.binary, globalThis.imageAll.binaryRotated);
+    await runFontOptimization(globalThis.ocrAll.active, imageCont.imageAll.binary, imageCont.imageAll.binaryRotated);
   }
 
   if (robustConfMode || func === 'eval') {
-    for (let i = 0; i < globalThis.imageAll.native.length; i++) {
+    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
       const compOptions = {
         mode: 'stats',
         supplementComp: true,
@@ -353,7 +311,7 @@ async function main(func, params) {
         tessWorker,
       };
 
-      const imgElem = await globalThis.imageAll.binary[i];
+      const imgElem = await imageCont.imageAll.binary[i];
 
       // In "check" mode, the provided OCR is being compared against OCR from the built-in engine.
       // In "eval" mode, the OCR from the built-in engine is compared against provided ground truth OCR data.
@@ -363,8 +321,8 @@ async function main(func, params) {
       const res = await compareHOCR({
         pageA,
         pageB,
-        binaryImage: imgElem.src,
-        imageRotated: globalThis.imageAll.binaryRotated[i],
+        binaryImage: imgElem,
+        imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -405,8 +363,33 @@ async function main(func, params) {
     const pdfStr = await hocrToPDF(globalThis.ocrAll.active, 0, -1, 'proof', true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
+
+    const muPDFScheduler = await imageCont.initMuPDFScheduler(null, 1);
+    w = muPDFScheduler.workers[0];
+
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, 'document.pdf');
-    const content = backgroundPDF ? await w.overlayText([pdfOverlay, 0, -1, -1, -1]) : await w.overlayTextImage([pdfOverlay, [fileData], 0, -1, -1, -1]);
+    let content;
+    if (backgroundPDF) {
+      content = await w.overlayText({
+        doc2: pdfOverlay,
+        minpage: 0,
+        maxpage: -1,
+        pagewidth: -1,
+        pageheight: -1,
+        humanReadable: false,
+        skipText: true,
+      });
+    } else {
+      content = await w.overlayTextImage({
+        doc2: pdfOverlay,
+        imageArr: [fileData],
+        minpage: 0,
+        maxpage: -1,
+        pagewidth: -1,
+        pageheight: -1,
+        humanReadable: false,
+      });
+    }
 
     const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '_vis.pdf')}`;
 
@@ -419,7 +402,7 @@ async function main(func, params) {
   // Terminate all workers
   await tessWorker.terminate();
   await globalThis.generalScheduler.terminate();
-  if (w) await w.terminate();
+  imageCont.clear();
 
   process.exitCode = 0;
 }

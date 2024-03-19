@@ -88,9 +88,14 @@ export class GeneralScheduler {
      */
     this.optimizeFont = async (args) => (await this.scheduler.addJob('optimizeFont', args));
     /**
-     * @param {Parameters<typeof import('./worker/generalWorker.js').recognize>[0]} args
-     * @returns {ReturnType<typeof import('./worker/generalWorker.js').recognize>}
-     */
+    * @template {Partial<Tesseract.OutputFormats>} TO
+    * @param {Object} args
+    * @param {Parameters<Tesseract.Worker['recognize']>[0]} args.image
+    * @param {Parameters<Tesseract.Worker['recognize']>[1]} args.options
+    * @param {TO} args.output
+    * @returns {Promise<Tesseract.Page<TO>>}
+    * Exported for type inference purposes, should not be imported anywhere.
+    */
     this.recognize = async (args) => (await this.scheduler.addJob('recognize', args));
     /**
      * @param {Parameters<typeof import('./worker/generalWorker.js').setLanguage>[0]} args

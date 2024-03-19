@@ -1,7 +1,7 @@
 // Disable linter rule.  Many async functions in this files draw on the canvas (a side effect) so need to be run one at a time.
 /* eslint-disable no-await-in-loop */
 
-import { getRandomAlphanum, imageStrToBlob } from '../miscUtils.js';
+import { getRandomAlphanum } from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
 // import { CompDebug } from '../objects/imageObjects.js';
@@ -338,58 +338,13 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
 };
 
 /**
- * Handles various image formats, always returns a ImageBitmap.
- *
- * @param {string|ImageBitmap} img
- */
-async function getImageBitmap(img) {
-  if (img === undefined) throw new Error('Input is undefined');
-  if (img === null) throw new Error('Input is null');
-
-  if (typeof img === 'string') {
-    if (browserMode) {
-      const imgBlob = imageStrToBlob(img);
-      const imgBit = await createImageBitmap(imgBlob);
-      return imgBit;
-    }
-    const { loadImage } = await import('canvas');
-    const imgBit = await loadImage(img);
-    return imgBit;
-  }
-
-  // In Node.js the input is assumed to be already compatible with the `canvas.drawImage` method.
-  // Additionally, `ImageBitmap` does not exist within the Node canvas package.
-  // Second condition exists for type detection purposes.
-  if (!browserMode && (typeof img !== 'string') && (typeof img !== 'number')) return img;
-
-  // if (typeof img === "number") {
-  //   const imgBit = binaryImageCache[String(img)];
-  //   if (!imgBit) throw new Error("Failed to retreive binary image through cache reference.")
-  //   return imgBit;
-  // }
-
-  // if (img instanceof ImageBitmap) {
-  //   return img;
-  // }
-
-  return img;
-
-  // const imgBlob = imageStrToBlob(img);
-  // const imgBit = await createImageBitmap(imgBlob);
-
-  // binaryImageCache[String(img)] = imgBit;
-
-  // return imgBit;
-}
-
-/**
  * Evaluate the accuracy of OCR results by comparing visually with input image.
  * Optionally, an alternative array of OCR results (for the same underlying text)
  * can be provided for comparison purposes.
  * @param {Object} params
  * @param {Array<OcrWord>} params.wordsA - Array of words
  * @param {Array<OcrWord>} [params.wordsB] - Array of words for comparison.  Optional.
- * @param {string|ImageBitmap} params.binaryImage - Image to compare to.  Using an ImageBitmap is more efficient
+ * @param {ImageBitmap} params.binaryImage - Image to compare to.  Using an ImageBitmap is more efficient
  *    when multiple compparisons are being made to the same binaryImage.
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
@@ -419,7 +374,7 @@ export async function evalWords({
 
   if (anyChinese) return { metricA: 1, metricB: 0, debug: null };
 
-  const binaryImageBit = await getImageBitmap(binaryImage);
+  const binaryImageBit = binaryImage;
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
@@ -635,7 +590,7 @@ function penalizeWord(wordStr) {
  * @param {object} params
  * @param {OcrPage} params.pageA
  * @param {OcrPage} params.pageB
- * @param {string|ImageBitmap} params.binaryImage
+ * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {object} params.options
@@ -655,7 +610,8 @@ function penalizeWord(wordStr) {
 export async function compareHOCR({
   pageA, pageB, binaryImage, imageRotated, pageMetricsObj, options = {},
 }) {
-  const binaryImageBit = await getImageBitmap(binaryImage);
+  // const binaryImageBit = await getImageBitmap(binaryImage);
+  const binaryImageBit = binaryImage;
 
   const mode = options?.mode === undefined ? 'stats' : options?.mode;
   const debugLabel = options?.debugLabel === undefined ? '' : options?.debugLabel;
@@ -1170,7 +1126,7 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {string|ImageBitmap} params.binaryImage
+ * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {?function} params.func
@@ -1179,7 +1135,7 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
 async function evalPageBase({
   page, binaryImage, imageRotated, pageMetricsObj, func,
 }) {
-  const binaryImageBit = await getImageBitmap(binaryImage);
+  const binaryImageBit = binaryImage;
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
@@ -1211,7 +1167,7 @@ async function evalPageBase({
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {string|ImageBitmap} params.binaryImage
+ * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
  * @returns
@@ -1227,7 +1183,7 @@ export async function evalPage({
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {string|ImageBitmap} params.binaryImage
+ * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {string} params.font
@@ -1269,7 +1225,7 @@ export async function evalPageFont({
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {string|ImageBitmap} params.binaryImage
+ * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {function} params.func
@@ -1279,7 +1235,8 @@ export async function evalPageFont({
 export async function nudgePageBase({
   page, binaryImage, imageRotated, pageMetricsObj, func, view = false,
 }) {
-  const binaryImageBit = await getImageBitmap(binaryImage);
+  // const binaryImageBit = await getImageBitmap(binaryImage);
+  const binaryImageBit = binaryImage;
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
@@ -1331,7 +1288,7 @@ export async function nudgePageBase({
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {string|ImageBitmap} params.binaryImage
+ * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {boolean} params.view
@@ -1354,7 +1311,7 @@ export async function nudgePageFontSize({
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {string|ImageBitmap} params.binaryImage
+ * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {boolean} params.view

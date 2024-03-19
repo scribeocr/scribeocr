@@ -1,4 +1,5 @@
 import { parseDebugInfo } from './fontStatistics.js';
+import { imageCont, getImageBitmap } from './imageContainer.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -22,7 +23,7 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
   const angleKnown = typeof (globalThis.pageMetricsArr[n].angle) === 'number';
 
   // Calculate additional rotation to apply to page.  Rotation should not be applied if page has already been rotated.
-  const rotateDegrees = rotate && angle && Math.abs(angle || 0) > 0.05 && !globalThis.imageAll.nativeRotated[n] ? angle * -1 : 0;
+  const rotateDegrees = rotate && angle && Math.abs(angle || 0) > 0.05 && !imageCont.imageAll.nativeRotated[n] ? angle * -1 : 0;
   const rotateRadians = rotateDegrees * (Math.PI / 180);
 
   let saveNativeImage = false;
@@ -31,8 +32,8 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
   // Images are not saved when using "recognize area" as these intermediate images are cropped.
   if (!areaMode) {
     // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
-    if (autoRotate && !globalThis.imageAll.nativeRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveNativeImage = true;
-    if (!globalThis.imageAll.binary[n] || autoRotate && !globalThis.imageAll.binaryRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
+    if (autoRotate && !imageCont.imageAll.nativeRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveNativeImage = true;
+    if (!imageCont.imageAll.binary[n] || autoRotate && !imageCont.imageAll.binaryRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
   }
 
   return {
@@ -56,25 +57,11 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
  * @param {boolean} [debugVis=false] - Generate instructions for debugging visualizations.
  */
 export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, options = {}, debugVis = false) => {
-  const browserMode = typeof process === 'undefined';
-
   const {
     angleThresh, angleKnown, rotateRadians, saveNativeImage, saveBinaryImageArg,
   } = calcRecognizeRotateArgs(n, areaMode);
 
-  // When the image has not been loaded into an element yet, use the raw source string.
-  // We still use imageAll["native"] when it exists as this will have rotation applied (if applicable) while imageAll["nativeSrc"] will not.
-  const inputSrc1 = await globalThis.imageAll.native[n];
-  let inputSrc;
-  if (inputSrc1) {
-    if (inputSrc1.src) {
-      inputSrc = inputSrc1.src;
-    } else {
-      inputSrc = inputSrc1;
-    }
-  } else {
-    inputSrc = globalThis.imageAll.nativeSrc[n];
-  }
+  const inputSrc = await (imageCont.imageAll.nativeStr[n] || imageCont.imageAll.nativeSrcStr[n]);
 
   const config = {
     ...{
@@ -131,30 +118,18 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
   // but no significant rotation was actually detected.
   if (saveBinaryImageArg) {
-    globalThis.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
-    if (globalThis.imageAll.binaryRotated[n] || !globalThis.imageAll.binary[n]) {
-      if (browserMode) {
-        const image = document.createElement('img');
-        image.src = res0.recognize.imageBinary;
-        globalThis.imageAll.binary[n] = image;
-      } else {
-        const { loadImage } = await import('canvas');
-        globalThis.imageAll.binary[n] = await loadImage(res0.recognize.imageBinary);
-      }
+    imageCont.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
+    if (imageCont.imageAll.binaryRotated[n] || !imageCont.imageAll.binary[n]) {
+      imageCont.imageAll.binaryStr[n] = res0.recognize.imageBinary;
+      imageCont.imageAll.binary[n] = getImageBitmap(res0.recognize.imageBinary);
     }
   }
 
   if (saveNativeImage) {
-    globalThis.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
-    if (globalThis.imageAll.nativeRotated[n]) {
-      if (browserMode) {
-        const image = document.createElement('img');
-        image.src = res0.recognize.imageColor;
-        globalThis.imageAll.native[n] = image;
-      } else {
-        const { loadImage } = await import('canvas');
-        globalThis.imageAll.native[n] = await loadImage(res0.recognize.imageColor);
-      }
+    imageCont.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
+    if (imageCont.imageAll.nativeRotated[n]) {
+      imageCont.imageAll.nativeStr[n] = res0.recognize.imageColor;
+      imageCont.imageAll.native[n] = getImageBitmap(res0.recognize.imageColor);
     }
   }
 

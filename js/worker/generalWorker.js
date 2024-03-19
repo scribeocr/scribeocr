@@ -94,7 +94,7 @@ export const setLanguage = async ({ langs }) => {
  * @param {Object} params -
  * @param {ArrayBuffer} params.image -
  * @param {Object} params.options -
- * @param {string} params.output -
+ * @param {Parameters<Tesseract.Worker['recognize']>[2]} params.output
  * @param {number} params.n -
  * @param {?number} [params.knownAngle] - The known angle, or `null` if the angle is not known at the time of recognition.
  * @param {?string} [params.engineName] -
@@ -106,7 +106,7 @@ export const recognizeAndConvert = async ({
 }) => {
   const res1 = await worker.recognize(image, options, output);
 
-  const angle = knownAngle === null || knownAngle === undefined ? res1.data.rotateRadians * (180 / Math.PI) * -1 : knownAngle;
+  const angle = knownAngle === null || knownAngle === undefined ? (res1.data.rotateRadians || 0) * (180 / Math.PI) * -1 : knownAngle;
 
   const keepItalic = oemCurrent === 0;
 
@@ -123,7 +123,7 @@ export const recognizeAndConvert = async ({
  * @param {Object} params -
  * @param {ArrayBuffer} params.image -
  * @param {Object} params.options -
- * @param {string} params.output -
+ * @param {Parameters<Tesseract.Worker['recognize']>[2]} params.output
  * @param {number} params.n -
  * @param {?number} [params.knownAngle] - The known angle, or `null` if the angle is not known at the time of recognition.
  * @param {?string} [params.engineName] -
@@ -141,19 +141,21 @@ export const recognizeAndConvert2 = async ({
 
   const res0 = await resArr[0];
 
-  const angle = knownAngle === null || knownAngle === undefined ? res0.data.rotateRadians * (180 / Math.PI) * -1 : knownAngle;
+  const angle = knownAngle === null || knownAngle === undefined ? (res0.data.rotateRadians || 0) * (180 / Math.PI) * -1 : knownAngle;
 
   let resLegacy;
   let resLSTM;
   if (options.lstm && options.legacy) {
+    const legacyHOCR = /** @type {string} */(res0.data.hocr);
     resLegacy = await convertPageHocr({
-      ocrStr: res0.data.hocr, n, pageDims, rotateAngle: angle, keepItalic: true,
+      ocrStr: legacyHOCR, n, pageDims, rotateAngle: angle, keepItalic: true,
     });
     (async () => {
       const res1 = await resArr[1];
 
+      const lstmHOCR = /** @type {string} */(res1.data.hocr2);
       resLSTM = await convertPageHocr({
-        ocrStr: res1.data.hocr2, n, pageDims, rotateAngle: angle, keepItalic: false,
+        ocrStr: lstmHOCR, n, pageDims, rotateAngle: angle, keepItalic: false,
       });
 
       const xB = { recognize: res1.data, convert: { legacy: null, lstm: resLSTM } };
@@ -161,12 +163,14 @@ export const recognizeAndConvert2 = async ({
       postMessage({ data: xB, id: `${id}b` });
     })();
   } else if (!options.lstm && options.legacy) {
+    const legacyHOCR = /** @type {string} */(res0.data.hocr);
     resLegacy = await convertPageHocr({
-      ocrStr: res0.data.hocr, n, pageDims, rotateAngle: angle, keepItalic: true,
+      ocrStr: legacyHOCR, n, pageDims, rotateAngle: angle, keepItalic: true,
     });
   } else if (options.lstm && !options.legacy) {
+    const lstmHOCR = /** @type {string} */(res0.data.hocr);
     resLSTM = await convertPageHocr({
-      ocrStr: res0.data.hocr, n, pageDims, rotateAngle: angle, keepItalic: false,
+      ocrStr: lstmHOCR, n, pageDims, rotateAngle: angle, keepItalic: false,
     });
   }
 
@@ -178,10 +182,12 @@ export const recognizeAndConvert2 = async ({
 };
 
 /**
- *@param {Object} args
-* @param {Parameters<typeof worker.recognize>[0]} args.image
-* @param {Parameters<typeof worker.recognize>[1]} args.options
-* @param {Parameters<typeof worker.recognize>[2]} args.output
+* @template {Partial<Tesseract.OutputFormats>} TO
+* @param {Object} args
+* @param {Parameters<Tesseract.Worker['recognize']>[0]} args.image
+* @param {Parameters<Tesseract.Worker['recognize']>[1]} args.options
+* @param {TO} args.output
+* @returns {Promise<Tesseract.Page<TO>>}
 * Exported for type inference purposes, should not be imported anywhere.
 */
 export const recognize = async ({ image, options, output }) => {

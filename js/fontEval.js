@@ -6,7 +6,7 @@ import { optimizeFontContainerAll } from './objects/fontObjects.js';
  *
  * @param {FontContainerFamily} font
  * @param {Array<OcrPage>} pageArr
- * @param {Array<HTMLImageElement>} binaryImageArr
+ * @param {Array<ImageBitmap>} binaryImageArr
  * @param {Array<boolean>} binaryRotatedArr
  * @param {number} n - Number of words to compare
  */
@@ -31,7 +31,7 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
       // Browser case
     } else {
       res = await globalThis.gs.evalPageFont({
-        font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i].src, imageRotated: binaryRotatedArr[i], pageMetricsObj: globalThis.pageMetricsArr[i],
+        font: font.normal.family, page: pageArr[i], binaryImage: binaryImageArr[i], imageRotated: binaryRotatedArr[i], pageMetricsObj: globalThis.pageMetricsArr[i],
       });
     }
 
@@ -44,7 +44,7 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
 
 /**
 * @param {Array<OcrPage>} pageArr
-* @param {Array<Promise<HTMLImageElement>>|Array<Promise<Image>>} binaryImageArr
+* @param {Array<Promise<ImageBitmap>>} binaryImageArr
 * @param {Array<boolean>} binaryRotatedArr
 */
 export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr) {
@@ -99,7 +99,7 @@ export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr) {
  * and returns `true` if sans or serif could be improved through optimization.
  *
  * @param {Array<OcrPage>} ocrArr - Array of OCR pages to use for font optimization.
- * @param {?Array<*>} imageArr - Array of binary images to use for validating optimized fonts.
+ * @param {?Array<Promise<ImageBitmap>>} imageArr - Array of binary images to use for validating optimized fonts.
  * @param {?Array<boolean>} imageRotatedArr - Array of booleans indicating whether each image in `imageArr` has been rotated.
  *
  * This function should still be run, even if no character-level OCR data is present,

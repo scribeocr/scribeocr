@@ -3,6 +3,8 @@
 // Image Coordinate Space: coordinate space of a particular image
 // Canvas Coordinate Space: coordinate space of canvas, used for user interactions
 
+import { imageCont } from './imageContainer.js';
+
 /**
  * @typedef {Object} BoundingBox
  * @property {number} top -
@@ -84,7 +86,7 @@ function canvasToImage(canvasCoords, imageRotated, canvasRotated, n, angle = 0) 
  * @returns {BoundingBox} Bounding box in image coordinates.
  */
 function ocrToImage(ocrCoords, n, binary = false) {
-  const imageRotated = binary ? globalThis.imageAll.binaryRotated[n] : globalThis.imageAll.nativeRotated[n];
+  const imageRotated = binary ? imageCont.imageAll.binaryRotated[n] : imageCont.imageAll.nativeRotated[n];
 
   // If the image was never rotated, then the xml and image coordinates are the same
   if (!imageRotated) {
@@ -92,7 +94,7 @@ function ocrToImage(ocrCoords, n, binary = false) {
   }
 
   // Otherwise, we must also account for rotation applied by the canvas
-  const rotateAngle = globalThis.pageMetricsArr[n].angle * -1;
+  const rotateAngle = (globalThis.pageMetricsArr[n].angle || 0) * -1;
 
   return rotateBoundingBox(ocrCoords, rotateAngle, n);
 }

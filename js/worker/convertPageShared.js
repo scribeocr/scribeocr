@@ -116,7 +116,9 @@ export function pass2(pageObj) {
 
       // In some documents Abbyy consistently uses "¬" rather than "-" for hyphenated words at the the end of lines, so this symbol is included.
       for (let k = 0; k < letterArr.length; k++) {
-        if (['-', '–', '—', '¬'].includes(letterArr[k]) && letterArr.length > 1) {
+        // This adjustment requires line-level metrics to be correct, so skip in cases where the dash is (basically) the only thing on the line.
+        const enoughInfo = letterArr.length > 2 || wordObj.line.words.length > 2;
+        if (['-', '–', '—', '¬'].includes(letterArr[k]) && enoughInfo) {
           let charWidth = charObjArr[k].bbox.right - charObjArr[k].bbox.left;
 
           // If the gap between the previous character and next character is shorter than the supposed width of the dash character, use that width instead.

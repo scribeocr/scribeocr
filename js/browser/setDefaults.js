@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 
-import { enableXlsxExportClick, setFormatLabel, enableRecognitionClick } from '../../main.js';
+import { enableXlsxExportClick, enableRecognitionClick } from '../../main.js';
+import { setFormatLabel } from './interfaceDownload.js';
 
 const defaults = {
   enableRecognition: true,

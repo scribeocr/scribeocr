@@ -4,6 +4,7 @@ import { calcOverlap } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
 import { saveAs, imageStrToBlob } from '../miscUtils.js';
 import { cp } from '../../main.js';
+import { imageCont } from '../imageContainer.js';
 
 export function printSelectedWords(printOCR = true) {
   const selectedObjects = window.canvas.getActiveObjects();
@@ -19,7 +20,7 @@ export function printSelectedWords(printOCR = true) {
 
 export async function evalSelectedLine() {
   const selectedObjects = window.canvas.getActiveObjects();
-  if (!selectedObjects) return;
+  if (!selectedObjects || selectedObjects.length === 0) return;
 
   const word0 = ocr.getPageWord(globalThis.ocrAll.active[cp.n], selectedObjects[0].wordID);
 
@@ -37,7 +38,7 @@ export async function evalSelectedLine() {
   const res = await globalThis.gs.evalPage({
     wordsA: word0.line.words,
     wordsB: [],
-    binaryImage: imgElem.src,
+    binaryImage: imgElem,
     imageRotated: imageAll.binaryRotated[cp.n],
     pageMetricsObj: pageMetricsArr[cp.n],
     options: { view: true },
@@ -77,8 +78,8 @@ export function downloadCanvas() {
 
 // Utility function for downloading all images
 export async function downloadImageAll(filenameBase, type = 'binary') {
-  for (let i = 0; i < globalThis.imageAll[type].length; i++) {
-    const img = await globalThis.imageAll[type][i];
+  for (let i = 0; i < imageCont.imageAll[type].length; i++) {
+    const img = await imageCont.imageAll[type][i];
     const fileType = img.src.match(/^data:image\/([a-z]+)/)?.[1];
     if (!['png', 'jpeg'].includes(fileType)) {
       console.log(`Filetype ${fileType} is not jpeg/png; skipping.`);
@@ -162,30 +163,6 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 
   return excludedArr;
 }
-
-// function subsetFont (font) {
-
-//     const glyphs = font.glyphs.glyphs;
-//     const glyphArr = [];
-
-//     for (let key in glyphs) {
-//       const glyph = glyphs[key];
-//       if (glyph.unicode > 32 && glyph.unicode < 100) {
-//         glyphArr.push(glyph);
-//       }
-//     }
-
-//     const fontOut = new opentype.Font({
-//       familyName: font.names.fontFamily["en"],
-//       styleName: font.names.fontSubfamily["en"],
-//       unitsPerEm: font.unitsPerEm,
-//       ascender: font.ascender,
-//       descender: font.descender,
-//       glyphs: glyphArr
-//     })
-
-//     return fontOut;
-// }
 
 function lookupKerning(letterA, letterB) {
   return fontMetricsObj.SerifDefault.normal.kerning[`${letterA.charCodeAt(0)},${letterB.charCodeAt(0)}`];

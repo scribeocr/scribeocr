@@ -20,94 +20,100 @@
 // Artifex Software, Inc., 1305 Grant Avenue - Suite 200, Novato,
 // CA 94945, U.S.A., +1(415)492-9861, for further information.
 
-"use strict";
-
-//import { arrayBufferToBase64 } from "./js/miscUtils.js";
+// import { arrayBufferToBase64 } from "./js/miscUtils.js";
 // import Worker from 'web-worker';
 
 export async function initMuPDFWorker() {
+  const mupdf = {};
+  const url = new URL('./mupdf-worker.js', import.meta.url).href;
+  const worker = new Worker(url, { type: 'module' });
 
-	return new Promise((resolve, reject) => {
-		let mupdf = {};
-		const url = new URL('./mupdf-worker.js', import.meta.url).href;
-		let worker = globalThis.document ? new Worker(url) : new Worker(url, { type: 'module' });
-		
-		worker.onerror = function (error) {
-			throw error;
-		}
+  worker.onerror = function (error) {
+    throw error;
+  };
 
-		worker.onmessage = function (event) {
-			worker.promises = {};
-			worker.promiseId = 0;
-			worker.onmessage = async function (event) {
-				let [ type, id, result ] = event.data;
-				if (type === "RESULT"){
-					//worker.promises[id].resolve(result);
-					if (["drawPageAsPNG"].includes(worker.promises[id].func)) {
-						//const n = worker.promises[id].page - 1;
-						// await insertImageCache(n, result);
-						worker.promises[id].resolve(result);
-						delete worker.promises[id];
-					} else {
-						worker.promises[id].resolve(result);
-						delete worker.promises[id];
-					}
-				} else {
-					worker.promises[id].reject(result);
-					delete worker.promises[id];
-				}
+  let readyResolve;
+  const readyPromise = new Promise((resolve, reject) => {
+    readyResolve = resolve;
+  });
 
-			}
-			resolve(mupdf);
-		}
+  worker.promises = {};
+  worker.promiseId = 0;
+  worker.onmessage = async function (event) {
+    if (typeof event.data === 'string' && event.data === 'READY') {
+      readyResolve();
+      return;
+    }
+    const [type, id, result] = event.data;
+    if (type === 'RESULT') {
+      // worker.promises[id].resolve(result);
+      if (['drawPageAsPNG'].includes(worker.promises[id].func)) {
+        // const n = worker.promises[id].page - 1;
+        // await insertImageCache(n, result);
+        worker.promises[id].resolve(result);
+        delete worker.promises[id];
+      } else {
+        worker.promises[id].resolve(result);
+        delete worker.promises[id];
+      }
+    } else {
+      worker.promises[id].reject(result);
+      delete worker.promises[id];
+    }
+  };
 
-		function wrap(func) {
-			return function(...args) {
-				return new Promise(function (resolve, reject) {
-					// Add the PDF as the first argument for most functions
-					if(!["openDocument", "cleanFile"].includes(func)){
-						// Remove job number (appended by Tesseract scheduler function)
-						//args = args.slice(0,-1)
+  function wrap(func) {
+    return function (...args) {
+      return new Promise((resolve, reject) => {
+        // Add the PDF as the first argument for most functions
+        if (!['openDocument', 'cleanFile'].includes(func)) {
+          // Remove job number (appended by Tesseract scheduler function)
+          // args = args.slice(0,-1)
 
-						args = [mupdf["pdfDoc"],...args[0]]
-					}
-					let id = worker.promiseId++;
-					let page = ["drawPageAsPNG"].includes(func) ? args[1] : null;
-					worker.promises[id] = { resolve: resolve, reject: reject, func: func, page: page};
+          args = [mupdf.pdfDoc, args[0]];
+        }
+        const id = worker.promiseId++;
+        const page = ['drawPageAsPNG'].includes(func) ? args[1] : null;
+        worker.promises[id] = {
+          resolve, reject, func, page,
+        };
 
-					if (args[0] instanceof ArrayBuffer){
-						worker.postMessage([func, args, id], [args[0]]);
-					} else {
-						worker.postMessage([func, args, id]);
-					}
-				});
-			}
-		}
+        if (args[0] instanceof ArrayBuffer) {
+          worker.postMessage([func, args, id], [args[0]]);
+        } else {
+          worker.postMessage([func, args, id]);
+        }
+      });
+    };
+  }
 
-		mupdf.openDocument = wrap("openDocument");
-		mupdf.freeDocument = wrap("freeDocument");
-		mupdf.documentTitle = wrap("documentTitle");
-		mupdf.documentOutline = wrap("documentOutline");
-		mupdf.countPages = wrap("countPages");
-		mupdf.pageSizes = wrap("pageSizes");
-		mupdf.pageWidth = wrap("pageWidth");
-		mupdf.pageHeight = wrap("pageHeight");
-		mupdf.pageLinks = wrap("pageLinks");
-		mupdf.pageText = wrap("pageText");
-		mupdf.pageTextHTML = wrap("pageTextHTML");
-		mupdf.pageTextXHTML = wrap("pageTextXHTML");
-		mupdf.pageTextXML = wrap("pageTextXML");
-		mupdf.pageTextJSON = wrap("pageTextJSON");
-		mupdf.search = wrap("search");
-		mupdf.drawPageAsPNG = wrap("drawPageAsPNG");
-		mupdf.overlayText = wrap("overlayText");
-		mupdf.overlayTextImageStart = wrap("overlayTextImageStart");
-		mupdf.overlayTextImageAddPage = wrap("overlayTextImageAddPage");
-		mupdf.overlayTextImageEnd = wrap("overlayTextImageEnd");
-		mupdf.overlayTextImage = wrap("overlayTextImage");
-		mupdf.checkNativeText = wrap("checkNativeText");
-		mupdf.write = wrap("write");
-		mupdf.cleanFile = wrap("cleanFile");
-		mupdf.terminate = function () { worker.terminate(); }
-	})
-};
+  mupdf.openDocument = wrap('openDocument');
+  mupdf.freeDocument = wrap('freeDocument');
+  mupdf.documentTitle = wrap('documentTitle');
+  mupdf.documentOutline = wrap('documentOutline');
+  mupdf.countPages = wrap('countPages');
+  mupdf.pageSizes = wrap('pageSizes');
+  mupdf.pageWidth = wrap('pageWidth');
+  mupdf.pageHeight = wrap('pageHeight');
+  mupdf.pageLinks = wrap('pageLinks');
+  mupdf.pageText = wrap('pageText');
+  mupdf.pageTextHTML = wrap('pageTextHTML');
+  mupdf.pageTextXHTML = wrap('pageTextXHTML');
+  mupdf.pageTextXML = wrap('pageTextXML');
+  mupdf.pageTextJSON = wrap('pageTextJSON');
+  mupdf.search = wrap('search');
+  mupdf.drawPageAsPNG = wrap('drawPageAsPNG');
+  mupdf.overlayText = wrap('overlayText');
+  mupdf.overlayTextImageStart = wrap('overlayTextImageStart');
+  mupdf.overlayTextImageAddPage = wrap('overlayTextImageAddPage');
+  mupdf.overlayTextImageEnd = wrap('overlayTextImageEnd');
+  mupdf.overlayTextImage = wrap('overlayTextImage');
+  mupdf.checkNativeText = wrap('checkNativeText');
+  mupdf.write = wrap('write');
+  mupdf.cleanFile = wrap('cleanFile');
+  mupdf.terminate = function () { worker.terminate(); };
+
+  await readyPromise;
+
+  return mupdf;
+}

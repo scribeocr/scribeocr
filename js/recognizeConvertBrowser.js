@@ -1,15 +1,18 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  renderPDFImageCache, initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage,
+  initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage,
 } from '../main.js';
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
+import { imageCont } from './imageContainer.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+
+const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
 /** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>} */
 globalThis.visInstructions = [];
@@ -23,7 +26,8 @@ globalThis.visInstructions = [];
  */
 export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false, langArr = ['eng']) {
   // Render all PDF pages to PNG if needed
-  if (inputDataModes.pdfMode) await renderPDFImageCache([...Array(globalThis.imageAll.native.length).keys()]);
+  // Set `colorMode` such that binarized images are not created because of this step.
+  if (inputDataModes.pdfMode) await imageCont.renderImageRange(0, imageCont.pageCount - 1, colorModeElem.value);
 
   if (legacy) {
     const oemText = 'Tesseract Legacy';
@@ -54,7 +58,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   // however this function only returns after all recognition is completed.
   // This provides no performance benefit in absolute terms, however halves the amount of time the user has to wait
   // before seeing the initial recognition results.
-  const inputPages = [...Array(globalThis.imageAll.native.length).keys()];
+  const inputPages = [...Array(imageCont.imageAll.native.length).keys()];
   const promisesA = [];
   const resolvesA = [];
   const promisesB = [];
