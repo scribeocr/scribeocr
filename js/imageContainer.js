@@ -252,7 +252,14 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
       imageCont.imageAll.nativeColor[n] = colorMode;
       imageCont.imageAll.nativeRotated[n] = false;
 
-      const targetWidth = globalThis.pageMetricsArr[n].dims.width;
+      const pageMetrics = globalThis.pageMetricsArr[n];
+
+      // Return if no pageMetrics object exists. This can happen during the import.
+      // Eventually pageMetricsArr should be transitioned to use promises,
+      // but this avoids a crash in the meantime.
+      if (!pageMetrics) return;
+
+      const targetWidth = pageMetrics.dims.width;
       const dpi = 300 * (targetWidth / pdfDims300Arr[n].width);
 
       if (!imageCont.muPDFScheduler) {
