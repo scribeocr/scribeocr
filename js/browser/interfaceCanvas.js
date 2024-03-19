@@ -28,7 +28,14 @@ const resetCanvasEventListeners = () => {
       return;
     }
 
-    const delta = opt.e.deltaY;
+    let delta = opt.e.deltaY;
+    // Zoom by a greater amount for track pads.
+    // Without this code, zooming would be extremely slow.
+    if (!mouseMode) {
+      delta = opt.e.deltaY * 5;
+      // Cap at the equivalent of ~5 scrolls of a scroll wheel.
+      delta = Math.min(600, Math.max(-600, delta));
+    }
     let zoom = canvas.getZoom();
     zoom *= 0.999 ** delta;
     if (zoom > 20) zoom = 20;
