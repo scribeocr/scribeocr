@@ -2,6 +2,28 @@ const resetCanvasEventListeners = () => {
   canvas.__eventListeners = {};
 
   canvas.on('mouse:wheel', (opt) => {
+    // Use GestureEvent to detect Safari (rather than some other method) as this is the feature at issue.
+    const safariMode = !!globalThis.GestureEvent;
+
+    // Identify device as a mouse, rather than track pad, if `deltaY` is a whole number.
+    // Mice appear to always scroll in multiples of 10, while track pads have `deltaY` values with many digits after the decimal.
+    const mouseMode = opt.e.deltaY === Math.round(opt.e.deltaY);
+
+    // Chrome and Firefox indicate scroll events by setting `ctrlKey` property to `true`.
+    // Safari does not do this, and instead uses a Safari-specific "GestureEvent" interface.
+    const panEvent = !mouseMode && !opt.e.ctrlKey && !safariMode;
+
+    // Chrome and Firefox indicate scroll events by setting
+    if (panEvent) {
+      const delta = new fabric.Point(opt.e.deltaX, opt.e.deltaY);
+      canvas.relativePan(delta);
+
+      opt.e.preventDefault();
+      opt.e.stopPropagation();
+      canvas.renderAll();
+      return;
+    }
+
     const delta = opt.e.deltaY;
     let zoom = canvas.getZoom();
     zoom *= 0.999 ** delta;
@@ -121,7 +143,7 @@ const defaultOnDragHandler = fabric.Canvas.prototype._onDrag;
 fabric.util.object.extend(fabric.Canvas.prototype, {
   _onDrag(e) {
     if (isPanning) {
-      if (e.touches && e.touches.length == 1) {
+      if (e.touches && e.touches.length === 1) {
         const touch = e.touches[0];
         const delta = new fabric.Point(touch.clientX - lastTouchX, touch.clientY - lastTouchY);
         canvas.relativePan(delta);
@@ -143,8 +165,8 @@ fabric.util.object.extend(fabric.Canvas.prototype, {
 let zoomStartScale = 1;
 fabric.util.object.extend(fabric.Canvas.prototype, {
   _onGesture(e, self) {
-    if (e.touches && e.touches.length == 2) {
-      if (self.state == 'start') {
+    if (e.touches && e.touches.length === 2) {
+      if (self.state === 'start') {
         zoomStartScale = canvas.getZoom();
       }
 
