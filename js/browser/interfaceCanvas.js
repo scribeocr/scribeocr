@@ -2,12 +2,16 @@ const resetCanvasEventListeners = () => {
   canvas.__eventListeners = {};
 
   canvas.on('mouse:wheel', (opt) => {
+    if (opt.e.deltaX === 0 && opt.e.deltaY === 0) return;
+
     // Use GestureEvent to detect Safari (rather than some other method) as this is the feature at issue.
     const safariMode = !!globalThis.GestureEvent;
 
-    // Identify device as a mouse, rather than track pad, if `deltaY` is a whole number.
-    // Mice appear to always scroll in multiples of 10, while track pads have `deltaY` values with many digits after the decimal.
-    const mouseMode = opt.e.deltaY === Math.round(opt.e.deltaY);
+    // Identify device as a mouse, rather than track pad, if:
+    // (1) deltaX is 0 (mouse wheels move vertically) and (2) deltaY is a multiple of 10.
+    // Technically many mouse wheels can click horizontally, however it is better for this to be
+    // handled as a pan rather than zoom anyway.
+    const mouseMode = opt.e.deltaX === 0 && (opt.e.deltaY / 10) === Math.round(opt.e.deltaY / 10);
 
     // Chrome and Firefox indicate scroll events by setting `ctrlKey` property to `true`.
     // Safari does not do this, and instead uses a Safari-specific "GestureEvent" interface.
