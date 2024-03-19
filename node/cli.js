@@ -355,7 +355,7 @@ async function main(func, params) {
     }
 
     if (printConf) {
-      console.log(`Confidence: ${evalMetricsDoc.correct / evalMetricsDoc.total}`);
+      console.log(`Confidence: ${evalMetricsDoc.correct / evalMetricsDoc.total} (${evalMetricsDoc.correct} of ${evalMetricsDoc.total})`);
     }
   }
 

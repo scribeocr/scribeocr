@@ -1,6 +1,9 @@
-import { Builder, By, until } from 'selenium-webdriver';
+import {
+  Builder, By, until,
+} from 'selenium-webdriver';
 
 class CustomSeleniumActions {
+  /** @param  {import('selenium-webdriver').WebDriver} driver */
   constructor(driver) {
     this.driver = driver;
   }
