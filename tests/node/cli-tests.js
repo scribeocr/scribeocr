@@ -112,6 +112,8 @@ describe('Check Node.js commands.', () => {
     // Call the function
     await overlayFunc(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, conf: true });
 
+    if (!/0.927/.test(consoleOutput)) originalConsoleLog(consoleOutput);
+
     expect(consoleOutput).to.include('Confidence: 0.927');
 
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
