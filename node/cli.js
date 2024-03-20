@@ -9,6 +9,7 @@ import Tesseract from 'tesseract.js';
 import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
 import { runFontOptimization } from '../js/fontEval.js';
 import { imageCont } from '../js/imageContainer.js';
+import { renderHOCR } from '../js/exportRenderHOCR.js';
 
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
 import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
@@ -24,14 +25,47 @@ const writeFile = util.promisify(fs.writeFile);
 
 globalThis.Worker = Worker;
 
-const saveCompImages = false;
+// When `debugMode` is enabled:
+// (1) Comparison images are saved as .png files.
+// (2) Comparison logs are saved as .txt files.
+// (3) All OCR data is dumped as .hocr files.
+const debugMode = false;
+
+const compLogs = {};
 
 /** @type {import('canvas').CanvasRenderingContext2D} */
 let ctxDebug;
-if (saveCompImages) {
+if (debugMode) {
   const { createCanvas } = await import('canvas');
   const canvasAlt = createCanvas(200, 200);
   ctxDebug = canvasAlt.getContext('2d');
+}
+
+const debugDir = `${__dirname}/../../dev/debug/`;
+
+/**
+ *
+ * @param {string} fileName - File name of input file, which is edited to create output path.
+ */
+function dumpHOCRAll(fileName) {
+  for (const [key, value] of Object.entries(globalThis.ocrAll)) {
+    if (key === 'active') continue;
+    const hocrOut = renderHOCR(value, globalThis.fontMetricsObj, globalThis.layout, 0, value.length - 1);
+    const outputPath = `${debugDir}/${path.basename(fileName).replace(/\.\w{1,5}$/i, '')}_${key}.hocr`;
+    fs.writeFileSync(outputPath, hocrOut);
+  }
+}
+
+/**
+ *
+ * @param {string} fileName - File name of input file, which is edited to create output path.
+ */
+function dumpDebugLogAll(fileName) {
+  for (const [key, value] of Object.entries(compLogs)) {
+    const debugStr = value.join('\n\n');
+    const outputPath = `${debugDir}/${path.basename(fileName).replace(/\.\w{1,5}$/i, '')}_complog_${key}.txt`;
+    fs.writeFileSync(outputPath, debugStr);
+  }
 }
 
 /**
@@ -102,7 +136,6 @@ async function main(func, params) {
   const backgroundPDF = backgroundArg && /pdf$/i.test(backgroundArg);
   const backgroundImage = backgroundArg && !backgroundPDF;
 
-  const debugMode = false;
   const robustConfMode = func === 'check' || params.robustConfMode || false;
   const printConf = func === 'check' || func === 'conf' || params.printConf || false;
 
@@ -268,11 +301,12 @@ async function main(func, params) {
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < imageCont.imageAll.native.length; i++) {
+      /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         ignoreCap: true,
         ignorePunct: false,
-        debugLabel: saveCompImages ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
+        debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
       const imgElem = await imageCont.imageAll.binary[i];
@@ -288,7 +322,7 @@ async function main(func, params) {
       if (globalThis.debugLog === undefined) globalThis.debugLog = '';
       globalThis.debugLog += res.debugLog;
 
-      if (saveCompImages && res.debugImg.length > 0) {
+      if (debugMode && res.debugImg.length > 0) {
         const filePath = `${__dirname}/../../dev/debug/legacy_lstm_comp_${i}.png`;
         await writeDebugImages(ctxDebug, [res.debugImg], filePath);
       }
@@ -302,13 +336,17 @@ async function main(func, params) {
   }
 
   if (robustConfMode || func === 'eval') {
+    if (debugMode) compLogs.Combined = [];
     for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+      /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'stats',
         supplementComp: true,
         ignoreCap: true,
         ignorePunct: false,
         tessWorker,
+        editConf: robustConfMode,
+        debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
       const imgElem = await imageCont.imageAll.binary[i];
@@ -327,18 +365,14 @@ async function main(func, params) {
         options: compOptions,
       });
 
-      // In robustConfMode, the comparison with Tesseract OCR should replace the original confidence metrics.
-      // This is set here because `compareHOCR` (in "stats" mode) only sets the `matchTruth` attribute, but does not edit `conf`.
-      if (robustConfMode) {
-        ocr.getPageWords(res.page).forEach((x) => {
-          x.conf = x.matchTruth ? 100 : 0;
-        });
-      }
+      if (debugMode) compLogs.Combined[i] = res.debugLog;
 
-      globalThis.ocrAll.active[i] = res.page;
+      globalThis.ocrAll.Combined[i] = res.page;
 
       if (res.metrics) evalMetricsArr.push(res.metrics);
     }
+
+    globalThis.ocrAll.active = globalThis.ocrAll.Combined;
 
     const evalMetricsDoc = reduceEvalMetrics(evalMetricsArr);
 
@@ -357,6 +391,11 @@ async function main(func, params) {
     if (printConf) {
       console.log(`Confidence: ${evalMetricsDoc.correct / evalMetricsDoc.total} (${evalMetricsDoc.correct} of ${evalMetricsDoc.total})`);
     }
+  }
+
+  if (debugDir && backgroundArg) {
+    dumpHOCRAll(backgroundArg);
+    dumpDebugLogAll(backgroundArg);
   }
 
   if (func === 'overlay') {

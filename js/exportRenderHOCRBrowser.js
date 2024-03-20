@@ -9,10 +9,13 @@ const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElement
  */
 export function renderHOCRBrowser(ocrData, fontMetrics, layoutData) {
   const minValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMin')).value) - 1;
-  const maxValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMax')).value);
+  const maxValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMax')).value) - 1;
 
   const hocrOut = renderHOCR(ocrData, fontMetrics, layoutData, minValue, maxValue);
 
+  // Running through the DOMParser should automatically add nice formatting.
+  // The DOMParser should not be used for anything that impacts results substantively,
+  // as the Node.js version does not have access to it.
   const exportParser = new DOMParser();
 
   const exportXML = exportParser.parseFromString(hocrOut, 'text/xml');

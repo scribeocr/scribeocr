@@ -556,9 +556,12 @@ export async function evalWords({
  * Calculate penalty for word using ad-hoc heuristics.
  * Supplements word overlap strategy by penalizing patterns that may have plausible overlap
  * but are implausible from a language perspective (e.g. "1%" being misidentified as "l%")
- * @param {string} wordStr
+ * @param {Array<OcrWord>} wordObjs - Array of OcrWord objects. All objects should (potentially) belong to a single word,
+ *    rather than this function being used on an entire line.
  */
-function penalizeWord(wordStr) {
+async function penalizeWord(wordObjs) {
+  const wordStr = wordObjs.map((x) => x.text).join('');
+
   let penalty = 0;
   // Penalize non-numbers followed by "%"
   // This potentially penalizes valid URLs
@@ -582,6 +585,33 @@ function penalizeWord(wordStr) {
   // (Overlap can be fairly strong of no actual "]" characters are present due to font optimization)
   if (/^\]./.test(wordStr)) penalty += 0.05;
 
+  // Penalize likely noise characters.
+  // These are identified as characters that cause the characters to overlap, however if reduced, the spacing would be plausible.
+  // This is currently limited to two letter words where a letter is following by a period, comma, or dash,
+  // however should likely be expanded in the future to cover more cases.
+  // See notes for more explanation of this issue.
+  if (wordObjs.length === 1 && /^[a-z][.,-]$/i.test(wordStr)) {
+    const word = wordObjs[0];
+    const wordTextArr = wordStr.split('');
+    const wordFontFamily = word.font || globalSettings.defaultFont;
+    const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
+    const fontOpentypeI = await fontI.opentype;
+
+    // These calculations differ from the standard word width calculations,
+    // because they do not include left/right bearings.
+    const glyphFirstMetrics = fontOpentypeI.charToGlyph(wordTextArr[0]).getMetrics();
+    const widthFirst = glyphFirstMetrics.xMax - glyphFirstMetrics.xMin;
+
+    const glyphSecondMetrics = fontOpentypeI.charToGlyph(wordTextArr[1]).getMetrics();
+    const widthSecond = glyphSecondMetrics.xMax - glyphSecondMetrics.xMin;
+
+    const widthTotal = widthFirst + widthSecond;
+
+    const wordWidth = word.bbox.right - word.bbox.left;
+
+    if (widthFirst >= wordWidth * 0.9 && widthTotal > wordWidth * 1.2) penalty += 0.05;
+  }
+
   return penalty;
 }
 
@@ -596,6 +626,8 @@ function penalizeWord(wordStr) {
  * @param {object} params.options
  * @param {("stats"|"comb")} [params.options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
  *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created.
+ * @param {boolean} [params.options.editConf] - Whether confidence metrics should be updated when `mode = 'stats'`,
+ *    rather than simply setting `compTruth`/`matchTruth`. Enabled when using recognition to update confidence metrics, but not when comparing to ground truth.
  * @param {string} [params.options.debugLabel]
  * @param {boolean} [params.options.evalConflicts] - Whether to evaluate word quality on conflicts. If `false` the text from `pageB` is always assumed correct.
  *    This option is useful for combining the style from Tesseract Legacy with the text from Tesseract LSTM.
@@ -614,6 +646,7 @@ export async function compareHOCR({
   const binaryImageBit = binaryImage;
 
   const mode = options?.mode === undefined ? 'stats' : options?.mode;
+  const editConf = options?.editConf === undefined ? false : options?.editConf;
   const debugLabel = options?.debugLabel === undefined ? '' : options?.debugLabel;
   const evalConflicts = options?.evalConflicts === undefined ? true : options?.evalConflicts;
   const supplementComp = options?.supplementComp === undefined ? false : options?.supplementComp;
@@ -627,6 +660,8 @@ export async function compareHOCR({
   if (supplementComp && !(tessScheduler || tessWorker)) console.log('`supplementComp` enabled, but no scheduler was provided. This step will be skipped.');
 
   const { n } = pageA;
+
+  const verboseLogs = false;
 
   let debugLog = '';
   const debugImg = [];
@@ -693,6 +728,7 @@ export async function compareHOCR({
             wordA.matchTruth = true;
             if (mode === 'comb') wordA.conf = 100;
             hocrACorrect[wordA.id] = 1;
+            if (verboseLogs) debugLog += `Marking word as matching due to no non-punctuation characters: ${wordA.id} (${wordA.text})\n`;
           }
 
           const wordBoxA = wordA.bbox;
@@ -745,6 +781,7 @@ export async function compareHOCR({
 
               // Mark `wordA` as having been compared
               wordA.compTruth = true;
+              if (verboseLogs) debugLog += `Word ${wordA.id} (${wordA.text}) overlaps with word ${wordB.id} (${wordB.text})\n`;
 
               let wordTextA = ocr.replaceLigatures(wordA.text);
               let wordTextB = ocr.replaceLigatures(wordB.text);
@@ -767,6 +804,7 @@ export async function compareHOCR({
 
               // TODO: Account for cases without 1-to-1 mapping between bounding boxes
               if (wordTextA === wordTextB) {
+                if (verboseLogs) debugLog += `Word ${wordA.id} (${wordA.text}) matches word ${wordB.id} (${wordB.text})\n`;
                 wordA.compTruth = true;
                 wordA.matchTruth = true;
                 if (mode === 'comb') wordA.conf = 100;
@@ -853,8 +891,8 @@ export async function compareHOCR({
                     wordsA: [wordA], wordsB: [wordAClone], binaryImage: binaryImageBit, imageRotated, pageMetricsObj, options: { view: Boolean(debugLabel) },
                   });
 
-                  hocrAError = evalRes.metricA + penalizeWord(wordA.text);
-                  hocrBError = evalRes.metricB + penalizeWord(wordB.text);
+                  hocrAError = evalRes.metricA + (await penalizeWord([wordA]));
+                  hocrBError = evalRes.metricB + (await penalizeWord([wordB]));
 
                   // Apply ad-hoc penalties
                   hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
@@ -878,8 +916,8 @@ export async function compareHOCR({
                   const wordsBText = wordsBArr.map((x) => x.text).join('');
 
                   // The option with more words has a small penalty added, as otherwise words incorrectly split will often score slightly better (due to more precise positioning)
-                  hocrAError = evalRes.metricA + (wordsAArr.length - 1) * 0.025 + penalizeWord(wordsAText);
-                  hocrBError = evalRes.metricB + (wordsBArr.length - 1) * 0.025 + penalizeWord(wordsBText);
+                  hocrAError = evalRes.metricA + (wordsAArr.length - 1) * 0.025 + (await penalizeWord(wordsAArr));
+                  hocrBError = evalRes.metricB + (wordsBArr.length - 1) * 0.025 + (await penalizeWord(wordsBArr));
 
                   // An additional penalty is added to the option with more words when (1) the text is the same in both options and (2) at least one word has no letters.
                   // This has 2 primary motivations:
@@ -1059,6 +1097,14 @@ export async function compareHOCR({
     correctLowConf: correctCountLowConf,
     incorrectHighConf: incorrectCountHighConf,
   };
+
+  // Confidence scores are only edited if an option is set.
+  // This is because confidence scores should not be edited when comparing to ground truth.
+  if (editConf) {
+    ocr.getPageWords(pageAInt).forEach((x) => {
+      x.conf = x.matchTruth ? 100 : 0;
+    });
+  }
 
   return {
     page: pageAInt, metrics: metricsRet, debugLog, debugImg,

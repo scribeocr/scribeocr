@@ -134,7 +134,9 @@ export async function calcWordMetrics(wordText, fontOpentype, fontSize) {
 }
 
 /**
- * Calculates char spacing required for the specified word to be rendered at specified width.
+ * Calculates char spacing (px) required for the specified word to be rendered at specified width.
+ * The number returned is the number of pixels that would need to be added/removed between all
+ * characters for the word to match `actualWidth`.
  *
  * @param {string} wordText -
  * @param {import('opentype.js').Font} fontOpentype

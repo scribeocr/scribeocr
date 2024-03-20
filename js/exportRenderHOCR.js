@@ -29,7 +29,7 @@ export function renderHOCR(ocrData, fontMetrics, layoutData, minValue, maxValue)
  </head>
  <body>`;
 
-  for (let i = minValue; i < maxValue; i++) {
+  for (let i = minValue; i <= maxValue; i++) {
     const pageObj = ocrData[i];
 
     // Handle case where ocrPage object does not exist.

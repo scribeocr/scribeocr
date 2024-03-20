@@ -206,6 +206,7 @@ export async function recognizeAllClick() {
             ignorePunct: ignorePunctElem.checked,
             confThreshHigh: parseInt(confThreshHighElem.value),
             confThreshMed: parseInt(confThreshMedElem.value),
+            editConf: true,
           };
 
           const imgElem = await imageCont.imageAll.binary[i];
