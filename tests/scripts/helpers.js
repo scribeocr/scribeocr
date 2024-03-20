@@ -60,7 +60,14 @@ class CustomSeleniumActions {
         const maxValueDownload = await progressBarDownload.getAttribute('aria-valuemax');
         const currentValue = await progressBarDownload.getAttribute('aria-valuenow');
         return currentValue === maxValueDownload;
-      }, 10000, 'Download progress bar did not reach maximum value in time');
+      }, 10000)
+        .catch(async (error) => {
+          const maxValueDownload = await progressBarDownload.getAttribute('aria-valuemax');
+          const currentValue = await progressBarDownload.getAttribute('aria-valuenow');
+          console.log(`Download progress bar did not reach maximum value in time for ${format}.`);
+          console.log(`Current value: ${currentValue} / ${maxValueDownload}`);
+          throw error;
+        });
 
       // Firefox opens .pdf downloads in a new tab, so we need to switch back to the original.
       const browser = (await this.driver.getCapabilities()).getBrowserName();
