@@ -393,7 +393,7 @@ async function main(func, params) {
     }
   }
 
-  if (debugDir && backgroundArg) {
+  if (debugMode && backgroundArg) {
     dumpHOCRAll(backgroundArg);
     dumpDebugLogAll(backgroundArg);
   }
