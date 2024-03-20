@@ -553,6 +553,33 @@ export async function evalWords({
 }
 
 /**
+ * Determines whether Tesseract Legacy word should be rejected in favor of LSTM word.
+ * This should only be run when combining Tesseract Legacy and Tesseract LSTM,
+ * as these heuristics are based specifically on Tesseract Legacy issues,
+ * and it should only include patterns that are highly likely to be incorrect when only found in Legacy.
+ * Patterns that should merely be penalized (in all engines) should be in `penalizeWord`,
+ *
+ * @param {string} legacyText
+ * @param {string} lstmText
+ */
+function rejectWordLegacy(legacyText, lstmText) {
+  // Automatically reject words that contain a number between two letters.
+  // Tesseract Legacy commonly identifies letters as numbers (usually 1).
+  // This does not just happen with "l"--in test documents "r" and "i" were also misidentified as "1" multiple times.
+  const replaceNum = /[a-z]\d[a-z]/i.test(legacyText) && !/[a-z]\d[a-z]/i.test(lstmText);
+
+  // Automatically reject words where "ii" is between two non-"i" letters
+  // Tesseract Legacy commonly recognizes "ii" when the (actual) letter contains an accent,
+  // while Tesseract LSTM usually recognizes the correct letter, sans the accent.
+  // This "ii" pattern is automatically discarded, regardless of the overlap metrics,
+  // because the overlap metrics often fail in this case.
+  // E.g. the letter "ö" (o with umlaut) may overlap better with "ii" than "o".
+  const replaceII = /[a-hj-z]ii[a-hj-z]/i.test(legacyText) && !/[a-hj-z]ii[a-hj-z]/i.test(lstmText);
+
+  return replaceNum || replaceII;
+}
+
+/**
  * Calculate penalty for word using ad-hoc heuristics.
  * Supplements word overlap strategy by penalizing patterns that may have plausible overlap
  * but are implausible from a language perspective (e.g. "1%" being misidentified as "l%")
@@ -628,6 +655,8 @@ async function penalizeWord(wordObjs) {
  *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created.
  * @param {boolean} [params.options.editConf] - Whether confidence metrics should be updated when `mode = 'stats'`,
  *    rather than simply setting `compTruth`/`matchTruth`. Enabled when using recognition to update confidence metrics, but not when comparing to ground truth.
+ * @param {boolean} [params.options.legacyLSTMComb] - Whether Tesseract Legacy and Tesseract LSTM are being combined, when `mode = 'comb'`.
+ *    When `legacyLSTMComb` is enabled, additional heuristics are applied that are based on specific behaviors of the Tesseract Legacy engine.
  * @param {string} [params.options.debugLabel]
  * @param {boolean} [params.options.evalConflicts] - Whether to evaluate word quality on conflicts. If `false` the text from `pageB` is always assumed correct.
  *    This option is useful for combining the style from Tesseract Legacy with the text from Tesseract LSTM.
@@ -647,6 +676,7 @@ export async function compareHOCR({
 
   const mode = options?.mode === undefined ? 'stats' : options?.mode;
   const editConf = options?.editConf === undefined ? false : options?.editConf;
+  const legacyLSTMComb = options?.legacyLSTMComb === undefined ? false : options?.legacyLSTMComb;
   const debugLabel = options?.debugLabel === undefined ? '' : options?.debugLabel;
   const evalConflicts = options?.evalConflicts === undefined ? true : options?.evalConflicts;
   const supplementComp = options?.supplementComp === undefined ? false : options?.supplementComp;
@@ -733,15 +763,14 @@ export async function compareHOCR({
 
           const wordBoxA = wordA.bbox;
 
-          // Remove 10% from all sides of bounding box
-          // This prevents small overlapping (around the edges) from triggering a comparison
-          const wordBoxAWidth = wordBoxA.right - wordBoxA.left;
+          // Remove 10% from top/bottom of bounding box
+          // This prevents small overlapping (around the edges) from triggering a comparison.
+          // Nothing should be removed from left/right, as this would prevent legitimate one-to-many
+          // relationships from being identified.
+
           const wordBoxAHeight = wordBoxA.bottom - wordBoxA.top;
 
           const wordBoxACore = JSON.parse(JSON.stringify(wordBoxA));
-
-          wordBoxACore.left = wordBoxA.left + Math.round(wordBoxAWidth * 0.1);
-          wordBoxACore.right = wordBoxA.right - Math.round(wordBoxAWidth * 0.1);
 
           wordBoxACore.top = wordBoxA.top + Math.round(wordBoxAHeight * 0.1);
           wordBoxACore.bottom = wordBoxA.bottom - Math.round(wordBoxAHeight * 0.1);
@@ -750,15 +779,13 @@ export async function compareHOCR({
             const wordB = lineB.words[l];
             const wordBoxB = wordB.bbox;
 
-            // Remove 10% from all sides of ground truth bounding box
-            // This prevents small overlapping (around the edges) from triggering a comparison
-            const wordBoxBWidth = wordBoxB.right - wordBoxB.left;
+            // Remove 10% from top/bottom of bounding box
+            // This prevents small overlapping (around the edges) from triggering a comparison.
+            // Nothing should be removed from left/right, as this would prevent legitimate one-to-many
+            // relationships from being identified.
             const wordBoxBHeight = wordBoxB.bottom - wordBoxB.top;
 
             const wordBoxBCore = JSON.parse(JSON.stringify(wordBoxB));
-
-            wordBoxBCore.left = wordBoxB.left + Math.round(wordBoxBWidth * 0.1);
-            wordBoxBCore.right = wordBoxB.right - Math.round(wordBoxBWidth * 0.1);
 
             wordBoxBCore.top = wordBoxB.top + Math.round(wordBoxBHeight * 0.1);
             wordBoxBCore.bottom = wordBoxB.bottom - Math.round(wordBoxBHeight * 0.1);
@@ -860,21 +887,6 @@ export async function compareHOCR({
                   continue;
                 }
 
-                const replaceItalic = false;
-
-                // Automatically reject words that contain a number between two letters.
-                // Tesseract Legacy commonly identifies letters as numbers (usually 1).
-                // This does not just happen with "l"--in test documents "r" and "i" were also misidentified as "1" multiple times.
-                const replaceNum = /[a-z]\d[a-z]/i.test(wordA.text);
-
-                // Automatically reject words where "ii" is between two non-"i" letters
-                // Tesseract Legacy commonly recognizes "ii" when the (actual) letter contains an accent,
-                // while Tesseract LSTM usually recognizes the correct letter, sans the accent.
-                // This "ii" pattern is automatically discarded, regardless of the overlap metrics,
-                // because the overlap metrics often fail in this case.
-                // E.g. the letter "ö" (o with umlaut) may overlap better with "ii" than "o".
-                const replaceII = /[a-hj-z]ii[a-hj-z]/i.test(wordA.text);
-
                 let hocrAError = 0;
                 let hocrBError = 0;
 
@@ -894,8 +906,8 @@ export async function compareHOCR({
                   hocrAError = evalRes.metricA + (await penalizeWord([wordA]));
                   hocrBError = evalRes.metricB + (await penalizeWord([wordB]));
 
-                  // Apply ad-hoc penalties
-                  hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
+                  // Reject Tesseract Legacy word if appropriate
+                  if (legacyLSTMComb && rejectWordLegacy(wordA.text, wordB.text)) hocrAError = 1;
 
                   if (evalRes.debug) {
                     const debugObj = evalRes.debug;
@@ -932,8 +944,8 @@ export async function compareHOCR({
                     }
                   }
 
-                  // Apply ad-hoc penalties
-                  hocrAError = (replaceItalic || replaceNum || replaceII) ? 1 : hocrAError;
+                  // Reject Tesseract Legacy word if appropriate
+                  if (legacyLSTMComb && rejectWordLegacy(wordsAText, wordsBText)) hocrAError = 1;
 
                   if (evalRes.debug) {
                     const debugObj = evalRes.debug;

@@ -142,9 +142,11 @@ export async function recognizeAllClick() {
 
     initOCRVersion('Tesseract Combined Temp');
     for (let i = 0; i < imageCont.imageAll.native.length; i++) {
+      /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
       const compOptions1 = {
         mode: 'comb',
         evalConflicts: false,
+        legacyLSTMComb: true,
       };
 
       const imgElem = await imageCont.imageAll.binary[i];
@@ -173,6 +175,7 @@ export async function recognizeAllClick() {
     for (let i = 0; i < imageCont.imageAll.native.length; i++) {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
+      /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         debugLabel: tessCombinedLabel,
@@ -180,6 +183,7 @@ export async function recognizeAllClick() {
         ignorePunct: ignorePunctElem.checked,
         confThreshHigh: parseInt(confThreshHighElem.value),
         confThreshMed: parseInt(confThreshMedElem.value),
+        legacyLSTMComb: true,
       };
 
       const imgElem = await imageCont.imageAll.binary[i];
@@ -203,6 +207,7 @@ export async function recognizeAllClick() {
       // If the user uploaded data, compare to that as we
       if (userUploadMode) {
         if (document.getElementById('combineMode')?.value === 'conf') {
+          /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
           const compOptions = {
             debugLabel: 'Combined',
             supplementComp: true,
@@ -230,6 +235,7 @@ export async function recognizeAllClick() {
 
           globalThis.ocrAll.Combined[i] = res.page;
         } else {
+          /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
           const compOptions = {
             mode: 'comb',
             debugLabel: 'Combined',

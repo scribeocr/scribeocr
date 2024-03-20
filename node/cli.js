@@ -277,6 +277,7 @@ async function main(func, params) {
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < imageCont.imageAll.native.length; i++) {
+      /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         evalConflicts: false,

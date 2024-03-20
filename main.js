@@ -1004,6 +1004,7 @@ async function compareGroundTruthClick(n) {
   evalStatsConfigNew.ignoreCap = ignoreCapElem.checked;
   evalStatsConfigNew.ignoreExtra = ignoreExtraElem.checked;
 
+  /** @type {Parameters<import('./js/generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
   const compOptions = {
     ignoreCap: ignoreCapElem.checked,
     ignorePunct: ignorePunctElem.checked,
@@ -1270,6 +1271,7 @@ function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
       }
     }
 
+    /** @type {Parameters<import('./js/generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
     const compOptions = {
       mode: 'comb',
       debugLabel,
@@ -1277,6 +1279,7 @@ function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
       ignorePunct: ignorePunctElem.checked,
       confThreshHigh: parseInt(confThreshHighElem.value),
       confThreshMed: parseInt(confThreshMedElem.value),
+      legacyLSTMComb: true,
     };
 
     const imgElem = await imageCont.imageAll.binary[n];

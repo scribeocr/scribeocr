@@ -1,4 +1,4 @@
-import { enableDisableFontOpt, setFontAllWorker, fontAll } from './fontContainer.js';
+import { enableDisableFontOpt, fontAll } from './fontContainer.js';
 import { calcFontMetricsAll, setDefaultFontAuto } from './fontStatistics.js';
 import { optimizeFontContainerAll } from './objects/fontObjects.js';
 
