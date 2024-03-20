@@ -93,7 +93,11 @@ export async function recognizeAllClick() {
 
   // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined.
   if (oemMode === 'legacy' || oemMode === 'lstm') {
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCont.imageAll.native.length, 0, true);
+    // The last tick of the progress bar must be done after everything is finished.
+    // If the progress bar finishes earlier, in addition to being misleading to users,
+    // the automated browser tests wait until the progress bar fills up to conclude
+    // the recognition step was successful.
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCont.imageAll.native.length + 1, 0, true);
     const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
@@ -103,7 +107,7 @@ export async function recognizeAllClick() {
     if (oemMode === 'legacy') await runFontOptimizationBrowser(globalThis.ocrAll['Tesseract Legacy']);
   } else if (oemMode === 'combined') {
     globalThis.loadCount = 0;
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCont.imageAll.native.length * 2, 0, true);
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCont.imageAll.native.length * 2 + 1, 0, true);
 
     const time2a = Date.now();
     await recognizeAllPagesBrowser(true, true, true, langArr);
@@ -258,6 +262,8 @@ export async function recognizeAllClick() {
     const time3b = Date.now();
     if (debugMode) console.log(`Comparison runtime: ${time3b - time3a} ms`);
   }
+
+  globalThis.convertPageActiveProgress.increment();
 
   hideProgress2('recognize-recognize-progress-collapse');
 
