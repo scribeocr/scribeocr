@@ -2,55 +2,51 @@ const resetCanvasEventListeners = () => {
   canvas.__eventListeners = {};
 
   canvas.on('mouse:wheel', (opt) => {
-    if (opt.e.deltaX === 0 && opt.e.deltaY === 0) return;
+    const event = /** @type {WheelEvent} */ (opt.e);
+    if (event.deltaX === 0 && event.deltaY === 0) return;
 
-    // Use GestureEvent to detect Safari (rather than some other method) as this is the feature at issue.
-    const safariMode = !!globalThis.GestureEvent;
+    // If the control key is being held, this is a zoom event.
+    // In addition to being a standard control scheme, this is required to support laptop trackpads.
+    // When a user pinches to zoom, browsers set the `ctrlKey` property to `true`, even when the control key is not being touched.
+    const zoomEvent = event.ctrlKey;
 
-    // Identify device as a mouse, rather than track pad, if:
-    // (1) deltaX is 0 (mouse wheels move vertically) and (2) deltaY is a multiple of 10.
-    // Technically many mouse wheels can click horizontally, however it is better for this to be
-    // handled as a pan rather than zoom anyway.
-    const mouseMode = opt.e.deltaX === 0 && (opt.e.deltaY / 10) === Math.round(opt.e.deltaY / 10);
+    if (zoomEvent) {
+      // Track pads report precise zoom values (many digits after the decimal) while mouses only move in fixed (integer) intervals.
+      const trackPadMode = Math.round(event.deltaY) !== event.deltaY;
 
-    // Chrome and Firefox indicate scroll events by setting `ctrlKey` property to `true`.
-    // Safari does not do this, and instead uses a Safari-specific "GestureEvent" interface.
-    const panEvent = !mouseMode && !opt.e.ctrlKey && !safariMode;
+      let delta = event.deltaY;
 
-    // Chrome and Firefox indicate scroll events by setting
-    if (panEvent) {
-      const delta = new fabric.Point(opt.e.deltaX, opt.e.deltaY);
+      // If `deltaMode` is `1` (less common), units are in lines rather than pixels.
+      if (event.deltaMode === 1) delta *= 10;
+
+      // Zoom by a greater amount for track pads.
+      // Without this code, zooming would be extremely slow.
+      if (trackPadMode) {
+        delta *= 7;
+        // Cap at the equivalent of ~6 scrolls of a scroll wheel.
+        delta = Math.min(600, Math.max(-720, delta));
+      }
+      let zoom = canvas.getZoom();
+      zoom *= 0.999 ** delta;
+      if (zoom > 20) zoom = 20;
+      if (zoom < 0.01) zoom = 0.01;
+
+      const pointer = canvas.getPointer(event, true);
+
+      // Calculate the zoom point
+      const zoomPoint = new fabric.Point(pointer.x, pointer.y);
+
+      // Transform the view of the canvas to the zoom point
+      canvas.zoomToPoint(zoomPoint, zoom);
+
+    // Otherwise, this is a pan event.
+    } else {
+      const delta = new fabric.Point(-event.deltaX, -event.deltaY);
       canvas.relativePan(delta);
-
-      opt.e.preventDefault();
-      opt.e.stopPropagation();
-      canvas.renderAll();
-      return;
     }
 
-    let delta = opt.e.deltaY;
-    // Zoom by a greater amount for track pads.
-    // Without this code, zooming would be extremely slow.
-    if (!mouseMode) {
-      delta = opt.e.deltaY * 5;
-      // Cap at the equivalent of ~5 scrolls of a scroll wheel.
-      delta = Math.min(600, Math.max(-600, delta));
-    }
-    let zoom = canvas.getZoom();
-    zoom *= 0.999 ** delta;
-    if (zoom > 20) zoom = 20;
-    if (zoom < 0.01) zoom = 0.01;
-
-    const pointer = canvas.getPointer(opt.e, true);
-
-    // Calculate the zoom point
-    const zoomPoint = new fabric.Point(pointer.x, pointer.y);
-
-    // Transform the view of the canvas to the zoom point
-    canvas.zoomToPoint(zoomPoint, zoom);
-
-    opt.e.preventDefault();
-    opt.e.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
     canvas.renderAll();
   });
 
