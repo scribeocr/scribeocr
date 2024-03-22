@@ -1,6 +1,8 @@
 import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js';
-import { calcFontMetricsAll } from './fontStatistics.js';
+// import { calcFontMetricsAll } from './fontStatistics.js';
 import { optimizeFontContainerAll, fontAll } from './containers/fontContainer.js';
+import { fontMetricsObj } from './containers/miscContainer.js';
+// import { replaceObjectProperties } from './miscUtils.js';
 
 /**
  *
@@ -114,14 +116,13 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr) {
 
   const fontRaw = fontAll.get('raw');
 
-  const metricsRet = calcFontMetricsAll(ocrArr);
+  const calculateOpt = fontMetricsObj && Object.keys(fontMetricsObj).length > 0;
 
-  const calculateOpt = metricsRet.fontMetrics && Object.keys(metricsRet.fontMetrics).length > 0;
   let enableOpt = false;
 
   if (calculateOpt) {
-    setDefaultFontAuto(metricsRet.fontMetrics);
-    fontAll.opt = await optimizeFontContainerAll(fontRaw, metricsRet.fontMetrics);
+    setDefaultFontAuto(fontMetricsObj);
+    fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
   }
 
   // If image data exists, select the correct font by comparing to the image.
@@ -154,10 +155,12 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr) {
       // The default font for both the optimized and unoptimized versions are set to the same font.
       // This ensures that switching on/off "font optimization" does not change the font, which would be confusing.
       if (evalOpt.sansMetrics[evalOpt.minKeySans] < evalRaw.sansMetrics[evalRaw.minKeySans]) {
+        fontAll.sansDefaultName = evalOpt.minKeySans;
         fontRaw.SansDefault = fontRaw[evalOpt.minKeySans];
         fontAll.opt.SansDefault = fontAll.opt[evalOpt.minKeySans];
         enableOpt = true;
       } else {
+        fontAll.sansDefaultName = evalRaw.minKeySans;
         fontRaw.SansDefault = fontRaw[evalRaw.minKeySans];
         fontAll.opt.SansDefault = fontAll.opt[evalRaw.minKeySans];
 
@@ -170,10 +173,12 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr) {
 
       // Repeat for serif fonts
       if (evalOpt.serifMetrics[evalOpt.minKeySerif] < evalRaw.serifMetrics[evalRaw.minKeySerif]) {
+        fontAll.serifDefaultName = evalOpt.minKeySerif;
         fontRaw.SerifDefault = fontRaw[evalOpt.minKeySerif];
         fontAll.opt.SerifDefault = fontAll.opt[evalOpt.minKeySerif];
         enableOpt = true;
       } else {
+        fontAll.serifDefaultName = evalRaw.minKeySerif;
         fontRaw.SerifDefault = fontRaw[evalRaw.minKeySerif];
         fontAll.opt.SerifDefault = fontAll.opt[evalRaw.minKeySerif];
 
@@ -184,6 +189,8 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr) {
         fontAll.opt.SerifDefault = fontRaw.SerifDefault;
       }
     } else {
+      fontAll.sansDefaultName = evalRaw.minKeySans;
+      fontAll.serifDefaultName = evalRaw.minKeySerif;
       fontRaw.SansDefault = fontRaw[evalRaw.minKeySans];
       fontRaw.SerifDefault = fontRaw[evalRaw.minKeySerif];
     }

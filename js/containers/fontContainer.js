@@ -344,6 +344,8 @@ class FontCont {
       chi_sim: null,
     };
     this.defaultFontName = 'SerifDefault';
+    this.serifDefaultName = 'NimbusRomNo9L';
+    this.sansDefaultName = 'NimbusSans';
     /**
      * Get raw/opt/active font, and throw exception if it does not exist.
      * This method only exists for type inference purposes, as raw/opt/active may be accessed directly, but may be `null`.

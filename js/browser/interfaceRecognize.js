@@ -7,6 +7,7 @@ import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 import { loadChiSimFont } from '../fontContainerMain.js';
 import { imageCont } from '../containers/imageContainer.js';
+import { setFontMetricsAll } from '../fontStatistics.js';
 
 const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 
@@ -104,6 +105,7 @@ export async function recognizeAllClick() {
     await recognizeAllPagesBrowser(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR), langArr);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
+    setFontMetricsAll(globalThis.ocrAll['Tesseract Legacy']);
     if (oemMode === 'legacy') await runFontOptimizationBrowser(globalThis.ocrAll['Tesseract Legacy']);
   } else if (oemMode === 'combined') {
     globalThis.loadCount = 0;
@@ -166,7 +168,7 @@ export async function recognizeAllClick() {
     // Evaluate default fonts using up to 5 pages.
     const pageNum = Math.min(imageCont.imageAll.native.length, 5);
     await imageCont.renderImageRange(0, pageNum, 'binary');
-
+    setFontMetricsAll(globalThis.ocrAll['Tesseract Combined Temp']);
     await runFontOptimizationBrowser(globalThis.ocrAll['Tesseract Combined Temp']);
     initOCRVersion('Combined');
     setCurrentHOCR('Combined');

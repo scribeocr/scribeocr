@@ -26,6 +26,10 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
   let hocrRaw;
   let fontMetricsObj;
   let layoutObj;
+  let defaultFont;
+  let enableOpt;
+  let sansFont;
+  let serifFont;
 
   if (singleHOCRMode) {
     const hocrStrAll = await readOcrFile(hocrFilesAll[0]);
@@ -36,31 +40,38 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
     stextMode = !!/<document name/.test(node2);
 
     if (abbyyMode) {
-      // hocrStrPages = hocrStrAll.replace(/[\s\S]*?(?=\<page)/i, "");
-      // hocrArrPages = hocrStrPages.split(/(?=\<page)/);
-
       hocrArrPages = hocrStrAll.split(/(?=<page)/).slice(1);
     } else if (stextMode) {
       hocrArrPages = hocrStrAll.split(/(?=<page)/).slice(1);
     } else {
       if (extractSuppData) {
-        // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-        inputDataModes.resumeMode = /<meta name=["']font-metrics["']/i.test(hocrStrAll);
+        const getMeta = (name) => {
+          const regex = new RegExp(`<meta name=["']${name}["'][^<]+`, 'i');
 
-        if (inputDataModes.resumeMode) {
-          const fontMetricsStr = hocrStrAll.match(/<meta name=["']font-metrics["'][^<]+/i)[0];
-          const contentStr = fontMetricsStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)[1].replace(/&quot;/g, '"');
-          fontMetricsObj = JSON.parse(contentStr);
-        }
+          const nodeStr = hocrStrAll.match(regex)?.[0];
+          if (!nodeStr) return null;
+          const contentStr = nodeStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)?.[1];
+          if (!contentStr) return null;
+          return contentStr.replace(/&quot;/g, '"');
+        };
 
-        // Check if re-imported from an earlier session (and therefore containing font metrics pre-calculated)
-        const layoutDataExists = /<meta name=["']layout["']/i.test(hocrStrAll);
+        const fontMetricsStr = getMeta('font-metrics');
+        if (fontMetricsStr) fontMetricsObj = JSON.parse(fontMetricsStr);
 
-        if (layoutDataExists) {
-          const layoutStr = hocrStrAll.match(/<meta name=["']layout["'][^<]+/i)[0];
-          const contentStr = layoutStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)[1].replace(/&quot;/g, '"');
-          layoutObj = JSON.parse(contentStr);
-        }
+        const layoutStr = getMeta('layout');
+        if (layoutStr) layoutObj = JSON.parse(layoutStr);
+
+        const defaultFontStr = getMeta('default-font');
+        if (defaultFontStr) defaultFont = defaultFontStr;
+
+        const sansFontStr = getMeta('sans-font');
+        if (sansFontStr) sansFont = sansFontStr;
+
+        const serifFontStr = getMeta('default-font');
+        if (serifFontStr) serifFont = serifFontStr;
+
+        const enableOptStr = getMeta('enable-opt');
+        if (enableOptStr) enableOpt = enableOptStr;
       }
 
       hocrStrStart = hocrStrAll.match(/[\s\S]*?<body>/)[0];
@@ -93,6 +104,6 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
   }
 
   return {
-    hocrRaw, fontMetricsObj, layoutObj, abbyyMode, stextMode,
+    hocrRaw, fontMetricsObj, layoutObj, abbyyMode, stextMode, defaultFont, enableOpt, sansFont, serifFont,
   };
 }

@@ -25,9 +25,13 @@ import { fontAll } from '../js/containers/fontContainer.js';
 import { loadFontContainerAllRaw } from '../js/fontContainerMain.js';
 import { fontMetricsObj } from '../js/containers/miscContainer.js';
 
+import { setFontMetricsAll } from '../js/fontStatistics.js';
+
 const writeFile = util.promisify(fs.writeFile);
 
 globalThis.Worker = Worker;
+
+let enableOpt = false;
 
 // When `debugMode` is enabled:
 // (1) Comparison images are saved as .png files.
@@ -52,9 +56,18 @@ const debugDir = `${__dirname}/../../dev/debug/`;
  * @param {string} fileName - File name of input file, which is edited to create output path.
  */
 function dumpHOCRAll(fileName) {
+  const meta = {
+    'font-metrics': fontMetricsObj,
+    'default-font': fontAll.defaultFontName,
+    'sans-font': fontAll.sansDefaultName,
+    'serif-font': fontAll.serifDefaultName,
+    'enable-opt': enableOpt,
+    layout: globalThis.layout,
+  };
+
   for (const [key, value] of Object.entries(globalThis.ocrAll)) {
     if (key === 'active') continue;
-    const hocrOut = renderHOCR(value, fontMetricsObj, globalThis.layout, 0, value.length - 1);
+    const hocrOut = renderHOCR(value, 0, value.length - 1, meta);
     const outputPath = `${debugDir}/${path.basename(fileName).replace(/\.\w{1,5}$/i, '')}_${key}.hocr`;
     fs.writeFileSync(outputPath, hocrOut);
   }
@@ -302,7 +315,8 @@ async function main(func, params) {
 
     // Switching active data here for consistency with browser version.
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Combined Temp'];
-    await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binary, imageCont.imageAll.binaryRotated);
+    setFontMetricsAll(globalThis.ocrAll['Tesseract Combined Temp']);
+    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binary, imageCont.imageAll.binaryRotated);
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < imageCont.imageAll.native.length; i++) {
@@ -337,6 +351,7 @@ async function main(func, params) {
       if (func === 'recognize') console.log(ocr.getPageText(res.page));
     }
   } else {
+    setFontMetricsAll(globalThis.ocrAll.active);
     await runFontOptimization(globalThis.ocrAll.active, imageCont.imageAll.binary, imageCont.imageAll.binaryRotated);
   }
 

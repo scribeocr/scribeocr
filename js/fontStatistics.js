@@ -1,9 +1,11 @@
 // File summary:
 // Functions to calculate font metrics and generate new fonts.
 
-import { quantile, round6 } from './miscUtils.js';
+import { quantile, round6, replaceObjectProperties } from './miscUtils.js';
 
 import { FontMetricsFamily, FontMetricsRawFamily, FontMetricsFont } from './objects/fontMetricsObjects.js';
+
+import { fontMetricsObj } from './containers/miscContainer.js';
 
 // import { glyphAlts } from "../fonts/glyphs.js";
 
@@ -100,10 +102,8 @@ export function checkCharWarn(warnArr, errorFunc) {
  * Run after all files (both image and OCR) have been loaded.
  *
  * @param {Array<OcrPage>} pageArr
- * @param {Array<Object.<string, string>>} warnArr - Array of objects containing warning/error messages from convertPage
- * @returns {{charError: boolean, charWarn: boolean, fontMetrics: ?Object.<string, FontMetricsFamily>}} -
  */
-export function calcFontMetricsAll(pageArr) {
+export function setFontMetricsAll(pageArr) {
   const pageMetricsArr = pageArr.map((x) => calcFontMetricsPage(x));
 
   const fontMetricsRawObj = pageMetricsArr.reduce((x, y) => unionFontMetricsRawObj(x, y));
@@ -121,7 +121,7 @@ export function calcFontMetricsAll(pageArr) {
 
   fontMetricsOut = identifyFontVariants(globalThis.fontScores, fontMetricsOut);
 
-  return { charWarn: false, charError: false, fontMetrics: fontMetricsOut };
+  if (Object.keys(fontMetricsOut).length > 0) replaceObjectProperties(fontMetricsObj, fontMetricsOut);
 }
 
 // The following functions are used for combining an array of page-level fontMetrics objects produced by convertPage.js into a single document-level object.
