@@ -1564,14 +1564,6 @@ async function importOCRFilesSupp() {
 globalThis.pageCount = 0;
 
 async function importFiles(curFiles) {
-  // It looks like the "load" event is not always triggered (when the page is refreshed).
-  // This is a quick fix to make sure this function always runs.
-  // if(!globalThis.runOnLoadRun){
-  //   globalThis.runOnLoad();
-  // }
-
-  globalThis.runOnLoad();
-
   if (!curFiles || curFiles.length === 0) return;
 
   globalThis.state.downloadReady = false;
