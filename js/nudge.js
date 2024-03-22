@@ -1,5 +1,5 @@
 import { showDebugImages } from '../main.js';
-import { imageCont } from './imageContainer.js';
+import { imageCont } from './containers/imageContainer.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images

@@ -1,6 +1,6 @@
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
-import { imageCont } from './imageContainer.js';
+import { imageCont } from './containers/imageContainer.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
   await globalThis.generalScheduler.ready;

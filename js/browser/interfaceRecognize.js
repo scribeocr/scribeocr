@@ -5,8 +5,8 @@ import {
 } from '../../main.js';
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { toggleEditButtons } from './interfaceEdit.js';
-import { loadChiSimFont } from '../fontContainer.js';
-import { imageCont } from '../imageContainer.js';
+import { loadChiSimFont } from '../fontContainerMain.js';
+import { imageCont } from '../containers/imageContainer.js';
 
 const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 

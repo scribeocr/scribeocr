@@ -66,7 +66,7 @@ export async function initGeneralWorker() {
 
     obj.loadFontContainerAllWorker = wrap('loadFontContainerAllWorker');
     obj.setFontActiveWorker = wrap('setFontActiveWorker');
-    obj.setGlobalSettings = wrap('setGlobalSettings');
+    obj.setDefaultFontNameWorker = wrap('setDefaultFontNameWorker');
 
     obj.terminate = () => worker.terminate();
 

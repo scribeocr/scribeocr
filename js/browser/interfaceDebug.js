@@ -4,7 +4,7 @@ import { calcOverlap } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
 import { saveAs, imageStrToBlob } from '../miscUtils.js';
 import { cp } from '../../main.js';
-import { imageCont } from '../imageContainer.js';
+import { imageCont } from '../containers/imageContainer.js';
 
 export function printSelectedWords(printOCR = true) {
   const selectedObjects = window.canvas.getActiveObjects();

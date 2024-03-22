@@ -58,7 +58,7 @@ export function checkMultiFontMode(fontMetricsObj) {
  * @param {string|ArrayBuffer} src
  */
 async function loadOpentype(src, kerningPairs = null) {
-  const font = typeof (src) === 'string' ? await opentype.load(src) : await await opentype.parse(src, { lowMemory: false });
+  const font = typeof (src) === 'string' ? await opentype.load(src) : await opentype.parse(src, { lowMemory: false });
   font.tables.gsub = null;
   // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
   if (kerningPairs) font.kerningPairs = kerningPairs;
@@ -179,21 +179,6 @@ export function FontContainerFont(family, style, type, src, opt, kerningPairs = 
   if (typeof FontFace !== 'undefined') loadFontFace(this.fontFaceName, this.fontFaceStyle, this.src);
 }
 
-// /**
-//  *
-//  * @param {FontContainerFont} font
-//  * @param {FontMetricsFont} fontMetrics
-//  */
-// async function optimizeFontContainerFont(font, fontMetrics) {
-
-//   const fontOptObj = await globalThis.optimizeFontScheduler.addJob("optimizeFont", { fontData: font.src, fontMetrics: fontMetrics, style: font.style });
-
-//   const fontOpt = new FontContainerFont(font.family, font.style, font.type, fontOptObj.fontData, true, fontOptObj.kerningPairs);
-
-//   return fontOpt;
-
-// }
-
 /**
  *
  * @param {FontContainerFamily} fontFamily
@@ -204,9 +189,9 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
 
   // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
   // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font.
-  globalSettings.multiFontMode = checkMultiFontMode(fontMetricsObj);
+  const multiFontMode = checkMultiFontMode(fontMetricsObj);
   let fontMetricsType = 'Default';
-  if (globalSettings.multiFontMode) {
+  if (multiFontMode) {
     if (fontFamily.normal.type === 'sans') {
       fontMetricsType = 'SansDefault';
     } else {
@@ -343,16 +328,35 @@ export async function optimizeFontContainerAll(fontPrivate, fontMetricsObj) {
   });
 }
 
-/**
- * Load all raw (unoptimized) fonts.  This function is where font file names are hard-coded.
- */
-export function loadFontContainerAllRaw() {
-  return loadFontContainerAll({
-    Carlito: { normal: 'Carlito-Regular.woff', italic: 'Carlito-Italic.woff', smallCaps: 'Carlito-SmallCaps.woff' },
-    Century: { normal: 'C059-Roman.woff', italic: 'C059-Italic.woff', smallCaps: 'C059-SmallCaps.woff' },
-    Garamond: { normal: 'QTGaromand.woff', italic: 'QTGaromand-Italic.woff', smallCaps: 'QTGaromand-SmallCaps.woff' },
-    Palatino: { normal: 'P052-Roman.woff', italic: 'P052-Italic.woff', smallCaps: 'P052-SmallCaps.woff' },
-    NimbusRomNo9L: { normal: 'NimbusRomNo9L-Reg.woff', italic: 'NimbusRomNo9L-RegIta.woff', smallCaps: 'NimbusRomNo9L-RegSmallCaps.woff' },
-    NimbusSans: { normal: 'NimbusSanL-Reg.woff', italic: 'NimbusSanL-RegIta.woff', smallCaps: 'NimbusSanL-RegSmallCaps.woff' },
-  });
+// FontCont must contain no font data when initialized, and no data should be defined in this file.
+// This is because this file is run both from the main thread and workers, and fonts are defined different ways in each.
+// In the main thread, "raw" fonts are loaded from fetch requests, however in workers they are loaded from the main thread.
+class FontCont {
+  constructor() {
+    /** @type {?FontContainerAll} */
+    this.raw = null;
+    /** @type {?FontContainerAll} */
+    this.opt = null;
+    /** @type {?FontContainerAll} */
+    this.active = null;
+    this.supp = {
+      /** @type {?FontContainerFont} */
+      chi_sim: null,
+    };
+    this.defaultFontName = 'SerifDefault';
+    /**
+     * Get raw/opt/active font, and throw exception if it does not exist.
+     * This method only exists for type inference purposes, as raw/opt/active may be accessed directly, but may be `null`.
+     * This method should therefore only be used in cases where an exception on `null` is a desirable behavior.
+     * @param {('raw'|'opt'|'active')} type
+     * @returns {FontContainerAll}
+     */
+    this.get = (type) => {
+      const fontRes = this[type];
+      if (!fontRes) throw new Error(`Font container does not contain ${type}.`);
+      return fontRes;
+    };
+  }
 }
+
+export const fontAll = new FontCont();

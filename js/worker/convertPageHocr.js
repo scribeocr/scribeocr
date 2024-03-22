@@ -89,7 +89,7 @@ export async function convertPageHocr({
     const titleStrLine = match.match(/title=['"]([^'"]+)/)?.[1];
     if (!titleStrLine) return '';
 
-    const linebox1 = [...titleStrLine.matchAll(/bbox(?:es)?(\s+\d+)(\s+\d+)?(\s+\d+)?(\s+\d+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
+    const linebox1 = [...titleStrLine.matchAll(/bbox(?:es)?(\s+[\d.-]+)(\s+[\d.-]+)?(\s+[\d.-]+)?(\s+[\d.-]+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
 
     const linebox = {
       left: linebox1[0], top: linebox1[1], right: linebox1[2], bottom: linebox1[3],
@@ -421,7 +421,7 @@ export async function convertPageHocr({
         return '';
       }
 
-      const wordBox1 = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d-]+)(\s+[\d-]+)?(\s+[\d-]+)?(\s+[\d-]+)?/g)][0].slice(1, 5).map((x) => parseInt(x));
+      const wordBox1 = [...titleStrWord.matchAll(/bbox(?:es)?(\s+[\d-.]+)(\s+[\d-.]+)?(\s+[\d-.]+)?(\s+[\d-.]+)?/g)][0].slice(1, 5).map((x) => parseFloat(x));
 
       const wordBox = {
         left: wordBox1[0],

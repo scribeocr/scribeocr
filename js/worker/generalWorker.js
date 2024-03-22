@@ -7,9 +7,9 @@ import { convertPageAbbyy } from './convertPageAbbyy.js';
 import { convertPageStext } from './convertPageStext.js';
 
 import { optimizeFont } from './optimizeFontModule.js';
-import { loadFontContainerAll } from '../objects/fontObjects.js';
+import { loadFontContainerAll, fontAll } from '../containers/fontContainer.js';
 import {
-  evalPageFont, evalPage, evalWords, compareHOCR, setFontAll, nudgePageFontSize, nudgePageBaseline,
+  evalPageFont, evalPage, evalWords, compareHOCR, nudgePageFontSize, nudgePageBaseline,
 } from './compareOCRModule.js';
 
 // import Tesseract from "../../tess/tesseract.esm.min.js";
@@ -195,17 +195,6 @@ export const recognize = async ({ image, options, output }) => {
   return res1.data;
 };
 
-const fontAll = {
-  /** @type {?FontContainerAll} */
-  raw: null,
-  /** @type {?FontContainerAll} */
-  opt: null,
-  /** @type {?FontContainerAll} */
-  active: null,
-};
-
-setFontAll(fontAll);
-
 async function loadFontContainerAllWorker({ src, opt }) {
   if (opt) {
     fontAll.opt = await loadFontContainerAll(src, opt);
@@ -233,8 +222,8 @@ globalThis.globalSettings = {
   defaultFontSerif: 'NimbusRomNo9L',
 };
 
-async function setGlobalSettings({ globalSettings }) {
-  globalThis.globalSettings = globalSettings;
+async function setDefaultFontNameWorker({ defaultFontName }) {
+  fontAll.defaultFontName = defaultFontName;
 }
 
 async function compareHOCRWrap(args) {
@@ -281,7 +270,7 @@ addEventListener('message', async (e) => {
     // Change state of worker
     loadFontContainerAllWorker,
     setFontActiveWorker,
-    setGlobalSettings,
+    setDefaultFontNameWorker,
   })[func](args)
     .then((x) => postMessage({ data: x, id }));
 });

@@ -29,14 +29,14 @@
  */
 
 /**
- * @typedef {import("./objects/fontObjects.js").FontContainerFont} FontContainerFont
+ * @typedef {import("./containers/fontContainer.js").FontContainerFont} FontContainerFont
  */
 
 /**
- * @typedef {import("./objects/fontObjects.js").FontContainerFamily} FontContainerFamily
+ * @typedef {import("./containers/fontContainer.js").FontContainerFamily} FontContainerFamily
  */
 /**
- * @typedef {import("./objects/fontObjects.js").FontContainerAll} FontContainerAll
+ * @typedef {import("./containers/fontContainer.js").FontContainerAll} FontContainerAll
  */
 
 /**

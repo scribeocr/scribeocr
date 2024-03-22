@@ -7,7 +7,7 @@
 
 import { calcWordMetrics } from '../fontUtils.js';
 import { renderPageQueue, cp } from '../../main.js';
-import { fontAll } from '../fontContainer.js';
+import { fontAll } from '../containers/fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
 
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -67,6 +67,8 @@ export async function changeWordFontStyle(style) {
     styleSmallCapsButton.toggle();
   }
 
+  const fontActive = fontAll.get('active');
+
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
@@ -83,7 +85,7 @@ export async function changeWordFontStyle(style) {
 
     wordI.fontStyleLookup = newStyleLookup;
 
-    const fontI = fontAll.active[wordI.fontFamilyLookup][newStyleLookup];
+    const fontI = fontActive[wordI.fontFamilyLookup][newStyleLookup];
 
     wordI.fontFamily = fontI.fontFaceName;
     wordI.fontStyle = fontI.fontFaceStyle;
@@ -143,14 +145,16 @@ export async function changeWordFontSize(fontSizeStr) {
 export async function changeWordFontFamily(fontName) {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
-  const fontNameLookup = fontName === 'Default' ? globalSettings.defaultFont : fontName;
+  const fontNameLookup = fontName === 'Default' ? fontAll.defaultFontName : fontName;
+
+  const fontActive = fontAll.get('active');
 
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
 
-    const fontI = fontAll.active[fontNameLookup][wordI.fontStyleLookup];
+    const fontI = fontActive[fontNameLookup][wordI.fontStyleLookup];
 
     const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
 

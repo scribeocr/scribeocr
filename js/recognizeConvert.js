@@ -1,5 +1,5 @@
 import { parseDebugInfo } from './fontStatistics.js';
-import { imageCont, getImageBitmap } from './imageContainer.js';
+import { imageCont, getImageBitmap } from './containers/imageContainer.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.

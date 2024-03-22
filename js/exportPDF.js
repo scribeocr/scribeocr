@@ -3,7 +3,7 @@ import { win1252Chars, winEncodingLookup } from '../fonts/encoding.js';
 import {
   calcWordFontSize, calcCharSpacing, calcWordMetrics, subsetFont,
 } from './fontUtils.js';
-import { fontAll } from './fontContainer.js';
+import { fontAll } from './containers/fontContainer.js';
 
 import { hex, createFontObjType0 } from './exportPDFMisc.js';
 
@@ -227,6 +227,8 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     outputDims = inputDims;
   }
 
+  const fontActive = fontAll.get('active');
+
   const noContent = !pageObj || pageObj.lines.length === 0;
 
   // Start 2nd object: Page
@@ -276,7 +278,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
     const wordBox = word.bbox;
 
-    const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;
+    const wordFontFamily = word.font || fontAll.defaultFontName;
 
     let fillColor = '0 0 0 rg';
     if (textMode === 'proof') {
@@ -295,7 +297,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
     textStream += `${fillColor}\n`;
 
-    const wordFont = /** @type {FontContainerFont} */ (word.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontAll.active[wordFontFamily][word.style]);
+    const wordFont = /** @type {FontContainerFont} */ (word.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontActive[wordFontFamily][word.style]);
 
     const wordFontOpentype = await (word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype);
 
@@ -377,8 +379,8 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
       const wordBox = word.bbox;
 
-      const wordFontFamily = word.font || globalThis.globalSettings.defaultFont;
-      const wordFont = /** @type {FontContainerFont} */ (word.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontAll.active[wordFontFamily][word.style]);
+      const wordFontFamily = word.font || fontAll.defaultFontName;
+      const wordFont = /** @type {FontContainerFont} */ (word.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontActive[wordFontFamily][word.style]);
       const wordFontOpentype = await (word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype);
 
       if (!wordFontOpentype) {
@@ -421,7 +423,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       let tz = 100;
       if (word.dropcap) {
         const wordWidthActual = wordBox.right - wordBox.left;
-        const fontOpentype = await fontAll.active[wordFontFamilyLast][word.style].opentype;
+        const fontOpentype = await fontActive[wordFontFamilyLast][word.style].opentype;
         const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontOpentype, wordFontSize)).visualWidth;
         tz = (wordWidthActual / wordWidthFont) * 100;
       }

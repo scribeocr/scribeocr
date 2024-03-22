@@ -6,7 +6,7 @@ import {
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
-import { imageCont } from './imageContainer.js';
+import { imageCont } from './containers/imageContainer.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));

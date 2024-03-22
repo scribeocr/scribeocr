@@ -5,15 +5,10 @@ import { quantile, round6 } from './miscUtils.js';
 
 import { FontMetricsFamily, FontMetricsRawFamily, FontMetricsFont } from './objects/fontMetricsObjects.js';
 
-import { checkMultiFontMode } from './objects/fontObjects.js';
-
 // import { glyphAlts } from "../fonts/glyphs.js";
 
 /** @type {Array<Object.<string, string>>} */
 globalThis.convertPageWarn = [];
-
-/** @type {?Object.<string, FontMetricsFamily>} */
-globalThis.fontMetricsObj = null;
 
 // Sans/serif lookup for common font families
 // Should be added to if additional fonts are encountered
@@ -57,34 +52,6 @@ export function determineSansSerif(fontName) {
   }
 
   return fontFamily;
-}
-
-// Automatically sets the default font to whatever font is most common per globalThis.fontMetricsObj
-
-/**
- * Automatically sets the default font to whatever font is most common in the provided font metrics.
- *
- * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
- */
-export function setDefaultFontAuto(fontMetricsObj) {
-  const multiFontMode = checkMultiFontMode(fontMetricsObj);
-
-  // Return early if the OCR data does not contain font info.
-  if (!multiFontMode) return;
-
-  // Change default font to whatever named font appears more
-  if ((fontMetricsObj.SerifDefault?.obs || 0) > (fontMetricsObj.SansDefault?.obs || 0)) {
-    globalThis.globalSettings.defaultFont = 'SerifDefault';
-  } else {
-    globalThis.globalSettings.defaultFont = 'SansDefault';
-  }
-
-  if (globalThis.generalScheduler) {
-    for (let i = 0; i < globalThis.generalScheduler.workers.length; i++) {
-      const worker = globalThis.generalScheduler.workers[i];
-      worker.setGlobalSettings({ globalSettings: globalThis.globalSettings });
-    }
-  }
 }
 
 /**
@@ -260,7 +227,7 @@ function calculateFontMetrics(fontMetricsRawFontObj) {
       const nameFirst = key.match(/\w+/)[0];
       const charFirst = String.fromCharCode(parseInt(nameFirst));
       if (/\d/.test(charFirst)) {
-        fontMetricOut[prop][key] = fontMetricOut[prop][key] * fontMetricOut.heightCaps;
+        fontMetricOut[prop][key] *= fontMetricOut.heightCaps;
       }
     }
   }
@@ -274,7 +241,7 @@ function calculateFontMetrics(fontMetricsRawFontObj) {
 
         const widthSecond = fontMetricOut.width[nameSecond];
 
-        fontMetricOut[prop][key] = fontMetricOut[prop][key] - widthSecond;
+        fontMetricOut[prop][key] -= widthSecond;
       }
     }
   }

@@ -7,7 +7,7 @@ import { renderLayoutBoxes, updateDataPreview } from './interfaceLayout.js';
 import ocr, { OcrPage } from '../objects/ocrObjects.js';
 import { ITextWord } from '../objects/fabricObjects.js';
 import { cp, search } from '../../main.js';
-import { fontAll } from '../fontContainer.js';
+import { fontAll } from '../containers/fontContainer.js';
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
@@ -20,12 +20,10 @@ const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvas
  *
  * @param {*} canvas
  * @param {OcrPage} page
- * @param {*} defaultFont
- * @param {*} imgDims
  * @param {*} angle
  * @param {*} leftAdjX
  */
-export async function renderPage(canvas, page, defaultFont, imgDims, angle, leftAdjX) {
+export async function renderPage(canvas, page, angle, leftAdjX) {
   const layoutMode = globalThis.layoutMode || false;
 
   // objectCaching slows down page render speeds, and is generally not needed.
@@ -86,7 +84,7 @@ export async function renderPage(canvas, page, defaultFont, imgDims, angle, left
 
       let defaultFontFamily;
       if (wordFontFamily === null || wordFontFamily === undefined) {
-        wordFontFamily = defaultFont;
+        wordFontFamily = fontAll.defaultFontName;
         defaultFontFamily = true;
       } else {
         wordFontFamily = wordFontFamily.trim();

@@ -8,7 +8,7 @@ import Worker from 'web-worker';
 import Tesseract from 'tesseract.js';
 import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
 import { runFontOptimization } from '../js/fontEval.js';
-import { imageCont } from '../js/imageContainer.js';
+import { imageCont } from '../js/containers/imageContainer.js';
 import { renderHOCR } from '../js/exportRenderHOCR.js';
 
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
@@ -20,6 +20,10 @@ import { PageMetrics } from '../js/objects/pageMetricsObjects.js';
 
 import { hocrToPDF } from '../js/exportPDF.js';
 import { drawDebugImages } from '../js/debug.js';
+
+import { fontAll } from '../js/containers/fontContainer.js';
+import { loadFontContainerAllRaw } from '../js/fontContainerMain.js';
+import { fontMetricsObj } from '../js/containers/miscContainer.js';
 
 const writeFile = util.promisify(fs.writeFile);
 
@@ -50,7 +54,7 @@ const debugDir = `${__dirname}/../../dev/debug/`;
 function dumpHOCRAll(fileName) {
   for (const [key, value] of Object.entries(globalThis.ocrAll)) {
     if (key === 'active') continue;
-    const hocrOut = renderHOCR(value, globalThis.fontMetricsObj, globalThis.layout, 0, value.length - 1);
+    const hocrOut = renderHOCR(value, fontMetricsObj, globalThis.layout, 0, value.length - 1);
     const outputPath = `${debugDir}/${path.basename(fileName).replace(/\.\w{1,5}$/i, '')}_${key}.hocr`;
     fs.writeFileSync(outputPath, hocrOut);
   }
@@ -80,10 +84,10 @@ async function writeDebugImages(ctx, compDebugArrArr, filePath) {
   fs.writeFileSync(filePath, buffer0);
 }
 
-// Object that keeps track of various global settings
-globalThis.globalSettings = {
-  defaultFont: 'SerifDefault',
-};
+await loadFontContainerAllRaw().then((x) => {
+  fontAll.raw = x;
+  if (!fontAll.active) fontAll.active = fontAll.raw;
+});
 
 globalThis.convertPageWarn = [];
 

@@ -3,7 +3,7 @@
 
 import { getPrevLine } from './objects/ocrObjects.js';
 import { quantile } from './miscUtils.js';
-import { fontAll } from './fontContainer.js';
+import { fontAll } from './containers/fontContainer.js';
 
 /**
  *
@@ -161,8 +161,9 @@ export async function calcCharSpacing(wordText, fontOpentype, fontSize, actualWi
  */
 export const calcWordFontSize = async (word) => {
   // TODO: Figure out how to get types to work with this
+  const fontActive = fontAll.get('active');
   /** @type {FontContainerFont} */
-  const font = fontAll.active[word.font || globalSettings.defaultFont].normal;
+  const font = fontActive[word.font || fontAll.defaultFontName].normal;
   const fontOpentype = await font.opentype;
 
   // If the user manually set a size, then use that
@@ -188,6 +189,8 @@ export const calcWordFontSize = async (word) => {
 export const calcLineFontSize = async (line) => {
   if (line._size) return line._size;
 
+  const fontActive = fontAll.get('active');
+
   // TODO: Add back cache when there are also functions that clear cache at appropriate times.
   // if (line._sizeCalc) return line._sizeCalc;
 
@@ -197,7 +200,7 @@ export const calcLineFontSize = async (line) => {
 
   // The font of the first word is used (if present), otherwise the default font is used.
   /** @type {FontContainerFont} */
-  const font = nonLatin ? fontAll.supp.chi_sim : fontAll.active[line.words[0]?.font || globalSettings.defaultFont].normal;
+  const font = nonLatin ? fontAll.supp.chi_sim : fontActive[line.words[0]?.font || fontAll.defaultFontName].normal;
 
   // This condition should be handled even if not expected to occur,
   // as some fonts (Chinese) are not loaded synchronously with the main application,

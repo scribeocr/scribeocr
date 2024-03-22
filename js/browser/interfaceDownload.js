@@ -1,4 +1,4 @@
-import { imageCont } from '../imageContainer.js';
+import { imageCont } from '../containers/imageContainer.js';
 import { insertAlertMessage, initializeProgress } from '../../main.js';
 import {
   sleep, saveAs,
@@ -7,6 +7,7 @@ import { renderText } from '../exportRenderText.js';
 import { renderHOCRBrowser } from '../exportRenderHOCRBrowser.js';
 import { writeDocx } from '../exportWriteDocx.js';
 import { writeXlsx } from '../exportWriteTabular.js';
+import { fontMetricsObj } from '../containers/miscContainer.js';
 
 import { reorderHOCR } from '../modifyOCR.js';
 
@@ -300,7 +301,7 @@ export async function handleDownload() {
   } else if (downloadType === 'hocr') {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
-    renderHOCRBrowser(globalThis.ocrAll.active, globalThis.fontMetricsObj, globalThis.layout);
+    renderHOCRBrowser(globalThis.ocrAll.active, fontMetricsObj, globalThis.layout);
     downloadProgress.increment();
   } else if (downloadType === 'text') {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);

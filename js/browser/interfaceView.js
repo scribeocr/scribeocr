@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import { renderPageQueue, cp } from '../../main.js';
-import { imageCont } from '../imageContainer.js';
+import { imageCont } from '../containers/imageContainer.js';
 import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));

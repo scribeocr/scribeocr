@@ -4,6 +4,8 @@
 import { getRandomAlphanum } from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
+
+import { fontAll } from '../containers/fontContainer.js';
 // import { CompDebug } from '../objects/imageObjects.js';
 
 const browserMode = typeof process === 'undefined';
@@ -56,6 +58,19 @@ export const tmpUnique = {
 };
 
 export const initCanvasNode = async () => {
+  const { createCanvas, registerFont, deregisterAllFonts } = await import('canvas');
+  // If canvases have already been defined, existing fonts need to be cleared.
+  // This happens when recognizing multiple documents without starting a new process.
+  const clearFonts = calcCtx && viewCtx0 && viewCtx1 && viewCtx2;
+
+  if (clearFonts) {
+    // Per a Git Issue, the `deregisterAllFonts` function may cause a memory leak.
+    // However, this is not an issue that can be solved in this codebase, as it is necessary to deregister old fonts,
+    // and leaving them would take up (at least) as much memory.
+    // https://github.com/Automattic/node-canvas/issues/1974
+    deregisterAllFonts();
+  }
+
   const { isMainThread } = await import('worker_threads');
 
   // The Node.js canvas package does not currently support worke threads
@@ -67,8 +82,6 @@ export const initCanvasNode = async () => {
   const { promisify } = await import('util');
   const writeFile2 = promisify(writeFile);
 
-  const { createCanvas, registerFont } = await import('canvas');
-
   /**
    *
    * @param {FontContainerFont} fontObj
@@ -79,7 +92,10 @@ export const initCanvasNode = async () => {
       // This prevents different processes from overwriting eachother when this is run in parallel.
       const tmpDir = await tmpUnique.get();
 
-      const fontPathTmp = `${tmpDir}/${fontObj.family}-${fontObj.style}.otf`;
+      // Optimized and non-optimized fonts should not overwrite each other
+      const optStr = fontObj.opt ? '-opt' : '';
+
+      const fontPathTmp = `${tmpDir}/${fontObj.family}-${fontObj.style}${optStr}.otf`;
       await writeFile2(fontPathTmp, Buffer.from(fontObj.src));
       // console.log(`Writing font to: ${fontPathTmp}`);
 
@@ -114,16 +130,16 @@ export const initCanvasNode = async () => {
   // The core issue is that multiple object types (the canvas and image inputs) change *together* based on environment (Node.js vs. browser),
   // and it is unclear how to tell the type interpreter "when `calcCtx` is `import('canvas').CanvasRenderingContext2D` then the image input is always `import('canvas').Image".
   const canvasAlt = createCanvas(200, 200);
-  calcCtx = canvasAlt.getContext('2d');
+  calcCtx = /** @type {OffscreenCanvasRenderingContext2D} */ (/** @type {unknown} */ (canvasAlt.getContext('2d')));
 
   const canvasComp0 = createCanvas(200, 200);
-  viewCtx0 = canvasComp0.getContext('2d');
+  viewCtx0 = /** @type {OffscreenCanvasRenderingContext2D} */ (/** @type {unknown} */ (canvasComp0.getContext('2d')));
 
   const canvasComp1 = createCanvas(200, 200);
-  viewCtx1 = canvasComp1.getContext('2d');
+  viewCtx1 = /** @type {OffscreenCanvasRenderingContext2D} */ (/** @type {unknown} */ (canvasComp1.getContext('2d')));
 
   const canvasComp2 = createCanvas(200, 200);
-  viewCtx2 = canvasComp2.getContext('2d');
+  viewCtx2 = /** @type {OffscreenCanvasRenderingContext2D} */ (/** @type {unknown} */ (canvasComp2.getContext('2d')));
 };
 
 /**
@@ -135,7 +151,7 @@ export const initCanvasNode = async () => {
  * @param {object} [options]
  * @param {boolean} [options.view] - Draw results on debugging canvases
  */
-const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = {}) => {
+async function drawWordActual(words, imageBinaryBit, pageDims, angle, options = {}) {
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
 
@@ -151,7 +167,7 @@ const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = 
   }
 
   const fontStyle = words[0].style;
-  const wordFontFamily = words[0].font || globalSettings.defaultFont;
+  const wordFontFamily = words[0].font || fontAll.defaultFontName;
 
   const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][fontStyle]);
   const fontOpentypeI = await fontI.opentype;
@@ -192,7 +208,7 @@ const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = 
     const y = linebox.bottom + baseline[1];
 
     const xRot = x * cosAngle - sinAngle * y;
-    const yRot = x * sinAngle + cosAngle * y;
+    // const yRot = x * sinAngle + cosAngle * y;
 
     const angleAdjXInt = x - xRot;
 
@@ -230,7 +246,7 @@ const drawWordActual = async (words, imageBinaryBit, pageDims, angle, options = 
   }
 
   return cropY;
-};
+}
 
 /**
  * Lightweight function for drawing text onto canvas with correct spacing/kerning without using Fabric.js.
@@ -299,7 +315,7 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
     return;
   }
 
-  const wordFontFamily = word.font || globalSettings.defaultFont;
+  const wordFontFamily = word.font || fontAll.defaultFontName;
 
   const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
   const fontOpentypeI = await fontI.opentype;
@@ -620,8 +636,9 @@ async function penalizeWord(wordObjs) {
   if (wordObjs.length === 1 && /^[a-z][.,-]$/i.test(wordStr)) {
     const word = wordObjs[0];
     const wordTextArr = wordStr.split('');
-    const wordFontFamily = word.font || globalSettings.defaultFont;
-    const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
+    const wordFontFamily = word.font || fontAll.defaultFontName;
+    const fontActive = fontAll.get('active');
+    const fontI = /** @type {FontContainerFont} */ (fontActive[wordFontFamily][word.style]);
     const fontOpentypeI = await fontI.opentype;
 
     // These calculations differ from the standard word width calculations,
@@ -1385,26 +1402,6 @@ export async function nudgePageBaseline({
   return await nudgePageBase({
     page, binaryImage, imageRotated, pageMetricsObj, func, view,
   });
-}
-
-let fontAll = {
-  /** @type {?FontContainerAll} */
-  raw: null,
-  /** @type {?FontContainerAll} */
-  opt: null,
-  /** @type {?FontContainerAll} */
-  active: null,
-};
-
-/**
- *
- * @param {Object} _fontAll
- * @param {?FontContainerAll} _fontAll.raw
- * @param {?FontContainerAll} _fontAll.opt
- * @param {?FontContainerAll} _fontAll.active
- */
-export function setFontAll(_fontAll) {
-  fontAll = _fontAll;
 }
 
 /** @type {Object<string, ImageBitmap>} */

@@ -1,14 +1,14 @@
 import {
   imageStrToBlob,
-} from './miscUtils.js';
+} from '../miscUtils.js';
 
 import {
   PageMetrics,
-} from './objects/pageMetricsObjects.js';
+} from '../objects/pageMetricsObjects.js';
 
-import { initMuPDFWorker } from '../mupdf/mupdf-async.js';
+import { initMuPDFWorker } from '../../mupdf/mupdf-async.js';
 
-import Tesseract from '../tess/tesseract.esm.min.js';
+import Tesseract from '../../tess/tesseract.esm.min.js';
 
 const browserMode = typeof process === 'undefined';
 
@@ -147,13 +147,13 @@ export class MuPDFScheduler {
     /** @type {Array<Awaited<ReturnType<typeof initMuPDFWorker>>>} */
     this.workers = workers;
     /**
-     * @param {Parameters<typeof import('../mupdf/mupdf-worker.js').mupdf.pageTextXML>[1]} args
-     * @returns {Promise<ReturnType<typeof import('../mupdf/mupdf-worker.js').mupdf.pageTextXML>>}
+     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>[1]} args
+     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>>}
      */
     this.pageTextXML = async (args) => (await this.scheduler.addJob('pageTextXML', args));
     /**
-     * @param {Parameters<typeof import('../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>[1]} args
-     * @returns {Promise<ReturnType<typeof import('../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>>}
+     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>[1]} args
+     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>>}
      */
     this.drawPageAsPNG = async (args) => (await this.scheduler.addJob('drawPageAsPNG', args));
   }

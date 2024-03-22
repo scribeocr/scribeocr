@@ -12,7 +12,7 @@ import { importOCR } from './js/importOCR.js';
 import { renderPage } from './js/browser/renderPageCanvas.js';
 import coords from './js/coordinates.js';
 
-import { imageCont, getImageBitmap } from './js/imageContainer.js';
+import { imageCont, getImageBitmap } from './js/containers/imageContainer.js';
 
 import { recognizeAllClick } from './js/browser/interfaceRecognize.js';
 
@@ -22,15 +22,19 @@ import { recognizePage } from './js/recognizeConvert.js';
 import { convertOCRAllBrowser } from './js/recognizeConvertBrowser.js';
 
 import { runFontOptimization } from './js/fontEval.js';
-import { fontAll, enableDisableFontOpt } from './js/fontContainer.js';
-import { optimizeFontContainerAll } from './js/objects/fontObjects.js';
+import {
+  enableDisableFontOpt, setFontAllWorker, loadFontContainerAllRaw, setDefaultFontAuto,
+} from './js/fontContainerMain.js';
+import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer.js';
+
+import { fontMetricsObj } from './js/containers/miscContainer.js';
 
 import { calcLineFontSize } from './js/fontUtils.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 
 import {
-  checkCharWarn, setDefaultFontAuto,
+  checkCharWarn,
 } from './js/fontStatistics.js';
 
 import { ITextWord } from './js/objects/fabricObjects.js';
@@ -38,7 +42,7 @@ import { ITextWord } from './js/objects/fabricObjects.js';
 import { drawDebugImages } from './js/debug.js';
 
 import {
-  getRandomAlphanum, quantile, sleep, occurrences, readTextFile,
+  getRandomAlphanum, quantile, sleep, occurrences, readTextFile, replaceObjectProperties,
 } from './js/miscUtils.js';
 import { getAllFileEntries } from './js/drag-and-drop.js';
 
@@ -60,7 +64,6 @@ import { canvas, resetCanvasEventListeners } from './js/browser/interfaceCanvas.
 import { combineData } from './js/modifyOCR.js';
 
 // Third party libraries
-import { simd } from './lib/wasm-feature-detect.js';
 import Tesseract from './tess/tesseract.esm.min.js';
 
 // Debugging functions
@@ -124,6 +127,11 @@ debugPrintWordsCanvasElem.addEventListener('click', () => printSelectedWords(fal
 debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
 debugEvalLineElem.addEventListener('click', evalSelectedLine);
 
+const fontAllRawReady = loadFontContainerAllRaw().then((x) => {
+  fontAll.raw = x;
+  if (!fontAll.active) fontAll.active = fontAll.raw;
+});
+
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -165,11 +173,6 @@ globalThis.inputDataModes = {
   resumeMode: false,
   // true if stext is extracted from a PDF (rather than text layer uploaded seprately)
   extractTextMode: false,
-};
-
-// Object that keeps track of various global settings
-globalThis.globalSettings = {
-  defaultFont: 'SerifDefault',
 };
 
 /**
@@ -313,24 +316,6 @@ export function insertAlertMessage(innerHTML, error = true, parentElemId = 'aler
 
   return htmlDiv;
 }
-
-// Content that should be run once, after all dependencies are done loading are done loading
-globalThis.runOnLoad = function () {
-  const debugEngineVersionElem = /** @type {HTMLInputElement} */(document.getElementById('debugEngineVersion'));
-
-  // Detect whether SIMD instructions are supported
-  simd().then(async (x) => {
-    globalSettings.simdSupport = x;
-    // Show error message if SIMD support is not present
-    if (x) {
-      debugEngineVersionElem.innerText = 'Enabled';
-    } else {
-      const warningHTML = 'Fast (SIMD-enabled) version of Tesseract not supported on your device. Tesseract LSTM recognition may be slow. <a href="http://docs.scribeocr.com/faq.html#what-devices-support-the-built-in-ocr-engine" target="_blank" class="alert-link">Learn more.</a>';
-      insertAlertMessage(warningHTML, false);
-      debugEngineVersionElem.innerText = 'Disabled';
-    }
-  });
-};
 
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'));
 
@@ -1440,6 +1425,8 @@ function addWordClick() {
 
     const textBackgroundColor = search.search && wordText.includes(search.search) ? '#4278f550' : '';
 
+    const fontActive = fontAll.get('active');
+
     const textbox = new ITextWord(wordText, {
       left: rectLeft,
       top,
@@ -1452,11 +1439,11 @@ function addWordClick() {
       fill: fillArg,
       fill_proof: fillColorHex,
       fill_ebook: 'black',
-      fontFamily: fontAll.active[globalSettings.defaultFont].normal.fontFaceName,
+      fontFamily: fontActive[fontAll.defaultFontName].normal.fontFaceName,
       fontStyle: 'normal',
-      fontFamilyLookup: globalSettings.defaultFont,
+      fontFamilyLookup: fontAll.defaultFontName,
       fontStyleLookup: 'normal',
-      fontObj: fontAll.active[globalSettings.defaultFont].normal,
+      fontObj: fontActive[fontAll.defaultFontName].normal,
       wordID: wordIDNew,
       textBackgroundColor,
       visualWidth: rect.width,
@@ -1484,7 +1471,7 @@ async function clearFiles() {
   globalThis.pageCount = 0;
   globalThis.ocrAll.active = [];
   globalThis.layout = [];
-  globalThis.fontMetricsObj = null;
+  replaceObjectProperties(fontMetricsObj);
   globalThis.pageMetricsArr = [];
   globalThis.convertPageWarn = [];
 
@@ -1749,9 +1736,10 @@ async function importFiles(curFiles) {
 
       // Restore font metrics and optimize font from previous session (if applicable)
       if (ocrData.fontMetricsObj && Object.keys(ocrData.fontMetricsObj).length > 0) {
-        globalThis.fontMetricsObj = ocrData.fontMetricsObj;
-        setDefaultFontAuto(ocrData.fontMetricsObj);
-        fontAll.opt = await optimizeFontContainerAll(fontAll.raw, globalThis.fontMetricsObj);
+        replaceObjectProperties(fontMetricsObj, ocrData.fontMetricsObj);
+        setDefaultFontAuto(fontMetricsObj);
+        const fontRaw = fontAll.get('raw');
+        fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
         optimizeFontElem.disabled = false;
         optimizeFontElem.checked = true;
         await enableDisableFontOpt(true);
@@ -2112,7 +2100,7 @@ export async function renderPageQueue(n, loadXML = true) {
 
   // The active OCR version may have changed, so this needs to be re-checked.
   if (cp.n === n && globalThis.inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, ocrData, globalSettings.defaultFont, imgDims, globalThis.pageMetricsArr[n].angle, 0);
+    await renderPage(canvas, ocrData, globalThis.pageMetricsArr[n].angle, 0);
     if (cp.n === n && cp.renderNum === renderNum) {
       cp.renderStatus += 1;
       await selectDisplayMode(displayModeElem.value);
@@ -2216,6 +2204,10 @@ export async function initGeneralScheduler() {
   await Promise.all(resArr);
 
   globalThis.gs = new GeneralScheduler(globalThis.generalScheduler);
+
+  // Send raw fonts to workers after they have loaded in the main thread.
+  await fontAllRawReady;
+  await setFontAllWorker(globalThis.generalScheduler);
 
   resReady(true);
 }

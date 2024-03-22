@@ -278,3 +278,18 @@ export const reduceEvalMetrics = (evalMetricsArr) => evalMetricsArr.reduce((acc,
   correctLowConf: 0,
   incorrectHighConf: 0,
 });
+
+/**
+ * Delete all properties from `obj` and replace with properties from `obj2`.
+ * By default `obj2 = {}`, which clears `obj`.
+ * @param {Object} obj
+ * @param {Object} [obj2={}]
+ */
+export function replaceObjectProperties(obj, obj2 = {}) {
+  for (const prop in obj) {
+    if (Object.hasOwnProperty.call(obj, prop)) {
+      delete obj[prop];
+    }
+  }
+  Object.assign(obj, obj2);
+}

@@ -1,6 +1,6 @@
-import { enableDisableFontOpt, fontAll } from './fontContainer.js';
-import { calcFontMetricsAll, setDefaultFontAuto } from './fontStatistics.js';
-import { optimizeFontContainerAll } from './objects/fontObjects.js';
+import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js';
+import { calcFontMetricsAll } from './fontStatistics.js';
+import { optimizeFontContainerAll, fontAll } from './containers/fontContainer.js';
 
 /**
  *
@@ -48,13 +48,15 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
 * @param {Array<boolean>} binaryRotatedArr
 */
 export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr) {
+  const fontActive = fontAll.get('active');
+
   const debug = false;
 
   const binaryImageArrRes = await Promise.all(binaryImageArr);
 
   const sansMetrics = {
-    Carlito: await evalPageFonts(fontAll.active.Carlito, pageArr, binaryImageArrRes, binaryRotatedArr),
-    NimbusSans: await evalPageFonts(fontAll.active.NimbusSans, pageArr, binaryImageArrRes, binaryRotatedArr),
+    Carlito: await evalPageFonts(fontActive.Carlito, pageArr, binaryImageArrRes, binaryRotatedArr),
+    NimbusSans: await evalPageFonts(fontActive.NimbusSans, pageArr, binaryImageArrRes, binaryRotatedArr),
   };
 
   let minKeySans = 'NimbusSans';
@@ -69,10 +71,10 @@ export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr) {
   }
 
   const serifMetrics = {
-    Century: await evalPageFonts(fontAll.active.Century, pageArr, binaryImageArrRes, binaryRotatedArr),
-    Palatino: await evalPageFonts(fontAll.active.Palatino, pageArr, binaryImageArrRes, binaryRotatedArr),
-    Garamond: await evalPageFonts(fontAll.active.Garamond, pageArr, binaryImageArrRes, binaryRotatedArr),
-    NimbusRomNo9L: await evalPageFonts(fontAll.active.NimbusRomNo9L, pageArr, binaryImageArrRes, binaryRotatedArr),
+    Century: await evalPageFonts(fontActive.Century, pageArr, binaryImageArrRes, binaryRotatedArr),
+    Palatino: await evalPageFonts(fontActive.Palatino, pageArr, binaryImageArrRes, binaryRotatedArr),
+    Garamond: await evalPageFonts(fontActive.Garamond, pageArr, binaryImageArrRes, binaryRotatedArr),
+    NimbusRomNo9L: await evalPageFonts(fontActive.NimbusRomNo9L, pageArr, binaryImageArrRes, binaryRotatedArr),
   };
 
   let minKeySerif = 'NimbusRomNo9L';
@@ -110,16 +112,16 @@ export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr) {
 export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr) {
   const browserMode = typeof process === 'undefined';
 
-  const metricsRet = calcFontMetricsAll(ocrArr);
+  const fontRaw = fontAll.get('raw');
 
-  // globalThis.fontMetricsObj = metricsRet.fontMetrics;
+  const metricsRet = calcFontMetricsAll(ocrArr);
 
   const calculateOpt = metricsRet.fontMetrics && Object.keys(metricsRet.fontMetrics).length > 0;
   let enableOpt = false;
 
   if (calculateOpt) {
     setDefaultFontAuto(metricsRet.fontMetrics);
-    fontAll.opt = await optimizeFontContainerAll(fontAll.raw, metricsRet.fontMetrics);
+    fontAll.opt = await optimizeFontContainerAll(fontRaw, metricsRet.fontMetrics);
   }
 
   // If image data exists, select the correct font by comparing to the image.
@@ -152,38 +154,38 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr) {
       // The default font for both the optimized and unoptimized versions are set to the same font.
       // This ensures that switching on/off "font optimization" does not change the font, which would be confusing.
       if (evalOpt.sansMetrics[evalOpt.minKeySans] < evalRaw.sansMetrics[evalRaw.minKeySans]) {
-        fontAll.raw.SansDefault = fontAll.raw[evalOpt.minKeySans];
+        fontRaw.SansDefault = fontRaw[evalOpt.minKeySans];
         fontAll.opt.SansDefault = fontAll.opt[evalOpt.minKeySans];
         enableOpt = true;
       } else {
-        fontAll.raw.SansDefault = fontAll.raw[evalRaw.minKeySans];
+        fontRaw.SansDefault = fontRaw[evalRaw.minKeySans];
         fontAll.opt.SansDefault = fontAll.opt[evalRaw.minKeySans];
 
         // Delete optimized fonts by overwriting with non-optimized fonts.
         // This should be made dynamic at some point rather than hard-coding font names.
-        fontAll.opt.Carlito = fontAll.raw.Carlito;
-        fontAll.opt.NimbusSans = fontAll.raw.NimbusSans;
-        fontAll.opt.SansDefault = fontAll.raw.SansDefault;
+        fontAll.opt.Carlito = fontRaw.Carlito;
+        fontAll.opt.NimbusSans = fontRaw.NimbusSans;
+        fontAll.opt.SansDefault = fontRaw.SansDefault;
       }
 
       // Repeat for serif fonts
       if (evalOpt.serifMetrics[evalOpt.minKeySerif] < evalRaw.serifMetrics[evalRaw.minKeySerif]) {
-        fontAll.raw.SerifDefault = fontAll.raw[evalOpt.minKeySerif];
+        fontRaw.SerifDefault = fontRaw[evalOpt.minKeySerif];
         fontAll.opt.SerifDefault = fontAll.opt[evalOpt.minKeySerif];
         enableOpt = true;
       } else {
-        fontAll.raw.SerifDefault = fontAll.raw[evalRaw.minKeySerif];
+        fontRaw.SerifDefault = fontRaw[evalRaw.minKeySerif];
         fontAll.opt.SerifDefault = fontAll.opt[evalRaw.minKeySerif];
 
-        fontAll.opt.Century = fontAll.raw.Century;
-        fontAll.opt.Garamond = fontAll.raw.Garamond;
-        fontAll.opt.NimbusRomNo9L = fontAll.raw.NimbusRomNo9L;
-        fontAll.opt.Palatino = fontAll.raw.Palatino;
-        fontAll.opt.SerifDefault = fontAll.raw.SerifDefault;
+        fontAll.opt.Century = fontRaw.Century;
+        fontAll.opt.Garamond = fontRaw.Garamond;
+        fontAll.opt.NimbusRomNo9L = fontRaw.NimbusRomNo9L;
+        fontAll.opt.Palatino = fontRaw.Palatino;
+        fontAll.opt.SerifDefault = fontRaw.SerifDefault;
       }
     } else {
-      fontAll.raw.SansDefault = fontAll.raw[evalRaw.minKeySans];
-      fontAll.raw.SerifDefault = fontAll.raw[evalRaw.minKeySerif];
+      fontRaw.SansDefault = fontRaw[evalRaw.minKeySans];
+      fontRaw.SerifDefault = fontRaw[evalRaw.minKeySerif];
     }
   }
 
