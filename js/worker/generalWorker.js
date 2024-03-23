@@ -178,7 +178,8 @@ export const recognizeAndConvert2 = async ({
 
   postMessage({ data: x, id });
 
-  // return { recognize: res0.data, convert: { legacy: resLegacy, lstm: resLSTM } };
+  // Both promises must resolve for the scheduler to move on, even if only one OCR engine is being run.
+  if (!options.legacy || !options.lstm) postMessage({ data: null, id: `${id}b` });
 };
 
 /**

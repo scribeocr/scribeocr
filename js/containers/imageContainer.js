@@ -295,6 +295,7 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   // If nothing needs to be done, return early.
   if (!(renderBinary || rotateBinary || rotateNative)) {
     if (progress) progress.increment();
+    await imageCont.imageAll.native[n];
     return;
   }
 
@@ -305,7 +306,6 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   const saveColorImageArg = rotateNative;
 
   const gs = globalThis.gs;
-  if (!gs) return;
 
   const resPromise = (async () => {
     // Wait for non-rotated version before replacing with promise
@@ -338,6 +338,10 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
     imageCont.imageAll.binaryStr[n] = resPromise.then(async (res) => (res.imageBinary));
     imageCont.imageAll.binary[n] = resPromise.then(async (res) => getImageBitmap(res.imageBinary));
   }
+
+  // Return after everything is done.
+  await imageCont.imageAll.native[n];
+  await imageCont.imageAll.binary[n];
 }
 
 function range(min, max) {

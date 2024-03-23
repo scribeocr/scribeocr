@@ -88,11 +88,11 @@ export function checkCharWarn(warnArr, errorFunc) {
     if (browserMode) {
       const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. 
       <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-      errorFunc(warningHTML);
+      errorFunc(warningHTML, false);
     } else {
       const errorText = `No character-level OCR data detected. Font optimization features will be disabled. 
       See: https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why`;
-      errorFunc(errorText);
+      errorFunc(errorText, false);
     }
   }
 }
