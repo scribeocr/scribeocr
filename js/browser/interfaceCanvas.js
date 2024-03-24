@@ -51,14 +51,14 @@ const resetCanvasEventListeners = () => {
   });
 
   // Variables to track the panning
-  let isPanning = false;
+  let allowPanning = false;
   let lastClientX = 0;
   let lastClientY = 0;
 
   // Event: Mouse down - check if middle button is pressed
   canvas.on('mouse:down:before', (opt) => {
     if (opt.e.button === 1) { // Middle mouse button
-      isPanning = true;
+      allowPanning = true;
       lastClientX = opt.e.clientX;
       lastClientY = opt.e.clientY;
       opt.e.preventDefault();
@@ -68,7 +68,7 @@ const resetCanvasEventListeners = () => {
 
   // Event: Mouse move - pan the canvas
   canvas.on('mouse:move', (opt) => {
-    if (isPanning) {
+    if (allowPanning) {
       const delta = new fabric.Point(opt.e.clientX - lastClientX, opt.e.clientY - lastClientY);
       canvas.relativePan(delta);
 
@@ -84,7 +84,7 @@ const resetCanvasEventListeners = () => {
 
   // Event: Mouse up - stop panning
   canvas.on('mouse:up:before', (opt) => {
-    isPanning = false;
+    allowPanning = false;
   });
 };
 
@@ -105,26 +105,59 @@ fabric.enableGLFiltering = false;
 const isTouchScreen = navigator?.maxTouchPoints > 0;
 globalThis.touchScrollMode = true;
 
+let allowPanning = false;
 let isPanning = false;
 let lastTouchX = 0;
 let lastTouchY = 0;
+let touchStartTarget;
+let panDeltaTotal = 0;
+let touchEventActive = false;
 
 const defaultOnTouchStartHandler = fabric.Canvas.prototype._onTouchStart;
 fabric.util.object.extend(fabric.Canvas.prototype, {
   _onTouchStart(e) {
-    const target = this.findTarget(e);
+    // For some reason, new touch events can be started even when the user has not lifted their finger.
+    // These should be ignored by this condition.
+    if (touchEventActive) return;
+
+    touchEventActive = true;
+
+    if (!isTouchScreen || !touchScrollMode) {
+      defaultOnTouchStartHandler.call(this, e);
+      return;
+    }
+
+    touchStartTarget = this.findTarget(e);
     // if allowTouchScrolling is enabled, no object was at the
     // the touch position and we're not in drawing mode, then
     // let the event skip the fabricjs canvas and do default
     // behavior
-    if (!target && isTouchScreen && touchScrollMode) {
+
+    const activeObjects = canvas.getActiveObjects();
+    const editSelected = touchStartTarget && activeObjects.length === 1 && touchStartTarget?.wordID && touchStartTarget?.wordID === activeObjects[0]?.wordID;
+
+    if (!editSelected) {
       canvas.discardActiveObject();
       canvas.renderAll();
 
       const touch = e.touches[0];
-      isPanning = true;
+
+      // Under normal circumstances, the visualViewport should have no offset, as the application is designed to always take up 100% of the viewport.
+      // A non-zero offset indicates the viewport has been offset to support a virtual keyboard.
+      // Opening a virtual keyboard does not always offset a keyboard, however it will if the keyboard would obscure the text being edited.
+      // Clicking out of a keyboard should not pan the page because (1) this is probably not intented and
+      // (2) this can cause a massive/abrupt pan when the shift due to the keyboard being removed is included in `delta` and added to the pan.
+      if (window.visualViewport.offsetTop < 100) allowPanning = true;
+      isPanning = false;
       lastTouchX = touch.clientX;
       lastTouchY = touch.clientY;
+      panDeltaTotal = 0;
+
+      canvas.upperCanvasEl.addEventListener(
+        'touchend',
+        canvas._onTouchEnd,
+        { passive: false },
+      );
 
       // returning here should allow the event to propagate and be handled
       // normally by the browser
@@ -140,6 +173,16 @@ const defaultOnTouchEndHandler = fabric.Canvas.prototype._onTouchEnd;
 
 fabric.util.object.extend(fabric.Canvas.prototype, {
   _onTouchEnd(e) {
+    // Allow for new touch event to begin.
+    touchEventActive = false;
+    if (isPanning) return;
+    // If a user tapped on a word, and released the tap without panning, the word is selected.
+    if (allowPanning && !isPanning && touchStartTarget) {
+      canvas.setActiveObject(touchStartTarget);
+      canvas.renderAll();
+    }
+
+    allowPanning = false;
     isPanning = false;
     defaultOnTouchEndHandler.call(this, e);
   },
@@ -149,21 +192,33 @@ const defaultOnDragHandler = fabric.Canvas.prototype._onDrag;
 
 fabric.util.object.extend(fabric.Canvas.prototype, {
   _onDrag(e) {
-    if (isPanning) {
+    if (allowPanning) {
       if (e.touches && e.touches.length === 1) {
-        const touch = e.touches[0];
-        const delta = new fabric.Point(touch.clientX - lastTouchX, touch.clientY - lastTouchY);
-        canvas.relativePan(delta);
-
         e.preventDefault();
         e.stopPropagation();
+
+        const touch = e.touches[0];
+        const delta = new fabric.Point(touch.clientX - lastTouchX, touch.clientY - lastTouchY);
+
+        // For some reason, "drag" events can be triggered with no delta, or a delta that rounds down to 0.
+        if (Math.round(delta.x) === 0 && Math.round(delta.y) === 0) return;
+
+        // This is an imprecise heuristic, so not bothering to calculate distance properly.
+        panDeltaTotal += Math.abs(delta.x);
+        panDeltaTotal += Math.abs(delta.y);
+
+        // Single taps may still trigger "drag" events.
+        // Therefore, words can still be selected as long as the total amount dragged is low.
+        if (panDeltaTotal > 10) isPanning = true;
+
+        canvas.relativePan(delta);
 
         canvas.renderAll();
 
         lastTouchX = touch.clientX;
         lastTouchY = touch.clientY;
       } else {
-        isPanning = false;
+        allowPanning = false;
       }
     }
   },
