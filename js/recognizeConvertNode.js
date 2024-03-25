@@ -13,10 +13,10 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
       const res1 = legacy && lstm ? await resArr[1] : undefined;
 
       if (res0.recognize.debugVis) {
-        const ScrollViewNode = (await import('../../scrollview-web/src/ScrollViewNode.js')).ScrollViewNode;
-        const sv = new ScrollViewNode();
+        const { ScrollView } = await import('../../scrollview-web/scrollview/ScrollView.js');
+        const sv = new ScrollView();
         await sv.processVisStr(res0.recognize.debugVis);
-        globalThis.visInstructions[x] = sv.getAll(true);
+        globalThis.visInstructions[x] = await sv.getAll(true);
       }
 
       if (res0.convert.legacy) await convertPageCallbackNode(res0.convert.legacy, x, mainData, 'Tesseract Legacy');

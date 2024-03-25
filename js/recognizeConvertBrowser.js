@@ -14,7 +14,7 @@ const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementB
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
-/** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>} */
+/** @type {Array<Awaited<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>>} */
 globalThis.visInstructions = [];
 
 /**
@@ -80,10 +80,10 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
       const res0 = await resArr[0];
 
       if (res0.recognize.debugVis) {
-        const ScrollViewBrowser = (await import('../../scrollview-web/src/ScrollViewBrowser.js')).ScrollViewBrowser;
-        const sv = new ScrollViewBrowser(true);
+        const { ScrollView } = await import('../../scrollview-web/scrollview/ScrollView.js');
+        const sv = new ScrollView(true);
         await sv.processVisStr(res0.recognize.debugVis);
-        globalThis.visInstructions[x] = sv.getAll(true);
+        globalThis.visInstructions[x] = await sv.getAll(true);
 
         // Enable the select element and add the options the first time this is run.
         if (selectDebugVisElem.options.length === 1) {

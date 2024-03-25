@@ -104,7 +104,7 @@ await loadFontContainerAllRaw().then((x) => {
 
 globalThis.convertPageWarn = [];
 
-/** @type {Array<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>} */
+/** @type {Array<Awaited<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>>} */
 globalThis.visInstructions = [];
 
 /**
