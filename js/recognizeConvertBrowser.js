@@ -3,7 +3,6 @@
 import {
   initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage,
 } from '../main.js';
-import { combineOrderedArrays } from '../../scrollview-web/util/combine.js';
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
@@ -17,7 +16,8 @@ const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('
 
 // TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
-function addVisInstructionsUI() {
+async function addVisInstructionsUI() {
+  const { combineOrderedArrays } = await import('../scrollview-web/util/combine.js');
   if (!globalThis.visInstructions || globalThis.visInstructions.length === 0) return;
   const visNamesAll = globalThis.visInstructions.map((x) => Object.keys(x));
   if (visNamesAll.length === 0) return;
@@ -96,8 +96,10 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 
   const config = {};
 
+  const debugVis = showDebugVisElem.checked;
+
   for (const x of inputPages) {
-    recognizePage(globalThis.gs, x, legacy, lstm, false, config, showDebugVisElem.checked).then(async (resArr) => {
+    recognizePage(globalThis.gs, x, legacy, lstm, false, config, debugVis).then(async (resArr) => {
       const res0 = await resArr[0];
 
       if (res0.recognize.debugVis) {
@@ -127,7 +129,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 
   await Promise.all(promisesA);
 
-  addVisInstructionsUI();
+  if (debugVis) addVisInstructionsUI();
 
   if (mainData) {
     await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
