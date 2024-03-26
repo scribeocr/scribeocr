@@ -3,6 +3,7 @@
 import {
   initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage,
 } from '../main.js';
+import { combineOrderedArrays } from '../../scrollview-web/util/combine.js';
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
@@ -13,6 +14,26 @@ const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementB
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
+
+// TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
+// While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
+function addVisInstructionsUI() {
+  if (!globalThis.visInstructions || globalThis.visInstructions.length === 0) return;
+  const visNamesAll = globalThis.visInstructions.map((x) => Object.keys(x));
+  if (visNamesAll.length === 0) return;
+  const visNames = visNamesAll.reduce(combineOrderedArrays);
+
+  if (visNames.length === 0) return;
+
+  showDebugLegendElem.disabled = false;
+  selectDebugVisElem.disabled = false;
+  visNames.forEach((x) => {
+    const opt = document.createElement('option');
+    opt.value = x;
+    opt.innerHTML = x;
+    selectDebugVisElem.appendChild(opt);
+  });
+}
 
 /** @type {Array<Awaited<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>>} */
 globalThis.visInstructions = [];
@@ -84,18 +105,6 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
         const sv = new ScrollView(true);
         await sv.processVisStr(res0.recognize.debugVis);
         globalThis.visInstructions[x] = await sv.getAll(true);
-
-        // Enable the select element and add the options the first time this is run.
-        if (selectDebugVisElem.options.length === 1) {
-          showDebugLegendElem.disabled = false;
-          selectDebugVisElem.disabled = false;
-          Object.keys(globalThis.visInstructions[x]).forEach((x) => {
-            const opt = document.createElement('option');
-            opt.value = x;
-            opt.innerHTML = x;
-            selectDebugVisElem.appendChild(opt);
-          });
-        }
       }
 
       if (legacy) {
@@ -117,6 +126,8 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   }
 
   await Promise.all(promisesA);
+
+  addVisInstructionsUI();
 
   if (mainData) {
     await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
