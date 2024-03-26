@@ -637,6 +637,8 @@ async function penalizeWord(wordObjs) {
     const word = wordObjs[0];
     const wordTextArr = wordStr.split('');
     const wordFontFamily = word.font || fontAll.defaultFontName;
+    const wordFontSize = await calcLineFontSize(word.line);
+    if (!wordFontSize) return penalty;
     const fontActive = fontAll.get('active');
     const fontI = /** @type {FontContainerFont} */ (fontActive[wordFontFamily][word.style]);
     const fontOpentypeI = await fontI.opentype;
@@ -644,16 +646,16 @@ async function penalizeWord(wordObjs) {
     // These calculations differ from the standard word width calculations,
     // because they do not include left/right bearings.
     const glyphFirstMetrics = fontOpentypeI.charToGlyph(wordTextArr[0]).getMetrics();
-    const widthFirst = glyphFirstMetrics.xMax - glyphFirstMetrics.xMin;
+    const widthFirst = (glyphFirstMetrics.xMax - glyphFirstMetrics.xMin) / fontOpentypeI.unitsPerEm * wordFontSize;
 
     const glyphSecondMetrics = fontOpentypeI.charToGlyph(wordTextArr[1]).getMetrics();
-    const widthSecond = glyphSecondMetrics.xMax - glyphSecondMetrics.xMin;
+    const widthSecond = (glyphSecondMetrics.xMax - glyphSecondMetrics.xMin) / fontOpentypeI.unitsPerEm * wordFontSize;
 
     const widthTotal = widthFirst + widthSecond;
 
     const wordWidth = word.bbox.right - word.bbox.left;
 
-    if (widthFirst >= wordWidth * 0.9 && widthTotal > wordWidth * 1.2) penalty += 0.05;
+    if (widthFirst >= wordWidth * 0.9 && widthTotal > wordWidth * 1.15) penalty += 0.05;
   }
 
   return penalty;
