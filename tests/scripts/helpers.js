@@ -9,6 +9,9 @@ class CustomSeleniumActions {
   }
 
   async uploadFiles(files) {
+    // Wait for import function to be defined in main.js to avoid race condition.
+    await this.driver.wait(async () => this.driver.executeScript('return !!globalThis.fetchAndImportFiles'), 10000, 'Import function is not defined.');
+
     const filesAbs = files.map((x) => `https://scribeocr.com/tests/assets/${x}`);
     const jsStr = `fetchAndImportFiles([${filesAbs.map((x) => `'${x}'`).join(', ')}])`;
 
