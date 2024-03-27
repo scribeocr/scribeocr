@@ -87,6 +87,7 @@ globalThis.Module = Module;
 globalThis.FS = FS;
 
 let wasm_pageText;
+let wasm_checkNativeText;
 
 Module.onRuntimeInitialized = function () {
   Module.ccall('initContext');
@@ -115,10 +116,35 @@ Module.onRuntimeInitialized = function () {
   mupdf.outlinePage = Module.cwrap('outlinePage', 'number', ['number', 'number']);
   mupdf.outlineDown = Module.cwrap('outlineDown', 'number', ['number']);
   mupdf.outlineNext = Module.cwrap('outlineNext', 'number', ['number']);
-  mupdf.checkNativeText = Module.cwrap('checkNativeText', 'number', ['number']);
+  wasm_checkNativeText = Module.cwrap('checkNativeText', 'number', ['number', 'number']);
   mupdf.writeDocument = Module.cwrap('writeDocument', 'null', []);
   postMessage('READY');
   ready = true;
+};
+
+/**
+ *
+ * @param {number} doc
+ */
+mupdf.checkNativeText = function (doc) {
+  return wasm_checkNativeText(doc, false);
+};
+
+/**
+ *
+ * @param {number} doc
+ */
+mupdf.detectExtractText = function (doc) {
+  const res = wasm_checkNativeText(doc, true);
+  const text = FS.readFile('/download.txt', { encoding: 'utf8' });
+  FS.unlink('/download.txt');
+
+  const type = ['Native text', 'Image + OCR text', 'Image native'][res];
+
+  return {
+    type,
+    text,
+  };
 };
 
 mupdf.cleanFile = function (data) {

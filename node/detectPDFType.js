@@ -14,10 +14,20 @@ async function main() {
   const w = await initMuPDFWorker();
   const fileData = await fs.readFileSync(args[0]);
 
+  const outputPath = args[1];
+
   const pdfDoc = await w.openDocument(fileData, 'file.pdf');
   w.pdfDoc = pdfDoc;
 
-  const nativeCode = await w.checkNativeText([]);
+  let nativeCode;
+
+  if (outputPath) {
+    const res = await w.detectExtractText([]);
+    nativeCode = res.type;
+    fs.writeFileSync(outputPath, res.text);
+  } else {
+    nativeCode = await w.checkNativeText([]);
+  }
 
   if (nativeCode === 0) {
     console.log('PDF Type: Text Native');

@@ -109,6 +109,7 @@ export async function initMuPDFWorker() {
   mupdf.overlayTextImageEnd = wrap('overlayTextImageEnd');
   mupdf.overlayTextImage = wrap('overlayTextImage');
   mupdf.checkNativeText = wrap('checkNativeText');
+  mupdf.detectExtractText = wrap('detectExtractText');
   mupdf.write = wrap('write');
   mupdf.cleanFile = wrap('cleanFile');
   mupdf.terminate = function () { worker.terminate(); };
