@@ -1377,16 +1377,33 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                         <label><input class="form-check-input" type="checkbox" id="showConflicts"> Show Word
                           Comparisons</label>
                       </div>
-                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintWordsOCR"
-                        style="width:100%;text-align:left">Print Selected Words to Console (OCR)</button>
-                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintWordsCanvas"
-                        style="width:100%;text-align:left">Print Selected Words to Console (Canvas)</button>
-                      <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugDownloadCanvas"
-                        style="width:100%;text-align:left">Download Canvas as PNG</button>
                       <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugEvalLine"
                         style="width:100%;text-align:left">Evaluate Line</button>
                       <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintCoords"
                       style="width:100%;text-align:left">Print Coords</button>
+
+                      <label>Print Selected Words to Console</label>
+                      <div class="row">
+                        <div class="col">
+                          <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintWordsOCR"
+                          style="width:100%;text-align:left">OCR Object</button>
+                        </div>
+                        <div class="col">
+                          <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintWordsCanvas"
+                          style="width:100%;text-align:left">Canvas Object</button>
+                        </div>
+                      </div>
+                        <label>Download Current Image</label>
+                        <div class="row">
+                          <div class="col">
+                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugDownloadImage"
+                            style="width:100%;text-align:left">Raw Image</button>
+                          </div>
+                          <div class="col">
+                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugDownloadCanvas"
+                            style="width:100%;text-align:left">Canvas</button>
+                          </div>
+                        </div>
                     </div>
                   </div>
 
@@ -1452,9 +1469,6 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
   <canvas id="c" width="450" height="600"></canvas>
   <table id="dataPreview" class="dataPreview" style="display:none;margin-top:2em"></table>
   <canvas id="d" style="display:none"></canvas>
-    <canvas id="e" style="display:none"></canvas>
-  <canvas id="h" style="display:none"></canvas>
-  <canvas id="f" style="display:none"></canvas>
   <div id="debugCanvasParentDiv" style="display:none">
     <canvas id="g"></canvas>
   </div>

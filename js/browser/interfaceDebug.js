@@ -3,8 +3,11 @@
 import { calcOverlap } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
 import { saveAs, imageStrToBlob } from '../miscUtils.js';
-import { cp } from '../../main.js';
+import { cp, setCanvasWidthHeightZoom } from '../../main.js';
 import { imageCont } from '../containers/imageContainer.js';
+import { drawDebugImages } from '../debug.js';
+
+const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
 export function printSelectedWords(printOCR = true) {
   const selectedObjects = window.canvas.getActiveObjects();
@@ -24,48 +27,21 @@ export async function evalSelectedLine() {
 
   const word0 = ocr.getPageWord(globalThis.ocrAll.active[cp.n], selectedObjects[0].wordID);
 
-  const viewCanvas0 = /** @type {HTMLCanvasElement} */ (document.getElementById('e'));
-  const viewCanvas1 = /** @type {HTMLCanvasElement} */ (document.getElementById('f'));
-  const viewCanvas2 = /** @type {HTMLCanvasElement} */ (document.getElementById('h'));
+  if (!word0) return;
 
-  // Make debugging canvases visible
-  viewCanvas0.setAttribute('style', '');
-  viewCanvas1.setAttribute('style', '');
-  viewCanvas2.setAttribute('style', '');
+  const img = await imageCont.getBinary(cp.n);
 
-  const imgElem = await imageAll.binary[cp.n];
-
-  const res = await globalThis.gs.evalPage({
+  const res = await globalThis.gs?.evalWords({
     wordsA: word0.line.words,
-    wordsB: [],
-    binaryImage: imgElem,
-    imageRotated: imageAll.binaryRotated[cp.n],
+    binaryImage: img,
+    imageRotated: imageCont.imageAll.binaryRotated[cp.n],
     pageMetricsObj: pageMetricsArr[cp.n],
     options: { view: true },
   });
 
-  console.log([res.data.metricA, res.data.metricB]);
+  await drawDebugImages({ ctx: globalThis.ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
 
-  const imgBit0 = await createImageBitmap(res.data.debug.imageRaw);
-  viewCanvas0.width = imgBit0.width;
-  viewCanvas0.height = imgBit0.height;
-  ctxComp0.drawImage(imgBit0, 0, 0);
-
-  const imgBit1 = await createImageBitmap(res.data.debug.imageA);
-  viewCanvas1.width = imgBit1.width;
-  viewCanvas1.height = imgBit1.height;
-  ctxComp1.drawImage(imgBit1, 0, 0);
-
-  const imgBit2 = await createImageBitmap(res.data.debug.imageB);
-  viewCanvas2.width = imgBit2.width;
-  viewCanvas2.height = imgBit2.height;
-  ctxComp2.drawImage(imgBit2, 0, 0);
-}
-
-export function downloadImage(img, filename) {
-  const imgStr = typeof (img) === 'string' ? img : img.src;
-  const imgBlob = imageStrToBlob(imgStr);
-  saveAs(imgBlob, filename);
+  setCanvasWidthHeightZoom(globalThis.state.imgDims, true, false);
 }
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
@@ -73,46 +49,23 @@ const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElement
 export function downloadCanvas() {
   const canvasDataStr = canvas.toDataURL();
   const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
-  downloadImage(canvasDataStr, fileName);
+  const imgBlob = imageStrToBlob(canvasDataStr);
+  saveAs(imgBlob, fileName);
 }
 
-// Utility function for downloading all images
-export async function downloadImageAll(filenameBase, type = 'binary') {
-  for (let i = 0; i < imageCont.imageAll[type].length; i++) {
-    const img = await imageCont.imageAll[type][i];
-    const fileType = img.src.match(/^data:image\/([a-z]+)/)?.[1];
-    if (!['png', 'jpeg'].includes(fileType)) {
-      console.log(`Filetype ${fileType} is not jpeg/png; skipping.`);
-      continue;
-    }
-    const fileName = `${filenameBase}_${String(i).padStart(3, '0')}.${fileType}`;
-    console.log(`Downloading file ${String(i)} as ${fileName}`);
-    downloadImage(img, fileName);
-    // Not all files will be downloaded without a delay between downloads
-    await new Promise((r) => setTimeout(r, 200));
-  }
-}
+export async function downloadCurrentImage() {
+  const imageStr = colorModeElem.value === 'binary' ? await Promise.resolve(imageCont.imageAll.binaryStr[cp.n]) : await Promise.resolve(imageCont.imageAll.nativeStr[cp.n]);
+  const filenameBase = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}`;
 
-export async function downloadImageDebug(filenameBase, type = 'Combined') {
-  for (let i = 0; i < globalThis.debugImg[type].length; i++) {
-    for (let j = 0; j < globalThis.debugImg[type][i].length; j++) {
-      const wordFileName = `${globalThis.debugImg[type][i][j].textA.replace(/[^a-z0-9]/ig, '')}_${globalThis.debugImg[type][i][j].textB.replace(/[^a-z0-9]/ig, '')}`;
-      for (let k = 0; k < 2; k++) {
-        const name = ['imageRaw', 'imageA', 'imageB'][k];
-        const img = await globalThis.debugImg[type][i][j][name];
-        const fileType = img.match(/^data:image\/([a-z]+)/)?.[1];
-        if (!['png', 'jpeg'].includes(fileType)) {
-          console.log(`Filetype ${fileType} is not jpeg/png; skipping.`);
-          continue;
-        }
-        const fileName = `${filenameBase}_${String(i)}_${String(j)}_${String(k)}_${wordFileName}.${fileType}`;
-        console.log(`Downloading file ${String(i)} as ${fileName}`);
-        downloadImage(img, fileName);
-        // Not all files will be downloaded without a delay between downloads
-        await new Promise((r) => setTimeout(r, 200));
-      }
-    }
+  const fileType = imageStr.match(/^data:image\/([a-z]+)/)?.[1];
+  if (!fileType || !['png', 'jpeg'].includes(fileType)) {
+    console.log(`Filetype ${fileType} is not jpeg/png; skipping.`);
+    return;
   }
+
+  const fileName = `${filenameBase}_${String(cp.n).padStart(3, '0')}.${fileType}`;
+  const imgBlob = imageStrToBlob(imageStr);
+  saveAs(imgBlob, fileName);
 }
 
 export function getExcludedText() {

@@ -85,6 +85,16 @@ export function ImageCont(pageCount) {
   this.nativeColor = Array(pageCount);
 }
 
+/**
+ *
+ * @param {number} n
+ * @returns {Promise<ImageBitmap>}
+ */
+async function getBinary(n) {
+  await renderImage(n, 'binary');
+  return await imageCont.imageAll.binary[n];
+}
+
 function clear() {
   imageCont.imageAll = new ImageCont(0);
   if (imageCont.muPDFScheduler) {
@@ -382,6 +392,7 @@ export const imageCont = {
   /** @type {('color'|'gray'|'binary')} Default color mode used by `renderImage` when missing `colorMode` argument. */
   colorModeDefault: 'gray',
   imageAll: new ImageCont(0),
+  getBinary,
   initMuPDFScheduler,
   /** @type {?MuPDFScheduler} */
   muPDFScheduler: null,

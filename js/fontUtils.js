@@ -185,6 +185,7 @@ export const calcWordFontSize = async (word) => {
 * Get or calculate font size for line.
 * This value will either be (1) a manually set value or (2) a value calculated using line metrics.
 * @param {OcrLine} line
+* @returns {Promise<?number>}
 */
 export const calcLineFontSize = async (line) => {
   if (line._size) return line._size;

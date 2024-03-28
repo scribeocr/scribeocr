@@ -76,7 +76,7 @@ import { setDefaults } from './js/browser/setDefaults.js';
 import ocr from './js/objects/ocrObjects.js';
 
 import {
-  printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText,
+  printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText, downloadCurrentImage,
 } from './js/browser/interfaceDebug.js';
 
 import { df } from './js/browser/debugGlobals.js';
@@ -94,28 +94,9 @@ globalThis.d = () => {
  */
 globalThis.ctxDebug = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('g')).getContext('2d'));
 
-/**
- * @global
- * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user.
- */
-globalThis.ctxComp0 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('h')).getContext('2d'));
-
-/**
- * @global
- * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user.
- */
-globalThis.ctxComp1 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('e')).getContext('2d'));
-
-/**
- * @global
- * @type {CanvasRenderingContext2D}
- * @description - Used under the hood for generating overlap visualizations to display to user.
- */
-globalThis.ctxComp2 = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('f')).getContext('2d'));
-
 const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
+const debugDownloadImageElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadImage'));
+
 const debugPrintWordsCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
 const debugPrintWordsOCRElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsOCR'));
 
@@ -125,6 +106,8 @@ debugPrintWordsOCRElem.addEventListener('click', () => printSelectedWords(true))
 debugPrintWordsCanvasElem.addEventListener('click', () => printSelectedWords(false));
 
 debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
+debugDownloadImageElem.addEventListener('click', downloadCurrentImage);
+
 debugEvalLineElem.addEventListener('click', evalSelectedLine);
 
 const fontAllRawReady = loadFontContainerAllRaw().then((x) => {
@@ -496,12 +479,8 @@ document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', ()
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
-  if (!showConflictsElem.checked) {
-    document.getElementById('debugCanvasParentDiv')?.setAttribute('style', 'display:none');
-  } else {
-    showDebugImages();
-  }
-  setCanvasWidthHeightZoom(globalThis.state.imgDims, false);
+  if (showConflictsElem.checked) showDebugImages();
+  setCanvasWidthHeightZoom(globalThis.state.imgDims, showConflictsElem.checked, false);
 });
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
@@ -1981,13 +1960,15 @@ globalThis.state = {
   canvasDimsN: -1,
 };
 
+const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
+
 /**
  *
  * @param {dims} imgDims - Dimensions of image
  * @param {boolean} updatePosition - Whether to reset the position/zoom of the page
  */
-const setCanvasWidthHeightZoom = (imgDims, updatePosition = true) => {
-  const totalHeight = showConflictsElem.checked ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
+export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false, updatePosition = true) => {
+  const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
 
   // Re-set width/height, in case the size of the window changed since originally set.
   canvas.setHeight(totalHeight);
@@ -2004,11 +1985,12 @@ const setCanvasWidthHeightZoom = (imgDims, updatePosition = true) => {
     canvas.viewportTransform = [zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight];
   }
 
-  if (showConflictsElem.checked) {
+  if (enableConflictsViewer) {
     const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
 
-    const debugCanvasParentDivElem = document.getElementById('debugCanvasParentDiv');
-    debugCanvasParentDivElem?.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll`);
+    debugCanvasParentDivElem.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll`);
+  } else {
+    showHideElem(debugCanvasParentDivElem, false);
   }
 };
 
@@ -2103,7 +2085,7 @@ export async function renderPageQueue(n, loadXML = true) {
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
   if (globalThis.state.canvasDimsN !== n) {
-    setCanvasWidthHeightZoom(imgDims);
+    setCanvasWidthHeightZoom(imgDims, showConflictsElem.checked, true);
 
     globalThis.state.canvasDimsN = n;
   }

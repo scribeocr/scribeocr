@@ -1405,6 +1405,3 @@ export async function nudgePageBaseline({
     page, binaryImage, imageRotated, pageMetricsObj, func, view,
   });
 }
-
-/** @type {Object<string, ImageBitmap>} */
-const binaryImageCache = {};
