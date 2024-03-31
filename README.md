@@ -16,6 +16,9 @@ npx http-server
 ```
 The `npx http-server` command will print the address on your local network that ScribeOCR is running on.  You can use the site by visiting that address.
 
+# Documentation
+Documentation for users is available at [docs.scribeocr.com](https://docs.scribeocr.com/), and is managed in this [repo](https://github.com/scribeocr/scribeocr-docs).  If you review the documentation and think something important is unclear or missing, feel free to open a Git Issue in that repo.
+
 # Proofreading Overview
 
 Efficient proofreading is a major focus of Scribe OCR.  Using the proofreading interface, users can easily spot and correct errors, bringing their OCR data from 98% accuracy to 100% accuracy.
