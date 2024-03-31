@@ -3,6 +3,19 @@ Scribe OCR is a free and open-source web application for recognizing text, proof
 
 Scribe OCR includes the [Tesseract](https://github.com/tesseract-ocr/tesseract) OCR engine for recognizing text.  It can also be used for proofreading existing OCR data from Tesseract or Abbyy. 
 
+# Running
+ScribeOCR can be run by using the public site at [scribeocr.com](https://scribeocr.com).  The entire program runs in your browser--no data is sent to a remote server. 
+
+There is currently no standalone desktop application, so running locally requires serving the files over a local HTTP server.  To run a local copy, run the following commands (requires [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)):
+
+```
+git clone --recursive https://github.com/scribeocr/scribeocr.git
+cd scribeocr
+npm i
+npx http-server
+```
+The `npx http-server` command will print the address on your local network that ScribeOCR is running on.  You can use the site by visiting that address.
+
 # Proofreading Overview
 
 Efficient proofreading is a major focus of Scribe OCR.  Using the proofreading interface, users can easily spot and correct errors, bringing their OCR data from 98% accuracy to 100% accuracy.
