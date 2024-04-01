@@ -4,7 +4,7 @@ import {
   quantile, mean50, unescapeXml, round6,
 } from '../miscUtils.js';
 
-import { pass2 } from './convertPageShared.js';
+import { pass3 } from './convertPageShared.js';
 
 import { determineSansSerif } from '../fontStatistics.js';
 
@@ -256,22 +256,9 @@ export async function convertPageStext({ ocrStr, n }) {
 
   const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI);
 
-  const lineLeftAdj = [];
-  for (let i = 0; i < lineLeft.length; i++) {
-    lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
-  }
-  let leftOut = quantile(lineLeft, 0.2);
-  const leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut;
-  // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
-  if (lineLeft.length < 5) {
-    leftOut = null;
-  }
-
   pageObj.angle = angleOut;
-  pageObj.left = leftOut;
-  pageObj.leftAdj = leftAdjOut;
 
-  pass2(pageObj);
+  pass3(pageObj);
 
   return { pageObj, layoutBoxes: {} };
 }

@@ -1,6 +1,7 @@
 import {
-  quantile,
+  quantile, mean50,
 } from '../miscUtils.js';
+import ocr from '../objects/ocrObjects.js';
 
 // Includes all capital letters except for "J" and "Q"
 export const ascCharArr = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -8,15 +9,206 @@ export const ascCharArr = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L'
 export const xCharArr = ['a', 'c', 'e', 'm', 'n', 'o', 'r', 's', 'u', 'v', 'w', 'x', 'z'];
 
 /**
- * Pass 2 iterates over all words/letters in the OCR object, calculating statistics and applying corrections.
+ * Pass 2 iterates over all words/letters in the OCR object, and corrects style and rotation.
+ * This pass should only be run for Tesseract data.
+ *
+ * @param {OcrPage} pageObj - Page object to apply corrections to. Edited in place.
+ */
+export function pass2(pageObj, rotateAngle) {
+  // Re-calculate line bounding box and adjust baseline.
+  // Note: this must happen before the roatation step, as that step assumes the bounding boxes are correct.
+  // Data from Tesseract can omit certain characters when calculating line-level bounding boxes.
+  // Therefore, the bounding box is recalculated using `ocr.calcLineBbox` (which is used by the editor),
+  // and any difference in the bottom of the bounding box is added to the `baseline` property,
+  // which is assumed to be correct coming out of Tesseract.
+  for (const lineObj of pageObj.lines) {
+    const lineboxBottomOrig = lineObj.bbox.bottom;
+    ocr.calcLineBbox(lineObj);
+    lineObj.baseline[1] += (lineboxBottomOrig - lineObj.bbox.bottom);
+  }
+
+  // Transform bounding boxes if rotation is specified.
+  // This option is used when an image is rotated before it is sent to Tesseract,
+  // however the HOCR needs to be applied to the original image.
+  if (Math.abs(rotateAngle) > 0.05) {
+    for (let i = 0; i < pageObj.lines.length; i++) {
+      ocr.rotateLine(pageObj.lines[i], rotateAngle, null, true);
+    }
+  }
+
+  // Flag words that are small caps, incorrectly identified as capital letters in a normal style.
+  // Unlike Abbyy, which generally identifies small caps as lowercase letters (and identifies small cap text explicitly as a formatting property),
+  // Tesseract (at least the Legacy model) reports them as upper-case letters.
+  for (const lineObj of pageObj.lines) {
+    const smallCapsWordArr = [];
+    const titleCaseArr = [];
+    for (const wordObj of lineObj.words) {
+      // Skip words that are already identified as small caps, however they can be used to validate other words.
+      if (wordObj.style === 'small-caps') {
+        smallCapsWordArr.push(wordObj);
+        continue;
+      }
+
+      // Word contains multiple capital letters, no lowercase letters, and is not already identified as small caps.
+      if (!/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text) && wordObj.style !== 'small-caps' && wordObj.chars) {
+        // Filter to only include letters
+        const filterArr = wordObj.text.split('').map((x) => /[a-z]/i.test(x));
+        const charArrSub = wordObj.chars.filter((x, y) => filterArr[y]);
+
+        const firstLetterHeight = charArrSub[0].bbox.bottom - charArrSub[0].bbox.top;
+        const otherLetterHeightArr = charArrSub.slice(1).map((x) => x.bbox.bottom - x.bbox.top);
+        const otherLetterHeightMax = Math.max(...otherLetterHeightArr);
+        const otherLetterHeightMin = Math.min(...otherLetterHeightArr);
+
+        // If the first letter is significantly larger than the others, then this word would need to be in title case.
+        if (firstLetterHeight > otherLetterHeightMax * 1.1) {
+          // If the other letters are all around the same size, then the word is small caps.
+          if ((otherLetterHeightMax / otherLetterHeightMin) < 1.15) {
+            smallCapsWordArr.push(wordObj);
+            titleCaseArr[smallCapsWordArr.length - 1] = true;
+          }
+        } else {
+          // Otherwise, all the letters need to be about the same size for this to be small caps.
+          const allLetterHeightArr = wordObj.chars.map((x) => x.bbox.bottom - x.bbox.top);
+          const allLetterHeightMax = Math.max(...allLetterHeightArr);
+          const allLetterHeightMin = Math.min(...allLetterHeightArr);
+
+          if ((allLetterHeightMax / allLetterHeightMin) < 1.15) {
+            smallCapsWordArr.push(wordObj);
+            titleCaseArr[smallCapsWordArr.length - 1] = false;
+          }
+        }
+      }
+    }
+
+    if (smallCapsWordArr.length >= 3) {
+      const titleCaseTotal = titleCaseArr.reduce((x, y) => x + y);
+
+      for (let k = 0; k < smallCapsWordArr.length; k++) {
+        const wordObj = smallCapsWordArr[k];
+        wordObj.style = 'small-caps';
+        if (!wordObj.chars || !titleCaseTotal) continue;
+
+        // If title case, convert all letters after the first to lowercase.
+        if (titleCaseArr[k]) {
+          wordObj.chars.slice(1).forEach((x) => {
+            x.text = x.text.toLowerCase();
+          });
+          wordObj.text = wordObj.chars.map((x) => x.text).join('');
+        } else {
+          // If not title case (but title case is used on this line), assume the entire word is lower case.
+          // This should be refined at some point to check the actual bounding boxes,
+          // however this heuristic is generally reliable.
+          wordObj.chars.forEach((x) => {
+            x.text = x.text.toLowerCase();
+          });
+          wordObj.text = wordObj.chars.map((x) => x.text).join('');
+        }
+      }
+    }
+  }
+
+  // Split superscripts into separate words, and enable 'super' as word style for superscripts.
+  // Tesseract may not split superscript footnote references into separate words, so that happens here.
+  for (const lineObj of pageObj.lines) {
+    for (let i = 0; i < lineObj.words.length; i++) {
+      const wordObj = lineObj.words[i];
+      // Skip for non-Latin languages, and when no character-level data exists.
+      if (['chi_sim', 'chi_tra'].includes(wordObj.lang) || !wordObj.chars || wordObj.chars.length === 0) continue;
+
+      // Check if any superscript is possible (word ends in number).
+      const trailingNumStr = wordObj.text.match(/\d+$/)?.[0];
+      if (!trailingNumStr) continue;
+
+      // Adjust box such that top/bottom approximate those coordinates at the leftmost point
+      const lineboxAdj = { ...lineObj.bbox };
+
+      if (lineObj.baseline[0] < 0) {
+        lineboxAdj.top -= (lineboxAdj.right - lineboxAdj.left) * lineObj.baseline[0];
+      } else {
+        lineboxAdj.bottom -= (lineboxAdj.right - lineboxAdj.left) * lineObj.baseline[0];
+      }
+
+      const expectedBaseline = (wordObj.bbox.left + (wordObj.bbox.right - wordObj.bbox.left) / 2 - lineboxAdj.left) * lineObj.baseline[0] + lineObj.baseline[1] + lineboxAdj.bottom;
+      const lineAscHeight = expectedBaseline - lineboxAdj.top;
+
+      let baseN = 0;
+      for (let j = wordObj.chars.length - 1; j >= 0; j--) {
+        const charObj = wordObj.chars[j];
+        if (charObj.bbox.bottom < expectedBaseline - lineAscHeight / 4) {
+          baseN++;
+        } else {
+          break;
+        }
+      }
+
+      const superN = Math.min(trailingNumStr.length, baseN);
+
+      // If no superscript is possible, skip.
+      if (superN === 0) continue;
+
+      // If the entire word is a superscript, it does not need to be split.
+      if (superN === wordObj.text.length) {
+        wordObj.sup = true;
+        wordObj.style = 'normal';
+        continue;
+      }
+
+      // Otherwise, split the word into two words, with the second word being the superscript.
+      const wordObjSup = ocr.cloneWord(wordObj);
+
+      const charCoreArr = wordObj.chars.slice(0, wordObj.chars.length - superN);
+      // Use cloned characters to avoid issues with character objects being shared in multiple words.
+      const charSuperArr = wordObjSup.chars.slice(wordObj.chars.length - superN, wordObj.chars.length);
+      const textCore = charCoreArr.map((x) => x.text).join('');
+      const textSuper = charSuperArr.map((x) => x.text).join('');
+
+      // const wordObjSup = ocr.cloneWord(wordObj);
+
+      wordObjSup.text = textSuper;
+      wordObjSup.chars = charSuperArr;
+      wordObjSup.style = 'normal';
+      wordObjSup.sup = true;
+      wordObjSup.id = `${wordObj.id}a`;
+      ocr.calcWordBbox(wordObjSup);
+
+      wordObj.text = textCore;
+      wordObj.chars = charCoreArr;
+      ocr.calcWordBbox(wordObj);
+
+      lineObj.words.splice(i + 1, 0, wordObjSup);
+      i++;
+    }
+  }
+}
+
+/**
+ * Pass 3 iterates over all words/letters in the OCR object, calculating statistics and applying corrections.
  * All OCR objects (Tesseract/Abbyy/Stext) should be run through this function before returning.
  *
- * @param {Object} params
- * @param {OcrPage} params.pageObj - Page object to apply corrections to. Edited in place.
+ * @param {OcrPage} pageObj - Page object to apply corrections to. Edited in place.
  */
-export function pass2(pageObj) {
+export function pass3(pageObj) {
   /** @type {Object.<string, FontMetricsRawFamily>} */
 
+  // Calculate page angle, if not already set to non-zero value.
+  // If a page angle is already defined, that indicates that angle was already detected and rotation was applied in pre-processing,
+  // so that should not be overwritten here (as the number would not be accurate).
+  if (!pageObj.angle) {
+    const angleRisePage = [];
+    for (const lineObj of pageObj.lines) {
+      // Only calculate baselines from lines 200px+.
+      // This avoids short "lines" (e.g. page numbers) that often report wild values.
+      if ((lineObj.bbox.right - lineObj.bbox.left) >= 200) {
+        angleRisePage.push(lineObj.baseline[0]);
+      }
+    }
+
+    const angleRiseMedian = mean50(angleRisePage) || 0;
+    pageObj.angle = Math.asin(angleRiseMedian) * (180 / Math.PI);
+  }
+
+  // Loop over all glyphs, calculating statistics and applying corrections.
   for (const lineObj of pageObj.lines) {
     /** @type {Array<number>} */
     const lineAscHeightArr = [];
@@ -123,8 +315,11 @@ export function pass2(pageObj) {
 
           // If the gap between the previous character and next character is shorter than the supposed width of the dash character, use that width instead.
           // This should never occur in valid data, however can happen for Tesseract LSTM, which frequently gets character-level bounding boxes wrong.
-          if (charObjArr[k - 1] && charObjArr[k + 1]) {
-            const charWidth2 = charObjArr[k + 1].bbox.left - charObjArr[k - 1].bbox.right;
+          // When there is no next character, the right edge of the word is used instead. Word bounds are more reliable than intra-word character bounds for LSTM,
+          // so the right bound of the dash should only be used in the case when it is the last character.
+          if (charObjArr[k - 1]) {
+            const rightBound = charObjArr[k + 1] ? charObjArr[k + 1].bbox.left : charObjArr[k].bbox.right;
+            const charWidth2 = rightBound - charObjArr[k - 1].bbox.right;
             charWidth = Math.min(charWidth, charWidth2);
           }
 

@@ -76,7 +76,7 @@ export async function recognizeAllClick() {
   // User can select engine directly using advanced options, or indirectly using basic options.
   let oemMode;
   if (enableAdvancedRecognitionElem.checked) {
-    oemMode = oemLabelTextElem.innerHTML;
+    oemMode = oemLabelTextElem.innerHTML.toLowerCase();
   } else if (ocrQualityElem.value === '1') {
     oemMode = 'combined';
   } else {

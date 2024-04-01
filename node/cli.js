@@ -8,7 +8,7 @@ import Worker from 'web-worker';
 import Tesseract from 'tesseract.js';
 import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
 import { runFontOptimization } from '../js/fontEval.js';
-import { imageCont } from '../js/containers/imageContainer.js';
+import { getImageBitmap, imageCont } from '../js/containers/imageContainer.js';
 import { renderHOCR } from '../js/exportRenderHOCR.js';
 
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
@@ -172,7 +172,11 @@ async function main(func, params) {
       pageCountImage = 1;
       imageCont.imageAll.nativeStr[0] = `data:image/png;base64,${fileData.toString('base64')}`;
       if (!globalThis.hocrCurrentRaw) {
-        globalThis.pageMetricsArr[0] = new PageMetrics({ height: 0, width: 0 });
+        imageCont.imageAll.native[0] = getImageBitmap(imageCont.imageAll.nativeStr[0]);
+        const height = await imageCont.imageAll.native[0].then((x) => x.height);
+        const width = await imageCont.imageAll.native[0].then((x) => x.width);
+
+        globalThis.pageMetricsArr[0] = new PageMetrics({ height, width });
       }
     }
   }

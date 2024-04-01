@@ -4,8 +4,6 @@
  * @property {number} n - Page number (index 0)
  * @property {dims} dims - Dimensions of OCR
  * @property {number} angle - Angle of page (degrees)
- * @property {?number} left -
- * @property {number} leftAdj -
  * @property {Array<OcrLine>} lines -
  */
 export function OcrPage(n, dims) {
@@ -15,10 +13,6 @@ export function OcrPage(n, dims) {
   this.dims = dims;
   /** @type {number} - Angle of page (degrees) */
   this.angle = 0;
-  /** @type {?number} */
-  this.left = null;
-  /** @type {number} */
-  this.leftAdj = 0;
   /** @type {Array<OcrLine>} */
   this.lines = [];
 }
@@ -337,6 +331,21 @@ function calcLineBbox(line) {
 }
 
 /**
+ * Re-calculate bbox for word from character-level bboxes.
+ * @param {OcrWord} word
+ */
+function calcWordBbox(word) {
+  if (!word.chars || word.chars.length === 0) return;
+
+  const charBoxArr = word.chars.map((x) => x.bbox);
+
+  word.bbox.left = Math.min(...charBoxArr.map((x) => x.left));
+  word.bbox.top = Math.min(...charBoxArr.map((x) => x.top));
+  word.bbox.right = Math.max(...charBoxArr.map((x) => x.right));
+  word.bbox.bottom = Math.max(...charBoxArr.map((x) => x.bottom));
+}
+
+/**
  * Rotates bounding box.
  * Should not be used for lines--use `rotateLine` instead.
  * @param {bbox} bbox
@@ -369,8 +378,11 @@ function rotateBbox(bbox, cosAngle, sinAngle, width, height) {
  * @param {OcrLine} line
  * @param {number} angle
  * @param {?dims} dims
+ * @param {boolean} useCharLevel - Use character-level bounding boxes for rotation (if they exist).
+ *    This option should only be enabled during the import process.
+ *    Once users have edited the data, some words may have incorrect character-level data.
  */
-function rotateLine(line, angle, dims = null) {
+function rotateLine(line, angle, dims = null, useCharLevel = false) {
   // If the angle is 0 (or very close) return early.
   if (Math.abs(angle) <= 0.05) return;
 
@@ -387,7 +399,15 @@ function rotateLine(line, angle, dims = null) {
 
   for (let i = 0; i < line.words.length; i++) {
     const word = line.words[i];
-    word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, dims1.width, dims1.height);
+    if (useCharLevel && word.chars && word.chars.length > 0) {
+      for (let j = 0; j < word.chars.length; j++) {
+        const char = word.chars[j];
+        char.bbox = rotateBbox(char.bbox, cosAngle, sinAngle, dims1.width, dims1.height);
+      }
+      ocr.calcWordBbox(word);
+    } else {
+      word.bbox = rotateBbox(word.bbox, cosAngle, sinAngle, dims1.width, dims1.height);
+    }
   }
 
   // Re-calculate line bbox by rotating original line bbox
@@ -413,16 +433,8 @@ function rotateLine(line, angle, dims = null) {
 function cloneLine(line) {
   const lineNew = new OcrLine(line.page, { ...line.bbox }, line.baseline.slice(), line.ascHeight, line.xHeight);
   for (const word of line.words) {
-    const wordNew = new OcrWord(lineNew, word.text, word.bbox, word.id);
-    wordNew.conf = word.conf;
-    wordNew.sup = word.sup;
-    wordNew.dropcap = word.dropcap;
-    wordNew.font = word.font;
-    wordNew.size = word.size;
-    wordNew.style = word.style;
-    wordNew.lang = word.lang;
-    wordNew.compTruth = word.compTruth;
-    wordNew.matchTruth = word.matchTruth;
+    const wordNew = cloneWord(word);
+    wordNew.line = lineNew;
     lineNew.words.push(wordNew);
   }
   return lineNew;
@@ -444,7 +456,23 @@ function cloneWord(word) {
   wordNew.lang = word.lang;
   wordNew.compTruth = word.compTruth;
   wordNew.matchTruth = word.matchTruth;
+  if (word.chars) {
+    wordNew.chars = [];
+    for (const char of word.chars) {
+      wordNew.chars.push(cloneChar(char));
+    }
+  }
   return wordNew;
+}
+
+/**
+ * Clones char.  Does not clone word, line, or page.
+ * Should be used rather than `structuredClone` for performance reasons.
+ * @param {OcrChar} char
+ */
+function cloneChar(char) {
+  const charNew = new OcrChar(char.text, { ...char.bbox });
+  return charNew;
 }
 
 const ocr = {
@@ -454,6 +482,7 @@ const ocr = {
   OcrChar,
   calcLineAngleAdj,
   calcLineBbox,
+  calcWordBbox,
   calcWordAngleAdj,
   getPageWord,
   getPageWords,

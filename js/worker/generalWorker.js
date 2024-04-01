@@ -5,6 +5,7 @@
 import { convertPageHocr } from './convertPageHocr.js';
 import { convertPageAbbyy } from './convertPageAbbyy.js';
 import { convertPageStext } from './convertPageStext.js';
+import { convertPageBlocks } from './convertPageBlocks.js';
 
 import { optimizeFont } from './optimizeFontModule.js';
 import { loadFontContainerAll, fontAll } from '../containers/fontContainer.js';
@@ -48,7 +49,7 @@ const defaultConfigs = {
 
 const initConfigs = {
   // load_system_dawg: '0',
-  // load_freq_dawg: '0',
+  load_freq_dawg: '0',
   // load_unambig_dawg: '0',
   // load_punc_dawg: '0',
   // load_number_dawg: '0',
@@ -61,7 +62,12 @@ let langArrCurrent = ['eng'];
 // Custom build is currently only used for browser version, while the Node.js version uses the published npm package.
 // If recognition capabilities are ever added for the Node.js version, then we should use the same build for consistency. .
 const tessConfig = browserMode ? {
-  corePath: '/tess/', workerPath: '/tess/worker.min.js', legacyCore: true, legacyLang: true, workerBlobURL: false,
+  corePath: '/tess/',
+  workerPath: '/tess/worker.min.js',
+  // langPath: '/tess/tessdata_dist',
+  legacyCore: true,
+  legacyLang: true,
+  workerBlobURL: false,
 } : { legacyCore: true, legacyLang: true };
 
 const worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
@@ -96,13 +102,13 @@ export const setLanguage = async ({ langs }) => {
  * @param {Object} params.options -
  * @param {Parameters<Tesseract.Worker['recognize']>[2]} params.output
  * @param {number} params.n -
+ * @param {dims} params.pageDims - Original (unrotated) dimensions of input image.
  * @param {?number} [params.knownAngle] - The known angle, or `null` if the angle is not known at the time of recognition.
  * @param {?string} [params.engineName] -
- * @param {?dims} [params.pageDims] -
  * Exported for type inference purposes, should not be imported anywhere.
  */
 export const recognizeAndConvert = async ({
-  image, options, output, n, knownAngle = null, pageDims = null,
+  image, options, output, n, knownAngle = null, pageDims,
 }) => {
   const res1 = await worker.recognize(image, options, output);
 
@@ -110,8 +116,10 @@ export const recognizeAndConvert = async ({
 
   const keepItalic = oemCurrent === 0;
 
-  const res2 = await convertPageHocr({
-    ocrStr: res1.data.hocr, n, pageDims, rotateAngle: angle, keepItalic,
+  const ocrBlocks = /** @type {Array<import('tesseract.js').Block>} */(res1.data.blocks);
+
+  const res2 = await convertPageBlocks({
+    ocrBlocks, n, pageDims, rotateAngle: angle, keepItalic,
   });
 
   return { recognize: res1.data, convert: res2 };
@@ -125,13 +133,13 @@ export const recognizeAndConvert = async ({
  * @param {Object} params.options -
  * @param {Parameters<Tesseract.Worker['recognize']>[2]} params.output
  * @param {number} params.n -
+ * @param {dims} params.pageDims - Original (unrotated) dimensions of input image.
  * @param {?number} [params.knownAngle] - The known angle, or `null` if the angle is not known at the time of recognition.
  * @param {?string} [params.engineName] -
- * @param {?dims} [params.pageDims] -
  * Exported for type inference purposes, should not be imported anywhere.
  */
 export const recognizeAndConvert2 = async ({
-  image, options, output, n, knownAngle = null, pageDims = null,
+  image, options, output, n, pageDims, knownAngle = null,
 }, id) => {
   // The function `worker.recognize2` returns 2 promises.
   // If both Legacy and LSTM data are requested, only the second promise will contain the LSTM data.
@@ -146,16 +154,16 @@ export const recognizeAndConvert2 = async ({
   let resLegacy;
   let resLSTM;
   if (options.lstm && options.legacy) {
-    const legacyHOCR = /** @type {string} */(res0.data.hocr);
-    resLegacy = await convertPageHocr({
-      ocrStr: legacyHOCR, n, pageDims, rotateAngle: angle, keepItalic: true,
+    const legacyBlocks = /** @type {Array<import('tesseract.js').Block>} */(res0.data.blocks);
+    resLegacy = await convertPageBlocks({
+      ocrBlocks: legacyBlocks, n, pageDims, rotateAngle: angle, keepItalic: true,
     });
     (async () => {
       const res1 = await resArr[1];
 
-      const lstmHOCR = /** @type {string} */(res1.data.hocr2);
-      resLSTM = await convertPageHocr({
-        ocrStr: lstmHOCR, n, pageDims, rotateAngle: angle, keepItalic: false,
+      const lstmBlocks = /** @type {Array<import('tesseract.js').Block>} */(res1.data.blocks);
+      resLSTM = await convertPageBlocks({
+        ocrBlocks: lstmBlocks, n, pageDims, rotateAngle: angle, keepItalic: false,
       });
 
       const xB = { recognize: res1.data, convert: { legacy: null, lstm: resLSTM } };
@@ -163,14 +171,14 @@ export const recognizeAndConvert2 = async ({
       postMessage({ data: xB, id: `${id}b` });
     })();
   } else if (!options.lstm && options.legacy) {
-    const legacyHOCR = /** @type {string} */(res0.data.hocr);
-    resLegacy = await convertPageHocr({
-      ocrStr: legacyHOCR, n, pageDims, rotateAngle: angle, keepItalic: true,
+    const legacyBlocks = /** @type {Array<import('tesseract.js').Block>} */(res0.data.blocks);
+    resLegacy = await convertPageBlocks({
+      ocrBlocks: legacyBlocks, n, pageDims, rotateAngle: angle, keepItalic: true,
     });
   } else if (options.lstm && !options.legacy) {
-    const lstmHOCR = /** @type {string} */(res0.data.hocr);
-    resLSTM = await convertPageHocr({
-      ocrStr: lstmHOCR, n, pageDims, rotateAngle: angle, keepItalic: false,
+    const lstmBlocks = /** @type {Array<import('tesseract.js').Block>} */(res0.data.blocks);
+    resLSTM = await convertPageBlocks({
+      ocrBlocks: lstmBlocks, n, pageDims, rotateAngle: angle, keepItalic: false,
     });
   }
 
@@ -250,6 +258,7 @@ addEventListener('message', async (e) => {
     convertPageAbbyy,
     convertPageHocr,
     convertPageStext,
+    convertPageBlocks,
 
     // Optimize font functions
     optimizeFont,

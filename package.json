@@ -46,7 +46,7 @@
   "dependencies": {
     "canvas": "^2.11.2",
     "commander": "^11.1.0",
-    "tesseract.js": "scribeocr/tesseract.js#55be311",
+    "tesseract.js": "scribeocr/tesseract.js#bea823e",
     "web-worker": "~1.2.0"
   }
 }

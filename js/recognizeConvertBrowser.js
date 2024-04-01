@@ -174,7 +174,6 @@ export async function convertPageCallbackBrowser({
     }
 
     globalThis.pageMetricsArr[n].angle = pageObj.angle;
-    globalThis.pageMetricsArr[n].left = pageObj.left;
   }
 
   inputDataModes.xmlMode[n] = true;
@@ -203,7 +202,7 @@ export async function convertPageCallbackBrowser({
  * @param {boolean} mainData - Whether this is the "main" data that document metrics are calculated from.
  *  For imports of user-provided data, the first data provided should be flagged as the "main" data.
  *  For Tesseract.js recognition, the Tesseract Legacy results should be flagged as the "main" data.
- * @param {("hocr"|"abbyy"|"stext")} format - Format of raw data.
+ * @param {("hocr"|"abbyy"|"stext"|"blocks")} format - Format of raw data.
  * @param {string} engineName - Name of OCR engine.
  */
 async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName) {
@@ -212,6 +211,8 @@ async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName) {
     func = 'convertPageAbbyy';
   } else if (format === 'stext') {
     func = 'convertPageStext';
+  } else if (format === 'blocks') {
+    func = 'convertPageBlocks';
   }
 
   await globalThis.generalScheduler.ready;

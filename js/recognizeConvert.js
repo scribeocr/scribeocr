@@ -17,10 +17,10 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
   // Threshold (in radians) under which page angle is considered to be effectively 0.
   const angleThresh = 0.0008726646;
 
-  const { angle } = globalThis.pageMetricsArr[n];
+  const angle = globalThis.pageMetricsArr[n]?.angle;
 
   // Whether the page angle is already known (or needs to be detected)
-  const angleKnown = typeof (globalThis.pageMetricsArr[n].angle) === 'number';
+  const angleKnown = typeof (angle) === 'number';
 
   // Calculate additional rotation to apply to page.  Rotation should not be applied if page has already been rotated.
   const rotateDegrees = rotate && angle && Math.abs(angle || 0) > 0.05 && !imageCont.imageAll.nativeRotated[n] ? angle * -1 : 0;
@@ -70,8 +70,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
     ...options,
   };
 
-  // If a smaller rectangle is being recognized, then the dimensions of the entire page must be manually specified for the rotation calculations to be correct.
-  const pageDims = options && options.rectangle ? globalThis.pageMetricsArr[n].dims : null;
+  const pageDims = globalThis.pageMetricsArr[n].dims;
 
   // If `legacy` and `lstm` are both `false`, recognition is not run, but layout analysis is.
   // This combination of options would be set for debug mode, where the point of running Tesseract

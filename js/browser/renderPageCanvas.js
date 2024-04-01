@@ -91,7 +91,9 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         defaultFontFamily = false;
       }
 
-      const fontI = /** @type {FontContainerFont} */ (wordObj.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontAll.active[wordFontFamily][fontStyle]);
+      const fontActive = fontAll.get('active');
+
+      const fontI = /** @type {FontContainerFont} */ (wordObj.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontActive[wordFontFamily][fontStyle]);
       const fontOpentypeI = await fontI.opentype;
 
       const wordFontSize = await calcWordFontSize(wordObj);

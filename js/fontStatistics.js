@@ -104,9 +104,9 @@ export function checkCharWarn(warnArr, errorFunc) {
  * @param {Array<OcrPage>} pageArr
  */
 export function setFontMetricsAll(pageArr) {
-  const pageMetricsArr = pageArr.map((x) => calcFontMetricsPage(x));
+  const pageFontMetricsArr = pageArr.map((x) => calcFontMetricsPage(x));
 
-  const fontMetricsRawObj = pageMetricsArr.reduce((x, y) => unionFontMetricsRawObj(x, y));
+  const fontMetricsRawObj = pageFontMetricsArr.reduce((x, y) => unionFontMetricsRawObj(x, y));
 
   /** @type {Object.<string, FontMetricsFamily>} */
   let fontMetricsOut = {};

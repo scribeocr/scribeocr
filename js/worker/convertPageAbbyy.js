@@ -6,7 +6,7 @@ import {
 
 import { LayoutBox } from '../objects/layoutObjects.js';
 
-import { pass2, ascCharArr, xCharArr } from './convertPageShared.js';
+import { pass3, ascCharArr, xCharArr } from './convertPageShared.js';
 
 import { determineSansSerif } from '../fontStatistics.js';
 
@@ -41,9 +41,6 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
   const boxes = convertTableLayoutAbbyy(ocrStr);
 
-  const lineLeft = [];
-  const lineTop = [];
-
   function convertLineAbbyy(xmlLine, lineNum, n = 1) {
     const stylesLine = {};
 
@@ -69,13 +66,6 @@ export async function convertPageAbbyy({ ocrStr, n }) {
     let lineBoxArr = xmlLine.match(abbyyLineBoxRegex);
     if (lineBoxArr == null) { return (''); }
     lineBoxArr = [...lineBoxArr].map((x) => parseInt(x));
-    // Only calculate baselines from lines 200px+.
-    // This avoids short "lines" (e.g. page numbers) that often report wild values.
-    if ((lineBoxArr[4] - lineBoxArr[2]) >= 200) {
-      // angleRisePage.push(baseline[0]);
-      lineLeft.push(lineBoxArr[2]);
-      lineTop.push(lineBoxArr[3]);
-    }
 
     // Unlike Tesseract, Abbyy XML does not have a native "word" unit (it provides only lines and letters).
     // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
@@ -341,21 +331,7 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
   pageObj.angle = angleOut;
 
-  const lineLeftAdj = [];
-  for (let i = 0; i < lineLeft.length; i++) {
-    lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
-  }
-  let leftOut = quantile(lineLeft, 0.2);
-  const leftAdjOut = quantile(lineLeftAdj, 0.2) - leftOut;
-  // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
-  if (lineLeft.length < 5) {
-    leftOut = null;
-  }
-
-  pageObj.left = leftOut;
-  pageObj.leftAdj = leftAdjOut;
-
-  pass2(pageObj);
+  pass3(pageObj);
 
   return { pageObj, layoutBoxes: boxes };
 }

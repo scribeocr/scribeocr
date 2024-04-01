@@ -1,8 +1,8 @@
 import ocr from '../objects/ocrObjects.js';
 
-import { quantile, mean50, unescapeXml } from '../miscUtils.js';
+import { unescapeXml } from '../miscUtils.js';
 
-import { pass2 } from './convertPageShared.js';
+import { pass2, pass3 } from './convertPageShared.js';
 
 import { determineSansSerif } from '../fontStatistics.js';
 
@@ -129,8 +129,6 @@ export async function convertPageHocr({
 
     if (debugMode) lineObj.raw = match;
 
-    const heightSmallCapsLine = [];
-
     /**
      * @param {string} match
      */
@@ -155,43 +153,7 @@ export async function convertPageHocr({
       const fontFamily = determineSansSerif(fontName);
 
       const it = match.matchAll(charRegex);
-      let letterArr = [...it];
-
-      // Unlike Abbyy, which generally identifies small caps as lowercase letters (and identifies small cap text explicitly as a formatting property),
-      // Tesseract (at least the Legacy model) reports them as upper-case letters.
-      const wordStr = letterArr.map((x) => x[2]).join('');
-      let smallCaps = false;
-      let smallCapsTitle = false;
-      let minLetterIndex = 0;
-      if (!/[a-z]/.test(wordStr) && /[A-Z].?[A-Z]/.test(wordStr)) {
-        // Filter to only include letters
-        const filterArr = wordStr.split('').map((x) => /[a-z]/i.test(x));
-        const letterArrSub = letterArr.filter((x, y) => filterArr[y]);
-
-        // Index of first letter (the only capital letter for title case)
-        minLetterIndex = Math.min(...[...Array(filterArr.length).keys()].filter((x, y) => filterArr[y]));
-
-        const wordBboxesTop = letterArrSub.map((x) => parseInt(x[1].match(/\d+ (\d+)/)[1]));
-        const wordBboxesBottom = letterArrSub.map((x) => parseInt(x[1].match(/\d+ \d+ \d+ (\d+)/)[1]));
-
-        // Check for small caps words in title case (first letter larger than all following letters)
-        if (Math.min(...letterArrSub.map((x) => x[1].match(/\d+ (\d+)/)[1]).map((x) => Math.sign((x - wordBboxesBottom[0]) + ((wordBboxesBottom[0] - wordBboxesTop[0]) * 0.90))).slice(1)) === 1) {
-          smallCaps = true;
-          smallCapsTitle = true;
-          for (let i = 1; i < wordBboxesTop.length; i++) {
-            heightSmallCapsLine.push(wordBboxesBottom[i] - wordBboxesTop[i]);
-          }
-          // Check for small caps words in lowercase (all letters the same size, which is around the same size as small caps in previous words in line)
-          // The 10% margin accounts for random variation in general, however is also important since rounded letters (e.g. "O") are taller but
-          // less common, so will almost always exceed the median.
-        } else {
-          const letterHeightArr = wordBboxesBottom.map((x, y) => x - wordBboxesTop[y]);
-          const heightSmallCapsLineMedian = quantile(heightSmallCapsLine, 0.5);
-          if (heightSmallCapsLineMedian && letterHeightArr.filter((x) => x > heightSmallCapsLineMedian * 1.1).length === 0) {
-            smallCaps = true;
-          }
-        }
-      }
+      const letterArr = [...it];
 
       const bboxes = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5).map((y) => parseInt(y)));
 
@@ -225,44 +187,10 @@ export async function convertPageHocr({
         }
       }
 
-      // Tesseract does not split superscript footnote references into separate words, so that happens here.
-      // This should only happen for Latin languages.
-      let letterArrSuper = [];
-      if (!['chi_sim', 'chi_tra'].includes(wordLang)) {
-        // if (/^\W?[a-z]/i.test(wordStr) && /\d$/i.test(wordStr)) {
-        if (/\d$/i.test(wordStr)) {
-          const numsN = wordStr.match(/\d+$/)[0].length;
-
-          const expectedBaseline = (bboxes[0][0] + (bboxes[bboxes.length - 1][2] - bboxes[0][0]) / 2 - lineboxAdj.left) * baseline[0] + baseline[1] + lineboxAdj.bottom;
-          const lineAscHeight = expectedBaseline - lineboxAdj.top;
-
-          let baseN = 0;
-          for (let i = bboxes.length - 1; i >= 0; i--) {
-            if (bboxes[i][3] < expectedBaseline - lineAscHeight / 4) {
-              baseN++;
-            } else {
-              break;
-            }
-          }
-
-          const superN = Math.min(numsN, baseN);
-
-          if (superN > 0) {
-            letterArrSuper = letterArr.slice(letterArr.length - superN, letterArr.length);
-            letterArr = letterArr.slice(0, letterArr.length - superN);
-          }
-        }
-      }
-
       const charObjArr = [];
 
       for (let j = 0; j < letterArr.length; j++) {
         let contentStrLetter = letterArr[j][2];
-
-        // If word is small caps, convert letters to lower case.
-        if (smallCaps && (!smallCapsTitle || j > minLetterIndex)) {
-          contentStrLetter = contentStrLetter.toLowerCase();
-        }
 
         // Handle characters escaped in XML
         contentStrLetter = unescapeXml(contentStrLetter);
@@ -293,65 +221,6 @@ export async function convertPageHocr({
       text = text ?? '';
       text = text.trim();
 
-      if (letterArrSuper.length > 0) {
-        // Calculate new bounding boxes
-
-        if (text) {
-          const bboxesCore = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5));
-
-          const wordBoxCore = {
-            left: Math.min(...bboxesCore.map((x) => x[0])),
-            top: Math.min(...bboxesCore.map((x) => x[1])),
-            right: Math.max(...bboxesCore.map((x) => x[2])),
-            bottom: Math.max(...bboxesCore.map((x) => x[3])),
-          };
-
-          const wordObjCore = new ocr.OcrWord(lineObj, text, wordBoxCore, wordID);
-          wordObjCore.chars = charObjArr;
-          wordObjCore.lang = wordLang;
-
-          if (debugMode) wordObjCore.raw = match;
-
-          if (smallCaps || italic || fontFamily !== 'Default') {
-            if (smallCaps) {
-              wordObjCore.style = 'small-caps';
-            } else if (italic) {
-              wordObjCore.style = 'italic';
-            }
-            if (fontFamily !== 'Default') {
-              wordObjCore.font = fontFamily;
-            }
-          }
-
-          wordObjCore.conf = wordConf;
-
-          lineObj.words.push(wordObjCore);
-        }
-
-        const bboxesSuper = letterArrSuper.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/)?.slice(1, 5).map((y) => parseInt(y)));
-
-        const wordBoxSuper = {
-          left: Math.min(...bboxesSuper.map((x) => x[0])),
-          top: Math.min(...bboxesSuper.map((x) => x[1])),
-          right: Math.max(...bboxesSuper.map((x) => x[2])),
-          bottom: Math.max(...bboxesSuper.map((x) => x[3])),
-        };
-
-        const textSuper = letterArrSuper.map((x) => x[2]).join('');
-
-        const wordObjSup = new ocr.OcrWord(lineObj, textSuper, wordBoxSuper, `${wordID}a`);
-        wordObjSup.lang = wordLang;
-
-        if (debugMode) wordObjSup.raw = match;
-
-        wordObjSup.conf = wordConf;
-
-        wordObjSup.sup = true;
-
-        lineObj.words.push(wordObjSup);
-
-        return '';
-      }
       if (text === '') return ('');
 
       const bboxesCore = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/)?.slice(1, 5).map((y) => parseInt(y)));
@@ -370,16 +239,8 @@ export async function convertPageHocr({
 
       if (debugMode) wordObj.raw = match;
 
-      if (smallCaps || italic || fontFamily !== 'Default') {
-        if (smallCaps) {
-          wordObj.style = 'small-caps';
-        } else if (italic) {
-          wordObj.style = 'italic';
-        }
-        if (fontFamily !== 'Default') {
-          wordObj.font = fontFamily;
-        }
-      }
+      if (italic) wordObj.style = 'italic';
+      if (fontFamily !== 'Default') wordObj.font = fontFamily;
 
       wordObj.conf = wordConf;
 
@@ -467,15 +328,6 @@ export async function convertPageHocr({
       match = match.replaceAll(wordRegex, convertWord);
     }
 
-    // Re-calculate line bounding box and adjust baseline.
-    // Hocr data from Tesseract can omit certain characters when calculating line-level bounding boxes.
-    // Therefore, the bounding box is recalculated using `ocr.calcLineBbox` (which is used by the editor),
-    // and any difference in the bottom of the bounding box is added to the `baseline` property,
-    // which is assumed to be correct coming out of Tesseract.
-    const lineboxBottomOrig = lineObj.bbox.bottom;
-    ocr.calcLineBbox(lineObj);
-    lineObj.baseline[1] += (lineboxBottomOrig - lineObj.bbox.bottom);
-
     pageObj.lines.push(lineObj);
 
     return '';
@@ -495,41 +347,12 @@ export async function convertPageHocr({
 
   ocrStr = ocrStr.replaceAll(lineRegex, convertLine);
 
-  const angleRiseMedian = mean50(angleRisePage) || 0;
-
-  const lineLeftAdj = [];
-  for (let i = 0; i < lineLeft.length; i++) {
-    lineLeftAdj.push(lineLeft[i] + angleRiseMedian * lineTop[i]);
-  }
-
-  pageObj.angle = Math.abs(rotateAngle) > 0.05 ? rotateAngle : Math.asin(angleRiseMedian) * (180 / Math.PI);
-
-  const sinAngle = Math.sin(pageObj.angle * (Math.PI / 180));
-  const shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
-
-  let leftOut = quantile(lineLeft, 0.2) - shiftX;
-  const leftAdjOut = quantile(lineLeftAdj, 0.2) - shiftX - leftOut;
-
-  // With <5 lines either a left margin does not exist (e.g. a photo or title page) or cannot be reliably determined
-  if (lineLeft.length < 5) {
-    leftOut = null;
-  }
-
-  pageObj.left = leftOut;
-  pageObj.leftAdj = leftAdjOut;
-
-  // Transform bounding boxes if rotation is specified.
-  // This option is used when an image is rotated before it is sent to Tesseract,
-  // however the HOCR needs to be applied to the original image.
-  if (Math.abs(rotateAngle) > 0.05) {
-    for (let i = 0; i < pageObj.lines.length; i++) {
-      ocr.rotateLine(pageObj.lines[i], rotateAngle);
-    }
-  }
+  pageObj.angle = rotateAngle;
 
   const warn = { char: charMode ? '' : 'char_warning' };
 
-  pass2(pageObj);
+  pass2(pageObj, rotateAngle);
+  pass3(pageObj);
 
   return { pageObj, layoutBoxes: {}, warn };
 }
