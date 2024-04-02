@@ -4,6 +4,7 @@
 import { getRandomAlphanum } from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
+import { getImageBitmap } from '../imageUtils.js';
 
 import { fontAll } from '../containers/fontContainer.js';
 // import { CompDebug } from '../objects/imageObjects.js';
@@ -390,7 +391,7 @@ export async function evalWords({
 
   if (anyChinese) return { metricA: 1, metricB: 0, debug: null };
 
-  const binaryImageBit = binaryImage;
+  const binaryImageBit = await getImageBitmap(binaryImage);
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
@@ -690,8 +691,7 @@ async function penalizeWord(wordObjs) {
 export async function compareHOCR({
   pageA, pageB, binaryImage, imageRotated, pageMetricsObj, options = {},
 }) {
-  // const binaryImageBit = await getImageBitmap(binaryImage);
-  const binaryImageBit = binaryImage;
+  const binaryImageBit = await getImageBitmap(binaryImage);
 
   const mode = options?.mode === undefined ? 'stats' : options?.mode;
   const editConf = options?.editConf === undefined ? false : options?.editConf;
@@ -1212,7 +1212,7 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
 async function evalPageBase({
   page, binaryImage, imageRotated, pageMetricsObj, func,
 }) {
-  const binaryImageBit = binaryImage;
+  const binaryImageBit = await getImageBitmap(binaryImage);
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
@@ -1312,8 +1312,7 @@ export async function evalPageFont({
 export async function nudgePageBase({
   page, binaryImage, imageRotated, pageMetricsObj, func, view = false,
 }) {
-  // const binaryImageBit = await getImageBitmap(binaryImage);
-  const binaryImageBit = binaryImage;
+  const binaryImageBit = await getImageBitmap(binaryImage);
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');

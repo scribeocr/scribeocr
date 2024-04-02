@@ -1,8 +1,4 @@
 import {
-  imageStrToBlob,
-} from '../miscUtils.js';
-
-import {
   PageMetrics,
 } from '../objects/pageMetricsObjects.js';
 
@@ -10,41 +6,12 @@ import { initMuPDFWorker } from '../../mupdf/mupdf-async.js';
 
 import Tesseract from '../../tess/tesseract.esm.min.js';
 
-const browserMode = typeof process === 'undefined';
+import { getPngDimensions, getJpegDimensions } from '../imageUtils.js';
 
 const inputModes = {
   pdf: false,
   image: false,
 };
-
-/**
- * Handles various image formats, always returns a ImageBitmap.
- *
- * @param {string|ImageBitmap|Promise<string>|Promise<ImageBitmap>} img
- */
-export async function getImageBitmap(img) {
-  img = await img;
-  if (img === undefined) throw new Error('Input is undefined');
-  if (img === null) throw new Error('Input is null');
-
-  if (typeof img === 'string') {
-    if (browserMode) {
-      const imgBlob = imageStrToBlob(img);
-      const imgBit = await createImageBitmap(imgBlob);
-      return imgBit;
-    }
-    const { loadImage } = await import('canvas');
-    const imgBit = await loadImage(img);
-    return imgBit;
-  }
-
-  // In Node.js the input is assumed to be already compatible with the `canvas.drawImage` method.
-  // Additionally, `ImageBitmap` does not exist within the Node canvas package.
-  // Second condition exists for type detection purposes.
-  if (!browserMode && (typeof img !== 'string') && (typeof img !== 'number')) return img;
-
-  return img;
-}
 
 /**
  * @param {number} pageCount
@@ -69,14 +36,14 @@ export async function getImageBitmap(img) {
 export function ImageCont(pageCount) {
   /** @type {Array<Promise<String>>|Array<String>} */
   this.nativeSrcStr = Array(pageCount);
+  /** @type {Array<('jpeg'|'png')>} */
+  this.nativeSrcFormat = Array(pageCount);
   /** @type {Array<Promise<String>>|Array<String>} */
   this.nativeStr = Array(pageCount);
-  /** @type {Array<Promise<ImageBitmap>>} */
-  this.native = Array(pageCount);
+  /** @type {Array<Promise<dims>|dims>} */
+  this.nativeDims = Array(pageCount);
   /** @type {Array<Promise<String>>|Array<String>} */
   this.binaryStr = Array(pageCount);
-  /** @type {Array<Promise<ImageBitmap>>} */
-  this.binary = Array(pageCount);
   /** @type {Array<Boolean>} */
   this.nativeRotated = Array(pageCount);
   /** @type {Array<Boolean>} */
@@ -86,13 +53,29 @@ export function ImageCont(pageCount) {
 }
 
 /**
+ * Gets the dimensions of the image at index `n`, calculating them for the first time is needed.
+ * @param {number} n
+ * @returns {Promise<dims>}
+ */
+async function getDims(n) {
+  if (!imageCont.imageAll.nativeDims[n]) {
+    if (imageCont.imageAll.nativeSrcStr[n] && imageCont.imageAll.nativeSrcFormat[n] === 'jpeg') {
+      imageCont.imageAll.nativeDims[n] = getJpegDimensions(await imageCont.imageAll.nativeSrcStr[n]);
+    } else {
+      imageCont.imageAll.nativeDims[n] = getPngDimensions(await imageCont.imageAll.nativeStr[n]);
+    }
+  }
+  return imageCont.imageAll.nativeDims[n];
+}
+
+/**
  *
  * @param {number} n
  * @returns {Promise<ImageBitmap>}
  */
 async function getBinary(n) {
   await renderImage(n, 'binary');
-  return await imageCont.imageAll.binary[n];
+  return await imageCont.imageAll.binaryStr[n];
 }
 
 function clear() {
@@ -228,7 +211,7 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   if (!inputModes.pdf && !inputModes.image) return;
 
   // Return early if requested page does not exist
-  if (n < 0 || n >= imageCont.imageAll.native.length) {
+  if (n < 0 || n >= imageCont.imageAll.nativeStr.length) {
     // console.log(`Requested page ${n} does not exist; exiting early.`);
     return;
   }
@@ -240,10 +223,10 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   if (inputModes.image) {
     // Load image if either (1) it has never been loaded in the first place, or
     // (2) the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image.
-    if ((!imageCont.imageAll.native[n] && imageCont.imageAll.nativeSrcStr[n]) || (rotate === false && imageCont.imageAll.nativeRotated[n] === true)) {
+    if ((!imageCont.imageAll.nativeStr[n] && imageCont.imageAll.nativeSrcStr[n]) || (rotate === false && imageCont.imageAll.nativeRotated[n] === true)) {
       imageCont.imageAll.nativeRotated[n] = false;
       imageCont.imageAll.nativeStr[n] = imageCont.imageAll.nativeSrcStr[n];
-      imageCont.imageAll.native[n] = getImageBitmap(imageCont.imageAll.nativeSrcStr[n]);
+      if (globalThis.imageCache) delete globalThis.imageCache.native[n];
     }
   }
 
@@ -254,7 +237,7 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
     // 1. Page has not yet been rendered
     // 2. Page was previously rendered, but in different colorMode (gray vs. color)
     // 3. Page was overwritten by rotated version, but a non-rotated version is needed
-    const renderNativePDF = !!((!imageCont.imageAll.native[n]
+    const renderNativePDF = !!((!imageCont.imageAll.nativeStr[n]
       || (colorMode !== 'binary' && imageCont.imageAll.nativeColor[n] !== colorMode)
       || rotate === false && imageCont.imageAll.nativeRotated[n] === true));
 
@@ -284,13 +267,12 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
       });
 
       imageCont.imageAll.nativeStr[n] = resPromise;
-
-      imageCont.imageAll.native[n] = resPromise.then((res) => (getImageBitmap(res)));
+      if (globalThis.imageCache) delete globalThis.imageCache.native[n];
     }
   }
 
   // Whether binarized image needs to be rendered
-  const renderBinary = colorMode === 'binary' && !imageCont.imageAll.binary[n];
+  const renderBinary = colorMode === 'binary' && !imageCont.imageAll.binaryStr[n];
 
   // // Whether native image needs to be rendered
   // const renderNativeImage = colorMode == "gray" && imageCont.imageAll["nativeColor"][n] == "color";
@@ -305,7 +287,7 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   // If nothing needs to be done, return early.
   if (!(renderBinary || rotateBinary || rotateNative)) {
     if (progress) progress.increment();
-    await imageCont.imageAll.native[n];
+    await imageCont.imageAll.nativeStr[n];
     return;
   }
 
@@ -340,18 +322,18 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   if (saveColorImageArg) {
     imageCont.imageAll.nativeRotated[n] = Boolean(angleArg);
     imageCont.imageAll.nativeStr[n] = resPromise.then(async (res) => (res.imageColor));
-    imageCont.imageAll.native[n] = resPromise.then(async (res) => getImageBitmap(res.imageColor));
+    if (globalThis.imageCache) delete globalThis.imageCache.native[n];
   }
 
   if (saveBinaryImageArg) {
     imageCont.imageAll.binaryRotated[n] = Boolean(angleArg);
     imageCont.imageAll.binaryStr[n] = resPromise.then(async (res) => (res.imageBinary));
-    imageCont.imageAll.binary[n] = resPromise.then(async (res) => getImageBitmap(res.imageBinary));
+    if (globalThis.imageCache) delete globalThis.imageCache.binary[n];
   }
 
   // Return after everything is done.
-  await imageCont.imageAll.native[n];
-  await imageCont.imageAll.binary[n];
+  await imageCont.imageAll.nativeStr[n];
+  await imageCont.imageAll.binaryStr[n];
 }
 
 function range(min, max) {
@@ -361,6 +343,14 @@ function range(min, max) {
   }
   return result;
 }
+
+function clearAll() {
+  for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+    imageCont.imageAll.native[i] = null;
+  }
+}
+
+globalThis.clearImageCont = clearAll;
 
 /**
  * Calls `renderImage` for all pages between `min` and `max` (inclusive).
@@ -393,6 +383,7 @@ export const imageCont = {
   colorModeDefault: 'gray',
   imageAll: new ImageCont(0),
   getBinary,
+  getDims,
   initMuPDFScheduler,
   /** @type {?MuPDFScheduler} */
   muPDFScheduler: null,

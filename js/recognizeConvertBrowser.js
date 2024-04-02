@@ -79,7 +79,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   // however this function only returns after all recognition is completed.
   // This provides no performance benefit in absolute terms, however halves the amount of time the user has to wait
   // before seeing the initial recognition results.
-  const inputPages = [...Array(imageCont.imageAll.native.length).keys()];
+  const inputPages = [...Array(imageCont.imageAll.nativeStr.length).keys()];
   const promisesA = [];
   const resolvesA = [];
   const promisesB = [];

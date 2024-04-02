@@ -1,5 +1,5 @@
 import { parseDebugInfo } from './fontStatistics.js';
-import { imageCont, getImageBitmap } from './containers/imageContainer.js';
+import { imageCont } from './containers/imageContainer.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -33,7 +33,7 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
   if (!areaMode) {
     // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
     if (autoRotate && !imageCont.imageAll.nativeRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveNativeImage = true;
-    if (!imageCont.imageAll.binary[n] || autoRotate && !imageCont.imageAll.binaryRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
+    if (!imageCont.imageAll.binaryStr[n] || autoRotate && !imageCont.imageAll.binaryRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
   }
 
   return {
@@ -118,9 +118,9 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   // but no significant rotation was actually detected.
   if (saveBinaryImageArg) {
     imageCont.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
-    if (imageCont.imageAll.binaryRotated[n] || !imageCont.imageAll.binary[n]) {
+    if (imageCont.imageAll.binaryRotated[n] || !imageCont.imageAll.binaryStr[n]) {
       imageCont.imageAll.binaryStr[n] = res0.recognize.imageBinary;
-      imageCont.imageAll.binary[n] = getImageBitmap(res0.recognize.imageBinary);
+      if (globalThis.imageCache) delete globalThis.imageCache.binary[n];
     }
   }
 
@@ -128,7 +128,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
     imageCont.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
     if (imageCont.imageAll.nativeRotated[n]) {
       imageCont.imageAll.nativeStr[n] = res0.recognize.imageColor;
-      imageCont.imageAll.native[n] = getImageBitmap(res0.recognize.imageColor);
+      if (globalThis.imageCache) delete globalThis.imageCache.native[n];
     }
   }
 

@@ -221,41 +221,6 @@ export const saveAs = function (blob, name) {
 };
 
 /**
- * Loads an image from a given URL and sets it to a specified HTML element.
- *
- * @param {string|Blob|ArrayBuffer} src - Image source.  Accepts ArrayBuffer, Blob, or URL.
- * @param {HTMLImageElement} elem - The image element where the loaded image will be set.
- * @returns {Promise<HTMLImageElement>} A promise that resolves with the image element when the image is loaded successfully.
- */
-export async function loadImage(src, elem) {
-  return new Promise((resolve, reject) => {
-    let urlLoad;
-    if (src instanceof Blob) {
-      urlLoad = URL.createObjectURL(src);
-    } else if (src instanceof ArrayBuffer) {
-      const blob = new Blob([src]);
-      urlLoad = URL.createObjectURL(blob);
-    } else {
-      urlLoad = src;
-    }
-    // const urlLoad = url instanceof Blob ? URL.createObjectURL(url) : url;
-    elem.onload = () => resolve(elem);
-    elem.onerror = reject;
-    elem.src = urlLoad;
-  });
-}
-
-export function imageStrToBlob(imgStr) {
-  const imgData = new Uint8Array(atob(imgStr.split(',')[1])
-    .split('')
-    .map((c) => c.charCodeAt(0)));
-
-  const imgBlob = new Blob([imgData], { type: 'application/octet-stream' });
-
-  return imgBlob;
-}
-
-/**
  * Reduces an array of EvalMetrics objects into a single EvalMetrics object
  * by summing all of the corresponding properties.
  * @param {Array<EvalMetrics>} evalMetricsArr - Array of EvalMetrics objects.

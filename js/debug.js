@@ -1,4 +1,4 @@
-import { loadImage } from './miscUtils.js';
+import { loadImageElem } from './imageUtils.js';
 
 /**
  * @typedef {Object} CompDebugParamsBrowser
@@ -61,11 +61,11 @@ export async function drawDebugImages(args) {
 
       if (context === 'browser' && compDebugObj.context === 'browser') {
         const imgElem0 = document.createElement('img');
-        const p1 = loadImage(compDebugObj.imageRaw, imgElem0);
+        const p1 = loadImageElem(compDebugObj.imageRaw, imgElem0);
         const imgElem1 = document.createElement('img');
-        const p2 = loadImage(compDebugObj.imageA, imgElem1);
+        const p2 = loadImageElem(compDebugObj.imageA, imgElem1);
         const imgElem2 = document.createElement('img');
-        const p3 = loadImage(compDebugObj.imageB, imgElem2);
+        const p3 = loadImageElem(compDebugObj.imageB, imgElem2);
 
         await Promise.allSettled([p1, p2, p3]);
 

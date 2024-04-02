@@ -8,7 +8,7 @@ import Worker from 'web-worker';
 import Tesseract from 'tesseract.js';
 import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
 import { runFontOptimization } from '../js/fontEval.js';
-import { getImageBitmap, imageCont } from '../js/containers/imageContainer.js';
+import { imageCont } from '../js/containers/imageContainer.js';
 import { renderHOCR } from '../js/exportRenderHOCR.js';
 
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
@@ -170,13 +170,12 @@ async function main(func, params) {
       pageCountImage = imageCont.pageCount;
     } else {
       pageCountImage = 1;
-      imageCont.imageAll.nativeStr[0] = `data:image/png;base64,${fileData.toString('base64')}`;
+      const format = params.pdfFile.match(/jpe?g$/i) ? 'jpeg' : 'png';
+      imageCont.imageAll.nativeSrcFormat[0] = format;
+      imageCont.imageAll.nativeSrcStr[0] = `data:image/${format};base64,${fileData.toString('base64')}`;
+      imageCont.imageAll.nativeStr[0] = imageCont.imageAll.nativeSrcStr[0];
       if (!globalThis.hocrCurrentRaw) {
-        imageCont.imageAll.native[0] = getImageBitmap(imageCont.imageAll.nativeStr[0]);
-        const height = await imageCont.imageAll.native[0].then((x) => x.height);
-        const width = await imageCont.imageAll.native[0].then((x) => x.width);
-
-        globalThis.pageMetricsArr[0] = new PageMetrics({ height, width });
+        globalThis.pageMetricsArr[0] = new PageMetrics(await imageCont.getDims(0));
       }
     }
   }
@@ -297,14 +296,14 @@ async function main(func, params) {
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Legacy'];
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < imageCont.imageAll.native.length; i++) {
+    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
       /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         evalConflicts: false,
       };
 
-      const imgElem = await imageCont.imageAll.binary[i];
+      const imgElem = await imageCont.imageAll.binaryStr[i];
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
@@ -320,10 +319,10 @@ async function main(func, params) {
     // Switching active data here for consistency with browser version.
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Combined Temp'];
     setFontMetricsAll(globalThis.ocrAll['Tesseract Combined Temp']);
-    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binary, imageCont.imageAll.binaryRotated);
+    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated);
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < imageCont.imageAll.native.length; i++) {
+    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
       /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
@@ -332,7 +331,7 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgElem = await imageCont.imageAll.binary[i];
+      const imgElem = await imageCont.imageAll.binaryStr[i];
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
@@ -356,7 +355,7 @@ async function main(func, params) {
     }
   } else {
     setFontMetricsAll(globalThis.ocrAll.active);
-    await runFontOptimization(globalThis.ocrAll.active, imageCont.imageAll.binary, imageCont.imageAll.binaryRotated);
+    await runFontOptimization(globalThis.ocrAll.active, imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated);
   }
 
   if (robustConfMode || func === 'eval') {
@@ -373,7 +372,7 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgElem = await imageCont.imageAll.binary[i];
+      const imgElem = await imageCont.imageAll.binaryStr[i];
 
       // In "check" mode, the provided OCR is being compared against OCR from the built-in engine.
       // In "eval" mode, the OCR from the built-in engine is compared against provided ground truth OCR data.

@@ -2,7 +2,8 @@
 
 import { calcOverlap } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
-import { saveAs, imageStrToBlob } from '../miscUtils.js';
+import { saveAs } from '../miscUtils.js';
+import { imageStrToBlob } from '../imageUtils.js';
 import { cp, setCanvasWidthHeightZoom } from '../../main.js';
 import { imageCont } from '../containers/imageContainer.js';
 import { drawDebugImages } from '../debug.js';
@@ -53,8 +54,8 @@ export function downloadCanvas() {
   saveAs(imgBlob, fileName);
 }
 
-export async function downloadCurrentImage() {
-  const imageStr = colorModeElem.value === 'binary' ? await Promise.resolve(imageCont.imageAll.binaryStr[cp.n]) : await Promise.resolve(imageCont.imageAll.nativeStr[cp.n]);
+export async function downloadImage(n) {
+  const imageStr = colorModeElem.value === 'binary' ? await Promise.resolve(imageCont.imageAll.binaryStr[n]) : await Promise.resolve(imageCont.imageAll.nativeStr[n]);
   const filenameBase = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}`;
 
   const fileType = imageStr.match(/^data:image\/([a-z]+)/)?.[1];
@@ -63,10 +64,25 @@ export async function downloadCurrentImage() {
     return;
   }
 
-  const fileName = `${filenameBase}_${String(cp.n).padStart(3, '0')}.${fileType}`;
+  const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${fileType}`;
   const imgBlob = imageStrToBlob(imageStr);
   saveAs(imgBlob, fileName);
 }
+
+export async function downloadCurrentImage() {
+  await downloadImage(cp.n);
+}
+
+export async function downloadAllImages() {
+  imageCont.renderImageRange(0, imageCont.imageAll.nativeStr.length - 1);
+  for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+    await downloadImage(i);
+    // Not all files will be downloaded without a delay between downloads
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+globalThis.downloadAllImages = downloadAllImages;
 
 export function getExcludedText() {
   for (let i = 0; i <= globalThis.ocrAll.active.length; i++) {
