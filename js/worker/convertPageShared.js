@@ -129,7 +129,10 @@ export function pass2(pageObj, rotateAngle) {
         lineboxAdj.bottom -= (lineboxAdj.right - lineboxAdj.left) * lineObj.baseline[0];
       }
 
-      const expectedBaseline = (wordObj.bbox.left + (wordObj.bbox.right - wordObj.bbox.left) / 2 - lineboxAdj.left) * lineObj.baseline[0] + lineObj.baseline[1] + lineboxAdj.bottom;
+      // Baseline point at leftmost point of the line
+      const baselinePointAdj = lineObj.baseline[0] < 0 ? lineObj.baseline[1] : lineObj.baseline[1] + (lineObj.bbox.bottom - lineboxAdj.bottom);
+
+      const expectedBaseline = (wordObj.bbox.left + (wordObj.bbox.right - wordObj.bbox.left) / 2 - lineboxAdj.left) * lineObj.baseline[0] + baselinePointAdj + lineboxAdj.bottom;
       const lineAscHeight = expectedBaseline - lineboxAdj.top;
 
       let baseN = 0;

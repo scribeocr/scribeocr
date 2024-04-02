@@ -157,15 +157,6 @@ export async function convertPageHocr({
 
       const bboxes = letterArr.map((x) => x[1].match(/(\d+) (\d+) (\d+) (\d+)/).slice(1, 5).map((y) => parseInt(y)));
 
-      // Adjust box such that top/bottom approximate those coordinates at the leftmost point
-      const lineboxAdj = { ...linebox };
-
-      if (baseline[0] < 0) {
-        lineboxAdj.top -= (lineboxAdj.right - lineboxAdj.left) * baseline[0];
-      } else {
-        lineboxAdj.bottom -= (lineboxAdj.right - lineboxAdj.left) * baseline[0];
-      }
-
       let wordLang = wordLangRaw || currentLang;
       if (['chi_sim', 'chi_tra'].includes(wordLang)) {
         let hanChars = 0;
