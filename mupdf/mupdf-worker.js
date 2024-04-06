@@ -136,7 +136,13 @@ mupdf.checkNativeText = function (doc) {
  */
 mupdf.detectExtractText = function (doc) {
   const res = wasm_checkNativeText(doc, true);
-  const text = FS.readFile('/download.txt', { encoding: 'utf8' });
+  let text = FS.readFile('/download.txt', { encoding: 'utf8' });
+
+  // Sometimes mupdf makes files with an excessive number of newlines.
+  // Therefore, a maximum of 2 newlines is allowed.
+  if (typeof text === 'string') {
+    text = text.replace(/(\n\s*){3,}/g, '\n\n').trim();
+  }
   FS.unlink('/download.txt');
 
   const type = ['Native text', 'Image + OCR text', 'Image native'][res];
