@@ -16,6 +16,8 @@ npx http-server
 ```
 The `npx http-server` command will print the address on your local network that ScribeOCR is running on.  You can use the site by visiting that address.
 
+Please "thumbs up" [this Git Issue](https://github.com/scribeocr/scribeocr/issues/29) if you would prefer a desktop application, and we can consider adding one. 
+
 # Documentation
 Documentation for users is available at [docs.scribeocr.com](https://docs.scribeocr.com/), and is managed in this [repo](https://github.com/scribeocr/scribeocr-docs).  If you review the documentation and think something important is unclear or missing, feel free to open a Git Issue in that repo.
 
