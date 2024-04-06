@@ -105,8 +105,12 @@ export async function recognizeAllClick() {
     await recognizeAllPagesBrowser(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR), langArr);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
-    setFontMetricsAll(globalThis.ocrAll['Tesseract Legacy']);
-    if (oemMode === 'legacy') await runFontOptimizationBrowser(globalThis.ocrAll['Tesseract Legacy']);
+
+    // Metrics from the LSTM model are so inaccurate they are not worth using.
+    if (oemMode === 'legacy') {
+      setFontMetricsAll(globalThis.ocrAll['Tesseract Legacy']);
+      await runFontOptimizationBrowser(globalThis.ocrAll['Tesseract Legacy']);
+    }
   } else if (oemMode === 'combined') {
     globalThis.loadCount = 0;
     globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCont.imageAll.nativeStr.length * 2 + 1, 0, true);
