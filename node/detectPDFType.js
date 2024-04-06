@@ -19,23 +19,18 @@ async function main() {
   const pdfDoc = await w.openDocument(fileData, 'file.pdf');
   w.pdfDoc = pdfDoc;
 
-  let nativeCode;
+  let type = 'Image Native';
 
   if (outputPath) {
     const res = await w.detectExtractText([]);
-    nativeCode = res.type;
+    type = res.type;
     fs.writeFileSync(outputPath, res.text);
   } else {
-    nativeCode = await w.checkNativeText([]);
+    const nativeCode = await w.checkNativeText([]);
+    type = ['Native text', 'Image + OCR text', 'Image native'][nativeCode];
   }
 
-  if (nativeCode === 0) {
-    console.log('PDF Type: Text Native');
-  } else if (nativeCode === 1) {
-    console.log('PDF Type: Image Native with OCR Text');
-  } else {
-    console.log('PDF Type: Image Native');
-  }
+  console.log('PDF Type:', type);
 
   // Terminate all workers
   w.terminate();
