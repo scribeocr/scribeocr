@@ -48,9 +48,10 @@ export async function convertPageBlocks({
 
         const baseline = [baselineSlope, baselinePoint];
 
+        const ascHeight = line.rowAttributes.row_height - line.rowAttributes.descenders;
         const xHeight = line.rowAttributes.row_height - line.rowAttributes.descenders - line.rowAttributes.ascenders;
 
-        const lineObj = new ocr.OcrLine(pageObj, linebox, baseline, line.rowAttributes.ascenders, xHeight);
+        const lineObj = new ocr.OcrLine(pageObj, linebox, baseline, ascHeight, xHeight);
 
         for (let l = 0; l < line.words.length; l++) {
           const word = line.words[l];

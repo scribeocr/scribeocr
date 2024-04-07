@@ -291,6 +291,16 @@ export function pass3(pageObj) {
     if (lineAscHeight) lineObj.ascHeight = lineAscHeight;
     if (lineXHeight) lineObj.xHeight = lineXHeight;
 
+    // If ascHeight and xHeight are both known, however one is clearly wrong, delete whichever has fewer observations.
+    // This commonly comes up when a line has >90% numbers, however a few (potentially misidentified) lowercase letters are present.
+    if (lineAscHeight && lineXHeight && lineXHeight >= lineAscHeight * 0.9) {
+      if (lineAscHeightArr.length > lineXHeightArr.length) {
+        lineObj.xHeight = null;
+      } else {
+        lineObj.ascHeight = null;
+      }
+    }
+
     // If neither ascHeight nor xHeight are known, total height is assumed to represent ascHeight, on the grounds that it is better than nothing.
     if (!lineAscHeight && !lineXHeight && lineAllHeight && Number.isFinite(lineAllHeight)) lineObj.ascHeight = lineAllHeight;
 
