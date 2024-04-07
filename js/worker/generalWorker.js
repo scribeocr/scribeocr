@@ -59,10 +59,13 @@ const initConfigs = {
 let oemCurrent = 2;
 let langArrCurrent = ['eng'];
 
+let vanillaMode_ = false;
+const corePath = vanillaMode_ ? '/tess/core_vanilla/' : '/tess/core/';
+
 // Custom build is currently only used for browser version, while the Node.js version uses the published npm package.
 // If recognition capabilities are ever added for the Node.js version, then we should use the same build for consistency. .
 const tessConfig = browserMode ? {
-  corePath: '/tess/',
+  corePath,
   workerPath: '/tess/worker.min.js',
   // langPath: '/tess/tessdata_dist',
   legacyCore: true,
@@ -70,28 +73,41 @@ const tessConfig = browserMode ? {
   workerBlobURL: false,
 } : { legacyCore: true, legacyLang: true };
 
-const worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
+let worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
 await worker.setParameters(defaultConfigs);
 
-const reinitialize = async ({ langs, oem }) => {
-  oemCurrent = oem;
-  await worker.reinitialize(langs, oem, initConfigs);
-  await worker.setParameters(defaultConfigs);
-};
-
 /**
- * Re-initialize with new language, or do nothing if the desired language is already set.
+ * Function to change language, OEM, and vanilla mode.
+ * All arguments can be set to `null` to keep the current settings.
+ * This function should return early if requested settings match the current settings.
+ *
  * @param {Object} param
- * @param {Array<string>|string} param.langs
- * @returns
+ * @param {?Array<string>} param.langs
+ * @param {?number} param.oem
+ * @param {?boolean} param.vanillaMode
  */
-export const setLanguage = async ({ langs }) => {
+const reinitialize = async ({ langs, oem, vanillaMode }) => {
   const langArr = typeof langs === 'string' ? langs.split('+') : langs;
+  const changeLang = langs && JSON.stringify(langArr.sort()) !== JSON.stringify(langArrCurrent.sort());
+  // oem can be 0, so using "truthy" checks does not work
+  const changeOEM = oem !== null && oem !== undefined && oem !== oemCurrent;
+  const changeVanilla = vanillaMode && vanillaMode !== vanillaMode_;
 
-  if (JSON.stringify(langArr) === JSON.stringify(langArrCurrent)) return;
+  if (!changeLang && !changeOEM && !changeVanilla) return;
+  if (changeLang) langArrCurrent = langArr;
+  if (changeOEM) oemCurrent = oem;
+  if (changeVanilla) vanillaMode_ = vanillaMode;
 
-  await reinitialize({ langs: langArr, oem: oemCurrent });
-  langArrCurrent = langArr;
+  // The worker only needs to be re-created from scratch if the build of Tesseract being used changes.
+  if (changeVanilla) {
+    tessConfig.corePath = vanillaMode_ ? '/tess/core_vanilla/' : '/tess/core/';
+    await worker.terminate();
+    worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
+  } else {
+    await worker.reinitialize(langArrCurrent, oemCurrent, initConfigs);
+  }
+
+  await worker.setParameters(defaultConfigs);
 };
 
 /**
@@ -273,7 +289,6 @@ addEventListener('message', async (e) => {
 
     // Recognition
     reinitialize,
-    setLanguage,
     recognize,
     recognizeAndConvert,
 

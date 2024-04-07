@@ -13,6 +13,7 @@ const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementB
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
+const buildLabelTextElem = /** @type {HTMLElement} */(document.getElementById('buildLabelText'));
 
 // TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
@@ -70,7 +71,9 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 
   await globalThis.generalScheduler.ready;
 
-  const resArr = globalThis.generalScheduler.workers.map((x) => x.setLanguage({ langs: langArr }));
+  const vanillaMode = buildLabelTextElem.innerHTML.toLowerCase().includes('vanilla');
+
+  const resArr = globalThis.generalScheduler.workers.map((x) => x.reinitialize({ langs: langArr, vanillaMode }));
 
   await Promise.allSettled(resArr);
 

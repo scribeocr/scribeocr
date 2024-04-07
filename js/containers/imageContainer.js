@@ -344,14 +344,6 @@ function range(min, max) {
   return result;
 }
 
-function clearAll() {
-  for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
-    imageCont.imageAll.native[i] = null;
-  }
-}
-
-globalThis.clearImageCont = clearAll;
-
 /**
  * Calls `renderImage` for all pages between `min` and `max` (inclusive).
  * Can be used to render a few pages ahead when using the interactive UI,

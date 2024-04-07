@@ -646,8 +646,7 @@
 
                   </div>
                 </div>
-
-                <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions">
+                <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions1">
                   <div>
                     <label>Options</label>
                   </div>
@@ -657,7 +656,7 @@
                         <button class="btn btn-secondary dropdown btn-sm" type="button" id="oem"
                           data-bs-toggle="dropdown" style="width:100%;text-align:left">
                           <div style="display:inline"> Engine: </div>
-                          <div id="oemLabelText" style="display:inline">LSTM</div>
+                          <div id="oemLabelText" style="display:inline">Combined</div>
                         </button>
                         <ul class="dropdown-menu">
                           <li><a id="oemLabelOptionLstm" class="dropdown-item" href="#">Tesseract LSTM</a></li>
@@ -686,6 +685,25 @@
                     </div>
                   </div>
                 </div>
+                <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions2">
+                  <label>Alternative Builds</label>
+                  <div class="row">
+                    <div class="form-group">
+                      <div class="dropdown">
+                        <button class="btn btn-secondary dropdown btn-sm" type="button" id="build"
+                          data-bs-toggle="dropdown" style="width:100%;text-align:left">
+                          <div style="display:inline"> Build: </div>
+                          <div id="buildLabelText" style="display:inline">Scribe</div>
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a id="buildLabelOptionDefault" class="dropdown-item" href="#">Scribe Tesseract</a></li>
+                          <li><a id="buildLabelOptionVanilla" class="dropdown-item" href="#">Vanilla Tesseract</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="col col-lg-2" id="combineModeOptions" style="display:none">
                   <div>
                     <label>Combine Mode:</label>
@@ -706,24 +724,6 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                       <option value="conf">Update Confidence</option>
                       <option value="data" selected>Combine Data</option>
                     </select>
-                  </div>
-                </div>
-                <div class="col col-lg-2" id="engineCol" style="display:none">
-                  <label>Alternative Builds</label>
-                  <div class="row">
-                    <div class="form-group">
-                      <div class="dropdown">
-                        <button class="btn btn-secondary dropdown btn-sm" type="button" id="build"
-                          data-bs-toggle="dropdown" style="width:100%;text-align:left">
-                          <div style="display:inline"> Build: </div>
-                          <div id="buildLabelText" style="display:inline">Default</div>
-                        </button>
-                        <ul class="dropdown-menu">
-                          <li><a id="buildLabelOptionDefault" class="dropdown-item" href="#">Scribe Tesseract</a></li>
-                          <li><a id="buildLabelOptionVanilla" class="dropdown-item" href="#">Vanilla Tesseract</a></li>
-                        </ul>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1286,10 +1286,6 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                   </div>
                   <div class="collapse" id="advancedOptions">
                     <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
-                      <div class="form-check form-switch">
-                        <label><input class="form-check-input" type="checkbox" id="enableExtraEngines"> Vanilla Engine
-                          Builds</label>
-                      </div>
                       <label>Confidence Thresholds <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
                           data-bs-original-title="Determines which words are printed as green/yellow/red in proofreading mode.  (Tesseract Only)"
                           data-bs-placement="right">

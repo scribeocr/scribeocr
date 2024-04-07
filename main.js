@@ -369,7 +369,8 @@ enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivEl
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
 enableAdvancedRecognitionElem.addEventListener('click', () => {
-  showHideElem(document.getElementById('advancedRecognitionOptions'), enableAdvancedRecognitionElem.checked);
+  showHideElem(document.getElementById('advancedRecognitionOptions1'), enableAdvancedRecognitionElem.checked);
+  showHideElem(document.getElementById('advancedRecognitionOptions2'), enableAdvancedRecognitionElem.checked);
   showHideElem(document.getElementById('basicRecognitionOptions'), !enableAdvancedRecognitionElem.checked);
 });
 
@@ -391,10 +392,6 @@ export const enableXlsxExportClick = () => {
 };
 
 enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
-
-const enableEnginesElem = /** @type {HTMLInputElement} */(document.getElementById('enableExtraEngines'));
-
-enableEnginesElem.addEventListener('click', () => showHideElem(document.getElementById('engineCol'), enableEnginesElem.checked));
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
@@ -786,7 +783,7 @@ const buildLabelTextElem = /** @type {HTMLElement} */(document.getElementById('b
 
 function setBuildLabel(x) {
   if (x.toLowerCase() === 'default') {
-    buildLabelTextElem.innerHTML = 'Default';
+    buildLabelTextElem.innerHTML = 'Scribe';
   } else if (x.toLowerCase() === 'vanilla') {
     buildLabelTextElem.innerHTML = 'Vanilla';
   }
