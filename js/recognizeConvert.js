@@ -63,6 +63,8 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
 
   const inputSrc = await (imageCont.imageAll.nativeStr[n] || imageCont.imageAll.nativeSrcStr[n]);
 
+  if (!inputSrc) throw new Error(`No image source found for page ${n}`);
+
   const config = {
     ...{
       rotateRadians, rotateAuto: !angleKnown, legacy, lstm,

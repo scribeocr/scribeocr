@@ -1,8 +1,8 @@
-import {
-  confFunc, checkFunc, overlayFunc, evalFunc, recognizeFunc, debugFunc,
-} from './cli.js';
+import { Command } from 'commander';
 
-const { Command } = require('commander');
+import {
+  confFunc, checkFunc, evalFunc, overlayFunc, recognizeFunc, debugFunc,
+} from './cli.js';
 
 const program = new Command();
 
@@ -38,7 +38,7 @@ program
 
 program
   .command('recognize')
-  .argument('<ocr_file>', 'Input OCR file.  Accepts .hocr and Abbyy .xml (with character-level data enabled).')
+  .argument('<pdf_file>', 'Input PDF file.')
   .description('Calculate confidence metric for OCR data using existing confidence info in the provided data.')
   .action(recognizeFunc);
 
