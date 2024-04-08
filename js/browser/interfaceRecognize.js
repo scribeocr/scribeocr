@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  initOCRVersion, setOemLabel, initializeProgress, runFontOptimizationBrowser, setCurrentHOCR, renderPageQueue, cp,
+  initOCRVersion, setOemLabel, initializeProgress, runFontOptimizationBrowser, setCurrentHOCR, renderPageQueue, cp, insertAlertMessage,
 } from '../../main.js';
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { toggleEditButtons } from './interfaceEdit.js';
@@ -26,7 +26,23 @@ const langLabelTextElem = /** @type {HTMLDivElement} */(document.getElementById(
 
 const collapseLangElem = /** @type {HTMLDivElement} */(document.getElementById('collapseLang'));
 
-const langChoices = Array.from(collapseLangElem.querySelectorAll('.form-check-input')).map((element) => element.id);
+const langChoiceElemArr = Array.from(collapseLangElem.querySelectorAll('.form-check-input'));
+
+const langChoices = langChoiceElemArr.map((element) => element.id);
+
+const langAlertElem = insertAlertMessage('Only enable languages known to be in the source document. Enabling many languages decreases performance.', false, 'alertRecognizeDiv', false);
+export const enableDisablelangAlertElem = () => {
+  // Enable message if more than 2 languages are selected
+  const enable = langChoiceElemArr.map((x) => x.checked).reduce((x, y) => x + y, 0) > 2;
+
+  if (enable) {
+    langAlertElem.setAttribute('style', '');
+  } else {
+    langAlertElem.setAttribute('style', 'display:none');
+  }
+};
+
+collapseLangElem.addEventListener('click', enableDisablelangAlertElem);
 
 function getLangText() {
   const langArr = [];

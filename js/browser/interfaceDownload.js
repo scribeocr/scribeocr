@@ -53,7 +53,6 @@ const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById
 // a user trying to add text to an image-based PDF may be surprised by this behavior.
 const pdfAlertElem = insertAlertMessage('To generate a PDF with invisible OCR text, select View > Display Mode > OCR Mode before downloading.', false, 'alertDownloadDiv', false);
 export const enableDisableDownloadPDFAlert = () => {
-  // Alert is enabled if (1)
   const enable = displayModeElem.value === 'proof' && formatLabelTextElem.textContent === 'PDF';
 
   if (enable) {
