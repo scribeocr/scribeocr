@@ -118,7 +118,7 @@ globalThis.visInstructions = [];
  * @param {boolean} [params.printConf]
  *
  */
-export async function main(func, params) {
+async function main(func, params) {
   const output = {};
 
   // const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
@@ -463,3 +463,55 @@ export async function main(func, params) {
 
   return output;
 }
+
+/**
+ * Print confidence of Abbyy .xml file.
+ *
+ * @param {string} ocrFile
+ */
+export const conf = async (ocrFile) => (main('conf', { ocrFile }));
+
+/**
+ *
+ * @param {string} pdfFile - Path to PDF file.
+ * @param {string} ocrFile
+ */
+export const check = async (pdfFile, ocrFile) => (main('check', { pdfFile, ocrFile }));
+
+/**
+ * Evaluate internal OCR engine.
+ *
+ * @param {string} pdfFile - Path to PDF file.
+ * @param {string} ocrFile - Path to OCR file containing ground truth.
+ */
+export const evalInternal = async (pdfFile, ocrFile) => (main('eval', { pdfFile, ocrFile }));
+
+/**
+ *
+ * @param {string} pdfFile - Path to PDF file.
+ * @param {*} ocrFile
+ * @param {*} outputDir
+ * @param {*} options
+ * @returns
+ */
+export const overlay = async (pdfFile, ocrFile, outputDir, options) => (main('overlay', {
+  pdfFile, ocrFile, outputDir, robustConfMode: options?.robust || false, printConf: options?.conf || false,
+}));
+
+/**
+ *
+ * @param {string} pdfFile - Path to PDF file.
+ * @returns
+ */
+export const recognize = async (pdfFile) => (main('recognize', { pdfFile }));
+
+/**
+ *
+ * @param {string} pdfFile - Path to PDF file.
+ * @param {*} outputDir
+ * @param {*} options
+ * @returns
+ */
+export const debug = async (pdfFile, outputDir, options) => (main('debug', {
+  pdfFile, outputDir, list: options?.list,
+}));

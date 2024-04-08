@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { getRandomAlphanum } from '../../js/miscUtils.js';
-import { confFunc, checkFunc, overlayFunc } from '../../node/cli.js';
+import { confCLI, checkCLI, overlayCLI } from '../../node/cli.js';
 
 globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -52,7 +52,7 @@ describe('Check Node.js commands.', () => {
 
   it('Should print confidence of Abbyy .xml file.', async () => {
     // Call the function
-    await confFunc(path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'));
+    await confCLI(path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'));
 
     // originalConsoleLog(consoleOutput);
 
@@ -62,7 +62,7 @@ describe('Check Node.js commands.', () => {
 
   it('Should check contents of Abbyy .xml file.', async () => {
     // Call the function
-    await checkFunc(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'));
+    await checkCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'));
 
     // originalConsoleLog(consoleOutput);
 
@@ -74,7 +74,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayFunc(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir);
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir);
 
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 
@@ -85,7 +85,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayFunc(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { conf: true });
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { conf: true });
 
     expect(consoleOutput).to.include('Confidence: 0.939');
 
@@ -99,7 +99,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayFunc(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true });
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true });
 
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 
@@ -110,7 +110,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayFunc(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, conf: true });
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, conf: true });
 
     if (!/0.929/.test(consoleOutput)) originalConsoleLog(consoleOutput);
 

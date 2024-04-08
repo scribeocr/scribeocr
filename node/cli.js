@@ -1,17 +1,19 @@
-import { main } from './main.js';
+import {
+  conf, check, evalInternal, overlay, recognize, debug,
+} from './main.js';
 
-export const confFunc = async (ocrFile) => {
-  await main('conf', { ocrFile });
+export const confCLI = async (ocrFile) => {
+  await conf(ocrFile);
   process.exitCode = 0;
 };
 
-export const checkFunc = async (pdfFile, ocrFile) => {
-  await main('check', { pdfFile, ocrFile });
+export const checkCLI = async (pdfFile, ocrFile) => {
+  await check(pdfFile, ocrFile);
   process.exitCode = 0;
 };
 
-export const evalFunc = async (pdfFile, ocrFile) => {
-  const { evalMetrics } = await main('eval', { pdfFile, ocrFile });
+export const evalInternalCLI = async (pdfFile, ocrFile) => {
+  const { evalMetrics } = await evalInternal(pdfFile, ocrFile);
 
   const ignoreExtra = true;
   let metricWER;
@@ -25,22 +27,18 @@ export const evalFunc = async (pdfFile, ocrFile) => {
   process.exitCode = 0;
 };
 
-export const overlayFunc = async (pdfFile, ocrFile, outputDir, options) => {
-  await main('overlay', {
-    pdfFile, ocrFile, outputDir, robustConfMode: options?.robust || false, printConf: options?.conf || false,
-  });
+export const overlayCLI = async (pdfFile, ocrFile, outputDir, options) => {
+  await overlay(pdfFile, ocrFile, outputDir, options);
   process.exitCode = 0;
 };
 
-export const recognizeFunc = async (pdfFile) => {
-  const res = await main('recognize', { pdfFile });
+export const recognizeCLI = async (pdfFile) => {
+  const res = await recognize(pdfFile);
   console.log(res.text);
   process.exitCode = 0;
 };
 
-export const debugFunc = async (pdfFile, outputDir, options) => {
-  await main('debug', {
-    pdfFile, outputDir, list: options?.list,
-  });
+export const debugCLI = async (pdfFile, outputDir, options) => {
+  await debug(pdfFile, outputDir, options);
   process.exitCode = 0;
 };
