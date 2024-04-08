@@ -2,7 +2,7 @@
   "name": "scribeocr",
   "version": "1.0.0",
   "description": "Web interface for proofreading OCR and creating fully-digitized documents.",
-  "main": "main.js",
+  "main": "node/main.js",
   "directories": {
     "lib": "lib"
   },
@@ -35,14 +35,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Balearica/scribeocr.git"
+    "url": "git+https://github.com/scribeocr/scribeocr.git"
   },
   "author": "Balearica",
-  "license": "ISC",
+  "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/Balearica/scribeocr/issues"
+    "url": "https://github.com/scribeocr/scribeocr/issues"
   },
-  "homepage": "https://github.com/Balearica/scribeocr#readme",
+  "homepage": "https://github.com/scribeocr/scribeocr#readme",
   "dependencies": {
     "canvas": "^2.11.2",
     "commander": "^11.1.0",
