@@ -24,7 +24,9 @@ langLabelElem.addEventListener('click', getLangText);
 
 const langLabelTextElem = /** @type {HTMLDivElement} */(document.getElementById('langLabelText'));
 
-const langChoices = ['chi_sim', 'eng', 'fra', 'deu', 'rus', 'spa'];
+const collapseLangElem = /** @type {HTMLDivElement} */(document.getElementById('collapseLang'));
+
+const langChoices = Array.from(collapseLangElem.querySelectorAll('.form-check-input')).map((element) => element.id);
 
 function getLangText() {
   const langArr = [];
