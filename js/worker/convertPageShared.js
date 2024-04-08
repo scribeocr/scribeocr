@@ -82,7 +82,7 @@ export function pass2(pageObj, rotateAngle) {
     }
 
     if (smallCapsWordArr.length >= 3) {
-      const titleCaseTotal = titleCaseArr.reduce((x, y) => x + y);
+      const titleCaseTotal = titleCaseArr.reduce((x, y) => x + y, 0);
 
       for (let k = 0; k < smallCapsWordArr.length; k++) {
         const wordObj = smallCapsWordArr[k];

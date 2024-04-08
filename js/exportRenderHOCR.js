@@ -43,8 +43,14 @@ export function renderHOCR(ocrData, minValue, maxValue, meta) {
     for (const lineObj of pageObj.lines) {
       hocrOut += `\n\t\t<span class='ocr_line' title="bbox ${lineObj.bbox.left} ${lineObj.bbox.top} ${lineObj.bbox.right} ${lineObj.bbox.bottom}`;
       hocrOut += `; baseline ${round6(lineObj.baseline[0])} ${Math.round(lineObj.baseline[1])}`;
-      hocrOut += `; x_size ${lineObj.ascHeight}`;
-      if (lineObj.xHeight) hocrOut += `; x_ascenders ${lineObj.ascHeight - lineObj.xHeight}`;
+
+      // These metrics are specific to ScribeOCR, and are different from the Tesseract HOCR output.
+      // Per the HOCR spec, these properties must (1) be prefixed with `x_` and (2) only consist of lowercase letters and numbers (no camel case).
+      // The name of a property must only consist of lowercase letters and numbers.
+      // Property names must be either from those defined in §4 The properties of hOCR or begin with x_ to denote implementation-specific extensions.
+      // https://kba.github.io/hocr-spec/1.2/#definition-property
+      if (lineObj.xHeight) hocrOut += `; x_x_height ${lineObj.xHeight}`;
+      if (lineObj.ascHeight) hocrOut += `; x_asc_height ${lineObj.ascHeight}`;
       hocrOut += '">';
       for (const wordObj of lineObj.words) {
         hocrOut += `\n\t\t\t<span class='ocrx_word' id='${wordObj.id}' title='bbox ${wordObj.bbox.left} ${wordObj.bbox.top} ${wordObj.bbox.right} ${wordObj.bbox.bottom}`;
@@ -52,6 +58,10 @@ export function renderHOCR(ocrData, minValue, maxValue, meta) {
 
         if (wordObj.font && wordObj.font !== 'Default') {
           hocrOut += `;x_font ${wordObj.font}`;
+        }
+
+        if (wordObj.size) {
+          hocrOut += `;x_fsize ${wordObj.size}`;
         }
 
         hocrOut += "'";

@@ -9,7 +9,7 @@ import { readOcrFile } from './miscUtils.js';
  * @param {boolean} extractSuppData - Whether to extract font metrics and layout data (if it exists).
  */
 
-export async function importOCR(hocrFilesAll, extractSuppData = true) {
+export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
   hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
   // In the case of 1 HOCR file
@@ -19,6 +19,7 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
   let hocrStrEnd = '';
   let abbyyMode = false;
   let stextMode = false;
+  let scribeMode = false;
 
   let hocrStrPages;
   let hocrArrPages;
@@ -44,17 +45,20 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
     } else if (stextMode) {
       hocrArrPages = hocrStrAll.split(/(?=<page)/).slice(1);
     } else {
-      if (extractSuppData) {
-        const getMeta = (name) => {
-          const regex = new RegExp(`<meta name=["']${name}["'][^<]+`, 'i');
+      const getMeta = (name) => {
+        const regex = new RegExp(`<meta name=["']${name}["'][^<]+`, 'i');
 
-          const nodeStr = hocrStrAll.match(regex)?.[0];
-          if (!nodeStr) return null;
-          const contentStr = nodeStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)?.[1];
-          if (!contentStr) return null;
-          return contentStr.replace(/&quot;/g, '"');
-        };
+        const nodeStr = hocrStrAll.match(regex)?.[0];
+        if (!nodeStr) return null;
+        const contentStr = nodeStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)?.[1];
+        if (!contentStr) return null;
+        return contentStr.replace(/&quot;/g, '"');
+      };
 
+      const ocrSystem = getMeta('ocr-system');
+      scribeMode = ocrSystem === 'scribeocr';
+
+      if (extractSuppData && scribeMode) {
         const fontMetricsStr = getMeta('font-metrics');
         if (fontMetricsStr) fontMetricsObj = JSON.parse(fontMetricsStr);
 
@@ -67,7 +71,7 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
         const sansFontStr = getMeta('sans-font');
         if (sansFontStr) sansFont = sansFontStr;
 
-        const serifFontStr = getMeta('default-font');
+        const serifFontStr = getMeta('serif-font');
         if (serifFontStr) serifFont = serifFontStr;
 
         const enableOptStr = getMeta('enable-opt');
@@ -104,6 +108,6 @@ export async function importOCR(hocrFilesAll, extractSuppData = true) {
   }
 
   return {
-    hocrRaw, fontMetricsObj, layoutObj, abbyyMode, stextMode, defaultFont, enableOpt, sansFont, serifFont,
+    hocrRaw, fontMetricsObj, layoutObj, abbyyMode, stextMode, scribeMode, defaultFont, enableOpt, sansFont, serifFont,
   };
 }

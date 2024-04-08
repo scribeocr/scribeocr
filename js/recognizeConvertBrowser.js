@@ -207,8 +207,9 @@ export async function convertPageCallbackBrowser({
  *  For Tesseract.js recognition, the Tesseract Legacy results should be flagged as the "main" data.
  * @param {("hocr"|"abbyy"|"stext"|"blocks")} format - Format of raw data.
  * @param {string} engineName - Name of OCR engine.
+ * @param {boolean} [scribeMode=false] - Whether this is HOCR data from this program.
  */
-async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName) {
+async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName, scribeMode = false) {
   let func = 'convertPageHocr';
   if (format === 'abbyy') {
     func = 'convertPageAbbyy';
@@ -220,7 +221,7 @@ async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName) {
 
   await globalThis.generalScheduler.ready;
 
-  const res = await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n });
+  const res = await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n, scribeMode });
 
   await convertPageCallbackBrowser(res, n, mainData, engineName);
 }
@@ -235,12 +236,13 @@ async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName) {
  *  For Tesseract.js recognition, the Tesseract Legacy results should be flagged as the "main" data.
  * @param {("hocr"|"abbyy"|"stext")} format - Format of raw data.
  * @param {string} engineName - Name of OCR engine.
+ * @param {boolean} [scribeMode=false] - Whether this is HOCR data from this program.
  */
-export async function convertOCRAllBrowser(ocrRawArr, mainData, format, engineName) {
+export async function convertOCRAllBrowser(ocrRawArr, mainData, format, engineName, scribeMode = false) {
   // For each page, process OCR using web worker
   const promiseArr = [];
   for (let n = 0; n < ocrRawArr.length; n++) {
-    promiseArr.push(convertOCRPageBrowser(ocrRawArr[n], n, mainData, format, engineName));
+    promiseArr.push(convertOCRPageBrowser(ocrRawArr[n], n, mainData, format, engineName, scribeMode));
   }
   await Promise.all(promiseArr);
 }

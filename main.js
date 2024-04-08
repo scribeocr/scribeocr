@@ -7,7 +7,7 @@
 // TODO: This file contains many miscellaneous functions and would benefit from being refactored.
 // Additionally, various data stored as global variables
 
-import { importOCR } from './js/importOCR.js';
+import { importOCRFiles } from './js/importOCR.js';
 
 import { renderPage } from './js/browser/renderPageCanvas.js';
 import coords from './js/coordinates.js';
@@ -1499,7 +1499,7 @@ async function importOCRFilesSupp() {
 
   displayLabelTextElem.disabled = true;
 
-  const ocrData = await importOCR(Array.from(hocrFilesAll), false);
+  const ocrData = await importOCRFiles(Array.from(hocrFilesAll), false);
 
   const pageCountHOCR = ocrData.hocrRaw.length;
 
@@ -1659,6 +1659,7 @@ async function importFiles(curFiles) {
   let pageCount;
   let pageCountImage;
   let abbyyMode = false;
+  let scribeMode = false;
 
   if (globalThis.inputDataModes.pdfMode) {
     const pdfFile = pdfFilesAll[0];
@@ -1692,7 +1693,7 @@ async function importFiles(curFiles) {
 
     let stextModeImport;
     if (xmlModeImport) {
-      const ocrData = await importOCR(Array.from(hocrFilesAll), true);
+      const ocrData = await importOCRFiles(Array.from(hocrFilesAll), true);
 
       globalThis.hocrCurrentRaw = ocrData.hocrRaw;
       // Subset OCR data to avoid uncaught error that occurs when there are more pages of OCR data than image data.
@@ -1752,6 +1753,7 @@ async function importFiles(curFiles) {
 
       stextModeImport = ocrData.stextMode;
       abbyyMode = ocrData.abbyyMode;
+      scribeMode = ocrData.scribeMode;
     }
 
     // stext may be imported or extracted from an input PDF
@@ -1869,7 +1871,7 @@ async function importFiles(curFiles) {
     if (stextMode) format = 'stext';
 
     // Process HOCR using web worker, reading from file first if that has not been done already
-    convertOCRAllBrowser(globalThis.hocrCurrentRaw, true, format, oemName).then(async () => {
+    convertOCRAllBrowser(globalThis.hocrCurrentRaw, true, format, oemName, scribeMode).then(async () => {
       if (layoutFilesAll.length > 0) await readLayoutFile(layoutFilesAll[0]);
       await calculateOverallPageMetrics();
 

@@ -15,7 +15,7 @@ import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvert
 import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
 import ocr from '../js/objects/ocrObjects.js';
 import { reduceEvalMetrics } from '../js/miscUtils.js';
-import { importOCR } from '../js/importOCR.js';
+import { importOCRFiles } from '../js/importOCR.js';
 import { PageMetrics } from '../js/objects/pageMetricsObjects.js';
 
 import { hocrToPDF } from '../js/exportPDF.js';
@@ -139,7 +139,7 @@ async function main(func, params) {
   let format;
   if (['conf', 'check', 'eval', 'overlay'].includes(func)) {
     if (params.ocrFile) {
-      const ocr1 = await importOCR([params.ocrFile]);
+      const ocr1 = await importOCRFiles([params.ocrFile]);
       globalThis.hocrCurrentRaw = ocr1.hocrRaw;
       format = ocr1.abbyyMode ? 'abbyy' : 'hocr';
     } else {
