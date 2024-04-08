@@ -89,6 +89,16 @@ globalThis.d = () => {
   debugger;
 };
 
+// Disable mouse wheel + control to zoom by the browser.
+// The application supports zooming in on the canvas,
+// however when the browser zooms it results in a blurry canvas,
+// as the canvas is not drawn at the appropriate resolution.
+window.addEventListener('wheel', (event) => {
+  if (event.ctrlKey) {
+    event.preventDefault();
+  }
+}, { passive: false });
+
 /**
  * @global
  * @type {CanvasRenderingContext2D}
