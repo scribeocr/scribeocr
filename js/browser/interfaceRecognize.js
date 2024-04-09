@@ -173,12 +173,12 @@ export async function recognizeAllClick() {
         legacyLSTMComb: true,
       };
 
-      const imgElem = await imageCont.imageAll.binaryStr[i];
+      const imgBinaryStr = await imageCont.getBinary(i);
 
       const res1 = await globalThis.gs.compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgElem,
+        binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions1,
@@ -210,12 +210,12 @@ export async function recognizeAllClick() {
         legacyLSTMComb: true,
       };
 
-      const imgElem = await imageCont.imageAll.binaryStr[i];
+      const imgBinaryStr = await imageCont.getBinary(i);
 
       const res = await globalThis.gs.compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgElem,
+        binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
@@ -242,11 +242,10 @@ export async function recognizeAllClick() {
             editConf: true,
           };
 
-          const imgElem = await imageCont.imageAll.binaryStr[i];
           const res = await globalThis.gs.compareHOCR({
             pageA: globalThis.ocrAll['User Upload'][i],
             pageB: globalThis.ocrAll['Tesseract Combined'][i],
-            binaryImage: imgElem,
+            binaryImage: imgBinaryStr,
             imageRotated: imageCont.imageAll.binaryRotated[i],
             pageMetricsObj: globalThis.pageMetricsArr[i],
             options: compOptions,
@@ -270,11 +269,10 @@ export async function recognizeAllClick() {
             confThreshMed: parseInt(confThreshMedElem.value),
           };
 
-          const imgElem = await imageCont.imageAll.binaryStr[i];
           const res = await globalThis.globalThis.gs.compareHOCR({
             pageA: globalThis.ocrAll['User Upload'][i],
             pageB: globalThis.ocrAll['Tesseract Combined'][i],
-            binaryImage: imgElem,
+            binaryImage: imgBinaryStr,
             imageRotated: imageCont.imageAll.binaryRotated[i],
             pageMetricsObj: globalThis.pageMetricsArr[i],
             options: compOptions,

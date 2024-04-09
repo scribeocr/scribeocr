@@ -992,12 +992,12 @@ async function compareGroundTruthClick(n) {
 
     globalThis.evalStats = new Array(imageCont.imageAll.nativeStr.length);
     for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
-      const imgElem = await imageCont.imageAll.binaryStr[i];
+      const imgBinaryStr = await imageCont.getBinary(n);
 
       const res = await globalThis.gs.compareHOCR({
         pageA: globalThis.ocrAll.active[i],
         pageB: globalThis.ocrAll['Ground Truth'][i],
-        binaryImage: imgElem,
+        binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
@@ -1015,11 +1015,12 @@ async function compareGroundTruthClick(n) {
     globalThis.evalStatsConfig = evalStatsConfigNew;
   }
 
-  const imgElem = await imageCont.imageAll.binaryStr[n];
+  const imgBinaryStr = await imageCont.getBinary(n);
+
   const res = await globalThis.gs.compareHOCR({
     pageA: globalThis.ocrAll.active[n],
     pageB: globalThis.ocrAll['Ground Truth'][n],
-    binaryImage: imgElem,
+    binaryImage: imgBinaryStr,
     imageRotated: imageCont.imageAll.binaryRotated[n],
     pageMetricsObj: globalThis.pageMetricsArr[n],
     options: compOptions,
@@ -1255,12 +1256,12 @@ function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
       legacyLSTMComb: true,
     };
 
-    const imgElem = await imageCont.imageAll.binaryStr[n];
+    const imgBinaryStr = await imageCont.getBinary(n);
 
     const res = await globalThis.gs.compareHOCR({
       pageA: pageObjLegacy,
       pageB: pageObjLSTM,
-      binaryImage: imgElem,
+      binaryImage: imgBinaryStr,
       imageRotated: imageCont.imageAll.binaryRotated[n],
       pageMetricsObj: globalThis.pageMetricsArr[n],
       options: compOptions,
@@ -1385,12 +1386,15 @@ function addWordClick() {
     };
 
     const pageObj = new ocr.OcrPage(cp.n, globalThis.ocrAll.active[cp.n].dims);
-    // Arbitrary values of font statistics are used since these are replaced later
-    const lineObj = new ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
-    pageObj.lines = [lineObj];
+    // Create a temporary line to hold the word until it gets combined.
+    // This should not be used after `combineData` is run as it is not the final line.
+    const lineObjTemp = new ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
+    pageObj.lines = [lineObjTemp];
     const wordIDNew = getRandomAlphanum(10);
-    const wordObj = new ocr.OcrWord(lineObj, wordText, wordBox, wordIDNew);
-    lineObj.words = [wordObj];
+    const wordObj = new ocr.OcrWord(lineObjTemp, wordText, wordBox, wordIDNew);
+    // Words added by user are assumed to be correct.
+    wordObj.conf = 100;
+    lineObjTemp.words = [wordObj];
 
     combineData(pageObj, globalThis.ocrAll.active[cp.n], globalThis.pageMetricsArr[cp.n], true, false);
 
@@ -1398,18 +1402,23 @@ function addWordClick() {
     // This will have different metrics from `lineObj` when the line was combined into an existing line.
     const wordObjNew = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDNew);
 
-    // Adjustments are recalculated using the actual bounding box (which is different from the initial one calculated above)
-    let angleAdjY = 0;
-    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[cp.n].angle ?? 0) > 0.05) {
-      const angleAdjXInt = sinAngle * (wordObj.line.bbox.bottom + wordObj.line.baseline[1]);
-      const angleAdjYInt = sinAngle * (wordObj.line.bbox.left + angleAdjXInt / 2) * -1;
-
-      angleAdjY = angleAdjYInt + shiftY;
-    }
-
     const fontSize = await calcLineFontSize(wordObjNew.line);
 
-    const top = wordObjNew.line.bbox.bottom + wordObjNew.line.baseline[1] + angleAdjY;
+    const enableRotation = autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[cp.n].angle ?? 0) > 0.05;
+
+    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
+    const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
+
+    const box = wordObjNew.bbox;
+    const linebox = wordObjNew.line.bbox;
+    const baseline = wordObjNew.line.baseline;
+
+    let visualBaseline;
+    if (enableRotation) {
+      visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
+    } else {
+      visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
+    }
 
     const textBackgroundColor = search.search && wordText.includes(search.search) ? '#4278f550' : '';
 
@@ -1417,10 +1426,10 @@ function addWordClick() {
 
     const textbox = new ITextWord(wordText, {
       left: rectLeft,
-      top,
+      top: visualBaseline,
       word: wordObjNew,
       leftOrig: rectLeft,
-      topOrig: top,
+      topOrig: visualBaseline,
       baselineAdj: 0,
       wordSup: false,
       originY: 'bottom',
@@ -1436,7 +1445,7 @@ function addWordClick() {
       textBackgroundColor,
       visualWidth: rect.width,
       visualLeft: rectLeft,
-      visualBaseline: rect.bottom,
+      visualBaseline,
       defaultFontFamily: true,
       opacity: 1,
       // charSpacing: kerning * 1000 / wordFontSize
@@ -2222,7 +2231,8 @@ async function renderCachePagesBrowser(min, max) {
         globalThis.imageCache.native[i] = await getImageBitmap(await imageCont.imageAll.nativeStr[i]);
       }
       if (imageCont.imageAll.binaryStr[i] && !globalThis.imageCache.binary[i]) {
-        globalThis.imageCache.binary[i] = await getImageBitmap(await imageCont.imageAll.binaryStr[i]);
+        const imgBinaryStr = await imageCont.getBinary(i);
+        globalThis.imageCache.binary[i] = await getImageBitmap(imgBinaryStr);
       }
     });
   });

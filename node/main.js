@@ -306,11 +306,12 @@ async function main(func, params) {
         evalConflicts: false,
       };
 
-      const imgElem = await imageCont.imageAll.binaryStr[i];
+      const imgBinaryStr = await imageCont.getBinary(i);
+
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgElem,
+        binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
@@ -336,11 +337,12 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgElem = await imageCont.imageAll.binaryStr[i];
+      const imgBinaryStr = await imageCont.getBinary(i);
+
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgElem,
+        binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
@@ -377,7 +379,7 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgElem = await imageCont.imageAll.binaryStr[i];
+      const imgBinaryStr = await imageCont.getBinary(i);
 
       // In "check" mode, the provided OCR is being compared against OCR from the built-in engine.
       // In "eval" mode, the OCR from the built-in engine is compared against provided ground truth OCR data.
@@ -387,7 +389,7 @@ async function main(func, params) {
       const res = await compareHOCR({
         pageA,
         pageB,
-        binaryImage: imgElem,
+        binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,

@@ -320,14 +320,23 @@ function escapeXml(string) {
 /**
  * Re-calculate bbox for line
  * @param {OcrLine} line
+ * @param {boolean} adjustBaseline - Adjust baseline so that there is no visual change due to this function.
+ *
+ * `adjustBaseline` should generally be `true`, as calling `calcLineBbox` is not expected to change the appearance of the baseline.
+ * The only case where this argument is `false` is when the baseline is adjusted elsewhere in the code,
+ * notably in `rotateLine`.
  */
-function calcLineBbox(line) {
+function calcLineBbox(line, adjustBaseline = true) {
+  const lineboxBottomOrig = line.bbox.bottom;
+
   const wordBoxArr = line.words.map((x) => x.bbox);
 
   line.bbox.left = Math.min(...wordBoxArr.map((x) => x.left));
   line.bbox.top = Math.min(...wordBoxArr.map((x) => x.top));
   line.bbox.right = Math.max(...wordBoxArr.map((x) => x.right));
   line.bbox.bottom = Math.max(...wordBoxArr.map((x) => x.bottom));
+
+  if (adjustBaseline) line.baseline[1] += (lineboxBottomOrig - line.bbox.bottom);
 }
 
 /**
@@ -414,7 +423,7 @@ function rotateLine(line, angle, dims = null, useCharLevel = false) {
   const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, dims1.width, dims1.height);
 
   // Re-calculate line bbox by taking union of word bboxes
-  calcLineBbox(line);
+  calcLineBbox(line, false);
 
   // Adjust baseline
   const baselineOffsetAdj = lineBoxRot.bottom - line.bbox.bottom;
