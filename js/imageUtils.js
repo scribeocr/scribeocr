@@ -1,3 +1,5 @@
+/* eslint-disable no-bitwise */
+
 const browserMode = typeof process === 'undefined';
 /**
  * Handles various image formats, always returns a ImageBitmap.
@@ -106,6 +108,7 @@ export function getPngDimensions(base64) {
  * @returns {dims} The dimensions of the image.
  */
 export function getJpegDimensions(base64) {
+  // It would be more efficient if this only converted the base64 string up to the point where the dimensions are found.
   const bytes = base64ToBytes(base64.split(',')[1]);
   let i = 0;
 
@@ -117,8 +120,9 @@ export function getJpegDimensions(base64) {
   while (i < bytes.length) {
     // Look for the 0xFF marker that might indicate the start of an SOF segment
     if (bytes[i] === 0xFF) {
-      // Check for SOF0 marker (0xFFC0). Other SOF markers (e.g., SOF2: 0xFFC2) could be handled similarly
-      if (bytes[i + 1] === 0xC0) {
+      // List of JPEG SOF markers taken from jhead.
+      // https://github.com/Matthias-Wandel/jhead/blob/4d04ac965632e35a65709c7f92a857a749e71811/jhead.h#L247-L259
+      if ([0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF].includes(bytes[i + 1])) {
         // The height and width are stored after the marker and segment length
         const height = (bytes[i + 5] << 8) | bytes[i + 6];
         const width = (bytes[i + 7] << 8) | bytes[i + 8];
