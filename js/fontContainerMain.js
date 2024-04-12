@@ -67,7 +67,7 @@ export async function loadFontContainerAllRaw() {
   const srcPathObj = {
     Carlito: { normal: 'Carlito-Regular.woff', italic: 'Carlito-Italic.woff', smallCaps: 'Carlito-SmallCaps.woff' },
     Century: { normal: 'C059-Roman.woff', italic: 'C059-Italic.woff', smallCaps: 'C059-SmallCaps.woff' },
-    Garamond: { normal: 'QTGaromand.woff', italic: 'QTGaromand-Italic.woff', smallCaps: 'QTGaromand-SmallCaps.woff' },
+    Garamond: { normal: 'EBGaramond-Regular.woff', italic: 'EBGaramond-Italic.woff', smallCaps: 'EBGaramond-SmallCaps.woff' },
     Palatino: { normal: 'P052-Roman.woff', italic: 'P052-Italic.woff', smallCaps: 'P052-SmallCaps.woff' },
     NimbusRomNo9L: { normal: 'NimbusRomNo9L-Reg.woff', italic: 'NimbusRomNo9L-RegIta.woff', smallCaps: 'NimbusRomNo9L-RegSmallCaps.woff' },
     NimbusSans: { normal: 'NimbusSanL-Reg.woff', italic: 'NimbusSanL-RegIta.woff', smallCaps: 'NimbusSanL-RegSmallCaps.woff' },
