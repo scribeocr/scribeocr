@@ -3,7 +3,8 @@ proc_fonts_dir="fonts"
 all_fonts=1
 temp_dir=`mktemp --directory`
 
-for file in "$raw_fonts_dir"/*.{ttf,otf,pfb}; do
+while IFS= read -r file
+do
     if [[ -f $file ]]; then
         filename=$(basename "$file")
         filename_without_extension="${filename%.*}"
@@ -12,14 +13,11 @@ for file in "$raw_fonts_dir"/*.{ttf,otf,pfb}; do
         file_temp1=$temp_dir/$filename_without_extension.1.otf
         file_temp2=$temp_dir/$filename_without_extension.2.otf
 
-
         ## If `all_fonts` option is 0, only fonts not already in the output directory are processed.
         # if [[ ! -e "$processed_fonts_dir/$filename" || "$all_fonts" = 1]]; then
         if [[ ! -e "$file_proc" || "$all_fonts" = 1 ]]; then
-
-
             ## Convert to .otf
-            fontforge -lang=ff -c 'Open($1); Generate($2)' $file $file_temp1
+            fontforge -quiet -lang=ff -c 'Open($1); Generate($2)' $file $file_temp1
 
             ## Subset font to contain only desired characters
             ## The --no-layout-closure option prevents ligatures from being automatically included when all the individual characters are
@@ -41,6 +39,6 @@ for file in "$raw_fonts_dir"/*.{ttf,otf,pfb}; do
 
         fi
     fi
-done
+done < "dev/fontList.txt"
 
 rm -rf "$temp_dir"

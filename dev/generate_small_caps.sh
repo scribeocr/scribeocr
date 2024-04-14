@@ -4,8 +4,7 @@ node node/createSmallCapsFont.js fonts/NimbusRomNo9L-Reg.woff fonts/NimbusRomNo9
 node node/createSmallCapsFont.js fonts/NimbusSanL-Reg.woff fonts/NimbusSanL-RegSmallCaps.woff
 node node/createSmallCapsFont.js fonts/Carlito-Regular.woff fonts/Carlito-SmallCaps.woff
 node node/createSmallCapsFont.js fonts/C059-Roman.woff fonts/C059-SmallCaps.woff
-# node node/createSmallCapsFont.js fonts/ugmr8a.woff fonts/ugmr8a-SmallCaps.woff
-node node/createSmallCapsFont.js fonts/QTGaromand.woff fonts/QTGaromand-SmallCaps.woff
+node node/createSmallCapsFont.js fonts/EBGaramond-Regular.woff fonts/EBGaramond-SmallCaps.woff
 node node/createSmallCapsFont.js fonts/P052-Roman.woff fonts/P052-SmallCaps.woff
 
 ## Run through FontForge to reduce file sizes
@@ -14,6 +13,5 @@ python dev/processFontSmallCaps2.py fonts/NimbusRomNo9L-RegSmallCaps.woff fonts/
 python dev/processFontSmallCaps2.py fonts/NimbusSanL-RegSmallCaps.woff fonts/NimbusSanL-RegSmallCaps.woff
 python dev/processFontSmallCaps2.py fonts/Carlito-SmallCaps.woff fonts/Carlito-SmallCaps.woff
 python dev/processFontSmallCaps2.py fonts/C059-SmallCaps.woff fonts/C059-SmallCaps.woff
-# dev/python processFontSmallCaps2.py fonts/ugmr8a-SmallCaps.woff fonts/ugmr8a-SmallCaps.woff
-python dev/processFontSmallCaps2.py fonts/QTGaromand-SmallCaps.woff fonts/QTGaromand-SmallCaps.woff
+python dev/processFontSmallCaps2.py fonts/EBGaramond-SmallCaps.woff fonts/EBGaramond-SmallCaps.woff
 python dev/processFontSmallCaps2.py fonts/P052-SmallCaps.woff fonts/P052-SmallCaps.woff
