@@ -13,16 +13,18 @@ const inputModes = {
   image: false,
 };
 
+// TODO: This would be cleaner if there was an image class or object that contained both the image and properties like rotated/upscaled.
+// Currently, every time an image is passed to a worker, the rotation and upscale status must be passed separately.
+
 /**
  * @param {number} pageCount
  * @property {Array<Promise<String>>|Array<String>} nativeSrcStr - Unedited source images uploaded by user (native color, no rotation), stored as data URL (unused when user provides a PDF).
  * @property {Array<Promise<String>>|Array<String>} nativeStr - Native image (native color, rotation possible), stored as data URL.
- * @property {Array<Promise<ImageBitmap>>} native - Native image (native color, rotation possible), stored as ImageBitmap.
- * @property {Array<Boolean>} nativeRotated - Whether `nativeStr` and `native` have been rotated versus source image.
+ * @property {Array<Boolean>} nativeRotated - Whether `nativeStr` has been rotated versus source image.
  * @property {Array<Promise<String>>|Array<String>} nativeColor - Whether "native" image was rendered from PDF in color or grayscale (unused when user provides images directly).
  * @property {Array<Promise<String>>|Array<String>} binaryStr - Binary image, stored as data URL.
- * @property {Array<Promise<ImageBitmap>>} binary - Binary image, stored as ImageBitmap.
- * @property {Array<Boolean>} binaryRotated - Whether `binaryStr` and `binary` have been rotated versus source image.
+ * @property {Array<Boolean>} binaryRotated - Whether `binaryStr` has been rotated versus source image.
+ * @property {Array<Boolean>} binaryRotated - Whether `binaryStr` has been upscaled 2x versus source image.
  *
  * All images are stored as both base-64 encoded strings (data URLs) and `ImageBitmap` objects.
  * This is because `ImageBitmap` objects have the best performance when drawing to canvas,
@@ -47,7 +49,11 @@ export function ImageCont(pageCount) {
   /** @type {Array<Boolean>} */
   this.nativeRotated = Array(pageCount);
   /** @type {Array<Boolean>} */
+  this.nativeUpscaled = Array(pageCount);
+  /** @type {Array<Boolean>} */
   this.binaryRotated = Array(pageCount);
+  /** @type {Array<Boolean>} */
+  this.binaryUpscaled = Array(pageCount);
   /** @type {Array<string>} */
   this.nativeColor = Array(pageCount);
 }
@@ -71,7 +77,7 @@ async function getDims(n) {
 /**
  *
  * @param {number} n
- * @returns {Promise<ImageBitmap>}
+ * @returns {Promise<string>}
  */
 async function getBinary(n) {
   await renderImage(n, 'binary');
@@ -206,7 +212,7 @@ async function initMuPDFScheduler(fileData, numWorkers = 3) {
  * @param {Object|null} [progress=null] - A progress tracking object, which should have an `increment` method.
  * @returns {Promise<void>} A promise that resolves when all the images have been processed.
  */
-async function renderImage(n, colorMode = null, rotate = null, progress = null) {
+async function renderImage(n, colorMode = null, rotate = null, upscale = null, progress = null) {
   // Return early if there is no image data to render.
   if (!inputModes.pdf && !inputModes.image) return;
 
@@ -223,8 +229,10 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   if (inputModes.image) {
     // Load image if either (1) it has never been loaded in the first place, or
     // (2) the current image is rotated but a non-rotated image is requested, revert to the original (user-uploaded) image.
-    if ((!imageCont.imageAll.nativeStr[n] && imageCont.imageAll.nativeSrcStr[n]) || (rotate === false && imageCont.imageAll.nativeRotated[n] === true)) {
+    if ((!imageCont.imageAll.nativeStr[n] && imageCont.imageAll.nativeSrcStr[n]) || (rotate === false && imageCont.imageAll.nativeRotated[n] === true)
+      || (upscale === false && imageCont.imageAll.nativeUpscaled[n] === true)) {
       imageCont.imageAll.nativeRotated[n] = false;
+      imageCont.imageAll.nativeUpscaled[n] = false;
       imageCont.imageAll.nativeStr[n] = imageCont.imageAll.nativeSrcStr[n];
       if (globalThis.imageCache) delete globalThis.imageCache.native[n];
     }
@@ -239,11 +247,13 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
     // 3. Page was overwritten by rotated version, but a non-rotated version is needed
     const renderNativePDF = !!((!imageCont.imageAll.nativeStr[n]
       || (colorMode !== 'binary' && imageCont.imageAll.nativeColor[n] !== colorMode)
-      || rotate === false && imageCont.imageAll.nativeRotated[n] === true));
+      || rotate === false && imageCont.imageAll.nativeRotated[n] === true
+      || upscale === false && imageCont.imageAll.nativeUpscaled[n] === true));
 
     if (renderNativePDF) {
       imageCont.imageAll.nativeColor[n] = colorMode;
       imageCont.imageAll.nativeRotated[n] = false;
+      imageCont.imageAll.nativeUpscaled[n] = false;
 
       const pageMetrics = globalThis.pageMetricsArr[n];
 
@@ -279,13 +289,24 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
 
   // Whether binarized image needs to be rotated (or re-rendered without rotation)
   const rotateBinary = colorMode === 'binary'
-        && (rotate === true && !imageCont.imageAll.binaryRotated[n] && Math.abs(globalThis.pageMetricsArr[n].angle || 0) > 0.05 || rotate === false && imageCont.imageAll.binaryRotated[n] === true);
+        && (rotate === true && !imageCont.imageAll.binaryRotated[n] && Math.abs(globalThis.pageMetricsArr[n].angle || 0) > 0.05
+        || rotate === false && imageCont.imageAll.binaryRotated[n] === true);
+
+  const upscaleBinary = colorMode === 'binary'
+        && (upscale === true && !imageCont.imageAll.binaryUpscaled[n]
+        || upscale === false && imageCont.imageAll.binaryUpscaled[n] === true);
+
+  const processBinary = renderBinary || rotateBinary || upscaleBinary;
 
   // Whether native image needs to be rotated
   const rotateNative = colorName === 'native' && (rotate === true && !imageCont.imageAll.nativeRotated[n] && Math.abs(globalThis.pageMetricsArr[n].angle || 0) > 0.05);
 
+  const upscaleNative = colorName === 'native' && (upscale === true && !imageCont.imageAll.nativeUpscaled[n]);
+
+  const processNative = rotateNative || upscaleNative;
+
   // If nothing needs to be done, return early.
-  if (!(renderBinary || rotateBinary || rotateNative)) {
+  if (!(processBinary || processNative)) {
     if (progress) progress.increment();
     await imageCont.imageAll.nativeStr[n];
     return;
@@ -294,8 +315,10 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
   // If no preference is specified for rotation, default to true
   const angleArg = rotate !== false ? (globalThis.pageMetricsArr[n].angle || 0) * (Math.PI / 180) * -1 || 0 : 0;
 
+  const upscaleArg = upscale || false;
+
   const saveBinaryImageArg = true;
-  const saveColorImageArg = rotateNative;
+  const saveColorImageArg = processNative;
 
   const gs = globalThis.gs;
 
@@ -305,7 +328,7 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
 
     return gs.recognize({
       image: inputImage,
-      options: { rotateRadians: angleArg },
+      options: { rotateRadians: angleArg, upscale: upscaleArg },
       output: {
         imageBinary: true, imageColor: true, debug: true, text: false, hocr: false, tsv: false, blocks: false,
       },
@@ -321,12 +344,14 @@ async function renderImage(n, colorMode = null, rotate = null, progress = null) 
 
   if (saveColorImageArg) {
     imageCont.imageAll.nativeRotated[n] = Boolean(angleArg);
+    imageCont.imageAll.nativeUpscaled[n] = upscaleArg;
     imageCont.imageAll.nativeStr[n] = resPromise.then(async (res) => (res.imageColor));
     if (globalThis.imageCache) delete globalThis.imageCache.native[n];
   }
 
   if (saveBinaryImageArg) {
     imageCont.imageAll.binaryRotated[n] = Boolean(angleArg);
+    imageCont.imageAll.binaryUpscaled[n] = upscaleArg;
     imageCont.imageAll.binaryStr[n] = resPromise.then(async (res) => (res.imageBinary));
     if (globalThis.imageCache) delete globalThis.imageCache.binary[n];
   }
@@ -354,12 +379,13 @@ function range(min, max) {
  * @param {number} max - Max page to render.
  * @param {string|null} [colorMode=null] - Color mode ("color", "gray", or "binary"). If null, defaults to `imageCont.colorModeDefault`.
  * @param {boolean|null} [rotate=null] - Whether to apply rotation to the images (true/false), or no preference (null).
+ * @param {boolean|null} [upscale=null] - Whether to upscale the images (true/false), or no preference (null).
  * @param {Object|null} [progress=null] - A progress tracking object, which should have an `increment` method.
  * @returns {Promise<void>} A promise that resolves when all the images have been processed.
  */
-async function renderImageRange(min, max, colorMode = null, rotate = null, progress = null) {
+async function renderImageRange(min, max, colorMode = null, rotate = null, upscale = null, progress = null) {
   const pagesArr = range(min, max);
-  await Promise.all(pagesArr.map((n) => renderImage(n, colorMode, rotate, progress)));
+  await Promise.all(pagesArr.map((n) => renderImage(n, colorMode, rotate, upscale, progress)));
 }
 
 // TODO: Add event handler so the colorModeDefault is set by the UI.

@@ -65,9 +65,11 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
 
   if (!inputSrc) throw new Error(`No image source found for page ${n}`);
 
+  const upscale = false;
+
   const config = {
     ...{
-      rotateRadians, rotateAuto: !angleKnown, legacy, lstm,
+      rotateRadians, rotateAuto: !angleKnown, legacy, lstm, upscale,
     },
     ...options,
   };
@@ -102,7 +104,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   const res0 = await resArr[0];
 
   // const printDebug = true;
-  // if (printDebug && browserMode) {
+  // if (printDebug && typeof process === 'undefined') {
   //   if (legacy && lstm) {
   //     resArr[1].then((res1) => {
   //       console.log(res1.recognize.debug);
@@ -122,6 +124,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
     imageCont.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
     if (imageCont.imageAll.binaryRotated[n] || !imageCont.imageAll.binaryStr[n]) {
       imageCont.imageAll.binaryStr[n] = res0.recognize.imageBinary;
+      imageCont.imageAll.binaryUpscaled[n] = upscale;
       if (globalThis.imageCache) delete globalThis.imageCache.binary[n];
     }
   }
@@ -130,6 +133,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
     imageCont.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
     if (imageCont.imageAll.nativeRotated[n]) {
       imageCont.imageAll.nativeStr[n] = res0.recognize.imageColor;
+      imageCont.imageAll.nativeUpscaled[n] = upscale;
       if (globalThis.imageCache) delete globalThis.imageCache.native[n];
     }
   }

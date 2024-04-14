@@ -30,7 +30,7 @@ function displayModeClick(x) {
  * @returns
  */
 export const selectDisplayMode = (x) => {
-  if (inputDataModes.xmlMode[cp.n] && inputDataModes.pdfMode && cp.renderStatus !== 2) { return; }
+  if (globalThis.inputDataModes.xmlMode[cp.n] && globalThis.inputDataModes.pdfMode && cp.renderStatus !== 2) { return; }
 
   let opacityArg; let
     fillArg;
@@ -57,6 +57,30 @@ export const selectDisplayMode = (x) => {
     }
   });
 
+  // Calculate options for background image and overlay
+  if (globalThis.inputDataModes.xmlMode[cp.n]) {
+    cp.backgroundOpts.originX = 'center';
+    cp.backgroundOpts.originY = 'center';
+
+    const imgDims = globalThis.pageMetricsArr[cp.n].dims;
+
+    cp.backgroundOpts.left = imgDims.width * 0.5;
+    cp.backgroundOpts.top = imgDims.height * 0.5;
+
+    // let marginPx = Math.round(imgDims.width * leftGlobal);
+    if (autoRotateCheckboxElem.checked) {
+      cp.backgroundOpts.angle = globalThis.pageMetricsArr[cp.n].angle * -1 ?? 0;
+    } else {
+      cp.backgroundOpts.angle = 0;
+    }
+  } else {
+    cp.backgroundOpts.originX = 'left';
+    cp.backgroundOpts.originY = 'top';
+
+    cp.backgroundOpts.left = 0;
+    cp.backgroundOpts.top = 0;
+  }
+
   // Edit rotation for images that have already been rotated
   if (colorModeElem.value === 'binary' && imageCont.imageAll.binaryRotated[cp.n] || colorModeElem.value !== 'binary' && imageCont.imageAll.nativeRotated[cp.n]) {
     // If rotation is requested,
@@ -67,8 +91,17 @@ export const selectDisplayMode = (x) => {
     }
   }
 
+  // Edit rotation for images that have been upscaled
+  if (colorModeElem.value === 'binary' && imageCont.imageAll.binaryUpscaled[cp.n] || colorModeElem.value !== 'binary' && imageCont.imageAll.nativeUpscaled[cp.n]) {
+    cp.backgroundOpts.scaleX = 0.5;
+    cp.backgroundOpts.scaleY = 0.5;
+  } else {
+    cp.backgroundOpts.scaleX = 1;
+    cp.backgroundOpts.scaleY = 1;
+  }
+
   // Include a background image if appropriate
-  if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
+  if (['invis', 'proof', 'eval'].includes(x) && (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode)) {
     canvas.setBackgroundColor('white');
     // canvas.setBackgroundImage(cp.backgroundImage, canvas.renderAll.bind(canvas));
     canvas.setBackgroundImage(cp.backgroundImage, canvas.renderAll.bind(canvas), cp.backgroundOpts);

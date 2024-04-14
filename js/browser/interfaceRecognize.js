@@ -180,6 +180,7 @@ export async function recognizeAllClick() {
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
+        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions1,
       });
@@ -217,6 +218,7 @@ export async function recognizeAllClick() {
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
+        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -247,6 +249,7 @@ export async function recognizeAllClick() {
             pageB: globalThis.ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinaryStr,
             imageRotated: imageCont.imageAll.binaryRotated[i],
+            imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
             pageMetricsObj: globalThis.pageMetricsArr[i],
             options: compOptions,
           });
@@ -274,6 +277,7 @@ export async function recognizeAllClick() {
             pageB: globalThis.ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinaryStr,
             imageRotated: imageCont.imageAll.binaryRotated[i],
+            imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
             pageMetricsObj: globalThis.pageMetricsArr[i],
             options: compOptions,
           });

@@ -313,6 +313,7 @@ async function main(func, params) {
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
+        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -323,7 +324,7 @@ async function main(func, params) {
     // Switching active data here for consistency with browser version.
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Combined Temp'];
     setFontMetricsAll(globalThis.ocrAll['Tesseract Combined Temp']);
-    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated);
+    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated, imageCont.imageAll.binaryUpscaled);
 
     output.text = '';
 
@@ -344,6 +345,7 @@ async function main(func, params) {
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
+        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -362,7 +364,7 @@ async function main(func, params) {
     }
   } else {
     setFontMetricsAll(globalThis.ocrAll.active);
-    await runFontOptimization(globalThis.ocrAll.active, imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated);
+    await runFontOptimization(globalThis.ocrAll.active, imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated, imageCont.imageAll.binaryUpscaled);
   }
 
   if (robustConfMode || func === 'eval') {
@@ -391,6 +393,7 @@ async function main(func, params) {
         pageB,
         binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
+        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });

@@ -16,7 +16,11 @@ export async function evalOverlapDocument() {
     const imgBinaryStr = await imageCont.getBinary(i);
 
     promiseArr.push(globalThis.gs.evalPage({
-      page: ocrPageI, binaryImage: imgBinaryStr, imageRotated: imageCont.imageAll.binaryRotated[i], pageMetricsObj: pageMetricsArr[i],
+      page: ocrPageI,
+      binaryImage: imgBinaryStr,
+      imageRotated: imageCont.imageAll.binaryRotated[i],
+      imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+      pageMetricsObj: pageMetricsArr[i],
     }));
   }
 

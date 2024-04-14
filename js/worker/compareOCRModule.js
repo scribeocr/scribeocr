@@ -147,12 +147,12 @@ export const initCanvasNode = async () => {
  * Crop the image data the area containing `words` and render to the `calcCtx.canvas` canvas.
  * @param {Array<OcrWord>} words
  * @param {ImageBitmap} imageBinaryBit
- * @param {dims} pageDims
+ * @param {dims} imgDims
  * @param {number} angle
  * @param {object} [options]
  * @param {boolean} [options.view] - Draw results on debugging canvases
  */
-async function drawWordActual(words, imageBinaryBit, pageDims, angle, options = {}) {
+async function drawWordActual(words, imageBinaryBit, imgDims, angle, options = {}) {
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
 
@@ -185,8 +185,8 @@ async function drawWordActual(words, imageBinaryBit, pageDims, angle, options = 
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
-  const shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
+  const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
+  const shiftY = sinAngle * ((imgDims.width - shiftX) * 0.5) || 0;
 
   const wordsBox = words.map((x) => x.bbox);
 
@@ -299,7 +299,7 @@ const printWordOnCanvas = async (ctx, text, font, size, boxWidth, left = 0, bott
  * @param {number} lineFontSize
  * @param {?string} altText
  * @param {?CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctxView
- * @param {boolean} imageRotated -
+ * @param {boolean} [imageRotated=false] -
  */
 const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSize = 0, altText = null, ctxView = null, imageRotated = false) {
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
@@ -363,8 +363,8 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
  * @param {Array<OcrWord>} [params.wordsB] - Array of words for comparison.  Optional.
  * @param {ImageBitmap} params.binaryImage - Image to compare to.  Using an ImageBitmap is more efficient
  *    when multiple compparisons are being made to the same binaryImage.
- * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {PageMetrics} params.pageMetricsObj
+ * @param {number} params.angle - Angle image has been rotated. This should be 0 if the image has not been rotated.
+ * @param {dims} params.imgDims
  * @param {Object} [params.options]
  * @param {boolean} [params.options.view] - Draw results on debugging canvases
  * @param {boolean} [params.options.useAFontSize] - Use font size from `wordsA` when printing `wordsB`
@@ -373,7 +373,7 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
  * @param {boolean} [params.options.useABaseline]
  */
 export async function evalWords({
-  wordsA, wordsB = [], binaryImage, imageRotated, pageMetricsObj, options = {},
+  wordsA, wordsB = [], binaryImage, angle, imgDims, options = {},
 }) {
   // This code cannot currently handle non-Latin characters.
   // Therefore, if any Chinese words are in either set of words,
@@ -399,8 +399,6 @@ export async function evalWords({
   const view = options?.view === undefined ? false : options?.view;
   const useAFontSize = options?.useAFontSize === undefined ? true : options?.useAFontSize;
   const useABaseline = options?.useABaseline === undefined ? true : options?.useABaseline;
-
-  const angle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
 
   const cosAngle = Math.cos(angle * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(angle * -1 * (Math.PI / 180)) || 0;
@@ -429,7 +427,7 @@ export async function evalWords({
   }
 
   // Draw the actual words (from the user-provided image)
-  const cropY = await drawWordActual([...wordsA, ...wordsB], binaryImageBit, pageMetricsObj.dims, angle, { view });
+  const cropY = await drawWordActual([...wordsA, ...wordsB], binaryImageBit, imgDims, angle, { view });
 
   const imageDataActual = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
 
@@ -451,7 +449,7 @@ export async function evalWords({
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-    await drawWordRender(word, offsetX, cropY, lineFontSizeA, null, ctxView, imageRotated);
+    await drawWordRender(word, offsetX, cropY, lineFontSizeA, null, ctxView, Boolean(angle));
   }
 
   const imageDataExpectedA = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
@@ -510,7 +508,7 @@ export async function evalWords({
 
       const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-      await drawWordRender(word, offsetX, cropY, lineFontSizeB, null, ctxView, imageRotated);
+      await drawWordRender(word, offsetX, cropY, lineFontSizeB, null, ctxView, Boolean(angle));
     }
 
     const imageDataExpectedB = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
@@ -669,6 +667,7 @@ async function penalizeWord(wordObjs) {
  * @param {OcrPage} params.pageB
  * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
+ * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled by 2x.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {object} params.options
  * @param {("stats"|"comb")} [params.options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
@@ -689,7 +688,7 @@ async function penalizeWord(wordObjs) {
  * @param {number} [params.options.confThreshMed]
  */
 export async function compareHOCR({
-  pageA, pageB, binaryImage, imageRotated, pageMetricsObj, options = {},
+  pageA, pageB, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, options = {},
 }) {
   const binaryImageBit = await getImageBitmap(binaryImage);
 
@@ -707,6 +706,22 @@ export async function compareHOCR({
   const confThreshMed = options?.confThreshMed === undefined ? 75 : options?.confThreshMed;
 
   if (supplementComp && !(tessScheduler || tessWorker)) console.log('`supplementComp` enabled, but no scheduler was provided. This step will be skipped.');
+
+  // If this is not being run in a worker, clone the data so the original is not edited.
+  // This is not necessary when running in a worker, as the data is already cloned when sent to the worker.
+  if (typeof WorkerGlobalScope === 'undefined') {
+    pageA = structuredClone(pageA);
+    pageB = structuredClone(pageB);
+  }
+
+  const imgAngle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
+  const imgDims = structuredClone(pageMetricsObj.dims);
+  if (imageUpscaled) {
+    ocr.scalePage(pageA, 2);
+    ocr.scalePage(pageB, 2);
+    imgDims.width *= 2;
+    imgDims.height *= 2;
+  }
 
   const { n } = pageA;
 
@@ -729,8 +744,8 @@ export async function compareHOCR({
     x.matchTruth = false;
   });
 
-  // Create copy of `pageA` so original is not edited
-  // This was originally necessary before this function was run in a separate worker--not sure if necessary anymore since data is already cloned when sent to worker.
+  // Create copy of `pageA` so original is not edited.
+  // This is used to get the original confidence metrics later in the code.
   const pageAInt = structuredClone(pageA);
 
   if (mode === 'comb') {
@@ -919,7 +934,7 @@ export async function compareHOCR({
                   wordAClone.text = wordB.text;
 
                   const evalRes = await evalWords({
-                    wordsA: [wordA], wordsB: [wordAClone], binaryImage: binaryImageBit, imageRotated, pageMetricsObj, options: { view: Boolean(debugLabel) },
+                    wordsA: [wordA], wordsB: [wordAClone], binaryImage: binaryImageBit, angle: imgAngle, imgDims, options: { view: Boolean(debugLabel) },
                   });
 
                   hocrAError = evalRes.metricA + (await penalizeWord([wordA]));
@@ -940,7 +955,7 @@ export async function compareHOCR({
                   }
                 } else if (twoToOne) {
                   const evalRes = await evalWords({
-                    wordsA: wordsAArr, wordsB: wordsBArr, binaryImage: binaryImageBit, imageRotated, pageMetricsObj, options: { view: Boolean(debugLabel) },
+                    wordsA: wordsAArr, wordsB: wordsBArr, binaryImage: binaryImageBit, angle: imgAngle, imgDims, options: { view: Boolean(debugLabel) },
                   });
 
                   const wordsAText = wordsAArr.map((x) => x.text).join('');
@@ -1063,6 +1078,8 @@ export async function compareHOCR({
   // The core issue is that pageAInt is being actively edited `mode == "comb"`.
   // Therefore, `hocrAOverlap` ends up including words not in `pageA`, so `ocr.getPageWord(pageA, overlappingWordsA[i]);` returns `null`.
   if (mode === 'comb') {
+    if (imageUpscaled) ocr.scalePage(pageAInt, 0.5);
+
     return {
       page: pageAInt, metrics: null, debugLog, debugImg,
     };
@@ -1137,6 +1154,8 @@ export async function compareHOCR({
     });
   }
 
+  if (imageUpscaled) ocr.scalePage(pageAInt, 0.5);
+
   return {
     page: pageAInt, metrics: metricsRet, debugLog, debugImg,
   };
@@ -1203,15 +1222,30 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {ImageBitmap} params.binaryImage
+ * @param {ImageBitmap|string} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
+ * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {?function} params.func
  * @returns
  */
 async function evalPageBase({
-  page, binaryImage, imageRotated, pageMetricsObj, func,
+  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func,
 }) {
+  // If this is not being run in a worker, clone the data so the original is not edited.
+  // This is not necessary when running in a worker, as the data is already cloned when sent to the worker.
+  if (typeof WorkerGlobalScope === 'undefined') {
+    page = structuredClone(page);
+  }
+
+  const imgDims = structuredClone(pageMetricsObj.dims);
+  const imgAngle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
+  if (imageUpscaled) {
+    ocr.scalePage(page, 2);
+    imgDims.width *= 2;
+    imgDims.height *= 2;
+  }
+
   const binaryImageBit = await getImageBitmap(binaryImage);
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
@@ -1230,7 +1264,7 @@ async function evalPageBase({
     if (!ocrLineJ) continue;
 
     const evalRes = await evalWords({
-      wordsA: ocrLineJ.words, binaryImage: binaryImageBit, imageRotated, pageMetricsObj, options: { view: false },
+      wordsA: ocrLineJ.words, binaryImage: binaryImageBit, angle: imgAngle, imgDims, options: { view: false },
     });
 
     metricTotal += (evalRes.metricA * ocrLineJ.words.length);
@@ -1246,28 +1280,30 @@ async function evalPageBase({
  * @param {OcrPage} params.page
  * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
+ * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
  * @param {PageMetrics} params.pageMetricsObj
  * @returns
  */
 export async function evalPage({
-  page, binaryImage, imageRotated, pageMetricsObj,
+  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj,
 }) {
   return await evalPageBase({
-    page, binaryImage, imageRotated, pageMetricsObj, func: null,
+    page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func: null,
   });
 }
 
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {ImageBitmap} params.binaryImage
+ * @param {ImageBitmap|string} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
+ * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {string} params.font
  * @returns
  */
 export async function evalPageFont({
-  page, binaryImage, imageRotated, pageMetricsObj, font,
+  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, font,
 }) {
 /**
  * @param {OcrLine} ocrLineJ
@@ -1295,7 +1331,7 @@ export async function evalPageFont({
   };
 
   return await evalPageBase({
-    page, binaryImage, imageRotated, pageMetricsObj, func: transformLineFont,
+    page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func: transformLineFont,
   });
 }
 
@@ -1304,14 +1340,29 @@ export async function evalPageFont({
  * @param {OcrPage} params.page
  * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
+ * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {function} params.func
  * @param {boolean} params.view
  * @returns
  */
 export async function nudgePageBase({
-  page, binaryImage, imageRotated, pageMetricsObj, func, view = false,
+  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func, view = false,
 }) {
+  // If this is not being run in a worker, clone the data so the original is not edited.
+  // This is not necessary when running in a worker, as the data is already cloned when sent to the worker.
+  if (typeof WorkerGlobalScope === 'undefined') {
+    page = structuredClone(page);
+  }
+
+  const imgDims = structuredClone(pageMetricsObj.dims);
+  const imgAngle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
+  if (imageUpscaled) {
+    ocr.scalePage(page, 2);
+    imgDims.width *= 2;
+    imgDims.height *= 2;
+  }
+
   const binaryImageBit = await getImageBitmap(binaryImage);
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
@@ -1330,7 +1381,7 @@ export async function nudgePageBase({
       if (!ocrLineJClone) return false;
 
       const evalRes = await evalWords({
-        wordsA: ocrLineJ.words, wordsB: ocrLineJClone.words, binaryImage: binaryImageBit, imageRotated, pageMetricsObj, options: { view, useAFontSize: false, useABaseline: false },
+        wordsA: ocrLineJ.words, wordsB: ocrLineJClone.words, binaryImage: binaryImageBit, angle: imgAngle, imgDims, options: { view, useAFontSize: false, useABaseline: false },
       });
 
       if (evalRes.debug) debugImg.push(evalRes.debug);

@@ -88,15 +88,28 @@ function canvasToImage(canvasCoords, imageRotated, canvasRotated, n, angle = 0) 
 function ocrToImage(ocrCoords, n, binary = false) {
   const imageRotated = binary ? imageCont.imageAll.binaryRotated[n] : imageCont.imageAll.nativeRotated[n];
 
-  // If the image was never rotated, then the xml and image coordinates are the same
-  if (!imageRotated) {
+  const imageUpscaled = binary ? imageCont.imageAll.binaryUpscaled[n] : imageCont.imageAll.nativeUpscaled[n];
+
+  // If the image was never rotated or upscaled, then the xml and image coordinates are the same
+  if (!imageRotated && !imageUpscaled) {
     return (ocrCoords);
   }
 
-  // Otherwise, we must also account for rotation applied by the canvas
-  const rotateAngle = (globalThis.pageMetricsArr[n].angle || 0) * -1;
+  if (imageUpscaled) {
+    ocrCoords.left *= 2;
+    ocrCoords.top *= 2;
+    ocrCoords.width *= 2;
+    ocrCoords.height *= 2;
+  }
 
-  return rotateBoundingBox(ocrCoords, rotateAngle, n);
+  if (imageRotated) {
+  // Otherwise, we must also account for rotation applied by the canvas
+    const rotateAngle = (globalThis.pageMetricsArr[n].angle || 0) * -1;
+
+    rotateBoundingBox(ocrCoords, rotateAngle, n);
+  }
+
+  return ocrCoords;
 }
 
 const coords = {

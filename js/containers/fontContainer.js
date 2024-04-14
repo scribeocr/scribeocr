@@ -336,6 +336,8 @@ class FontCont {
     /** @type {?FontContainerAll} */
     this.raw = null;
     /** @type {?FontContainerAll} */
+    this.optInitial = null;
+    /** @type {?FontContainerAll} */
     this.opt = null;
     /** @type {?FontContainerAll} */
     this.active = null;

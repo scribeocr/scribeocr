@@ -196,7 +196,7 @@ openFileInputElem.addEventListener('change', (event) => {
 
   importFiles(event.target.files);
   // This should run after importFiles so if that function fails the dropzone is not removed
-  zone.setAttribute('style', 'display:none');
+  showHideElem(zone.parentElement, false);
 });
 
 let highlightActiveCt = 0;
@@ -235,7 +235,7 @@ zone.addEventListener('drop', async (event) => {
   importFiles(files);
 
   // This should run after importFiles so if that function fails the dropzone is not removed
-  zone.setAttribute('style', 'display:none');
+  showHideElem(zone.parentElement, false);
 });
 
 /**
@@ -344,7 +344,7 @@ showDebugLegendElem.addEventListener('input', () => {
   } else {
     showHideElem(legendCanvasParentDivElem, true);
   }
-  setCanvasWidthHeightZoom(globalThis.state.imgDims, false);
+  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, false);
 });
 
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
@@ -441,7 +441,22 @@ document.getElementById('addWord')?.addEventListener('click', addWordClick);
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
-optimizeFontElem.addEventListener('click', () => { optimizeFontClick(optimizeFontElem.checked); });
+optimizeFontElem.addEventListener('click', () => {
+  // This button does nothing if the debug option optimizeFontDebugElem is enabled.
+  // This approach is used rather than disabling the button, as `optimizeFontElem.disabled` is checked in other functions
+  // to determine whether font optimization is enabled.
+  if (!optimizeFontDebugElem.checked) return;
+  optimizeFontClick(optimizeFontElem.checked);
+});
+
+const optimizeFontDebugElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFontDebug'));
+optimizeFontDebugElem.addEventListener('click', () => {
+  if (optimizeFontDebugElem.checked) {
+    optimizeFontClick(true, true);
+  } else {
+    optimizeFontClick(optimizeFontElem.checked);
+  }
+});
 
 const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
 const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
@@ -489,7 +504,7 @@ document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', ()
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
   if (showConflictsElem.checked) showDebugImages();
-  setCanvasWidthHeightZoom(globalThis.state.imgDims, showConflictsElem.checked, false);
+  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked, false);
 });
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
@@ -999,6 +1014,7 @@ async function compareGroundTruthClick(n) {
         pageB: globalThis.ocrAll['Ground Truth'][i],
         binaryImage: imgBinaryStr,
         imageRotated: imageCont.imageAll.binaryRotated[i],
+        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -1022,6 +1038,7 @@ async function compareGroundTruthClick(n) {
     pageB: globalThis.ocrAll['Ground Truth'][n],
     binaryImage: imgBinaryStr,
     imageRotated: imageCont.imageAll.binaryRotated[n],
+    imageUpscaled: imageCont.imageAll.binaryUpscaled[n],
     pageMetricsObj: globalThis.pageMetricsArr[n],
     options: compOptions,
   });
@@ -1263,6 +1280,7 @@ function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
       pageB: pageObjLSTM,
       binaryImage: imgBinaryStr,
       imageRotated: imageCont.imageAll.binaryRotated[n],
+      imageUpscaled: imageCont.imageAll.binaryUpscaled[n],
       pageMetricsObj: globalThis.pageMetricsArr[n],
       options: compOptions,
     });
@@ -1966,7 +1984,6 @@ async function readLayoutFile(file) {
  * @property {any} promiseResolve
  * @property {Promise<boolean>} recognizeAllPromise
  * @property {boolean} downloadReady - whether download feature can be enabled yet
- * @property {dims} imgDims -
  * @property {number} canvasDimsN - Page number that the current canvas dimensions are based off of.
  */
 /** @type {state} */
@@ -1976,7 +1993,6 @@ globalThis.state = {
   promiseResolve: undefined,
   recognizeAllPromise: Promise.resolve(true),
   downloadReady: false,
-  imgDims: { width: 500, height: 500 },
   canvasDimsN: -1,
 };
 
@@ -2008,7 +2024,7 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false,
   if (enableConflictsViewer) {
     const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
 
-    debugCanvasParentDivElem.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll`);
+    debugCanvasParentDivElem.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll;z-index:10`);
   } else {
     showHideElem(debugCanvasParentDivElem, false);
   }
@@ -2063,37 +2079,6 @@ export async function renderPageQueue(n, loadXML = true) {
     }
   }
 
-  // Get image dimensions from OCR data if present; otherwise get dimensions of images directly
-  let imgDims;
-  if (globalThis.inputDataModes.xmlMode[n] || globalThis.inputDataModes.pdfMode) {
-    imgDims = globalThis.pageMetricsArr[n].dims;
-  } else {
-    imgDims = await imageCont.getDims(n);
-  }
-  globalThis.state.imgDims = imgDims;
-
-  // Calculate options for background image and overlay
-  if (globalThis.inputDataModes.xmlMode[n]) {
-    cp.backgroundOpts.originX = 'center';
-    cp.backgroundOpts.originY = 'center';
-
-    cp.backgroundOpts.left = imgDims.width * 0.5;
-    cp.backgroundOpts.top = imgDims.height * 0.5;
-
-    // let marginPx = Math.round(imgDims.width * leftGlobal);
-    if (autoRotateCheckboxElem.checked) {
-      cp.backgroundOpts.angle = globalThis.pageMetricsArr[n].angle * -1 ?? 0;
-    } else {
-      cp.backgroundOpts.angle = 0;
-    }
-  } else {
-    cp.backgroundOpts.originX = 'left';
-    cp.backgroundOpts.originY = 'top';
-
-    cp.backgroundOpts.left = 0;
-    cp.backgroundOpts.top = 0;
-  }
-
   let renderNum;
   // Clear canvas if objects (anything but the background) exists
   if (canvas.getObjects().length) {
@@ -2104,7 +2089,7 @@ export async function renderPageQueue(n, loadXML = true) {
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
   if (globalThis.state.canvasDimsN !== n) {
-    setCanvasWidthHeightZoom(imgDims, showConflictsElem.checked, true);
+    setCanvasWidthHeightZoom(globalThis.pageMetricsArr[n].dims, showConflictsElem.checked, true);
 
     globalThis.state.canvasDimsN = n;
   }
@@ -2117,14 +2102,9 @@ export async function renderPageQueue(n, loadXML = true) {
   cp.renderNum += 1;
   renderNum = cp.renderNum;
 
-  // const backgroundImageStr = colorModeElem.value === 'binary' ? await Promise.resolve(imageCont.imageAll.binaryStr[n]) : await Promise.resolve(imageCont.imageAll.nativeStr[n]);
-  // const backgroundImageElem = new Image();
-  // // backgroundImageElem.src = backgroundImageStr;
-  // await loadImageElem(backgroundImageStr, backgroundImageElem);
-
   await renderCachePagesBrowser(cp.n, cp.n);
 
-  const backgroundImageElem = colorModeElem.value === 'binary' ? await imageCache.binary[n] : await imageCache.native[n];
+  const backgroundImageElem = colorModeElem.value === 'binary' ? await globalThis.imageCache.binary[n] : await globalThis.imageCache.native[n];
 
   cp.backgroundImage = new fabric.Image(backgroundImageElem, { objectCaching: false });
   if (cp.n === n && cp.renderNum === renderNum) {
@@ -2254,8 +2234,13 @@ async function renderCachePagesAheadBehindBrowser() {
 
 globalThis.displayPage = displayPage;
 
-async function optimizeFontClick(value) {
-  await enableDisableFontOpt(value);
+/**
+ *
+ * @param {boolean} enable
+ * @param {boolean} [useInitial=false]
+ */
+async function optimizeFontClick(enable, useInitial = false) {
+  await enableDisableFontOpt(enable, useInitial);
 
   renderPageQueue(cp.n);
 }
@@ -2317,7 +2302,7 @@ initGeneralScheduler();
  * and (2) no images are provided to compare against.
  */
 export async function runFontOptimizationBrowser(ocrArr) {
-  const optImproved = await runFontOptimization(ocrArr, imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated);
+  const optImproved = await runFontOptimization(ocrArr, imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated, imageCont.imageAll.binaryUpscaled);
   if (optImproved) {
     optimizeFontElem.disabled = false;
     optimizeFontElem.checked = true;

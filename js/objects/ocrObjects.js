@@ -116,6 +116,71 @@ export function OcrChar(text, bbox) {
 
 /**
  *
+ * @param {OcrChar} char - The character to scale.
+ * @param {number} scale - The scale factor.
+ */
+function scaleChar(char, scale) {
+  char.bbox.left *= scale;
+  char.bbox.top *= scale;
+  char.bbox.right *= scale;
+  char.bbox.bottom *= scale;
+}
+
+/**
+ *
+ * @param {OcrWord} word - The word to scale.
+ * @param {number} scale - The scale factor.
+ */
+function scaleWord(word, scale) {
+  word.bbox.left *= scale;
+  word.bbox.top *= scale;
+  word.bbox.right *= scale;
+  word.bbox.bottom *= scale;
+
+  if (word.chars) {
+    for (const char of word.chars) {
+      scaleChar(char, scale);
+    }
+  }
+}
+
+/**
+ *
+ * @param {OcrLine} line - The page to scale.
+ * @param {number} scale - The scale factor.
+ */
+function scaleLine(line, scale) {
+  line.bbox.left *= scale;
+  line.bbox.top *= scale;
+  line.bbox.right *= scale;
+  line.bbox.bottom *= scale;
+
+  for (const word of line.words) {
+    scaleWord(word, scale);
+  }
+
+  if (line.ascHeight) line.ascHeight *= scale;
+  if (line.xHeight) line.xHeight *= scale;
+
+  line.baseline[1] *= scale;
+}
+
+/**
+ *
+ * @param {OcrPage} page - The page to scale.
+ * @param {number} scale - The scale factor.
+ */
+function scalePage(page, scale) {
+  for (const line of page.lines) {
+    scaleLine(line, scale);
+  }
+
+  page.dims.width *= scale;
+  page.dims.height *= scale;
+}
+
+/**
+ *
  * @param {OcrLine} lineObj
  */
 export const getPrevLine = (lineObj) => {
@@ -503,6 +568,8 @@ const ocr = {
   rotateLine,
   deletePageWords,
   replaceLigatures,
+  scaleLine,
+  scalePage,
   escapeXml,
 };
 

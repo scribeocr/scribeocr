@@ -155,8 +155,11 @@ export async function calcCharSpacing(wordText, fontOpentype, fontSize, actualWi
 
 /**
  * Calculate font size for word.
- * Returns null for any word where the default size for the line should be used.
- * This function differs from accessing the `word.font` property in that
+ * The value will be one of:
+ * (1) a manually-set value for that word,
+ * (2) a calculated value for superscript/dropcap words,
+ * (3) the line font size,
+ * (4) a hard-coded default value.
  * @param {OcrWord} word
  */
 export const calcWordFontSize = async (word) => {
@@ -174,7 +177,11 @@ export const calcWordFontSize = async (word) => {
     return await getFontSize(fontOpentype, word.bbox.bottom - word.bbox.top, word.text);
   // If the word is a dropcap, then font size is uniquely calculated for this word
   }
-  return await calcLineFontSize(word.line);
+  const lineFontSize = await calcLineFontSize(word.line);
+
+  if (lineFontSize) return lineFontSize;
+
+  return 12;
 };
 
 // Font size, unlike other characteristics (e.g. bbox and baseline), does not come purely from pixels on the input image.

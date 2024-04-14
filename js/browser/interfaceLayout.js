@@ -537,7 +537,7 @@ export function updateDataPreview() {
 
   const extraCols = [];
   if (addFilenameMode) {
-    if (inputDataModes.pdfMode) {
+    if (globalThis.inputDataModes.pdfMode) {
       extraCols.push(globalThis.inputFileNames[0]);
     } else {
       extraCols.push(globalThis.inputFileNames[cp.n]);

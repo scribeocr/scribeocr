@@ -32,17 +32,31 @@ export async function evalSelectedLine() {
 
   const img = await imageCont.getBinary(cp.n);
 
+  const pageMetricsObj = globalThis.pageMetricsArr[cp.n];
+  const imageRotated = imageCont.imageAll.binaryRotated[cp.n];
+  const imageUpscaled = imageCont.imageAll.binaryUpscaled[cp.n];
+
+  const lineObj = ocr.cloneLine(word0.line);
+
+  const imgDims = structuredClone(pageMetricsObj.dims);
+  const imgAngle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
+  if (imageUpscaled) {
+    ocr.scaleLine(lineObj, 2);
+    imgDims.width *= 2;
+    imgDims.height *= 2;
+  }
+
   const res = await globalThis.gs?.evalWords({
-    wordsA: word0.line.words,
+    wordsA: lineObj.words,
     binaryImage: img,
-    imageRotated: imageCont.imageAll.binaryRotated[cp.n],
-    pageMetricsObj: pageMetricsArr[cp.n],
+    angle: imgAngle,
+    imgDims,
     options: { view: true },
   });
 
   await drawDebugImages({ ctx: globalThis.ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
 
-  setCanvasWidthHeightZoom(globalThis.state.imgDims, true, false);
+  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, true, false);
 }
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));

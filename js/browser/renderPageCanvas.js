@@ -47,6 +47,9 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
     canvas.setOverlayImage(imgInstance, canvas.renderAll.bind(canvas), {
       originX: 'left',
       originY: 'top',
+      // Scale should account for cases where an upscaled version was used to create the visualization.
+      scaleX: globalThis.pageMetricsArr[cp.n].dims.width / imgInstance.width,
+      scaleY: globalThis.pageMetricsArr[cp.n].dims.height / imgInstance.height,
     });
     const offscreenCanvasLegend = globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvasLegend;
     if (offscreenCanvasLegend) {

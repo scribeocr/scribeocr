@@ -1,5 +1,5 @@
 import {
-  FontContainerFont, loadFontContainerAll, fontAll, checkMultiFontMode,
+  FontContainerFont, loadFontContainerAll, fontAll, checkMultiFontMode, FontContainerAll,
 } from './containers/fontContainer.js';
 
 /**
@@ -85,12 +85,15 @@ export function loadChiSimFont() {
 /**
  *
  * @param {boolean} enable
+ * @param {boolean} [useInitial=false]
  */
-export async function enableDisableFontOpt(enable) {
+export async function enableDisableFontOpt(enable, useInitial = false) {
   const browserMode = typeof process === 'undefined';
 
   // Enable/disable optimized font
-  if (enable && fontAll.opt) {
+  if (enable && useInitial && fontAll.optInitial) {
+    fontAll.active = fontAll.optInitial;
+  } else if (enable && fontAll.opt) {
     fontAll.active = fontAll.opt;
   } else {
     fontAll.active = fontAll.raw;

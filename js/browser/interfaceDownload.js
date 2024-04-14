@@ -247,7 +247,7 @@ export async function handleDownload() {
 
         // If the input is a series of images, those images need to be inserted into a new pdf
       } else if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) {
-        imageCont.renderImageRange(minValue, maxValue, null, autoRotateCheckboxElem.checked, downloadProgress);
+        imageCont.renderImageRange(minValue, maxValue, null, autoRotateCheckboxElem.checked, false, downloadProgress);
         const imgArr = colorModeElem.value === 'binary' ? await Promise.all(imageCont.imageAll.binaryStr) : await Promise.all(imageCont.imageAll.nativeStr);
         await w.overlayTextImageStart({ humanReadable: humanReadablePDFElem.checked });
         for (let i = minValue; i < maxValue + 1; i++) {

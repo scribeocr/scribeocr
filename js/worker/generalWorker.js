@@ -157,6 +157,7 @@ export const recognizeAndConvert = async ({
 export const recognizeAndConvert2 = async ({
   image, options, output, n, pageDims, knownAngle = null,
 }, id) => {
+  options.upscale = false;
   // The function `worker.recognize2` returns 2 promises.
   // If both Legacy and LSTM data are requested, only the second promise will contain the LSTM data.
   // This allows the Legacy data to be used immediately, which halves the amount of delay between user
@@ -172,14 +173,14 @@ export const recognizeAndConvert2 = async ({
   if (options.lstm && options.legacy) {
     const legacyBlocks = /** @type {Array<import('tesseract.js').Block>} */(res0.data.blocks);
     resLegacy = await convertPageBlocks({
-      ocrBlocks: legacyBlocks, n, pageDims, rotateAngle: angle, keepItalic: true,
+      ocrBlocks: legacyBlocks, n, pageDims, rotateAngle: angle, keepItalic: true, upscale: options.upscale,
     });
     (async () => {
       const res1 = await resArr[1];
 
       const lstmBlocks = /** @type {Array<import('tesseract.js').Block>} */(res1.data.blocks);
       resLSTM = await convertPageBlocks({
-        ocrBlocks: lstmBlocks, n, pageDims, rotateAngle: angle, keepItalic: false,
+        ocrBlocks: lstmBlocks, n, pageDims, rotateAngle: angle, keepItalic: false, upscale: options.upscale,
       });
 
       const xB = { recognize: res1.data, convert: { legacy: null, lstm: resLSTM } };
@@ -189,12 +190,12 @@ export const recognizeAndConvert2 = async ({
   } else if (!options.lstm && options.legacy) {
     const legacyBlocks = /** @type {Array<import('tesseract.js').Block>} */(res0.data.blocks);
     resLegacy = await convertPageBlocks({
-      ocrBlocks: legacyBlocks, n, pageDims, rotateAngle: angle, keepItalic: true,
+      ocrBlocks: legacyBlocks, n, pageDims, rotateAngle: angle, keepItalic: true, upscale: options.upscale,
     });
   } else if (options.lstm && !options.legacy) {
     const lstmBlocks = /** @type {Array<import('tesseract.js').Block>} */(res0.data.blocks);
     resLSTM = await convertPageBlocks({
-      ocrBlocks: lstmBlocks, n, pageDims, rotateAngle: angle, keepItalic: false,
+      ocrBlocks: lstmBlocks, n, pageDims, rotateAngle: angle, keepItalic: false, upscale: options.upscale,
     });
   }
 
