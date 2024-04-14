@@ -5,7 +5,7 @@ import ocr from '../objects/ocrObjects.js';
 import { saveAs } from '../miscUtils.js';
 import { imageStrToBlob } from '../imageUtils.js';
 import { cp, setCanvasWidthHeightZoom } from '../../main.js';
-import { imageCont } from '../containers/imageContainer.js';
+import { imageCache } from '../containers/imageContainer.js';
 import { drawDebugImages } from '../debug.js';
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
@@ -30,17 +30,15 @@ export async function evalSelectedLine() {
 
   if (!word0) return;
 
-  const img = await imageCont.getBinary(cp.n);
+  const imageBinary = await imageCache.getBinary(cp.n);
 
   const pageMetricsObj = globalThis.pageMetricsArr[cp.n];
-  const imageRotated = imageCont.imageAll.binaryRotated[cp.n];
-  const imageUpscaled = imageCont.imageAll.binaryUpscaled[cp.n];
 
   const lineObj = ocr.cloneLine(word0.line);
 
   const imgDims = structuredClone(pageMetricsObj.dims);
-  const imgAngle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
-  if (imageUpscaled) {
+  const imgAngle = imageBinary.rotated ? (pageMetricsObj.angle || 0) : 0;
+  if (imageBinary.upscaled) {
     ocr.scaleLine(lineObj, 2);
     imgDims.width *= 2;
     imgDims.height *= 2;
@@ -48,7 +46,7 @@ export async function evalSelectedLine() {
 
   const res = await globalThis.gs?.evalWords({
     wordsA: lineObj.words,
-    binaryImage: img,
+    binaryImage: imageBinary.src,
     angle: imgAngle,
     imgDims,
     options: { view: true },
@@ -69,17 +67,11 @@ export function downloadCanvas() {
 }
 
 export async function downloadImage(n) {
-  const imageStr = colorModeElem.value === 'binary' ? await Promise.resolve(imageCont.imageAll.binaryStr[n]) : await Promise.resolve(imageCont.imageAll.nativeStr[n]);
+  const image = colorModeElem.value === 'binary' ? await imageCache.getBinary(n) : await imageCache.getNative(n);
   const filenameBase = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}`;
 
-  const fileType = imageStr.match(/^data:image\/([a-z]+)/)?.[1];
-  if (!fileType || !['png', 'jpeg'].includes(fileType)) {
-    console.log(`Filetype ${fileType} is not jpeg/png; skipping.`);
-    return;
-  }
-
-  const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${fileType}`;
-  const imgBlob = imageStrToBlob(imageStr);
+  const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
+  const imgBlob = imageStrToBlob(image.src);
   saveAs(imgBlob, fileName);
 }
 
@@ -88,8 +80,8 @@ export async function downloadCurrentImage() {
 }
 
 export async function downloadAllImages() {
-  imageCont.renderImageRange(0, imageCont.imageAll.nativeStr.length - 1);
-  for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+  const binary = colorModeElem.value === 'binary';
+  for (let i = 0; i < imageCache.pageCount; i++) {
     await downloadImage(i);
     // Not all files will be downloaded without a delay between downloads
     await new Promise((r) => setTimeout(r, 200));

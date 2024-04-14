@@ -6,7 +6,7 @@ import {
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
-import { imageCont } from './containers/imageContainer.js';
+import { imageCache } from './containers/imageContainer.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
@@ -48,8 +48,8 @@ globalThis.visInstructions = [];
  */
 export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false, langArr = ['eng']) {
   // Render all PDF pages to PNG if needed
-  // Set `colorMode` such that binarized images are not created because of this step.
-  if (inputDataModes.pdfMode) await imageCont.renderImageRange(0, imageCont.pageCount - 1, colorModeElem.value);
+  // This step should not create binarized images as they will be created by Tesseract during recognition.
+  if (inputDataModes.pdfMode) await imageCache.preRenderRange(0, imageCache.pageCount - 1, false);
 
   if (legacy) {
     const oemText = 'Tesseract Legacy';
@@ -82,7 +82,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   // however this function only returns after all recognition is completed.
   // This provides no performance benefit in absolute terms, however halves the amount of time the user has to wait
   // before seeing the initial recognition results.
-  const inputPages = [...Array(imageCont.imageAll.nativeStr.length).keys()];
+  const inputPages = [...Array(imageCache.pageCount).keys()];
   const promisesA = [];
   const resolvesA = [];
   const promisesB = [];

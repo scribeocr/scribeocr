@@ -1,17 +1,15 @@
 import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js';
 import { optimizeFontContainerAll, fontAll } from './containers/fontContainer.js';
 import { fontMetricsObj } from './containers/miscContainer.js';
+import { imageCache } from './containers/imageContainer.js';
 
 /**
  *
  * @param {FontContainerFamily} font
  * @param {Array<OcrPage>} pageArr
- * @param {Array<ImageBitmap>} binaryImageArr
- * @param {Array<boolean>} binaryRotatedArr
- * @param {Array<boolean>} binaryUpscaledArr
  * @param {number} n - Number of words to compare
  */
-export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotatedArr, binaryUpscaledArr, n = 500) {
+export async function evalPageFonts(font, pageArr, n = 500) {
   const browserMode = typeof process === 'undefined';
 
   let metricTotal = 0;
@@ -19,6 +17,8 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
 
   for (let i = 0; i < pageArr.length; i++) {
     if (wordsTotal > n) break;
+
+    const imageI = await imageCache.getBinary(i);
 
     // The Node.js canvas package does not currently support worke threads
     // https://github.com/Automattic/node-canvas/issues/1394
@@ -29,9 +29,7 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
       res = await evalPageFont({
         font: font.normal.family,
         page: pageArr[i],
-        binaryImage: binaryImageArr[i],
-        imageRotated: binaryRotatedArr[i],
-        imageUpscaled: binaryUpscaledArr[i],
+        binaryImage: imageI,
         pageMetricsObj: globalThis.pageMetricsArr[i],
       });
       // Browser case
@@ -39,9 +37,7 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
       res = await globalThis.gs.evalPageFont({
         font: font.normal.family,
         page: pageArr[i],
-        binaryImage: binaryImageArr[i],
-        imageRotated: binaryRotatedArr[i],
-        imageUpscaled: binaryUpscaledArr[i],
+        binaryImage: imageI,
         pageMetricsObj: globalThis.pageMetricsArr[i],
       });
     }
@@ -55,20 +51,15 @@ export async function evalPageFonts(font, pageArr, binaryImageArr, binaryRotated
 
 /**
 * @param {Array<OcrPage>} pageArr
-* @param {Array<Promise<ImageBitmap>>} binaryImageArr
-* @param {Array<boolean>} binaryRotatedArr
-* @param {Array<boolean>} binaryUpscaledArr
 */
-export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr, binaryUpscaledArr) {
+export async function evaluateFonts(pageArr) {
   const fontActive = fontAll.get('active');
 
   const debug = false;
 
-  const binaryImageArrRes = await Promise.all(binaryImageArr);
-
   const sansMetrics = {
-    Carlito: await evalPageFonts(fontActive.Carlito, pageArr, binaryImageArrRes, binaryRotatedArr, binaryUpscaledArr),
-    NimbusSans: await evalPageFonts(fontActive.NimbusSans, pageArr, binaryImageArrRes, binaryRotatedArr, binaryUpscaledArr),
+    Carlito: await evalPageFonts(fontActive.Carlito, pageArr),
+    NimbusSans: await evalPageFonts(fontActive.NimbusSans, pageArr),
   };
 
   let minKeySans = 'NimbusSans';
@@ -83,10 +74,10 @@ export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr, b
   }
 
   const serifMetrics = {
-    Century: await evalPageFonts(fontActive.Century, pageArr, binaryImageArrRes, binaryRotatedArr, binaryUpscaledArr),
-    Palatino: await evalPageFonts(fontActive.Palatino, pageArr, binaryImageArrRes, binaryRotatedArr, binaryUpscaledArr),
-    Garamond: await evalPageFonts(fontActive.Garamond, pageArr, binaryImageArrRes, binaryRotatedArr, binaryUpscaledArr),
-    NimbusRomNo9L: await evalPageFonts(fontActive.NimbusRomNo9L, pageArr, binaryImageArrRes, binaryRotatedArr, binaryUpscaledArr),
+    Century: await evalPageFonts(fontActive.Century, pageArr),
+    Palatino: await evalPageFonts(fontActive.Palatino, pageArr),
+    Garamond: await evalPageFonts(fontActive.Garamond, pageArr),
+    NimbusRomNo9L: await evalPageFonts(fontActive.NimbusRomNo9L, pageArr),
   };
 
   let minKeySerif = 'NimbusRomNo9L';
@@ -113,16 +104,13 @@ export async function evaluateFonts(pageArr, binaryImageArr, binaryRotatedArr, b
  * and returns `true` if sans or serif could be improved through optimization.
  *
  * @param {Array<OcrPage>} ocrArr - Array of OCR pages to use for font optimization.
- * @param {?Array<Promise<ImageBitmap>>} imageArr - Array of binary images to use for validating optimized fonts.
- * @param {?Array<boolean>} imageRotatedArr - Array of booleans indicating whether each image in `imageArr` has been rotated.
- * @param {?Array<boolean>} imageUpscaledArr - Array of booleans indicating whether each image in `imageArr` has been upscaled.
  *
  * This function should still be run, even if no character-level OCR data is present,
  * as it is responsible for picking the correct default sans/serif font.
  * The only case where this function does nothing is when (1) there is no character-level OCR data
  * and (2) no images are provided to compare against.
  */
-export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr, imageUpscaledArr) {
+export async function runFontOptimization(ocrArr) {
   const browserMode = typeof process === 'undefined';
 
   const fontRaw = fontAll.get('raw');
@@ -138,9 +126,9 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr, ima
   }
 
   // If image data exists, select the correct font by comparing to the image.
-  if (imageArr && imageRotatedArr && imageUpscaledArr && imageArr[0]) {
+  if (imageCache.inputModes.image || imageCache.inputModes.pdf) {
     // Evaluate default fonts using up to 5 pages.
-    const pageNum = Math.min(imageArr.length, 5);
+    const pageNum = Math.min(imageCache.pageCount, 5);
 
     // Set raw font in workers
     await enableDisableFontOpt(false);
@@ -151,8 +139,7 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr, ima
       await initCanvasNode();
     }
 
-    const evalRaw = await evaluateFonts(ocrArr.slice(0, pageNum), imageArr.slice(0, pageNum),
-      imageRotatedArr.slice(0, pageNum), imageUpscaledArr.slice(0, pageNum));
+    const evalRaw = await evaluateFonts(ocrArr.slice(0, pageNum));
 
     if (globalThis.df) globalThis.df.evalRaw = evalRaw;
 
@@ -160,8 +147,7 @@ export async function runFontOptimization(ocrArr, imageArr, imageRotatedArr, ima
       // Enable optimized fonts
       await enableDisableFontOpt(true);
 
-      const evalOpt = await evaluateFonts(ocrArr.slice(0, pageNum), imageArr.slice(0, pageNum),
-        imageRotatedArr.slice(0, pageNum), imageUpscaledArr.slice(0, pageNum));
+      const evalOpt = await evaluateFonts(ocrArr.slice(0, pageNum));
 
       if (globalThis.df) globalThis.df.evalOpt = evalOpt;
 

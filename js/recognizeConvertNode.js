@@ -1,11 +1,11 @@
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
-import { imageCont } from './containers/imageContainer.js';
+import { imageCache } from './containers/imageContainer.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
   await globalThis.generalScheduler.ready;
 
-  const inputPages = [...Array(imageCont.imageAll.nativeStr.length).keys()];
+  const inputPages = [...Array(imageCache.pageCount).keys()];
   const promiseArr = [];
   for (const x of inputPages) {
     promiseArr.push(recognizePage(globalThis.gs, x, legacy, lstm, false, {}, debug).then(async (resArr) => {

@@ -8,7 +8,7 @@ import Worker from 'web-worker';
 import Tesseract from 'tesseract.js';
 import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
 import { runFontOptimization } from '../js/fontEval.js';
-import { imageCont } from '../js/containers/imageContainer.js';
+import { imageCache, ImageWrapper, imageUtils } from '../js/containers/imageContainer.js';
 import { renderHOCR } from '../js/exportRenderHOCR.js';
 
 import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
@@ -168,16 +168,19 @@ async function main(func, params) {
     fileData = await fs.readFileSync(params.pdfFile);
 
     if (backgroundPDF) {
-      await imageCont.openMainPDF(fileData, false, !params.ocrFile);
-      pageCountImage = imageCont.pageCount;
+      await imageCache.openMainPDF(fileData, false, !params.ocrFile);
+      pageCountImage = imageCache.pageCount;
     } else {
       pageCountImage = 1;
       const format = params.pdfFile.match(/jpe?g$/i) ? 'jpeg' : 'png';
-      imageCont.imageAll.nativeSrcFormat[0] = format;
-      imageCont.imageAll.nativeSrcStr[0] = `data:image/${format};base64,${fileData.toString('base64')}`;
-      imageCont.imageAll.nativeStr[0] = imageCont.imageAll.nativeSrcStr[0];
+
+      const imgWrapper = new ImageWrapper(0, `data:image/${format};base64,${fileData.toString('base64')}`, format, 'native', false, false);
+
+      imageCache.nativeSrc[0] = imgWrapper;
+
       if (!globalThis.hocrCurrentRaw) {
-        globalThis.pageMetricsArr[0] = new PageMetrics(await imageCont.getDims(0));
+        const imageDims = await imageUtils.getDims(imgWrapper);
+        globalThis.pageMetricsArr[0] = new PageMetrics(imageDims);
       }
     }
   }
@@ -251,11 +254,11 @@ async function main(func, params) {
   const runRecognition = robustConfMode || func === 'eval' || func === 'debug';
   const renderPageN = runRecognition ? pageCount : fontEvalPageN;
 
-  if (backgroundPDF) await imageCont.renderImageRange(0, renderPageN - 1);
+  if (backgroundPDF) await imageCache.preRenderRange(0, renderPageN - 1, false);
 
   // If recognition is not being run, binarize and rotate the images now.
   // If recognition is being run, this will happen at that step.
-  if (!runRecognition) await imageCont.renderImageRange(0, renderPageN - 1, 'binary');
+  if (!runRecognition) await imageCache.preRenderRange(0, renderPageN - 1, true);
 
   if (func === 'debug') {
     const writeCanvasNodeAll = (await import('../../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
@@ -277,7 +280,7 @@ async function main(func, params) {
     // Terminate all workers
     await tessWorker.terminate();
     await globalThis.generalScheduler.terminate();
-    imageCont.clear();
+    imageCache.clear();
 
     return output;
   }
@@ -286,7 +289,7 @@ async function main(func, params) {
   // (2) Use Tesseract Legacy font data when (1) recognition is being run anyway and (2) no font metrics data exists already.
   if (robustConfMode || func === 'eval' || func === 'recognize') {
     // Render all pages since all pages are being recognized.
-    await imageCont.renderImageRange(0, pageCount - 1);
+    await imageCache.preRenderRange(0, pageCount - 1, false);
 
     const time2a = Date.now();
     await recognizeAllPagesNode(true, true, true);
@@ -299,21 +302,19 @@ async function main(func, params) {
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Legacy'];
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+    for (let i = 0; i < imageCache.pageCount; i++) {
       /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         evalConflicts: false,
       };
 
-      const imgBinaryStr = await imageCont.getBinary(i);
+      const imgBinary = await imageCache.getBinary(i);
 
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgBinaryStr,
-        imageRotated: imageCont.imageAll.binaryRotated[i],
-        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+        binaryImage: imgBinary,
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -324,12 +325,12 @@ async function main(func, params) {
     // Switching active data here for consistency with browser version.
     if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Combined Temp'];
     setFontMetricsAll(globalThis.ocrAll['Tesseract Combined Temp']);
-    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp'], imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated, imageCont.imageAll.binaryUpscaled);
+    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp']);
 
     output.text = '';
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+    for (let i = 0; i < imageCache.pageCount; i++) {
       /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
@@ -338,14 +339,12 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgBinaryStr = await imageCont.getBinary(i);
+      const imgBinary = await imageCache.getBinary(i);
 
       const res = await compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgBinaryStr,
-        imageRotated: imageCont.imageAll.binaryRotated[i],
-        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+        binaryImage: imgBinary,
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -364,12 +363,12 @@ async function main(func, params) {
     }
   } else {
     setFontMetricsAll(globalThis.ocrAll.active);
-    await runFontOptimization(globalThis.ocrAll.active, imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated, imageCont.imageAll.binaryUpscaled);
+    await runFontOptimization(globalThis.ocrAll.active);
   }
 
   if (robustConfMode || func === 'eval') {
     if (debugMode) compLogs.Combined = [];
-    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+    for (let i = 0; i < imageCache.pageCount; i++) {
       /** @type {Parameters<compareHOCR>[0]['options']} */
       const compOptions = {
         mode: 'stats',
@@ -381,7 +380,7 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgBinaryStr = await imageCont.getBinary(i);
+      const imgBinary = await imageCache.getBinary(i);
 
       // In "check" mode, the provided OCR is being compared against OCR from the built-in engine.
       // In "eval" mode, the OCR from the built-in engine is compared against provided ground truth OCR data.
@@ -391,9 +390,7 @@ async function main(func, params) {
       const res = await compareHOCR({
         pageA,
         pageB,
-        binaryImage: imgBinaryStr,
-        imageRotated: imageCont.imageAll.binaryRotated[i],
-        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+        binaryImage: imgBinary,
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -426,7 +423,7 @@ async function main(func, params) {
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
 
-    const muPDFScheduler = await imageCont.initMuPDFScheduler(null, 1);
+    const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
     w = muPDFScheduler.workers[0];
 
     const pdfOverlay = await w.openDocument(pdfEnc.buffer, 'document.pdf');
@@ -464,7 +461,7 @@ async function main(func, params) {
   // Terminate all workers
   await tessWorker.terminate();
   await globalThis.generalScheduler.terminate();
-  imageCont.clear();
+  imageCache.clear();
 
   return output;
 }

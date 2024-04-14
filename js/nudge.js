@@ -1,9 +1,9 @@
 import { showDebugImages } from '../main.js';
-import { imageCont } from './containers/imageContainer.js';
+import { imageCache } from './containers/imageContainer.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images
-  await imageCont.renderImageRange(0, imageCont.imageAll.nativeStr.length - 1, 'binary');
+  await imageCache.preRenderRange(0, imageCache.pageCount - 1, true);
 
   let metricSum = 0;
   let wordsTotal = 0;
@@ -13,13 +13,11 @@ export async function evalOverlapDocument() {
   for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
     const ocrPageI = globalThis.ocrAll.active[i];
 
-    const imgBinaryStr = await imageCont.getBinary(i);
+    const imgBinary = await imageCache.getBinary(i);
 
     promiseArr.push(globalThis.gs.evalPage({
       page: ocrPageI,
-      binaryImage: imgBinaryStr,
-      imageRotated: imageCont.imageAll.binaryRotated[i],
-      imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+      binaryImage: imgBinary,
       pageMetricsObj: pageMetricsArr[i],
     }));
   }
@@ -43,7 +41,7 @@ globalThis.evalOverlapDocument = evalOverlapDocument;
 // Should probably be either a callback or browser-only wrapper function.
 export async function nudgeDoc(func, view = false) {
   // Render binarized versions of images
-  await imageCont.renderImageRange(0, imageCont.imageAll.nativeStr.length - 1, 'binary');
+  await imageCache.preRenderRange(0, imageCache.pageCount - 1, true);
 
   let improveCt = 0;
   let totalCt = 0;
@@ -55,10 +53,10 @@ export async function nudgeDoc(func, view = false) {
   for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
     const ocrPageI = globalThis.ocrAll.active[i];
 
-    const imgBinaryStr = await imageCont.getBinary(i);
+    const imgBinary = await imageCache.getBinary(i);
 
     promiseArr.push(globalThis.generalScheduler.addJob(func, {
-      page: ocrPageI, binaryImage: imgBinaryStr, imageRotated: imageCont.imageAll.binaryRotated[i], pageMetricsObj: pageMetricsArr[i], view,
+      page: ocrPageI, binaryImage: imgBinary, pageMetricsObj: pageMetricsArr[i], view,
     }).then((res) => {
       globalThis.ocrAll.active[i] = res.data.page;
       improveCt += res.data.improveCt;

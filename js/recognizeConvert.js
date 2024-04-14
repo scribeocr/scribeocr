@@ -1,12 +1,12 @@
 import { parseDebugInfo } from './fontStatistics.js';
-import { imageCont } from './containers/imageContainer.js';
+import { imageCache, ImageWrapper } from './containers/imageContainer.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
  *
  * @param {number} n - Page number to recognize.
  */
-export const calcRecognizeRotateArgs = (n, areaMode) => {
+export const calcRecognizeRotateArgs = async (n, areaMode) => {
   // Whether the binary image should be rotated internally by Tesseract
   // This should always be true (Tesseract results are horrible without auto-rotate) but kept as a variable for debugging purposes.
   const rotate = true;
@@ -22,8 +22,10 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
   // Whether the page angle is already known (or needs to be detected)
   const angleKnown = typeof (angle) === 'number';
 
+  const nativeN = await imageCache.getNative(n);
+
   // Calculate additional rotation to apply to page.  Rotation should not be applied if page has already been rotated.
-  const rotateDegrees = rotate && angle && Math.abs(angle || 0) > 0.05 && !imageCont.imageAll.nativeRotated[n] ? angle * -1 : 0;
+  const rotateDegrees = rotate && angle && Math.abs(angle || 0) > 0.05 && !nativeN.rotated ? angle * -1 : 0;
   const rotateRadians = rotateDegrees * (Math.PI / 180);
 
   let saveNativeImage = false;
@@ -31,9 +33,10 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
 
   // Images are not saved when using "recognize area" as these intermediate images are cropped.
   if (!areaMode) {
+    const binaryN = await imageCache.binary[n];
     // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
-    if (autoRotate && !imageCont.imageAll.nativeRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveNativeImage = true;
-    if (!imageCont.imageAll.binaryStr[n] || autoRotate && !imageCont.imageAll.binaryRotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
+    if (autoRotate && !nativeN.rotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveNativeImage = true;
+    if (!binaryN || autoRotate && !binaryN.rotated && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
   }
 
   return {
@@ -59,11 +62,11 @@ export const calcRecognizeRotateArgs = (n, areaMode) => {
 export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, options = {}, debugVis = false) => {
   const {
     angleThresh, angleKnown, rotateRadians, saveNativeImage, saveBinaryImageArg,
-  } = calcRecognizeRotateArgs(n, areaMode);
+  } = await calcRecognizeRotateArgs(n, areaMode);
 
-  const inputSrc = await (imageCont.imageAll.nativeStr[n] || imageCont.imageAll.nativeSrcStr[n]);
+  const nativeN = await imageCache.getNative(n);
 
-  if (!inputSrc) throw new Error(`No image source found for page ${n}`);
+  if (!nativeN) throw new Error(`No image source found for page ${n}`);
 
   const upscale = false;
 
@@ -82,7 +85,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   const runRecognition = legacy || lstm;
 
   const resArr = await scheduler.recognizeAndConvert2({
-    image: inputSrc,
+    image: nativeN.src,
     options: config,
     output: {
       // text, blocks, hocr, and tsv must all be `false` to disable recognition
@@ -120,22 +123,14 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
 
   // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
   // but no significant rotation was actually detected.
-  if (saveBinaryImageArg) {
-    imageCont.imageAll.binaryRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
-    if (imageCont.imageAll.binaryRotated[n] || !imageCont.imageAll.binaryStr[n]) {
-      imageCont.imageAll.binaryStr[n] = res0.recognize.imageBinary;
-      imageCont.imageAll.binaryUpscaled[n] = upscale;
-      if (globalThis.imageCache) delete globalThis.imageCache.binary[n];
-    }
+  const significantRotation = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
+
+  if (saveBinaryImageArg && res0.recognize.imageBinary && (significantRotation || !imageCache.binary[n])) {
+    imageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'png', 'binary', true, upscale);
   }
 
-  if (saveNativeImage) {
-    imageCont.imageAll.nativeRotated[n] = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
-    if (imageCont.imageAll.nativeRotated[n]) {
-      imageCont.imageAll.nativeStr[n] = res0.recognize.imageColor;
-      imageCont.imageAll.nativeUpscaled[n] = upscale;
-      if (globalThis.imageCache) delete globalThis.imageCache.native[n];
-    }
+  if (saveNativeImage && res0.recognize.imageColor && significantRotation) {
+    imageCache.native[n] = new ImageWrapper(n, res0.recognize.imageColor, 'png', 'native', true, upscale);
   }
 
   return resArr;

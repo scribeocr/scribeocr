@@ -665,9 +665,7 @@ async function penalizeWord(wordObjs) {
  * @param {object} params
  * @param {OcrPage} params.pageA
  * @param {OcrPage} params.pageB
- * @param {ImageBitmap} params.binaryImage
- * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled by 2x.
+ * @param {import('../containers/imageContainer.js').ImageWrapper} params.binaryImage
  * @param {PageMetrics} params.pageMetricsObj
  * @param {object} params.options
  * @param {("stats"|"comb")} [params.options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
@@ -688,9 +686,12 @@ async function penalizeWord(wordObjs) {
  * @param {number} [params.options.confThreshMed]
  */
 export async function compareHOCR({
-  pageA, pageB, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, options = {},
+  pageA, pageB, binaryImage, pageMetricsObj, options = {},
 }) {
-  const binaryImageBit = await getImageBitmap(binaryImage);
+  const binaryImageBit = binaryImage.imageBitmap || await getImageBitmap(binaryImage.src);
+
+  const imageUpscaled = binaryImage.upscaled;
+  const imageRotated = binaryImage.rotated;
 
   const mode = options?.mode === undefined ? 'stats' : options?.mode;
   const editConf = options?.editConf === undefined ? false : options?.editConf;
@@ -1222,15 +1223,13 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {ImageBitmap|string} params.binaryImage
- * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
+ * @param {import('../containers/imageContainer.js').ImageWrapper} params.binaryImage
  * @param {PageMetrics} params.pageMetricsObj
  * @param {?function} params.func
  * @returns
  */
 async function evalPageBase({
-  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func,
+  page, binaryImage, pageMetricsObj, func,
 }) {
   // If this is not being run in a worker, clone the data so the original is not edited.
   // This is not necessary when running in a worker, as the data is already cloned when sent to the worker.
@@ -1239,14 +1238,14 @@ async function evalPageBase({
   }
 
   const imgDims = structuredClone(pageMetricsObj.dims);
-  const imgAngle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
-  if (imageUpscaled) {
+  const imgAngle = binaryImage.rotated ? (pageMetricsObj.angle || 0) : 0;
+  if (binaryImage.upscaled) {
     ocr.scalePage(page, 2);
     imgDims.width *= 2;
     imgDims.height *= 2;
   }
 
-  const binaryImageBit = await getImageBitmap(binaryImage);
+  const binaryImageBit = binaryImage.imageBitmap || await getImageBitmap(binaryImage.src);
 
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
@@ -1278,32 +1277,28 @@ async function evalPageBase({
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {ImageBitmap} params.binaryImage
- * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
+ * @param {import('../containers/imageContainer.js').ImageWrapper} params.binaryImage
  * @param {PageMetrics} params.pageMetricsObj
  * @returns
  */
 export async function evalPage({
-  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj,
+  page, binaryImage, pageMetricsObj,
 }) {
   return await evalPageBase({
-    page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func: null,
+    page, binaryImage, pageMetricsObj, func: null,
   });
 }
 
 /**
  * @param {Object} params
  * @param {OcrPage} params.page
- * @param {ImageBitmap|string} params.binaryImage
- * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
- * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
+ * @param {import('../containers/imageContainer.js').ImageWrapper} params.binaryImage
  * @param {PageMetrics} params.pageMetricsObj
  * @param {string} params.font
  * @returns
  */
 export async function evalPageFont({
-  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, font,
+  page, binaryImage, pageMetricsObj, font,
 }) {
 /**
  * @param {OcrLine} ocrLineJ
@@ -1331,7 +1326,7 @@ export async function evalPageFont({
   };
 
   return await evalPageBase({
-    page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func: transformLineFont,
+    page, binaryImage, pageMetricsObj, func: transformLineFont,
   });
 }
 

@@ -12,7 +12,7 @@ import { importOCRFiles } from './js/importOCR.js';
 import { renderPage } from './js/browser/renderPageCanvas.js';
 import coords from './js/coordinates.js';
 
-import { imageCont } from './js/containers/imageContainer.js';
+import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
 
 import { recognizeAllClick } from './js/browser/interfaceRecognize.js';
 
@@ -30,8 +30,6 @@ import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer
 import { fontMetricsObj } from './js/containers/miscContainer.js';
 
 import { calcLineFontSize } from './js/fontUtils.js';
-
-import { getImageBitmap } from './js/imageUtils.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 
@@ -327,7 +325,7 @@ prevElem.addEventListener('click', () => displayPage(cp.n - 1));
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('change', () => {
-  imageCont.colorModeDefault = colorModeElem.value;
+  imageCache.colorModeDefault = colorModeElem.value;
   renderPageQueue(cp.n, false);
 });
 
@@ -1003,18 +1001,16 @@ async function compareGroundTruthClick(n) {
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(globalThis.evalStatsConfig) !== JSON.stringify(evalStatsConfigNew) || globalThis.evalStats.length === 0) {
   // Render binarized versions of images
-    await imageCont.renderImageRange(0, imageCont.pageCount - 1, 'binary');
+    await imageCache.preRenderRange(0, imageCache.pageCount - 1, true);
 
-    globalThis.evalStats = new Array(imageCont.imageAll.nativeStr.length);
-    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
-      const imgBinaryStr = await imageCont.getBinary(n);
+    globalThis.evalStats = new Array(imageCache.pageCount);
+    for (let i = 0; i < imageCache.pageCount; i++) {
+      const imgBinary = await imageCache.getBinary(n);
 
       const res = await globalThis.gs.compareHOCR({
         pageA: globalThis.ocrAll.active[i],
         pageB: globalThis.ocrAll['Ground Truth'][i],
-        binaryImage: imgBinaryStr,
-        imageRotated: imageCont.imageAll.binaryRotated[i],
-        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+        binaryImage: imgBinary,
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -1031,14 +1027,12 @@ async function compareGroundTruthClick(n) {
     globalThis.evalStatsConfig = evalStatsConfigNew;
   }
 
-  const imgBinaryStr = await imageCont.getBinary(n);
+  const imgBinary = await imageCache.getBinary(n);
 
   const res = await globalThis.gs.compareHOCR({
     pageA: globalThis.ocrAll.active[n],
     pageB: globalThis.ocrAll['Ground Truth'][n],
-    binaryImage: imgBinaryStr,
-    imageRotated: imageCont.imageAll.binaryRotated[n],
-    imageUpscaled: imageCont.imageAll.binaryUpscaled[n],
+    binaryImage: imgBinary,
     pageMetricsObj: globalThis.pageMetricsArr[n],
     options: compOptions,
   });
@@ -1256,8 +1250,8 @@ function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
     const debugLabel = 'recognizeArea';
 
     if (debugLabel && !globalThis.debugImg[debugLabel]) {
-      globalThis.debugImg[debugLabel] = new Array(imageCont.imageAll.nativeStr.length);
-      for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+      globalThis.debugImg[debugLabel] = new Array(imageCache.pageCount);
+      for (let i = 0; i < imageCache.pageCount; i++) {
         globalThis.debugImg[debugLabel][i] = [];
       }
     }
@@ -1273,14 +1267,12 @@ function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
       legacyLSTMComb: true,
     };
 
-    const imgBinaryStr = await imageCont.getBinary(n);
+    const imgBinary = await imageCache.getBinary(n);
 
     const res = await globalThis.gs.compareHOCR({
       pageA: pageObjLegacy,
       pageB: pageObjLSTM,
-      binaryImage: imgBinaryStr,
-      imageRotated: imageCont.imageAll.binaryRotated[n],
-      imageUpscaled: imageCont.imageAll.binaryUpscaled[n],
+      binaryImage: imgBinary,
       pageMetricsObj: globalThis.pageMetricsArr[n],
       options: compOptions,
     });
@@ -1496,7 +1488,7 @@ async function clearFiles() {
     globalThis.binaryScheduler = null;
   }
 
-  imageCont.clear();
+  imageCache.clear();
 
   globalThis.loadCount = 0;
 
@@ -1549,8 +1541,8 @@ async function importOCRFilesSupp() {
   }
 
   // If both OCR data and image data are present, confirm they have the same number of pages
-  if (imageCont.imageAll.nativeStr && imageCont.imageAll.nativeStr.length !== pageCountHOCR) {
-    const warningHTML = `Page mismatch detected. Image data has ${imageCont.imageAll.nativeStr.length} pages while OCR data has ${pageCountHOCR} pages.`;
+  if (imageCache.pageCount !== pageCountHOCR) {
+    const warningHTML = `Page mismatch detected. Image data has ${imageCache.pageCount} pages while OCR data has ${pageCountHOCR} pages.`;
     insertAlertMessage(warningHTML, false);
   }
 
@@ -1625,7 +1617,7 @@ async function importFiles(curFiles) {
 
   globalThis.inputDataModes.pdfMode = pdfFilesAll.length === 1;
   globalThis.inputDataModes.imageMode = !!(imageFilesAll.length > 0 && !globalThis.inputDataModes.pdfMode);
-  imageCont.inputModes.image = !!(imageFilesAll.length > 0 && !globalThis.inputDataModes.pdfMode);
+  imageCache.inputModes.image = !!(imageFilesAll.length > 0 && !globalThis.inputDataModes.pdfMode);
 
   const xmlModeImport = hocrFilesAll.length > 0;
 
@@ -1707,9 +1699,9 @@ async function importFiles(curFiles) {
     const pdfFileData = await pdfFile.arrayBuffer();
 
     // If no XML data is provided, page sizes are calculated using muPDF alone
-    await imageCont.openMainPDF(pdfFileData, skipText, !xmlModeImport, stextModeExtract);
+    await imageCache.openMainPDF(pdfFileData, skipText, !xmlModeImport, stextModeExtract);
 
-    pageCountImage = imageCont.pageCount;
+    pageCountImage = imageCache.pageCount;
   } else if (globalThis.inputDataModes.imageMode) {
     globalThis.inputFileNames = imageFilesAll.map((x) => x.name);
     pageCountImage = imageFilesAll.length;
@@ -1838,7 +1830,6 @@ async function importFiles(curFiles) {
     // Render first handful of pages for pdfs so the interface starts off responsive
     // In the case of OCR data, this step is triggered elsewhere after all the data loads
     displayPage(0);
-    renderCachePagesAheadBehindBrowser();
   }
 
   globalThis.loadCount = 0;
@@ -1860,7 +1851,7 @@ async function importFiles(curFiles) {
   globalThis.convertPageActiveProgress = initializeProgress('import-progress-collapse', progressMax, 0, false, true);
 
   if (globalThis.inputDataModes.imageMode) {
-    imageCont.pageCount = globalThis.pageCount;
+    imageCache.pageCount = globalThis.pageCount;
     for (let i = 0; i < globalThis.pageCount; i++) {
     // Currently, images are loaded once at a time.
     // While this is not optimal for performance, images are required for comparison functions,
@@ -1879,14 +1870,19 @@ async function importFiles(curFiles) {
 
         reader.readAsDataURL(imageFilesAll[i]);
       });
-      imageCont.imageAll.nativeSrcStr[i] = imgPromise;
+
+      const imgSrc = await imgPromise;
+
       // Using MIME sniffing might be slightly more accurate than using the file extension,
       // however for now the file extension is used to ensure equivalent behavior between Node.js and browser versions.
-      imageCont.imageAll.nativeSrcFormat[i] = imageFilesAll[i].name.match(/jpe?g$/i) ? 'jpeg' : 'png';
-      imageCont.imageAll.nativeStr[i] = imgPromise;
+      const format = imageFilesAll[i].name.match(/jpe?g$/i) ? 'jpeg' : 'png';
 
-      await imageCont.renderImage(i);
-      const imageDims = await imageCont.getDims(i);
+      const imgWrapper = new ImageWrapper(i, imgSrc, format, 'native', false, false);
+
+      const imageDims = await imageUtils.getDims(imgWrapper);
+
+      imageCache.nativeSrc[i] = imgWrapper;
+
       globalThis.pageMetricsArr[i] = new PageMetrics(imageDims);
       globalThis.convertPageActiveProgress.increment();
 
@@ -2032,8 +2028,6 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false,
 
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, loadXML = true) {
-  await renderCachePagesBrowser(n, n);
-
   let ocrData = globalThis.ocrAll.active?.[n];
 
   // Return early if there is not enough data to render a page yet
@@ -2044,11 +2038,9 @@ export async function renderPageQueue(n, loadXML = true) {
   // (2) XML data should exist but does not (yet)
   const xmlMissing = globalThis.inputDataModes.xmlMode[n]
     && (ocrData === undefined || ocrData === null || globalThis.pageMetricsArr[n].dims === undefined);
-  // (3) Image data should exist but does not (yet)
-  const imageMissing = globalThis.inputDataModes.imageMode && (!imageCont.imageAll.nativeStr || imageCont.imageAll.nativeStr.length === 0 || imageCont.imageAll.nativeStr[n] == null);
-  // (4) PDF data should exist but does not (yet)
-  const pdfMissing = globalThis.inputDataModes.pdfMode
-    && (!imageCont.imageAll.nativeStr || imageCont.imageAll.nativeStr.length === 0 || imageCont.imageAll.nativeStr[n] == null || globalThis.pageMetricsArr[n]?.dims === undefined);
+
+  const imageMissing = false;
+  const pdfMissing = false;
 
   if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing) {
     console.log('Exiting renderPageQueue early');
@@ -2086,14 +2078,6 @@ export async function renderPageQueue(n, loadXML = true) {
     resetCanvasEventListeners();
   }
 
-  // When the page changes, the dimensions and zoom are modified.
-  // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
-  if (globalThis.state.canvasDimsN !== n) {
-    setCanvasWidthHeightZoom(globalThis.pageMetricsArr[n].dims, showConflictsElem.checked, true);
-
-    globalThis.state.canvasDimsN = n;
-  }
-
   cp.renderStatus = 0;
 
   // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
@@ -2102,11 +2086,6 @@ export async function renderPageQueue(n, loadXML = true) {
   cp.renderNum += 1;
   renderNum = cp.renderNum;
 
-  await renderCachePagesBrowser(cp.n, cp.n);
-
-  const backgroundImageElem = colorModeElem.value === 'binary' ? await globalThis.imageCache.binary[n] : await globalThis.imageCache.native[n];
-
-  cp.backgroundImage = new fabric.Image(backgroundImageElem, { objectCaching: false });
   if (cp.n === n && cp.renderNum === renderNum) {
     cp.renderStatus += 1;
     selectDisplayMode(displayModeElem.value);
@@ -2170,66 +2149,9 @@ export async function displayPage(n) {
   if (showConflictsElem.checked) showDebugImages();
 
   // Render background images ahead and behind current page to reduce delay when switching pages
-  renderCachePagesAheadBehindBrowser();
+  imageCache.preRenderAheadBehindBrowser(n, colorModeElem.value === 'binary');
 
   working = false;
-}
-
-/**
- * Object containing image cache for rendering to UI canvas.
- * This exists because ImageBitmap renders significantly faster than HTMLImageElement.
- * Even if the image element is already loaded ahead of time, there is still noticable lag when switching pages.
- * However, ImageBitmaps take up an enormous amount of memory, so cannot be stored for every page.
- * Therefore, a cache is used to store a limited number of ImageBitmaps.
- */
-globalThis.imageCache = {
-  /** @type {Array<Promise<ImageBitmap>|ImageBitmap>} */
-  native: [],
-  /** @type {Array<Promise<ImageBitmap>|ImageBitmap>} */
-  binary: [],
-};
-
-const cacheRenderPages = 3;
-const cacheDeletePages = 5;
-
-/**
- * Render images for a range of pages and cache them.
- *
- * @param {number} min
- * @param {number} max
- */
-async function renderCachePagesBrowser(min, max) {
-  const cacheMin = Math.max(min, 0);
-  const cacheMax = Math.min(max, globalThis.pageCount - 1);
-  const cacheArr1 = Array.from({ length: cacheMax - cacheMin + 1 }, (v, k) => k + cacheMin);
-  // Run current page first
-  const cacheArr = [cp.n, ...cacheArr1.filter((x) => x !== cp.n)];
-
-  const resArr = cacheArr.map(async (i) => {
-    await imageCont.renderImage(i).then(async () => {
-      if (imageCont.imageAll.nativeStr[i] && !globalThis.imageCache.native[i]) {
-        globalThis.imageCache.native[i] = await getImageBitmap(await imageCont.imageAll.nativeStr[i]);
-      }
-      if (imageCont.imageAll.binaryStr[i] && !globalThis.imageCache.binary[i]) {
-        const imgBinaryStr = await imageCont.getBinary(i);
-        globalThis.imageCache.binary[i] = await getImageBitmap(imgBinaryStr);
-      }
-    });
-  });
-
-  await Promise.all(resArr);
-}
-
-async function renderCachePagesAheadBehindBrowser() {
-  renderCachePagesBrowser(cp.n - cacheRenderPages, cp.n + cacheRenderPages);
-
-  // Delete images that are sufficiently far away from the current page to save memory.
-  for (let i = 0; i < globalThis.imageCache.native.length; i++) {
-    if (Math.abs(cp.n - i) > cacheDeletePages) {
-      delete globalThis.imageCache.native[i];
-      delete globalThis.imageCache.binary[i];
-    }
-  }
 }
 
 globalThis.displayPage = displayPage;
@@ -2302,7 +2224,7 @@ initGeneralScheduler();
  * and (2) no images are provided to compare against.
  */
 export async function runFontOptimizationBrowser(ocrArr) {
-  const optImproved = await runFontOptimization(ocrArr, imageCont.imageAll.binaryStr, imageCont.imageAll.binaryRotated, imageCont.imageAll.binaryUpscaled);
+  const optImproved = await runFontOptimization(ocrArr);
   if (optImproved) {
     optimizeFontElem.disabled = false;
     optimizeFontElem.checked = true;

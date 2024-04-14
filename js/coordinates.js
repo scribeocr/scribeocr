@@ -3,7 +3,7 @@
 // Image Coordinate Space: coordinate space of a particular image
 // Canvas Coordinate Space: coordinate space of canvas, used for user interactions
 
-import { imageCont } from './containers/imageContainer.js';
+import { imageCache } from './containers/imageContainer.js';
 
 /**
  * @typedef {Object} BoundingBox
@@ -83,26 +83,24 @@ function canvasToImage(canvasCoords, imageRotated, canvasRotated, n, angle = 0) 
  * @param {BoundingBox} ocrCoords - Bounding box in OCR coordinates.
  * @param {number} n - Page number (index 0)
  * @param {boolean} binary - Use binary image
- * @returns {BoundingBox} Bounding box in image coordinates.
+ * @returns {Promise<BoundingBox>} Bounding box in image coordinates.
  */
-function ocrToImage(ocrCoords, n, binary = false) {
-  const imageRotated = binary ? imageCont.imageAll.binaryRotated[n] : imageCont.imageAll.nativeRotated[n];
-
-  const imageUpscaled = binary ? imageCont.imageAll.binaryUpscaled[n] : imageCont.imageAll.nativeUpscaled[n];
+async function ocrToImage(ocrCoords, n, binary = false) {
+  const imageN = binary ? await imageCache.getBinary(n) : await imageCache.getNative(n);
 
   // If the image was never rotated or upscaled, then the xml and image coordinates are the same
-  if (!imageRotated && !imageUpscaled) {
+  if (!imageN.rotated && !imageN.upscaled) {
     return (ocrCoords);
   }
 
-  if (imageUpscaled) {
+  if (imageN.upscaled) {
     ocrCoords.left *= 2;
     ocrCoords.top *= 2;
     ocrCoords.width *= 2;
     ocrCoords.height *= 2;
   }
 
-  if (imageRotated) {
+  if (imageN.rotated) {
   // Otherwise, we must also account for rotation applied by the canvas
     const rotateAngle = (globalThis.pageMetricsArr[n].angle || 0) * -1;
 

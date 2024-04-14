@@ -1,4 +1,4 @@
-import { imageCont } from '../containers/imageContainer.js';
+import { imageCache } from '../containers/imageContainer.js';
 import { insertAlertMessage, initializeProgress } from '../../main.js';
 import {
   sleep, saveAs,
@@ -216,7 +216,7 @@ export async function handleDownload() {
 
       // Create a new scheduler if one does not yet exist.
       // This would be the case for image uploads.
-      const muPDFScheduler = await imageCont.initMuPDFScheduler(null, 1);
+      const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
       const w = muPDFScheduler.workers[0];
       // const fileData = await pdfOverlayBlob.arrayBuffer();
       // The file name is only used to detect the ".pdf" extension
@@ -247,13 +247,21 @@ export async function handleDownload() {
 
         // If the input is a series of images, those images need to be inserted into a new pdf
       } else if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) {
-        imageCont.renderImageRange(minValue, maxValue, null, autoRotateCheckboxElem.checked, false, downloadProgress);
-        const imgArr = colorModeElem.value === 'binary' ? await Promise.all(imageCont.imageAll.binaryStr) : await Promise.all(imageCont.imageAll.nativeStr);
+        const colorMode = /** @type {('color'|'gray'|'binary')} */ (colorModeElem.value);
+
+        const props = { rotated: autoRotateCheckboxElem.checked, upscaled: false, colorMode };
+        const binary = colorModeElem.value === 'binary';
+
+        // Pre-render to benefit from parallel processing, since the loop below is synchronous.
+        await imageCache.preRenderRange(minValue, maxValue, binary, props, downloadProgress);
+
         await w.overlayTextImageStart({ humanReadable: humanReadablePDFElem.checked });
         for (let i = minValue; i < maxValue + 1; i++) {
+          const image = binary ? await imageCache.getBinary(i, props) : await imageCache.getNative(i, props);
+
           // await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit.width, dimsLimit.height]);
           await w.overlayTextImageAddPage({
-            doc1: pdfOverlay, image: imgArr[i], i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height,
+            doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height,
           });
           downloadProgress.increment();
         }

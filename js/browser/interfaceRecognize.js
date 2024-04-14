@@ -6,7 +6,7 @@ import {
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 import { loadChiSimFont } from '../fontContainerMain.js';
-import { imageCont } from '../containers/imageContainer.js';
+import { imageCache } from '../containers/imageContainer.js';
 import { setFontMetricsAll } from '../fontStatistics.js';
 
 const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
@@ -116,7 +116,7 @@ export async function recognizeAllClick() {
     // If the progress bar finishes earlier, in addition to being misleading to users,
     // the automated browser tests wait until the progress bar fills up to conclude
     // the recognition step was successful.
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCont.imageAll.nativeStr.length + 1, 0, true);
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount + 1, 0, true);
     const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
@@ -131,7 +131,7 @@ export async function recognizeAllClick() {
     }
   } else if (oemMode === 'combined') {
     globalThis.loadCount = 0;
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCont.imageAll.nativeStr.length * 2 + 1, 0, true);
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount * 2 + 1, 0, true);
 
     const time2a = Date.now();
     await recognizeAllPagesBrowser(true, true, true, langArr);
@@ -139,8 +139,8 @@ export async function recognizeAllClick() {
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
     if (debugMode) {
-      globalThis.debugImg.Combined = new Array(imageCont.imageAll.nativeStr.length);
-      for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+      globalThis.debugImg.Combined = new Array(imageCache.pageCount);
+      for (let i = 0; i < imageCache.pageCount; i++) {
         globalThis.debugImg.Combined[i] = [];
       }
     }
@@ -149,8 +149,8 @@ export async function recognizeAllClick() {
       initOCRVersion('Tesseract Combined');
       setCurrentHOCR('Tesseract Combined');
       if (debugMode) {
-        globalThis.debugImg['Tesseract Combined'] = new Array(imageCont.imageAll.nativeStr.length);
-        for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+        globalThis.debugImg['Tesseract Combined'] = new Array(imageCache.pageCount);
+        for (let i = 0; i < imageCache.pageCount; i++) {
           globalThis.debugImg['Tesseract Combined'][i] = [];
         }
       }
@@ -165,7 +165,7 @@ export async function recognizeAllClick() {
     // with the more accurate (on average) text data from LSTM.
 
     initOCRVersion('Tesseract Combined Temp');
-    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+    for (let i = 0; i < imageCache.pageCount; i++) {
       /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
       const compOptions1 = {
         mode: 'comb',
@@ -173,14 +173,12 @@ export async function recognizeAllClick() {
         legacyLSTMComb: true,
       };
 
-      const imgBinaryStr = await imageCont.getBinary(i);
+      const imgBinary = await imageCache.getBinary(i);
 
       const res1 = await globalThis.gs.compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgBinaryStr,
-        imageRotated: imageCont.imageAll.binaryRotated[i],
-        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+        binaryImage: imgBinary,
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions1,
       });
@@ -189,15 +187,15 @@ export async function recognizeAllClick() {
     }
 
     // Evaluate default fonts using up to 5 pages.
-    const pageNum = Math.min(imageCont.imageAll.nativeStr.length, 5);
-    await imageCont.renderImageRange(0, pageNum, 'binary');
+    const pageNum = Math.min(imageCache.pageCount - 1, 5);
+    await imageCache.preRenderRange(0, pageNum, true);
     setFontMetricsAll(globalThis.ocrAll['Tesseract Combined Temp']);
     await runFontOptimizationBrowser(globalThis.ocrAll['Tesseract Combined Temp']);
     initOCRVersion('Combined');
     setCurrentHOCR('Combined');
 
     const time3a = Date.now();
-    for (let i = 0; i < imageCont.imageAll.nativeStr.length; i++) {
+    for (let i = 0; i < imageCache.pageCount; i++) {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
       /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
@@ -211,14 +209,12 @@ export async function recognizeAllClick() {
         legacyLSTMComb: true,
       };
 
-      const imgBinaryStr = await imageCont.getBinary(i);
+      const imgBinary = await imageCache.getBinary(i);
 
       const res = await globalThis.gs.compareHOCR({
         pageA: globalThis.ocrAll['Tesseract Legacy'][i],
         pageB: globalThis.ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgBinaryStr,
-        imageRotated: imageCont.imageAll.binaryRotated[i],
-        imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+        binaryImage: imgBinary,
         pageMetricsObj: globalThis.pageMetricsArr[i],
         options: compOptions,
       });
@@ -247,9 +243,7 @@ export async function recognizeAllClick() {
           const res = await globalThis.gs.compareHOCR({
             pageA: globalThis.ocrAll['User Upload'][i],
             pageB: globalThis.ocrAll['Tesseract Combined'][i],
-            binaryImage: imgBinaryStr,
-            imageRotated: imageCont.imageAll.binaryRotated[i],
-            imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+            binaryImage: imgBinary,
             pageMetricsObj: globalThis.pageMetricsArr[i],
             options: compOptions,
           });
@@ -275,9 +269,7 @@ export async function recognizeAllClick() {
           const res = await globalThis.globalThis.gs.compareHOCR({
             pageA: globalThis.ocrAll['User Upload'][i],
             pageB: globalThis.ocrAll['Tesseract Combined'][i],
-            binaryImage: imgBinaryStr,
-            imageRotated: imageCont.imageAll.binaryRotated[i],
-            imageUpscaled: imageCont.imageAll.binaryUpscaled[i],
+            binaryImage: imgBinary,
             pageMetricsObj: globalThis.pageMetricsArr[i],
             options: compOptions,
           });
