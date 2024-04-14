@@ -1,10 +1,8 @@
 import ocr from '../objects/ocrObjects.js';
 
-import { unescapeXml } from '../miscUtils.js';
+import { unescapeXml, determineSansSerif } from '../miscUtils.js';
 
 import { pass2, pass3 } from './convertPageShared.js';
-
-import { determineSansSerif } from '../fontStatistics.js';
 
 // If enabled, raw strings are saved in OCR objects for debugging purposes.
 const debugMode = true;

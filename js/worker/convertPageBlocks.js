@@ -2,7 +2,7 @@ import ocr from '../objects/ocrObjects.js';
 
 import { pass2, pass3 } from './convertPageShared.js';
 
-import { determineSansSerif } from '../fontStatistics.js';
+import { determineSansSerif } from '../miscUtils.js';
 
 // TODO: Add rotation.
 
@@ -16,11 +16,17 @@ import { determineSansSerif } from '../fontStatistics.js';
  * @param {boolean} params.keepItalic - If true, italic tags (`<em>`) are honored.  This is false by default,
  *    as vanilla Tesseract does not recognize italic text in a way that is reliable.
  *    This is fixed for Legacy recognition in the included custom build of Tesseract.
+ * @param {boolean} params.upscale
  */
 export async function convertPageBlocks({
-  ocrBlocks, n, pageDims, keepItalic, rotateAngle,
+  ocrBlocks, n, pageDims, keepItalic, rotateAngle, upscale,
 }) {
   rotateAngle = rotateAngle || 0;
+
+  if (upscale) {
+    pageDims.height *= 2;
+    pageDims.width *= 2;
+  }
 
   const pageObj = new ocr.OcrPage(n, pageDims);
 
@@ -102,6 +108,8 @@ export async function convertPageBlocks({
   }
 
   pageObj.angle = rotateAngle;
+
+  if (upscale) ocr.scalePage(pageObj, 0.5);
 
   pass2(pageObj, rotateAngle);
   pass3(pageObj);

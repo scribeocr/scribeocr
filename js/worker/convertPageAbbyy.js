@@ -1,14 +1,12 @@
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  getRandomAlphanum, quantile, mean50, round6, unescapeXml,
+  getRandomAlphanum, quantile, mean50, round6, unescapeXml, determineSansSerif,
 } from '../miscUtils.js';
 
 import { LayoutBox } from '../objects/layoutObjects.js';
 
 import { pass3, ascCharArr, xCharArr } from './convertPageShared.js';
-
-import { determineSansSerif } from '../fontStatistics.js';
 
 const abbyyDropCapRegex = /<par dropCapCharsCount=['"](\d*)/i;
 const abbyyLineBoxRegex = /<line baseline=['"](\d*)['"] l=['"](\d*)['"] t=['"](\d*)['"] r=['"](\d*)['"] b=['"](\d*)['"]>/i;

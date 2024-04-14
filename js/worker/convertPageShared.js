@@ -235,7 +235,7 @@ export function pass3(pageObj) {
       }
 
       // Quotes at the end of a word are assumed to be closing quotes
-      if (['"', "'"].includes(letterArr[letterArr.length - 1]) && letterArr.length > 1 && /[a-z\d]/i.test(letterArr[letterArr.length - 2])) {
+      if (['"', "'"].includes(letterArr[letterArr.length - 1]) && /[a-z\d][.,!?;]?['"]$/i.test(wordObj.text)) {
         if (letterArr[letterArr.length - 1] === '"') {
           letterArr[letterArr.length - 1] = '”';
           if (charObjArr) charObjArr[letterArr.length - 1].text = '”';

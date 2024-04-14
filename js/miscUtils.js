@@ -258,3 +258,53 @@ export function replaceObjectProperties(obj, obj2 = {}) {
   }
   Object.assign(obj, obj2);
 }
+
+// Sans/serif lookup for common font families
+// Should be added to if additional fonts are encountered
+// Fonts that should not be added (both Sans and Serif variants):
+// DejaVu
+const serifFonts = ['SerifDefault', 'Baskerville', 'Book', 'C059', 'Cambria', 'Century_Schoolbook', 'Courier', 'Garamond', 'Georgia', 'P052', 'Times'];
+const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Tahoma', 'Trebuchet', 'Verdana'];
+
+const serifFontsRegex = new RegExp(serifFonts.reduce((x, y) => `${x}|${y}`), 'i');
+const sansFontsRegex = new RegExp(sansFonts.reduce((x, y) => `${x}|${y}`), 'i');
+
+/**
+ * Given a font name from Tesseract/Abbyy XML, determine if it should be represented by sans font or serif font.
+ *
+ * @param {string|null|undefined} fontName - The name of the font to determine the type of. If the font name
+ * is falsy, the function will return "Default".
+ * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault",
+ * "SerifDefault", or "Default" (if the font type cannot be determined).
+ * @throws {console.log} - Logs an error message to the console if the font is unidentified and
+ * it is not the "Default Metrics Font".
+ */
+export function determineSansSerif(fontName) {
+  let fontFamily = 'Default';
+  // Font support is currently limited to 1 font for Sans and 1 font for Serif.
+  if (fontName) {
+    // First, test to see if "sans" or "serif" is in the name of the font
+    if (/(^|\W|_)sans($|\W|_)/i.test(fontName)) {
+      fontFamily = 'SansDefault';
+    } else if (/(^|\W|_)serif($|\W|_)/i.test(fontName)) {
+      fontFamily = 'SerifDefault';
+
+    // If not, check against a list of known sans/serif fonts.
+    // This list is almost certainly incomplete, so should be added to when new fonts are encountered.
+    } else if (serifFontsRegex.test(fontName)) {
+      fontFamily = 'SerifDefault';
+    } else if (sansFontsRegex.test(fontName)) {
+      fontFamily = 'SansDefault';
+    } else if (fontName !== 'Default Metrics Font') {
+      if (/serif|rom/i.test(fontName) && !/sans/i.test(fontName)) {
+        fontFamily = 'SerifDefault';
+      } else if (/san/i.test(fontName)) {
+        fontFamily = 'SansDefault';
+      } else {
+        console.log(`Unidentified font: ${fontName}`);
+      }
+    }
+  }
+
+  return fontFamily;
+}

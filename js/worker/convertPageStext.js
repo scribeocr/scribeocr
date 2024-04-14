@@ -1,12 +1,10 @@
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  quantile, mean50, unescapeXml, round6,
+  quantile, mean50, unescapeXml, round6, determineSansSerif,
 } from '../miscUtils.js';
 
 import { pass3 } from './convertPageShared.js';
-
-import { determineSansSerif } from '../fontStatistics.js';
 
 const stextSplitRegex = /(?:<char[^>]*?c=['"]\s+['"]\/>)|(?:<\/font>\s*(?=<font))/ig;
 // The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4

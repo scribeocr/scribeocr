@@ -1,77 +1,17 @@
-import { win1252Chars, winEncodingLookup } from '../fonts/encoding.js';
+import { winEncodingLookup } from '../fonts/encoding.js';
 
 import {
   calcWordFontSize, calcCharSpacing, calcWordMetrics, subsetFont,
 } from './fontUtils.js';
 import { fontAll } from './containers/fontContainer.js';
 
-import { hex, createFontObjType0 } from './exportPDFMisc.js';
+import { createEmbeddedFontType1, createEmbeddedFontType0 } from './exportPDFFonts.js';
 
 import ocr from './objects/ocrObjects.js';
 
 // Creates 3 PDF objects necessary to embed font.
 // These are (1) the font dictionary, (2) the font descriptor, and (3) the font file,
 // which will be located at objects firstObjIndex, firstObjIndex + 1, and firstObjIndex + 2 (respectively).
-
-/**
- * Converts a Opentype.js font object into a string for adding to a PDF.
- *
- * @param {opentype.Font} font - Opentype.js font object
- * @param {number} firstObjIndex - Index for the first PDF object
- */
-function createFontObj(font, firstObjIndex) {
-  // Start 1st object: Font Dictionary
-  let objOut = `${String(firstObjIndex)} 0 obj\n<</Type/Font/Subtype/Type1`;
-
-  // Add font name
-  objOut += `\n/BaseFont/${font.tables.name.postScriptName.en}`;
-
-  objOut += '/Encoding/WinAnsiEncoding';
-
-  // const cmapIndices = Object.keys(font.tables.cmap.glyphIndexMap).map((x) => parseInt(x));
-
-  objOut += '/Widths[';
-  for (let i = 0; i < win1252Chars.length; i++) {
-    const advanceNorm = Math.round(font.charToGlyph(win1252Chars[i]).advanceWidth * (1000 / font.unitsPerEm));
-    objOut += `${String(advanceNorm)} `;
-  }
-  objOut += ']/FirstChar 32/LastChar 255';
-
-  objOut += `/FontDescriptor ${String(firstObjIndex + 1)} 0 R>>\nendobj\n\n`;
-
-  // Start 2nd object: Font Descriptor
-  objOut += `${String(firstObjIndex + 1)} 0 obj\n<</Type/FontDescriptor`;
-
-  objOut += `/FontName/${font.tables.name.postScriptName.en}`;
-
-  objOut += `/FontBBox[${[font.tables.head.xMin, font.tables.head.yMin, font.tables.head.xMax, font.tables.head.yMax].join(' ')}]`;
-
-  objOut += `/ItalicAngle ${String(font.tables.post.italicAngle)}`;
-
-  objOut += `/Ascent ${String(font.ascender)}`;
-
-  objOut += `/Descent ${String(font.descender)}`;
-
-  // StemV is a required field, however it is not already in the opentype font, and does not appear to matter.
-  // Therefore, we set to 0.08 * em to mimic the behavior of other programs.
-  // https://www.verypdf.com/document/pdf-format-reference/pg_0457.htm
-  // https://stackoverflow.com/questions/35485179/stemv-value-of-the-truetype-font
-  objOut += `/StemV ${String(Math.round(0.08 * font.unitsPerEm))}`;
-
-  objOut += `/Flags ${String(font.tables.head.flags)}`;
-
-  objOut += `/FontFile3 ${String(firstObjIndex + 2)} 0 R>>\nendobj\n\n`;
-
-  // Start 3rd object: Font File
-  const fontBuffer = font.toArrayBuffer();
-  const fontHexStr = hex(fontBuffer);
-
-  objOut += `${String(firstObjIndex + 2)} 0 obj\n<</Length1 ${String(fontBuffer.byteLength)}/Subtype/OpenType/Length ${String(fontHexStr.length)}/Filter/ASCIIHexDecode>>\nstream\n`;
-
-  objOut += `${fontHexStr}\nendstream\nendobj\n\n`;
-
-  return objOut;
-}
 
 /**
  * Create a PDF from an array of ocrPage objects.
@@ -126,6 +66,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
   // All fonts are added at this step.
   // The fonts that are not used will be removed by muPDF later.
   let fontI = 0;
+  let objectI = 3;
   const pdfFonts = {};
   let pdfFontsStr = '';
   console.time();
@@ -133,10 +74,24 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     pdfFonts[familyKey] = {};
     for (const [key, value] of Object.entries(familyObj)) {
       const font = await value.opentype;
-      pdfOut += createFontObj(font, 3 + fontI * 3);
 
-      pdfFonts[familyKey][key] = `/F${String(fontI)}`;
-      pdfFontsStr += `/F${String(fontI)} ${String(3 + fontI * 3)} 0 R\n`;
+      const objectThis = objectI;
+
+      // This should include both (1) if this is a standard 14 font and (2) if characters outside of the Windows-1252 range are used.
+      // If the latter is true, then a composite font is needed, even if the font is a standard 14 font.
+      const isStandardFont = false;
+      if (isStandardFont) {
+        pdfOut += createEmbeddedFontType1(font, objectThis);
+        objectI += 3;
+        pdfFonts[familyKey][key] = { type: 1, name: `/F${String(fontI)}` };
+      } else {
+        pdfOut += createEmbeddedFontType0(font, objectThis);
+        objectI += 6;
+        pdfFonts[familyKey][key] = { type: 0, name: `/F${String(fontI)}` };
+      }
+
+      // pdfFonts[familyKey][key] = `/F${String(fontI)}`;
+      pdfFontsStr += `/F${String(fontI)} ${String(objectThis)} 0 R\n`;
       fontI++;
     }
   }
@@ -150,10 +105,14 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     const charArr = ocr.getDistinctChars(hocrArr);
     fontChiSimExport = await subsetFont(font, charArr);
 
-    pdfOut += createFontObjType0(fontChiSimExport, 3 + fontI * 3);
+    pdfOut += createEmbeddedFontType0(fontChiSimExport, objectI);
 
-    pdfFonts.NotoSansSC.normal = `/F${String(fontI)}`;
-    pdfFontsStr += `/F${String(fontI)} ${String(3 + fontI * 3)} 0 R\n`;
+    // pdfFonts.NotoSansSC.normal = `/F${String(fontI)}`;
+    pdfFonts.NotoSansSC.normal = { type: 0, name: `/F${String(fontI)}` };
+
+    pdfFontsStr += `/F${String(fontI)} ${String(objectI)} 0 R\n`;
+
+    objectI += 6;
   }
 
   console.timeEnd();
@@ -262,6 +221,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
   textStream += `1 0 0 1 0 ${String(outputDims.height)} Tm\n`;
 
   let pdfFontCurrent = '';
+  let pdfFontTypeCurrent = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const lineObj = lines[i];
@@ -310,10 +270,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     const wordFontSize = await calcWordFontSize(word);
 
     // Set font and font size
-    const pdfFontI = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFontFamily][word.style];
+    ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFontFamily][word.style]);
 
-    textStream += `${pdfFontI} ${String(wordFontSize)} Tf\n`;
-    pdfFontCurrent = pdfFontI;
+    textStream += `${pdfFontCurrent} ${String(wordFontSize)} Tf\n`;
 
     // Reset baseline to line baseline
     textStream += '0 Ts\n';
@@ -352,7 +311,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     let spacingAdj = 0;
     let kernSpacing = false;
     let wordFontOpentypeLast = wordFontOpentype;
-    let wordFontOpentypeLastLang = word.lang;
     let wordFontFamilyLast = wordFontFamily;
     let wordStyleLast = word.style;
     let fontSizeLast = wordFontSize;
@@ -428,7 +386,8 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         tz = (wordWidthActual / wordWidthFont) * 100;
       }
 
-      const pdfFont = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFontFamily][word.style];
+      // const pdfFont = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFontFamily][word.style];
+      const { name: pdfFont, type: pdfFontType } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFontFamily][word.style];
 
       const wordFirstGlyphMetrics = wordFontOpentype.charToGlyph(wordText.substr(0, 1)).getMetrics();
       const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
@@ -449,7 +408,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
         const wordSpaceExtra = (wordSpaceAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (100 / tzCurrent);
 
-        if (wordFontOpentypeLastLang === 'chi_sim') {
+        if (pdfFontTypeCurrent === 0) {
           const spaceChar = wordFontOpentype.charToGlyphIndex(' ').toString(16).padStart(4, '0');
           textStream += `<${spaceChar}> ${String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
         } else {
@@ -482,6 +441,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       if (pdfFont !== pdfFontCurrent || wordFontSize !== fontSizeLast) {
         textStream += `${pdfFont} ${String(wordFontSize)} Tf\n`;
         pdfFontCurrent = pdfFont;
+        pdfFontTypeCurrent = pdfFontType;
         fontSizeLast = wordFontSize;
       }
       if (fillColor !== fillColorCurrent) {
@@ -504,7 +464,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       // Non-ASCII and special characters are encoded/escaped using winEncodingLookup
       const wordTextArr = wordText.split('');
       for (let k = 0; k < wordTextArr.length; k++) {
-        const letter = word.lang === 'chi_sim' ? wordFontOpentype.charToGlyphIndex(wordTextArr[k]).toString(16).padStart(4, '0') : winEncodingLookup[wordTextArr[k]];
+        const letter = pdfFontTypeCurrent === 0 ? wordFontOpentype.charToGlyphIndex(wordTextArr[k]).toString(16).padStart(4, '0') : winEncodingLookup[wordTextArr[k]];
         if (letter) {
           let kern = 0;
           if (k + 1 < wordTextArr.length) {
@@ -533,16 +493,16 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
             kern = Math.round((wordSpaceNextAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (-1000 / wordFontSize));
           }
-          if (word.lang === 'chi_sim') {
+          if (pdfFontTypeCurrent === 0) {
             textStream += `<${letter}> ${String(Math.round(kern * 1e6) / 1e6)} `;
           } else {
             textStream += `(${letter}) ${String(Math.round(kern * 1e6) / 1e6)} `;
           }
         } else {
-          // When the character is not in winEncodingLookup a space is inserted, with extra space to match the width of the missing character
+          // When the requested character could not be found, a space is inserted, with extra space to match the width of the missing character
           const kern = (wordFontOpentype.charToGlyph(wordTextArr[k]).advanceWidth - wordFontOpentype.charToGlyph(' ').advanceWidth) * (-1000 / wordFontOpentype.unitsPerEm) || 0;
 
-          if (word.lang === 'chi_sim') {
+          if (pdfFontTypeCurrent === 0) {
             const spaceChar = wordFontOpentype.charToGlyphIndex(' ').toString(16).padStart(4, '0');
             textStream += `<${spaceChar}> ${String(Math.round(kern * 1e6) / 1e6)} `;
           } else {
@@ -552,7 +512,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       }
 
       wordFontOpentypeLast = wordFontOpentype;
-      wordFontOpentypeLastLang = word.lang;
     }
 
     textStream += ' ] TJ\n';
