@@ -20,19 +20,14 @@ jobs:
 
       - name: Create and push new branch
         run: |
-          const date = new Date();
-          const year = date.getUTCFullYear();
-          let month = date.getUTCMonth() + 1;
-          month = month < 10 ? '0' + month : month;
-          let branchName = `${year}-${month}`;
+          year=$(date -u +"%Y")
+          month=$(date -u +"%m")
+          branch_name="${year}-${month}"
 
-          if (github.event_name === 'workflow_dispatch') {
-            const seconds = date.getUTCSeconds();
-            const minutes = date.getUTCMinutes();
-            const hours = date.getUTCHours();
-            const timeStamp = `${hours}${minutes}${seconds}`;
-            branchName = `${branchName}-${timeStamp}`; // Append unique timestamp for manual triggers
-          }
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            timestamp=$(date -u +"%H%M%S")
+            branch_name="${branch_name}-${timestamp}"
+          fi
 
-          git checkout -b ${branchName}
-          git push origin ${branchName}
+          git checkout -b $branch_name
+          git push origin $branch_name
