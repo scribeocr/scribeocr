@@ -10,7 +10,8 @@ import { cp, search } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-const showBoundingBoxesElem = /** @type {HTMLInputElement} */(document.getElementById('showBoundingBoxes'));
+const outlineLinesElem = /** @type {HTMLInputElement} */(document.getElementById('outlineLines'));
+const outlineWordsElem = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
 
@@ -20,7 +21,7 @@ const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvas
  *
  * @param {*} canvas
  * @param {OcrPage} page
- * @param {*} angle
+ * @param {number} angle - Angle in degrees.
  * @param {*} leftAdjX
  */
 export async function renderPage(canvas, page, angle, leftAdjX) {
@@ -36,6 +37,8 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
   }
 
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
+
+  const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
   if (showDebugVisElem.checked && selectDebugVisElem.value !== 'None') {
     if (!globalThis.visInstructions[cp.n][selectDebugVisElem.value]) {
@@ -69,6 +72,26 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
     const { baseline } = lineObj;
 
     const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : { x: 0, y: 0 };
+
+    if (outlineLinesElem.checked) {
+      const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
+      const height1 = linebox.bottom - linebox.top - heightAdj;
+      const height2 = lineObj.words[0] ? lineObj.words[0].bbox.bottom - lineObj.words[0].bbox.top : 0;
+      const height = Math.max(height1, height2);
+
+      const lineRect = new fabric.Rect({
+        left: linebox.left + angleAdjLine.x + leftAdjX,
+        top: linebox.bottom + angleAdjLine.y,
+        originY: 'bottom',
+        width: linebox.right - linebox.left,
+        height,
+        angle: angleArg,
+        showTextBoxBorder: true,
+        stroke: 'rgba(0,0,255,0.75)',
+        fill: null,
+      });
+      canvas.add(lineRect);
+    }
 
     for (const wordObj of lineObj.words) {
       const fillColorHexMatch = wordObj.matchTruth ? '#00ff7b' : '#ff0000';
@@ -134,7 +157,7 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         fillArg = fillColorHex;
       }
 
-      const showTextBoxBorderArg = showBoundingBoxesElem.checked || displayMode === 'eval' && wordConf > confThreshHigh && !wordObj.matchTruth;
+      const showTextBoxBorderArg = outlineWordsElem.checked || displayMode === 'eval' && wordConf > confThreshHigh && !wordObj.matchTruth;
 
       const charSpacing = await calcCharSpacing(wordText, fontOpentypeI, wordFontSize, boxWidth);
 
@@ -155,8 +178,6 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
 
       // This version uses the angle from the line rather than the page
       // const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (Math.atan(baseline[0]) * (180 / Math.PI)) : 0;
-
-      const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
       const visualLeft = box.left + angleAdjLine.x + angleAdjWord.x + leftAdjX;
       const left = visualLeft - wordLeftBearing;

@@ -467,7 +467,8 @@ const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getEleme
 autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false); });
 // autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false) });
 // showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false) });
-document.getElementById('showBoundingBoxes')?.addEventListener('click', () => { renderPageQueue(cp.n, false); });
+document.getElementById('outlineWords')?.addEventListener('click', () => { renderPageQueue(cp.n, false); });
+document.getElementById('outlineLines')?.addEventListener('click', () => { renderPageQueue(cp.n, false); });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
