@@ -1,0 +1,33 @@
+name: Create Monthly Branch
+
+on:
+  schedule:
+    # Runs at 00:00 UTC on the first day of every month
+    - cron: '0 12 28 * *'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure git
+        run: |
+          git config --global user.email "admin@scribeocr.com"
+          git config --global user.name "Balearica"
+
+      - name: Create and push new branch
+        run: |
+          year=$(date -u +"%Y")
+          month=$(date -u +"%m")
+          branch_name="${year}-${month}"
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            timestamp=$(date -u +"%H%M%S")
+            branch_name="${branch_name}-${timestamp}"
+          fi
+
+          git checkout -b $branch_name
+          git push origin $branch_name
