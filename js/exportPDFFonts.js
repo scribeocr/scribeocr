@@ -210,7 +210,7 @@ export function createEmbeddedFontType0(font, firstObjIndex, style = 'normal') {
   const namesTable = font.names.windows || font.names;
 
   // Add font name
-  objOut += `\n/BaseFont/${namesTable.postScriptName.en}`;
+  objOut += `/BaseFont/${namesTable.postScriptName.en}`;
 
   objOut += '/Encoding/Identity-H';
 

@@ -121,16 +121,19 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
 
   if (!angleKnown) globalThis.pageMetricsArr[n].angle = res0.recognize.rotateRadians * (180 / Math.PI) * -1;
 
+  // An image is rotated if either the source was rotated or rotation was applied by Tesseract.
+  const isRotated = Boolean(res0.recognize.rotateRadians || 0) || nativeN.rotated;
+
   // Images from Tesseract should not overwrite the existing images in the case where rotateAuto is true,
   // but no significant rotation was actually detected.
   const significantRotation = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
 
   if (saveBinaryImageArg && res0.recognize.imageBinary && (significantRotation || !imageCache.binary[n])) {
-    imageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'png', 'binary', true, upscale);
+    imageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'png', 'binary', isRotated, upscale);
   }
 
   if (saveNativeImage && res0.recognize.imageColor && significantRotation) {
-    imageCache.native[n] = new ImageWrapper(n, res0.recognize.imageColor, 'png', 'native', true, upscale);
+    imageCache.native[n] = new ImageWrapper(n, res0.recognize.imageColor, 'png', 'native', isRotated, upscale);
   }
 
   return resArr;

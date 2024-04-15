@@ -167,10 +167,8 @@ async function drawWordActual(words, imageBinaryBit, imgDims, angle, options = {
     return;
   }
 
-  const fontStyle = words[0].style;
-  const wordFontFamily = words[0].font || fontAll.defaultFontName;
+  const fontI = fontAll.getWordFont(words[0]);
 
-  const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][fontStyle]);
   const fontOpentypeI = await fontI.opentype;
   calcCtx.font = `${fontI.fontFaceStyle} ${1000}px ${fontI.fontFaceName}`;
 
@@ -316,9 +314,7 @@ const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSiz
     return;
   }
 
-  const wordFontFamily = word.font || fontAll.defaultFontName;
-
-  const fontI = /** @type {FontContainerFont} */ (fontAll.active[wordFontFamily][word.style]);
+  const fontI = fontAll.getWordFont(word);
   const fontOpentypeI = await fontI.opentype;
 
   // Set canvas to correct font and size
@@ -635,11 +631,10 @@ async function penalizeWord(wordObjs) {
   if (wordObjs.length === 1 && /^[a-z][.,-]$/i.test(wordStr)) {
     const word = wordObjs[0];
     const wordTextArr = wordStr.split('');
-    const wordFontFamily = word.font || fontAll.defaultFontName;
     const wordFontSize = await calcLineFontSize(word.line);
     if (!wordFontSize) return penalty;
-    const fontActive = fontAll.get('active');
-    const fontI = /** @type {FontContainerFont} */ (fontActive[wordFontFamily][word.style]);
+
+    const fontI = fontAll.getWordFont(word);
     const fontOpentypeI = await fontI.opentype;
 
     // These calculations differ from the standard word width calculations,
@@ -1312,7 +1307,7 @@ export async function evalPageFont({
     }
 
     // If the font is not set for a specific word, whether it is assumed sans/serif will be determined by the default font.
-    const lineFontType = ocrLineJ.words[0].font ? fontAll.active[ocrLineJ.words[0].font].normal.type : fontAll.active.Default.normal.type;
+    const lineFontType = ocrLineJ.words[0].font ? fontAll.getWordFont(ocrLineJ.words[0]).type : fontAll.getFont('Default').type;
 
     if (fontAll.active[font].normal.type !== lineFontType) return null;
 

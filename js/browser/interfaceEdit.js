@@ -67,8 +67,6 @@ export async function changeWordFontStyle(style) {
     styleSmallCapsButton.toggle();
   }
 
-  const fontActive = fontAll.get('active');
-
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
@@ -85,7 +83,7 @@ export async function changeWordFontStyle(style) {
 
     wordI.fontStyleLookup = newStyleLookup;
 
-    const fontI = fontActive[wordI.fontFamilyLookup][newStyleLookup];
+    const fontI = fontAll.getFont(wordI.fontFamilyLookup, newStyleLookup);
 
     wordI.fontFamily = fontI.fontFaceName;
     wordI.fontStyle = fontI.fontFaceStyle;
@@ -145,16 +143,13 @@ export async function changeWordFontSize(fontSizeStr) {
 export async function changeWordFontFamily(fontName) {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects) return;
-  const fontNameLookup = fontName === 'Default' ? fontAll.defaultFontName : fontName;
-
-  const fontActive = fontAll.get('active');
 
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
     const wordIDI = wordI.wordID;
 
-    const fontI = fontActive[fontNameLookup][wordI.fontStyleLookup];
+    const fontI = fontAll.getFont(fontName, wordI.fontStyleLookup);
 
     const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
 
@@ -173,7 +168,7 @@ export async function changeWordFontFamily(fontName) {
     wordI.fontStyle = fontI.fontFaceStyle;
 
     wordI.defaultFontFamily = fontName === 'Default';
-    wordI.fontFamilyLookup = fontNameLookup;
+    wordI.fontFamilyLookup = fontI.family;
     wordI.fontObj = fontI;
 
     await updateWordCanvas(wordI);

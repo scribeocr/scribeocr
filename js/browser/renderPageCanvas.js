@@ -83,20 +83,8 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
       const wordSup = wordObj.sup;
       const wordDropCap = wordObj.dropcap;
       const fontStyle = wordObj.style;
-      let wordFontFamily = wordObj.font;
 
-      let defaultFontFamily;
-      if (wordFontFamily === null || wordFontFamily === undefined) {
-        wordFontFamily = fontAll.defaultFontName;
-        defaultFontFamily = true;
-      } else {
-        wordFontFamily = wordFontFamily.trim();
-        defaultFontFamily = false;
-      }
-
-      const fontActive = fontAll.get('active');
-
-      const fontI = /** @type {FontContainerFont} */ (wordObj.lang === 'chi_sim' ? fontAll.supp.chi_sim : fontActive[wordFontFamily][fontStyle]);
+      const fontI = fontAll.getWordFont(wordObj);
       const fontOpentypeI = await fontI.opentype;
 
       const wordFontSize = await calcWordFontSize(wordObj);
@@ -195,14 +183,14 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         fontObj: fontI,
 
         // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
-        fontFamilyLookup: wordFontFamily,
+        fontFamilyLookup: fontI.family,
         fontStyleLookup: fontStyle,
         wordID: wordId,
         visualWidth: boxWidth, // TODO: Is this incorrect when rotation exists?
         visualLeft,
         visualBaseline,
         scaleX,
-        defaultFontFamily,
+        defaultFontFamily: !wordObj.font,
         textBackgroundColor,
         // fontFamily: 'times',
         opacity: opacityArg,

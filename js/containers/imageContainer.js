@@ -69,7 +69,10 @@ const compatible = (img, props) => {
   }
 
   if (props.upscaled === true && img.upscaled === false || props.upscaled === false && img.upscaled === true) return false;
-  if (props.colorMode && props.colorMode !== img.colorMode) return false;
+
+  // The value 'native' is used for images uploaded from the user, and is essentially a default value.
+  // These cannot be considered incompatible with any color mode as the color of user-uploaded images is never edited (binarization aside).
+  if (props.colorMode && props.colorMode !== img.colorMode && img.colorMode !== 'native' && img.colorMode !== 'native') return false;
   return true;
 };
 
@@ -206,10 +209,11 @@ class ImageCache {
     if (Math.abs(pageAngle) < 0.05) pageAngle = 0;
 
     // If no preference is specified for rotation, default to true.
-    const angleArg = props?.rotate !== false ? pageAngle * (Math.PI / 180) * -1 : 0;
+    const rotate = props?.rotated !== false && inputImage.rotated === false;
+    const angleArg = rotate ? pageAngle * (Math.PI / 180) * -1 : 0;
 
     // If no preference is specified for upscaling, default to false.
-    const upscaleArg = props?.upscale || false;
+    const upscaleArg = props?.upscaled || false;
 
     const resPromise = (async () => {
     // Wait for non-rotated version before replacing with promise
@@ -223,11 +227,13 @@ class ImageCache {
       });
     })();
 
+    const isRotated = Boolean(angleArg) || inputImage.rotated;
+
     if (saveNativeImage) {
-      this.native[n] = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageColor)), 'png', inputImage.colorMode, Boolean(angleArg), upscaleArg));
+      this.native[n] = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageColor)), 'png', inputImage.colorMode, isRotated, upscaleArg));
     }
 
-    this.binary[n] = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageBinary)), 'png', 'binary', Boolean(angleArg), upscaleArg));
+    this.binary[n] = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageBinary)), 'png', 'binary', isRotated, upscaleArg));
 
     if (saveNativeImage) await this.native[n];
     await this.binary[n];

@@ -443,7 +443,7 @@ optimizeFontElem.addEventListener('click', () => {
   // This button does nothing if the debug option optimizeFontDebugElem is enabled.
   // This approach is used rather than disabling the button, as `optimizeFontElem.disabled` is checked in other functions
   // to determine whether font optimization is enabled.
-  if (!optimizeFontDebugElem.checked) return;
+  if (optimizeFontDebugElem.checked) return;
   optimizeFontClick(optimizeFontElem.checked);
 });
 
@@ -1432,7 +1432,7 @@ function addWordClick() {
 
     const textBackgroundColor = search.search && wordText.includes(search.search) ? '#4278f550' : '';
 
-    const fontActive = fontAll.get('active');
+    const fontObj = fontAll.getFont('Default');
 
     const textbox = new ITextWord(wordText, {
       left: rectLeft,
@@ -1446,11 +1446,11 @@ function addWordClick() {
       fill: fillArg,
       fill_proof: fillColorHex,
       fill_ebook: 'black',
-      fontFamily: fontActive[fontAll.defaultFontName].normal.fontFaceName,
+      fontFamily: fontObj.fontFaceName,
       fontStyle: 'normal',
       fontFamilyLookup: fontAll.defaultFontName,
       fontStyleLookup: 'normal',
-      fontObj: fontActive[fontAll.defaultFontName].normal,
+      fontObj,
       wordID: wordIDNew,
       textBackgroundColor,
       visualWidth: rect.width,
@@ -1743,7 +1743,7 @@ async function importFiles(curFiles) {
       if (ocrData.defaultFont) fontAll.defaultFontName = ocrData.defaultFont;
 
       if (ocrData.enableOpt === 'true') {
-        const fontRaw = fontAll.get('raw');
+        const fontRaw = fontAll.getContainer('raw');
         fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
         optimizeFontElem.disabled = false;
         optimizeFontElem.checked = true;
@@ -1755,7 +1755,7 @@ async function importFiles(curFiles) {
         existingOpt = true;
       // If font metrics are available but enableOpt is not specified, default to using them.
       } else if (ocrData.fontMetricsObj) {
-        const fontRaw = fontAll.get('raw');
+        const fontRaw = fontAll.getContainer('raw');
         fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
         optimizeFontElem.disabled = false;
         optimizeFontElem.checked = true;
@@ -1764,14 +1764,10 @@ async function importFiles(curFiles) {
 
       if (ocrData.sansFont) {
         fontAll.sansDefaultName = ocrData.sansFont;
-        if (fontAll.raw) fontAll.raw.SansDefault = fontAll.raw[ocrData.sansFont];
-        if (fontAll.opt) fontAll.opt.SansDefault = fontAll.opt[ocrData.sansFont];
       }
 
       if (ocrData.serifFont) {
         fontAll.serifDefaultName = ocrData.serifFont;
-        if (fontAll.raw) fontAll.raw.SerifDefault = fontAll.raw[ocrData.serifFont];
-        if (fontAll.opt) fontAll.opt.SerifDefault = fontAll.opt[ocrData.serifFont];
       }
 
       // Restore layout data from previous session (if applicable)

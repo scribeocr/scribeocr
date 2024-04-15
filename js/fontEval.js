@@ -53,7 +53,7 @@ export async function evalPageFonts(font, pageArr, n = 500) {
 * @param {Array<OcrPage>} pageArr
 */
 export async function evaluateFonts(pageArr) {
-  const fontActive = fontAll.get('active');
+  const fontActive = fontAll.getContainer('active');
 
   const debug = false;
 
@@ -113,7 +113,7 @@ export async function evaluateFonts(pageArr) {
 export async function runFontOptimization(ocrArr) {
   const browserMode = typeof process === 'undefined';
 
-  const fontRaw = fontAll.get('raw');
+  const fontRaw = fontAll.getContainer('raw');
 
   const calculateOpt = fontMetricsObj && Object.keys(fontMetricsObj).length > 0;
 
@@ -123,6 +123,14 @@ export async function runFontOptimization(ocrArr) {
   if (calculateOpt) {
     setDefaultFontAuto(fontMetricsObj);
     fontAll.optInitial = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
+
+    // If no image data exists, then `opt` is set to `optInitial`.
+    // This behavior exists so that data can be loaded from previous sessions without changing the appearance of the document.
+    // Arguably, in cases where a user uploads raw OCR data and no images, using the raw font is more prudent than an unvalidated optimized font.
+    // If this ever comes up in actual usage and is a problem, then the behavior can be changed for that specific case.
+    if (!imageCache.inputModes.image && !imageCache.inputModes.pdf) {
+      fontAll.opt = { ...fontAll.optInitial };
+    }
   }
 
   // If image data exists, select the correct font by comparing to the image.
@@ -145,7 +153,7 @@ export async function runFontOptimization(ocrArr) {
 
     if (calculateOpt && fontAll.optInitial) {
       // Enable optimized fonts
-      await enableDisableFontOpt(true);
+      await enableDisableFontOpt(true, true, true);
 
       const evalOpt = await evaluateFonts(ocrArr.slice(0, pageNum));
 
@@ -155,25 +163,17 @@ export async function runFontOptimization(ocrArr) {
       // This ensures that switching on/off "font optimization" does not change the font, which would be confusing.
       if (evalOpt.sansMetrics[evalOpt.minKeySans] < evalRaw.sansMetrics[evalRaw.minKeySans]) {
         fontAll.sansDefaultName = evalOpt.minKeySans;
-        fontRaw.SansDefault = fontRaw[evalOpt.minKeySans];
-        fontAll.optInitial.SansDefault = fontAll.optInitial[evalOpt.minKeySans];
         enableOptSans = true;
       } else {
         fontAll.sansDefaultName = evalRaw.minKeySans;
-        fontRaw.SansDefault = fontRaw[evalRaw.minKeySans];
-        fontAll.optInitial.SansDefault = fontAll.optInitial[evalRaw.minKeySans];
       }
 
       // Repeat for serif fonts
       if (evalOpt.serifMetrics[evalOpt.minKeySerif] < evalRaw.serifMetrics[evalRaw.minKeySerif]) {
         fontAll.serifDefaultName = evalOpt.minKeySerif;
-        fontRaw.SerifDefault = fontRaw[evalOpt.minKeySerif];
-        fontAll.optInitial.SerifDefault = fontAll.optInitial[evalOpt.minKeySerif];
         enableOptSerif = true;
       } else {
         fontAll.serifDefaultName = evalRaw.minKeySerif;
-        fontRaw.SerifDefault = fontRaw[evalRaw.minKeySerif];
-        fontAll.optInitial.SerifDefault = fontAll.optInitial[evalRaw.minKeySerif];
       }
 
       // Create final optimized font object.
@@ -184,7 +184,6 @@ export async function runFontOptimization(ocrArr) {
       if (!enableOptSans) {
         fontAll.opt.Carlito = fontRaw.Carlito;
         fontAll.opt.NimbusSans = fontRaw.NimbusSans;
-        fontAll.opt.SansDefault = fontRaw.SansDefault;
       }
 
       if (!enableOptSerif) {
@@ -192,18 +191,15 @@ export async function runFontOptimization(ocrArr) {
         fontAll.opt.Garamond = fontRaw.Garamond;
         fontAll.opt.NimbusRomNo9L = fontRaw.NimbusRomNo9L;
         fontAll.opt.Palatino = fontRaw.Palatino;
-        fontAll.opt.SerifDefault = fontRaw.SerifDefault;
       }
     } else {
       fontAll.sansDefaultName = evalRaw.minKeySans;
       fontAll.serifDefaultName = evalRaw.minKeySerif;
-      fontRaw.SansDefault = fontRaw[evalRaw.minKeySans];
-      fontRaw.SerifDefault = fontRaw[evalRaw.minKeySerif];
     }
   }
 
   // Set final fonts in workers
-  await enableDisableFontOpt(true);
+  await enableDisableFontOpt(true, false, true);
 
   const enableOpt = enableOptSerif || enableOptSans;
 

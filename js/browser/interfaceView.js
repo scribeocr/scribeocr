@@ -34,9 +34,6 @@ function displayModeClick(x) {
 export const selectDisplayMode = async (x) => {
   if (globalThis.inputDataModes.xmlMode[cp.n] && globalThis.inputDataModes.pdfMode && cp.renderStatus !== 2) { return; }
 
-  const imageBitmap = await imageCache.getNativeBitmap(cp.n);
-  cp.backgroundImage = new fabric.Image(imageBitmap, { objectCaching: false });
-
   let opacityArg; let
     fillArg;
   if (x === 'invis') {
@@ -86,7 +83,11 @@ export const selectDisplayMode = async (x) => {
     cp.backgroundOpts.top = 0;
   }
 
-  const backgroundImage = await (colorModeElem.value === 'binary' ? imageCache.getBinary(cp.n) : imageCache.getNative(cp.n));
+  const backgroundImage = colorModeElem.value === 'binary' ? await imageCache.getBinary(cp.n) : await imageCache.getNative(cp.n);
+
+  const backgroundImageBitmap = colorModeElem.value === 'binary' ? await imageCache.getBinaryBitmap(cp.n) : await imageCache.getNativeBitmap(cp.n);
+
+  cp.backgroundImage = new fabric.Image(backgroundImageBitmap, { objectCaching: false });
 
   // Edit rotation for images that have already been rotated
   if (backgroundImage.rotated) {

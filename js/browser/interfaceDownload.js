@@ -36,6 +36,7 @@ const reflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementBy
 const pageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
 
 const humanReadablePDFElem = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
+const intermediatePDFElem = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
@@ -293,17 +294,22 @@ export async function handleDownload() {
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
 
-      const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
-      const w = muPDFScheduler.workers[0];
+      // Skip mupdf processing if the intermediate PDF is requested. Debugging purposes only.
+      if (intermediatePDFElem.checked) {
+        pdfBlob = new Blob([pdfEnc], { type: 'application/octet-stream' });
+      } else {
+        const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
+        const w = muPDFScheduler.workers[0];
 
-      // The file name is only used to detect the ".pdf" extension
-      const pdf = await w.openDocument(pdfEnc.buffer, 'document.pdf');
+        // The file name is only used to detect the ".pdf" extension
+        const pdf = await w.openDocument(pdfEnc.buffer, 'document.pdf');
 
-      const content = await w.write({
-        doc1: pdf, minpage: minValue, maxpage: maxValue, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, humanReadable: humanReadablePDFElem.checked,
-      });
+        const content = await w.write({
+          doc1: pdf, minpage: minValue, maxpage: maxValue, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, humanReadable: humanReadablePDFElem.checked,
+        });
 
-      pdfBlob = new Blob([content], { type: 'application/octet-stream' });
+        pdfBlob = new Blob([content], { type: 'application/octet-stream' });
+      }
     }
     saveAs(pdfBlob, fileName);
   } else if (downloadType === 'hocr') {

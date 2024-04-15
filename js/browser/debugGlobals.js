@@ -3,9 +3,11 @@
 
 import { fontAll } from '../containers/fontContainer.js';
 import { calcLineFontSize } from '../fontUtils.js';
+import { imageCache } from '../containers/imageContainer.js';
 
 // Expose functions in global object for debugging purposes.
 export const df = {
   calcLineFontSize,
   fontAll,
+  imageCache,
 };

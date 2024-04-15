@@ -86,8 +86,10 @@ export function loadChiSimFont() {
  *
  * @param {boolean} enable
  * @param {boolean} [useInitial=false]
+ * @param {boolean} [forceWorkerUpdate=false] - If true, forces the worker to update the font data even if the font data of this type is already loaded.
+ *    This should be used when switching from unvalidated to validated optimized fonts.
  */
-export async function enableDisableFontOpt(enable, useInitial = false) {
+export async function enableDisableFontOpt(enable, useInitial = false, forceWorkerUpdate = false) {
   const browserMode = typeof process === 'undefined';
 
   // Enable/disable optimized font
@@ -101,7 +103,7 @@ export async function enableDisableFontOpt(enable, useInitial = false) {
 
   // Enable/disable optimized font in workers
   if (browserMode) {
-    await setFontAllWorker(globalThis.generalScheduler);
+    await setFontAllWorker(globalThis.generalScheduler, forceWorkerUpdate);
   } else {
     // const { setFontAll } = await import('./worker/compareOCRModule.js');
     // setFontAll(fontAll);
@@ -114,19 +116,19 @@ let loadedOpt = false;
 /**
  *
  * @param {*} scheduler
+ * @param {boolean} [force=false] - If true, forces the worker to update the font data even if the font data of this type is already loaded.
  */
-export async function setFontAllWorker(scheduler) {
+export async function setFontAllWorker(scheduler, force = false) {
   if (!fontAll.active) return;
 
-  // const opt = !(typeof fontAll.active.Carlito.normal.src == 'string');
-  const { opt } = fontAll.active.Carlito.normal;
+  const opt = fontAll.active.Carlito.normal.opt || fontAll.active.NimbusRomNo9L.normal.opt;
 
   const alreadyLoaded = (!opt && loadedRaw) || (opt && loadedOpt);
 
   // If the active font data is not already loaded, load it now.
   // This assumes that only one version of the raw/optimized fonts ever exist--
   // it does not check whether the current optimized font changed since it was last loaded.
-  if (!alreadyLoaded) {
+  if (!alreadyLoaded || force) {
     const resArr = [];
     for (let i = 0; i < scheduler.workers.length; i++) {
       const worker = scheduler.workers[i];
@@ -157,7 +159,7 @@ export async function setFontAllWorker(scheduler) {
   const resArr = [];
   for (let i = 0; i < scheduler.workers.length; i++) {
     const worker = scheduler.workers[i];
-    const res = worker.setFontActiveWorker({ opt, fontFamilySans: fontAll.active.SansDefault.normal.family, fontFamilySerif: fontAll.active.SerifDefault.normal.family });
+    const res = worker.setFontActiveWorker({ opt, sansDefaultName: fontAll.sansDefaultName, serifDefaultName: fontAll.serifDefaultName });
     resArr.push(res);
   }
   await Promise.all(resArr);

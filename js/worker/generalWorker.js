@@ -230,15 +230,15 @@ async function loadFontContainerAllWorker({ src, opt }) {
   return true;
 }
 
-async function setFontActiveWorker({ opt, fontFamilySans, fontFamilySerif }) {
+async function setFontActiveWorker({ opt, sansDefaultName, serifDefaultName }) {
   if (opt === true) {
     fontAll.active = fontAll.opt;
   } else if (opt === false) {
     fontAll.active = fontAll.raw;
   }
 
-  if (fontFamilySans && fontAll.active) fontAll.active.SansDefault = fontAll.active[fontFamilySans];
-  if (fontFamilySerif && fontAll.active) fontAll.active.SerifDefault = fontAll.active[fontFamilySerif];
+  if (sansDefaultName) fontAll.sansDefaultName = sansDefaultName;
+  if (serifDefaultName) fontAll.serifDefaultName = serifDefaultName;
 }
 
 globalThis.globalSettings = {

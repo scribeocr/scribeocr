@@ -275,10 +275,6 @@ export function FontContainerAll({
   this.Palatino = Palatino;
   this.NimbusRomNo9L = NimbusRomNo9L;
   this.NimbusSans = NimbusSans;
-
-  this.SansDefault = this.NimbusSans;
-  this.SerifDefault = this.NimbusRomNo9L;
-  this.Default = this.NimbusRomNo9L;
 }
 
 /**
@@ -341,6 +337,8 @@ class FontCont {
     this.opt = null;
     /** @type {?FontContainerAll} */
     this.active = null;
+    /** @type {?FontContainerAll} */
+    this.export = null;
     this.supp = {
       /** @type {?FontContainerFont} */
       chi_sim: null,
@@ -352,13 +350,51 @@ class FontCont {
      * Get raw/opt/active font, and throw exception if it does not exist.
      * This method only exists for type inference purposes, as raw/opt/active may be accessed directly, but may be `null`.
      * This method should therefore only be used in cases where an exception on `null` is a desirable behavior.
-     * @param {('raw'|'opt'|'active')} type
+     * @param {('raw'|'opt'|'active'|'optInitial')} container
      * @returns {FontContainerAll}
      */
-    this.get = (type) => {
-      const fontRes = this[type];
-      if (!fontRes) throw new Error(`Font container does not contain ${type}.`);
+    this.getContainer = (container) => {
+      const fontRes = this[container];
+      if (!fontRes) throw new Error(`${container} font container does not exist.`);
       return fontRes;
+    };
+
+    /**
+     * Gets a font object.  Unlike accessing the font containers directly,
+     * this method allows for special values 'Default', 'SansDefault', and 'SerifDefault' to be used.
+     *
+     * @param {('Default'|'SansDefault'|'SerifDefault'|string)} family - Font family name.
+     * @param {('normal'|'italic'|'small-caps'|string)} [style='normal']
+     * @param {string} [lang='eng']
+     * @param {('raw'|'opt'|'active'|'optInitial')} [container='active']
+     * @returns {FontContainerFont}
+     */
+    this.getFont = (family, style = 'normal', lang = 'eng', container = 'active') => {
+      const fontCont = this.getContainer(container);
+
+      if (lang === 'chi_sim') {
+        if (!this.supp.chi_sim) throw new Error('chi_sim font does not exist.');
+        return this.supp.chi_sim;
+      }
+
+      // This needs to come first as `defaultFontName` maps to either 'SerifDefault' or 'SansDefault'.
+      if (family === 'Default') family = this.defaultFontName;
+
+      if (family === 'SerifDefault') family = this.serifDefaultName;
+      if (family === 'SansDefault') family = this.sansDefaultName;
+      const fontRes = fontCont[family][style];
+      if (!fontRes) throw new Error(`Font container does not contain ${family} (${style}).`);
+      return fontRes;
+    };
+
+    /**
+     *
+     * @param {OcrWord} word
+     * @param {('raw'|'opt'|'active'|'optInitial')} [container='active']
+     */
+    this.getWordFont = (word, container = 'active') => {
+      const wordFontFamily = word.font || fontAll.defaultFontName;
+      return this.getFont(wordFontFamily, word.style, word.lang, container);
     };
   }
 }
