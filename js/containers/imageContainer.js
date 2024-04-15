@@ -118,7 +118,6 @@ export class ImageWrapper {
  * @returns
  */
 async function initMuPDFSchedulerPrivate(fileData, numWorkers = 3) {
-  // if (imageCont.muPDFScheduler) return imageCont.muPDFScheduler;
   const scheduler = await Tesseract.createScheduler();
   const workersPromiseArr = range(1, numWorkers).map(async () => {
     const w = await initMuPDFWorker();
@@ -214,7 +213,6 @@ class ImageCache {
 
     const resPromise = (async () => {
     // Wait for non-rotated version before replacing with promise
-    // const inputImage = await Promise.resolve(imageCont.imageAll.nativeStr[n]);
       await globalThis.generalScheduler.ready;
       return gs.recognize({
         image: inputImage.src,
@@ -419,7 +417,7 @@ class ImageCache {
    * @param {Boolean} [setPageMetrics=false]
    */
   openMainPDF = async (fileData, skipText = false, setPageMetrics = false, extractStext = false) => {
-    console.assert(!this.muPDFScheduler, 'openMainPDF should not be run when imageCont.muPDFScheduler is already defined, report as bug.');
+    console.assert(!this.muPDFScheduler, 'openMainPDF should not be run when imageCache.muPDFScheduler is already defined, report as bug.');
     const muPDFScheduler = await this.initMuPDFScheduler(fileData, 3);
 
     this.pageCount = await muPDFScheduler.workers[0].countPages([]);

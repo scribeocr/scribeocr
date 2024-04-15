@@ -293,7 +293,7 @@ export async function handleDownload() {
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
 
-      const muPDFScheduler = await imageCont.initMuPDFScheduler(null, 1);
+      const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
       const w = muPDFScheduler.workers[0];
 
       // The file name is only used to detect the ".pdf" extension
