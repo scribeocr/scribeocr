@@ -207,7 +207,8 @@ function calculateFontMetrics(fontMetricsRawFontObj) {
   return (fontMetricOut);
 }
 
-export function parseDebugInfo(debugTxt) {
+// This function is not currently used.
+function parseDebugInfo(debugTxt) {
   if (!globalThis.fontScores) globalThis.fontScores = { SerifDefault: {}, SansDefault: {}, Default: {} };
 
   const fontLines = debugTxt.match(/Modal Font.+/g);

@@ -161,6 +161,7 @@ export const recognizeAndConvert2 = async ({
 
   // Disable output formats that are not used.
   // Leaving these enabled can significantly inflate runtimes for no benefit.
+  if (!output) output = {};
   output.hocr = false;
   output.tsv = false;
   output.text = false;
