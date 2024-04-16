@@ -158,6 +158,13 @@ export const recognizeAndConvert2 = async ({
   image, options, output, n, pageDims, knownAngle = null,
 }, id) => {
   options.upscale = false;
+
+  // Disable output formats that are not used.
+  // Leaving these enabled can significantly inflate runtimes for no benefit.
+  output.hocr = false;
+  output.tsv = false;
+  output.text = false;
+
   // The function `worker.recognize2` returns 2 promises.
   // If both Legacy and LSTM data are requested, only the second promise will contain the LSTM data.
   // This allows the Legacy data to be used immediately, which halves the amount of delay between user
