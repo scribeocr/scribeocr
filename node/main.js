@@ -171,6 +171,9 @@ async function main(func, params) {
       await imageCache.openMainPDF(fileData, false, !params.ocrFile);
       pageCountImage = imageCache.pageCount;
     } else {
+      imageCache.inputModes.image = true;
+      imageCache.pageCount = 1;
+
       pageCountImage = 1;
       const format = params.pdfFile.match(/jpe?g$/i) ? 'jpeg' : 'png';
 

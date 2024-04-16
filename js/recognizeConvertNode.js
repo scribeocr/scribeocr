@@ -7,6 +7,9 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
 
   const inputPages = [...Array(imageCache.pageCount).keys()];
   const promiseArr = [];
+
+  if (!inputPages || inputPages.length === 0) throw new Error('No pages to recognize');
+
   for (const x of inputPages) {
     promiseArr.push(recognizePage(globalThis.gs, x, legacy, lstm, false, {}, debug).then(async (resArr) => {
       const res0 = await resArr[0];
