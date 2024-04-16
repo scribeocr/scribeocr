@@ -268,4 +268,28 @@ canvas.uniformScaling = false;
 // Run once to add event listners (so zoom works)
 resetCanvasEventListeners();
 
+// Fabric.js has no keydown events, so they are added to the document.
+// This allows for zooming in/out with these shortcuts, even if "focus" is not on the canvas.
+document.addEventListener('keydown', (event) => {
+  if (event.ctrlKey) {
+    if (['+', '='].includes(event.key)) {
+      // Zoom in by 10% on the center of the canvas.
+      const zoomPoint = new fabric.Point(canvas.width / 2, canvas.height / 2);
+      canvas.zoomToPoint(zoomPoint, canvas.getZoom() * 1.1);
+
+      event.preventDefault();
+      event.stopPropagation();
+      canvas.requestRenderAll();
+    } else if (['-', '_'].includes(event.key)) {
+      // Zoom out by 10% on the center of the canvas.
+      const zoomPoint = new fabric.Point(canvas.width / 2, canvas.height / 2);
+      canvas.zoomToPoint(zoomPoint, canvas.getZoom() / 1.1);
+
+      event.preventDefault();
+      event.stopPropagation();
+      canvas.requestRenderAll();
+    }
+  }
+});
+
 export { canvas, resetCanvasEventListeners };
