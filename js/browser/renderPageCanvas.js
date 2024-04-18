@@ -36,6 +36,8 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
     fabric.Object.prototype.objectCaching = false;
   }
 
+  const matchIdArr = ocr.getMatchingWordIds(search.search, globalThis.ocrAll.active[cp.n]);
+
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
@@ -182,7 +184,7 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
       const visualLeft = box.left + angleAdjLine.x + angleAdjWord.x + leftAdjX;
       const left = visualLeft - wordLeftBearing;
 
-      const textBackgroundColor = search.search && wordText.toLowerCase().includes(search.search?.toLowerCase()) ? '#4278f550' : '';
+      const textBackgroundColor = matchIdArr.includes(wordObj.id) ? '#4278f550' : '';
 
       const textbox = new ITextWord(wordText, {
         left,

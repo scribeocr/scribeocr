@@ -690,13 +690,14 @@ export const search = {
 
 // Highlight words that include substring in the current page
 function highlightcp(text) {
+  const matchIdArr = ocr.getMatchingWordIds(text, globalThis.ocrAll.active[cp.n]);
+
   const selectedObjects = window.canvas.getObjects();
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     // Using the presence of a wordID property to indicate this object represents an OCR word
     if (selectedObjects[i]?.wordID) {
-      const textI = selectedObjects[i].text;
-      if (text.trim() && textI.toLowerCase().includes(text.toLowerCase())) {
+      if (matchIdArr.includes(selectedObjects[i].wordID)) {
         selectedObjects[i].textBackgroundColor = '#4278f550';
         selectedObjects[i].dirty = true;
       } else if (selectedObjects[i].textBackgroundColor) {
