@@ -24,6 +24,7 @@ const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementByI
 const recognizeWordDropdownElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWordDropdown'));
 const editBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('editBaseline'));
 const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
+const outlineLinesElem = /** @type {HTMLInputElement} */(document.getElementById('outlineLines'));
 
 styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic'); });
 styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('small-caps'); });
@@ -46,6 +47,9 @@ export function deleteSelectedWords() {
   window.canvas.discardActiveObject();
   window.canvas.renderAll();
   ocr.deletePageWords(globalThis.ocrAll.active[cp.n], selectedIds);
+
+  // Re-render the page if the user has selected the option to outline lines to update the line boxes.
+  if (outlineLinesElem.checked) renderPageQueue(cp.n);
 }
 
 /**

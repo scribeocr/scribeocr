@@ -221,8 +221,11 @@ const deletePageWords = (page, ids) => {
         page.lines[i].words.splice(j, 1);
         // Subtract 1 from j to account for the fact that the array just got one element shorter
         j--;
+        // If there are no words left in this line, delete the line
         if (page.lines[i].words.length === 0) {
           page.lines.splice(i, 1);
+          i--;
+          break;
         // If there are still words in this line, re-calculate the line bounding box.
         // To avoid duplicative calculations this only happens once at the end of the line or after all ids have been deleted.
         } else if (j + 1 === page.lines[i].words.length || ids.length === 0) {

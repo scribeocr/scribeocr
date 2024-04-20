@@ -91,6 +91,8 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         showTextBoxBorder: true,
         stroke: 'rgba(0,0,255,0.75)',
         fill: null,
+        selectable: false,
+        evented: false, // Prevents cursor from changing.
       });
       canvas.add(lineRect);
     }
