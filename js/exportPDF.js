@@ -26,11 +26,12 @@ import ocr from './objects/ocrObjects.js';
  * @param {?any} progress -
  * @param {number} confThreshHigh -
  * @param {number} confThreshMed -
+ * @param {number} [proofOpacity=0.8] -
  *
  * A valid PDF will be created if an empty array is provided for `hocrArr`, as long as `maxpage` is set manually.
  */
 export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = 'ebook', rotateText = false, rotateBackground = false,
-  dimsLimit = { width: -1, height: -1 }, progress = null, confThreshHigh = 85, confThreshMed = 75) {
+  dimsLimit = { width: -1, height: -1 }, progress = null, confThreshHigh = 85, confThreshMed = 75, proofOpacity = 0.8) {
   // TODO: Currently, all fonts are added to the PDF, and mupdf removes the unused fonts.
   // It would likely be more performant to only add the fonts that are actually used up front.
   const exportFontObj = fontAll.getContainer('active');
@@ -127,6 +128,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
   pdfOut += `/Font<<${pdfFontsStr}>>`;
 
   pdfOut += '/ExtGState<</GS0 <</ca 0.0>>>>';
+  pdfOut += `/ExtGState<</GS1 <</ca ${proofOpacity}>>>>`;
 
   pdfOut += '>>\nendobj\n\n';
 
@@ -213,6 +215,8 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
   if (textMode === 'invis') {
     textStream += '/GS0 gs\n';
+  } else if (['proof', 'eval'].includes(textMode)) {
+    textStream += '/GS1 gs\n';
   }
 
   textStream += 'BT\n';

@@ -15,6 +15,8 @@ const outlineWordsElem = /** @type {HTMLInputElement} */(document.getElementById
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
 
+const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
+
 const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
 
 /**
@@ -144,8 +146,8 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
       const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
       const displayMode = displayModeElem.value;
 
-      let opacityArg; let
-        fillArg;
+      let opacityArg;
+      let fillArg;
       // Set current text color and opacity based on display mode selected
       if (displayMode === 'invis') {
         opacityArg = 0;
@@ -154,10 +156,10 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         opacityArg = 1;
         fillArg = 'black';
       } else if (displayMode === 'eval') {
-        opacityArg = 1;
+        opacityArg = parseFloat(rangeOpacityElem.value || '80') / 100;
         fillArg = fillColorHexMatch;
       } else {
-        opacityArg = 1;
+        opacityArg = parseFloat(rangeOpacityElem.value || '80') / 100;
         fillArg = fillColorHex;
       }
 

@@ -12,6 +12,13 @@ displayModeElem.addEventListener('change', () => { displayModeClick(displayModeE
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 
+const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
+
+rangeOpacityElem.addEventListener('input', () => {
+  setWordColorOpacity(displayModeElem.value);
+  canvas.requestRenderAll();
+});
+
 /**
  *
  * @param {string} x
@@ -25,17 +32,15 @@ function displayModeClick(x) {
 }
 
 /**
- * Change the display mode (e.g. proofread mode vs. ocr mode).
- * Impacts what color the text is printed and whether the background image is displayed.
+ *
+ * Changes color and opacity of words based on the display mode.
  *
  * @param { ("invis"|"ebook"|"eval"|"proof")} x
  * @returns
  */
-export const selectDisplayMode = async (x) => {
-  if (globalThis.inputDataModes.xmlMode[cp.n] && globalThis.inputDataModes.pdfMode && cp.renderStatus !== 2) { return; }
-
-  let opacityArg; let
-    fillArg;
+function setWordColorOpacity(x) {
+  let opacityArg;
+  let fillArg;
   if (x === 'invis') {
     opacityArg = 0;
     fillArg = 'fill_ebook';
@@ -43,10 +48,10 @@ export const selectDisplayMode = async (x) => {
     opacityArg = 1;
     fillArg = 'fill_ebook';
   } else if (x === 'eval') {
-    opacityArg = 1;
+    opacityArg = parseFloat(rangeOpacityElem.value || '80') / 100;
     fillArg = 'fill_eval';
   } else {
-    opacityArg = 1;
+    opacityArg = parseFloat(rangeOpacityElem.value || '80') / 100;
     fillArg = 'fill_proof';
   }
 
@@ -58,6 +63,19 @@ export const selectDisplayMode = async (x) => {
       obj.set('opacity', opacityArg);
     }
   });
+}
+
+/**
+ * Change the display mode (e.g. proofread mode vs. ocr mode).
+ * Impacts what color the text is printed and whether the background image is displayed.
+ *
+ * @param { ("invis"|"ebook"|"eval"|"proof")} x
+ * @returns
+ */
+export const selectDisplayMode = async (x) => {
+  if (globalThis.inputDataModes.xmlMode[cp.n] && globalThis.inputDataModes.pdfMode && cp.renderStatus !== 2) { return; }
+
+  setWordColorOpacity(x);
 
   // Calculate options for background image and overlay
   if (globalThis.inputDataModes.xmlMode[cp.n]) {

@@ -7,9 +7,6 @@ import { renderText } from '../exportRenderText.js';
 import { renderHOCRBrowser } from '../exportRenderHOCRBrowser.js';
 import { writeDocx } from '../exportWriteDocx.js';
 import { writeXlsx } from '../exportWriteTabular.js';
-import { fontMetricsObj } from '../containers/miscContainer.js';
-import { fontAll } from '../containers/fontContainer.js';
-
 import { reorderHOCR } from '../modifyOCR.js';
 
 import { hocrToPDF } from '../exportPDF.js';
@@ -47,6 +44,8 @@ const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getEleme
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
 
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
+
+const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
 
 // Once per session, if the user opens the "Download" tab and proofreading mode is still enabled,
 // the user will be prompted to change display modes before downloading.
@@ -208,7 +207,7 @@ export async function handleDownload() {
       // The `maxpage` argument must be set manually to `globalThis.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
       // In all other cases, this should be equivalent to using the default argument of `-1` (which results in `hocrDownload.length` being used).
       const pdfStr = await hocrToPDF(hocrDownload, 0, globalThis.pageCount - 1, displayModeElem.value, rotateText, rotateBackground,
-        { width: -1, height: -1 }, downloadProgress, confThreshHigh, confThreshMed);
+        { width: -1, height: -1 }, downloadProgress, confThreshHigh, confThreshMed, parseFloat(rangeOpacityElem.value || '80') / 100);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -282,7 +281,8 @@ export async function handleDownload() {
       const downloadProgress = initializeProgress('generate-download-progress-collapse', maxValue + 1);
       await sleep(0);
 
-      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed);
+      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed,
+        parseFloat(rangeOpacityElem.value || '80') / 100);
 
       // The PDF is still run through muPDF, even thought in eBook mode no background layer is added.
       // This is because muPDF cleans up the PDF we made in the previous step, including:
