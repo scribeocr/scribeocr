@@ -8,8 +8,10 @@ browserstack.json
 log
 results
 jsconfig.json
-cypress/screenshots
+**/screenshots
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+*.traineddata
+*.traineddata.gz
