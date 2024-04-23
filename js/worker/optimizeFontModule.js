@@ -2,10 +2,10 @@ import { quantile } from '../miscUtils.js';
 
 // Defining "window" is needed due to bad browser/node detection in Opentype.js
 // Can hopefully remove in future version
-if (typeof process === 'undefined') {
-  globalThis.window = {};
-} else {
+if (typeof process === 'object') {
   await import('../../node/require.js');
+} else if (globalThis.document === undefined) {
+  globalThis.window = {};
 }
 
 await import('../../lib/opentype.js');
