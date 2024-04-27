@@ -95,62 +95,148 @@ async function calcWordFontSizePrecise(wordArr, fontOpentype, nonLatin = false) 
 }
 
 /**
- * @typedef WordMetrics
- * @type {object}
- * @property {number} visualWidth - Width of printed characters in px (does not include left/right bearings).
- * @property {number} leftSideBearing - Width of left bearing in px.
- * @property {number} rightSideBearing - Width of right bearing in px.
+ * Adds ligatures if they exist in the font.
+ *
+ * @param {Array<string>|string} wordText
+ * @param {opentype.Font} fontOpentype
  */
+export function addLigatures(wordText, fontOpentype) {
+  const wordTextArr = typeof wordText === 'string' ? wordText.split('') : wordText;
+  const wordCharArrOut = [];
+
+  for (let i = 0; i < wordTextArr.length; i++) {
+    const charI = wordTextArr[i];
+    const charJ = wordTextArr[i + 1];
+
+    if (charI === 'f' && charJ) {
+      let charLig;
+      if (charJ === 'f') {
+        charLig = String.fromCharCode(64256);
+      } else if (charJ === 'i') {
+        charLig = String.fromCharCode(64257);
+      } else if (charJ === 'l') {
+        charLig = String.fromCharCode(64258);
+      }
+      if (charLig) {
+        const glyphLig = fontOpentype.charToGlyph(charLig);
+        if (glyphLig && glyphLig.name !== '.notdef') {
+          wordCharArrOut.push(charLig);
+          i++;
+          continue;
+        }
+      }
+    }
+
+    wordCharArrOut.push(charI);
+  }
+
+  return wordCharArrOut;
+}
+
 /**
- * @param {string} wordText
- * @param {import('opentype.js').Font} fontOpentype
- * @param {number} fontSize
- * @async
- * @return {Promise<WordMetrics>}
+ * Calculates array of advance widths and kerning values for a word.
+ * Numbers are in font units. Ligatures should have been added prior to this step.
+ *
+ * @param {Array<string>|string} wordText
+ * @param {opentype.Font} fontOpentype
  */
-export async function calcWordMetrics(wordText, fontOpentype, fontSize) {
-  let wordWidth1 = 0;
-  const wordTextArr = wordText.split('');
+async function calcWordCharMetrics(wordText, fontOpentype) {
+  const wordTextArr = typeof wordText === 'string' ? wordText.split('') : wordText;
+
+  /** @type {Array<number>} */
+  const advanceArr = [];
+  /** @type {Array<number>} */
+  const kerningArr = [];
   for (let i = 0; i < wordTextArr.length; i++) {
     const charI = wordTextArr[i];
     const charJ = wordTextArr[i + 1];
     const glyphI = fontOpentype.charToGlyph(charI);
-    if (glyphI.name === '.notdef') console.log(`Character ${charI} is not defined in font ${fontOpentype.tables.name.fontFamily.en} ${fontOpentype.tables.name.fontSubfamily.en}`);
-    wordWidth1 += glyphI.advanceWidth;
-    if (charJ) wordWidth1 += fontOpentype.getKerningValue(glyphI, fontOpentype.charToGlyph(charJ));
+    if (!glyphI || glyphI.name === '.notdef') console.log(`Character ${charI} is not defined in font ${fontOpentype.tables.name.fontFamily.en} ${fontOpentype.tables.name.fontSubfamily.en}`);
+    advanceArr.push(glyphI.advanceWidth);
+
+    if (charJ) {
+      let glyphIKern = glyphI;
+
+      // If this character is a ligature, the last individual character from the ligature is used for kerning purposes.
+      if ([String.fromCharCode(64256), String.fromCharCode(64257), String.fromCharCode(64258)].includes(charI)) {
+        let charI2 = charI;
+        if (charI === String.fromCharCode(64256)) {
+          charI2 = 'f';
+        } else if (charI === String.fromCharCode(64257)) {
+          charI2 = 'i';
+        } else if (charI === String.fromCharCode(64258)) {
+          charI2 = 'l';
+        }
+        glyphIKern = fontOpentype.charToGlyph(charI2);
+      }
+
+      const glyphJ = fontOpentype.charToGlyph(charJ);
+      const kerning = fontOpentype.getKerningValue(glyphIKern, glyphJ);
+      kerningArr.push(kerning);
+    }
   }
 
-  const wordLastGlyphMetrics = fontOpentype.charToGlyph(wordText.substr(-1)).getMetrics();
-  const wordFirstGlyphMetrics = fontOpentype.charToGlyph(wordText.substr(0, 1)).getMetrics();
+  return { advanceArr, kerningArr };
+}
 
-  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing;
-  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing;
+/**
+ * @typedef WordMetrics
+ * @type {object}
+ * @property {Array<string>} charArr
+ * @property {number} visualWidth - Width of printed characters in px (does not include left/right bearings).
+ * @property {number} leftSideBearing - Width of left bearing in px.
+ * @property {number} rightSideBearing - Width of right bearing in px.
+ * @property {Array<number>} advanceArr - Array of advance widths for each character in the word in px.
+ * @property {Array<number>} kerningArr - Array of kerning values for each character pair in the word in px.
+ * @property {number} charSpacing - Character spacing in px.
+ * @property {number} fontSize
+ */
+/**
+ * @param {OcrWord} word
+ * @param {number} [angle=0] - Angle of page rotation in degrees, used to calculate character spacing.
+ *    This is only used during the PDF export, when the rotation is applied by a matrix transformation,
+ *    so the text always needs to be printed as if it were horizontal.
+ * @async
+ * @return {Promise<WordMetrics>}
+ */
+export async function calcWordMetrics(word, angle = 0) {
+  const fontI = fontAll.getWordFont(word);
+  const fontOpentype = await fontI.opentype;
+
+  const fontSize = await calcWordFontSize(word);
+
+  const charArr = addLigatures(word.text, fontOpentype);
+
+  const { advanceArr, kerningArr } = await calcWordCharMetrics(charArr, fontOpentype);
+
+  const advanceTotal = advanceArr.reduce((a, b) => a + b, 0);
+  const kerningTotal = kerningArr.reduce((a, b) => a + b, 0);
+
+  const wordWidth1 = advanceTotal + kerningTotal;
+
+  const wordLastGlyphMetrics = fontOpentype.charToGlyph(charArr.at(-1)).getMetrics();
+  const wordFirstGlyphMetrics = fontOpentype.charToGlyph(charArr[0]).getMetrics();
+
+  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing || 0;
+  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing || 0;
 
   const wordWidthPx = (wordWidth1 - wordRightBearing - wordLeftBearing) * (fontSize / fontOpentype.unitsPerEm);
   const wordLeftBearingPx = wordLeftBearing * (fontSize / fontOpentype.unitsPerEm);
   const wordRightBearingPx = wordRightBearing * (fontSize / fontOpentype.unitsPerEm);
 
-  return { visualWidth: wordWidthPx, leftSideBearing: wordLeftBearingPx, rightSideBearing: wordRightBearingPx };
-}
+  const advanceArrPx = advanceArr.map((x) => x * (fontSize / fontOpentype.unitsPerEm));
+  const kerningArrPx = kerningArr.map((x) => x * (fontSize / fontOpentype.unitsPerEm));
 
-/**
- * Calculates char spacing (px) required for the specified word to be rendered at specified width.
- * The number returned is the number of pixels that would need to be added/removed between all
- * characters for the word to match `actualWidth`.
- *
- * @param {string} wordText -
- * @param {import('opentype.js').Font} fontOpentype
- * @param {number} fontSize -
- * @param {number} actualWidth - The actual width the word should be scaled to
- */
-export async function calcCharSpacing(wordText, fontOpentype, fontSize, actualWidth) {
-  if (wordText.length < 2) return 0;
+  let charSpacing = 0;
+  if (charArr.length > 1) {
+    const cosAngle = Math.cos(angle * (Math.PI / 180));
+    const actualWidth = (word.bbox.right - word.bbox.left) / cosAngle;
+    charSpacing = Math.round((actualWidth - wordWidthPx) / (charArr.length - 1) * 1e6) / 1e6;
+  }
 
-  const wordWidth = (await calcWordMetrics(wordText, fontOpentype, fontSize)).visualWidth;
-
-  const charSpacing = Math.round((actualWidth - wordWidth) / (wordText.length - 1) * 1e6) / 1e6;
-
-  return charSpacing;
+  return {
+    visualWidth: wordWidthPx, leftSideBearing: wordLeftBearingPx, rightSideBearing: wordRightBearingPx, advanceArr: advanceArrPx, kerningArr: kerningArrPx, charSpacing, fontSize, charArr,
+  };
 }
 
 /**
