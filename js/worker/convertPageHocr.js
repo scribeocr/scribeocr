@@ -17,6 +17,7 @@ const debugMode = true;
  * @param {boolean} params.keepItalic - If true, italic tags (`<em>`) are honored.  This is false by default,
  *    as vanilla Tesseract does not recognize italic text in a way that is reliable.
  *    This is fixed for Legacy recognition in the included custom build of Tesseract.
+ * @param {boolean} params.scribeMode
  */
 export async function convertPageHocr({
   ocrStr, n, pageDims = null, rotateAngle = 0, keepItalic = false, scribeMode = false,

@@ -8,6 +8,7 @@ import { renderHOCRBrowser } from '../exportRenderHOCRBrowser.js';
 import { writeDocx } from '../exportWriteDocx.js';
 import { writeXlsx } from '../exportWriteTabular.js';
 import { reorderHOCR } from '../modifyOCR.js';
+import { getDisplayMode } from './interfaceView.js';
 
 import { hocrToPDF } from '../exportPDF.js';
 
@@ -140,7 +141,8 @@ export function updatePdfPagesLabel() {
 
   pdfPageMinElem.value = minValue ? minValue.toString() : '1';
   pdfPageMaxElem.value = maxValue ? maxValue.toString() : '';
-  document.getElementById('pdfPagesLabelText').innerText = pagesStr;
+  const pdfPagesLabelTextElem = /** @type {HTMLElement} */(document.getElementById('pdfPagesLabelText'));
+  pdfPagesLabelTextElem.innerText = pagesStr;
 }
 
 export async function handleDownload() {
@@ -206,7 +208,7 @@ export async function handleDownload() {
       // and assume that the overlay PDF is the same size as the input images.
       // The `maxpage` argument must be set manually to `globalThis.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
       // In all other cases, this should be equivalent to using the default argument of `-1` (which results in `hocrDownload.length` being used).
-      const pdfStr = await hocrToPDF(hocrDownload, 0, globalThis.pageCount - 1, displayModeElem.value, rotateText, rotateBackground,
+      const pdfStr = await hocrToPDF(hocrDownload, 0, globalThis.pageCount - 1, getDisplayMode(), rotateText, rotateBackground,
         { width: -1, height: -1 }, downloadProgress, confThreshHigh, confThreshMed, parseFloat(rangeOpacityElem.value || '80') / 100);
 
       const enc = new TextEncoder();
@@ -269,11 +271,13 @@ export async function handleDownload() {
             image = await imageCache.nativeSrc[i];
           }
 
-          const angle = autoRotateCheckboxElem.checked ? (globalThis.pageMetricsArr[i].angle || 0) * -1 : 0;
+          // Angle the PDF viewer is instructed to rotated the image by.
+          // This method is currently only used when rotation is needed but the user's (unrotated) source images are being used.
+          // If the images are being rendered, then rotation is expected to be applied within the rendering process.
+          const angleImagePdf = autoRotateCheckboxElem.checked && !getDisplayMode ? (globalThis.pageMetricsArr[i].angle || 0) * -1 : 0;
 
-          // await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit.width, dimsLimit.height]);
           await w.overlayTextImageAddPage({
-            doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle,
+            doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle: angleImagePdf,
           });
           downloadProgress.increment();
         }
@@ -297,7 +301,7 @@ export async function handleDownload() {
       const downloadProgress = initializeProgress('generate-download-progress-collapse', maxValue + 1);
       await sleep(0);
 
-      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, displayModeElem.value, false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed,
+      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, getDisplayMode(), false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed,
         parseFloat(rangeOpacityElem.value || '80') / 100);
 
       // The PDF is still run through muPDF, even thought in eBook mode no background layer is added.

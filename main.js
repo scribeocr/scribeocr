@@ -47,7 +47,7 @@ import {
 import { getAllFileEntries } from './js/drag-and-drop.js';
 
 // Functions for various UI tabs
-import { selectDisplayMode } from './js/browser/interfaceView.js';
+import { selectDisplayMode, getDisplayMode } from './js/browser/interfaceView.js';
 
 import {
   deleteSelectedWords, changeWordFontSize, changeWordFontFamily,
@@ -2087,7 +2087,7 @@ export async function renderPageQueue(n, loadXML = true) {
 
   if (cp.n === n && cp.renderNum === renderNum) {
     cp.renderStatus += 1;
-    selectDisplayMode(displayModeElem.value);
+    selectDisplayMode(getDisplayMode());
   } else {
     globalThis.state.promiseResolve();
     return;
@@ -2098,7 +2098,7 @@ export async function renderPageQueue(n, loadXML = true) {
     await renderPage(canvas, ocrData, globalThis.pageMetricsArr[n].angle, 0);
     if (cp.n === n && cp.renderNum === renderNum) {
       cp.renderStatus += 1;
-      await selectDisplayMode(displayModeElem.value);
+      await selectDisplayMode(getDisplayMode());
     }
   }
 

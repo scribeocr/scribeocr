@@ -14,8 +14,21 @@ const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementByI
 
 const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
 
+/**
+ * Gets the display mode selected in the UI. This function exists for type inference purposes.
+ * @returns {("invis"|"ebook"|"eval"|"proof")}
+ */
+export function getDisplayMode() {
+  const value = displayModeElem.value;
+  if (value !== 'invis' && value !== 'ebook' && value !== 'eval' && value !== 'proof') {
+    throw new Error(`Invalid display mode: ${value}`);
+  }
+
+  return value;
+}
+
 rangeOpacityElem.addEventListener('input', () => {
-  setWordColorOpacity(displayModeElem.value);
+  setWordColorOpacity(getDisplayMode());
   canvas.requestRenderAll();
 });
 
@@ -27,7 +40,7 @@ function displayModeClick(x) {
   if (x === 'eval') {
     renderPageQueue(cp.n, true);
   } else {
-    selectDisplayMode(displayModeElem.value);
+    selectDisplayMode(getDisplayMode());
   }
 }
 
