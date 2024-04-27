@@ -696,8 +696,8 @@ function highlightcp(text) {
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     // Using the presence of a wordID property to indicate this object represents an OCR word
-    if (selectedObjects[i]?.wordID) {
-      if (matchIdArr.includes(selectedObjects[i].wordID)) {
+    if (selectedObjects[i]?.word) {
+      if (matchIdArr.includes(selectedObjects[i].word.id)) {
         selectedObjects[i].textBackgroundColor = '#4278f550';
         selectedObjects[i].dirty = true;
       } else if (selectedObjects[i].textBackgroundColor) {
@@ -1440,10 +1440,9 @@ function addWordClick() {
       left: rectLeft,
       top: visualBaseline,
       word: wordObjNew,
-      leftOrig: rectLeft,
-      topOrig: visualBaseline,
+      topBaseline: visualBaseline,
+      topBaselineOrig: visualBaseline,
       baselineAdj: 0,
-      wordSup: false,
       originY: 'bottom',
       fill: fillArg,
       fill_proof: fillColorHex,
@@ -1453,7 +1452,6 @@ function addWordClick() {
       fontFamilyLookup: fontAll.defaultFontName,
       fontStyleLookup: 'normal',
       fontObj,
-      wordID: wordIDNew,
       textBackgroundColor,
       visualWidth: rect.width,
       visualLeft: rectLeft,
@@ -2073,6 +2071,9 @@ export async function renderPageQueue(n, loadXML = true) {
   // Clear canvas if objects (anything but the background) exists
   if (canvas.getObjects().length) {
     canvas.clear();
+    // Drop any transformation in process.
+    // This prevents errors if the user is in the middle of scaling an object when the page is rendered.
+    canvas._currentTransform = false;
     resetCanvasEventListeners();
   }
 

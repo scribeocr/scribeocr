@@ -40,7 +40,7 @@ export function deleteSelectedWords() {
   const selectedIds = [];
 
   for (let i = 0; i < selectedN; i++) {
-    const wordIDI = selectedObjects[i].wordID;
+    const wordIDI = selectedObjects[i].word.id;
     selectedIds.push(wordIDI);
     window.canvas.remove(selectedObjects[i]);
   }
@@ -74,14 +74,8 @@ export async function changeWordFontStyle(style) {
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
-    const wordIDI = wordI.wordID;
 
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
-
-    if (!wordObj) {
-      console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
-      continue;
-    }
+    const wordObj = /** @type {OcrWord} */ (wordI.word);
 
     wordObj.style = newStyleLookup;
 
@@ -123,16 +117,9 @@ export async function changeWordFontSize(fontSizeStr) {
     // If multiple words are selected, the change in font size only applies to the non-superscript words.
     // Without this behavior, selecting a large area and standardizing the font size would result in
     // the superscripted text becoming the same size as the non-superscript text.
-    if (selectedN > 1 && wordI.wordSup) continue;
+    if (selectedN > 1 && wordI.word.sup) continue;
 
-    const wordIDI = wordI.wordID;
-
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
-
-    if (!wordObj) {
-      console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
-      continue;
-    }
+    const wordObj = /** @type {OcrWord} */ (wordI.word);
 
     wordObj.size = fontSize;
 
@@ -151,16 +138,10 @@ export async function changeWordFontFamily(fontName) {
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
-    const wordIDI = wordI.wordID;
+
+    const wordObj = /** @type {OcrWord} */ (wordI.word);
 
     const fontI = fontAll.getFont(fontName, wordI.fontStyleLookup);
-
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
-
-    if (!wordObj) {
-      console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
-      continue;
-    }
 
     if (fontName === 'Default') {
       wordObj.font = null;
@@ -184,21 +165,15 @@ export async function changeWordFontFamily(fontName) {
 // Whenever a user edits a word in any way (including content and font/style),
 // the position and character spacing need to be re-calculated so they still overlay with the background image.
 export async function updateWordCanvas(wordI) {
-  const fontOpentype = await wordI.fontObj.opentype;
   // 1. Re-calculate left position given potentially new left bearing
-  const wordMetrics = await calcWordMetrics(wordI.text, fontOpentype, wordI.fontSize);
+  const wordMetrics = await calcWordMetrics(wordI.word);
 
   // When the user selects multiple words at the same time, the coordinates becomes relative to the "group"
   const groupOffsetLeft = wordI?.group?.ownMatrixCache?.value[4] || 0;
 
   wordI.left = wordI.visualLeft - wordMetrics.leftSideBearing - groupOffsetLeft;
 
-  // 2. Re-calculate character spacing (if the word has multiple letters)
-  if (wordI.text.length > 1) {
-    const visualWidthNew = wordMetrics.visualWidth;
-    const kerning = (wordI.visualWidth - visualWidthNew) / (wordI.text.length - 1);
-    wordI.charSpacing = kerning * 1000 / wordI.fontSize;
-  }
+  wordI.charSpacing = wordMetrics.charSpacing * 1000 / wordI.fontSize;
 
   window.canvas.requestRenderAll();
 }
@@ -209,15 +184,7 @@ export function toggleSuperSelectedWords() {
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
-    const wordIDI = wordI.wordID;
-
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
-
-    if (!wordObj) {
-      console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
-      continue;
-    }
-
+    const wordObj = /** @type {OcrWord} */ (wordI.word);
     wordObj.sup = !wordObj.sup;
   }
 
@@ -261,7 +228,11 @@ export function adjustBaselineRange(value) {
   const valueNum = typeof value === 'string' ? parseInt(value) : value;
   for (let i = 0; i < objectsLine.length; i++) {
     const objectI = objectsLine[i];
-    objectI.set('top', objectI.topOrig + (valueNum - baselineRange));
+    objectI.set('topBaseline', objectI.topBaselineOrig + (valueNum - baselineRange));
+    // Only move words that sit on the baseline (non superscripted words)
+    if (!objectI.word.sup) {
+      objectI.set('top', objectI.topBaseline);
+    }
   }
 
   window.canvas.requestRenderAll();
@@ -281,16 +252,10 @@ export function adjustBaselineRangeChange(value) {
 
   for (let i = 0; i < objectsLine.length; i++) {
     const wordI = objectsLine[i];
-    const wordIDI = wordI.wordID;
+
+    const wordObj = /** @type {OcrWord} */ (wordI.word);
 
     wordI.set('baselineAdj', valueNew);
-
-    const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDI);
-
-    if (!wordObj) {
-      console.warn(`Canvas element contains ID${wordIDI}that does not exist in OCR data.  Skipping word.`);
-      continue;
-    }
 
     // Adjust baseline offset for line
     if (i === 0) {

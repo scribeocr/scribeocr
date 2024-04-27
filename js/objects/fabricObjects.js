@@ -2,8 +2,9 @@
 
 import { updateWordCanvas } from '../browser/interfaceEdit.js';
 import { cp } from '../../main.js';
-import { calcWordMetrics } from '../fontUtils.js';
+import { addLigatures, calcWordMetrics } from '../fontUtils.js';
 import ocr from './ocrObjects.js';
+import { fontAll } from '../containers/fontContainer.js';
 
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
@@ -32,10 +33,15 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
 
     this.set('word', options.word);
 
-    this.set('leftOrig', options.leftOrig);
-    this.set('topOrig', options.topOrig);
+    // The `top` value of the word, if it was placed on the baseline.
+    // This should equal `top` for words that are not superscripted or subscripted.
+    this.set('topBaseline', options.topBaseline);
+
+    // topBaselineOrig contains the `topBaseline` value of the word when it was first rendered on the canvas.
+    // This value is never changed after the word is rendered, as it can only be edited by the baseline slider,
+    // which does not reset until the next page is rendered.
+    this.set('topBaselineOrig', options.topBaselineOrig);
     this.set('baselineAdj', options.baselineAdj);
-    this.set('wordSup', options.wordSup);
 
     this.set('fill_proof', options.fill_proof);
     this.set('fill_ebook', options.fill_ebook);
@@ -44,10 +50,20 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
     this.set('fontFamilyLookup', options.fontFamilyLookup);
     this.set('fontStyleLookup', options.fontStyleLookup);
 
-    this.set('wordID', options.wordID);
+    this.set('leftTemp', options.left);
+
+    // For whatever reason, calculating width using the left/right of `aCoords` is not accurate.
+    // Therefore, we keep track of the visual width of the word separately, so the right edge of the word can be calculated accurately.
+    this.set('visualWidth', options.visualWidth);
+
     // Can this be removed?
     // this.set('line', options.line);
-    this.set('visualWidth', options.visualWidth);
+
+    // The `visualLeft` property is the visually apparent edge of the word, which equals the left of the bounding box plus the left bearing.
+    // This needs to be kept track of separately because the visual left, not the left coordinate, should remain constant when font properties change.
+    // For example, if the user changes the font from a font with a small left bearing to a font with a large left bearing,
+    // they would not expect the word to shift to the right visually.
+    this.set('visualLeft', options.visualLeft);
     // Can this be removed?
     // this.set('visualBaseline', options.visualBaseline);
     this.set('defaultFontFamily', options.defaultFontFamily);
@@ -71,15 +87,9 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
           this.text = textInt;
         }
 
+        this.word.text = this.text;
+
         await updateWordCanvas(this);
-
-        const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], this.wordID);
-
-        if (!wordObj) {
-          console.warn(`Canvas element contains ID${this.wordID}that does not exist in OCR data.  Skipping word.`);
-        } else {
-          wordObj.text = this.text;
-        }
       }
     });
     this.on('selected', function () {
@@ -95,8 +105,8 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
           let singleFontSize = true;
           for (let i = 0; i < this.group._objects.length; i++) {
             const wordI = this.group._objects[i];
-            // If there is no wordID then this object must be something other than a word
-            if (!wordI.wordID) continue;
+            // If there is no `word` then this object must be something other than a word
+            if (!wordI.word) continue;
 
             if (!fontFamilyGroup) fontFamilyGroup = wordI.fontFamilyLookup;
             if (fontFamilyGroup !== wordI.fontFamilyLookup) singleFontFamily = false;
@@ -105,7 +115,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
             if (fontSizeGroup !== wordI.fontSize) singleFontSize = false;
 
             // Style toggles only consider the first word in the group
-            if (supGroup == null) supGroup = wordI.wordSup;
+            if (supGroup == null) supGroup = wordI.word.sup;
             if (italicGroup == null) italicGroup = wordI.fontStyleLookup === 'italic';
             if (smallCapsGroup == null) smallCapsGroup = wordI.fontStyleLookup === 'small-caps';
           }
@@ -138,7 +148,7 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
           wordFontElem.value = this.fontFamilyLookup;
         }
         fontSizeElem.value = this.fontSize;
-        if (this.wordSup !== styleSuperElem.classList.contains('active')) {
+        if (this.word.sup !== styleSuperElem.classList.contains('active')) {
           styleSuperButton.toggle();
         }
         const italic = this.fontStyleLookup === 'italic';
@@ -159,35 +169,36 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
     });
     this.on('modified', async (opt) => {
       if (opt.action === 'scaleX') {
+        const wordObj = /** @type {OcrWord} */ (opt.target.word);
+
         const textboxWidth = opt.target.calcTextWidth();
 
-        const fontOpentype = await opt.target.fontObj.opentype;
-        const wordMetrics = await calcWordMetrics(opt.target.text, fontOpentype, opt.target.fontSize);
+        const wordMetrics = await calcWordMetrics(wordObj);
         const visualWidthNew = (textboxWidth - wordMetrics.leftSideBearing - wordMetrics.rightSideBearing) * opt.target.scaleX;
 
         const visualRightNew = opt.target.left + visualWidthNew;
-        const visualRightOrig = opt.target.leftOrig + opt.target.visualWidth;
+        const visualRightOrig = opt.target.leftTemp + opt.target.visualWidth;
 
-        const wordObj = ocr.getPageWord(globalThis.ocrAll.active[cp.n], opt.target.wordID);
-
-        if (!wordObj) {
-          console.warn(`Canvas element contains ID${opt.target.wordID}that does not exist in OCR data.  Skipping word.`);
-        } else {
-          const leftDelta = Math.round(opt.target.left - opt.target.leftOrig);
-          const rightDelta = Math.round(visualRightNew - visualRightOrig);
-          wordObj.bbox.left += leftDelta;
-          wordObj.bbox.right += rightDelta;
-        }
+        const leftDelta = Math.round(opt.target.left - opt.target.leftTemp);
+        const rightDelta = Math.round(visualRightNew - visualRightOrig);
+        wordObj.bbox.left += leftDelta;
+        wordObj.bbox.right += rightDelta;
 
         if (opt.target.text.length > 1) {
-          const widthDelta = visualWidthNew - opt.target.visualWidth;
+          const widthDelta = (leftDelta * -1) + rightDelta;
+          const fontI = fontAll.getWordFont(wordObj);
+          const fontOpentype = await fontI.opentype;
+          const charArr = addLigatures(wordObj.text, fontOpentype);
           if (widthDelta !== 0) {
-            const charSpacingDelta = (widthDelta / (opt.target.text.length - 1)) * 1000 / opt.target.fontSize;
+            const charSpacingDelta = (widthDelta / (charArr.length - 1)) * 1000 / opt.target.fontSize;
             opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
             opt.target.scaleX = 1;
           }
         }
-        opt.target.leftOrig = opt.target.left;
+
+        opt.target.visualLeft += leftDelta;
+
+        opt.target.leftTemp = opt.target.left;
         opt.target.visualWidth = visualWidthNew;
       }
     });

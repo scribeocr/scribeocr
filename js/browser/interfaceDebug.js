@@ -15,7 +15,7 @@ export function printSelectedWords(printOCR = true) {
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
-      console.log(ocr.getPageWord(globalThis.ocrAll.active[cp.n], selectedObjects[i].wordID));
+      console.log(selectedObjects[i].word);
     } else {
       console.log(selectedObjects[i]);
     }
@@ -26,9 +26,7 @@ export async function evalSelectedLine() {
   const selectedObjects = window.canvas.getActiveObjects();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
-  const word0 = ocr.getPageWord(globalThis.ocrAll.active[cp.n], selectedObjects[0].wordID);
-
-  if (!word0) return;
+  const word0 = /** @type {OcrWord} */ (selectedObjects[0].word);
 
   const imageBinary = await imageCache.getBinary(cp.n);
 

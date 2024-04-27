@@ -195,7 +195,7 @@ export function toggleSelectableWords(selectable = true) {
   const allObjects = window.canvas.getObjects();
   const n = allObjects.length;
   for (let i = 0; i < n; i++) {
-    if (allObjects[i].wordID) {
+    if (allObjects[i].word) {
       allObjects[i].selectable = selectable;
       allObjects[i].evented = selectable;
     }

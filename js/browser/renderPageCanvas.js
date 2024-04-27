@@ -1,8 +1,6 @@
 /* eslint-disable import/no-cycle */
 
-import {
-  calcWordFontSize, calcWordMetrics, calcCharSpacing,
-} from '../fontUtils.js';
+import { calcWordMetrics } from '../fontUtils.js';
 import { renderLayoutBoxes, updateDataPreview } from './interfaceLayout.js';
 import ocr, { OcrPage } from '../objects/ocrObjects.js';
 import { ITextWord } from '../objects/fabricObjects.js';
@@ -108,25 +106,20 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
 
       const boxWidth = box.right - box.left;
 
-      const wordText = wordObj.text;
-      const wordSup = wordObj.sup;
       const wordDropCap = wordObj.dropcap;
       const fontStyle = wordObj.style;
 
       const fontI = fontAll.getWordFont(wordObj);
-      const fontOpentypeI = await fontI.opentype;
 
-      const wordFontSize = await calcWordFontSize(wordObj);
+      const {
+        visualWidth, charSpacing, leftSideBearing, fontSize, charArr,
+      } = await calcWordMetrics(wordObj);
 
-      let scaleX = 1;
-      if (wordDropCap) {
-        const wordWidthFont = (await calcWordMetrics(wordText.slice(0, 1), fontOpentypeI, wordFontSize)).visualWidth;
-        scaleX = (boxWidth / wordWidthFont);
-      }
+      const wordText = charArr.join('');
+
+      const scaleX = wordDropCap ? (boxWidth / visualWidth) : 1;
 
       const wordConf = wordObj.conf;
-
-      const wordId = wordObj.id;
 
       const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
       const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
@@ -165,41 +158,35 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
 
       const showTextBoxBorderArg = outlineWordsElem.checked || displayMode === 'eval' && wordConf > confThreshHigh && !wordObj.matchTruth;
 
-      const charSpacing = await calcCharSpacing(wordText, fontOpentypeI, wordFontSize, boxWidth);
-
-      const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
-
-      const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
-
       const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
       let visualBaseline;
-      if (wordSup || wordDropCap) {
-        visualBaseline = box.bottom + angleAdjLine.y + angleAdjWord.y;
-      } else if (enableRotation) {
+      if (enableRotation) {
         visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
       } else {
         visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
       }
 
+      let top = visualBaseline;
+      if (wordObj.sup || wordDropCap) top = box.bottom + angleAdjLine.y + angleAdjWord.y;
+
       // This version uses the angle from the line rather than the page
       // const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (Math.atan(baseline[0]) * (180 / Math.PI)) : 0;
 
       const visualLeft = box.left + angleAdjLine.x + angleAdjWord.x + leftAdjX;
-      const left = visualLeft - wordLeftBearing;
+      const left = visualLeft - leftSideBearing;
 
       const textBackgroundColor = matchIdArr.includes(wordObj.id) ? '#4278f550' : '';
 
       const textbox = new ITextWord(wordText, {
         left,
-        top: visualBaseline,
+        top,
         angle: angleArg,
         word: wordObj,
         selectable: !layoutMode,
-        leftOrig: left,
-        topOrig: visualBaseline,
+        topBaseline: visualBaseline,
+        topBaselineOrig: visualBaseline,
         baselineAdj: 0,
-        wordSup,
         originY: 'bottom',
         fill: fillArg,
         fill_proof: fillColorHex,
@@ -212,7 +199,6 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
         fontFamilyLookup: fontI.family,
         fontStyleLookup: fontStyle,
-        wordID: wordId,
         visualWidth: boxWidth, // TODO: Is this incorrect when rotation exists?
         visualLeft,
         visualBaseline,
@@ -221,8 +207,8 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         textBackgroundColor,
         // fontFamily: 'times',
         opacity: opacityArg,
-        charSpacing: charSpacing * 1000 / wordFontSize,
-        fontSize: wordFontSize,
+        charSpacing: charSpacing * 1000 / fontSize,
+        fontSize,
         showTextBoxBorder: showTextBoxBorderArg,
       });
 

@@ -134,7 +134,7 @@ fabric.util.object.extend(fabric.Canvas.prototype, {
     // behavior
 
     const activeObjects = canvas.getActiveObjects();
-    const editSelected = touchStartTarget && activeObjects.length === 1 && touchStartTarget?.wordID && touchStartTarget?.wordID === activeObjects[0]?.wordID;
+    const editSelected = touchStartTarget && activeObjects.length === 1 && touchStartTarget?.word && touchStartTarget?.word?.id === activeObjects[0]?.word?.id;
 
     if (!editSelected) {
       canvas.discardActiveObject();
