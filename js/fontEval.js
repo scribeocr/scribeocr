@@ -57,9 +57,25 @@ export async function evaluateFonts(pageArr) {
 
   const debug = false;
 
+  // These should be allowed to run in parallel, so await should not be used until all promises exist.
+  const carlitoMetricPromise = evalPageFonts(fontActive.Carlito, pageArr);
+  const nimbusSansMetricPromise = evalPageFonts(fontActive.NimbusSans, pageArr);
+
+  const centuryMetricPromise = evalPageFonts(fontActive.Century, pageArr);
+  const palatinoMetricPromise = evalPageFonts(fontActive.Palatino, pageArr);
+  const garamondMetricPromise = evalPageFonts(fontActive.Garamond, pageArr);
+  const nimbusRomNo9LMetricPromise = evalPageFonts(fontActive.NimbusRomNo9L, pageArr);
+
   const sansMetrics = {
-    Carlito: await evalPageFonts(fontActive.Carlito, pageArr),
-    NimbusSans: await evalPageFonts(fontActive.NimbusSans, pageArr),
+    Carlito: await carlitoMetricPromise,
+    NimbusSans: await nimbusSansMetricPromise,
+  };
+
+  const serifMetrics = {
+    Century: await centuryMetricPromise,
+    Palatino: await palatinoMetricPromise,
+    Garamond: await garamondMetricPromise,
+    NimbusRomNo9L: await nimbusRomNo9LMetricPromise,
   };
 
   let minKeySans = 'NimbusSans';
@@ -72,13 +88,6 @@ export async function evaluateFonts(pageArr) {
       minKeySans = key;
     }
   }
-
-  const serifMetrics = {
-    Century: await evalPageFonts(fontActive.Century, pageArr),
-    Palatino: await evalPageFonts(fontActive.Palatino, pageArr),
-    Garamond: await evalPageFonts(fontActive.Garamond, pageArr),
-    NimbusRomNo9L: await evalPageFonts(fontActive.NimbusRomNo9L, pageArr),
-  };
 
   let minKeySerif = 'NimbusRomNo9L';
   let minValueSerif = Number.MAX_VALUE;
