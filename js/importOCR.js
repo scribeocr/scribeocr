@@ -45,39 +45,6 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
     } else if (stextMode) {
       hocrArrPages = hocrStrAll.split(/(?=<page)/).slice(1);
     } else {
-      const getMeta = (name) => {
-        const regex = new RegExp(`<meta name=["']${name}["'][^<]+`, 'i');
-
-        const nodeStr = hocrStrAll.match(regex)?.[0];
-        if (!nodeStr) return null;
-        const contentStr = nodeStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)?.[1];
-        if (!contentStr) return null;
-        return contentStr.replace(/&quot;/g, '"');
-      };
-
-      const ocrSystem = getMeta('ocr-system');
-      scribeMode = ocrSystem === 'scribeocr';
-
-      if (extractSuppData && scribeMode) {
-        const fontMetricsStr = getMeta('font-metrics');
-        if (fontMetricsStr) fontMetricsObj = JSON.parse(fontMetricsStr);
-
-        const layoutStr = getMeta('layout');
-        if (layoutStr) layoutObj = JSON.parse(layoutStr);
-
-        const defaultFontStr = getMeta('default-font');
-        if (defaultFontStr) defaultFont = defaultFontStr;
-
-        const sansFontStr = getMeta('sans-font');
-        if (sansFontStr) sansFont = sansFontStr;
-
-        const serifFontStr = getMeta('serif-font');
-        if (serifFontStr) serifFont = serifFontStr;
-
-        const enableOptStr = getMeta('enable-opt');
-        if (enableOptStr) enableOpt = enableOptStr;
-      }
-
       hocrStrStart = hocrStrAll.match(/[\s\S]*?<body>/)[0];
       hocrStrEnd = hocrStrAll.match(/<\/body>[\s\S]*$/)[0];
       hocrStrPages = hocrStrAll.replace(/[\s\S]*?<body>/, '');
@@ -105,6 +72,44 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
       const hocrFile = hocrFilesAll[i];
       hocrRaw[i] = await readOcrFile(hocrFile);
     }
+  }
+
+  if (!abbyyMode && !stextMode && hocrRaw[0]) {
+    const getMeta = (name) => {
+      const regex = new RegExp(`<meta name=["']${name}["'][^<]+`, 'i');
+
+      const nodeStr = hocrRaw[0].match(regex)?.[0];
+      if (!nodeStr) return null;
+      const contentStr = nodeStr.match(/content=["']([\s\S]+?)(?=["']\s{0,5}\/?>)/i)?.[1];
+      if (!contentStr) return null;
+      return contentStr.replace(/&quot;/g, '"');
+    };
+
+    const ocrSystem = getMeta('ocr-system');
+    scribeMode = ocrSystem === 'scribeocr';
+
+    // Font optimization and layout settings are skipped in the fringe case where .hocr files are produced individually using Scribe,
+    // and then re-uploaded together for further processing, since only the first page is parsed for metadata.
+    // Hopefully this case is rare enough that it does not come up often.
+    if (singleHOCRMode) {
+      const fontMetricsStr = getMeta('font-metrics');
+      if (fontMetricsStr) fontMetricsObj = JSON.parse(fontMetricsStr);
+
+      const layoutStr = getMeta('layout');
+      if (layoutStr) layoutObj = JSON.parse(layoutStr);
+
+      const enableOptStr = getMeta('enable-opt');
+      if (enableOptStr) enableOpt = enableOptStr;
+    }
+
+    const defaultFontStr = getMeta('default-font');
+    if (defaultFontStr) defaultFont = defaultFontStr;
+
+    const sansFontStr = getMeta('sans-font');
+    if (sansFontStr) sansFont = sansFontStr;
+
+    const serifFontStr = getMeta('serif-font');
+    if (serifFontStr) serifFont = serifFontStr;
   }
 
   return {
