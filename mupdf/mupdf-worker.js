@@ -102,7 +102,7 @@ Module.onRuntimeInitialized = function () {
   mupdf.doDrawPageAsPNGGray = Module.cwrap('doDrawPageAsPNGGray', 'null', ['number', 'number', 'number', 'number']);
   mupdf.overlayPDFText = Module.cwrap('overlayPDFText', 'null', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number']);
   mupdf.overlayPDFTextImageStart = Module.cwrap('overlayPDFTextImageStart', 'null', ['number']);
-  mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number']);
+  mupdf.overlayPDFTextImageAddPage = Module.cwrap('overlayPDFTextImageAddPage', 'null', ['number', 'number', 'number', 'number', 'number']);
   mupdf.overlayPDFTextImageEnd = Module.cwrap('overlayPDFTextImageEnd', 'null', ['number']);
   mupdf.overlayPDFTextImage = Module.cwrap('overlayPDFTextImage', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
   mupdf.writePDF = Module.cwrap('writePDF', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
@@ -206,16 +206,19 @@ mupdf.overlayTextImageStart = function (doc, { humanReadable = false }) {
  * @param {number} args.i
  * @param {number} args.pagewidth
  * @param {number} args.pageheight
+ * @param {number} [args.angle=0] - Angle in degrees to rotate the image counter-clockwise.
  */
 mupdf.overlayTextImageAddPage = function (doc, {
-  doc1, image, i, pagewidth, pageheight,
+  doc1, image, i, pagewidth, pageheight, angle = 0,
 }) {
   const imgData = new Uint8Array(atob(image.split(',')[1])
     .split('')
     .map((c) => c.charCodeAt(0)));
+
+  // Despite the images being named as PNG, they can be any format supported by mupdf.
   Module.FS_createDataFile('/', `${String(i)}.png`, imgData, 1, 1, 1);
 
-  mupdf.overlayPDFTextImageAddPage(doc1, i, pagewidth, pageheight);
+  mupdf.overlayPDFTextImageAddPage(doc1, i, pagewidth, pageheight, angle);
 
   FS.unlink(`${String(i)}.png`);
 };
@@ -248,6 +251,7 @@ mupdf.overlayTextImage = function (doc, {
       // If not a string, imageArr is assumed to contain a buffer already
       imgData = imageArr[i];
     }
+    // Despite the images being named as PNG, they can be any format supported by mupdf.
     Module.FS_createDataFile('/', `${String(pageNum)}.png`, imgData, 1, 1, 1);
   }
 

@@ -240,10 +240,8 @@ export async function handleDownload() {
           skipText: true,
         });
 
-        // Unfortunately there currently is not a real way to track progress using the w.overlayText function, as pages are incremented using C++ (webassembly).
-        for (let i = minValue; i < maxValue + 1; i++) {
-          downloadProgress.increment();
-        }
+        // Fill up progress bar to 100%
+        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
 
         // If the input is a series of images, those images need to be inserted into a new pdf
       } else if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) {
@@ -252,20 +250,38 @@ export async function handleDownload() {
         const props = { rotated: autoRotateCheckboxElem.checked, upscaled: false, colorMode };
         const binary = colorModeElem.value === 'binary';
 
+        // An image could be rendered if either (1) binary is selected or (2) the input data is a PDF.
+        // Otherwise, the images uploaded by the user are used.
+        const renderImage = binary || globalThis.inputDataModes.pdfMode;
+
         // Pre-render to benefit from parallel processing, since the loop below is synchronous.
-        await imageCache.preRenderRange(minValue, maxValue, binary, props, downloadProgress);
+        if (renderImage) await imageCache.preRenderRange(minValue, maxValue, binary, props, downloadProgress);
 
         await w.overlayTextImageStart({ humanReadable: humanReadablePDFElem.checked });
         for (let i = minValue; i < maxValue + 1; i++) {
-          const image = binary ? await imageCache.getBinary(i, props) : await imageCache.getNative(i, props);
+          /** @type {import('../containers/imageContainer.js').ImageWrapper} */
+          let image;
+          if (binary) {
+            image = await imageCache.getBinary(i, props);
+          } else if (globalThis.inputDataModes.pdfMode) {
+            image = await imageCache.getNative(i, props);
+          } else {
+            image = await imageCache.nativeSrc[i];
+          }
+
+          const angle = autoRotateCheckboxElem.checked ? (globalThis.pageMetricsArr[i].angle || 0) * -1 : 0;
 
           // await w.overlayTextImageAddPage([pdfOverlay, imgArr[i], i, dimsLimit.width, dimsLimit.height]);
           await w.overlayTextImageAddPage({
-            doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height,
+            doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle,
           });
           downloadProgress.increment();
         }
         content = await w.overlayTextImageEnd([]);
+
+        // Fill up progress bar to 100%
+        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+
         // Otherwise, there is only OCR data and not image data.
       } else {
         content = await w.write({
