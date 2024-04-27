@@ -3,8 +3,9 @@
 
 import { getRandomAlphanum } from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
-import { calcCharSpacing, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
+import { calcLineFontSize } from '../fontUtils.js';
 import { getImageBitmap } from '../imageUtils.js';
+import { drawWordRender, drawWordActual } from './renderWordCanvas.js';
 
 import { fontAll } from '../containers/fontContainer.js';
 // import { CompDebug } from '../objects/imageObjects.js';
@@ -144,213 +145,6 @@ export const initCanvasNode = async () => {
 };
 
 /**
- * Crop the image data the area containing `words` and render to the `calcCtx.canvas` canvas.
- * @param {Array<OcrWord>} words
- * @param {ImageBitmap} imageBinaryBit
- * @param {dims} imgDims
- * @param {number} angle
- * @param {object} [options]
- * @param {boolean} [options.view] - Draw results on debugging canvases
- */
-async function drawWordActual(words, imageBinaryBit, imgDims, angle, options = {}) {
-  if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
-  if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
-
-  const view = options?.view === undefined ? false : options?.view;
-
-  // The font/style from the first word is used for the purposes of font metrics
-  const lineFontSize = await calcLineFontSize(words[0].line);
-
-  if (!lineFontSize) {
-    // This condition should not occur as checks are implemented in the code that calls this function.
-    console.log('Cannot draw words as font size cannot be calculated.');
-    return;
-  }
-
-  const fontI = fontAll.getWordFont(words[0]);
-
-  const fontOpentypeI = await fontI.opentype;
-  calcCtx.font = `${fontI.fontFaceStyle} ${1000}px ${fontI.fontFaceName}`;
-
-  const oMetrics = calcCtx.measureText('o');
-
-  const fontBoundingBoxDescent = Math.round(Math.abs(fontOpentypeI.descender) * (1000 / fontOpentypeI.unitsPerEm));
-  const fontBoundingBoxAscent = Math.round(Math.abs(fontOpentypeI.ascender) * (1000 / fontOpentypeI.unitsPerEm));
-
-  const fontDesc = (fontBoundingBoxDescent - oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-  const fontAsc = (fontBoundingBoxAscent + oMetrics.actualBoundingBoxDescent) * (lineFontSize / 1000);
-
-  const sinAngle = Math.sin(angle * (Math.PI / 180));
-  const cosAngle = Math.cos(angle * (Math.PI / 180));
-
-  const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
-  const shiftY = sinAngle * ((imgDims.width - shiftX) * 0.5) || 0;
-
-  const wordsBox = words.map((x) => x.bbox);
-
-  // Union of all bounding boxes
-  const wordBoxUnion = {
-    left: Math.min(...wordsBox.map((x) => x.left)),
-    top: Math.min(...wordsBox.map((x) => x.top)),
-    right: Math.max(...wordsBox.map((x) => x.right)),
-    bottom: Math.max(...wordsBox.map((x) => x.bottom)),
-  };
-
-  // All words are assumed to be on the same line
-  const linebox = words[0].line.bbox;
-  const { baseline } = words[0].line;
-
-  let angleAdjXLine = 0;
-  let angleAdjYLine = 0;
-  if (Math.abs(angle ?? 0) > 0.05) {
-    const x = linebox.left;
-    const y = linebox.bottom + baseline[1];
-
-    const xRot = x * cosAngle - sinAngle * y;
-    // const yRot = x * sinAngle + cosAngle * y;
-
-    const angleAdjXInt = x - xRot;
-
-    const angleAdjYInt = sinAngle * (linebox.left + angleAdjXInt / 2) * -1;
-
-    angleAdjXLine = angleAdjXInt + shiftX;
-    angleAdjYLine = angleAdjYInt + shiftY;
-  }
-
-  const angleAdjXWord = Math.abs(angle) >= 1 ? angleAdjXLine + (1 - cosAngle) * (wordBoxUnion.left - linebox.left) : angleAdjXLine;
-
-  // We crop to the dimensions of the font (fontAsc and fontDesc) rather than the image bounding box.
-  const height = fontAsc && fontDesc ? fontAsc + fontDesc : wordBoxUnion.bottom - wordBoxUnion.top + 1;
-  const width = wordBoxUnion.right - wordBoxUnion.left + 1;
-
-  const cropY = linebox.bottom + baseline[1] - fontAsc - 1;
-  const cropYAdj = cropY + angleAdjYLine;
-
-  calcCtx.canvas.height = height;
-  calcCtx.canvas.width = width;
-
-  calcCtx.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
-
-  if (view) {
-    viewCtx0.canvas.height = height;
-    viewCtx0.canvas.width = width;
-    viewCtx1.canvas.height = height;
-    viewCtx1.canvas.width = width;
-    viewCtx2.canvas.height = height;
-    viewCtx2.canvas.width = width;
-
-    viewCtx0.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
-    viewCtx1.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
-    viewCtx2.drawImage(imageBinaryBit, wordBoxUnion.left + angleAdjXWord - 1, cropYAdj, width, height, 0, 0, width, height);
-  }
-
-  return cropY;
-}
-
-/**
- * Lightweight function for drawing text onto canvas with correct spacing/kerning without using Fabric.js.
- *
- * @param {CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctx
- * @param {string} text
- * @param {FontContainerFont} font
- * @param {number} size
- * @param {number} boxWidth
- * @param {number} left
- * @param {number} bottom
- * @param {string} fillStyle
- */
-const printWordOnCanvas = async (ctx, text, font, size, boxWidth, left = 0, bottom = 0, fillStyle = 'black') => {
-  // const fontI = /**@type {FontContainerFont} */  (fontAll.active[font][style]);
-  const fontOpentypeI = await font.opentype;
-
-  ctx.font = `${font.fontFaceStyle} ${size}px ${font.fontFaceName}`;
-
-  ctx.fillStyle = fillStyle;
-
-  ctx.textBaseline = 'alphabetic';
-
-  const wordTextArr = text.split('');
-
-  const charSpacing = await calcCharSpacing(text, fontOpentypeI, size, boxWidth);
-
-  let leftI = left;
-  for (let i = 0; i < wordTextArr.length; i++) {
-    ctx.fillText(wordTextArr[i], leftI, bottom);
-
-    if (i + 1 < wordTextArr.length) {
-      const advance = fontOpentypeI.charToGlyph(wordTextArr[i]).advanceWidth * (size / fontOpentypeI.unitsPerEm);
-      const kern = i + 1 < wordTextArr.length ? fontOpentypeI.getKerningValue(fontOpentypeI.charToGlyph(wordTextArr[i]),
-        fontOpentypeI.charToGlyph(wordTextArr[i + 1])) * (size / fontOpentypeI.unitsPerEm) || 0 : 0;
-      leftI += advance;
-      leftI += kern;
-      leftI += charSpacing;
-    }
-  }
-};
-
-/**
- * Print word on `ctxCanvas`.
- *
- * @param {OcrWord} word
- * @param {number} offsetX
- * @param {number} cropY
- * @param {number} lineFontSize
- * @param {?string} altText
- * @param {?CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctxView
- * @param {boolean} [imageRotated=false] -
- */
-const drawWordRender = async function (word, offsetX = 0, cropY = 0, lineFontSize = 0, altText = null, ctxView = null, imageRotated = false) {
-  if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
-  if (!calcCtx) throw new Error('Canvases must be defined before running this function.');
-
-  lineFontSize = lineFontSize || (await calcLineFontSize(word.line)) || 10;
-
-  const wordText = altText ? ocr.replaceLigatures(altText) : ocr.replaceLigatures(word.text);
-
-  const wordFontSize = (await calcWordFontSize(word)) || lineFontSize;
-
-  if (!wordFontSize) {
-    console.log('Font size not found');
-    return;
-  }
-
-  const fontI = fontAll.getWordFont(word);
-  const fontOpentypeI = await fontI.opentype;
-
-  // Set canvas to correct font and size
-  // ctx.font = fontI.fontFaceStyle + " " + String(wordFontSize) + "px " + fontI.fontFaceName;
-
-  // Calculate font glyph metrics for precise positioning
-  const wordFirstGlyphMetrics = fontOpentypeI.charToGlyph(wordText.substr(0, 1)).getMetrics();
-
-  const wordLeftBearing = wordFirstGlyphMetrics.xMin * (wordFontSize / fontOpentypeI.unitsPerEm);
-
-  let baselineY = word.line.bbox.bottom + word.line.baseline[1];
-
-  if (word.sup) {
-    const wordboxXMid = word.bbox.left + (word.bbox.right - word.bbox.left) / 2;
-
-    const baselineYWord = word.line.bbox.bottom + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox.left);
-
-    baselineY -= (baselineYWord - word.bbox.bottom);
-  } else if (!imageRotated) {
-    const wordboxXMid = word.bbox.left + (word.bbox.right - word.bbox.left) / 2;
-
-    baselineY = word.line.bbox.bottom + word.line.baseline[1] + word.line.baseline[0] * (wordboxXMid - word.line.bbox.left);
-  }
-
-  const y = baselineY - cropY;
-
-  const left = 1 - wordLeftBearing + offsetX;
-
-  await printWordOnCanvas(calcCtx, word.text, fontI, wordFontSize, word.bbox.right - word.bbox.left, left, y);
-
-  if (ctxView) {
-    await printWordOnCanvas(ctxView, word.text, fontI, wordFontSize, word.bbox.right - word.bbox.left, left, y, 'red');
-  }
-};
-
-/**
  * Evaluate the accuracy of OCR results by comparing visually with input image.
  * Optionally, an alternative array of OCR results (for the same underlying text)
  * can be provided for comparison purposes.
@@ -423,7 +217,8 @@ export async function evalWords({
   }
 
   // Draw the actual words (from the user-provided image)
-  const cropY = await drawWordActual([...wordsA, ...wordsB], binaryImageBit, imgDims, angle, { view });
+  const ctxViewArr = view ? [viewCtx0, viewCtx1, viewCtx2] : undefined;
+  const cropY = await drawWordActual(calcCtx, [...wordsA, ...wordsB], binaryImageBit, imgDims, angle, ctxViewArr);
 
   const imageDataActual = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
 
@@ -445,7 +240,7 @@ export async function evalWords({
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-    await drawWordRender(word, offsetX, cropY, lineFontSizeA, null, ctxView, Boolean(angle));
+    await drawWordRender(calcCtx, word, offsetX, cropY, lineFontSizeA, ctxView, Boolean(angle));
   }
 
   const imageDataExpectedA = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
@@ -504,7 +299,7 @@ export async function evalWords({
 
       const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-      await drawWordRender(word, offsetX, cropY, lineFontSizeB, null, ctxView, Boolean(angle));
+      await drawWordRender(calcCtx, word, offsetX, cropY, lineFontSizeB, ctxView, Boolean(angle));
     }
 
     const imageDataExpectedB = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
@@ -1176,7 +971,8 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
 
   // Draw the actual words (from the user-provided image)
   const angle = imageRotated ? (pageMetricsObj.angle || 0) : 0;
-  await drawWordActual(wordsA, binaryImage, pageMetricsObj.dims, angle, { view: true });
+  const ctxViewArr = view ? [viewCtx0, viewCtx1, viewCtx2] : undefined;
+  await drawWordActual(calcCtx, wordsA, binaryImage, pageMetricsObj.dims, angle, ctxViewArr);
 
   const extraConfig = {
     tessedit_pageseg_mode: '6', // "Single block"
