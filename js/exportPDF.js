@@ -118,8 +118,6 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     objectI += 6;
   }
 
-  console.timeEnd();
-
   // Add resource dictionary
   // For simplicity, all pages currently get the same resource dictionary.
   // It contains references to every font, as well as a graphics state with 0 opacity (used for invisible text in OCR mode).
