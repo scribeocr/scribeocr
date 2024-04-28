@@ -1047,6 +1047,9 @@ async function evalPageBase({
   for (let j = 0; j < page.lines.length; j++) {
     let ocrLineJ = page.lines[j];
 
+    // The Chinese font is currently not loaded in the workers, so trying to evaluate it will cause an error.
+    if (ocrLineJ.words[0].lang === 'chi_sim') continue;
+
     if (func) {
       ocrLineJ = await func(page.lines[j]);
     }

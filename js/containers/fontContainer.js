@@ -7,6 +7,8 @@
 // globalThis.require = createRequire(import.meta.url);
 
 // Node.js case
+import opentype from '../../lib/opentype.module.min.js';
+
 if (typeof process === 'object') {
   globalThis.self = globalThis;
   const { createRequire } = await import('module');
@@ -18,8 +20,6 @@ if (typeof process === 'object') {
 } else if (globalThis.document === undefined) {
   globalThis.window = {};
 }
-
-const opentype = await import('../../lib/opentype.module.min.js');
 
 /**
  * @param {string} fileName

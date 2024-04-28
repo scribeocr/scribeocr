@@ -1,5 +1,7 @@
 import { quantile } from '../miscUtils.js';
 
+import opentype from '../../lib/opentype.module.min.js';
+
 // Defining "window" is needed due to bad browser/node detection in Opentype.js
 // Can hopefully remove in future version
 if (typeof process === 'object') {
@@ -7,8 +9,6 @@ if (typeof process === 'object') {
 } else if (globalThis.document === undefined) {
   globalThis.window = {};
 }
-
-const opentype = await import('../../lib/opentype.module.min.js');
 
 /**
  * Rounds a number to six decimal places.
