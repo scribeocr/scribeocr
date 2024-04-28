@@ -44,9 +44,8 @@ globalThis.visInstructions = [];
  * @param {boolean} legacy
  * @param {boolean} lstm
  * @param {boolean} mainData
- * @param {Array<string>} langArr
  */
-export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false, langArr = ['eng']) {
+export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false) {
   // Render all PDF pages to PNG if needed
   // This step should not create binarized images as they will be created by Tesseract during recognition.
   if (inputDataModes.pdfMode) await imageCache.preRenderRange(0, imageCache.pageCount - 1, false);
@@ -69,13 +68,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   initOCRVersion('Tesseract Latest');
   setCurrentHOCR('Tesseract Latest');
 
-  await globalThis.generalScheduler.ready;
-
-  const vanillaMode = buildLabelTextElem.innerHTML.toLowerCase().includes('vanilla');
-
-  const resArr = globalThis.generalScheduler.workers.map((x) => x.reinitialize({ langs: langArr, vanillaMode }));
-
-  await Promise.allSettled(resArr);
+  await globalThis.initTesseractInWorkers(false);
 
   // If Legacy and LSTM are both requested, LSTM completion is tracked by a second array of promises (`promisesB`).
   // In this case, `convertPageCallbackBrowser` and `calculateOverallPageMetrics` can be run after the Legacy recognition is finished,

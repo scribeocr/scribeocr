@@ -44,7 +44,7 @@ export const enableDisablelangAlertElem = () => {
 
 collapseLangElem.addEventListener('click', enableDisablelangAlertElem);
 
-function getLangText() {
+export function getLangText() {
   const langArr = [];
   langChoices.forEach((x) => {
     const langCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById(x));
@@ -120,7 +120,7 @@ export async function recognizeAllClick() {
     const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
-    await recognizeAllPagesBrowser(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR), langArr);
+    await recognizeAllPagesBrowser(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR));
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
@@ -134,7 +134,7 @@ export async function recognizeAllClick() {
     globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount * 2 + 1, 0, true);
 
     const time2a = Date.now();
-    await recognizeAllPagesBrowser(true, true, true, langArr);
+    await recognizeAllPagesBrowser(true, true, true);
     const time2b = Date.now();
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 

@@ -14,7 +14,7 @@ import coords from './js/coordinates.js';
 
 import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
 
-import { recognizeAllClick } from './js/browser/interfaceRecognize.js';
+import { recognizeAllClick, getLangText } from './js/browser/interfaceRecognize.js';
 
 import { handleDownload, setFormatLabel, updatePdfPagesLabel } from './js/browser/interfaceDownload.js';
 
@@ -1927,6 +1927,10 @@ async function importFiles(curFiles) {
 
   pageNumElem.value = '1';
   pageCountElem.textContent = String(globalThis.pageCount);
+
+  // Start loading Tesseract if it was not already loaded.
+  // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
+  await globalThis.initTesseractInWorkers(true);
 }
 
 /**
@@ -2169,6 +2173,40 @@ async function optimizeFontClick(enable, useInitial = false) {
 /** @type {?GeneralScheduler} */
 globalThis.gs = null;
 
+/**
+ *
+ * @param {boolean} anyOk - Is any Tesseract worker okay to use?
+ *    If `true`, this function returns immediately if Tesseract workers are already loaded,
+ *    without checking the particular language/oem settings.
+ * @returns
+ */
+globalThis.initTesseractInWorkers = async (anyOk = false) => {
+  await globalThis.generalScheduler.ready;
+
+  if (anyOk && globalThis.generalScheduler.readyTesseract) return globalThis.generalScheduler.readyTesseract;
+
+  let resReady;
+  globalThis.generalScheduler.readyTesseract = new Promise((resolve, reject) => {
+    resReady = resolve;
+  });
+
+  const vanillaMode = buildLabelTextElem.innerHTML.toLowerCase().includes('vanilla');
+  const langArr = getLangText();
+
+  // Wait for the first worker to load.
+  // A behavior (likely bug) was observed where, if the workers are loaded in parallel,
+  // data will be loaded over network from all workers (rather than downloading once and caching).
+  const worker0 = globalThis.generalScheduler.workers[0];
+  await worker0.reinitialize({ langs: langArr, vanillaMode });
+
+  if (globalThis.generalScheduler.workers.length > 0) {
+    const resArr = globalThis.generalScheduler.workers.slice(1).map((x) => x.reinitialize({ langs: langArr, vanillaMode }));
+    await Promise.allSettled(resArr);
+  }
+  resReady(true);
+  return globalThis.generalScheduler.readyTesseract;
+};
+
 export async function initGeneralScheduler() {
   // Determine number of workers to use.
   // This is the minimum of:
@@ -2193,7 +2231,8 @@ export async function initGeneralScheduler() {
   };
 
   // Wait for the first worker to load.
-  // This allows the files to be loaded only once, as they will be in the cache for workers 2+.
+  // A behavior (likely bug) was observed where, if the workers are loaded in parallel,
+  // data will be loaded over network from all workers (rather than downloading once and caching).
   await addGeneralWorker(0);
 
   const resArr = Array.from({ length: workerN }, (v, k) => k).slice(1).map((i) => addGeneralWorker(i));

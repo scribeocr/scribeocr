@@ -73,8 +73,8 @@ const tessConfig = browserMode ? {
   workerBlobURL: false,
 } : { legacyCore: true, legacyLang: true };
 
-let worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
-await worker.setParameters(defaultConfigs);
+/** @type {?Tesseract.Worker} */
+let worker;
 
 /**
  * Function to change language, OEM, and vanilla mode.
@@ -93,15 +93,16 @@ const reinitialize = async ({ langs, oem, vanillaMode }) => {
   const changeOEM = oem !== null && oem !== undefined && oem !== oemCurrent;
   const changeVanilla = vanillaMode && vanillaMode !== vanillaMode_;
 
-  if (!changeLang && !changeOEM && !changeVanilla) return;
+  if (!changeLang && !changeOEM && !changeVanilla && worker) return;
   if (changeLang) langArrCurrent = langArr;
   if (changeOEM) oemCurrent = oem;
   if (changeVanilla) vanillaMode_ = vanillaMode;
 
-  // The worker only needs to be re-created from scratch if the build of Tesseract being used changes.
-  if (changeVanilla) {
+  // The worker only needs to be created from scratch if the build of Tesseract being used changes,
+  // or if it was never created in the first place.
+  if (changeVanilla || !worker) {
     tessConfig.corePath = vanillaMode_ ? '/tess/core_vanilla/' : '/tess/core/';
-    await worker.terminate();
+    if (worker) await worker.terminate();
     worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
   } else {
     await worker.reinitialize(langArrCurrent, oemCurrent, initConfigs);
@@ -165,6 +166,8 @@ export const recognizeAndConvert2 = async ({
   output.hocr = false;
   output.tsv = false;
   output.text = false;
+
+  output.debug = false;
 
   // The function `worker.recognize2` returns 2 promises.
   // If both Legacy and LSTM data are requested, only the second promise will contain the LSTM data.

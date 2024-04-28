@@ -124,24 +124,27 @@ async function main(func, params) {
   // const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
   // if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
 
-  // Object that keeps track of what type of input data is present
+  /** @type {inputDataModes} */
   globalThis.inputDataModes = {
-    // true if OCR data exists (whether from upload or built-in engine)
-    xmlMode: undefined,
+  // true if OCR data exists (whether from upload or built-in engine)
+    xmlMode: [],
     // true if user uploaded pdf
     pdfMode: false,
     // true if user uploaded image files (.png, .jpeg)
     imageMode: false,
     // true if user re-uploaded HOCR data created by Scribe OCR
     resumeMode: false,
+    // true if stext is extracted from a PDF (rather than text layer uploaded seprately)
+    extractTextMode: false,
   };
 
-  let format;
+  /** @type {("hocr" | "abbyy" | "stext")} */
+  let ocrFormat = 'hocr';
   if (['conf', 'check', 'eval', 'overlay'].includes(func)) {
     if (params.ocrFile) {
       const ocr1 = await importOCRFiles([params.ocrFile]);
       globalThis.hocrCurrentRaw = ocr1.hocrRaw;
-      format = ocr1.abbyyMode ? 'abbyy' : 'hocr';
+      if (ocr1.abbyyMode) ocrFormat = 'abbyy';
     } else {
       throw new Error(`OCR file required for function ${func} but not provided.`);
     }
@@ -152,8 +155,9 @@ async function main(func, params) {
 
   if (outputDir) fs.mkdirSync(outputDir, { recursive: true });
 
+  // Despite the argument name being `pdfFile`, this is also used for image files.
+  // `backgroundPDF` is true if the input file is a PDF.
   const backgroundPDF = backgroundArg && /pdf$/i.test(backgroundArg);
-  const backgroundImage = backgroundArg && !backgroundPDF;
 
   const robustConfMode = func === 'check' || params.robustConfMode || false;
   const printConf = func === 'check' || func === 'conf' || params.printConf || false;
@@ -162,10 +166,10 @@ async function main(func, params) {
   globalThis.pageMetricsArr = [];
 
   let fileData;
-  let w;
+  let mupdfWorker;
   let pageCountImage;
-  if (backgroundPDF || backgroundImage) {
-    fileData = await fs.readFileSync(params.pdfFile);
+  if (backgroundArg) {
+    fileData = await fs.readFileSync(backgroundArg);
 
     if (backgroundPDF) {
       await imageCache.openMainPDF(fileData, false, !params.ocrFile);
@@ -175,7 +179,7 @@ async function main(func, params) {
       imageCache.pageCount = 1;
 
       pageCountImage = 1;
-      const format = params.pdfFile.match(/jpe?g$/i) ? 'jpeg' : 'png';
+      const format = backgroundArg.match(/jpe?g$/i) ? 'jpeg' : 'png';
 
       const imgWrapper = new ImageWrapper(0, `data:image/${format};base64,${fileData.toString('base64')}`, format, 'native', false, false);
 
@@ -219,6 +223,7 @@ async function main(func, params) {
   globalThis.generalScheduler.workers = new Array(workerN);
   for (let i = 0; i < workerN; i++) {
     const w = await initGeneralWorker();
+    await w.reinitialize({ langs: ['eng'], vanillaMode: false });
     w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
     globalThis.generalScheduler.addWorker(w);
     globalThis.generalScheduler.workers[i] = w;
@@ -226,7 +231,7 @@ async function main(func, params) {
 
   globalThis.gs = new GeneralScheduler(globalThis.generalScheduler);
 
-  if (globalThis.hocrCurrentRaw) await convertOCRAllNode(globalThis.hocrCurrentRaw, true, format, 'User Upload');
+  if (globalThis.hocrCurrentRaw) await convertOCRAllNode(globalThis.hocrCurrentRaw, true, ocrFormat, 'User Upload');
 
   if (func === 'conf' || (printConf && !robustConfMode)) {
     let wordsTotal = 0;
@@ -263,7 +268,7 @@ async function main(func, params) {
   // If recognition is being run, this will happen at that step.
   if (!runRecognition) await imageCache.preRenderRange(0, renderPageN - 1, true);
 
-  if (func === 'debug') {
+  if (func === 'debug' && backgroundArg) {
     const writeCanvasNodeAll = (await import('../../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
 
     await recognizeAllPagesNode(false, false, false, true);
@@ -339,7 +344,7 @@ async function main(func, params) {
         mode: 'comb',
         ignoreCap: true,
         ignorePunct: false,
-        debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
+        debugLabel: debugMode ? 'abc' : undefined, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
       const imgBinary = await imageCache.getBinary(i);
@@ -380,7 +385,7 @@ async function main(func, params) {
         ignorePunct: false,
         tessWorker,
         editConf: robustConfMode,
-        debugLabel: debugMode ? 'abc' : null, // Setting any value for `debugLabel` causes the debugging images to be saved.
+        debugLabel: debugMode ? 'abc' : undefined, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
       const imgBinary = await imageCache.getBinary(i);
@@ -421,18 +426,18 @@ async function main(func, params) {
     dumpDebugLogAll(backgroundArg);
   }
 
-  if (func === 'overlay') {
+  if (func === 'overlay' && backgroundArg) {
     const pdfStr = await hocrToPDF(globalThis.ocrAll.active, 0, -1, 'proof', true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
 
     const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
-    w = muPDFScheduler.workers[0];
+    mupdfWorker = muPDFScheduler.workers[0];
 
-    const pdfOverlay = await w.openDocument(pdfEnc.buffer, 'document.pdf');
+    const pdfOverlay = await mupdfWorker.openDocument(pdfEnc.buffer, 'document.pdf');
     let content;
     if (backgroundPDF) {
-      content = await w.overlayText({
+      content = await mupdfWorker.overlayText({
         doc2: pdfOverlay,
         minpage: 0,
         maxpage: -1,
@@ -442,7 +447,7 @@ async function main(func, params) {
         skipText: true,
       });
     } else {
-      content = await w.overlayTextImage({
+      content = await mupdfWorker.overlayTextImage({
         doc2: pdfOverlay,
         imageArr: [fileData],
         minpage: 0,

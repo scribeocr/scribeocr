@@ -217,7 +217,7 @@ class ImageCache {
 
     const resPromise = (async () => {
     // Wait for non-rotated version before replacing with promise
-      await globalThis.generalScheduler.ready;
+      if (typeof process === 'undefined') await globalThis.initTesseractInWorkers(true);
       return gs.recognize({
         image: inputImage.src,
         options: { rotateRadians: angleArg, upscale: upscaleArg },
