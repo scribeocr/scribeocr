@@ -274,7 +274,7 @@ export async function handleDownload() {
           // Angle the PDF viewer is instructed to rotated the image by.
           // This method is currently only used when rotation is needed but the user's (unrotated) source images are being used.
           // If the images are being rendered, then rotation is expected to be applied within the rendering process.
-          const angleImagePdf = autoRotateCheckboxElem.checked && !getDisplayMode ? (globalThis.pageMetricsArr[i].angle || 0) * -1 : 0;
+          const angleImagePdf = autoRotateCheckboxElem.checked && !renderImage ? (globalThis.pageMetricsArr[i].angle || 0) * -1 : 0;
 
           await w.overlayTextImageAddPage({
             doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle: angleImagePdf,
