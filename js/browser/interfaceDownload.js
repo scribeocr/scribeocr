@@ -1,3 +1,5 @@
+/* eslint-disable import/no-cycle */
+
 import { imageCache } from '../containers/imageContainer.js';
 import { insertAlertMessage, initializeProgress } from '../../main.js';
 import {

@@ -345,7 +345,11 @@ export function pass3(pageObj) {
           }
         }
       }
-      wordObj.text = letterArr.join('');
+      // Stylistic ligatures are replaced with their component letters.
+      // This occurs because ligatures are added dynamically when the text is rendered, and the OCR data is assumed to not contain them.
+      // Some fonts do not include stylistic ligatures, and whether they are used or not is a matter of font optimization,
+      // as stylistic ligatures do not change the meaning of the text.
+      wordObj.text = ocr.replaceLigatures(letterArr.join(''));
     }
   }
 }

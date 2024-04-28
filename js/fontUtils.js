@@ -155,23 +155,8 @@ async function calcWordCharMetrics(wordText, fontOpentype) {
     advanceArr.push(glyphI.advanceWidth);
 
     if (charJ) {
-      let glyphIKern = glyphI;
-
-      // If this character is a ligature, the last individual character from the ligature is used for kerning purposes.
-      if ([String.fromCharCode(64256), String.fromCharCode(64257), String.fromCharCode(64258)].includes(charI)) {
-        let charI2 = charI;
-        if (charI === String.fromCharCode(64256)) {
-          charI2 = 'f';
-        } else if (charI === String.fromCharCode(64257)) {
-          charI2 = 'i';
-        } else if (charI === String.fromCharCode(64258)) {
-          charI2 = 'l';
-        }
-        glyphIKern = fontOpentype.charToGlyph(charI2);
-      }
-
       const glyphJ = fontOpentype.charToGlyph(charJ);
-      const kerning = fontOpentype.getKerningValue(glyphIKern, glyphJ);
+      const kerning = fontOpentype.getKerningValue(glyphI, glyphJ);
       kerningArr.push(kerning);
     }
   }

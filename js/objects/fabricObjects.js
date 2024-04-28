@@ -87,7 +87,8 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
           this.text = textInt;
         }
 
-        this.word.text = this.text;
+        // The canvas will contain explicit ligatures, however the OCR objects should not.
+        this.word.text = ocr.replaceLigatures(this.text);
 
         await updateWordCanvas(this);
       }
