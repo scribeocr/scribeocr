@@ -185,6 +185,7 @@
   </style>
   <meta charset="utf-8" />
   <title>Scribe OCR</title>
+  <meta name="description" content="Web application for recognizing text from images and PDFs, proofreading OCR results, and creating fully-digitized documents. Free and open source.">
   <script src="./js/runFirst.js" defer></script>
   <script src="./lib/bootstrap.bundle.min.js"></script>
 
@@ -231,17 +232,15 @@
 
             <div class="btn-group">
               <button class="btn btn-info btn-sm" id="prev">Prev</button>
-              <!-- Fake button for padding purposes -->
-              <button type="button" class="btn btn-secondary mx-0 px-0" disabled></button>
-
+              <div style="width:2px"></div>
               <button class="btn btn-info btn-sm" id="next">Next</button>
             </div>
             <!-- Style used instead of "size" property, as it seems to be more consistent across browsers.
                       Setting the "size" attribute to 4 results in an input that is 4 letters wide on some browsers, while much wider on others. -->
             <div class="btn-group">
-              <span>Page: <input type="text" class="form-control btn-sm" id="pageNum" name="pageNum" autocomplete="off"
+              <label>Page: <input type="text" class="form-control btn-sm" id="pageNum" name="pageNum" autocomplete="off"
                   style="width:3em;display:inline-block"> / <span id="pageCount"
-                  style="display:inline-block;min-width:0.5rem"></span></span>
+                  style="display:inline-block;min-width:0.5rem"></span></label>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#editFindCollapse"
               style="text-align:left">
