@@ -3,8 +3,6 @@
 // To make sure what the user sees on the canvas matches the final pdf output,
 // all fonts should have an identical OpenType.js and FontFace version.
 
-// import opentype from "../lib/opentype.module.js";
-
 // import { createRequire } from "../node_modules";
 // globalThis.require = createRequire(import.meta.url);
 
@@ -21,10 +19,7 @@ if (typeof process === 'object') {
   globalThis.window = {};
 }
 
-await import('../../lib/opentype.js');
-
-// https://github.com/opentypejs/opentype.js/pull/579
-// const opentype = await import("../../lib/opentype.module.js");
+const opentype = await import('../../lib/opentype.module.min.js');
 
 /**
  * @param {string} fileName

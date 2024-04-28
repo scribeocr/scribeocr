@@ -40,11 +40,11 @@
  */
 
 /**
- * @typedef {import("../lib/opentype.module.js").Font} opentype.Font
+ * @typedef {import("../lib/opentype.module.min.js").Font} opentype.Font
  */
 
 /**
- * @typedef {import("../lib/opentype.module.js").Glyph} opentype.Glyph
+ * @typedef {import("../lib/opentype.module.min.js").Glyph} opentype.Glyph
  */
 
 /**

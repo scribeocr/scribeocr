@@ -8,7 +8,7 @@ if (typeof process === 'object') {
   globalThis.window = {};
 }
 
-await import('../../lib/opentype.js');
+const opentype = await import('../../lib/opentype.module.min.js');
 
 /**
  * Rounds a number to six decimal places.

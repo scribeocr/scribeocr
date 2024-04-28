@@ -7,7 +7,8 @@ import { createRequire } from 'module';
 globalThis.require = createRequire(import.meta.url);
 
 globalThis.self = globalThis;
-await import('../lib/opentype.js');
+
+const opentype = await import('../lib/opentype.module.min.js');
 
 const args = process.argv.slice(2);
 

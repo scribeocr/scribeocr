@@ -1,9 +1,3 @@
-import {
-  BlobWriter,
-  TextReader,
-  ZipWriter,
-} from '../lib/zip.js/index.js';
-
 import { xlsxStrings, sheetStart, sheetEnd } from './xlsxFiles.js';
 
 import { calcOverlap } from './modifyOCR.js';
@@ -267,6 +261,8 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
 }
 
 export async function writeXlsx(hocrCurrent) {
+  const { BlobWriter, TextReader, ZipWriter } = await import('../lib/zip.js/index.js');
+
   const addFilenameMode = document.getElementById('xlsxFilenameColumn').checked;
   const addPageNumberColumnMode = document.getElementById('xlsxPageNumberColumn').checked;
 

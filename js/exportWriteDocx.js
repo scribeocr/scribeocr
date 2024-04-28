@@ -1,9 +1,3 @@
-import {
-  BlobWriter,
-  TextReader,
-  ZipWriter,
-} from '../lib/zip.js/index.js';
-
 import { docxStrings, documentStart, documentEnd } from './docxFiles.js';
 
 import { renderText } from './exportRenderText.js';
@@ -19,6 +13,8 @@ const docxPageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getE
  * @param {Array<OcrPage>} hocrCurrent -
  */
 export async function writeDocx(hocrCurrent) {
+  const { BlobWriter, TextReader, ZipWriter } = await import('../lib/zip.js/index.js');
+
   const removeLineBreaks = docxReflowCheckboxElem.checked;
   const breaksBetweenPages = docxPageBreaksCheckboxElem.checked;
 
