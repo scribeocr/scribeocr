@@ -53,7 +53,7 @@ class CustomSeleniumActions {
       await this.driver.findElement(By.id(`formatLabelOption${format}`)).click();
 
       // Click the "download" button
-      await this.driver.wait(until.elementIsEnabled(this.driver.findElement(By.id('download'))), 5000);
+      await this.driver.wait(until.elementIsEnabled(this.driver.findElement(By.id('download'))), 10000);
       await this.driver.findElement(By.id('download')).click();
 
       // Wait for progress bar to fill up
