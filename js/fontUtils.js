@@ -293,9 +293,9 @@ export const calcLineFontSize = async (line) => {
 
   const fontOpentype = await font.opentype;
 
-  // Aggregate line-level metrics are unlikely to be correct for short lines, so calculate the size precisely.
+  // Aggregate line-level metrics are unlikely to be correct for short lines (if character data is available), so calculate the size precisely.
   // This method is always used for non-Latin scripts, as the ascender/descender metrics make little sense in that context.
-  if (line.words.length <= 3 || nonLatin) {
+  if ((line.words.length <= 3 && line.words[0].chars && line.words[0].chars.length > 0) || nonLatin) {
     const fontSizeCalc = await calcWordFontSizePrecise(line.words, fontOpentype, nonLatin);
     if (fontSizeCalc) {
       line._sizeCalc = fontSizeCalc;
