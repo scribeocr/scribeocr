@@ -308,3 +308,20 @@ export function determineSansSerif(fontName) {
 
   return fontFamily;
 }
+
+/**
+ *
+ * @param {Array<string>|string} text - String containing word, or array containing individual letters.
+ * @returns
+ */
+export function getTextScript(text) {
+  let han = 0;
+  let latin = 0;
+  const letterArr = typeof text === 'string' ? text.split('') : text;
+  for (let j = 0; j < letterArr.length; j++) {
+    if (/\p{Script=Han}/u.test(letterArr[j])) han++;
+    if (/\p{Script=Latin}/u.test(letterArr[j])) latin++;
+  }
+
+  return { han, latin };
+}

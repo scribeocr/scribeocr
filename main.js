@@ -2157,8 +2157,6 @@ export async function displayPage(n) {
   working = false;
 }
 
-globalThis.displayPage = displayPage;
-
 /**
  *
  * @param {boolean} enable

@@ -266,7 +266,7 @@ export async function recognizeAllClick() {
             confThreshMed: parseInt(confThreshMedElem.value),
           };
 
-          const res = await globalThis.globalThis.gs.compareHOCR({
+          const res = await globalThis.gs.compareHOCR({
             pageA: globalThis.ocrAll['User Upload'][i],
             pageB: globalThis.ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinary,

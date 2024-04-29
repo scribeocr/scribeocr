@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage,
+  initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage, displayPage,
 } from '../main.js';
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
@@ -11,9 +11,6 @@ import { imageCache } from './containers/imageContainer.js';
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
-
-const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
-const buildLabelTextElem = /** @type {HTMLElement} */(document.getElementById('buildLabelText'));
 
 // TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.

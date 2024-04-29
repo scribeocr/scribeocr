@@ -1,6 +1,8 @@
 import ocr from '../objects/ocrObjects.js';
 
-import { unescapeXml, determineSansSerif } from '../miscUtils.js';
+import {
+  unescapeXml, determineSansSerif, getTextScript,
+} from '../miscUtils.js';
 
 import { pass2, pass3 } from './convertPageShared.js';
 
@@ -166,13 +168,9 @@ export async function convertPageHocr({
 
       let wordLang = wordLangRaw || currentLang;
       if (['chi_sim', 'chi_tra'].includes(wordLang)) {
-        let hanChars = 0;
-        let latinChars = 0;
-        for (let j = 0; j < letterArr.length; j++) {
-          const contentStrLetter = letterArr[j][2];
-          if (/\p{Script=Han}/u.test(contentStrLetter)) hanChars++;
-          if (/\p{Script=Latin}/u.test(contentStrLetter)) latinChars++;
-        }
+        const charArr = letterArr.map((x) => x[2]);
+        const { han: hanChars, latin: latinChars } = getTextScript(charArr);
+
         if (hanChars === 0) {
           // Do not let languages be switched for a word that contains 0 Han characters.
           if (!['chi_sim', 'chi_tra'].includes(currentLang)) {

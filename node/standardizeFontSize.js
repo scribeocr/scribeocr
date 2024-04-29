@@ -13,6 +13,12 @@ globalThis.self = globalThis;
 const args = process.argv.slice(2);
 
 /**
+ * Function that transforms a single numeric input.
+ * @callback transformFunc
+ * @param {number} x - Numeric input
+ */
+
+/**
  * Apply function to all points on glyph.
  * @param {opentype.Glyph} glyph
  * @param {transformFunc} func

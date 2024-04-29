@@ -2,7 +2,7 @@ import ocr from '../objects/ocrObjects.js';
 
 import { pass2, pass3 } from './convertPageShared.js';
 
-import { determineSansSerif } from '../miscUtils.js';
+import { determineSansSerif, getTextScript } from '../miscUtils.js';
 
 // TODO: Add rotation.
 
@@ -16,10 +16,10 @@ import { determineSansSerif } from '../miscUtils.js';
  * @param {boolean} params.keepItalic - If true, italic tags (`<em>`) are honored.  This is false by default,
  *    as vanilla Tesseract does not recognize italic text in a way that is reliable.
  *    This is fixed for Legacy recognition in the included custom build of Tesseract.
- * @param {boolean} params.upscale
+ * @param {boolean} [params.upscale=false]
  */
 export async function convertPageBlocks({
-  ocrBlocks, n, pageDims, keepItalic, rotateAngle, upscale,
+  ocrBlocks, n, pageDims, keepItalic, rotateAngle, upscale = false,
 }) {
   rotateAngle = rotateAngle || 0;
 
@@ -27,6 +27,8 @@ export async function convertPageBlocks({
     pageDims.height *= 2;
     pageDims.width *= 2;
   }
+
+  const currentLang = 'eng';
 
   const pageObj = new ocr.OcrPage(n, pageDims);
 
@@ -71,6 +73,40 @@ export async function convertPageBlocks({
 
           // Words containing only space characters are skipped.
           if (word.text.trim() === '') continue;
+
+          let wordLang = word.language || currentLang;
+          if (['chi_sim', 'chi_tra'].includes(wordLang)) {
+            const { han: hanChars, latin: latinChars } = getTextScript(word.text);
+
+            if (hanChars === 0) {
+              // Do not let languages be switched for a word that contains 0 Han characters.
+              if (!['chi_sim', 'chi_tra'].includes(currentLang)) {
+                wordLang = currentLang;
+              // Do not let language be Chinese for any word that contains no Han characters and >0 non-Chinese characters.
+              // TODO: Assign the appropriate Latin language (not necessarily English).
+              } else if (latinChars > 0) {
+                wordLang = 'eng';
+              }
+            }
+          }
+
+          // For Chinese, individual characters are treated as words.
+          if (['chi_sim', 'chi_tra'].includes(wordLang)) {
+            for (let m = 0; m < word.symbols.length; m++) {
+              const symbol = word.symbols[m];
+
+              const symbolbox = {
+                left: symbol.bbox.x0, top: symbol.bbox.y0, right: symbol.bbox.x1, bottom: symbol.bbox.y1,
+              };
+
+              const wordObj = new ocr.OcrWord(lineObj, symbol.text, symbolbox, `${id}_${j}`);
+              wordObj.conf = symbol.confidence;
+              wordObj.lang = wordLang;
+
+              lineObj.words.push(wordObj);
+            }
+            continue;
+          }
 
           const wordObj = new ocr.OcrWord(lineObj, word.text, wordbox, id);
           wordObj.lang = word.language;

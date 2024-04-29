@@ -127,6 +127,8 @@ const reinitialize = async ({ langs, oem, vanillaMode }) => {
 export const recognizeAndConvert = async ({
   image, options, output, n, knownAngle = null, pageDims,
 }) => {
+  if (!worker) throw new Error('Worker not initialized');
+
   const res1 = await worker.recognize(image, options, output);
 
   const angle = knownAngle === null || knownAngle === undefined ? (res1.data.rotateRadians || 0) * (180 / Math.PI) * -1 : knownAngle;
@@ -158,6 +160,8 @@ export const recognizeAndConvert = async ({
 export const recognizeAndConvert2 = async ({
   image, options, output, n, pageDims, knownAngle = null,
 }, id) => {
+  if (!worker) throw new Error('Worker not initialized');
+
   options.upscale = false;
 
   // Disable output formats that are not used.
@@ -228,6 +232,7 @@ export const recognizeAndConvert2 = async ({
 * Exported for type inference purposes, should not be imported anywhere.
 */
 export const recognize = async ({ image, options, output }) => {
+  if (!worker) throw new Error('Worker not initialized');
   const res1 = await worker.recognize(image, options, output);
   return res1.data;
 };
