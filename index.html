@@ -242,6 +242,13 @@
                   style="width:3em;display:inline-block"> / <span id="pageCount"
                   style="display:inline-block;min-width:0.5rem"></span></label>
             </div>
+            <!-- Zoom buttons only visible on larger screens to avoid cluttering the interface. -->
+            <div class="btn-group d-none d-xl-inline-flex" style="padding-left:20px;padding-right:20px">
+              <button class="btn btn-secondary btn-sm" id="zoomOut" aria-label="Zoom Out" style="width:40px">-</button>
+              <div style="width:2px"></div>
+              <button class="btn btn-secondary btn-sm" id="zoomIn" aria-label="Zoom In" style="width:40px">+</button>
+            </div>
+
             <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#editFindCollapse"
               style="text-align:left">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search"

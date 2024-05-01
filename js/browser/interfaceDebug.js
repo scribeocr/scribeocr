@@ -52,7 +52,7 @@ export async function evalSelectedLine() {
 
   await drawDebugImages({ ctx: globalThis.ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
 
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, true, false);
+  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, true);
 }
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));

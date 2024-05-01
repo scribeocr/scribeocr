@@ -90,28 +90,19 @@ export const selectDisplayMode = async (x) => {
 
   setWordColorOpacity(x);
 
-  // Calculate options for background image and overlay
-  if (globalThis.inputDataModes.xmlMode[cp.n]) {
-    cp.backgroundOpts.originX = 'center';
-    cp.backgroundOpts.originY = 'center';
+  cp.backgroundOpts.originX = 'center';
+  cp.backgroundOpts.originY = 'center';
 
-    const imgDims = globalThis.pageMetricsArr[cp.n].dims;
+  const imgDims = globalThis.pageMetricsArr[cp.n].dims;
 
-    cp.backgroundOpts.left = imgDims.width * 0.5;
-    cp.backgroundOpts.top = imgDims.height * 0.5;
+  cp.backgroundOpts.left = imgDims.width * 0.5;
+  cp.backgroundOpts.top = imgDims.height * 0.5;
 
-    // let marginPx = Math.round(imgDims.width * leftGlobal);
-    if (autoRotateCheckboxElem.checked) {
-      cp.backgroundOpts.angle = globalThis.pageMetricsArr[cp.n].angle * -1 ?? 0;
-    } else {
-      cp.backgroundOpts.angle = 0;
-    }
+  // let marginPx = Math.round(imgDims.width * leftGlobal);
+  if (autoRotateCheckboxElem.checked) {
+    cp.backgroundOpts.angle = globalThis.pageMetricsArr[cp.n].angle * -1 ?? 0;
   } else {
-    cp.backgroundOpts.originX = 'left';
-    cp.backgroundOpts.originY = 'top';
-
-    cp.backgroundOpts.left = 0;
-    cp.backgroundOpts.top = 0;
+    cp.backgroundOpts.angle = 0;
   }
 
   const backgroundImage = colorModeElem.value === 'binary' ? await imageCache.getBinary(cp.n) : await imageCache.getNative(cp.n);
@@ -152,7 +143,7 @@ export const selectDisplayMode = async (x) => {
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
   if (globalThis.state.canvasDimsN !== cp.n) {
-    setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked, true);
+    setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked);
 
     globalThis.state.canvasDimsN = cp.n;
   // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,

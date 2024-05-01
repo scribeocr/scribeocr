@@ -1,3 +1,6 @@
+const zoomInElem = /** @type {HTMLInputElement} */(document.getElementById('zoomIn'));
+const zoomOutElem = /** @type {HTMLInputElement} */(document.getElementById('zoomOut'));
+
 const resetCanvasEventListeners = () => {
   canvas.__eventListeners = {};
 
@@ -290,6 +293,18 @@ document.addEventListener('keydown', (event) => {
       canvas.requestRenderAll();
     }
   }
+});
+
+zoomInElem.addEventListener('click', () => {
+  const zoomPoint = new fabric.Point(canvas.width / 2, canvas.height / 2);
+  canvas.zoomToPoint(zoomPoint, canvas.getZoom() * 1.1);
+  canvas.renderAll();
+});
+
+zoomOutElem.addEventListener('click', () => {
+  const zoomPoint = new fabric.Point(canvas.width / 2, canvas.height / 2);
+  canvas.zoomToPoint(zoomPoint, canvas.getZoom() / 1.1);
+  canvas.renderAll();
 });
 
 export { canvas, resetCanvasEventListeners };

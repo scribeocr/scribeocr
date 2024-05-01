@@ -503,7 +503,7 @@ document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', ()
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
   if (showConflictsElem.checked) showDebugImages();
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked, false);
+  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked);
 });
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
@@ -1994,27 +1994,61 @@ globalThis.state = {
 
 const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
 
+let widthHeightInitial = true;
 /**
  *
  * @param {dims} imgDims - Dimensions of image
- * @param {boolean} updatePosition - Whether to reset the position/zoom of the page
  */
-export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false, updatePosition = true) => {
+export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false) => {
   const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
 
   // Re-set width/height, in case the size of the window changed since originally set.
   canvas.setHeight(totalHeight);
   canvas.setWidth(document.documentElement.clientWidth);
 
-  // TODO: Make this more precise.
-  if (updatePosition) {
+  // The first time this function is run, the canvas is centered and zoomed to fit the image.
+  // After that, whatever the user does with the canvas is preserved.
+  if (widthHeightInitial) {
+    widthHeightInitial = false;
     const interfaceHeight = 100;
     const bottomMarginHeight = 50;
     const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
 
     const zoom = targetHeight / imgDims.height;
 
-    canvas.viewportTransform = [zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight];
+    canvas.setViewportTransform([zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight]);
+  } else {
+    let changeVpt = false;
+    const vpt = canvas.viewportTransform.slice(0);
+    // Nudge the document into the viewport, using the lesser of:
+    // (1) the shift required to put 50% of the document into view, or
+    // (2) the shift required to fill 50% of the viewport.
+    // Both conditions are necessary for this to work as expected at all zoom levels.
+    if (canvas.viewportTransform[4] < canvas.backgroundImage.width * canvas.viewportTransform[0] * -0.5
+    && canvas.viewportTransform[4] < (canvas.width / 2 - (canvas.backgroundImage.width * canvas.viewportTransform[0]))) {
+      const newX = Math.min(canvas.backgroundImage.width * canvas.viewportTransform[0] * -0.5, canvas.width / 2 - (canvas.backgroundImage.width * canvas.viewportTransform[0]));
+      vpt[4] = newX;
+      changeVpt = true;
+    } else if (canvas.viewportTransform[4] > canvas.width - (canvas.backgroundImage.width * canvas.viewportTransform[0] * 0.5)
+    && canvas.viewportTransform[4] > canvas.width / 2) {
+      const newX = Math.max(canvas.width - (canvas.backgroundImage.width * canvas.viewportTransform[0] * 0.5), canvas.width / 2);
+      vpt[4] = newX;
+      changeVpt = true;
+    }
+
+    if (canvas.viewportTransform[5] < canvas.backgroundImage.height * canvas.viewportTransform[0] * -0.5
+      && canvas.viewportTransform[5] < (canvas.height / 2 - (canvas.backgroundImage.height * canvas.viewportTransform[0]))) {
+      const newX = Math.min(canvas.backgroundImage.height * canvas.viewportTransform[0] * -0.5, canvas.height / 2 - (canvas.backgroundImage.height * canvas.viewportTransform[0]));
+      vpt[5] = newX;
+      changeVpt = true;
+    } else if (canvas.viewportTransform[5] > canvas.height - (canvas.backgroundImage.height * canvas.viewportTransform[0] * 0.5)
+      && canvas.viewportTransform[5] > canvas.height / 2) {
+      const newX = Math.max(canvas.height - (canvas.backgroundImage.height * canvas.viewportTransform[0] * 0.5), canvas.height / 2);
+      vpt[5] = newX;
+      changeVpt = true;
+    }
+
+    if (changeVpt) canvas.setViewportTransform(vpt);
   }
 
   if (enableConflictsViewer) {
