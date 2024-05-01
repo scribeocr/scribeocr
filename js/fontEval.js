@@ -57,26 +57,44 @@ export async function evaluateFonts(pageArr) {
 
   const debug = false;
 
-  // These should be allowed to run in parallel, so await should not be used until all promises exist.
-  const carlitoMetricPromise = evalPageFonts(fontActive.Carlito, pageArr);
-  const nimbusSansMetricPromise = evalPageFonts(fontActive.NimbusSans, pageArr);
+  // The browser version runs in parallel using workers, however the Node.js version runs sequentially,
+  // as the canvas package does not support workers, and trying to run in parallel causes problems.
+  // The logic is the same in both versions.
+  let sansMetrics;
+  let serifMetrics;
+  if (typeof process === 'undefined') {
+    const carlitoMetricPromise = evalPageFonts(fontActive.Carlito, pageArr);
+    const nimbusSansMetricPromise = evalPageFonts(fontActive.NimbusSans, pageArr);
 
-  const centuryMetricPromise = evalPageFonts(fontActive.Century, pageArr);
-  const palatinoMetricPromise = evalPageFonts(fontActive.Palatino, pageArr);
-  const garamondMetricPromise = evalPageFonts(fontActive.Garamond, pageArr);
-  const nimbusRomNo9LMetricPromise = evalPageFonts(fontActive.NimbusRomNo9L, pageArr);
+    const centuryMetricPromise = evalPageFonts(fontActive.Century, pageArr);
+    const palatinoMetricPromise = evalPageFonts(fontActive.Palatino, pageArr);
+    const garamondMetricPromise = evalPageFonts(fontActive.Garamond, pageArr);
+    const nimbusRomNo9LMetricPromise = evalPageFonts(fontActive.NimbusRomNo9L, pageArr);
 
-  const sansMetrics = {
-    Carlito: await carlitoMetricPromise,
-    NimbusSans: await nimbusSansMetricPromise,
-  };
+    sansMetrics = {
+      Carlito: await carlitoMetricPromise,
+      NimbusSans: await nimbusSansMetricPromise,
+    };
 
-  const serifMetrics = {
-    Century: await centuryMetricPromise,
-    Palatino: await palatinoMetricPromise,
-    Garamond: await garamondMetricPromise,
-    NimbusRomNo9L: await nimbusRomNo9LMetricPromise,
-  };
+    serifMetrics = {
+      Century: await centuryMetricPromise,
+      Palatino: await palatinoMetricPromise,
+      Garamond: await garamondMetricPromise,
+      NimbusRomNo9L: await nimbusRomNo9LMetricPromise,
+    };
+  } else {
+    sansMetrics = {
+      Carlito: await evalPageFonts(fontActive.Carlito, pageArr),
+      NimbusSans: await evalPageFonts(fontActive.NimbusSans, pageArr),
+    };
+
+    serifMetrics = {
+      Century: await evalPageFonts(fontActive.Century, pageArr),
+      Palatino: await evalPageFonts(fontActive.Palatino, pageArr),
+      Garamond: await evalPageFonts(fontActive.Garamond, pageArr),
+      NimbusRomNo9L: await evalPageFonts(fontActive.NimbusRomNo9L, pageArr),
+    };
+  }
 
   let minKeySans = 'NimbusSans';
   let minValueSans = Number.MAX_VALUE;
