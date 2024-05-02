@@ -70,7 +70,11 @@ export async function initMuPDFWorker() {
           // Remove job number (appended by Tesseract scheduler function)
           // args = args.slice(0,-1)
 
-          args = [mupdf.pdfDoc, args[0]];
+          if (args[0] === undefined) {
+            args = [mupdf.pdfDoc];
+          } else {
+            args = [mupdf.pdfDoc, args[0]];
+          }
         }
         const id = worker.promiseId++;
         const page = ['drawPageAsPNG'].includes(func) ? args[1] : null;

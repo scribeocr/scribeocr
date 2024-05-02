@@ -426,7 +426,7 @@ class ImageCache {
     console.assert(!this.muPDFScheduler, 'openMainPDF should not be run when imageCache.muPDFScheduler is already defined, report as bug.');
     const muPDFScheduler = await this.initMuPDFScheduler(fileData, 3);
 
-    this.pageCount = await muPDFScheduler.workers[0].countPages([]);
+    this.pageCount = await muPDFScheduler.workers[0].countPages();
 
     const pageDims1 = await muPDFScheduler.workers[0].pageSizes([300]);
 

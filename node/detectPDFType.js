@@ -22,11 +22,11 @@ async function main() {
   let type = 'Image Native';
 
   if (outputPath) {
-    const res = await w.detectExtractText([]);
+    const res = await w.detectExtractText();
     type = res.type;
     fs.writeFileSync(outputPath, res.text);
   } else {
-    const nativeCode = await w.checkNativeText([]);
+    const nativeCode = await w.checkNativeText();
     type = ['Native text', 'Image + OCR text', 'Image native'][nativeCode];
   }
 

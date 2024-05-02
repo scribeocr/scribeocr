@@ -283,7 +283,7 @@ export async function handleDownload() {
           });
           downloadProgress.increment();
         }
-        content = await w.overlayTextImageEnd([]);
+        content = await w.overlayTextImageEnd();
 
         // Fill up progress bar to 100%
         for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
