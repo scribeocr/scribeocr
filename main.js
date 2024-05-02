@@ -2024,26 +2024,26 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false)
     // (1) the shift required to put 50% of the document into view, or
     // (2) the shift required to fill 50% of the viewport.
     // Both conditions are necessary for this to work as expected at all zoom levels.
-    if (canvas.viewportTransform[4] < canvas.backgroundImage.width * canvas.viewportTransform[0] * -0.5
-    && canvas.viewportTransform[4] < (canvas.width / 2 - (canvas.backgroundImage.width * canvas.viewportTransform[0]))) {
-      const newX = Math.min(canvas.backgroundImage.width * canvas.viewportTransform[0] * -0.5, canvas.width / 2 - (canvas.backgroundImage.width * canvas.viewportTransform[0]));
+    if (canvas.viewportTransform[4] < imgDims.width * canvas.viewportTransform[0] * -0.5
+    && canvas.viewportTransform[4] < (canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]))) {
+      const newX = Math.min(imgDims.width * canvas.viewportTransform[0] * -0.5, canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]));
       vpt[4] = newX;
       changeVpt = true;
-    } else if (canvas.viewportTransform[4] > canvas.width - (canvas.backgroundImage.width * canvas.viewportTransform[0] * 0.5)
+    } else if (canvas.viewportTransform[4] > canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5)
     && canvas.viewportTransform[4] > canvas.width / 2) {
-      const newX = Math.max(canvas.width - (canvas.backgroundImage.width * canvas.viewportTransform[0] * 0.5), canvas.width / 2);
+      const newX = Math.max(canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5), canvas.width / 2);
       vpt[4] = newX;
       changeVpt = true;
     }
 
-    if (canvas.viewportTransform[5] < canvas.backgroundImage.height * canvas.viewportTransform[0] * -0.5
-      && canvas.viewportTransform[5] < (canvas.height / 2 - (canvas.backgroundImage.height * canvas.viewportTransform[0]))) {
-      const newX = Math.min(canvas.backgroundImage.height * canvas.viewportTransform[0] * -0.5, canvas.height / 2 - (canvas.backgroundImage.height * canvas.viewportTransform[0]));
+    if (canvas.viewportTransform[5] < imgDims.height * canvas.viewportTransform[0] * -0.5
+      && canvas.viewportTransform[5] < (canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]))) {
+      const newX = Math.min(imgDims.height * canvas.viewportTransform[0] * -0.5, canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]));
       vpt[5] = newX;
       changeVpt = true;
-    } else if (canvas.viewportTransform[5] > canvas.height - (canvas.backgroundImage.height * canvas.viewportTransform[0] * 0.5)
+    } else if (canvas.viewportTransform[5] > canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5)
       && canvas.viewportTransform[5] > canvas.height / 2) {
-      const newX = Math.max(canvas.height - (canvas.backgroundImage.height * canvas.viewportTransform[0] * 0.5), canvas.height / 2);
+      const newX = Math.max(canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5), canvas.height / 2);
       vpt[5] = newX;
       changeVpt = true;
     }
