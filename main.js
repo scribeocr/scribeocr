@@ -1713,6 +1713,9 @@ async function importFiles(curFiles) {
 
     const skipText = document.getElementById('omitNativeTextCheckbox').checked;
 
+    // Start loading mupdf workers as soon as possible, without waiting for `pdfFile.arrayBuffer` (which can take a while).
+    imageCache.getMuPDFScheduler();
+
     const pdfFileData = await pdfFile.arrayBuffer();
 
     // If no XML data is provided, page sizes are calculated using muPDF alone

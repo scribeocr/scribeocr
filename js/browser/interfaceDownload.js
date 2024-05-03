@@ -220,7 +220,7 @@ export async function handleDownload() {
 
       // Create a new scheduler if one does not yet exist.
       // This would be the case for image uploads.
-      const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
+      const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
       const w = muPDFScheduler.workers[0];
       // const fileData = await pdfOverlayBlob.arrayBuffer();
       // The file name is only used to detect the ".pdf" extension
@@ -320,7 +320,7 @@ export async function handleDownload() {
       if (intermediatePDFElem.checked) {
         pdfBlob = new Blob([pdfEnc], { type: 'application/octet-stream' });
       } else {
-        const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
+        const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
         const w = muPDFScheduler.workers[0];
 
         // The file name is only used to detect the ".pdf" extension

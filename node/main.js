@@ -431,7 +431,7 @@ async function main(func, params) {
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
 
-    const muPDFScheduler = await imageCache.initMuPDFScheduler(null, 1);
+    const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
     mupdfWorker = muPDFScheduler.workers[0];
 
     const pdfOverlay = await mupdfWorker.openDocument(pdfEnc.buffer, 'document.pdf');

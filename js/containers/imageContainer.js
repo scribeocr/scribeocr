@@ -114,36 +114,6 @@ export class ImageWrapper {
  * @property {?('color'|'gray'|'binary')} [colorMode]
  */
 
-/**
- *
- * @param {?ArrayBuffer} fileData
- * @param {number} numWorkers
- * @returns
- */
-async function initMuPDFSchedulerPrivate(fileData, numWorkers = 3) {
-  const scheduler = await Tesseract.createScheduler();
-  const workersPromiseArr = range(1, numWorkers).map(async () => {
-    const w = await initMuPDFWorker();
-    // Open file if provided.
-    // File is generally provided, however will be missing if images were uploaded and
-    // the PDF scheduler is being created to handle a PDF download.
-    if (fileData) {
-      // The ArrayBuffer is transferred to the worker, so a new one must be created for each worker.
-      // const fileData = await file.arrayBuffer();
-      const fileDataCopy = fileData.slice(0);
-      const pdfDoc = await w.openDocument(fileDataCopy, 'document.pdf');
-      w.pdfDoc = pdfDoc;
-    }
-    w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-    scheduler.addWorker(w);
-    return w;
-  });
-
-  const workers = await Promise.all(workersPromiseArr);
-
-  return new MuPDFScheduler(scheduler, workers);
-}
-
 // TODO: Either separate out the imagebitmap again or edit so it does not get sent between threads.
 // Alternatively, if it is sent between threads, use it reather than making a new one.
 // Actually, definitely do that last option.
@@ -156,7 +126,7 @@ class ImageCache {
     this.native = [];
     /** @type {Array<ImageWrapper|Promise<ImageWrapper>>} */
     this.binary = [];
-    /** @type {?MuPDFScheduler} */
+    /** @type {?Promise<MuPDFScheduler>} */
     this.muPDFScheduler = null;
     this.pageCount = 0;
     this.inputModes = {
@@ -179,6 +149,47 @@ class ImageCache {
   /** @type {Array<?Promise<boolean>>} */
   #binaryBitmapPromises = [];
 
+  /**
+   * Initializes the MuPDF scheduler.
+   * This is separate from the function that loads the file (`#loadFileMuPDFScheduler`),
+   * as the scheduler starts loading ahead of the file being available for performance reasons.
+   * @param {number} numWorkers
+   * @returns
+   */
+  #initMuPDFScheduler = async (numWorkers = 3) => {
+    const scheduler = await Tesseract.createScheduler();
+    const workersPromiseArr = range(1, numWorkers).map(async () => {
+      const w = await initMuPDFWorker();
+      w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
+      scheduler.addWorker(w);
+      return w;
+    });
+
+    const workers = await Promise.all(workersPromiseArr);
+
+    return new MuPDFScheduler(scheduler, workers);
+  };
+
+  /**
+   *
+   * @param {ArrayBuffer} fileData
+   * @returns
+   */
+  #loadFileMuPDFScheduler = async (fileData) => {
+    const scheduler = await this.getMuPDFScheduler();
+
+    const workersPromiseArr = range(0, scheduler.workers.length - 1).map(async (x) => {
+      const w = scheduler.workers[x];
+      // The ArrayBuffer is transferred to the worker, so a new one must be created for each worker.
+      // const fileData = await file.arrayBuffer();
+      const fileDataCopy = fileData.slice(0);
+      const pdfDoc = await w.openDocument(fileDataCopy, 'document.pdf');
+      w.pdfDoc = pdfDoc;
+    });
+
+    await Promise.all(workersPromiseArr);
+  };
+
   #renderImage = async (n, color = false) => {
     if (this.inputModes.image) {
       this.native[n] = this.nativeSrc[n];
@@ -187,8 +198,8 @@ class ImageCache {
 
       const targetWidth = pageMetrics.dims.width;
       const dpi = 300 * (targetWidth / pdfDims300Arr[n].width);
-
-      this.native[n] = this.muPDFScheduler.drawPageAsPNG({
+      const muPDFScheduler = await this.getMuPDFScheduler();
+      this.native[n] = muPDFScheduler.drawPageAsPNG({
         page: n + 1, dpi, color, skipText: skipTextMode,
       }).then((res) => new ImageWrapper(n, res, 'png', color ? 'color' : 'gray'));
     }
@@ -395,12 +406,13 @@ class ImageCache {
     }
   };
 
-  clear = () => {
+  clear = async () => {
     this.nativeSrc = [];
     this.native = [];
     this.binary = [];
     if (this.muPDFScheduler) {
-      this.muPDFScheduler.scheduler.terminate();
+      const muPDFScheduler = await this.muPDFScheduler;
+      muPDFScheduler.scheduler.terminate();
       this.muPDFScheduler = null;
     }
     this.inputModes.image = false;
@@ -408,9 +420,14 @@ class ImageCache {
     this.pageCount = 0;
   };
 
-  initMuPDFScheduler = async (fileData, numWorkers = 3) => {
+  /**
+   * Gets the MuPDF scheduler if it exists, otherwise creates a new one.
+   * @param {number} [numWorkers=3] - Number of workers to create.
+   * @returns
+   */
+  getMuPDFScheduler = async (numWorkers = 3) => {
     if (this.muPDFScheduler) return this.muPDFScheduler;
-    this.muPDFScheduler = await initMuPDFSchedulerPrivate(fileData, numWorkers);
+    this.muPDFScheduler = this.#initMuPDFScheduler(numWorkers);
     return this.muPDFScheduler;
   };
 
@@ -423,8 +440,9 @@ class ImageCache {
    * @param {Boolean} [setPageMetrics=false]
    */
   openMainPDF = async (fileData, skipText = false, setPageMetrics = false, extractStext = false) => {
-    console.assert(!this.muPDFScheduler, 'openMainPDF should not be run when imageCache.muPDFScheduler is already defined, report as bug.');
-    const muPDFScheduler = await this.initMuPDFScheduler(fileData, 3);
+    const muPDFScheduler = await this.getMuPDFScheduler(3);
+
+    await this.#loadFileMuPDFScheduler(fileData);
 
     this.pageCount = await muPDFScheduler.workers[0].countPages();
 
