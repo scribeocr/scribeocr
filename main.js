@@ -1685,6 +1685,23 @@ async function importFiles(curFiles) {
   downloadFileName += '.pdf';
   downloadFileNameElem.value = downloadFileName;
 
+  // The loading bar should be initialized before anything significant runs (e.g. `imageCache.openMainPDF` to provide some visual feedback).
+  // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
+  // PDF files do not, as PDF files are not processed page-by-page at the import step.
+  let progressMax = 0;
+  if (globalThis.inputDataModes.imageMode) progressMax += imageFilesAll.length;
+  if (xmlModeImport) progressMax += hocrFilesAll.length;
+
+  // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
+  // Therefore, a dummy loading bar with a max of 1 is created even when progress is not meaningfully tracked.
+  let dummyLoadingBar = false;
+  if (progressMax === 0) {
+    dummyLoadingBar = true;
+    progressMax = 1;
+  }
+
+  globalThis.convertPageActiveProgress = initializeProgress('import-progress-collapse', progressMax, 0, false, true);
+
   let pageCount;
   let pageCountImage;
   let abbyyMode = false;
@@ -1829,22 +1846,6 @@ async function importFiles(curFiles) {
   }
 
   globalThis.loadCount = 0;
-
-  // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
-  // PDF files do not, as PDF files are not processed page-by-page at the import step.
-  let progressMax = 0;
-  if (globalThis.inputDataModes.imageMode) progressMax += globalThis.pageCount;
-  if (xmlModeImport) progressMax += globalThis.pageCount;
-
-  // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
-  // Therefore, a dummy loading bar with a max of 1 is created even when progress is not meaningfully tracked.
-  let dummyLoadingBar = false;
-  if (progressMax === 0) {
-    dummyLoadingBar = true;
-    progressMax = 1;
-  }
-
-  globalThis.convertPageActiveProgress = initializeProgress('import-progress-collapse', progressMax, 0, false, true);
 
   if (globalThis.inputDataModes.imageMode) {
     imageCache.pageCount = globalThis.pageCount;

@@ -57,8 +57,43 @@ export async function evalSelectedLine() {
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 
-export function downloadCanvas() {
-  const canvasDataStr = canvas.toDataURL();
+/**
+ * Crops a canvas area and returns a data URL of the cropped area using OffscreenCanvas.
+ * @param {HTMLCanvasElement} canvas - The canvas element to be cropped.
+ * @param {number} startX - The starting x-coordinate for the crop area.
+ * @param {number} startY - The starting y-coordinate for the crop area.
+ * @param {number} width - The width of the crop area.
+ * @param {number} height - The height of the crop area.
+ * @returns {Promise<string>} A promise that resolves to the data URL of the cropped canvas area.
+ */
+async function getCroppedCanvasDataURL(canvas, startX, startY, width, height) {
+  // Create a new OffscreenCanvas
+  const offscreen = new OffscreenCanvas(width, height);
+  const ctx = offscreen.getContext('2d');
+
+  // Draw the cropped area on the new OffscreenCanvas
+  ctx.drawImage(canvas, startX, startY, width, height, 0, 0, width, height);
+
+  // Convert the OffscreenCanvas to a Blob, then to a data URL
+  return new Promise((resolve, reject) => {
+    offscreen.convertToBlob().then((blob) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  });
+}
+
+export async function downloadCanvas() {
+  const dims = globalThis.pageMetricsArr[cp.n].dims;
+
+  const startX = globalThis.canvas.viewportTransform[4] > 0 ? Math.round(globalThis.canvas.viewportTransform[4]) : 0;
+  const startY = globalThis.canvas.viewportTransform[5] > 0 ? Math.round(globalThis.canvas.viewportTransform[5]) : 0;
+  const width = dims.width * globalThis.canvas.viewportTransform[0];
+  const height = dims.height * globalThis.canvas.viewportTransform[3];
+
+  const canvasDataStr = await getCroppedCanvasDataURL(globalThis.canvas.lowerCanvasEl, startX, startY, width, height);
   const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
   const imgBlob = imageStrToBlob(canvasDataStr);
   saveAs(imgBlob, fileName);
