@@ -311,16 +311,18 @@ export const calcLineFontSize = async (line) => {
 
     // Averaging `size1` and `size2` is intended to smooth out small differences in calculation error.
     // However, in some cases `size1` and `size2` are so different that one is clearly wrong.
-    // In this case, the font size for the previous line is calculated,
-    // and averaged with whichever of `size1` and `size2` are closer.
+    // If `size1` and `size2` are significantly different, however one is closer to the font size of the previous line,
+    // then the size of the previous line is used for averaging instead.
     if (Math.max(size1, size2) / Math.min(size1, size2) > 1.2) {
       const linePrev = getPrevLine(line);
       if (linePrev) {
         const sizeLast = await calcLineFontSize(linePrev);
-        if (Math.abs(sizeLast - size2) < Math.abs(sizeLast - size1)) {
-          sizeFinal = Math.floor((sizeLast + size2) / 2);
-        } else {
-          sizeFinal = Math.floor((sizeLast + size1) / 2);
+        if (sizeLast && (Math.max(size1, sizeLast) / Math.min(size1, sizeLast) <= 1.2 || Math.max(sizeLast, size2) / Math.min(sizeLast, size2) <= 1.2)) {
+          if (Math.abs(sizeLast - size2) < Math.abs(sizeLast - size1)) {
+            sizeFinal = Math.floor((sizeLast + size2) / 2);
+          } else {
+            sizeFinal = Math.floor((sizeLast + size1) / 2);
+          }
         }
       }
     }
