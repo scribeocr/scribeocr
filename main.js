@@ -2190,7 +2190,7 @@ export async function displayPage(n) {
   if (showConflictsElem.checked) showDebugImages();
 
   // Render background images ahead and behind current page to reduce delay when switching pages
-  imageCache.preRenderAheadBehindBrowser(n, colorModeElem.value === 'binary');
+  if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) imageCache.preRenderAheadBehindBrowser(n, colorModeElem.value === 'binary');
 
   working = false;
 }

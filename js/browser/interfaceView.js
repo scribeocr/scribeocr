@@ -90,48 +90,47 @@ export const selectDisplayMode = async (x) => {
 
   setWordColorOpacity(x);
 
-  cp.backgroundOpts.originX = 'center';
-  cp.backgroundOpts.originY = 'center';
-
-  const imgDims = globalThis.pageMetricsArr[cp.n].dims;
-
-  cp.backgroundOpts.left = imgDims.width * 0.5;
-  cp.backgroundOpts.top = imgDims.height * 0.5;
-
-  // let marginPx = Math.round(imgDims.width * leftGlobal);
-  if (autoRotateCheckboxElem.checked) {
-    cp.backgroundOpts.angle = globalThis.pageMetricsArr[cp.n].angle * -1 ?? 0;
-  } else {
-    cp.backgroundOpts.angle = 0;
-  }
-
-  const backgroundImage = colorModeElem.value === 'binary' ? await imageCache.getBinary(cp.n) : await imageCache.getNative(cp.n);
-
-  const backgroundImageBitmap = colorModeElem.value === 'binary' ? await imageCache.getBinaryBitmap(cp.n) : await imageCache.getNativeBitmap(cp.n);
-
-  cp.backgroundImage = new fabric.Image(backgroundImageBitmap, { objectCaching: false });
-
-  // Edit rotation for images that have already been rotated
-  if (backgroundImage.rotated) {
-    // If rotation is requested,
-    if (autoRotateCheckboxElem.checked) {
-      cp.backgroundOpts.angle = 0;
-    } else {
-      cp.backgroundOpts.angle = globalThis.pageMetricsArr[cp.n].angle;
-    }
-  }
-
-  // Edit rotation for images that have been upscaled
-  if (backgroundImage.upscaled) {
-    cp.backgroundOpts.scaleX = 0.5;
-    cp.backgroundOpts.scaleY = 0.5;
-  } else {
-    cp.backgroundOpts.scaleX = 1;
-    cp.backgroundOpts.scaleY = 1;
-  }
-
   // Include a background image if appropriate
   if (['invis', 'proof', 'eval'].includes(x) && (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode)) {
+    cp.backgroundOpts.originX = 'center';
+    cp.backgroundOpts.originY = 'center';
+
+    const imgDims = globalThis.pageMetricsArr[cp.n].dims;
+
+    cp.backgroundOpts.left = imgDims.width * 0.5;
+    cp.backgroundOpts.top = imgDims.height * 0.5;
+
+    if (autoRotateCheckboxElem.checked) {
+      cp.backgroundOpts.angle = globalThis.pageMetricsArr[cp.n].angle * -1 ?? 0;
+    } else {
+      cp.backgroundOpts.angle = 0;
+    }
+
+    const backgroundImage = colorModeElem.value === 'binary' ? await imageCache.getBinary(cp.n) : await imageCache.getNative(cp.n);
+
+    const backgroundImageBitmap = colorModeElem.value === 'binary' ? await imageCache.getBinaryBitmap(cp.n) : await imageCache.getNativeBitmap(cp.n);
+
+    cp.backgroundImage = new fabric.Image(backgroundImageBitmap, { objectCaching: false });
+
+    // Edit rotation for images that have already been rotated
+    if (backgroundImage.rotated) {
+      // If rotation is requested,
+      if (autoRotateCheckboxElem.checked) {
+        cp.backgroundOpts.angle = 0;
+      } else {
+        cp.backgroundOpts.angle = globalThis.pageMetricsArr[cp.n].angle;
+      }
+    }
+
+    // Edit rotation for images that have been upscaled
+    if (backgroundImage.upscaled) {
+      cp.backgroundOpts.scaleX = 0.5;
+      cp.backgroundOpts.scaleY = 0.5;
+    } else {
+      cp.backgroundOpts.scaleX = 1;
+      cp.backgroundOpts.scaleY = 1;
+    }
+
     canvas.setBackgroundColor('white');
     // canvas.setBackgroundImage(cp.backgroundImage, canvas.renderAll.bind(canvas));
     canvas.setBackgroundImage(cp.backgroundImage, null, cp.backgroundOpts);
