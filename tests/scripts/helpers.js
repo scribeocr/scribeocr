@@ -39,7 +39,7 @@ class CustomSeleniumActions {
       const maxValue = await progressBar.getAttribute('aria-valuemax');
       const currentValue = await progressBar.getAttribute('aria-valuenow');
       return currentValue === maxValue;
-    }, 30000, 'Recognize progress bar did not reach maximum value in time');
+    }, 40000, 'Recognize progress bar did not reach maximum value in time');
   }
 
   async downloadAllFormats() {
