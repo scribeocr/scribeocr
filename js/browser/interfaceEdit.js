@@ -174,6 +174,7 @@ export async function updateWordCanvas(wordI) {
   wordI.left = wordI.visualLeft - wordMetrics.leftSideBearing - groupOffsetLeft;
 
   wordI.charSpacing = wordMetrics.charSpacing * 1000 / wordI.fontSize;
+  wordI.scaleX = 1;
 
   wordI.fontSize = wordMetrics.fontSize;
 

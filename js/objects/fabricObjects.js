@@ -50,15 +50,6 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
     this.set('fontFamilyLookup', options.fontFamilyLookup);
     this.set('fontStyleLookup', options.fontStyleLookup);
 
-    this.set('leftTemp', options.left);
-
-    // For whatever reason, calculating width using the left/right of `aCoords` is not accurate.
-    // Therefore, we keep track of the visual width of the word separately, so the right edge of the word can be calculated accurately.
-    this.set('visualWidth', options.visualWidth);
-
-    // Can this be removed?
-    // this.set('line', options.line);
-
     // The `visualLeft` property is the visually apparent edge of the word, which equals the left of the bounding box plus the left bearing.
     // This needs to be kept track of separately because the visual left, not the left coordinate, should remain constant when font properties change.
     // For example, if the user changes the font from a font with a small left bearing to a font with a large left bearing,
@@ -172,35 +163,16 @@ export const ITextWord = fabric.util.createClass(fabric.IText, {
       if (opt.action === 'scaleX') {
         const wordObj = /** @type {OcrWord} */ (opt.target.word);
 
-        const textboxWidth = opt.target.calcTextWidth();
+        // Sub-integer scaling is allowed to avoid a frustrating user experience, and allow for precise positioning when exporting to PDF.
+        // However, the bounding box will be rounded upon export to HOCR, as the HOCR specification requires integer coordinates.
+        const leftDelta = opt.transform.corner === 'ml' ? this.aCoords.bl.x - opt.transform.lastX : 0;
+        const rightDelta = opt.transform.corner === 'mr' ? this.aCoords.br.x - opt.transform.lastX : 0;
 
-        const wordMetrics = await calcWordMetrics(wordObj);
-        const visualWidthNew = (textboxWidth - wordMetrics.leftSideBearing - wordMetrics.rightSideBearing) * opt.target.scaleX;
-
-        const visualRightNew = opt.target.left + visualWidthNew;
-        const visualRightOrig = opt.target.leftTemp + opt.target.visualWidth;
-
-        const leftDelta = Math.round(opt.target.left - opt.target.leftTemp);
-        const rightDelta = Math.round(visualRightNew - visualRightOrig);
         wordObj.bbox.left += leftDelta;
+        opt.target.visualLeft += leftDelta;
         wordObj.bbox.right += rightDelta;
 
-        if (opt.target.text.length > 1) {
-          const widthDelta = (leftDelta * -1) + rightDelta;
-          const fontI = fontAll.getWordFont(wordObj);
-          const fontOpentype = await fontI.opentype;
-          const charArr = addLigatures(wordObj.text, fontOpentype);
-          if (widthDelta !== 0) {
-            const charSpacingDelta = (widthDelta / (charArr.length - 1)) * 1000 / opt.target.fontSize;
-            opt.target.charSpacing = (opt.target.charSpacing ?? 0) + charSpacingDelta;
-            opt.target.scaleX = 1;
-          }
-        }
-
-        opt.target.visualLeft += leftDelta;
-
-        opt.target.leftTemp = opt.target.left;
-        opt.target.visualWidth = visualWidthNew;
+        updateWordCanvas(opt.target);
       }
     });
   },

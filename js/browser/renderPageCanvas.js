@@ -199,7 +199,6 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
         // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
         fontFamilyLookup: fontI.family,
         fontStyleLookup: fontStyle,
-        visualWidth: boxWidth, // TODO: Is this incorrect when rotation exists?
         visualLeft,
         visualBaseline,
         scaleX,

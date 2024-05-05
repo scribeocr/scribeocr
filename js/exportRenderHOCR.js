@@ -53,7 +53,9 @@ export function renderHOCR(ocrData, minValue, maxValue, meta) {
       if (lineObj.ascHeight) hocrOut += `; x_asc_height ${lineObj.ascHeight}`;
       hocrOut += '">';
       for (const wordObj of lineObj.words) {
-        hocrOut += `\n\t\t\t<span class='ocrx_word' id='${wordObj.id}' title='bbox ${wordObj.bbox.left} ${wordObj.bbox.top} ${wordObj.bbox.right} ${wordObj.bbox.bottom}`;
+        hocrOut += `\n\t\t\t<span class='ocrx_word' id='${wordObj.id}' title='`;
+        // The HOCR specification requires that the bounding box be rounded to the nearest integer, however the Scribe internal data structure does not.
+        hocrOut += `bbox ${Math.round(wordObj.bbox.left)} ${Math.round(wordObj.bbox.top)} ${Math.round(wordObj.bbox.right)} ${Math.round(wordObj.bbox.bottom)}`;
         hocrOut += `;x_wconf ${wordObj.conf}`;
 
         if (wordObj.font && wordObj.font !== 'Default') {
