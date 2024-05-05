@@ -87,7 +87,13 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
     }));
   }
 
-  const config = {};
+  const enableUpscaleElem = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
+
+  // Upscaling is enabled only for image data, and only if the user has explicitly enabled it.
+  // For PDF data, if upscaling is desired, that should be handled by rendering the PDF at a higher resolution.
+  const upscale = globalThis.inputDataModes.imageMode && enableUpscaleElem.checked;
+
+  const config = { upscale };
 
   const debugVis = showDebugVisElem.checked;
 

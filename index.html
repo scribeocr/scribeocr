@@ -641,7 +641,7 @@
                     </div>
                   </div>
                   <div class="col col-lg-2" id="langOptions">
-                    <label>Options</label>
+                    <label>Language</label>
                     <div class="form-group">
                       <button data-bs-toggle="collapse" id="langLabel" data-bs-target="#collapseLang" type="button"
                         class="btn btn-secondary btn-sm collapsed" style="min-width:100%;text-align:left"
@@ -661,7 +661,7 @@
                   </div>
                   <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions1">
                     <div>
-                      <label>Options</label>
+                      <label>Engine</label>
                     </div>
                     <div class="row">
                       <div class="form-group">
@@ -717,7 +717,17 @@
                       </div>
                     </div>
                   </div>
-
+                  <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions3">
+                    <label>Options</label>
+                    <div class="row">
+                      <div class="form-group">
+                        <div class="form-check form-switch">
+                          <label><input class="form-check-input" type="checkbox" id="enableUpscale">
+                            Upscale Images</label>
+                        </div>                      
+                      </div>
+                    </div>
+                  </div>
                   <div class="col col-lg-2" id="combineModeOptions" style="display:none">
                     <div>
                       <label>Combine Mode:</label>
@@ -1484,11 +1494,6 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                           <label><input class="form-check-input" type="checkbox" id="optimizeFontDebug"> Enable Initial
                             Optimized Fonts</label>
                         </div>
-                        <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugEvalLine"
-                          style="width:100%;text-align:left">Evaluate Line</button>
-                        <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintCoords"
-                          style="width:100%;text-align:left">Print Coords</button>
-
                         <label>Print Selected Words to Console</label>
                         <div class="row">
                           <div class="col">
@@ -1511,11 +1516,25 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                               style="width:100%;text-align:left">Canvas</button>
                           </div>
                         </div>
+                        <label>Misc</label>
+                        <div class="row">
+                          <div class="col">
+                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugEvalLine"
+                            style="width:100%;text-align:left">Evaluate Line</button>
+                          </div>
+                          <div class="col">
+                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintCoords"
+                            style="width:100%;text-align:left">Print Coords</button>  
+                          </div>
+                        </div>
+                        <div class="row">
+                          <div class="col">
+                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadSourcePDF"
+                            style="width:100%;text-align:left">Download Source PDF</button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-
-
-
                   </div>
                 </div>
               </div>

@@ -281,18 +281,18 @@ mupdf.overlayTextImageEnd = function (doc) {
 
 /**
  *
- * @param {number} doc
+ * @param {number} doc - Ignored (included as boilerplate for consistency with other functions).
  * @param {Object} args
- * @param {number} args.doc1
- * @param {number} args.minpage
- * @param {number} args.maxpage
- * @param {number} args.pagewidth
- * @param {number} args.pageheight
+ * @param {number} args.doc1 - Document to write.
+ * @param {number} [args.minpage=0] - First page to include in the output PDF. Default is 0.
+ * @param {number} [args.maxpage=-1] - Last page to include in the output PDF. Default is -1 (all pages).
+ * @param {number} [args.pagewidth=-1] - Width of the pages in the output PDF. Default is -1 (same as input).
+ * @param {number} [args.pageheight=-1] - Height of the pages in the output PDF. Default is -1 (same as input).
  * @param {Boolean} [args.humanReadable=false]
  * @returns
  */
 mupdf.write = function (doc, {
-  doc1, minpage, maxpage, pagewidth, pageheight, humanReadable = false,
+  doc1, minpage = 0, maxpage = -1, pagewidth = -1, pageheight = -1, humanReadable = false,
 }) {
   mupdf.writePDF(doc1, minpage, maxpage, pagewidth, pageheight, humanReadable);
   const content = FS.readFile('/download.pdf');

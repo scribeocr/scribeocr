@@ -50,6 +50,27 @@ const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById
 
 const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
 
+const downloadSourcePDFElem = /** @type {HTMLInputElement} */(document.getElementById('downloadSourcePDF'));
+
+downloadSourcePDFElem.addEventListener('click', async () => {
+  const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
+  const w = muPDFScheduler.workers[0];
+
+  if (!w.pdfDoc) {
+    console.log('No PDF document is open.');
+    return;
+  }
+
+  const content = await w.write({
+    doc1: w.pdfDoc, humanReadable: humanReadablePDFElem.checked,
+  });
+
+  const pdfBlob = new Blob([content], { type: 'application/octet-stream' });
+
+  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.pdf`;
+  saveAs(pdfBlob, fileName);
+});
+
 // Once per session, if the user opens the "Download" tab and proofreading mode is still enabled,
 // the user will be prompted to change display modes before downloading.
 // This is because, while printing OCR text visibly is an intended feature (it was the original purpose of this application),
@@ -216,7 +237,15 @@ export async function handleDownload() {
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
 
-      // await initSchedulerIfNeeded('muPDFScheduler');
+      if (intermediatePDFElem.checked) {
+        pdfBlob = new Blob([pdfEnc], { type: 'application/octet-stream' });
+        // Fill up progress bar to 100%
+        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+        saveAs(pdfBlob, fileName);
+        downloadElem.disabled = false;
+        downloadElem.addEventListener('click', handleDownload);
+        return;
+      }
 
       // Create a new scheduler if one does not yet exist.
       // This would be the case for image uploads.

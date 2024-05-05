@@ -72,7 +72,6 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
   let objectI = 3;
   const pdfFonts = {};
   let pdfFontsStr = '';
-  console.time();
   for (const [familyKey, familyObj] of Object.entries(exportFontObj)) {
     pdfFonts[familyKey] = {};
     for (const [key, value] of Object.entries(familyObj)) {

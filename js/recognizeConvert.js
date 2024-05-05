@@ -55,10 +55,10 @@ export const calcRecognizeRotateArgs = async (n, areaMode) => {
  * @param {boolean} legacy -
  * @param {boolean} lstm -
  * @param {boolean} areaMode -
- * @param {Object<string, string>} options -
+ * @param {Object<string, string>} tessOptions - Options to pass to Tesseract.js.
  * @param {boolean} [debugVis=false] - Generate instructions for debugging visualizations.
  */
-export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, options = {}, debugVis = false) => {
+export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOptions = {}, debugVis = false) => {
   const {
     angleThresh, angleKnown, rotateRadians, saveNativeImage, saveBinaryImageArg,
   } = await calcRecognizeRotateArgs(n, areaMode);
@@ -67,13 +67,11 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
 
   if (!nativeN) throw new Error(`No image source found for page ${n}`);
 
-  const upscale = false;
-
   const config = {
     ...{
-      rotateRadians, rotateAuto: !angleKnown, legacy, lstm, upscale,
+      rotateRadians, rotateAuto: !angleKnown, legacy, lstm,
     },
-    ...options,
+    ...tessOptions,
   };
 
   const pageDims = globalThis.pageMetricsArr[n].dims;
@@ -127,6 +125,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, option
   // but no significant rotation was actually detected.
   const significantRotation = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
 
+  const upscale = tessOptions.upscale || false;
   if (saveBinaryImageArg && res0.recognize.imageBinary && (significantRotation || !imageCache.binary[n])) {
     imageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'png', 'binary', isRotated, upscale);
   }

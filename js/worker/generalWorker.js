@@ -162,8 +162,6 @@ export const recognizeAndConvert2 = async ({
 }, id) => {
   if (!worker) throw new Error('Worker not initialized');
 
-  options.upscale = false;
-
   // Disable output formats that are not used.
   // Leaving these enabled can significantly inflate runtimes for no benefit.
   if (!output) output = {};

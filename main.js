@@ -377,9 +377,14 @@ enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivEl
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
 enableAdvancedRecognitionElem.addEventListener('click', () => {
-  showHideElem(document.getElementById('advancedRecognitionOptions1'), enableAdvancedRecognitionElem.checked);
-  showHideElem(document.getElementById('advancedRecognitionOptions2'), enableAdvancedRecognitionElem.checked);
-  showHideElem(document.getElementById('basicRecognitionOptions'), !enableAdvancedRecognitionElem.checked);
+  const advancedRecognitionOptions1Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions1'));
+  const advancedRecognitionOptions2Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions2'));
+  const advancedRecognitionOptions3Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions3'));
+  const basicRecognitionOptionsElem = /** @type {HTMLDivElement} */(document.getElementById('basicRecognitionOptions'));
+  showHideElem(advancedRecognitionOptions1Elem, enableAdvancedRecognitionElem.checked);
+  showHideElem(advancedRecognitionOptions2Elem, enableAdvancedRecognitionElem.checked);
+  showHideElem(advancedRecognitionOptions3Elem, enableAdvancedRecognitionElem.checked);
+  showHideElem(basicRecognitionOptionsElem, !enableAdvancedRecognitionElem.checked);
 });
 
 export const enableRecognitionClick = () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-recognize-tab')), enableRecognitionElem.checked);

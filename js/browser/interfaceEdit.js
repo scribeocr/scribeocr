@@ -175,6 +175,8 @@ export async function updateWordCanvas(wordI) {
 
   wordI.charSpacing = wordMetrics.charSpacing * 1000 / wordI.fontSize;
 
+  wordI.fontSize = wordMetrics.fontSize;
+
   window.canvas.requestRenderAll();
 }
 
