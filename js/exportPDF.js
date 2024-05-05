@@ -125,8 +125,10 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
 
   pdfOut += `/Font<<${pdfFontsStr}>>`;
 
-  pdfOut += '/ExtGState<</GS0 <</ca 0.0>>>>';
-  pdfOut += `/ExtGState<</GS1 <</ca ${proofOpacity}>>>>`;
+  pdfOut += '/ExtGState<<';
+  pdfOut += '/GS0 <</ca 0.0>>';
+  pdfOut += `/GS1 <</ca ${proofOpacity}>>`;
+  pdfOut += '>>';
 
   pdfOut += '>>\nendobj\n\n';
 
