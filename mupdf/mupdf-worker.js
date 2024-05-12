@@ -145,7 +145,7 @@ mupdf.detectExtractText = function (doc) {
   }
   FS.unlink('/download.txt');
 
-  const type = ['Native text', 'Image + OCR text', 'Image native'][res];
+  const type = ['Text native', 'Image + OCR text', 'Image native'][res];
 
   return {
     type,

@@ -1,7 +1,16 @@
 # Scribe OCR
-Scribe OCR is a free and open-source web application for recognizing text, proofreading OCR data, and creating fully-digitized documents.  Live site at [scribeocr.com](https://scribeocr.com).  
+Scribe OCR is a free (libre) web application for recognizing text from images, proofreading OCR data, and creating fully-digitized documents.  Live site at [scribeocr.com](https://scribeocr.com).  
 
-Scribe OCR includes the [Tesseract](https://github.com/tesseract-ocr/tesseract) OCR engine for recognizing text.  It can also be used for proofreading existing OCR data from Tesseract or Abbyy. 
+There are 3 primary uses cases for Scribe OCR.
+1. Adding an accurate searchable text layer to a PDF document.
+	1. Scribe OCR can be used as an alternative to applications like Adobe Acrobat for recognizing text and creating searchable PDFs.
+	2. Unlike other tools, Scribe OCR makes it easy to correct errors in the recognized text.
+2. Proofreading existing OCR data.
+	1. Scribe OCR can be used to edit and correct existing OCR data created with other applications, such as Tesseract and Abbyy.
+	2. By accurately positioning text over the input image, OCR data can be proofread significantly faster than with other methods.
+3. Creating fully digital versions of documents and books.
+	1. Other OCR programs do not truly digitize documents, but rather add roughly-positioned invisible text over the original image.
+	2. Scribe OCR can be used to produce text native, ebook-style PDFs that accurately replicate the original document.
 
 # Running
 ScribeOCR can be run by using the public site at [scribeocr.com](https://scribeocr.com).  The entire program runs in your browser--no data is sent to a remote server. 
