@@ -38,7 +38,7 @@ rangeOpacityElem.addEventListener('input', () => {
  */
 function displayModeClick(x) {
   if (x === 'eval') {
-    renderPageQueue(cp.n, true);
+    renderPageQueue(cp.n);
   } else {
     selectDisplayMode(getDisplayMode());
   }

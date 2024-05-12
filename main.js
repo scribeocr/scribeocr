@@ -148,11 +148,12 @@ fabric.Object.prototype.lockMovementY = true;
 /**
  * @typedef inputDataModes
  * @type {object}
- * @property {Boolean[]} xmlMode - an ID.
- * @property {Boolean} pdfMode - an ID.
- * @property {Boolean} imageMode - an ID.
- * @property {Boolean} resumeMode - an ID.
- * @property {Boolean} extractTextMode - an ID.
+ * @property {Boolean[]} xmlMode - true if OCR data exists (whether from upload or built-in engine)
+ * @property {Boolean} pdfMode - true if user uploaded pdf
+ * @property {Boolean} imageMode - true if user uploaded image files (.png, .jpeg)
+ * @property {Boolean} resumeMode - true if user re-uploaded HOCR data created by Scribe OCR
+ * @property {Boolean} extractTextMode - true if stext is extracted from a PDF (rather than text layer uploaded seprately)
+ * @property {Boolean} evalMode - true if ground truth data is uploaded
  */
 /** @type {inputDataModes} */
 globalThis.inputDataModes = {
@@ -166,6 +167,8 @@ globalThis.inputDataModes = {
   resumeMode: false,
   // true if stext is extracted from a PDF (rather than text layer uploaded seprately)
   extractTextMode: false,
+  // true if ground truth data is uploaded
+  evalMode: false,
 };
 
 /**
@@ -326,14 +329,14 @@ prevElem.addEventListener('click', () => displayPage(cp.n - 1));
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 colorModeElem.addEventListener('change', () => {
   imageCache.colorModeDefault = colorModeElem.value;
-  renderPageQueue(cp.n, false);
+  renderPageQueue(cp.n);
 });
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
-showDebugVisElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
+showDebugVisElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
-showDebugLegendElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
+showDebugLegendElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 showDebugLegendElem.addEventListener('input', () => {
   const legendCanvasParentDivElem = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
@@ -346,7 +349,7 @@ showDebugLegendElem.addEventListener('input', () => {
 });
 
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
-selectDebugVisElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
+selectDebugVisElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 createGroundTruthElem.addEventListener('click', createGroundTruthClick);
@@ -463,17 +466,17 @@ optimizeFontDebugElem.addEventListener('click', () => {
 
 const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
 const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-confThreshHighElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
-confThreshMedElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
+confThreshHighElem.addEventListener('change', () => { renderPageQueue(cp.n); });
+confThreshMedElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 // const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
 // const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
-autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false); });
-// autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false) });
-// showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false) });
-document.getElementById('outlineWords')?.addEventListener('click', () => { renderPageQueue(cp.n, false); });
-document.getElementById('outlineLines')?.addEventListener('click', () => { renderPageQueue(cp.n, false); });
+autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n); });
+// autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n) });
+// showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n) });
+document.getElementById('outlineWords')?.addEventListener('click', () => { renderPageQueue(cp.n); });
+document.getElementById('outlineLines')?.addEventListener('click', () => { renderPageQueue(cp.n); });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
@@ -568,13 +571,13 @@ const showExcludedTextElem = /** @type {HTMLInputElement} */(document.getElement
 showExcludedTextElem.addEventListener('click', () => getExcludedText());
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
-ignorePunctElem.addEventListener('change', () => { renderPageQueue(cp.n, true); });
+ignorePunctElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
-ignoreCapElem.addEventListener('change', () => { renderPageQueue(cp.n, true); });
+ignoreCapElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreExtra'));
-ignoreExtraElem.addEventListener('change', () => { renderPageQueue(cp.n, true); });
+ignoreExtraElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
 
@@ -851,11 +854,7 @@ export function setCurrentHOCR(x) {
   globalThis.ocrAll.active = globalThis.ocrAll[x];
   displayLabelTextElem.innerHTML = x;
 
-  if (displayModeElem.value === 'eval') {
-    renderPageQueue(cp.n, true);
-  } else {
-    renderPageQueue(cp.n, false);
-  }
+  renderPageQueue(cp.n);
 }
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
@@ -979,6 +978,11 @@ function createGroundTruthClick() {
 
   createGroundTruthElem.disabled = true;
   // compareGroundTruthElem.disabled = false;
+
+  globalThis.inputDataModes.evalMode = true;
+
+  // Calculate statistics
+  compareGroundTruthClick(cp.n);
 }
 
 globalThis.evalStatsConfig = {};
@@ -991,12 +995,12 @@ async function compareGroundTruthClick(n) {
   // When a document/recognition is still loading only the page statistics can be calculated
   const loadMode = !!(globalThis.loadCount && globalThis.loadCount < parseInt(globalThis.convertPageActiveProgress?.elem?.getAttribute('aria-valuemax')));
 
-  const evalStatsConfigNew = {};
-  evalStatsConfigNew.ocrActive = displayLabelTextElem.innerHTML;
-  evalStatsConfigNew.ignorePunct = ignorePunctElem.checked;
-  evalStatsConfigNew.ignoreCap = ignoreCapElem.checked;
-  evalStatsConfigNew.ignoreExtra = ignoreExtraElem.checked;
-
+  const evalStatsConfigNew = {
+    ocrActive: displayLabelTextElem.innerHTML,
+    ignorePunct: ignorePunctElem.checked,
+    ignoreCap: ignoreCapElem.checked,
+    ignoreExtra: ignoreExtraElem.checked,
+  };
   /** @type {Parameters<import('./js/generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
   const compOptions = {
     ignoreCap: ignoreCapElem.checked,
@@ -1552,7 +1556,7 @@ async function importOCRFilesSupp() {
   }
 
   globalThis.loadCount = 0;
-  globalThis.convertPageActiveProgress = initializeProgress('import-eval-progress-collapse', pageCountHOCR);
+  globalThis.convertPageActiveProgress = initializeProgress('import-eval-progress-collapse', pageCountHOCR, 0, false, true);
 
   toggleEditButtons(false);
 
@@ -2070,7 +2074,7 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false)
 };
 
 // Function that handles page-level info for rendering to canvas and pdf
-export async function renderPageQueue(n, loadXML = true) {
+export async function renderPageQueue(n) {
   let ocrData = globalThis.ocrAll.active?.[n];
 
   // Return early if there is not enough data to render a page yet
@@ -2102,16 +2106,10 @@ export async function renderPageQueue(n, loadXML = true) {
     globalThis.state.promiseResolve = resolve;
   });
 
-  // Parse the relevant XML (relevant for both Canvas and PDF)
-  if (loadXML && globalThis.inputDataModes.xmlMode[n] && ocrData) {
-    // Compare selected text to ground truth in eval mode
-    if (displayModeElem.value === 'eval') {
-      console.time();
-      await compareGroundTruthClick(n);
-      // ocrData must be re-assigned after comparing to ground truth or it will not update.
-      ocrData = globalThis.ocrAll.active?.[n];
-      console.timeEnd();
-    }
+  if (globalThis.inputDataModes.evalMode) {
+    await compareGroundTruthClick(n);
+    // ocrData must be re-assigned after comparing to ground truth or it will not update.
+    ocrData = globalThis.ocrAll.active?.[n];
   }
 
   let renderNum;
