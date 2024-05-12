@@ -37,7 +37,7 @@ import {
   checkCharWarn, setFontMetricsAll,
 } from './js/fontStatistics.js';
 
-import { ITextWord } from './js/objects/fabricObjects.js';
+// import { ITextWord } from './js/objects/fabricObjects.js';
 
 import { drawDebugImages } from './js/debug.js';
 
@@ -59,7 +59,7 @@ import {
   updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords,
 } from './js/browser/interfaceLayout.js';
 
-import { canvas, resetCanvasEventListeners } from './js/browser/interfaceCanvas.js';
+import { stage, layerText, resetCanvasEventListeners } from './js/browser/interfaceCanvas.js';
 
 import { combineData } from './js/modifyOCR.js';
 
@@ -130,20 +130,20 @@ const fontAllRawReady = loadFontContainerAllRaw().then((x) => {
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
-globalThis.canvas = canvas;
+// globalThis.canvas = canvas;
 
 // Quick fix to get VSCode type errors to stop
 // Long-term should see if there is a way to get types to work with fabric.js
-const { fabric } = globalThis;
+// const { fabric } = globalThis;
 
 // Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
 let leftGlobal;
 
 // Edit canvas.js object defaults
 // Disable movement for all fabric objects
-fabric.Object.prototype.hasControls = false;
-fabric.Object.prototype.lockMovementX = true;
-fabric.Object.prototype.lockMovementY = true;
+// fabric.Object.prototype.hasControls = false;
+// fabric.Object.prototype.lockMovementX = true;
+// fabric.Object.prototype.lockMovementY = true;
 
 /**
  * @typedef inputDataModes
@@ -172,7 +172,6 @@ globalThis.inputDataModes = {
  * @typedef cp
  * @type {Object}
  * @property {Number} n - an ID.
- * @property {any} backgroundImage - an ID.
  * @property {Object} backgroundOpts - an ID.
  * @property {Number} renderStatus - an ID.
  * @property {number} renderNum - an ID.
@@ -180,7 +179,6 @@ globalThis.inputDataModes = {
 /** @type {cp} */
 export const cp = {
   n: 0,
-  backgroundImage: null,
   backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
   renderStatus: 0,
   renderNum: 0,
@@ -1497,7 +1495,7 @@ async function clearFiles() {
 
   globalThis.loadCount = 0;
 
-  canvas.clear();
+  stage.clear();
   pageCountElem.textContent = '';
   pageNumElem.value = '';
   downloadFileNameElem.value = '';
@@ -2012,8 +2010,8 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false)
   const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
 
   // Re-set width/height, in case the size of the window changed since originally set.
-  canvas.setHeight(totalHeight);
-  canvas.setWidth(document.documentElement.clientWidth);
+  // canvas.setHeight(totalHeight);
+  // canvas.setWidth(document.documentElement.clientWidth);
 
   // The first time this function is run, the canvas is centered and zoomed to fit the image.
   // After that, whatever the user does with the canvas is preserved.
@@ -2025,39 +2023,39 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false)
 
     const zoom = targetHeight / imgDims.height;
 
-    canvas.setViewportTransform([zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight]);
+    // canvas.setViewportTransform([zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight]);
   } else {
-    let changeVpt = false;
-    const vpt = canvas.viewportTransform.slice(0);
-    // Nudge the document into the viewport, using the lesser of:
-    // (1) the shift required to put 50% of the document into view, or
-    // (2) the shift required to fill 50% of the viewport.
-    // Both conditions are necessary for this to work as expected at all zoom levels.
-    if (canvas.viewportTransform[4] < imgDims.width * canvas.viewportTransform[0] * -0.5
-    && canvas.viewportTransform[4] < (canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]))) {
-      const newX = Math.min(imgDims.width * canvas.viewportTransform[0] * -0.5, canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]));
-      vpt[4] = newX;
-      changeVpt = true;
-    } else if (canvas.viewportTransform[4] > canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5)
-    && canvas.viewportTransform[4] > canvas.width / 2) {
-      const newX = Math.max(canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5), canvas.width / 2);
-      vpt[4] = newX;
-      changeVpt = true;
-    }
+    // let changeVpt = false;
+    // const vpt = canvas.viewportTransform.slice(0);
+    // // Nudge the document into the viewport, using the lesser of:
+    // // (1) the shift required to put 50% of the document into view, or
+    // // (2) the shift required to fill 50% of the viewport.
+    // // Both conditions are necessary for this to work as expected at all zoom levels.
+    // if (canvas.viewportTransform[4] < imgDims.width * canvas.viewportTransform[0] * -0.5
+    // && canvas.viewportTransform[4] < (canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]))) {
+    //   const newX = Math.min(imgDims.width * canvas.viewportTransform[0] * -0.5, canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]));
+    //   vpt[4] = newX;
+    //   changeVpt = true;
+    // } else if (canvas.viewportTransform[4] > canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5)
+    // && canvas.viewportTransform[4] > canvas.width / 2) {
+    //   const newX = Math.max(canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5), canvas.width / 2);
+    //   vpt[4] = newX;
+    //   changeVpt = true;
+    // }
 
-    if (canvas.viewportTransform[5] < imgDims.height * canvas.viewportTransform[0] * -0.5
-      && canvas.viewportTransform[5] < (canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]))) {
-      const newX = Math.min(imgDims.height * canvas.viewportTransform[0] * -0.5, canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]));
-      vpt[5] = newX;
-      changeVpt = true;
-    } else if (canvas.viewportTransform[5] > canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5)
-      && canvas.viewportTransform[5] > canvas.height / 2) {
-      const newX = Math.max(canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5), canvas.height / 2);
-      vpt[5] = newX;
-      changeVpt = true;
-    }
+    // if (canvas.viewportTransform[5] < imgDims.height * canvas.viewportTransform[0] * -0.5
+    //   && canvas.viewportTransform[5] < (canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]))) {
+    //   const newX = Math.min(imgDims.height * canvas.viewportTransform[0] * -0.5, canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]));
+    //   vpt[5] = newX;
+    //   changeVpt = true;
+    // } else if (canvas.viewportTransform[5] > canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5)
+    //   && canvas.viewportTransform[5] > canvas.height / 2) {
+    //   const newX = Math.max(canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5), canvas.height / 2);
+    //   vpt[5] = newX;
+    //   changeVpt = true;
+    // }
 
-    if (changeVpt) canvas.setViewportTransform(vpt);
+    // if (changeVpt) canvas.setViewportTransform(vpt);
   }
 
   if (enableConflictsViewer) {
@@ -2116,13 +2114,15 @@ export async function renderPageQueue(n, loadXML = true) {
 
   let renderNum;
   // Clear canvas if objects (anything but the background) exists
-  if (canvas.getObjects().length) {
-    canvas.clear();
-    // Drop any transformation in process.
-    // This prevents errors if the user is in the middle of scaling an object when the page is rendered.
-    canvas._currentTransform = false;
-    resetCanvasEventListeners();
-  }
+  // if (canvas.getObjects().length) {
+  //   canvas.clear();
+  //   // Drop any transformation in process.
+  //   // This prevents errors if the user is in the middle of scaling an object when the page is rendered.
+  //   canvas._currentTransform = false;
+  //   resetCanvasEventListeners();
+  // }
+
+  layerText.destroyChildren();
 
   cp.renderStatus = 0;
 
@@ -2142,7 +2142,7 @@ export async function renderPageQueue(n, loadXML = true) {
 
   // The active OCR version may have changed, so this needs to be re-checked.
   if (cp.n === n && globalThis.inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, ocrData, globalThis.pageMetricsArr[n].angle, 0);
+    await renderPage(ocrData, globalThis.pageMetricsArr[n].angle, 0);
     if (cp.n === n && cp.renderNum === renderNum) {
       cp.renderStatus += 1;
       await selectDisplayMode(getDisplayMode());
@@ -2171,11 +2171,11 @@ export async function displayPage(n) {
   // does not wait for all code triggered by events to finish running.
   // Therefore, if the page is changed while an object is selected, we deselect all objects
   // and then wait for an arbitrary amount of time for any event-related code to run.
-  if (canvas.getActiveObject()) {
-    console.log('Deselecting active object before changing pages.');
-    canvas.discardActiveObject();
-    await sleep(10);
-  }
+  // if (canvas.getActiveObject()) {
+  //   console.log('Deselecting active object before changing pages.');
+  //   canvas.discardActiveObject();
+  //   await sleep(10);
+  // }
 
   working = true;
 

@@ -3,9 +3,12 @@
 import { calcWordMetrics } from '../fontUtils.js';
 import { renderLayoutBoxes, updateDataPreview } from './interfaceLayout.js';
 import ocr, { OcrPage } from '../objects/ocrObjects.js';
-import { ITextWord } from '../objects/fabricObjects.js';
+import { createEditableText } from '../objects/fabricObjects.js';
 import { cp, search } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
+// import { Text as KonvaText } from '../../lib/konva/shapes/Text.js';
+import Konva from '../../lib/konva.js';
+import { layerText } from './interfaceCanvas.js';
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
 const outlineLinesElem = /** @type {HTMLInputElement} */(document.getElementById('outlineLines'));
@@ -19,22 +22,21 @@ const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvas
 
 /**
  *
- * @param {*} canvas
  * @param {OcrPage} page
  * @param {number} angle - Angle in degrees.
  * @param {*} leftAdjX
  */
-export async function renderPage(canvas, page, angle, leftAdjX) {
+export async function renderPage(page, angle, leftAdjX) {
   const layoutMode = globalThis.layoutMode || false;
 
   // objectCaching slows down page render speeds, and is generally not needed.
   // The exception is when working in layoutMode, where users draw semi-transparent rectangles
   // that overlap with many of the other elements, which requires objectCaching to run smoothly.
-  if (layoutMode) {
-    fabric.Object.prototype.objectCaching = true;
-  } else {
-    fabric.Object.prototype.objectCaching = false;
-  }
+  // if (layoutMode) {
+  //   fabric.Object.prototype.objectCaching = true;
+  // } else {
+  //   fabric.Object.prototype.objectCaching = false;
+  // }
 
   const matchIdArr = ocr.getMatchingWordIds(search.search, globalThis.ocrAll.active[cp.n]);
 
@@ -42,32 +44,32 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-  if (showDebugVisElem.checked && selectDebugVisElem.value !== 'None') {
-    if (!globalThis.visInstructions[cp.n][selectDebugVisElem.value]) {
-      console.log('Requested debugging visualization does not exist');
-      return;
-    }
-    canvas.overlayVpt = true;
-    const imgInstance = new fabric.Image(globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvas);
-    canvas.setOverlayImage(imgInstance, canvas.renderAll.bind(canvas), {
-      originX: 'left',
-      originY: 'top',
-      // Scale should account for cases where an upscaled version was used to create the visualization.
-      scaleX: globalThis.pageMetricsArr[cp.n].dims.width / imgInstance.width,
-      scaleY: globalThis.pageMetricsArr[cp.n].dims.height / imgInstance.height,
-    });
-    const offscreenCanvasLegend = globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvasLegend;
-    if (offscreenCanvasLegend) {
-      ctxLegend.canvas.width = offscreenCanvasLegend.width;
-      ctxLegend.canvas.height = offscreenCanvasLegend.height;
-      ctxLegend.drawImage(offscreenCanvasLegend, 0, 0);
-    } else {
-      ctxLegend.clearRect(0, 0, ctxLegend.canvas.width, ctxLegend.canvas.height);
-    }
-    return;
-  }
+  // if (showDebugVisElem.checked && selectDebugVisElem.value !== 'None') {
+  //   if (!globalThis.visInstructions[cp.n][selectDebugVisElem.value]) {
+  //     console.log('Requested debugging visualization does not exist');
+  //     return;
+  //   }
+  //   canvas.overlayVpt = true;
+  //   const imgInstance = new fabric.Image(globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvas);
+  //   canvas.setOverlayImage(imgInstance, canvas.renderAll.bind(canvas), {
+  //     originX: 'left',
+  //     originY: 'top',
+  //     // Scale should account for cases where an upscaled version was used to create the visualization.
+  //     scaleX: globalThis.pageMetricsArr[cp.n].dims.width / imgInstance.width,
+  //     scaleY: globalThis.pageMetricsArr[cp.n].dims.height / imgInstance.height,
+  //   });
+  //   const offscreenCanvasLegend = globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvasLegend;
+  //   if (offscreenCanvasLegend) {
+  //     ctxLegend.canvas.width = offscreenCanvasLegend.width;
+  //     ctxLegend.canvas.height = offscreenCanvasLegend.height;
+  //     ctxLegend.drawImage(offscreenCanvasLegend, 0, 0);
+  //   } else {
+  //     ctxLegend.clearRect(0, 0, ctxLegend.canvas.width, ctxLegend.canvas.height);
+  //   }
+  //   return;
+  // }
   // Clear overlay
-  canvas.setOverlayImage();
+  // canvas.setOverlayImage();
 
   for (const lineObj of page.lines) {
     const linebox = lineObj.bbox;
@@ -75,27 +77,27 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
 
     const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : { x: 0, y: 0 };
 
-    if (outlineLinesElem.checked) {
-      const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
-      const height1 = linebox.bottom - linebox.top - heightAdj;
-      const height2 = lineObj.words[0] ? lineObj.words[0].bbox.bottom - lineObj.words[0].bbox.top : 0;
-      const height = Math.max(height1, height2);
+    // if (outlineLinesElem.checked) {
+    //   const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
+    //   const height1 = linebox.bottom - linebox.top - heightAdj;
+    //   const height2 = lineObj.words[0] ? lineObj.words[0].bbox.bottom - lineObj.words[0].bbox.top : 0;
+    //   const height = Math.max(height1, height2);
 
-      const lineRect = new fabric.Rect({
-        left: linebox.left + angleAdjLine.x + leftAdjX,
-        top: linebox.bottom + angleAdjLine.y,
-        originY: 'bottom',
-        width: linebox.right - linebox.left,
-        height,
-        angle: angleArg,
-        showTextBoxBorder: true,
-        stroke: 'rgba(0,0,255,0.75)',
-        fill: null,
-        selectable: false,
-        evented: false, // Prevents cursor from changing.
-      });
-      canvas.add(lineRect);
-    }
+    //   const lineRect = new fabric.Rect({
+    //     left: linebox.left + angleAdjLine.x + leftAdjX,
+    //     top: linebox.bottom + angleAdjLine.y,
+    //     originY: 'bottom',
+    //     width: linebox.right - linebox.left,
+    //     height,
+    //     angle: angleArg,
+    //     showTextBoxBorder: true,
+    //     stroke: 'rgba(0,0,255,0.75)',
+    //     fill: null,
+    //     selectable: false,
+    //     evented: false, // Prevents cursor from changing.
+    //   });
+    //   canvas.add(lineRect);
+    // }
 
     for (const wordObj of lineObj.words) {
       const fillColorHexMatch = wordObj.matchTruth ? '#00ff7b' : '#ff0000';
@@ -112,7 +114,7 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
       const fontI = fontAll.getWordFont(wordObj);
 
       const {
-        visualWidth, charSpacing, leftSideBearing, fontSize, charArr,
+        visualWidth, charSpacing, leftSideBearing, fontSize, charArr, advanceArr, kerningArr,
       } = await calcWordMetrics(wordObj);
 
       const wordText = charArr.join('');
@@ -178,40 +180,86 @@ export async function renderPage(canvas, page, angle, leftAdjX) {
 
       const textBackgroundColor = matchIdArr.includes(wordObj.id) ? '#4278f550' : '';
 
-      const textbox = new ITextWord(wordText, {
-        left,
-        top,
-        angle: angleArg,
-        word: wordObj,
-        selectable: !layoutMode,
-        topBaseline: visualBaseline,
-        topBaselineOrig: visualBaseline,
-        baselineAdj: 0,
-        originY: 'bottom',
-        fill: fillArg,
-        fill_proof: fillColorHex,
-        fill_ebook: 'black',
-        fill_eval: fillColorHexMatch,
-        fontFamily: fontI.fontFaceName,
-        fontStyle: fontI.fontFaceStyle,
-        fontObj: fontI,
+      // const wordMetrics = await calcWordMetrics(word);
+      // const advanceArr = wordMetrics.advanceArr;
+      // const kerningArr = wordMetrics.kerningArr;
+      // const charSpacing = wordMetrics.charSpacing;
 
-        // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
-        fontFamilyLookup: fontI.family,
-        fontStyleLookup: fontStyle,
-        visualLeft,
-        visualBaseline,
-        scaleX,
-        defaultFontFamily: !wordObj.font,
-        textBackgroundColor,
-        // fontFamily: 'times',
-        opacity: opacityArg,
-        charSpacing: charSpacing * 1000 / fontSize,
+      const advanceArrTotal = [];
+      for (let i = 0; i < advanceArr.length; i++) {
+        let leftI = 0;
+        leftI += advanceArr[i] || 0;
+        leftI += kerningArr[i] || 0;
+        leftI += charSpacing || 0;
+        advanceArrTotal.push(leftI);
+      }
+
+      const fontIOpentype = await fontI.opentype;
+
+      createEditableText({
+        x: left,
+        y: top,
+        charArr,
         fontSize,
-        showTextBoxBorder: showTextBoxBorderArg,
+        fontStyle,
+        fillArg,
+        advanceArrTotal,
+        fontFaceName: fontI.fontFaceName,
+        charSpacing,
+        fontIOpentype,
+        word: wordObj,
       });
 
-      canvas.add(textbox);
+      // const textbox = new Konva.Text({
+      //   x: left,
+      //   y: top,
+      //   rotation: angleArg,
+      //   text: wordText,
+      //   fontSize,
+      //   fontFamily: fontI.fontFaceName,
+      //   fontStyle,
+      //   fill: fillArg,
+      //   opacity: opacityArg,
+      //   scaleX,
+      //   letterSpacing: charSpacing,
+      //   // textBaseline: wordObj.sup ? 'top' : 'alphabetic',
+      //   textBackgroundColor,
+      // });
+
+      // const textbox = new ITextWord(wordText, {
+      //   left,
+      //   top,
+      //   angle: angleArg,
+      //   word: wordObj,
+      //   selectable: !layoutMode,
+      //   topBaseline: visualBaseline,
+      //   topBaselineOrig: visualBaseline,
+      //   baselineAdj: 0,
+      //   originY: 'bottom',
+      //   fill: fillArg,
+      //   fill_proof: fillColorHex,
+      //   fill_ebook: 'black',
+      //   fill_eval: fillColorHexMatch,
+      //   fontFamily: fontI.fontFaceName,
+      //   fontStyle: fontI.fontFaceStyle,
+      //   fontObj: fontI,
+
+      //   // fontFamilyLookup and fontStyleLookup should be used for all purposes other than Fabric.js (e.g. looking up font information)
+      //   fontFamilyLookup: fontI.family,
+      //   fontStyleLookup: fontStyle,
+      //   visualLeft,
+      //   visualBaseline,
+      //   scaleX,
+      //   defaultFontFamily: !wordObj.font,
+      //   textBackgroundColor,
+      //   // fontFamily: 'times',
+      //   opacity: opacityArg,
+      //   charSpacing: charSpacing * 1000 / fontSize,
+      //   fontSize,
+      //   showTextBoxBorder: showTextBoxBorderArg,
+      // });
+
+      // layer.add(textbox);
     }
   }
 

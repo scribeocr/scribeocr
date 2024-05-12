@@ -4,10 +4,13 @@
 import { fontAll } from '../containers/fontContainer.js';
 import { calcLineFontSize } from '../fontUtils.js';
 import { imageCache } from '../containers/imageContainer.js';
+import { stage, layerText } from './interfaceCanvas.js';
 
 // Expose functions in global object for debugging purposes.
 export const df = {
   calcLineFontSize,
   fontAll,
   imageCache,
+  stage,
+  layerText,
 };

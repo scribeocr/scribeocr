@@ -5,10 +5,11 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { calcWordMetrics } from '../fontUtils.js';
+import { calcWordMetrics, addLigatures } from '../fontUtils.js';
 import { renderPageQueue, cp } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
+import { stage, layerText } from './interfaceCanvas.js';
 
 const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
 const fontMinusElem = /** @type {HTMLInputElement} */(document.getElementById('fontMinus'));
@@ -165,20 +166,45 @@ export async function changeWordFontFamily(fontName) {
 // Whenever a user edits a word in any way (including content and font/style),
 // the position and character spacing need to be re-calculated so they still overlay with the background image.
 export async function updateWordCanvas(wordI) {
+  const wordObj = /** @type {OcrWord} */ (wordI.getAttr('word'));
+
+  const fontI = fontAll.getWordFont(wordObj);
+  const fontIOpentype = await fontI.opentype;
+
+  wordI.setAttr('charArr', addLigatures(wordObj.text, fontIOpentype));
+
   // 1. Re-calculate left position given potentially new left bearing
-  const wordMetrics = await calcWordMetrics(wordI.word);
+  const {
+    advanceArr, fontSize, kerningArr, charSpacing,
+  } = await calcWordMetrics(wordObj);
+
+  const advanceArrTotal = [];
+  for (let i = 0; i < advanceArr.length; i++) {
+    let leftI = 0;
+    leftI += advanceArr[i] || 0;
+    leftI += kerningArr[i] || 0;
+    leftI += charSpacing || 0;
+    advanceArrTotal.push(leftI);
+  }
+
+  wordI.setAttr('advanceArrTotal', advanceArrTotal);
+
+  wordI.setAttr('charSpacing', charSpacing);
 
   // When the user selects multiple words at the same time, the coordinates becomes relative to the "group"
-  const groupOffsetLeft = wordI?.group?.ownMatrixCache?.value[4] || 0;
+  // const groupOffsetLeft = wordI?.group?.ownMatrixCache?.value[4] || 0;
 
-  wordI.left = wordI.visualLeft - wordMetrics.leftSideBearing - groupOffsetLeft;
+  // wordI.left = wordI.visualLeft - wordMetrics.leftSideBearing - groupOffsetLeft;
 
-  wordI.charSpacing = wordMetrics.charSpacing * 1000 / wordI.fontSize;
-  wordI.scaleX = 1;
+  // wordI.charSpacing = wordMetrics.charSpacing * 1000 / wordI.fontSize;
+  // wordI.scaleX = 1;
 
-  wordI.fontSize = wordMetrics.fontSize;
+  wordI.fontSize = fontSize;
+  wordI.show();
 
-  window.canvas.requestRenderAll();
+  layerText.draw();
+
+  // window.canvas.requestRenderAll();
 }
 
 export function toggleSuperSelectedWords() {
