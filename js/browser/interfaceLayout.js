@@ -1,8 +1,8 @@
 /* eslint-disable import/no-cycle */
 
-import { getRandomAlphanum } from '../miscUtils.js';
+import { getRandomAlphanum, showHideElem } from '../miscUtils.js';
 
-import { displayPage, showHideElem, cp } from '../../main.js';
+import { displayPage, cp } from '../../main.js';
 
 import { createCells } from '../exportWriteTabular.js';
 
@@ -180,15 +180,6 @@ export function clearLayoutBoxes() {
     }
   }
   canvas.renderAll();
-}
-
-export function enableObjectCaching() {
-  fabric.Object.prototype.objectCaching = true;
-  const allObjects = window.canvas.getObjects();
-  const n = allObjects.length;
-  for (let i = 0; i < n; i++) {
-    allObjects[i].objectCaching = true;
-  }
 }
 
 export function toggleSelectableWords(selectable = true) {

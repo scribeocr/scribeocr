@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  initOCRVersion, setCurrentHOCR, calculateOverallPageMetrics, cp, insertAlertMessage, displayPage,
+  initOCRVersion, setCurrentHOCR, cp, insertAlertMessage, displayPage,
 } from '../main.js';
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
@@ -68,7 +68,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   await globalThis.initTesseractInWorkers(false);
 
   // If Legacy and LSTM are both requested, LSTM completion is tracked by a second array of promises (`promisesB`).
-  // In this case, `convertPageCallbackBrowser` and `calculateOverallPageMetrics` can be run after the Legacy recognition is finished,
+  // In this case, `convertPageCallbackBrowser` can be run after the Legacy recognition is finished,
   // however this function only returns after all recognition is completed.
   // This provides no performance benefit in absolute terms, however halves the amount of time the user has to wait
   // before seeing the initial recognition results.
@@ -132,7 +132,6 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 
   if (mainData) {
     await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
-    await calculateOverallPageMetrics();
   }
 
   if (legacy && lstm) await Promise.all(promisesB);

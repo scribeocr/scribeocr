@@ -373,7 +373,6 @@ function replaceLigatures(text) {
 
 /**
  * Escapes XML in a string
- * @memberOf fabric.util.string
  * @param {String} string String to escape
  * @return {String} Escaped version of a string
  */

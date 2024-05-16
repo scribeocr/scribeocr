@@ -10,7 +10,6 @@
 import { importOCRFiles } from './js/importOCR.js';
 
 import { renderPage } from './js/browser/renderPageCanvas.js';
-import coords from './js/coordinates.js';
 
 import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
 
@@ -18,7 +17,6 @@ import { recognizeAllClick, getLangText } from './js/browser/interfaceRecognize.
 
 import { handleDownload, setFormatLabel, updatePdfPagesLabel } from './js/browser/interfaceDownload.js';
 
-import { recognizePage } from './js/recognizeConvert.js';
 import { convertOCRAllBrowser } from './js/recognizeConvertBrowser.js';
 
 import { runFontOptimization } from './js/fontEval.js';
@@ -29,20 +27,16 @@ import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer
 
 import { fontMetricsObj } from './js/containers/miscContainer.js';
 
-import { calcLineFontSize } from './js/fontUtils.js';
-
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 
 import {
   checkCharWarn, setFontMetricsAll,
 } from './js/fontStatistics.js';
 
-// import { ITextWord } from './js/objects/fabricObjects.js';
-
 import { drawDebugImages } from './js/debug.js';
 
 import {
-  getRandomAlphanum, quantile, sleep, occurrences, readTextFile, replaceObjectProperties,
+  getRandomAlphanum, quantile, sleep, occurrences, readTextFile, replaceObjectProperties, showHideElem,
 } from './js/miscUtils.js';
 import { getAllFileEntries } from './js/drag-and-drop.js';
 
@@ -56,12 +50,13 @@ import {
 
 import {
   addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
-  updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords,
+  updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, toggleSelectableWords,
 } from './js/browser/interfaceLayout.js';
 
-import { stage, layerText, resetCanvasEventListeners } from './js/browser/interfaceCanvas.js';
-
-import { combineData } from './js/modifyOCR.js';
+import {
+  stage, layerText, layerBackground, destroyWords, canvasObj,
+  getCanvasWords, setCanvasWidthHeightZoom,
+} from './js/browser/interfaceCanvas.js';
 
 // Third party libraries
 import Tesseract from './tess/tesseract.esm.min.js';
@@ -130,21 +125,6 @@ const fontAllRawReady = loadFontContainerAllRaw().then((x) => {
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
-// globalThis.canvas = canvas;
-
-// Quick fix to get VSCode type errors to stop
-// Long-term should see if there is a way to get types to work with fabric.js
-// const { fabric } = globalThis;
-
-// Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
-let leftGlobal;
-
-// Edit canvas.js object defaults
-// Disable movement for all fabric objects
-// fabric.Object.prototype.hasControls = false;
-// fabric.Object.prototype.lockMovementX = true;
-// fabric.Object.prototype.lockMovementY = true;
-
 /**
  * @typedef inputDataModes
  * @type {object}
@@ -187,12 +167,12 @@ export const cp = {
 const zone = /** @type {HTMLInputElement} */ (document.getElementById('uploadDropZone'));
 
 const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
-openFileInputElem.addEventListener('change', (event) => {
-  if (event.target.files.length === 0) return;
+openFileInputElem.addEventListener('change', () => {
+  if (!openFileInputElem.files || openFileInputElem.files.length === 0) return;
 
-  importFiles(event.target.files);
+  importFiles(openFileInputElem.files);
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(zone.parentElement, false);
+  showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
 });
 
 let highlightActiveCt = 0;
@@ -219,6 +199,8 @@ zone.addEventListener('dragleave', (event) => {
 zone.addEventListener('drop', async (event) => {
   // Prevent navigation.
   event.preventDefault();
+
+  if (!event.dataTransfer) return;
   const items = await getAllFileEntries(event.dataTransfer.items);
 
   const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => x.file(resolve, reject))));
@@ -226,12 +208,12 @@ zone.addEventListener('drop', async (event) => {
 
   if (files.length === 0) return;
 
-  event.target.classList.remove('highlight');
+  zone.classList.remove('highlight');
 
   importFiles(files);
 
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(zone.parentElement, false);
+  showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
 });
 
 /**
@@ -357,19 +339,6 @@ const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.g
 
 const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
 
-/**
- * Adds or removes CSS attribute `display:none` for HTML element.
- * @param {HTMLElement} elem
- * @param {boolean} show
- */
-export const showHideElem = (elem, show = true) => {
-  const styleCurrent = elem?.getAttribute('style');
-  let styleNew = styleCurrent?.replace(/;?display\s*:\s*\w+/, '') || '';
-  if (!show) styleNew += ';display:none;';
-
-  elem?.setAttribute('style', styleNew);
-};
-
 enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab')), enableEvalElem.checked));
 
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
@@ -438,7 +407,7 @@ rangeBaselineElem.addEventListener('mouseup', () => { adjustBaselineRangeChange(
 
 document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedWords);
 
-document.getElementById('addWord')?.addEventListener('click', addWordClick);
+document.getElementById('addWord')?.addEventListener('click', () => (canvasObj.mode = 'addWord'));
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
@@ -465,17 +434,13 @@ confThreshHighElem.addEventListener('change', () => { renderPageQueue(cp.n, fals
 confThreshMedElem.addEventListener('change', () => { renderPageQueue(cp.n, false); });
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-// const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
-// const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
 autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false); });
-// autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false) });
-// showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n, false) });
 document.getElementById('outlineWords')?.addEventListener('click', () => { renderPageQueue(cp.n, false); });
 document.getElementById('outlineLines')?.addEventListener('click', () => { renderPageQueue(cp.n, false); });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
-displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className !== 'dropdown-item') return; setCurrentHOCR(e.target.innerHTML); });
+displayLabelOptionsElem.addEventListener('click', () => { if (displayLabelOptionsElem.className !== 'dropdown-item') return; setCurrentHOCR(displayLabelOptionsElem.innerHTML); });
 
 const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
 downloadElem.addEventListener('click', handleDownload);
@@ -515,12 +480,12 @@ recognizeAllElem.addEventListener('click', () => {
 });
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
-recognizeAreaElem.addEventListener('click', () => recognizeAreaClick(false));
+recognizeAreaElem.addEventListener('click', () => (canvasObj.mode = 'recognizeArea'));
 const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
-recognizeWordElem.addEventListener('click', () => recognizeAreaClick(true));
+recognizeWordElem.addEventListener('click', () => (canvasObj.mode = 'recognizeWord'));
 
 const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
-debugPrintCoordsElem.addEventListener('click', () => recognizeAreaClick(true, true));
+debugPrintCoordsElem.addEventListener('click', () => () => (canvasObj.mode = 'printCoords'));
 
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
 const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
@@ -603,8 +568,8 @@ const reflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementBy
 const pageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
 
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
-reflowCheckboxElem.addEventListener('click', (event) => {
-  if (event.target.checked) {
+reflowCheckboxElem.addEventListener('click', () => {
+  if (reflowCheckboxElem.checked) {
     pageBreaksCheckboxElem.disabled = false;
   } else {
     pageBreaksCheckboxElem.disabled = true;
@@ -616,8 +581,8 @@ const docxReflowCheckboxElem = /** @type {HTMLInputElement} */(document.getEleme
 const docxPageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
 
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
-docxReflowCheckboxElem.addEventListener('click', (event) => {
-  if (event.target.checked) {
+docxReflowCheckboxElem.addEventListener('click', () => {
+  if (docxReflowCheckboxElem.checked) {
     docxPageBreaksCheckboxElem.disabled = false;
   } else {
     docxPageBreaksCheckboxElem.disabled = true;
@@ -695,22 +660,15 @@ export const search = {
 function highlightcp(text) {
   const matchIdArr = ocr.getMatchingWordIds(text, globalThis.ocrAll.active[cp.n]);
 
-  const selectedObjects = window.canvas.getObjects();
-  const selectedN = selectedObjects.length;
-  for (let i = 0; i < selectedN; i++) {
-    // Using the presence of a wordID property to indicate this object represents an OCR word
-    if (selectedObjects[i]?.word) {
-      if (matchIdArr.includes(selectedObjects[i].word.id)) {
-        selectedObjects[i].textBackgroundColor = '#4278f550';
-        selectedObjects[i].dirty = true;
-      } else if (selectedObjects[i].textBackgroundColor) {
-        selectedObjects[i].textBackgroundColor = '';
-        selectedObjects[i].dirty = true;
-      }
+  getCanvasWords().forEach((wordObj) => {
+    if (matchIdArr.includes(wordObj.word.id)) {
+      wordObj.fillBox = true;
+    } else {
+      wordObj.fillBox = false;
     }
-  }
+  });
 
-  canvas.renderAll();
+  layerText.draw();
 }
 
 function findAllMatches(text) {
@@ -859,9 +817,8 @@ export function setCurrentHOCR(x) {
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
 document.getElementById('navBar')?.addEventListener('click', (e) => {
-  newWordInit = true;
-  resetCanvasEventListeners();
-  globalThis.touchScrollMode = true;
+  canvasObj.mode = 'select';
+  globalThis.touchScrollMode = true; // Is this still used?
 }, true);
 
 // Various operations display loading bars, which are removed from the screen when both:
@@ -882,7 +839,6 @@ document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) 
   globalThis.layoutMode = true;
 
   if (!globalThis.layout[cp.n]) return;
-  if (!fabric.Object.prototype.objectCaching) enableObjectCaching();
 
   toggleSelectableWords(false);
 
@@ -947,8 +903,9 @@ export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI =
 
 // Hides progress bar if completed
 function hideProgress(id) {
-  const progressCollapse = document.getElementById(id);
-  if (['collapse show', 'collapsing'].includes(progressCollapse.getAttribute('class'))) {
+  const progressCollapse = /** @type {HTMLDivElement} */(document.getElementById(id));
+  const classStr = progressCollapse.getAttribute('class');
+  if (classStr && ['collapse show', 'collapsing'].includes(classStr)) {
     const progressBar = progressCollapse.getElementsByClassName('progress-bar')[0];
     if (parseInt(progressBar.getAttribute('aria-valuenow')) >= parseInt(progressBar.getAttribute('aria-valuemax'))) {
       progressCollapse.setAttribute('class', 'collapse');
@@ -1147,330 +1104,6 @@ export async function showDebugImages() {
 }
 
 globalThis.showDebugImages = showDebugImages;
-
-let rect1;
-
-/**
- * Recognize area selected by user in Tesseract.
- *
- * @param {boolean} [wordMode=false] - Assume selection is single word.
- * @param {boolean} [printCoordsOnly=false] - Print rect coords only, do not run recognition. Used for debugging.
- *
- * Note: This function assumes OCR data already exists, which this function is adding to.
- * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all".
- * Even if recognizing an page for the first time using "recognize area" did not produce an error,
- * it would still be problematic, as running "recognize all" afterwards would overwrite everything.
- */
-function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
-  globalThis.touchScrollMode = false;
-
-  canvas.on('mouse:down', (o) => {
-    const pointer = canvas.getPointer(o.e);
-    origX = pointer.x;
-    origY = pointer.y;
-    rect1 = new fabric.Rect({
-      left: origX,
-      top: origY,
-      originX: 'left',
-      originY: 'top',
-      width: pointer.x - origX,
-      height: pointer.y - origY,
-      angle: 0,
-      fill: 'rgba(255,0,0,0.5)',
-      transparentCorners: false,
-    });
-    canvas.add(rect1);
-    canvas.renderAll();
-    canvas.on('mouse:move', (o) => {
-      const pointer = canvas.getPointer(o.e);
-
-      if (origX > pointer.x) {
-        rect1.set({ left: Math.abs(pointer.x) });
-      }
-      if (origY > pointer.y) {
-        rect1.set({ top: Math.abs(pointer.y) });
-      }
-
-      rect1.set({ width: Math.abs(origX - pointer.x) });
-      rect1.set({ height: Math.abs(origY - pointer.y) });
-
-      canvas.renderAll();
-    });
-  }, { once: true });
-
-  // mouse:up:before must be used so this code runs ahead of fabric internal logic.
-  // Without this changes to active selection caused by mouse movement may change rect object.
-  canvas.on('mouse:up:before', async (o) => {
-    globalThis.touchScrollMode = true;
-
-    if (rect1.width < 4 || rect1.height < 4) {
-      canvas.remove(rect1);
-      return;
-    }
-
-    const canvasCoords = {
-      left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height,
-    };
-
-    // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
-    const imageRotated = true;
-    const canvasRotated = autoRotateCheckboxElem.checked;
-    const angle = globalThis.pageMetricsArr[cp.n].angle || 0;
-
-    const imageCoords = coords.canvasToImage(canvasCoords, imageRotated, canvasRotated, cp.n, angle);
-
-    canvas.remove(rect1);
-
-    if (printCoordsOnly) {
-      const debugCoords = {
-        left: imageCoords.left,
-        top: imageCoords.top,
-        right: imageCoords.left + imageCoords.width,
-        bottom: imageCoords.top + imageCoords.height,
-        topInv: globalThis.pageMetricsArr[cp.n].dims.height - imageCoords.top,
-        bottomInv: globalThis.pageMetricsArr[cp.n].dims.height - (imageCoords.top + imageCoords.height),
-      };
-      console.log(debugCoords);
-      return;
-    }
-
-    // When a user is manually selecting words to recognize, they are assumed to be in the same block.
-    const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
-    const n = cp.n;
-
-    if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
-    const res0 = await recognizePage(globalThis.gs, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
-
-    const resLegacy = await res0[0];
-    const resLSTM = await res0[1];
-
-    const debug = false;
-    if (debug) {
-      console.log(resLegacy.recognize);
-    }
-
-    const pageObjLSTM = resLSTM.convert.lstm.pageObj;
-    const pageObjLegacy = resLegacy.convert.legacy.pageObj;
-
-    const debugLabel = 'recognizeArea';
-
-    if (debugLabel && !globalThis.debugImg[debugLabel]) {
-      globalThis.debugImg[debugLabel] = new Array(imageCache.pageCount);
-      for (let i = 0; i < imageCache.pageCount; i++) {
-        globalThis.debugImg[debugLabel][i] = [];
-      }
-    }
-
-    /** @type {Parameters<import('./js/generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
-    const compOptions = {
-      mode: 'comb',
-      debugLabel,
-      ignoreCap: ignoreCapElem.checked,
-      ignorePunct: ignorePunctElem.checked,
-      confThreshHigh: parseInt(confThreshHighElem.value),
-      confThreshMed: parseInt(confThreshMedElem.value),
-      legacyLSTMComb: true,
-    };
-
-    const imgBinary = await imageCache.getBinary(n);
-
-    const res = await globalThis.gs.compareHOCR({
-      pageA: pageObjLegacy,
-      pageB: pageObjLSTM,
-      binaryImage: imgBinary,
-      pageMetricsObj: globalThis.pageMetricsArr[n],
-      options: compOptions,
-    });
-
-    if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-    globalThis.debugLog += res.debugLog;
-
-    globalThis.debugImg[debugLabel][n].push(...res.debugImg);
-
-    combineData(res.page, globalThis.ocrAll.active[n], globalThis.pageMetricsArr[n]);
-
-    if (n === cp.n) displayPage(cp.n);
-
-    canvas.renderAll();
-    resetCanvasEventListeners();
-  }, { once: true });
-}
-
-let newWordInit = true;
-
-let rect; let origX; let
-  origY;
-function addWordClick() {
-  newWordInit = false;
-  globalThis.touchScrollMode = false;
-
-  canvas.on('mouse:down', (o) => {
-    const pointer = canvas.getPointer(o.e);
-    origX = pointer.x;
-    origY = pointer.y;
-    rect = new fabric.Rect({
-      left: origX,
-      top: origY,
-      originX: 'left',
-      originY: 'top',
-      width: pointer.x - origX,
-      height: pointer.y - origY,
-      angle: 0,
-      fill: 'rgba(255,0,0,0.5)',
-      transparentCorners: false,
-    });
-    canvas.add(rect);
-    canvas.renderAll();
-
-    canvas.on('mouse:move', (o) => {
-      const pointer = canvas.getPointer(o.e);
-
-      if (origX > pointer.x) {
-        rect.set({ left: Math.abs(pointer.x) });
-      }
-      if (origY > pointer.y) {
-        rect.set({ top: Math.abs(pointer.y) });
-      }
-
-      rect.set({ width: Math.abs(origX - pointer.x) });
-      rect.set({ height: Math.abs(origY - pointer.y) });
-
-      canvas.renderAll();
-    });
-  });
-
-  // mouse:up:before must be used so this code runs ahead of fabric internal logic.
-  // Without this changes to active selection caused by mouse movement may change rect object.
-  canvas.on('mouse:up:before', async (o) => {
-    resetCanvasEventListeners();
-    globalThis.touchScrollMode = true;
-    if (newWordInit) { return; }
-    newWordInit = true;
-
-    const fillColorHex = '#00ff7b';
-
-    let fillArg;
-    if (displayModeElem.value === 'invis') {
-      fillArg = 'black';
-    } else if (displayModeElem.value === 'ebook') {
-      fillArg = 'black';
-    } else {
-      fillArg = fillColorHex;
-    }
-    // const rectLeft = rect.left + (rect?.ownMatrixCache?.value[4] || 0);
-    // const rectTop = rect.top + (rect?.ownMatrixCache?.value[5] || 0);
-    const rectLeft = rect.left + (rect?.group?.left || 0);
-    const rectTop = rect.top + (rect?.group?.top || 0);
-
-    const wordText = 'A';
-    // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
-    let angleAdjXRect = 0;
-    let angleAdjYRect = 0;
-    let sinAngle = 0;
-    let shiftX = 0;
-    let shiftY = 0;
-    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[cp.n].angle ?? 0) > 0.05) {
-      const rotateAngle = globalThis.pageMetricsArr[cp.n].angle || 0;
-
-      const pageDims = globalThis.pageMetricsArr[cp.n].dims;
-
-      sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
-      const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
-
-      shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
-      shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
-
-      const baselineY = (rectTop + rect.height) - (rect.height) / 3;
-
-      const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (rectLeft - shiftX);
-      const angleAdjXInt = sinAngle * ((baselineY - shiftY) - angleAdjYInt * 0.5);
-
-      angleAdjXRect = angleAdjXInt + shiftX;
-      angleAdjYRect = angleAdjYInt + shiftY;
-    }
-
-    // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
-    const rectTopHOCR = rectTop - angleAdjYRect;
-    const rectBottomHOCR = rectTop + rect.height - angleAdjYRect;
-
-    const rectLeftHOCR = rectLeft - angleAdjXRect;
-    const rectRightHOCR = rectLeft + rect.width - angleAdjXRect;
-
-    const wordBox = {
-      left: rectLeftHOCR, top: rectTopHOCR, right: rectRightHOCR, bottom: rectBottomHOCR,
-    };
-
-    const pageObj = new ocr.OcrPage(cp.n, globalThis.ocrAll.active[cp.n].dims);
-    // Create a temporary line to hold the word until it gets combined.
-    // This should not be used after `combineData` is run as it is not the final line.
-    const lineObjTemp = new ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
-    pageObj.lines = [lineObjTemp];
-    const wordIDNew = getRandomAlphanum(10);
-    const wordObj = new ocr.OcrWord(lineObjTemp, wordText, wordBox, wordIDNew);
-    // Words added by user are assumed to be correct.
-    wordObj.conf = 100;
-    lineObjTemp.words = [wordObj];
-
-    combineData(pageObj, globalThis.ocrAll.active[cp.n], globalThis.pageMetricsArr[cp.n], true, false);
-
-    // Get line word was added to in main data.
-    // This will have different metrics from `lineObj` when the line was combined into an existing line.
-    const wordObjNew = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDNew);
-
-    const fontSize = await calcLineFontSize(wordObjNew.line);
-
-    const enableRotation = autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[cp.n].angle ?? 0) > 0.05;
-
-    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
-    const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
-
-    const box = wordObjNew.bbox;
-    const linebox = wordObjNew.line.bbox;
-    const baseline = wordObjNew.line.baseline;
-
-    let visualBaseline;
-    if (enableRotation) {
-      visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
-    } else {
-      visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
-    }
-
-    const textBackgroundColor = search.search && wordText.includes(search.search) ? '#4278f550' : '';
-
-    const fontObj = fontAll.getFont('Default');
-
-    const textbox = new ITextWord(wordText, {
-      left: rectLeft,
-      top: visualBaseline,
-      word: wordObjNew,
-      topBaseline: visualBaseline,
-      topBaselineOrig: visualBaseline,
-      baselineAdj: 0,
-      originY: 'bottom',
-      fill: fillArg,
-      fill_proof: fillColorHex,
-      fill_ebook: 'black',
-      fontFamily: fontObj.fontFaceName,
-      fontStyle: 'normal',
-      fontFamilyLookup: fontAll.defaultFontName,
-      fontStyleLookup: 'normal',
-      fontObj,
-      textBackgroundColor,
-      visualWidth: rect.width,
-      visualLeft: rectLeft,
-      visualBaseline,
-      defaultFontFamily: true,
-      opacity: 1,
-      // charSpacing: kerning * 1000 / wordFontSize
-      fontSize,
-    });
-
-    canvas.remove(rect);
-    canvas.add(textbox);
-    canvas.renderAll();
-    resetCanvasEventListeners();
-  });
-}
 
 /** @type {Array<PageMetrics>} */
 globalThis.pageMetricsArr = [];
@@ -1909,7 +1542,6 @@ async function importFiles(curFiles) {
     // Process HOCR using web worker, reading from file first if that has not been done already
     convertOCRAllBrowser(globalThis.hocrCurrentRaw, true, format, oemName, scribeMode).then(async () => {
       if (layoutFilesAll.length > 0) await readLayoutFile(layoutFilesAll[0]);
-      await calculateOverallPageMetrics();
 
       // Skip this step if optimization info was already restored from a previous session.
       if (!existingOpt) {
@@ -1999,74 +1631,6 @@ globalThis.state = {
   canvasDimsN: -1,
 };
 
-const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
-
-let widthHeightInitial = true;
-/**
- *
- * @param {dims} imgDims - Dimensions of image
- */
-export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false) => {
-  const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
-
-  // Re-set width/height, in case the size of the window changed since originally set.
-  // canvas.setHeight(totalHeight);
-  // canvas.setWidth(document.documentElement.clientWidth);
-
-  // The first time this function is run, the canvas is centered and zoomed to fit the image.
-  // After that, whatever the user does with the canvas is preserved.
-  if (widthHeightInitial) {
-    widthHeightInitial = false;
-    const interfaceHeight = 100;
-    const bottomMarginHeight = 50;
-    const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
-
-    const zoom = targetHeight / imgDims.height;
-
-    // canvas.setViewportTransform([zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight]);
-  } else {
-    // let changeVpt = false;
-    // const vpt = canvas.viewportTransform.slice(0);
-    // // Nudge the document into the viewport, using the lesser of:
-    // // (1) the shift required to put 50% of the document into view, or
-    // // (2) the shift required to fill 50% of the viewport.
-    // // Both conditions are necessary for this to work as expected at all zoom levels.
-    // if (canvas.viewportTransform[4] < imgDims.width * canvas.viewportTransform[0] * -0.5
-    // && canvas.viewportTransform[4] < (canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]))) {
-    //   const newX = Math.min(imgDims.width * canvas.viewportTransform[0] * -0.5, canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]));
-    //   vpt[4] = newX;
-    //   changeVpt = true;
-    // } else if (canvas.viewportTransform[4] > canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5)
-    // && canvas.viewportTransform[4] > canvas.width / 2) {
-    //   const newX = Math.max(canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5), canvas.width / 2);
-    //   vpt[4] = newX;
-    //   changeVpt = true;
-    // }
-
-    // if (canvas.viewportTransform[5] < imgDims.height * canvas.viewportTransform[0] * -0.5
-    //   && canvas.viewportTransform[5] < (canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]))) {
-    //   const newX = Math.min(imgDims.height * canvas.viewportTransform[0] * -0.5, canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]));
-    //   vpt[5] = newX;
-    //   changeVpt = true;
-    // } else if (canvas.viewportTransform[5] > canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5)
-    //   && canvas.viewportTransform[5] > canvas.height / 2) {
-    //   const newX = Math.max(canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5), canvas.height / 2);
-    //   vpt[5] = newX;
-    //   changeVpt = true;
-    // }
-
-    // if (changeVpt) canvas.setViewportTransform(vpt);
-  }
-
-  if (enableConflictsViewer) {
-    const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
-
-    debugCanvasParentDivElem.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll;z-index:10`);
-  } else {
-    showHideElem(debugCanvasParentDivElem, false);
-  }
-};
-
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, loadXML = true) {
   let ocrData = globalThis.ocrAll.active?.[n];
@@ -2112,41 +1676,22 @@ export async function renderPageQueue(n, loadXML = true) {
     }
   }
 
-  let renderNum;
-  // Clear canvas if objects (anything but the background) exists
-  // if (canvas.getObjects().length) {
-  //   canvas.clear();
-  //   // Drop any transformation in process.
-  //   // This prevents errors if the user is in the middle of scaling an object when the page is rendered.
-  //   canvas._currentTransform = false;
-  //   resetCanvasEventListeners();
-  // }
-
-  layerText.destroyChildren();
-
-  cp.renderStatus = 0;
+  destroyWords();
 
   // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
   // (whether by quickly changing pages or on the same page).
   // TODO: Find a better solution.
   cp.renderNum += 1;
-  renderNum = cp.renderNum;
-
-  if (cp.n === n && cp.renderNum === renderNum) {
-    cp.renderStatus += 1;
-    selectDisplayMode(getDisplayMode());
-  } else {
-    globalThis.state.promiseResolve();
-    return;
-  }
+  const renderNum = cp.renderNum;
 
   // The active OCR version may have changed, so this needs to be re-checked.
   if (cp.n === n && globalThis.inputDataModes.xmlMode[n]) {
-    await renderPage(ocrData, globalThis.pageMetricsArr[n].angle, 0);
+    await renderPage(ocrData);
     if (cp.n === n && cp.renderNum === renderNum) {
-      cp.renderStatus += 1;
       await selectDisplayMode(getDisplayMode());
     }
+  } else {
+    await selectDisplayMode(getDisplayMode());
   }
 
   globalThis.state.promiseResolve();
@@ -2163,19 +1708,6 @@ export async function displayPage(n) {
     pageNumElem.value = (cp.n + 1).toString();
     return;
   }
-
-  // The following is a quick fix for a bug, there may be a better way to do this.
-  // Without this block of code, if the user is editing a word and then changes the page,
-  // the changes are applied to the word with the same ID on the next page.
-  // Simply running `canvas.discardActiveObject()` does not fix, as that function
-  // does not wait for all code triggered by events to finish running.
-  // Therefore, if the page is changed while an object is selected, we deselect all objects
-  // and then wait for an arbitrary amount of time for any event-related code to run.
-  // if (canvas.getActiveObject()) {
-  //   console.log('Deselecting active object before changing pages.');
-  //   canvas.discardActiveObject();
-  //   await sleep(10);
-  // }
 
   working = true;
 
@@ -2312,20 +1844,6 @@ export async function runFontOptimizationBrowser(ocrArr) {
     optimizeFontElem.checked = false;
   }
   renderPageQueue(cp.n);
-}
-
-/**
- * This function calculates a global left margin, which is not currently used.
- * Leaving the code for now in case this is useful in the future.
- */
-export function calculateOverallPageMetrics() {
-  // It is possible for image resolution to vary page-to-page, so the left margin must be calculated
-  // as a percent to remain visually identical between pages.
-  const leftAllPer = new Array(globalThis.pageMetricsArr.length);
-  for (let i = 0; i < globalThis.pageMetricsArr.length; i++) {
-    leftAllPer[i] = globalThis.pageMetricsArr[i].left / globalThis.pageMetricsArr[i].dims.width;
-  }
-  leftGlobal = quantile(leftAllPer, 0.5);
 }
 
 // Set default settings
