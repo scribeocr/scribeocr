@@ -25,6 +25,8 @@ import { fontAll } from '../js/containers/fontContainer.js';
 import { loadFontContainerAllRaw } from '../js/fontContainerMain.js';
 import { fontMetricsObj } from '../js/containers/miscContainer.js';
 
+import { layoutAll, LayoutPage } from '../js/objects/layoutObjects.js';
+
 import { setFontMetricsAll } from '../js/fontStatistics.js';
 
 const writeFile = util.promisify(fs.writeFile);
@@ -62,7 +64,7 @@ function dumpHOCRAll(fileName) {
     'sans-font': fontAll.sansDefaultName,
     'serif-font': fontAll.serifDefaultName,
     'enable-opt': enableOpt,
-    layout: globalThis.layout,
+    layout: layoutAll,
   };
 
   for (const [key, value] of Object.entries(globalThis.ocrAll)) {
@@ -198,9 +200,8 @@ async function main(func, params) {
   // }
   const pageCount = pageCountImage ?? pageCountHOCR;
 
-  globalThis.layout = Array(pageCount);
-  for (let i = 0; i < globalThis.layout.length; i++) {
-    globalThis.layout[i] = { default: true, boxes: {} };
+  for (let i = 0; i < pageCount; i++) {
+    layoutAll[i] = new LayoutPage();
   }
 
   globalThis.ocrAll = {

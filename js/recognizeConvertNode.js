@@ -1,6 +1,7 @@
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { imageCache } from './containers/imageContainer.js';
+import { layoutAll } from './objects/layoutObjects.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
   await globalThis.generalScheduler.ready;
@@ -58,7 +59,7 @@ export async function convertPageCallbackNode({
   }
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(globalThis.layout[n].boxes).length === 0) globalThis.layout[n].boxes = layoutBoxes;
+  if (Object.keys(layoutAll[n].boxes).length === 0) layoutAll[n].boxes = layoutBoxes;
 }
 
 /**

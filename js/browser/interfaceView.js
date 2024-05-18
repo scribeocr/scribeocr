@@ -5,10 +5,11 @@ import { imageCache, imageUtils } from '../containers/imageContainer.js';
 import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
 import {
   stage, layerText, layerBackground, getCanvasWords, setCanvasWidthHeightZoom,
-  layerOverlay,
+  layerOverlay, getWordFillOpacity,
 } from './interfaceCanvas.js';
-import { getWordFillOpacity } from './renderPageCanvas.js';
 import Konva from '../../lib/konva/index.js';
+import { layoutAll } from '../objects/layoutObjects.js';
+import { renderLayoutBoxes } from './interfaceLayout.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
@@ -144,6 +145,10 @@ export const selectDisplayMode = async (x) => {
     }
   } else {
     layerOverlay.destroyChildren();
+  }
+
+  if (globalThis.layoutMode) {
+    renderLayoutBoxes(Object.values(layoutAll[cp.n].boxes));
   }
 
   // When the page changes, the dimensions and zoom are modified.

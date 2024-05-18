@@ -11,6 +11,7 @@ import { writeDocx } from '../exportWriteDocx.js';
 import { writeXlsx } from '../exportWriteTabular.js';
 import { reorderHOCR } from '../modifyOCR.js';
 import { getDisplayMode } from './interfaceView.js';
+import { layoutAll } from '../objects/layoutObjects.js';
 
 import { hocrToPDF } from '../exportPDF.js';
 
@@ -189,7 +190,7 @@ export async function handleDownload() {
   if (downloadType !== 'hocr' && downloadType !== 'xlsx' && enableLayoutElem.checked) {
     // Reorder HOCR elements according to layout boxes
     for (let i = minValue; i <= maxValue; i++) {
-      hocrDownload.push(reorderHOCR(globalThis.ocrAll.active[i], globalThis.layout[i]));
+      hocrDownload.push(reorderHOCR(globalThis.ocrAll.active[i], layoutAll[i]));
     }
   } else {
     hocrDownload = globalThis.ocrAll.active;

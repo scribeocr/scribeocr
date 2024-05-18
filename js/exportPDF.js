@@ -102,7 +102,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
   let fontChiSimExport = null;
   if (fontAll.supp.chi_sim) {
     pdfFonts.NotoSansSC = {};
-    const font = await fontAll.supp.chi_sim.opentype;
+    const font = fontAll.supp.chi_sim.opentype;
 
     const charArr = ocr.getDistinctChars(hocrArr);
     fontChiSimExport = await subsetFont(font, charArr);
@@ -262,7 +262,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     let wordFont = fontAll.getWordFont(word);
 
     // The Chinese font is subset to only relevant characters, the others currently are not.
-    let wordFontOpentype = await (word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype);
+    let wordFontOpentype = (word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype);
 
     if (!wordFontOpentype) {
       const fontNameMessage = word.lang === 'chi_sim' ? 'chi_sim' : `${wordFont.family} (${word.style})`;
@@ -270,7 +270,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       continue;
     }
 
-    let wordFontSize = await calcWordFontSize(word);
+    let wordFontSize = calcWordFontSize(word);
 
     // Set font and font size
     ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][word.style]);
@@ -280,7 +280,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     // Reset baseline to line baseline
     textStream += '0 Ts\n';
 
-    const word0Metrics = await calcWordMetrics(word, angle);
+    const word0Metrics = calcWordMetrics(word, angle);
 
     let tz = 100;
     if (word.dropcap) {
@@ -319,7 +319,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     for (let j = 0; j < words.length; j++) {
       word = words[j];
 
-      const wordMetrics = await calcWordMetrics(word, angle);
+      const wordMetrics = calcWordMetrics(word, angle);
       wordFontSize = wordMetrics.fontSize;
       const charSpacing = wordMetrics.charSpacing;
       const charArr = wordMetrics.charArr;
@@ -328,7 +328,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       wordBox = word.bbox;
 
       wordFont = fontAll.getWordFont(word);
-      wordFontOpentype = await (word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype);
+      wordFontOpentype = word.lang === 'chi_sim' ? fontChiSim : wordFont.opentype;
 
       if (!wordFontOpentype) {
         const fontNameMessage = word.lang === 'chi_sim' ? 'chi_sim' : `${wordFont.family} (${word.style})`;

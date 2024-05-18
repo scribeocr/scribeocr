@@ -10,12 +10,11 @@ import { renderPageQueue, cp, displayPage } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import {
-  stage, layerText, updateWordCanvas, KonvaWord, canvasObj,
-  getCanvasWords,
+  stage, layerText, updateWordCanvas, KonvaOcrWord, canvasObj,
+  getCanvasWords, getWordFillOpacity,
 } from './interfaceCanvas.js';
 import { combineData } from '../modifyOCR.js';
 import { getRandomAlphanum } from '../miscUtils.js';
-import { getWordFillOpacity } from './renderPageCanvas.js';
 import coords from '../coordinates.js';
 import { recognizePage } from '../recognizeConvert.js';
 import { imageCache } from '../containers/imageContainer.js';
@@ -105,7 +104,10 @@ export async function changeWordFontStyle(style) {
     const fontI = fontAll.getFont(wordI.fontFamilyLookup, newStyleLookup);
 
     wordI.fontFaceName = fontI.fontFaceName;
-    wordI.fontStyle = fontI.fontFaceStyle;
+    wordI.fontFaceStyle = fontI.fontFaceStyle;
+
+    wordI.fontFamilyLookup = fontI.family;
+    wordI.fontStyleLookup = fontI.style;
 
     await updateWordCanvas(wordI);
   }
@@ -165,9 +167,10 @@ export async function changeWordFontFamily(fontName) {
     }
 
     wordI.fontFaceName = fontI.fontFaceName;
-    wordI.fontStyle = fontI.fontFaceStyle;
+    wordI.fontFaceStyle = fontI.fontFaceStyle;
 
     wordI.fontFamilyLookup = fontI.family;
+    wordI.fontStyleLookup = fontI.style;
 
     await updateWordCanvas(wordI);
   }
@@ -186,7 +189,7 @@ export function toggleSuperSelectedWords() {
   renderPageQueue(cp.n);
 }
 
-/** @type {Array<KonvaWord>} */
+/** @type {Array<KonvaOcrWord>} */
 let objectsLine;
 
 const baselineRange = 50;
@@ -327,8 +330,6 @@ export async function addWordManual({
 
   if (!wordObjNew) throw new Error('Failed to add word to page.');
 
-  const fontSize = await calcLineFontSize(wordObjNew.line) || 12;
-
   const angle = globalThis.pageMetricsArr[cp.n].angle || 0;
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
@@ -347,31 +348,22 @@ export async function addWordManual({
     visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
   }
 
-  const { opacity, fill } = getWordFillOpacity(wordObjNew);
-
   const fontObj = fontAll.getFont('Default');
 
   const displayMode = displayModeElem.value;
   const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
   const outlineWord = outlineWordsElem.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
 
-  const wordCanvas = new KonvaWord({
-    x: rectLeft,
-    y: visualBaseline,
+  const wordCanvas = new KonvaOcrWord({
+    visualLeft: rectLeft,
+    yActual: visualBaseline,
     topBaseline: visualBaseline,
     rotation: angleArg,
-    opacity,
-    charArr: ['A'],
-    fontSize,
     fontStyle: 'normal',
-    fill,
-    advanceArrTotal: [box.right - box.left],
     fontFaceName: fontObj.fontFaceName,
     fontStyleLookup: 'normal',
     fontFamilyLookup: fontAll.defaultFontName,
-    charSpacing: 0,
     word: wordObj,
-    visualLeft: rectLeft,
     outline: outlineWord,
     fillBox: false,
   });

@@ -2,6 +2,7 @@ import { saveAs } from './miscUtils.js';
 import { renderHOCR } from './exportRenderHOCR.js';
 import { fontMetricsObj } from './containers/miscContainer.js';
 import { fontAll } from './containers/fontContainer.js';
+import { layoutAll } from './objects/layoutObjects.js';
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
@@ -19,7 +20,7 @@ export function renderHOCRBrowser(ocrData) {
     'sans-font': fontAll.sansDefaultName,
     'serif-font': fontAll.serifDefaultName,
     'enable-opt': !optimizeFontElem.disabled,
-    layout: globalThis.layout,
+    layout: layoutAll,
   };
 
   const hocrOut = renderHOCR(ocrData, minValue, maxValue, meta);

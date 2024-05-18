@@ -6,6 +6,10 @@ import { fontAll } from '../containers/fontContainer.js';
 import { addWordManual, recognizeArea } from './interfaceEdit.js';
 import ocr from '../objects/ocrObjects.js';
 import { showHideElem } from '../miscUtils.js';
+import {
+  KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxes,
+} from './interfaceLayout.js';
+import { cp, search } from '../../main.js';
 
 const zoomInElem = /** @type {HTMLInputElement} */(document.getElementById('zoomIn'));
 const zoomOutElem = /** @type {HTMLInputElement} */(document.getElementById('zoomOut'));
@@ -17,9 +21,21 @@ const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById(
 const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
 const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
+const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
+const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
+const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
+
+const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
+
+const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
+const outlineLinesElem = /** @type {HTMLInputElement} */(document.getElementById('outlineLines'));
+const outlineWordsElem = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
+
 const styleItalicButton = new bootstrap.Button(styleItalicElem);
 const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
+
+Konva.dragButtons = [0];
 
 const stage = new Konva.Stage({
   container: 'c',
@@ -49,8 +65,12 @@ export const canvasObj = {
   controlArr: [],
   /** @type {Array<InstanceType<typeof Konva.Rect>>} */
   lineOutlineArr: [],
-  /** @type {Array<KonvaWord>} */
+  /** @type {Array<KonvaOcrWord>} */
   selectedWordArr: [],
+  /** @type {Array<KonvaLayout>} */
+  layoutBoxArr: [],
+  /** @type {Array<KonvaLayout>} */
+  selectedLayoutBoxArr: [],
   /** @type {?HTMLSpanElement} */
   input: null,
   /** @type {?Function} */
@@ -61,13 +81,19 @@ export const canvasObj = {
   bbox: {
     top: 0, left: 0, right: 0, bottom: 0,
   },
-  /** @type {('select'|'addWord'|'recognizeWord'|'recognizeArea'|'printCoords')} */
+  /** @type {('select'|'addWord'|'recognizeWord'|'recognizeArea'|'printCoords'|'addLayoutBoxOrder'|'addLayoutBoxExclude'|'addLayoutBoxDataColumn')} */
   mode: 'select',
+  isTouchScreen: navigator?.maxTouchPoints > 0,
+  drag: {
+    isDragging: false,
+    lastX: 0,
+    lastY: 0,
+    /** @type {?{x: number, y: number}} */
+    lastCenter: null,
+    /** @type {?number} */
+    lastDist: null,
+  },
 
-};
-
-export const addControl = (transformer) => {
-  canvasObj.controlArr.push(transformer);
 };
 
 export const destroyControls = () => {
@@ -78,26 +104,31 @@ export const destroyControls = () => {
 };
 
 export const destroyLineOutlines = () => {
-  canvasObj.lineOutlineArr.forEach((line) => line.destroy());
+  canvasObj.lineOutlineArr.forEach((x) => x.destroy());
   canvasObj.lineOutlineArr.length = 0;
+};
+
+export const destroyLayoutBoxes = () => {
+  canvasObj.layoutBoxArr.forEach((x) => x.destroy());
+  canvasObj.layoutBoxArr.length = 0;
 };
 
 /**
  * Update word textbox on canvas following changes.
  * Whenever a user edits a word in any way (including content and font/style),
  * the position and character spacing need to be re-calculated so they still overlay with the background image.
- * @param {KonvaWord} wordI
+ * @param {KonvaIText} wordI
  */
 export async function updateWordCanvas(wordI) {
   const fontI = fontAll.getWordFont(wordI.word);
-  const fontIOpentype = await fontI.opentype;
+  const fontIOpentype = fontI.opentype;
 
   wordI.charArr = addLigatures(wordI.word.text, fontIOpentype);
 
   // 1. Re-calculate left position given potentially new left bearing
   const {
     advanceArr, fontSize, kerningArr, charSpacing, leftSideBearing,
-  } = await calcWordMetrics(wordI.word);
+  } = calcWordMetrics(wordI.word);
 
   const advanceArrTotal = [];
   for (let i = 0; i < advanceArr.length; i++) {
@@ -122,47 +153,102 @@ export async function updateWordCanvas(wordI) {
   wordI.fontSize = fontSize;
   wordI.show();
 
-  layerText.draw();
+  wordI.draw();
 }
 
-export class KonvaWord extends Konva.Shape {
+/**
+ *
+ * @param {OcrWord} word
+ */
+export function getWordFillOpacity(word) {
+  const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
+  const confThreshMed = confThreshMedElem.value !== '' ? parseInt(confThreshMedElem.value) : 75;
+
+  let fillColorHex;
+  if (word.conf > confThreshHigh) {
+    fillColorHex = '#00ff7b';
+  } else if (word.conf > confThreshMed) {
+    fillColorHex = '#ffc800';
+  } else {
+    fillColorHex = '#ff0000';
+  }
+
+  const displayMode = displayModeElem.value;
+
+  const fillColorHexMatch = word.matchTruth ? '#00ff7b' : '#ff0000';
+
+  let opacity;
+  let fill;
+  // Set current text color and opacity based on display mode selected
+  if (displayMode === 'invis') {
+    opacity = 0;
+    fill = 'black';
+  } else if (displayMode === 'ebook') {
+    opacity = 1;
+    fill = 'black';
+  } else if (displayMode === 'eval') {
+    opacity = parseFloat(rangeOpacityElem.value || '80') / 100;
+    fill = fillColorHexMatch;
+  } else {
+    opacity = parseFloat(rangeOpacityElem.value || '80') / 100;
+    fill = fillColorHex;
+  }
+
+  return { opacity, fill };
+}
+
+export class KonvaIText extends Konva.Shape {
   /**
-   *
+   * The `KonvaIText` class is a Konva shape that displays text, which is interactive and can be edited.
+   * While it uses an `OcrWord` object for input information, it is not directly tied to OCR, and can be used for any text with a dummy `OcrWord`.
+   * Any logic specific to OCR should be handled in the `OcrWord` object.
    * @param {Object} options
-   * @param {number} options.x
-   * @param {number} options.y
-   * @param {number} options.topBaseline
-   * @param {Array<string>} options.charArr
-   * @param {number} options.fontSize
-   * @param {string} options.fontStyle
-   * @param {string} options.fill
-   * @param {Array<number>} options.advanceArrTotal
-   * @param {string} options.fontFaceName
-   * @param {number} options.charSpacing
-   * @param {import('../objects/ocrObjects.js').OcrWord} options.word
-   * @param {number} options.rotation
-   * @param {number} options.opacity
-   * @param {string} options.fontStyleLookup
-   * @param {string} options.fontFamilyLookup
    * @param {number} options.visualLeft
-   * @param {boolean} options.outline
-   * @param {boolean} options.fillBox
+   * @param {number} options.yActual
+   * @param {import('../objects/ocrObjects.js').OcrWord} options.word
+   * @param {number} [options.rotation=0]
+   * @param {boolean} [options.outline=false]
+   * @param {boolean} [options.fillBox=false]
+   * @param {number} [options.opacity=1]
+   * @param {string} [options.fill='black']
+   * @param {Function} options.editTextCallback
    */
   constructor({
-    x, y, topBaseline, charArr, fontSize, fontStyle, fill, advanceArrTotal, fontFaceName, charSpacing, word, rotation,
-    opacity, fontStyleLookup, fontFamilyLookup, visualLeft, outline, fillBox,
+    visualLeft, yActual, word, rotation = 0,
+    outline = false, fillBox = false, opacity = 1, fill = 'black', editTextCallback,
   }) {
+    const {
+      visualWidth, charSpacing, leftSideBearing, fontSize, charArr, advanceArr, kerningArr,
+    } = calcWordMetrics(word);
+
+    const scaleX = word.dropcap ? ((word.bbox.right - word.bbox.left) / visualWidth) : 1;
+
+    const advanceArrTotal = [];
+    for (let i = 0; i < advanceArr.length; i++) {
+      let leftI = 0;
+      leftI += advanceArr[i] || 0;
+      leftI += kerningArr[i] || 0;
+      leftI += charSpacing || 0;
+      advanceArrTotal.push(leftI);
+    }
+
+    const x = visualLeft - leftSideBearing;
+
     super({
       x,
       // `y` is what Konva sees as the y value, which corresponds to where the top of the interactive box is drawn.
-      y: y - fontSize * 0.6,
+      y: yActual - fontSize * 0.6,
       width: advanceArrTotal.reduce((a, b) => a + b, 0),
       height: fontSize * 0.6,
       rotation,
       opacity,
       fill,
+      /**
+       * @param {InstanceType<typeof Konva.Context>} context
+       * @param {KonvaIText} shape
+       */
       sceneFunc: (context, shape) => {
-        context.font = `${shape.fontStyle} ${shape.fontSize}px ${shape.fontFaceName}`;
+        context.font = `${shape.fontFaceStyle} ${shape.fontSize}px ${shape.fontFaceName}`;
         context.textBaseline = 'alphabetic';
         context.fillStyle = shape.fill();
 
@@ -196,34 +282,168 @@ export class KonvaWord extends Konva.Shape {
       },
     });
 
+    const fontI = fontAll.getWordFont(word);
+
     this.word = word;
     this.charArr = charArr;
     this.charSpacing = charSpacing;
     this.advanceArrTotal = advanceArrTotal;
     this.fontSize = fontSize;
     // `yActual` contains the y value that we want to draw the text at, which is usually the baseline.
-    this.yActual = y;
-    this.fontFaceName = fontFaceName;
-    this.fontStyle = fontStyle;
-    this.lastX = x;
+    this.yActual = yActual;
     this.lastWidth = this.width();
-    this.fontStyleLookup = fontStyleLookup;
-    this.fontFamilyLookup = fontFamilyLookup;
+    this.fontFaceStyle = fontI.fontFaceStyle;
+    this.fontFaceName = fontI.fontFaceName;
+    this.fontFamilyLookup = fontI.family;
+    this.fontStyleLookup = word.style;
     this.visualLeft = visualLeft;
     this.outline = outline;
     this.fillBox = fillBox;
+    this.editTextCallback = editTextCallback;
+
+    this.addEventListener('dblclick', () => {
+      KonvaIText.addTextInput(this);
+    });
+  }
+
+  /**
+   * Position and show the input for editing.
+   * @param {KonvaIText} textNode
+   */
+  static addTextInput = (textNode) => {
+    const pointerCoordsRel = layerText.getRelativePointerPosition();
+    let letterIndex = 0;
+    let leftI = textNode.x();
+    for (let i = 0; i < textNode.charArr.length; i++) {
+      // For most letters, the letter is selected if the pointer is in the left 75% of the letter.
+      // This is a compromise, as setting to 50% would be unintuitive for users trying to select the letter they want to edit,
+      // and setting to 100% would be unintuitive for users trying to position the cursor between letters.
+      // The exception is for the last letter, where the letter is selected if the pointer is in the left 50% of the letter.
+      // This is because using the 75% rule would make it extremely difficult to select the end of the word.
+      const cutOffPer = i + 1 === textNode.charArr.length ? 0.5 : 0.75;
+      const cutOff = leftI + textNode.advanceArrTotal[i] * cutOffPer;
+      if (pointerCoordsRel?.x && cutOff > pointerCoordsRel.x) break;
+      letterIndex++;
+      leftI += textNode.advanceArrTotal[i];
+    }
+
+    if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
+
+    canvasObj.input = document.createElement('span');
+
+    const text = textNode.charArr.join('');
+
+    const scale = layerText.scaleY();
+
+    const charSpacingHTML = textNode.charSpacing * scale;
+
+    const { x: x1, y: y1 } = textNode.getAbsolutePosition();
+
+    const fontSizeHTML = textNode.fontSize * scale;
+
+    const canvas = /** @type {HTMLCanvasElement} */ (document.createElement('canvas'));
+    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
+
+    const fontI = fontAll.getWordFont(textNode.word);
+
+    ctx.font = `${textNode.fontFaceStyle} ${fontSizeHTML}px ${fontI.fontFaceName}`;
+
+    const metrics = ctx.measureText(text);
+
+    canvasObj.input.style.position = 'absolute';
+    canvasObj.input.style.left = `${x1}px`;
+    canvasObj.input.style.top = `${y1 - metrics.fontBoundingBoxAscent + fontSizeHTML * 0.6}px`; // Align with baseline
+    canvasObj.input.style.fontSize = `${fontSizeHTML}px`;
+    canvasObj.input.style.fontFamily = textNode.fontFaceName;
+    canvasObj.input.textContent = text;
+    canvasObj.input.style.letterSpacing = `${charSpacingHTML}px`;
+    canvasObj.input.style.color = textNode.fill();
+    canvasObj.input.style.opacity = String(textNode.opacity());
+    canvasObj.input.style.fontStyle = textNode.fontFaceStyle;
+    // Line height must match the height of the font bounding box for the font metrics to be accurate.
+    canvasObj.input.style.lineHeight = `${metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent}px`;
+    canvasObj.input.contentEditable = 'true';
+
+    // Prevent line breaks and hide overflow
+    canvasObj.input.style.whiteSpace = 'nowrap';
+    // canvasObj.input.style.overflow = 'hidden';
+
+    canvasObj.inputRemove = () => {
+      textNode.word.text = ocr.replaceLigatures(canvasObj.input.textContent);
+      canvasObj.input.remove();
+      canvasObj.input = null;
+      updateWordCanvas(textNode);
+      textNode.editTextCallback(textNode);
+    };
+
+    // Update the Konva Text node after editing
+    canvasObj.input.addEventListener('blur', () => (canvasObj.inputRemove));
+
+    document.body.appendChild(canvasObj.input);
+
+    canvasObj.input.focus();
+
+    // Set the cursor to the correct position
+    const range = document.createRange();
+    const sel = /** @type {Selection} */ (window.getSelection());
+
+    range.setStart(canvasObj.input.childNodes[0], letterIndex);
+    range.collapse(true);
+
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    textNode.hide();
+    layerText.draw();
+  };
+}
+
+export class KonvaOcrWord extends KonvaIText {
+  /**
+   *
+   * @param {Object} options
+   * @param {number} options.visualLeft
+   * @param {number} options.yActual
+   * @param {number} options.topBaseline
+   * @param {string} options.fontStyle
+   * @param {string} options.fontFaceName
+   * @param {import('../objects/ocrObjects.js').OcrWord} options.word
+   * @param {number} options.rotation
+   * @param {string} options.fontStyleLookup
+   * @param {string} options.fontFamilyLookup
+   * @param {boolean} options.outline
+   * @param {boolean} options.fillBox
+   */
+  constructor({
+    visualLeft, yActual, topBaseline, word, rotation,
+    outline, fillBox,
+  }) {
+    const { fill, opacity } = getWordFillOpacity(word);
+
+    super({
+      visualLeft,
+      // `y` is what Konva sees as the y value, which corresponds to where the top of the interactive box is drawn.
+      yActual,
+      word,
+      rotation,
+      outline,
+      fillBox,
+      opacity,
+      fill,
+      editTextCallback: () => {},
+    });
+
+    this.listening(!globalThis.layoutMode);
+
+    this.lastX = this.x();
+    this.lastWidth = this.width();
     this.baselineAdj = 0;
     this.topBaseline = topBaseline;
     this.topBaselineOrig = topBaseline;
 
     this.addEventListener('click', () => {
-      KonvaWord.addControls(this);
-      KonvaWord.updateUI();
-    });
-
-    this.addEventListener('dblclick', () => {
-      KonvaWord.addTextInput(this);
-      KonvaWord.updateUI();
+      KonvaOcrWord.addControls(this);
+      KonvaOcrWord.updateUI();
     });
 
     this.addEventListener('transformstart', () => {
@@ -276,94 +496,8 @@ export class KonvaWord extends Konva.Shape {
   };
 
   /**
-   * Position and show the input for editing.
-   * @param {KonvaWord} textNode
-   */
-  static addTextInput = (textNode) => {
-    const pointerCoordsRel = layerText.getRelativePointerPosition();
-    let letterIndex = 0;
-    let leftI = textNode.x();
-    for (let i = 0; i < textNode.charArr.length; i++) {
-      // For most letters, the letter is selected if the pointer is in the left 75% of the letter.
-      // This is a compromise, as setting to 50% would be unintuitive for users trying to select the letter they want to edit,
-      // and setting to 100% would be unintuitive for users trying to position the cursor between letters.
-      // The exception is for the last letter, where the letter is selected if the pointer is in the left 50% of the letter.
-      // This is because using the 75% rule would make it extremely difficult to select the end of the word.
-      const cutOffPer = i + 1 === textNode.charArr.length ? 0.5 : 0.75;
-      const cutOff = leftI + textNode.advanceArrTotal[i] * cutOffPer;
-      if (pointerCoordsRel?.x && cutOff > pointerCoordsRel.x) break;
-      letterIndex++;
-      leftI += textNode.advanceArrTotal[i];
-    }
-
-    if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
-
-    canvasObj.input = document.createElement('span');
-
-    const text = textNode.charArr.join('');
-
-    const scale = layerText.scaleY();
-
-    const charSpacingHTML = textNode.charSpacing * scale;
-
-    const { x: x1, y: y1 } = textNode.getAbsolutePosition();
-
-    const fontSizeHTML = textNode.fontSize * scale;
-
-    const canvas = /** @type {HTMLCanvasElement} */ (document.createElement('canvas'));
-    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
-    ctx.font = `${textNode.fontStyle} ${fontSizeHTML}px ${textNode.fontFaceName}`;
-    const metrics = ctx.measureText(text);
-
-    canvasObj.input.style.position = 'absolute';
-    canvasObj.input.style.left = `${x1}px`;
-    canvasObj.input.style.top = `${y1 - metrics.fontBoundingBoxAscent + fontSizeHTML * 0.6}px`; // Align with baseline
-    canvasObj.input.style.fontSize = `${fontSizeHTML}px`;
-    canvasObj.input.style.fontFamily = textNode.fontFaceName;
-    canvasObj.input.textContent = text;
-    canvasObj.input.style.letterSpacing = `${charSpacingHTML}px`;
-    canvasObj.input.style.color = textNode.fill();
-    canvasObj.input.style.opacity = String(textNode.opacity());
-    canvasObj.input.style.fontStyle = textNode.fontStyle;
-    // Line height must match the height of the font bounding box for the font metrics to be accurate.
-    canvasObj.input.style.lineHeight = `${metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent}px`;
-    canvasObj.input.contentEditable = 'true';
-
-    // Prevent line breaks and hide overflow
-    canvasObj.input.style.whiteSpace = 'nowrap';
-    // canvasObj.input.style.overflow = 'hidden';
-
-    canvasObj.inputRemove = () => {
-      textNode.word.text = ocr.replaceLigatures(canvasObj.input.textContent);
-      canvasObj.input.remove();
-      canvasObj.input = null;
-      updateWordCanvas(textNode);
-    };
-
-    // Update the Konva Text node after editing
-    canvasObj.input.addEventListener('blur', () => (canvasObj.inputRemove));
-
-    document.body.appendChild(canvasObj.input);
-
-    canvasObj.input.focus();
-
-    // Set the cursor to the correct position
-    const range = document.createRange();
-    const sel = /** @type {Selection} */ (window.getSelection());
-
-    range.setStart(canvasObj.input.childNodes[0], letterIndex);
-    range.collapse(true);
-
-    sel.removeAllRanges();
-    sel.addRange(range);
-
-    textNode.hide();
-    layerText.draw();
-  };
-
-  /**
    * Add controls for editing.
-   * @param {KonvaWord} textNode
+   * @param {KonvaOcrWord} textNode
    */
   static addControls = (textNode) => {
     destroyControls();
@@ -373,7 +507,7 @@ export class KonvaWord extends Konva.Shape {
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
     });
-    addControl(trans);
+    canvasObj.controlArr.push(trans);
     layerText.add(trans);
 
     trans.nodes([textNode]);
@@ -386,7 +520,7 @@ const trans = new Konva.Transformer({
 });
 layerText.add(trans);
 
-function selectObjectsRect(box) {
+function selectWords(box) {
   const shapes = getCanvasWords();
 
   canvasObj.selectedWordArr.length = 0;
@@ -415,6 +549,7 @@ stage.on('mousedown touchstart', (e) => {
   // if (e.target !== stage) {
   //   return;
   // }
+  if (canvasObj.isTouchScreen && canvasObj.mode === 'select') return;
 
   clearSelectionStart = e.target instanceof Konva.Stage || e.target instanceof Konva.Image;
 
@@ -472,10 +607,15 @@ stage.on('mouseup touchend', (e) => {
   // update visibility in timeout, so we can check it in click event
   selectingRectangle.visible(false);
 
-  if (canvasObj.mode === 'select') {
+  if (canvasObj.mode === 'select' && !globalThis.layoutMode) {
+    if (globalThis.layoutMode) return;
     const box = selectingRectangle.getClientRect();
-    selectObjectsRect(box);
-    KonvaWord.updateUI();
+    selectWords(box);
+    KonvaOcrWord.updateUI();
+  } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
+    const box = selectingRectangle.getClientRect();
+    selectLayoutBoxes(box);
+    KonvaLayout.updateUI();
   } else if (canvasObj.mode === 'addWord') {
     const box = selectingRectangle.getClientRect({ relativeTo: layerText });
     addWordManual(box);
@@ -488,6 +628,15 @@ stage.on('mouseup touchend', (e) => {
   } else if (canvasObj.mode === 'printCoords') {
     const box = selectingRectangle.getClientRect({ relativeTo: layerText });
     recognizeArea(box, false, true);
+  } else if (canvasObj.mode === 'addLayoutBoxOrder') {
+    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
+    addLayoutBoxClick(box, 'order');
+  } else if (canvasObj.mode === 'addLayoutBoxExclude') {
+    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
+    addLayoutBoxClick(box, 'exclude');
+  } else if (canvasObj.mode === 'addLayoutBoxDataColumn') {
+    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
+    addLayoutBoxClick(box, 'dataColumn');
   }
 
   canvasObj.mode = 'select';
@@ -498,24 +647,27 @@ stage.on('mouseup touchend', (e) => {
 // Function to handle wheel event
 /**
  * Handles the wheel event to scroll the layer vertically.
- * @param {import('../../lib/konva/Node.js').KonvaEventObject<WheelEvent>} event - The wheel event from the user's mouse.
+ * @param {KonvaWheelEvent} event - The wheel event from the user's mouse.
  */
-const handleWheel = (event, layer) => {
+const handleWheel = (event) => {
   event.evt.preventDefault();
 
   if (event.evt.ctrlKey) { // Zoom in or out
     const scaleBy = event.evt.deltaY > 0 ? 0.9 : 1.1;
 
-    zoomLayer(layer, scaleBy, false);
+    zoomAllLayers(scaleBy, stage.getPointerPosition());
     destroyControls();
   } else { // Scroll vertically
     destroyControls();
-    const newY = layer.y() - event.evt.deltaY;
-    layer.y(newY);
-    layer.batchDraw();
+    panAllLayers({ deltaY: event.evt.deltaY * -1 });
   }
 };
 
+/**
+ *
+ * @param {InstanceType<typeof Konva.Layer>} layer
+ * @returns {{x: number, y: number}}
+ */
 const getLayerCenter = (layer) => {
   const layerWidth = layer.width();
   const layerHeight = layer.height();
@@ -535,13 +687,20 @@ const getLayerCenter = (layer) => {
   return transformedCenter;
 };
 
-const zoomLayer = (layer, scaleBy, centerMode = false) => {
+/**
+ *
+ * @param {InstanceType<typeof Konva.Layer>} layer
+ * @param {number} scaleBy
+ * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
+ *    If `null` (default), the center of the layer is used.
+ */
+const zoomLayer = (layer, scaleBy, center = null) => {
   const oldScale = layer.scaleX();
-  const pointer = centerMode ? getLayerCenter(layer) : stage.getPointerPosition();
+  center = center || getLayerCenter(layer);
 
   const mousePointTo = {
-    x: (pointer.x - layer.x()) / oldScale,
-    y: (pointer.y - layer.y()) / oldScale,
+    x: (center.x - layer.x()) / oldScale,
+    y: (center.y - layer.y()) / oldScale,
   };
 
   const newScale = oldScale * scaleBy;
@@ -550,80 +709,186 @@ const zoomLayer = (layer, scaleBy, centerMode = false) => {
   layer.scaleY(newScale);
 
   const newPos = {
-    x: pointer.x - mousePointTo.x * newScale,
-    y: pointer.y - mousePointTo.y * newScale,
+    x: center.x - mousePointTo.x * newScale,
+    y: center.y - mousePointTo.y * newScale,
   };
 
   layer.position(newPos);
   layer.batchDraw();
 };
 
+/**
+ *
+ * @param {number} scaleBy
+ * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
+ *    If `null` (default), the center of the layer is used.
+ */
+const zoomAllLayers = (scaleBy, center = null) => {
+  zoomLayer(layerText, scaleBy, center);
+  zoomLayer(layerBackground, scaleBy, center);
+  zoomLayer(layerOverlay, scaleBy, center);
+};
+
+/**
+ *
+ * @param {Object} coords
+ * @param {number} [coords.deltaX=0]
+ * @param {number} [coords.deltaY=0]
+ */
+const panAllLayers = ({ deltaX = 0, deltaY = 0 }) => {
+  layerText.x(layerText.x() + deltaX);
+  layerText.y(layerText.y() + deltaY);
+  layerBackground.x(layerBackground.x() + deltaX);
+  layerBackground.y(layerBackground.y() + deltaY);
+  layerOverlay.x(layerOverlay.x() + deltaX);
+  layerOverlay.y(layerOverlay.y() + deltaY);
+
+  layerText.batchDraw();
+  layerBackground.batchDraw();
+  layerOverlay.batchDraw();
+};
+
 // Listen for wheel events on the stage
 stage.on('wheel', (event) => {
-  handleWheel(event, layerText);
-  handleWheel(event, layerBackground);
-  handleWheel(event, layerOverlay);
+  handleWheel(event);
 });
-// Variables to track dragging
-let isDragging = false;
-let lastX = 0;
-let lastY = 0;
+
+/**
+ * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
+ * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
+ * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
+ */
 
 /**
  * Initiates dragging if the middle mouse button is pressed.
- * @param {MouseEvent} event - The mouse down event.
+ * @param {KonvaMouseEvent} event
  */
 const startDrag = (event) => {
-  if (event.evt.button === 1) { // Middle mouse button
-    isDragging = true;
-    lastX = event.evt.x;
-    lastY = event.evt.y;
-    event.evt.preventDefault();
-  }
+  canvasObj.drag.isDragging = true;
+  canvasObj.drag.lastX = event.evt.x;
+  canvasObj.drag.lastY = event.evt.y;
+  event.evt.preventDefault();
 };
 
-// Function to execute during dragging
+function getCenter(p1, p2) {
+  return {
+    x: (p1.x + p2.x) / 2,
+    y: (p1.y + p2.y) / 2,
+  };
+}
+
+function getDistance(p1, p2) {
+  return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+}
+
+/**
+ * Initiates dragging if the middle mouse button is pressed.
+ * @param {KonvaTouchEvent} event
+ */
+const startDragTouch = (event) => {
+  canvasObj.drag.isDragging = true;
+  canvasObj.drag.lastX = event.evt.touches[0].clientX;
+  canvasObj.drag.lastY = event.evt.touches[0].clientY;
+  event.evt.preventDefault();
+};
+
 /**
  * Updates the layer's position based on mouse movement.
- * @param {MouseEvent} event - The mouse move event.
+ * @param {KonvaMouseEvent} event
  */
 const executeDrag = (event) => {
-  if (isDragging) {
-    const deltaX = event.evt.x - lastX;
-    const deltaY = event.evt.y - lastY;
-    lastX = event.evt.x;
-    lastY = event.evt.y;
+  if (canvasObj.drag.isDragging) {
+    const deltaX = event.evt.x - canvasObj.drag.lastX;
+    const deltaY = event.evt.y - canvasObj.drag.lastY;
+    canvasObj.drag.lastX = event.evt.x;
+    canvasObj.drag.lastY = event.evt.y;
 
-    // Both layers need to be adjusted in a single function call,
-    // as `lastX` and `lastY` are updated in this function.
-    layerText.x(layerText.x() + deltaX);
-    layerText.y(layerText.y() + deltaY);
-    layerBackground.x(layerBackground.x() + deltaX);
-    layerBackground.y(layerBackground.y() + deltaY);
-    layerOverlay.x(layerOverlay.x() + deltaX);
-    layerOverlay.y(layerOverlay.y() + deltaY);
-
-    layerText.batchDraw();
-    layerBackground.batchDraw();
-    layerOverlay.batchDraw();
+    panAllLayers({ deltaX, deltaY });
   }
 };
 
-// Function to stop dragging
+/**
+ * @param {KonvaTouchEvent} event
+ */
+const executeDragTouch = (event) => {
+  if (canvasObj.drag.isDragging) {
+    const deltaX = event.evt.touches[0].clientX - canvasObj.drag.lastX;
+    const deltaY = event.evt.touches[0].clientY - canvasObj.drag.lastY;
+    canvasObj.drag.lastX = event.evt.touches[0].clientX;
+    canvasObj.drag.lastY = event.evt.touches[0].clientY;
+
+    panAllLayers({ deltaX, deltaY });
+  }
+};
+
+/**
+ * @param {KonvaTouchEvent} event
+ */
+const executePinchTouch = (event) => {
+  const touch1 = event.evt.touches[0];
+  const touch2 = event.evt.touches[1];
+  if (!touch1 || !touch2) return;
+  const p1 = {
+    x: touch1.clientX,
+    y: touch1.clientY,
+  };
+  const p2 = {
+    x: touch2.clientX,
+    y: touch2.clientY,
+  };
+
+  const center = getCenter(p1, p2);
+  const dist = getDistance(p1, p2);
+
+  if (!canvasObj.drag.lastDist || !canvasObj.drag.lastCenter) {
+    canvasObj.drag.lastCenter = center;
+    canvasObj.drag.lastDist = dist;
+    return;
+  }
+
+  zoomAllLayers(dist / canvasObj.drag.lastDist, center);
+  canvasObj.drag.lastDist = dist;
+};
+
 /**
  * Stops dragging when the mouse button is released.
- * @param {MouseEvent} event - The mouse up event.
+ * @param {KonvaMouseEvent|KonvaTouchEvent} event
  */
-const stopDrag = (event) => {
-  if (event.evt.button === 1) { // Middle mouse button
-    isDragging = false;
-  }
+const stopDragPinch = (event) => {
+  canvasObj.drag.isDragging = false;
+  canvasObj.drag.lastCenter = null;
+  canvasObj.drag.lastDist = null;
 };
 
 // Event listeners for mouse interactions
-stage.on('mousedown', startDrag);
+stage.on('mousedown', (event) => {
+  if (event.evt.button === 1) { // Middle mouse button
+    startDrag(event);
+  }
+});
 stage.on('mousemove', executeDrag);
-stage.on('mouseup', stopDrag);
+stage.on('mouseup', (event) => {
+  if (event.evt.button === 1) { // Middle mouse button
+    stopDragPinch(event);
+  }
+});
+
+stage.on('touchstart', (event) => {
+  if (event.evt.touches[1]) {
+    executePinchTouch(event);
+  } else {
+    startDragTouch(event);
+  }
+});
+
+stage.on('touchmove', (event) => {
+  if (event.evt.touches[1]) {
+    executePinchTouch(event);
+  } else if (canvasObj.drag.isDragging) {
+    executeDragTouch(event);
+  }
+});
+stage.on('touchend', stopDragPinch);
 
 /**
  * Adjusts the layer's scale based on key press combinations for zooming in and out.
@@ -632,13 +897,9 @@ stage.on('mouseup', stopDrag);
 const handleZoom = (event) => {
   if (event.ctrlKey) {
     if (['+', '='].includes(event.key)) {
-      zoomLayer(layerText, 1.1, true);
-      zoomLayer(layerBackground, 1.1, true);
-      zoomLayer(layerOverlay, 1.1, true);
+      zoomAllLayers(1.1, getLayerCenter(layerText));
     } else if (['-', '_'].includes(event.key)) {
-      zoomLayer(layerText, 0.9, true);
-      zoomLayer(layerBackground, 0.9, true);
-      zoomLayer(layerOverlay, 0.9, true);
+      zoomAllLayers(0.9, getLayerCenter(layerText));
     } else {
       return; // Ignore other keys
     }
@@ -652,22 +913,22 @@ const handleZoom = (event) => {
 document.addEventListener('keydown', handleZoom);
 
 zoomInElem.addEventListener('click', () => {
-  zoomLayer(layerText, 1.1, true);
-  zoomLayer(layerBackground, 1.1, true);
-  zoomLayer(layerOverlay, 1.1, true);
+  zoomAllLayers(1.1, getLayerCenter(layerText));
 });
 
 zoomOutElem.addEventListener('click', () => {
-  zoomLayer(layerText, 0.9, true);
-  zoomLayer(layerBackground, 0.9, true);
-  zoomLayer(layerOverlay, 0.9, true);
+  zoomAllLayers(0.9, getLayerCenter(layerText));
 });
 
 /**
- *
- * @returns {Array<KonvaWord>}
+ * @returns {Array<KonvaOcrWord>}
  */
-export const getCanvasWords = () => layerText.children.filter((obj) => obj instanceof KonvaWord);
+export const getCanvasWords = () => layerText.children.filter((obj) => obj instanceof KonvaOcrWord);
+
+/**
+ * @returns {Array<KonvaLayout>}
+ */
+export const getCanvasLayoutBoxes = () => layerOverlay.children.filter((obj) => obj instanceof KonvaLayout);
 
 export const destroyWords = () => {
   // Any time words are destroyed, controls must be destroyed as well.
@@ -764,6 +1025,99 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false)
     showHideElem(debugCanvasParentDivElem, false);
   }
 };
+
+/**
+ *
+ * @param {OcrPage} page
+ */
+export function renderPage(page) {
+  const matchIdArr = ocr.getMatchingWordIds(search.search, globalThis.ocrAll.active[cp.n]);
+
+  const angle = globalThis.pageMetricsArr[cp.n].angle || 0;
+
+  const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
+
+  const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
+
+  for (const lineObj of page.lines) {
+    const linebox = lineObj.bbox;
+    const { baseline } = lineObj;
+
+    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : { x: 0, y: 0 };
+
+    if (outlineLinesElem.checked) {
+      const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
+      const height1 = linebox.bottom - linebox.top - heightAdj;
+      const height2 = lineObj.words[0] ? lineObj.words[0].bbox.bottom - lineObj.words[0].bbox.top : 0;
+      const height = Math.max(height1, height2);
+
+      const lineRect = new Konva.Rect({
+        x: linebox.left + angleAdjLine.x,
+        y: linebox.top + angleAdjLine.y,
+        width: linebox.right - linebox.left,
+        height,
+        rotation: angleArg,
+        stroke: 'rgba(0,0,255,0.75)',
+        strokeWidth: 1,
+        draggable: false,
+      });
+
+      canvasObj.lineOutlineArr.push(lineRect);
+
+      layerText.add(lineRect);
+    }
+
+    for (const wordObj of lineObj.words) {
+      if (!wordObj.text) continue;
+
+      const box = wordObj.bbox;
+
+      const wordDropCap = wordObj.dropcap;
+      const fontStyle = wordObj.style;
+
+      const fontI = fontAll.getWordFont(wordObj);
+
+      const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
+
+      const displayMode = displayModeElem.value;
+
+      const outlineWord = outlineWordsElem.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
+
+      const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
+
+      let visualBaseline;
+      if (enableRotation) {
+        visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
+      } else {
+        visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
+      }
+
+      let top = visualBaseline;
+      if (wordObj.sup || wordDropCap) top = box.bottom + angleAdjLine.y + angleAdjWord.y;
+
+      const visualLeft = box.left + angleAdjLine.x + angleAdjWord.x;
+
+      const wordCanvas = new KonvaOcrWord({
+        visualLeft,
+        yActual: top,
+        topBaseline: visualBaseline,
+        rotation: angleArg,
+        fontStyle,
+        fontFaceName: fontI.fontFaceName,
+        fontStyleLookup: fontStyle,
+        fontFamilyLookup: fontI.family,
+        word: wordObj,
+        outline: outlineWord,
+        fillBox: matchIdArr.includes(wordObj.id),
+      });
+
+      // Add the text node to the given layer
+      layerText.add(wordCanvas);
+    }
+  }
+
+  updateDataPreview();
+}
 
 export {
   stage, layerText, layerBackground, layerOverlay,

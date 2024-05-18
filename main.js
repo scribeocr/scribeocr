@@ -9,8 +9,6 @@
 
 import { importOCRFiles } from './js/importOCR.js';
 
-import { renderPage } from './js/browser/renderPageCanvas.js';
-
 import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
 
 import { recognizeAllClick, getLangText } from './js/browser/interfaceRecognize.js';
@@ -28,6 +26,8 @@ import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer
 import { fontMetricsObj } from './js/containers/miscContainer.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
+
+import { layoutAll, LayoutPage } from './js/objects/layoutObjects.js';
 
 import {
   checkCharWarn, setFontMetricsAll,
@@ -49,13 +49,13 @@ import {
 } from './js/browser/interfaceEdit.js';
 
 import {
-  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
-  updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, toggleSelectableWords,
+  deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
+  updateDataPreview, setLayoutBoxTable, renderLayoutBoxes, toggleSelectableWords,
 } from './js/browser/interfaceLayout.js';
 
 import {
   stage, layerText, layerBackground, destroyWords, canvasObj,
-  getCanvasWords, setCanvasWidthHeightZoom,
+  getCanvasWords, setCanvasWidthHeightZoom, destroyLayoutBoxes, destroyControls, renderPage,
 } from './js/browser/interfaceCanvas.js';
 
 // Third party libraries
@@ -492,10 +492,14 @@ const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getEl
 const addLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeExclude'));
 const addLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeDataColumn'));
 
-addLayoutBoxElem.addEventListener('click', () => addLayoutBoxClick());
-addLayoutBoxTypeOrderElem.addEventListener('click', () => addLayoutBoxClick('order'));
-addLayoutBoxTypeExcludeElem.addEventListener('click', () => addLayoutBoxClick('exclude'));
-addLayoutBoxTypeDataColumnElem.addEventListener('click', () => addLayoutBoxClick('dataColumn'));
+const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
+
+addLayoutBoxElem.addEventListener('click', () => {
+  canvasObj.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataColumn' }[layoutBoxTypeElem.textContent];
+});
+addLayoutBoxTypeOrderElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxOrder'));
+addLayoutBoxTypeExcludeElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxExclude'));
+addLayoutBoxTypeDataColumnElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxDataColumn'));
 
 const deleteLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('deleteLayoutBox'));
 deleteLayoutBoxElem.addEventListener('click', () => deleteLayoutBoxClick());
@@ -838,18 +842,19 @@ document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) 
   if (e.target.id !== 'nav-layout') return;
   globalThis.layoutMode = true;
 
-  if (!globalThis.layout[cp.n]) return;
+  if (!layoutAll[cp.n]) return;
 
   toggleSelectableWords(false);
-
-  renderLayoutBoxes(Object.keys(globalThis.layout[cp.n].boxes));
+  destroyControls();
+  renderLayoutBoxes();
 });
 
 document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) => {
   if (e.target.id !== 'nav-layout') return;
   globalThis.layoutMode = false;
   toggleSelectableWords(true);
-  clearLayoutBoxes();
+  destroyLayoutBoxes();
+  destroyControls();
 });
 
 /**
@@ -1113,7 +1118,7 @@ async function clearFiles() {
   cp.n = 0;
   globalThis.pageCount = 0;
   globalThis.ocrAll.active = [];
-  globalThis.layout = [];
+  layoutAll.length = 0;
   replaceObjectProperties(fontMetricsObj);
   globalThis.pageMetricsArr = [];
   globalThis.convertPageWarn = [];
@@ -1428,7 +1433,9 @@ async function importFiles(curFiles) {
 
       // Restore layout data from previous session (if applicable)
       if (ocrData.layoutObj) {
-        globalThis.layout = ocrData.layoutObj;
+        for (let i = 0; i < ocrData.layoutObj.length; i++) {
+          layoutAll[i] = ocrData.layoutObj[i].layout;
+        }
         existingLayout = true;
       }
 
@@ -1465,9 +1472,8 @@ async function importFiles(curFiles) {
   globalThis.defaultLayout = {};
 
   if (!existingLayout) {
-    globalThis.layout = Array(globalThis.pageCount);
-    for (let i = 0; i < globalThis.layout.length; i++) {
-      globalThis.layout[i] = { default: true, boxes: {} };
+    for (let i = 0; i < globalThis.pageCount; i++) {
+      layoutAll[i] = new LayoutPage();
     }
   }
 
@@ -1581,7 +1587,7 @@ async function importFiles(curFiles) {
 async function readLayoutFile(file) {
   const layoutStr = await readTextFile(file);
   try {
-    const layoutObj = JSON.parse(layoutStr);
+    const layoutObj = /** @type {Array<LayoutPage>} */(JSON.parse(layoutStr));
 
     // Layout files may optionally provide an attribute named `system` which contains `length` and `height` used for the full page.
     // These are used to normalize the coorinates, and are necessary when the layout analysis uses a different coordinate
@@ -1593,16 +1599,18 @@ async function readLayoutFile(file) {
         const width = value?.system?.width;
         const height = value?.system?.height;
         if (width && height) {
-          value.coords[0] *= (globalThis.pageMetricsArr[i].dims.width / width);
-          value.coords[2] *= (globalThis.pageMetricsArr[i].dims.width / width);
+          value.coords.left *= (globalThis.pageMetricsArr[i].dims.width / width);
+          value.coords.right *= (globalThis.pageMetricsArr[i].dims.width / width);
 
-          value.coords[1] *= (globalThis.pageMetricsArr[i].dims.height / height);
-          value.coords[3] *= (globalThis.pageMetricsArr[i].dims.height / height);
+          value.coords.top *= (globalThis.pageMetricsArr[i].dims.height / height);
+          value.coords.bottom *= (globalThis.pageMetricsArr[i].dims.height / height);
         }
       }
     }
 
-    globalThis.layout = layoutObj;
+    for (let i = 0; i < layoutObj.length; i++) {
+      layoutAll[i] = layoutObj[i];
+    }
   } catch (e) {
     console.log('Unable to parse contents of layout file.');
     console.log(e);
@@ -1686,7 +1694,7 @@ export async function renderPageQueue(n, loadXML = true) {
 
   // The active OCR version may have changed, so this needs to be re-checked.
   if (cp.n === n && globalThis.inputDataModes.xmlMode[n]) {
-    await renderPage(ocrData);
+    renderPage(ocrData);
     if (cp.n === n && cp.renderNum === renderNum) {
       await selectDisplayMode(getDisplayMode());
     }

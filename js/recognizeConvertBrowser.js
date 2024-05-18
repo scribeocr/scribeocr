@@ -7,6 +7,7 @@ import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
 import { imageCache } from './containers/imageContainer.js';
+import { layoutAll } from './objects/layoutObjects.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
@@ -177,7 +178,7 @@ export async function convertPageCallbackBrowser({
   inputDataModes.xmlMode[n] = true;
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(globalThis.layout[n].boxes).length === 0) globalThis.layout[n].boxes = layoutBoxes;
+  if (Object.keys(layoutAll[n].boxes).length === 0) layoutAll[n].boxes = layoutBoxes;
 
   // If this is the page the user has open, render it to the canvas
   const oemActive = document.getElementById('displayLabelText')?.innerHTML;

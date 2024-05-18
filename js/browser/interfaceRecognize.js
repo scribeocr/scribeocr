@@ -104,7 +104,7 @@ export async function recognizeAllClick() {
 
   const langArr = getLangText();
 
-  if (langArr.includes('chi_sim')) loadChiSimFont();
+  if (langArr.includes('chi_sim')) await loadChiSimFont();
 
   // Whether user uploaded data will be compared against in addition to both Tesseract engines
   const userUploadMode = Boolean(globalThis.ocrAll['User Upload']);

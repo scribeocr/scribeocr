@@ -51,12 +51,11 @@ export async function subsetFont(font, charArr = []) {
  * @param {import('opentype.js').Font} fontOpentype
  * @param {number} heightActual - Actual, measured height of text in pixels.
  * @param {string} text - Text to compare `heightActual` against.
- * @returns {Promise<number>} A promise that resolves to the calculated font size.
  *
  * Note: When calculating font size from x-height, `text` should be set to "o" rather than "x".
  * Despite the name, what Tesseract (and this application) are actually calculating is closer to "o" than "x".
  */
-async function getFontSize(fontOpentype, heightActual, text) {
+function getFontSize(fontOpentype, heightActual, text) {
   const textArr = text.split('');
   const charMetricsFirst = fontOpentype.charToGlyph(textArr[0]).getMetrics();
   let yMin = charMetricsFirst.yMin;
@@ -78,20 +77,19 @@ async function getFontSize(fontOpentype, heightActual, text) {
  * @param {Array<OcrWord>} wordArr
  * @param {import('opentype.js').Font} fontOpentype
  * @param {Boolean} [nonLatin=false]
- * @returns {Promise<number|null>} A promise that resolves to the calculated font size.
  *
  */
-async function calcWordFontSizePrecise(wordArr, fontOpentype, nonLatin = false) {
+function calcWordFontSizePrecise(wordArr, fontOpentype, nonLatin = false) {
   if (wordArr[0].chars && wordArr[0].chars.length > 0) {
     const charArr = wordArr.map((x) => x.chars).flat();
     const charArrFiltered = nonLatin ? charArr.filter((x) => x && (x.bbox.bottom - x.bbox.top) > 5) : charArr.filter((x) => x && /[A-Za-z0-9]/.test(x.text));
-    const fontSizeCharArr = await Promise.all(charArrFiltered.map((x) => getFontSize(fontOpentype, x.bbox.bottom - x.bbox.top, x.text)));
+    const fontSizeCharArr = charArrFiltered.map((x) => getFontSize(fontOpentype, x.bbox.bottom - x.bbox.top, x.text));
     const fontSizeCharMedian = quantile(fontSizeCharArr, 0.5);
     return fontSizeCharMedian;
   }
 
   const wordArrFiltered = nonLatin ? wordArr.filter((x) => x && (x.bbox.bottom - x.bbox.top) > 5) : wordArr.filter((x) => x && /[A-Za-z0-9]/.test(x.text));
-  const fontSizeWordArr = await Promise.all(wordArrFiltered.map((x) => getFontSize(fontOpentype, x.bbox.bottom - x.bbox.top, x.text)));
+  const fontSizeWordArr = wordArrFiltered.map((x) => getFontSize(fontOpentype, x.bbox.bottom - x.bbox.top, x.text));
   const fontSizeWordMedian = quantile(fontSizeWordArr, 0.5);
   return fontSizeWordMedian;
 }
@@ -142,7 +140,7 @@ export function addLigatures(wordText, fontOpentype) {
  * @param {Array<string>|string} wordText
  * @param {opentype.Font} fontOpentype
  */
-async function calcWordCharMetrics(wordText, fontOpentype) {
+function calcWordCharMetrics(wordText, fontOpentype) {
   const wordTextArr = typeof wordText === 'string' ? wordText.split('') : wordText;
 
   /** @type {Array<number>} */
@@ -184,17 +182,17 @@ async function calcWordCharMetrics(wordText, fontOpentype) {
  *    This is only used during the PDF export, when the rotation is applied by a matrix transformation,
  *    so the text always needs to be printed as if it were horizontal.
  * @async
- * @return {Promise<WordMetrics>}
+ * @return {WordMetrics}
  */
-export async function calcWordMetrics(word, angle = 0) {
+export function calcWordMetrics(word, angle = 0) {
   const fontI = fontAll.getWordFont(word);
-  const fontOpentype = await fontI.opentype;
+  const fontOpentype = fontI.opentype;
 
-  const fontSize = await calcWordFontSize(word);
+  const fontSize = calcWordFontSize(word);
 
   const charArr = addLigatures(word.text, fontOpentype);
 
-  const { advanceArr, kerningArr } = await calcWordCharMetrics(charArr, fontOpentype);
+  const { advanceArr, kerningArr } = calcWordCharMetrics(charArr, fontOpentype);
 
   const advanceTotal = advanceArr.reduce((a, b) => a + b, 0);
   const kerningTotal = kerningArr.reduce((a, b) => a + b, 0);
@@ -235,19 +233,19 @@ export async function calcWordMetrics(word, angle = 0) {
  * (4) a hard-coded default value.
  * @param {OcrWord} word
  */
-export const calcWordFontSize = async (word) => {
+export const calcWordFontSize = (word) => {
   const font = fontAll.getWordFont(word);
-  const fontOpentype = await font.opentype;
+  const fontOpentype = font.opentype;
 
   // If the user manually set a size, then use that
   if (word.size) {
     return word.size;
   // If the word is a superscript, then font size is uniquely calculated for this word
   } if (word.sup || word.dropcap) {
-    return await getFontSize(fontOpentype, word.bbox.bottom - word.bbox.top, word.text);
+    return getFontSize(fontOpentype, word.bbox.bottom - word.bbox.top, word.text);
   // If the word is a dropcap, then font size is uniquely calculated for this word
   }
-  const lineFontSize = await calcLineFontSize(word.line);
+  const lineFontSize = calcLineFontSize(word.line);
 
   if (lineFontSize) return lineFontSize;
 
@@ -262,9 +260,9 @@ export const calcWordFontSize = async (word) => {
 * Get or calculate font size for line.
 * This value will either be (1) a manually set value or (2) a value calculated using line metrics.
 * @param {OcrLine} line
-* @returns {Promise<?number>}
+* @returns {number}
 */
-export const calcLineFontSize = async (line) => {
+export const calcLineFontSize = (line) => {
   if (line._size) return line._size;
 
   // TODO: Add back cache when there are also functions that clear cache at appropriate times.
@@ -283,7 +281,7 @@ export const calcLineFontSize = async (line) => {
     // If no font metrics are known, use the font size from the previous line.
     const linePrev = getPrevLine(line);
     if (linePrev) {
-      line._sizeCalc = await calcLineFontSize(linePrev);
+      line._sizeCalc = calcLineFontSize(linePrev);
     // If there is no previous line, as a last resort, use a hard-coded default value.
     } else {
       line._sizeCalc = 15;
@@ -291,12 +289,12 @@ export const calcLineFontSize = async (line) => {
     return line._sizeCalc;
   }
 
-  const fontOpentype = await font.opentype;
+  const fontOpentype = font.opentype;
 
   // Aggregate line-level metrics are unlikely to be correct for short lines (if character data is available), so calculate the size precisely.
   // This method is always used for non-Latin scripts, as the ascender/descender metrics make little sense in that context.
   if ((line.words.length <= 3 && line.words[0].chars && line.words[0].chars.length > 0) || nonLatin) {
-    const fontSizeCalc = await calcWordFontSizePrecise(line.words, fontOpentype, nonLatin);
+    const fontSizeCalc = calcWordFontSizePrecise(line.words, fontOpentype, nonLatin);
     if (fontSizeCalc) {
       line._sizeCalc = fontSizeCalc;
       return line._sizeCalc;
@@ -305,8 +303,8 @@ export const calcLineFontSize = async (line) => {
 
   // If both ascender height and x-height height are known, calculate the font size using both and average them.
   if (line.ascHeight && line.xHeight) {
-    const size1 = await getFontSize(fontOpentype, line.ascHeight, 'A');
-    const size2 = await getFontSize(fontOpentype, line.xHeight, 'o');
+    const size1 = getFontSize(fontOpentype, line.ascHeight, 'A');
+    const size2 = getFontSize(fontOpentype, line.xHeight, 'o');
     let sizeFinal = Math.floor((size1 + size2) / 2);
 
     // Averaging `size1` and `size2` is intended to smooth out small differences in calculation error.
@@ -316,7 +314,7 @@ export const calcLineFontSize = async (line) => {
     if (Math.max(size1, size2) / Math.min(size1, size2) > 1.2) {
       const linePrev = getPrevLine(line);
       if (linePrev) {
-        const sizeLast = await calcLineFontSize(linePrev);
+        const sizeLast = calcLineFontSize(linePrev);
         if (sizeLast && (Math.max(size1, sizeLast) / Math.min(size1, sizeLast) <= 1.2 || Math.max(sizeLast, size2) / Math.min(sizeLast, size2) <= 1.2)) {
           if (Math.abs(sizeLast - size2) < Math.abs(sizeLast - size1)) {
             sizeFinal = Math.floor((sizeLast + size2) / 2);
@@ -330,15 +328,15 @@ export const calcLineFontSize = async (line) => {
     line._sizeCalc = sizeFinal;
   // If only x-height is known, calculate font size using x-height.
   } else if (!line.ascHeight && line.xHeight) {
-    line._sizeCalc = await getFontSize(fontOpentype, line.xHeight, 'o');
+    line._sizeCalc = getFontSize(fontOpentype, line.xHeight, 'o');
   // If only ascender height is known, calculate font size using ascender height.
   } else if (line.ascHeight && !line.xHeight) {
-    line._sizeCalc = await getFontSize(fontOpentype, line.ascHeight, 'A');
+    line._sizeCalc = getFontSize(fontOpentype, line.ascHeight, 'A');
   } else {
     // If no font metrics are known, use the font size from the previous line.
     const linePrev = getPrevLine(line);
     if (linePrev) {
-      line._sizeCalc = await calcLineFontSize(linePrev);
+      line._sizeCalc = calcLineFontSize(linePrev);
     // If there is no previous line, as a last resort, use a hard-coded default value.
     } else {
       line._sizeCalc = 15;

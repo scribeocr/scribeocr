@@ -10,6 +10,7 @@ import { drawDebugImages } from '../debug.js';
 import {
   stage, layerText, canvasObj, setCanvasWidthHeightZoom,
 } from './interfaceCanvas.js';
+import { layoutAll } from '../objects/layoutObjects.js';
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
@@ -103,7 +104,7 @@ globalThis.downloadAllImages = downloadAllImages;
 
 export function getExcludedText() {
   for (let i = 0; i <= globalThis.ocrAll.active.length; i++) {
-    const textArr = getExcludedTextPage(globalThis.ocrAll.active[i], globalThis.layout[i]);
+    const textArr = getExcludedTextPage(globalThis.ocrAll.active[i], layoutAll[i]);
 
     if (textArr.length > 0) {
       textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));
@@ -116,6 +117,8 @@ export function getExcludedText() {
 
 /**
  * @param {OcrPage} pageA
+ * @param {import('../objects/layoutObjects.js').LayoutPage} layoutObj
+ * @param {boolean} [applyExclude=true]
  */
 export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
   const excludedArr = [];
