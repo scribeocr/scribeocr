@@ -27,7 +27,7 @@ async function main() {
     fs.writeFileSync(outputPath, res.text);
   } else {
     const nativeCode = await w.checkNativeText();
-    type = ['Native text', 'Image + OCR text', 'Image native'][nativeCode];
+    type = ['Text native', 'Image + OCR text', 'Image native'][nativeCode];
   }
 
   console.log('PDF Type:', type);
