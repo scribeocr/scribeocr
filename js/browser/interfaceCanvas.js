@@ -10,6 +10,7 @@ import {
   KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxes,
 } from './interfaceLayout.js';
 import { cp, search } from '../../main.js';
+import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 
 const zoomInElem = /** @type {HTMLInputElement} */(document.getElementById('zoomIn'));
 const zoomOutElem = /** @type {HTMLInputElement} */(document.getElementById('zoomOut'));
@@ -86,7 +87,9 @@ export const canvasObj = {
   mode: 'select',
   isTouchScreen: navigator?.maxTouchPoints > 0,
   drag: {
+    isPinching: false,
     isDragging: false,
+    dragDeltaTotal: 0,
     lastX: 0,
     lastY: 0,
     /** @type {?{x: number, y: number}} */
@@ -302,7 +305,7 @@ export class KonvaIText extends Konva.Shape {
     this.fillBox = fillBox;
     this.editTextCallback = editTextCallback;
 
-    this.addEventListener('dblclick', () => {
+    this.addEventListener('dblclick dbltap', () => {
       KonvaIText.addTextInput(this);
     });
   }
@@ -442,11 +445,6 @@ export class KonvaOcrWord extends KonvaIText {
     this.topBaseline = topBaseline;
     this.topBaselineOrig = topBaseline;
 
-    this.addEventListener('click', () => {
-      KonvaOcrWord.addControls(this);
-      KonvaOcrWord.updateUI();
-    });
-
     this.addEventListener('transformstart', () => {
       this.lastX = this.x();
       this.lastWidth = this.width();
@@ -502,8 +500,6 @@ export class KonvaOcrWord extends KonvaIText {
    */
   static addControls = (textNode) => {
     destroyControls();
-    canvasObj.selectedWordArr.length = 0;
-    canvasObj.selectedWordArr.push(textNode);
     const trans = new Konva.Transformer({
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
@@ -521,38 +517,48 @@ const trans = new Konva.Transformer({
 });
 layerText.add(trans);
 
+/**
+ *
+ * @param {Object} box
+ * @param {number} box.width
+ * @param {number} box.height
+ * @param {number} box.x
+ * @param {number} box.y
+ */
 function selectWords(box) {
   const shapes = getCanvasWords();
 
   canvasObj.selectedWordArr.length = 0;
   canvasObj.selectedWordArr.push(...shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect())));
 
-  canvasObj.selectedWordArr.forEach((shape) => {
-    const rect = new Konva.Rect({
-      x: shape.x(),
-      y: shape.y(),
-      width: shape.width(),
-      height: shape.height(),
-      stroke: 'rgba(40,123,181,1)',
-      visible: true,
-      // disable events to not interrupt with events
-      listening: false,
+  if (canvasObj.selectedWordArr.length > 1) {
+    canvasObj.selectedWordArr.forEach((shape) => {
+      const rect = new Konva.Rect({
+        x: shape.x(),
+        y: shape.y(),
+        width: shape.width(),
+        height: shape.height(),
+        stroke: 'rgba(40,123,181,1)',
+        strokeWidth: 1,
+        visible: true,
+        // disable events to not interrupt with events
+        listening: false,
+      });
+      layerText.add(rect);
+      canvasObj.controlArr.push(rect);
     });
-    layerText.add(rect);
-    canvasObj.controlArr.push(rect);
-  });
+  } else if (canvasObj.selectedWordArr.length === 1) {
+    KonvaOcrWord.addControls(canvasObj.selectedWordArr[0]);
+    KonvaOcrWord.updateUI();
+  }
 }
 
 let clearSelectionStart = false;
 
 stage.on('mousedown touchstart', (e) => {
-  // do nothing if we mousedown on any shape
-  // if (e.target !== stage) {
-  //   return;
-  // }
-  if (canvasObj.isTouchScreen && canvasObj.mode === 'select') return;
-
   clearSelectionStart = e.target instanceof Konva.Stage || e.target instanceof Konva.Image;
+
+  if (canvasObj.isTouchScreen && canvasObj.mode === 'select') return;
 
   // Move selection rectangle to top.
   selectingRectangle.zIndex(layerText.children.length - 1);
@@ -592,19 +598,44 @@ stage.on('mousemove touchmove', (e) => {
   layerText.batchDraw();
 });
 
-stage.on('mouseup touchend', (e) => {
+stage.on('mouseup touchend', (event) => {
+  event.evt.preventDefault();
+  event.evt.stopPropagation();
+
   // Delete any current selections if either (1) this is a new selection or (2) nothing is being clicked.
   // Clicks must pass this check on both start and end.
   // This prevents accidentally clearing a selection when the user is trying to highlight specific letters, but the mouse up happens over another word.
-  if (clearSelectionStart && (canvasObj.selecting || e.target instanceof Konva.Stage || e.target instanceof Konva.Image)) destroyControls();
+  if (clearSelectionStart && (canvasObj.selecting || event.target instanceof Konva.Stage || event.target instanceof Konva.Image)) destroyControls();
 
-  // do nothing if we didn't start selection
   canvasObj.selecting = false;
-  if (!selectingRectangle.visible()) {
+
+  // Handle drag or pinch to zoom event.
+  // `isDragging` will be true even for a touch event, so a minimum distance moved is required to differentiate between a click and a drag.
+  if ((canvasObj.drag.isDragging && canvasObj.drag.dragDeltaTotal > 10) || canvasObj.drag.isPinching) {
+    stopDragPinch(event);
     return;
   }
 
-  e.evt.preventDefault();
+  // Handle the case where no rectangle is drawn (i.e. a click event).
+  // Clicks are handled in the same function as rectangle selections as using separate events lead to issues when multiple events were triggered.
+  if (!selectingRectangle.visible()) {
+    const ptr = stage.getPointerPosition();
+    if (!ptr) return;
+    const box = {
+      x: ptr.x, y: ptr.y, width: 1, height: 1,
+    };
+    if (canvasObj.mode === 'select' && !globalThis.layoutMode) {
+      selectWords(box);
+      KonvaOcrWord.updateUI();
+      layerText.batchDraw();
+    } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
+      selectLayoutBoxes(box);
+      KonvaLayout.updateUI();
+      layerText.batchDraw();
+    }
+    return;
+  }
+
   // update visibility in timeout, so we can check it in click event
   selectingRectangle.visible(false);
 
@@ -810,6 +841,7 @@ stage.on('wheel', (event) => {
  */
 const startDrag = (event) => {
   canvasObj.drag.isDragging = true;
+  canvasObj.drag.dragDeltaTotal = 0;
   canvasObj.drag.lastX = event.evt.x;
   canvasObj.drag.lastY = event.evt.y;
   event.evt.preventDefault();
@@ -845,6 +877,13 @@ const executeDrag = (event) => {
   if (canvasObj.drag.isDragging) {
     const deltaX = event.evt.x - canvasObj.drag.lastX;
     const deltaY = event.evt.y - canvasObj.drag.lastY;
+
+    if (Math.round(deltaX) === 0 && Math.round(deltaY) === 0) return;
+
+    // This is an imprecise heuristic, so not bothering to calculate distance properly.
+    canvasObj.drag.dragDeltaTotal += Math.abs(deltaX);
+    canvasObj.drag.dragDeltaTotal += Math.abs(deltaY);
+
     canvasObj.drag.lastX = event.evt.x;
     canvasObj.drag.lastY = event.evt.y;
 
@@ -873,6 +912,7 @@ const executePinchTouch = (event) => {
   const touch1 = event.evt.touches[0];
   const touch2 = event.evt.touches[1];
   if (!touch1 || !touch2) return;
+  canvasObj.drag.isPinching = true;
   const p1 = {
     x: touch1.clientX,
     y: touch1.clientY,
@@ -901,6 +941,8 @@ const executePinchTouch = (event) => {
  */
 const stopDragPinch = (event) => {
   canvasObj.drag.isDragging = false;
+  canvasObj.drag.isPinching = false;
+  canvasObj.drag.dragDeltaTotal = 0;
   canvasObj.drag.lastCenter = null;
   canvasObj.drag.lastDist = null;
 };
@@ -912,17 +954,14 @@ stage.on('mousedown', (event) => {
   }
 });
 stage.on('mousemove', executeDrag);
-stage.on('mouseup', (event) => {
-  if (event.evt.button === 1) { // Middle mouse button
-    stopDragPinch(event);
-  }
-});
 
 stage.on('touchstart', (event) => {
-  if (event.evt.touches[1]) {
-    executePinchTouch(event);
-  } else {
-    startDragTouch(event);
+  if (canvasObj.mode === 'select') {
+    if (event.evt.touches[1]) {
+      executePinchTouch(event);
+    } else {
+      startDragTouch(event);
+    }
   }
 });
 
@@ -933,7 +972,6 @@ stage.on('touchmove', (event) => {
     executeDragTouch(event);
   }
 });
-stage.on('touchend', stopDragPinch);
 
 /**
  * Adjusts the layer's scale based on key press combinations for zooming in and out.
@@ -1076,9 +1114,9 @@ export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false)
  * @param {OcrPage} page
  */
 export function renderPage(page) {
-  const matchIdArr = ocr.getMatchingWordIds(search.search, globalThis.ocrAll.active[cp.n]);
+  const matchIdArr = ocr.getMatchingWordIds(search.search, ocrAll.active[cp.n]);
 
-  const angle = globalThis.pageMetricsArr[cp.n].angle || 0;
+  const angle = pageMetricsArr[cp.n].angle || 0;
 
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
 

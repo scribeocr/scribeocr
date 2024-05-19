@@ -4,7 +4,7 @@ import ocr from './objects/ocrObjects.js';
 
 import { saveAs } from './miscUtils.js';
 
-import { layoutAll } from './objects/layoutObjects.js';
+import { layoutAll } from './containers/miscContainer.js';
 
 /**
  * @param {OcrPage} pageObj

@@ -4,6 +4,7 @@
 // Canvas Coordinate Space: coordinate space of canvas, used for user interactions
 
 import { imageCache } from './containers/imageContainer.js';
+import { pageMetricsArr } from './containers/miscContainer.js';
 
 /**
  * @typedef {Object} BoundingBox
@@ -26,7 +27,7 @@ function rotateBoundingBox(boundingBox, rotateAngle, n) {
   let angleAdjXRect = 0;
   let angleAdjYRect = 0;
 
-  const pageDims = globalThis.pageMetricsArr[n].dims;
+  const pageDims = pageMetricsArr[n].dims;
 
   const sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
   const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
@@ -102,7 +103,7 @@ async function ocrToImage(ocrCoords, n, binary = false) {
 
   if (imageN.rotated) {
   // Otherwise, we must also account for rotation applied by the canvas
-    const rotateAngle = (globalThis.pageMetricsArr[n].angle || 0) * -1;
+    const rotateAngle = (pageMetricsArr[n].angle || 0) * -1;
 
     rotateBoundingBox(ocrCoords, rotateAngle, n);
   }

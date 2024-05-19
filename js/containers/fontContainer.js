@@ -10,7 +10,9 @@
 import opentype from '../../lib/opentype.module.min.js';
 
 if (typeof process === 'object') {
+  // @ts-ignore
   globalThis.self = globalThis;
+  // @ts-ignore
   const { createRequire } = await import('module');
   globalThis.require = createRequire(import.meta.url);
   const { fileURLToPath } = await import('url');
@@ -18,6 +20,7 @@ if (typeof process === 'object') {
   globalThis.__dirname = dirname(fileURLToPath(import.meta.url));
   // Browser worker case
 } else if (globalThis.document === undefined) {
+  // @ts-ignore
   globalThis.window = {};
 }
 
@@ -62,15 +65,16 @@ const getFontAbsPath = (src) => { // eslint-disable-line no-shadow
 export function checkMultiFontMode(fontMetricsObj) {
   let defaultFontObs = 0;
   let namedFontObs = 0;
-  if (fontMetricsObj.Default?.obs) { defaultFontObs += fontMetricsObj.Default?.obs; }
-  if (fontMetricsObj.SerifDefault?.obs) { namedFontObs += fontMetricsObj.SerifDefault?.obs; }
-  if (fontMetricsObj.SansDefault?.obs) { namedFontObs += fontMetricsObj.SansDefault?.obs; }
+  if (fontMetricsObj.Default?.obs) { defaultFontObs += (fontMetricsObj.Default?.obs || 0); }
+  if (fontMetricsObj.SerifDefault?.obs) { namedFontObs += (fontMetricsObj.SerifDefault?.obs || 0); }
+  if (fontMetricsObj.SansDefault?.obs) { namedFontObs += (fontMetricsObj.SansDefault?.obs || 0); }
 
   return namedFontObs > defaultFontObs;
 }
 
 /**
  * @param {string|ArrayBuffer} src
+ * @param {?Object.<string, number>} [kerningPairs=null]
  */
 export async function loadOpentype(src, kerningPairs = null) {
   const font = typeof (src) === 'string' ? await opentype.load(src) : await opentype.parse(src, { lowMemory: false });
@@ -267,9 +271,9 @@ export function FontContainerFamily(fontNormal, fontItalic, fontSmallCaps) {
  * @param {string|ArrayBuffer} italicSrc
  * @param {string|ArrayBuffer} smallCapsSrc
  * @param {boolean} opt
- * @param {*} normalKerningPairs
- * @param {*} italicKerningPairs
- * @param {*} smallCapsKerningPairs
+ * @param {?Object.<string, number>} normalKerningPairs
+ * @param {?Object.<string, number>} italicKerningPairs
+ * @param {?Object.<string, number>} smallCapsKerningPairs
  */
 export async function loadFontContainerFamily(family, type, normalSrc, italicSrc, smallCapsSrc, opt = false, normalKerningPairs = null, italicKerningPairs = null, smallCapsKerningPairs = null) {
   const scrNormal = getFontAbsPath(normalSrc);

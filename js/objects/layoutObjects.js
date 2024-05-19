@@ -26,6 +26,3 @@ export function LayoutPage() {
   /** @type {Object<string, LayoutBox>} */
   this.boxes = {};
 }
-
-/** @type {Array<LayoutPage>} */
-export const layoutAll = [];

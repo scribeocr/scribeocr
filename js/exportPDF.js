@@ -8,6 +8,7 @@ import { fontAll } from './containers/fontContainer.js';
 import { createEmbeddedFontType1, createEmbeddedFontType0 } from './exportPDFFonts.js';
 
 import ocr from './objects/ocrObjects.js';
+import { pageMetricsArr } from './containers/miscContainer.js';
 
 // Creates 3 PDF objects necessary to embed font.
 // These are (1) the font dictionary, (2) the font descriptor, and (3) the font file,
@@ -137,8 +138,8 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
 
   // Add pages
   for (let i = minpage; i <= maxpage; i++) {
-    const angle = globalThis.pageMetricsArr[i].angle || 0;
-    const { dims } = globalThis.pageMetricsArr[i];
+    const angle = pageMetricsArr[i].angle || 0;
+    const { dims } = pageMetricsArr[i];
 
     // eslint-disable-next-line no-await-in-loop
     pdfOut += (await ocrPageToPDF(hocrArr[i], dims, dimsLimit, objectI, 2, pageResourceStr, pdfFonts,

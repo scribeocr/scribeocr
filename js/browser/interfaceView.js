@@ -8,8 +8,8 @@ import {
   layerOverlay, getWordFillOpacity,
 } from './interfaceCanvas.js';
 import Konva from '../../lib/konva/index.js';
-import { layoutAll } from '../objects/layoutObjects.js';
 import { renderLayoutBoxes } from './interfaceLayout.js';
+import { pageMetricsArr } from '../containers/miscContainer.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
@@ -77,7 +77,7 @@ function setWordColorOpacity() {
 export const selectDisplayMode = async (x) => {
   setWordColorOpacity();
 
-  const pageDims = globalThis.pageMetricsArr[cp.n].dims;
+  const pageDims = pageMetricsArr[cp.n].dims;
 
   // Include a background image if appropriate
   if (['invis', 'proof', 'eval'].includes(x) && (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode)) {
@@ -91,10 +91,10 @@ export const selectDisplayMode = async (x) => {
     let rotation = 0;
     // Case where rotation is requested and the image has not already been rotated
     if (autoRotateCheckboxElem.checked && !backgroundImage.rotated) {
-      rotation = (globalThis.pageMetricsArr[cp.n].angle || 0) * -1;
+      rotation = (pageMetricsArr[cp.n].angle || 0) * -1;
     // Case where rotation is not requested and the image has already been rotated
     } else if (!autoRotateCheckboxElem.checked && backgroundImage.rotated) {
-      rotation = globalThis.pageMetricsArr[cp.n].angle || 0;
+      rotation = pageMetricsArr[cp.n].angle || 0;
     }
 
     const scaleX = backgroundImage.upscaled ? 0.5 : 1;
@@ -154,7 +154,7 @@ export const selectDisplayMode = async (x) => {
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
   if (globalThis.state.canvasDimsN !== cp.n) {
-    setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked);
+    setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, showConflictsElem.checked);
 
     globalThis.state.canvasDimsN = cp.n;
   // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,

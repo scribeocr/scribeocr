@@ -25,11 +25,13 @@ import {
 } from './js/fontContainerMain.js';
 import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer.js';
 
-import { fontMetricsObj } from './js/containers/miscContainer.js';
+import {
+  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
+} from './js/containers/miscContainer.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 
-import { layoutAll, LayoutPage } from './js/objects/layoutObjects.js';
+import { LayoutPage } from './js/objects/layoutObjects.js';
 
 import {
   checkCharWarn, setFontMetricsAll,
@@ -38,7 +40,7 @@ import {
 import { drawDebugImages } from './js/debug.js';
 
 import {
-  getRandomAlphanum, quantile, sleep, occurrences, readTextFile, replaceObjectProperties, showHideElem,
+  getRandomAlphanum, sleep, occurrences, readTextFile, replaceObjectProperties, showHideElem,
 } from './js/miscUtils.js';
 import { getAllFileEntries } from './js/drag-and-drop.js';
 
@@ -56,7 +58,7 @@ import {
 } from './js/browser/interfaceLayout.js';
 
 import {
-  stage, layerText, layerBackground, destroyWords, canvasObj,
+  stage, layerText, destroyWords, canvasObj,
   getCanvasWords, setCanvasWidthHeightZoom, destroyLayoutBoxes, destroyControls, renderPage,
 } from './js/browser/interfaceCanvas.js';
 
@@ -324,7 +326,7 @@ showDebugLegendElem.addEventListener('input', () => {
   } else {
     showHideElem(legendCanvasParentDivElem, true);
   }
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, false);
+  setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, false);
 });
 
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
@@ -377,6 +379,8 @@ enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
+const extractTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('extractTextCheckbox'));
+const omitNativeTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
 
 const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
@@ -473,7 +477,7 @@ document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', ()
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
   if (showConflictsElem.checked) showDebugImages();
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked);
+  setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, showConflictsElem.checked);
 });
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
@@ -664,7 +668,7 @@ export const search = {
 
 // Highlight words that include substring in the current page
 function highlightcp(text) {
-  const matchIdArr = ocr.getMatchingWordIds(text, globalThis.ocrAll.active[cp.n]);
+  const matchIdArr = ocr.getMatchingWordIds(text, ocrAll.active[cp.n]);
 
   getCanvasWords().forEach((wordObj) => {
     if (matchIdArr.includes(wordObj.word.id)) {
@@ -674,7 +678,7 @@ function highlightcp(text) {
     }
   });
 
-  layerText.draw();
+  layerText.batchDraw();
 }
 
 function findAllMatches(text) {
@@ -693,13 +697,13 @@ function findAllMatches(text) {
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
-  if (!globalThis.ocrAll.active[cp.n]) {
+  if (!ocrAll.active[cp.n]) {
     search.text[cp.n] = '';
     return;
   }
 
   // Re-extract text from XML
-  search.text[cp.n] = ocr.getPageText(globalThis.ocrAll.active[cp.n]);
+  search.text[cp.n] = ocr.getPageText(ocrAll.active[cp.n]);
 
   if (search.search) {
     // Count matches in current page
@@ -716,10 +720,10 @@ function updateFindStats() {
 // We do this once (and then perform incremental updates) to avoid having to parse XML
 // with every search.
 function extractTextAll() {
-  const maxValue = globalThis.ocrAll.active.length;
+  const maxValue = ocrAll.active.length;
 
   for (let g = 0; g < maxValue; g++) {
-    search.text[g] = ocr.getPageText(globalThis.ocrAll.active[g]);
+    search.text[g] = ocr.getPageText(ocrAll.active[g]);
   }
 }
 
@@ -787,8 +791,8 @@ function setBuildLabel(x) {
  */
 export function initOCRVersion(label) {
   // Initialize a new array on `ocrAll` if one does not already exist
-  if (!globalThis.ocrAll[label]) {
-    globalThis.ocrAll[label] = Array(globalThis.pageCount);
+  if (!ocrAll[label]) {
+    ocrAll[label] = Array(globalThis.pageCount);
   }
 
   // Exit early for 'Tesseract Latest'. This is used under the hood and users should not see it.
@@ -805,12 +809,11 @@ export function initOCRVersion(label) {
   displayLabelOptionsElem.appendChild(option);
 }
 
-globalThis.ocrAll = { active: [] };
 export function setCurrentHOCR(x) {
   const currentLabel = displayLabelTextElem.innerHTML.trim();
   if (!x.trim() || x === currentLabel) return;
 
-  globalThis.ocrAll.active = globalThis.ocrAll[x];
+  ocrAll.active = ocrAll[x];
   displayLabelTextElem.innerHTML = x;
 
   if (displayModeElem.value === 'eval') {
@@ -822,43 +825,52 @@ export function setCurrentHOCR(x) {
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
-document.getElementById('navBar')?.addEventListener('click', (e) => {
+const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
+navBarElem.addEventListener('click', (e) => {
   canvasObj.mode = 'select';
   globalThis.touchScrollMode = true; // Is this still used?
 }, true);
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
-document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', (e) => {
-  if (!e?.target || e.target.id !== 'nav-recognize') return;
-  hideProgress('import-eval-progress-collapse');
-  hideProgress('recognize-recognize-progress-collapse');
+const navRecognizeElem = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
+navRecognizeElem.addEventListener('hidden.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-recognize') {
+    hideProgress('import-eval-progress-collapse');
+    hideProgress('recognize-recognize-progress-collapse');
+  }
 });
 
-document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', (e) => {
-  if (e.target.id !== 'nav-download') return;
-  hideProgress('generate-download-progress-collapse');
+const navDownloadElem = /** @type {HTMLDivElement} */(document.getElementById('nav-download'));
+navDownloadElem.addEventListener('hidden.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-download') {
+    hideProgress('generate-download-progress-collapse');
+  }
 });
 
-document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) => {
-  if (e.target.id !== 'nav-layout') return;
-  globalThis.layoutMode = true;
-  // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
-  Konva.autoDrawEnabled = true;
-  if (!layoutAll[cp.n]) return;
+const navLayoutElem = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
+navLayoutElem.addEventListener('hidden.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
+    globalThis.layoutMode = true;
+    // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
+    Konva.autoDrawEnabled = true;
+    if (!layoutAll[cp.n]) return;
 
-  toggleSelectableWords(false);
-  destroyControls();
-  renderLayoutBoxes();
+    toggleSelectableWords(false);
+    destroyControls();
+    renderLayoutBoxes();
+  }
 });
 
-document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) => {
-  if (e.target.id !== 'nav-layout') return;
-  globalThis.layoutMode = false;
-  Konva.autoDrawEnabled = false;
-  toggleSelectableWords(true);
-  destroyLayoutBoxes();
-  destroyControls();
+const navEvalElem = /** @type {HTMLDivElement} */(document.getElementById('nav-eval'));
+navEvalElem.addEventListener('hidden.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-eval') {
+    globalThis.layoutMode = false;
+    Konva.autoDrawEnabled = false;
+    toggleSelectableWords(true);
+    destroyLayoutBoxes();
+    destroyControls();
+  }
 });
 
 /**
@@ -874,6 +886,8 @@ document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) 
  */
 export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false, autoHide = false) {
   const progressCollapse = document.getElementById(id);
+
+  if (!progressCollapse) throw new Error(`Progress bar with ID ${id} not found.`);
 
   const progressCollapseObj = new bootstrap.Collapse(progressCollapse, { toggle: false });
 
@@ -923,16 +937,15 @@ function hideProgress(id) {
 }
 
 function createGroundTruthClick() {
-  if (!globalThis.ocrAll['Ground Truth']) {
-    globalThis.ocrAll['Ground Truth'] = Array(globalThis.ocrAll.active.length);
-  }
-
-  for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
-    globalThis.ocrAll['Ground Truth'][i] = structuredClone(globalThis.ocrAll.active[i]);
+  if (!ocrAll['Ground Truth']) {
+    ocrAll['Ground Truth'] = Array(ocrAll.active.length);
   }
 
   // Use whatever the current HOCR is as a starting point
-  // globalThis.ocrAll["Ground Truth"] = structuredClone(globalThis.ocrAll.active);
+  for (let i = 0; i < ocrAll.active.length; i++) {
+    ocrAll['Ground Truth'][i] = structuredClone(ocrAll.active[i]);
+  }
+
   initOCRVersion('Ground Truth');
   setCurrentHOCR('Ground Truth');
 
@@ -979,17 +992,17 @@ async function compareGroundTruthClick(n) {
       const imgBinary = await imageCache.getBinary(n);
 
       const res = await globalThis.gs.compareHOCR({
-        pageA: globalThis.ocrAll.active[i],
-        pageB: globalThis.ocrAll['Ground Truth'][i],
+        pageA: ocrAll.active[i],
+        pageB: ocrAll['Ground Truth'][i],
         binaryImage: imgBinary,
-        pageMetricsObj: globalThis.pageMetricsArr[i],
+        pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
 
       // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
       // rather than the currently active OCR.
       // Assigning to "active" will overwrite whatever version the user currently has open.
-      globalThis.ocrAll.active[i] = res.page;
+      ocrAll.active[i] = res.page;
 
       globalThis.evalStats[i] = res.metrics;
       if (globalThis.debugLog === undefined) globalThis.debugLog = '';
@@ -1001,17 +1014,17 @@ async function compareGroundTruthClick(n) {
   const imgBinary = await imageCache.getBinary(n);
 
   const res = await globalThis.gs.compareHOCR({
-    pageA: globalThis.ocrAll.active[n],
-    pageB: globalThis.ocrAll['Ground Truth'][n],
+    pageA: ocrAll.active[n],
+    pageB: ocrAll['Ground Truth'][n],
     binaryImage: imgBinary,
-    pageMetricsObj: globalThis.pageMetricsArr[n],
+    pageMetricsObj: pageMetricsArr[n],
     options: compOptions,
   });
 
   // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
   // rather than the currently active OCR.
   // Assigning to "active" will overwrite whatever version the user currently has open.
-  globalThis.ocrAll.active[n] = res.page;
+  ocrAll.active[n] = res.page;
   if (globalThis.debugLog === undefined) globalThis.debugLog = '';
   globalThis.debugLog += res.debugLog;
 
@@ -1114,17 +1127,14 @@ export async function showDebugImages() {
 
 globalThis.showDebugImages = showDebugImages;
 
-/** @type {Array<PageMetrics>} */
-globalThis.pageMetricsArr = [];
-
 // Resets the environment.
 async function clearFiles() {
   cp.n = 0;
   globalThis.pageCount = 0;
-  globalThis.ocrAll.active = [];
+  ocrAll.active = [];
   layoutAll.length = 0;
   replaceObjectProperties(fontMetricsObj);
-  globalThis.pageMetricsArr = [];
+  pageMetricsArr.length = 0;
   globalThis.convertPageWarn = [];
 
   if (globalThis.binaryScheduler) {
@@ -1218,7 +1228,7 @@ async function importFiles(curFiles) {
 
   globalThis.state.downloadReady = false;
 
-  globalThis.pageMetricsArr = [];
+  pageMetricsArr.length = 0;
 
   // Sort files into (1) HOCR files, (2) image files, or (3) unsupported using extension.
   /** @type {Array<File>} */
@@ -1268,7 +1278,7 @@ async function importFiles(curFiles) {
 
   // Extract text from PDF document
   // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
-  globalThis.inputDataModes.extractTextMode = document.getElementById('extractTextCheckbox').checked && globalThis.inputDataModes.pdfMode && !xmlModeImport;
+  globalThis.inputDataModes.extractTextMode = extractTextCheckboxElem.checked && globalThis.inputDataModes.pdfMode && !xmlModeImport;
   const stextModeExtract = globalThis.inputDataModes.extractTextMode;
 
   addLayoutBoxElem.disabled = false;
@@ -1356,7 +1366,7 @@ async function importFiles(curFiles) {
     const pdfFile = pdfFilesAll[0];
     globalThis.inputFileNames = [pdfFile.name];
 
-    const skipText = document.getElementById('omitNativeTextCheckbox').checked;
+    const skipText = omitNativeTextCheckboxElem.checked;
 
     // Start loading mupdf workers as soon as possible, without waiting for `pdfFile.arrayBuffer` (which can take a while).
     imageCache.getMuPDFScheduler();
@@ -1529,7 +1539,7 @@ async function importFiles(curFiles) {
 
       imageCache.nativeSrc[i] = imgWrapper;
 
-      globalThis.pageMetricsArr[i] = new PageMetrics(imageDims);
+      pageMetricsArr[i] = new PageMetrics(imageDims);
       globalThis.convertPageActiveProgress.increment();
 
       if (i === 0) displayPage(0);
@@ -1556,8 +1566,8 @@ async function importFiles(curFiles) {
       // Skip this step if optimization info was already restored from a previous session.
       if (!existingOpt) {
         await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
-        setFontMetricsAll(globalThis.ocrAll.active);
-        await runFontOptimizationBrowser(globalThis.ocrAll.active);
+        setFontMetricsAll(ocrAll.active);
+        await runFontOptimizationBrowser(ocrAll.active);
       }
       downloadElem.disabled = false;
       globalThis.state.downloadReady = true;
@@ -1603,11 +1613,11 @@ async function readLayoutFile(file) {
         const width = value?.system?.width;
         const height = value?.system?.height;
         if (width && height) {
-          value.coords.left *= (globalThis.pageMetricsArr[i].dims.width / width);
-          value.coords.right *= (globalThis.pageMetricsArr[i].dims.width / width);
+          value.coords.left *= (pageMetricsArr[i].dims.width / width);
+          value.coords.right *= (pageMetricsArr[i].dims.width / width);
 
-          value.coords.top *= (globalThis.pageMetricsArr[i].dims.height / height);
-          value.coords.bottom *= (globalThis.pageMetricsArr[i].dims.height / height);
+          value.coords.top *= (pageMetricsArr[i].dims.height / height);
+          value.coords.bottom *= (pageMetricsArr[i].dims.height / height);
         }
       }
     }
@@ -1645,7 +1655,7 @@ globalThis.state = {
 
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n, loadXML = true) {
-  let ocrData = globalThis.ocrAll.active?.[n];
+  let ocrData = ocrAll.active?.[n];
 
   // Return early if there is not enough data to render a page yet
   // (0) Necessary info is not defined yet
@@ -1654,7 +1664,7 @@ export async function renderPageQueue(n, loadXML = true) {
   const noInput = !globalThis.inputDataModes.xmlMode[n] && !(globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode);
   // (2) XML data should exist but does not (yet)
   const xmlMissing = globalThis.inputDataModes.xmlMode[n]
-    && (ocrData === undefined || ocrData === null || globalThis.pageMetricsArr[n].dims === undefined);
+    && (ocrData === undefined || ocrData === null || pageMetricsArr[n].dims === undefined);
 
   const imageMissing = false;
   const pdfMissing = false;
@@ -1683,7 +1693,7 @@ export async function renderPageQueue(n, loadXML = true) {
       console.time();
       await compareGroundTruthClick(n);
       // ocrData must be re-assigned after comparing to ground truth or it will not update.
-      ocrData = globalThis.ocrAll.active?.[n];
+      ocrData = ocrAll.active?.[n];
       console.timeEnd();
     }
   }

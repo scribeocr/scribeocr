@@ -5,9 +5,9 @@ import { getRandomAlphanum, showHideElem } from '../miscUtils.js';
 
 import { displayPage, cp } from '../../main.js';
 
-import { createCells } from '../exportWriteTabular.js';
+import { LayoutBox } from '../objects/layoutObjects.js';
 
-import { LayoutBox, layoutAll } from '../objects/layoutObjects.js';
+import { layoutAll, ocrAll } from '../containers/miscContainer.js';
 
 import ocr from '../objects/ocrObjects.js';
 
@@ -26,6 +26,14 @@ const dataPreviewElem = /** @type {HTMLElement} */ (document.getElementById('dat
 
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
 
+/**
+ *
+ * @param {Object} box
+ * @param {number} box.width
+ * @param {number} box.height
+ * @param {number} box.x
+ * @param {number} box.y
+ */
 export function selectLayoutBoxes(box) {
   const shapes = getCanvasLayoutBoxes();
 
@@ -197,7 +205,7 @@ export class KonvaLayout extends Konva.Rect {
 
     if (layoutBox.type === 'order') {
       // Create dummy ocr data for the order box
-      const pageObj = new ocr.OcrPage(cp.n, globalThis.ocrAll.active[cp.n].dims);
+      const pageObj = new ocr.OcrPage(cp.n, ocrAll.active[cp.n].dims);
       const box = {
         left: 0, right: 0, top: 0, bottom: 0,
       };
@@ -246,8 +254,6 @@ export class KonvaLayout extends Konva.Rect {
    */
   static addControls = (konvaLayout) => {
     destroyControls();
-    canvasObj.selectedLayoutBoxArr.length = 0;
-    canvasObj.selectedLayoutBoxArr.push(konvaLayout);
     const trans = new Konva.Transformer({
       enabledAnchors: ['middle-left', 'middle-right', 'top-center', 'bottom-center'],
       rotateEnabled: false,
@@ -300,7 +306,7 @@ function renderLayoutBox(layoutBox) {
 // Update tabular data preview table
 // Should be run (1) on edits (to either OCR data or layout), (2) when a new page is rendered,
 // or (3) when settings are changed to enable/disable tabular export mode.
-export function updateDataPreview() {
+export async function updateDataPreview() {
   if (!globalThis.inputFileNames) return;
 
   const showDataPreview = enableXlsxExportElem.checked;
@@ -322,5 +328,6 @@ export function updateDataPreview() {
   }
   if (addPageNumberColumnMode) extraCols.push(String(cp.n + 1));
 
-  dataPreviewElem.innerHTML = createCells(globalThis.ocrAll.active[cp.n], layoutAll[cp.n], extraCols, 0, false, true).content;
+  const createCells = (await import('../exportWriteTabular.js')).createCells;
+  dataPreviewElem.innerHTML = createCells(ocrAll.active[cp.n], layoutAll[cp.n], extraCols, 0, false, true).content;
 }

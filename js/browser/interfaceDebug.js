@@ -10,7 +10,7 @@ import { drawDebugImages } from '../debug.js';
 import {
   stage, layerText, canvasObj, setCanvasWidthHeightZoom,
 } from './interfaceCanvas.js';
-import { layoutAll } from '../objects/layoutObjects.js';
+import { layoutAll, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
@@ -34,7 +34,7 @@ export async function evalSelectedLine() {
 
   const imageBinary = await imageCache.getBinary(cp.n);
 
-  const pageMetricsObj = globalThis.pageMetricsArr[cp.n];
+  const pageMetricsObj = pageMetricsArr[cp.n];
 
   const lineObj = ocr.cloneLine(word0.line);
 
@@ -56,13 +56,13 @@ export async function evalSelectedLine() {
 
   await drawDebugImages({ ctx: globalThis.ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
 
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, true);
+  setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, true);
 }
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 
 export async function downloadCanvas() {
-  const dims = globalThis.pageMetricsArr[cp.n].dims;
+  const dims = pageMetricsArr[cp.n].dims;
 
   const startX = layerText.x() > 0 ? Math.round(layerText.x()) : 0;
   const startY = layerText.y() > 0 ? Math.round(layerText.y()) : 0;
@@ -103,8 +103,8 @@ export async function downloadAllImages() {
 globalThis.downloadAllImages = downloadAllImages;
 
 export function getExcludedText() {
-  for (let i = 0; i <= globalThis.ocrAll.active.length; i++) {
-    const textArr = getExcludedTextPage(globalThis.ocrAll.active[i], layoutAll[i]);
+  for (let i = 0; i <= ocrAll.active.length; i++) {
+    const textArr = getExcludedTextPage(ocrAll.active[i], layoutAll[i]);
 
     if (textArr.length > 0) {
       textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));
