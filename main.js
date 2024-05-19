@@ -1438,7 +1438,7 @@ async function importFiles(curFiles) {
       // Restore layout data from previous session (if applicable)
       if (ocrData.layoutObj) {
         for (let i = 0; i < ocrData.layoutObj.length; i++) {
-          layoutAll[i] = ocrData.layoutObj[i].layout;
+          layoutAll[i] = ocrData.layoutObj[i];
         }
         existingLayout = true;
       }

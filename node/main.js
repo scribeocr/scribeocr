@@ -140,13 +140,22 @@ async function main(func, params) {
     extractTextMode: false,
   };
 
+  let existingLayout = false;
+
   /** @type {("hocr" | "abbyy" | "stext")} */
   let ocrFormat = 'hocr';
   if (['conf', 'check', 'eval', 'overlay'].includes(func)) {
     if (params.ocrFile) {
-      const ocr1 = await importOCRFiles([params.ocrFile]);
-      globalThis.hocrCurrentRaw = ocr1.hocrRaw;
-      if (ocr1.abbyyMode) ocrFormat = 'abbyy';
+      const ocrData = await importOCRFiles([params.ocrFile]);
+      globalThis.hocrCurrentRaw = ocrData.hocrRaw;
+      if (ocrData.abbyyMode) ocrFormat = 'abbyy';
+
+      if (ocrData.layoutObj) {
+        for (let i = 0; i < ocrData.layoutObj.length; i++) {
+          layoutAll[i] = ocrData.layoutObj[i];
+        }
+        existingLayout = true;
+      }
     } else {
       throw new Error(`OCR file required for function ${func} but not provided.`);
     }
@@ -200,8 +209,10 @@ async function main(func, params) {
   // }
   const pageCount = pageCountImage ?? pageCountHOCR;
 
-  for (let i = 0; i < pageCount; i++) {
-    layoutAll[i] = new LayoutPage();
+  if (!existingLayout) {
+    for (let i = 0; i < pageCount; i++) {
+      layoutAll[i] = new LayoutPage();
+    }
   }
 
   globalThis.ocrAll = {
