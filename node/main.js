@@ -176,7 +176,6 @@ async function main(func, params) {
   const printConf = func === 'check' || func === 'conf' || params.printConf || false;
 
   const pageCountHOCR = globalThis.hocrCurrentRaw ? globalThis.hocrCurrentRaw.length : 0;
-  pageMetricsArr = [];
 
   let fileData;
   let mupdfWorker;
