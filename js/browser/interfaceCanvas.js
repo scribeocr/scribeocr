@@ -660,7 +660,7 @@ const handleWheel = (event) => {
     destroyControls();
   } else { // Scroll vertically
     destroyControls();
-    panAllLayers({ deltaY: event.evt.deltaY * -1 });
+    panAllLayers({ deltaX: event.evt.deltaX * -1, deltaY: event.evt.deltaY * -1 });
   }
 };
 
