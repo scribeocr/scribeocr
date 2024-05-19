@@ -35,6 +35,7 @@ const styleItalicButton = new bootstrap.Button(styleItalicElem);
 const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
+Konva.autoDrawEnabled = false;
 Konva.dragButtons = [0];
 
 const stage = new Konva.Stage({
@@ -394,7 +395,7 @@ export class KonvaIText extends Konva.Shape {
     sel.addRange(range);
 
     textNode.hide();
-    layerText.draw();
+    textNode.draw();
   };
 }
 

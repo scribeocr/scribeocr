@@ -148,7 +148,7 @@ export const selectDisplayMode = async (x) => {
   }
 
   if (globalThis.layoutMode) {
-    renderLayoutBoxes(Object.values(layoutAll[cp.n].boxes));
+    renderLayoutBoxes();
   }
 
   // When the page changes, the dimensions and zoom are modified.
@@ -159,9 +159,9 @@ export const selectDisplayMode = async (x) => {
     globalThis.state.canvasDimsN = cp.n;
   // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,
   // so we only need to call it here if the zoom is not changed.
-  } else {
-    layerText.draw();
   }
+
+  stage.batchDraw();
 
   enableDisableDownloadPDFAlert();
 };

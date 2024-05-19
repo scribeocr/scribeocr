@@ -32,6 +32,10 @@ export function selectLayoutBoxes(box) {
   canvasObj.selectedLayoutBoxArr.length = 0;
   canvasObj.selectedLayoutBoxArr.push(...shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect())));
 
+  // When the rectangle is dragged by the user, the selection rectangle currently does not move with it.
+  // As only a single layout box can be dragged at a time, this filter prevents this visual issue.
+  if (canvasObj.selectedLayoutBoxArr.length < 2) return;
+
   canvasObj.selectedLayoutBoxArr.forEach((shape) => {
     const rect = new Konva.Rect({
       x: shape.x(),

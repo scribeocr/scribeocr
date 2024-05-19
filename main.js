@@ -7,6 +7,8 @@
 // TODO: This file contains many miscellaneous functions and would benefit from being refactored.
 // Additionally, various data stored as global variables
 
+import Konva from './lib/konva/index.js';
+
 import { importOCRFiles } from './js/importOCR.js';
 
 import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
@@ -841,7 +843,8 @@ document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', 
 document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) => {
   if (e.target.id !== 'nav-layout') return;
   globalThis.layoutMode = true;
-
+  // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
+  Konva.autoDrawEnabled = true;
   if (!layoutAll[cp.n]) return;
 
   toggleSelectableWords(false);
@@ -852,6 +855,7 @@ document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) 
 document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) => {
   if (e.target.id !== 'nav-layout') return;
   globalThis.layoutMode = false;
+  Konva.autoDrawEnabled = false;
   toggleSelectableWords(true);
   destroyLayoutBoxes();
   destroyControls();
