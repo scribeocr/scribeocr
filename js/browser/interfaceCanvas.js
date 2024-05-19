@@ -645,22 +645,66 @@ stage.on('mouseup touchend', (e) => {
   layerText.batchDraw();
 });
 
+/**
+ * Check if the wheel event was from a track pad by applying a series of heuristics.
+ * This function should be generally reliable, although it is inherently heuristic-based,
+ * so should be refined over time as more edge cases are encountered.
+ * @param {WheelEvent} event
+ */
+const checkTrackPad = (event) => {
+  // DeltaY is generally 100 or 120 for mice.
+  if ([100, 120].includes(event.deltaY)) return false;
+  // DeltaY will be multiplied by the zoom level.
+  // While the user should not be zoomed in, this is accounted for here as a safeguard.
+  // The `window.devicePixelRatio` value is generally the zoom level.
+  // The known exceptions are:
+  // For high-density (e.g. Retina) displays, `window.devicePixelRatio` is 2, but the zoom level is 1.
+  // For Safari, this is bugged and `window.devicePixelRatio` does not scale with zooming.
+  // https://bugs.webkit.org/show_bug.cgi?id=124862
+  if ([100, 120].includes(Math.abs(Math.round(event.deltaY * window.devicePixelRatio * 1e5) / 1e5))) return false;
+
+  // If delta is an integer, it is likely from a mouse.
+  if (Math.round(event.deltaY) === event.deltaY) return false;
+
+  // If none of the above conditions were met, it is likely from a track pad.
+  return true;
+};
+
 // Function to handle wheel event
 /**
  * Handles the wheel event to scroll the layer vertically.
- * @param {KonvaWheelEvent} event - The wheel event from the user's mouse.
+ * @param {WheelEvent} event - The wheel event from the user's mouse.
  */
 const handleWheel = (event) => {
-  event.evt.preventDefault();
+  event.preventDefault();
+  event.stopPropagation();
 
-  if (event.evt.ctrlKey) { // Zoom in or out
-    const scaleBy = event.evt.deltaY > 0 ? 0.9 : 1.1;
+  if (event.ctrlKey) { // Zoom in or out
+    // Track pads report precise zoom values (many digits after the decimal) while mouses only move in fixed (integer) intervals.
+    const trackPadMode = checkTrackPad(event);
+
+    let delta = event.deltaY;
+
+    // If `deltaMode` is `1` (less common), units are in lines rather than pixels.
+    if (event.deltaMode === 1) delta *= 10;
+
+    // Zoom by a greater amount for track pads.
+    // Without this code, zooming would be extremely slow.
+    if (trackPadMode) {
+      delta *= 7;
+      // Cap at the equivalent of ~6 scrolls of a scroll wheel.
+      delta = Math.min(600, Math.max(-720, delta));
+    }
+
+    let scaleBy = 0.999 ** delta;
+    if (scaleBy > 1.1) scaleBy = 1.1;
+    if (scaleBy < 0.9) scaleBy = 0.9;
 
     zoomAllLayers(scaleBy, stage.getPointerPosition());
     destroyControls();
   } else { // Scroll vertically
     destroyControls();
-    panAllLayers({ deltaX: event.evt.deltaX * -1, deltaY: event.evt.deltaY * -1 });
+    panAllLayers({ deltaX: event.deltaX * -1, deltaY: event.deltaY * -1 });
   }
 };
 
@@ -751,7 +795,7 @@ const panAllLayers = ({ deltaX = 0, deltaY = 0 }) => {
 
 // Listen for wheel events on the stage
 stage.on('wheel', (event) => {
-  handleWheel(event);
+  handleWheel(event.evt);
 });
 
 /**
