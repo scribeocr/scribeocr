@@ -10,6 +10,12 @@
       --bs-blue: #287bb5;
     }
 
+    .prevent-select {
+      -webkit-user-select: none; /* Safari */
+      -ms-user-select: none; /* IE 10 and IE 11 */
+      user-select: none; /* Standard syntax */
+    }
+
     /* The min-width should correspond to the "md" breakpoint in bootstrap. */
     @media (max-width: 768px) {
 
@@ -205,22 +211,22 @@
           <div class="col-xl-6 order-3 order-xl-1" id="nav-tab-container">
             <div class="nav nav-tabs" id="nav-tab" role="tablist" style="flex-wrap:nowrap">
 
-              <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse"
+              <a class="nav-link collapsed prevent-select" id="nav-recognize-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
-              <a class="nav-link collapsed" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval"
+              <a class="nav-link collapsed prevent-select" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval"
                 type="button" role="tab" aria-controls="nav-eval" style="display:none">Evaluate</a>
 
-              <a class="nav-link collapsed" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view"
+              <a class="nav-link collapsed prevent-select" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view"
                 type="button" role="tab" aria-controls="nav-view">View</a>
-              <a class="nav-link collapsed" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit"
+              <a class="nav-link collapsed prevent-select" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit"
                 type="button" role="tab" aria-controls="nav-edit">Edit</a>
-              <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout"
+              <a class="nav-link collapsed prevent-select" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout"
                 type="button" role="tab" aria-controls="nav-layout" style="display:none">Layout</a>
 
               <!-- <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout" type="button" role="tab" aria-controls="nav-layout">Layout</a> -->
-              <a class="nav-link collapsed" id="nav-download-tab" data-bs-toggle="collapse"
+              <a class="nav-link collapsed prevent-select" id="nav-download-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</a>
-              <a class="nav-link collapsed" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about"
+              <a class="nav-link collapsed prevent-select" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about"
                 type="button" role="tab" aria-controls="nav-about">Info</a>
 
             </div>
@@ -571,7 +577,7 @@
                     </div>
                     <div class="collapse" id="collapseRange">
                       <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
-                        <input type="range" class="form-range" id="rangeBaseline" max="100">
+                        <input type="range" class="form-range" id="rangeBaseline" max="50">
                       </div>
                     </div>
                     <div class="row">

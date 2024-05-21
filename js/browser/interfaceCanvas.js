@@ -104,6 +104,10 @@ export const destroyControls = () => {
   globalThis.bsCollapse.hide();
   canvasObj.controlArr.forEach((control) => control.destroy());
   canvasObj.controlArr.length = 0;
+
+  canvasObj.selectedWordArr.forEach((shape) => (shape.deselect()));
+  canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.deselect()));
+
   if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
 };
 
@@ -134,23 +138,29 @@ export async function updateWordCanvas(wordI) {
     advanceArr, fontSize, kerningArr, charSpacing, leftSideBearing,
   } = calcWordMetrics(wordI.word);
 
+  const charSpacingFinal = wordI.widthFromOCR ? charSpacing : 0;
+
   const advanceArrTotal = [];
   for (let i = 0; i < advanceArr.length; i++) {
     let leftI = 0;
     leftI += advanceArr[i] || 0;
     leftI += kerningArr[i] || 0;
-    leftI += charSpacing || 0;
+    leftI += charSpacingFinal || 0;
     advanceArrTotal.push(leftI);
   }
 
   wordI.advanceArrTotal = advanceArrTotal;
 
-  wordI.charSpacing = charSpacing;
+  wordI.charSpacing = charSpacingFinal;
 
   // Re-set the x position of the word.
   // This is necessary as changing the font/style/etc. can change the left bearing,
   // which requires shifting the word left/right to maintain the same visual position.
   wordI.x(wordI.visualLeft - leftSideBearing);
+
+  const width = wordI.widthFromOCR ? wordI.word.bbox.right - wordI.word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
+
+  wordI.width(width);
 
   wordI.scaleX(1);
 
@@ -212,18 +222,24 @@ export class KonvaIText extends Konva.Shape {
    * @param {import('../objects/ocrObjects.js').OcrWord} options.word
    * @param {number} [options.rotation=0]
    * @param {boolean} [options.outline=false]
+   * @param {boolean} [options.selected=false]
    * @param {boolean} [options.fillBox=false]
    * @param {number} [options.opacity=1]
    * @param {string} [options.fill='black']
+   * @param {boolean} [options.widthFromOCR=false] - If `true`, the `bbox` property from the `OcrWord` object is considered the actual width of the word.
+   *    This impacts character spacing calculations, and the width property of the Konva text box and transformer.
+   *    Setting to `true` is desirable when using actual OCR data, but not when using dummy data.
    * @param {Function} options.editTextCallback
    */
   constructor({
     visualLeft, yActual, word, rotation = 0,
-    outline = false, fillBox = false, opacity = 1, fill = 'black', editTextCallback,
+    outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', widthFromOCR = false, editTextCallback,
   }) {
     const {
       visualWidth, charSpacing, leftSideBearing, fontSize, charArr, advanceArr, kerningArr,
     } = calcWordMetrics(word);
+
+    const charSpacingFinal = widthFromOCR ? charSpacing : 0;
 
     const scaleX = word.dropcap ? ((word.bbox.right - word.bbox.left) / visualWidth) : 1;
 
@@ -232,17 +248,19 @@ export class KonvaIText extends Konva.Shape {
       let leftI = 0;
       leftI += advanceArr[i] || 0;
       leftI += kerningArr[i] || 0;
-      leftI += charSpacing || 0;
+      leftI += charSpacingFinal || 0;
       advanceArrTotal.push(leftI);
     }
 
     const x = visualLeft - leftSideBearing;
 
+    const width = widthFromOCR ? word.bbox.right - word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
+
     super({
       x,
       // `y` is what Konva sees as the y value, which corresponds to where the top of the interactive box is drawn.
       y: yActual - fontSize * 0.6,
-      width: advanceArrTotal.reduce((a, b) => a + b, 0),
+      width,
       height: fontSize * 0.6,
       rotation,
       opacity,
@@ -255,6 +273,7 @@ export class KonvaIText extends Konva.Shape {
         context.font = `${shape.fontFaceStyle} ${shape.fontSize}px ${shape.fontFaceName}`;
         context.textBaseline = 'alphabetic';
         context.fillStyle = shape.fill();
+        context.lineWidth = 1;
 
         shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
 
@@ -267,6 +286,14 @@ export class KonvaIText extends Konva.Shape {
         }
 
         if (shape.outline) {
+          context.strokeStyle = 'black';
+          context.beginPath();
+          context.rect(0, 0, shape.width(), shape.height());
+          context.stroke();
+        }
+
+        if (shape.selected) {
+          context.strokeStyle = 'rgba(40,123,181,1)';
           context.beginPath();
           context.rect(0, 0, shape.width(), shape.height());
           context.stroke();
@@ -290,7 +317,7 @@ export class KonvaIText extends Konva.Shape {
 
     this.word = word;
     this.charArr = charArr;
-    this.charSpacing = charSpacing;
+    this.charSpacing = charSpacingFinal;
     this.advanceArrTotal = advanceArrTotal;
     this.fontSize = fontSize;
     // `yActual` contains the y value that we want to draw the text at, which is usually the baseline.
@@ -302,12 +329,22 @@ export class KonvaIText extends Konva.Shape {
     this.fontStyleLookup = word.style;
     this.visualLeft = visualLeft;
     this.outline = outline;
+    this.selected = selected;
     this.fillBox = fillBox;
+    this.widthFromOCR = widthFromOCR;
     this.editTextCallback = editTextCallback;
 
     this.addEventListener('dblclick dbltap', () => {
       KonvaIText.addTextInput(this);
     });
+
+    this.select = () => {
+      this.selected = true;
+    };
+
+    this.deselect = () => {
+      this.selected = false;
+    };
   }
 
   /**
@@ -333,6 +370,11 @@ export class KonvaIText extends Konva.Shape {
 
     if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
 
+    if (canvasObj.input) {
+      debugger;
+    }
+
+    console.log('Creating input');
     canvasObj.input = document.createElement('span');
 
     const text = textNode.charArr.join('');
@@ -373,6 +415,7 @@ export class KonvaIText extends Konva.Shape {
     // canvasObj.input.style.overflow = 'hidden';
 
     canvasObj.inputRemove = () => {
+      console.log('Removing input');
       textNode.word.text = ocr.replaceLigatures(canvasObj.input.textContent);
       canvasObj.input.remove();
       canvasObj.input = null;
@@ -415,7 +458,8 @@ export class KonvaOcrWord extends KonvaIText {
    * @param {number} options.rotation
    * @param {string} options.fontStyleLookup
    * @param {string} options.fontFamilyLookup
-   * @param {boolean} options.outline
+   * @param {boolean} options.outline - Draw black outline around text.
+   * @param {boolean} options.selected - Draw blue outline around text.
    * @param {boolean} options.fillBox
    */
   constructor({
@@ -434,6 +478,7 @@ export class KonvaOcrWord extends KonvaIText {
       fillBox,
       opacity,
       fill,
+      widthFromOCR: true,
       editTextCallback: () => {},
     });
 
@@ -532,21 +577,7 @@ function selectWords(box) {
   canvasObj.selectedWordArr.push(...shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect())));
 
   if (canvasObj.selectedWordArr.length > 1) {
-    canvasObj.selectedWordArr.forEach((shape) => {
-      const rect = new Konva.Rect({
-        x: shape.x(),
-        y: shape.y(),
-        width: shape.width(),
-        height: shape.height(),
-        stroke: 'rgba(40,123,181,1)',
-        strokeWidth: 1,
-        visible: true,
-        // disable events to not interrupt with events
-        listening: false,
-      });
-      layerText.add(rect);
-      canvasObj.controlArr.push(rect);
-    });
+    canvasObj.selectedWordArr.forEach((shape) => (shape.select()));
   } else if (canvasObj.selectedWordArr.length === 1) {
     KonvaOcrWord.addControls(canvasObj.selectedWordArr[0]);
     KonvaOcrWord.updateUI();
@@ -599,8 +630,11 @@ stage.on('mousemove touchmove', (e) => {
 });
 
 stage.on('mouseup touchend', (event) => {
-  event.evt.preventDefault();
-  event.evt.stopPropagation();
+  // For dragging layout boxes, other events are needed to top the drag.
+  if (!globalThis.layoutMode) {
+    event.evt.preventDefault();
+    event.evt.stopPropagation();
+  }
 
   // Delete any current selections if either (1) this is a new selection or (2) nothing is being clicked.
   // Clicks must pass this check on both start and end.
@@ -609,12 +643,14 @@ stage.on('mouseup touchend', (event) => {
 
   canvasObj.selecting = false;
 
-  // Handle drag or pinch to zoom event.
+  // Return early if this was a drag or pinch rather than a selection.
   // `isDragging` will be true even for a touch event, so a minimum distance moved is required to differentiate between a click and a drag.
-  if ((canvasObj.drag.isDragging && canvasObj.drag.dragDeltaTotal > 10) || canvasObj.drag.isPinching) {
+  if (event.evt.button === 1 || (canvasObj.drag.isDragging && canvasObj.drag.dragDeltaTotal > 10) || canvasObj.drag.isPinching) {
     stopDragPinch(event);
     return;
   }
+  // `stopDragPinch` runs regardless of whether this actually is a drag/pinch, since `isDragging` can be enabled for taps.
+  stopDragPinch(event);
 
   // Handle the case where no rectangle is drawn (i.e. a click event).
   // Clicks are handled in the same function as rectangle selections as using separate events lead to issues when multiple events were triggered.
@@ -631,7 +667,7 @@ stage.on('mouseup touchend', (event) => {
     } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
       selectLayoutBoxes(box);
       KonvaLayout.updateUI();
-      layerText.batchDraw();
+      layerOverlay.batchDraw();
     }
     return;
   }

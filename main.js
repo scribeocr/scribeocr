@@ -60,6 +60,7 @@ import {
 import {
   stage, layerText, destroyWords, canvasObj,
   getCanvasWords, setCanvasWidthHeightZoom, destroyLayoutBoxes, destroyControls, renderPage,
+  layerOverlay,
 } from './js/browser/interfaceCanvas.js';
 
 // Third party libraries
@@ -329,7 +330,7 @@ showDebugLegendElem.addEventListener('input', () => {
   } else {
     showHideElem(legendCanvasParentDivElem, true);
   }
-  setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, false);
+  if (pageMetricsArr[cp.n]?.dims) setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, false);
 });
 
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
@@ -848,7 +849,7 @@ navDownloadElem.addEventListener('hidden.bs.collapse', (e) => {
 });
 
 const navLayoutElem = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
-navLayoutElem.addEventListener('hidden.bs.collapse', (e) => {
+navLayoutElem.addEventListener('show.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
     globalThis.layoutMode = true;
     // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
@@ -861,14 +862,14 @@ navLayoutElem.addEventListener('hidden.bs.collapse', (e) => {
   }
 });
 
-const navEvalElem = /** @type {HTMLDivElement} */(document.getElementById('nav-eval'));
-navEvalElem.addEventListener('hidden.bs.collapse', (e) => {
-  if (e.target instanceof HTMLElement && e.target.id === 'nav-eval') {
+navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
     globalThis.layoutMode = false;
     Konva.autoDrawEnabled = false;
     toggleSelectableWords(true);
     destroyLayoutBoxes();
     destroyControls();
+    layerOverlay.batchDraw();
   }
 });
 

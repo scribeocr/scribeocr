@@ -12,7 +12,7 @@ import { layoutAll, ocrAll } from '../containers/miscContainer.js';
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  getCanvasWords, layerOverlay, canvasObj, destroyLayoutBoxes, destroyControls, layerText, getCanvasLayoutBoxes, updateWordCanvas,
+  getCanvasWords, layerOverlay, canvasObj, destroyLayoutBoxes, destroyControls, getCanvasLayoutBoxes, updateWordCanvas,
   KonvaIText,
 } from './interfaceCanvas.js';
 
@@ -44,20 +44,7 @@ export function selectLayoutBoxes(box) {
   // As only a single layout box can be dragged at a time, this filter prevents this visual issue.
   if (canvasObj.selectedLayoutBoxArr.length < 2) return;
 
-  canvasObj.selectedLayoutBoxArr.forEach((shape) => {
-    const rect = new Konva.Rect({
-      x: shape.x(),
-      y: shape.y(),
-      width: shape.width(),
-      height: shape.height(),
-      stroke: 'rgba(40,123,181,1)',
-      visible: true,
-      // disable events to not interrupt with events
-      listening: false,
-    });
-    layerText.add(rect);
-    canvasObj.controlArr.push(rect);
-  });
+  canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.select()));
 }
 
 /**
@@ -173,6 +160,12 @@ export function renderLayoutBoxes() {
 
 const colors = ['rgba(24,166,217,0.5)', 'rgba(73,104,115,0.5)', 'rgba(52,217,169,0.5)', 'rgba(222,117,109,0.5)', 'rgba(194,95,118,0.5)'];
 
+/**
+ * Subclass of Konva.Rect that represents a layout box, which is a rectangle that represents a region of the page, along with an optional editable textbox.
+ * The textbox is implemented by manually adding a second Konva object, that moves when the rectangle moves, and is deleted when the rectangle is deleted.
+ * This was chosen rather than the built-in Konva "group" object, which appears to offer a cleaner way to group objects,
+ * as preliminary testing showed the latter method was less performant and less flexible.
+ */
 export class KonvaLayout extends Konva.Rect {
   /**
    *
@@ -198,10 +191,28 @@ export class KonvaLayout extends Konva.Rect {
       width,
       height,
       fill,
-      stroke: 'rgba(0,0,255,0.75)',
-      strokeWidth: 1,
+      stroke: 'rgba(40,123,181,0.5)',
+      strokeWidth: 2,
       draggable: true,
     });
+
+    this.select = () => {
+      this.stroke('rgba(40,123,181,1)');
+      this.fill(this.fill().replace(/,[\d.]+\)/, ',0.5)'));
+    };
+
+    this.deselect = () => {
+      this.stroke('rgba(40,123,181,0.5)');
+      this.fill(this.fill().replace(/,[\d.]+\)/, ',0.25)'));
+    };
+
+    this.destroyRect = this.destroy;
+    this.destroy = () => {
+      if (this.label) this.label.destroy();
+      this.label = undefined;
+      this.destroyRect();
+      return this;
+    };
 
     if (layoutBox.type === 'order') {
       // Create dummy ocr data for the order box
@@ -236,6 +247,7 @@ export class KonvaLayout extends Konva.Rect {
     });
 
     this.addEventListener('dragmove', () => {
+      if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
       if (this.label) {
         this.label.visualLeft = this.x() + this.width() * 0.5;
         this.label.yActual = this.y() + this.height() * 0.5;
@@ -284,11 +296,13 @@ export class KonvaLayout extends Konva.Rect {
    * This should be called when any word is selected, after adding them to `canvasObj.selectedWordArr`.
    */
   static updateUI = () => {
-    const wordFirst = canvasObj.selectedLayoutBoxArr[0];
+    const tablesSelectedArr = Array.from(new Set(canvasObj.selectedLayoutBoxArr.map((x) => (x.layoutBox.table))));
 
-    if (!wordFirst) return;
-
-    setLayoutBoxTableElem.value = String(wordFirst.layoutBox.table + 1);
+    if (tablesSelectedArr.length === 1) {
+      setLayoutBoxTableElem.value = String(tablesSelectedArr[0] + 1);
+    } else {
+      setLayoutBoxTableElem.value = '';
+    }
   };
 }
 

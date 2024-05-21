@@ -196,7 +196,7 @@ export function toggleSuperSelectedWords() {
 /** @type {Array<KonvaOcrWord>} */
 let objectsLine;
 
-const baselineRange = 50;
+const baselineRange = 25;
 export function adjustBaseline() {
   globalThis.bsCollapse.toggle();
 
