@@ -7,10 +7,9 @@
 // TODO: This file contains many miscellaneous functions and would benefit from being refactored.
 // Additionally, various data stored as global variables
 
-import { importOCRFiles } from './js/importOCR.js';
+import Konva from './lib/konva/index.js';
 
-import { renderPage } from './js/browser/renderPageCanvas.js';
-import coords from './js/coordinates.js';
+import { importOCRFiles } from './js/importOCR.js';
 
 import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
 
@@ -18,7 +17,6 @@ import { recognizeAllClick, getLangText } from './js/browser/interfaceRecognize.
 
 import { handleDownload, setFormatLabel, updatePdfPagesLabel } from './js/browser/interfaceDownload.js';
 
-import { recognizePage } from './js/recognizeConvert.js';
 import { convertOCRAllBrowser } from './js/recognizeConvertBrowser.js';
 
 import { runFontOptimization } from './js/fontEval.js';
@@ -27,22 +25,22 @@ import {
 } from './js/fontContainerMain.js';
 import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer.js';
 
-import { fontMetricsObj } from './js/containers/miscContainer.js';
-
-import { calcLineFontSize } from './js/fontUtils.js';
+import {
+  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
+} from './js/containers/miscContainer.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
+
+import { LayoutPage } from './js/objects/layoutObjects.js';
 
 import {
   checkCharWarn, setFontMetricsAll,
 } from './js/fontStatistics.js';
 
-import { ITextWord } from './js/objects/fabricObjects.js';
-
 import { drawDebugImages } from './js/debug.js';
 
 import {
-  getRandomAlphanum, quantile, sleep, occurrences, readTextFile, replaceObjectProperties,
+  getRandomAlphanum, sleep, occurrences, readTextFile, replaceObjectProperties, showHideElem,
 } from './js/miscUtils.js';
 import { getAllFileEntries } from './js/drag-and-drop.js';
 
@@ -55,13 +53,15 @@ import {
 } from './js/browser/interfaceEdit.js';
 
 import {
-  addLayoutBoxClick, deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
-  updateDataPreview, setLayoutBoxTable, clearLayoutBoxes, renderLayoutBoxes, enableObjectCaching, toggleSelectableWords,
+  deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
+  updateDataPreview, setLayoutBoxTable, renderLayoutBoxes, toggleSelectableWords,
 } from './js/browser/interfaceLayout.js';
 
-import { canvas, resetCanvasEventListeners } from './js/browser/interfaceCanvas.js';
-
-import { combineData } from './js/modifyOCR.js';
+import {
+  stage, layerText, destroyWords, canvasObj,
+  getCanvasWords, setCanvasWidthHeightZoom, destroyLayoutBoxes, destroyControls, renderPage,
+  layerOverlay,
+} from './js/browser/interfaceCanvas.js';
 
 // Third party libraries
 import Tesseract from './tess/tesseract.esm.min.js';
@@ -130,21 +130,6 @@ const fontAllRawReady = loadFontContainerAllRaw().then((x) => {
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
-globalThis.canvas = canvas;
-
-// Quick fix to get VSCode type errors to stop
-// Long-term should see if there is a way to get types to work with fabric.js
-const { fabric } = globalThis;
-
-// Global variables containing fonts represented as OpenType.js objects and array buffers (respectively)
-let leftGlobal;
-
-// Edit canvas.js object defaults
-// Disable movement for all fabric objects
-fabric.Object.prototype.hasControls = false;
-fabric.Object.prototype.lockMovementX = true;
-fabric.Object.prototype.lockMovementY = true;
-
 /**
  * @typedef inputDataModes
  * @type {object}
@@ -175,7 +160,6 @@ globalThis.inputDataModes = {
  * @typedef cp
  * @type {Object}
  * @property {Number} n - an ID.
- * @property {any} backgroundImage - an ID.
  * @property {Object} backgroundOpts - an ID.
  * @property {Number} renderStatus - an ID.
  * @property {number} renderNum - an ID.
@@ -183,7 +167,6 @@ globalThis.inputDataModes = {
 /** @type {cp} */
 export const cp = {
   n: 0,
-  backgroundImage: null,
   backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
   renderStatus: 0,
   renderNum: 0,
@@ -192,12 +175,12 @@ export const cp = {
 const zone = /** @type {HTMLInputElement} */ (document.getElementById('uploadDropZone'));
 
 const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
-openFileInputElem.addEventListener('change', (event) => {
-  if (event.target.files.length === 0) return;
+openFileInputElem.addEventListener('change', () => {
+  if (!openFileInputElem.files || openFileInputElem.files.length === 0) return;
 
-  importFiles(event.target.files);
+  importFiles(openFileInputElem.files);
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(zone.parentElement, false);
+  showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
 });
 
 let highlightActiveCt = 0;
@@ -224,6 +207,8 @@ zone.addEventListener('dragleave', (event) => {
 zone.addEventListener('drop', async (event) => {
   // Prevent navigation.
   event.preventDefault();
+
+  if (!event.dataTransfer) return;
   const items = await getAllFileEntries(event.dataTransfer.items);
 
   const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => x.file(resolve, reject))));
@@ -231,12 +216,12 @@ zone.addEventListener('drop', async (event) => {
 
   if (files.length === 0) return;
 
-  event.target.classList.remove('highlight');
+  zone.classList.remove('highlight');
 
   importFiles(files);
 
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(zone.parentElement, false);
+  showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
 });
 
 /**
@@ -345,7 +330,7 @@ showDebugLegendElem.addEventListener('input', () => {
   } else {
     showHideElem(legendCanvasParentDivElem, true);
   }
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, false);
+  if (pageMetricsArr[cp.n]?.dims) setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, false);
 });
 
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
@@ -361,19 +346,6 @@ const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElemen
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 
 const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
-
-/**
- * Adds or removes CSS attribute `display:none` for HTML element.
- * @param {HTMLElement} elem
- * @param {boolean} show
- */
-export const showHideElem = (elem, show = true) => {
-  const styleCurrent = elem?.getAttribute('style');
-  let styleNew = styleCurrent?.replace(/;?display\s*:\s*\w+/, '') || '';
-  if (!show) styleNew += ';display:none;';
-
-  elem?.setAttribute('style', styleNew);
-};
 
 enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab')), enableEvalElem.checked));
 
@@ -411,6 +383,8 @@ enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
+const extractTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('extractTextCheckbox'));
+const omitNativeTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
 
 const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
@@ -443,7 +417,7 @@ rangeBaselineElem.addEventListener('mouseup', () => { adjustBaselineRangeChange(
 
 document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedWords);
 
-document.getElementById('addWord')?.addEventListener('click', addWordClick);
+document.getElementById('addWord')?.addEventListener('click', () => (canvasObj.mode = 'addWord'));
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
@@ -470,17 +444,13 @@ confThreshHighElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 confThreshMedElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-// const autoMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoMarginCheckbox'));
-// const showMarginCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('showMarginCheckbox'));
 autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n); });
-// autoMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n) });
-// showMarginCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n) });
 document.getElementById('outlineWords')?.addEventListener('click', () => { renderPageQueue(cp.n); });
 document.getElementById('outlineLines')?.addEventListener('click', () => { renderPageQueue(cp.n); });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
-displayLabelOptionsElem.addEventListener('click', (e) => { if (e.target.className !== 'dropdown-item') return; setCurrentHOCR(e.target.innerHTML); });
+displayLabelOptionsElem.addEventListener('click', () => { if (displayLabelOptionsElem.className !== 'dropdown-item') return; setCurrentHOCR(displayLabelOptionsElem.innerHTML); });
 
 const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
 downloadElem.addEventListener('click', handleDownload);
@@ -511,7 +481,7 @@ document.getElementById('buildLabelOptionVanilla')?.addEventListener('click', ()
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
   if (showConflictsElem.checked) showDebugImages();
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, showConflictsElem.checked);
+  setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, showConflictsElem.checked);
 });
 
 const recognizeAllElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
@@ -520,22 +490,26 @@ recognizeAllElem.addEventListener('click', () => {
 });
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
-recognizeAreaElem.addEventListener('click', () => recognizeAreaClick(false));
+recognizeAreaElem.addEventListener('click', () => (canvasObj.mode = 'recognizeArea'));
 const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
-recognizeWordElem.addEventListener('click', () => recognizeAreaClick(true));
+recognizeWordElem.addEventListener('click', () => (canvasObj.mode = 'recognizeWord'));
 
 const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
-debugPrintCoordsElem.addEventListener('click', () => recognizeAreaClick(true, true));
+debugPrintCoordsElem.addEventListener('click', () => () => (canvasObj.mode = 'printCoords'));
 
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
 const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
 const addLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeExclude'));
 const addLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeDataColumn'));
 
-addLayoutBoxElem.addEventListener('click', () => addLayoutBoxClick());
-addLayoutBoxTypeOrderElem.addEventListener('click', () => addLayoutBoxClick('order'));
-addLayoutBoxTypeExcludeElem.addEventListener('click', () => addLayoutBoxClick('exclude'));
-addLayoutBoxTypeDataColumnElem.addEventListener('click', () => addLayoutBoxClick('dataColumn'));
+const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
+
+addLayoutBoxElem.addEventListener('click', () => {
+  canvasObj.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataColumn' }[layoutBoxTypeElem.textContent];
+});
+addLayoutBoxTypeOrderElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxOrder'));
+addLayoutBoxTypeExcludeElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxExclude'));
+addLayoutBoxTypeDataColumnElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxDataColumn'));
 
 const deleteLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('deleteLayoutBox'));
 deleteLayoutBoxElem.addEventListener('click', () => deleteLayoutBoxClick());
@@ -608,8 +582,8 @@ const reflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementBy
 const pageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
 
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
-reflowCheckboxElem.addEventListener('click', (event) => {
-  if (event.target.checked) {
+reflowCheckboxElem.addEventListener('click', () => {
+  if (reflowCheckboxElem.checked) {
     pageBreaksCheckboxElem.disabled = false;
   } else {
     pageBreaksCheckboxElem.disabled = true;
@@ -621,8 +595,8 @@ const docxReflowCheckboxElem = /** @type {HTMLInputElement} */(document.getEleme
 const docxPageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
 
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
-docxReflowCheckboxElem.addEventListener('click', (event) => {
-  if (event.target.checked) {
+docxReflowCheckboxElem.addEventListener('click', () => {
+  if (docxReflowCheckboxElem.checked) {
     docxPageBreaksCheckboxElem.disabled = false;
   } else {
     docxPageBreaksCheckboxElem.disabled = true;
@@ -698,24 +672,17 @@ export const search = {
 
 // Highlight words that include substring in the current page
 function highlightcp(text) {
-  const matchIdArr = ocr.getMatchingWordIds(text, globalThis.ocrAll.active[cp.n]);
+  const matchIdArr = ocr.getMatchingWordIds(text, ocrAll.active[cp.n]);
 
-  const selectedObjects = window.canvas.getObjects();
-  const selectedN = selectedObjects.length;
-  for (let i = 0; i < selectedN; i++) {
-    // Using the presence of a wordID property to indicate this object represents an OCR word
-    if (selectedObjects[i]?.word) {
-      if (matchIdArr.includes(selectedObjects[i].word.id)) {
-        selectedObjects[i].textBackgroundColor = '#4278f550';
-        selectedObjects[i].dirty = true;
-      } else if (selectedObjects[i].textBackgroundColor) {
-        selectedObjects[i].textBackgroundColor = '';
-        selectedObjects[i].dirty = true;
-      }
+  getCanvasWords().forEach((wordObj) => {
+    if (matchIdArr.includes(wordObj.word.id)) {
+      wordObj.fillBox = true;
+    } else {
+      wordObj.fillBox = false;
     }
-  }
+  });
 
-  canvas.renderAll();
+  layerText.batchDraw();
 }
 
 function findAllMatches(text) {
@@ -734,13 +701,13 @@ function findAllMatches(text) {
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
-  if (!globalThis.ocrAll.active[cp.n]) {
+  if (!ocrAll.active[cp.n]) {
     search.text[cp.n] = '';
     return;
   }
 
   // Re-extract text from XML
-  search.text[cp.n] = ocr.getPageText(globalThis.ocrAll.active[cp.n]);
+  search.text[cp.n] = ocr.getPageText(ocrAll.active[cp.n]);
 
   if (search.search) {
     // Count matches in current page
@@ -757,10 +724,10 @@ function updateFindStats() {
 // We do this once (and then perform incremental updates) to avoid having to parse XML
 // with every search.
 function extractTextAll() {
-  const maxValue = globalThis.ocrAll.active.length;
+  const maxValue = ocrAll.active.length;
 
   for (let g = 0; g < maxValue; g++) {
-    search.text[g] = ocr.getPageText(globalThis.ocrAll.active[g]);
+    search.text[g] = ocr.getPageText(ocrAll.active[g]);
   }
 }
 
@@ -828,8 +795,8 @@ function setBuildLabel(x) {
  */
 export function initOCRVersion(label) {
   // Initialize a new array on `ocrAll` if one does not already exist
-  if (!globalThis.ocrAll[label]) {
-    globalThis.ocrAll[label] = Array(globalThis.pageCount);
+  if (!ocrAll[label]) {
+    ocrAll[label] = Array(globalThis.pageCount);
   }
 
   // Exit early for 'Tesseract Latest'. This is used under the hood and users should not see it.
@@ -846,12 +813,11 @@ export function initOCRVersion(label) {
   displayLabelOptionsElem.appendChild(option);
 }
 
-globalThis.ocrAll = { active: [] };
 export function setCurrentHOCR(x) {
   const currentLabel = displayLabelTextElem.innerHTML.trim();
   if (!x.trim() || x === currentLabel) return;
 
-  globalThis.ocrAll.active = globalThis.ocrAll[x];
+  ocrAll.active = ocrAll[x];
   displayLabelTextElem.innerHTML = x;
 
   renderPageQueue(cp.n);
@@ -859,42 +825,52 @@ export function setCurrentHOCR(x) {
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
-document.getElementById('navBar')?.addEventListener('click', (e) => {
-  newWordInit = true;
-  resetCanvasEventListeners();
-  globalThis.touchScrollMode = true;
+const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
+navBarElem.addEventListener('click', (e) => {
+  canvasObj.mode = 'select';
+  globalThis.touchScrollMode = true; // Is this still used?
 }, true);
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
-document.getElementById('nav-recognize')?.addEventListener('hidden.bs.collapse', (e) => {
-  if (!e?.target || e.target.id !== 'nav-recognize') return;
-  hideProgress('import-eval-progress-collapse');
-  hideProgress('recognize-recognize-progress-collapse');
+const navRecognizeElem = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
+navRecognizeElem.addEventListener('hidden.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-recognize') {
+    hideProgress('import-eval-progress-collapse');
+    hideProgress('recognize-recognize-progress-collapse');
+  }
 });
 
-document.getElementById('nav-download')?.addEventListener('hidden.bs.collapse', (e) => {
-  if (e.target.id !== 'nav-download') return;
-  hideProgress('generate-download-progress-collapse');
+const navDownloadElem = /** @type {HTMLDivElement} */(document.getElementById('nav-download'));
+navDownloadElem.addEventListener('hidden.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-download') {
+    hideProgress('generate-download-progress-collapse');
+  }
 });
 
-document.getElementById('nav-layout')?.addEventListener('show.bs.collapse', (e) => {
-  if (e.target.id !== 'nav-layout') return;
-  globalThis.layoutMode = true;
+const navLayoutElem = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
+navLayoutElem.addEventListener('show.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
+    globalThis.layoutMode = true;
+    // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
+    Konva.autoDrawEnabled = true;
+    if (!layoutAll[cp.n]) return;
 
-  if (!globalThis.layout[cp.n]) return;
-  if (!fabric.Object.prototype.objectCaching) enableObjectCaching();
-
-  toggleSelectableWords(false);
-
-  renderLayoutBoxes(Object.keys(globalThis.layout[cp.n].boxes));
+    toggleSelectableWords(false);
+    destroyControls();
+    renderLayoutBoxes();
+  }
 });
 
-document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) => {
-  if (e.target.id !== 'nav-layout') return;
-  globalThis.layoutMode = false;
-  toggleSelectableWords(true);
-  clearLayoutBoxes();
+navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
+    globalThis.layoutMode = false;
+    Konva.autoDrawEnabled = false;
+    toggleSelectableWords(true);
+    destroyLayoutBoxes();
+    destroyControls();
+    layerOverlay.batchDraw();
+  }
 });
 
 /**
@@ -910,6 +886,8 @@ document.getElementById('nav-layout')?.addEventListener('hide.bs.collapse', (e) 
  */
 export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false, autoHide = false) {
   const progressCollapse = document.getElementById(id);
+
+  if (!progressCollapse) throw new Error(`Progress bar with ID ${id} not found.`);
 
   const progressCollapseObj = new bootstrap.Collapse(progressCollapse, { toggle: false });
 
@@ -948,8 +926,9 @@ export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI =
 
 // Hides progress bar if completed
 function hideProgress(id) {
-  const progressCollapse = document.getElementById(id);
-  if (['collapse show', 'collapsing'].includes(progressCollapse.getAttribute('class'))) {
+  const progressCollapse = /** @type {HTMLDivElement} */(document.getElementById(id));
+  const classStr = progressCollapse.getAttribute('class');
+  if (classStr && ['collapse show', 'collapsing'].includes(classStr)) {
     const progressBar = progressCollapse.getElementsByClassName('progress-bar')[0];
     if (parseInt(progressBar.getAttribute('aria-valuenow')) >= parseInt(progressBar.getAttribute('aria-valuemax'))) {
       progressCollapse.setAttribute('class', 'collapse');
@@ -958,16 +937,15 @@ function hideProgress(id) {
 }
 
 function createGroundTruthClick() {
-  if (!globalThis.ocrAll['Ground Truth']) {
-    globalThis.ocrAll['Ground Truth'] = Array(globalThis.ocrAll.active.length);
-  }
-
-  for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
-    globalThis.ocrAll['Ground Truth'][i] = structuredClone(globalThis.ocrAll.active[i]);
+  if (!ocrAll['Ground Truth']) {
+    ocrAll['Ground Truth'] = Array(ocrAll.active.length);
   }
 
   // Use whatever the current HOCR is as a starting point
-  // globalThis.ocrAll["Ground Truth"] = structuredClone(globalThis.ocrAll.active);
+  for (let i = 0; i < ocrAll.active.length; i++) {
+    ocrAll['Ground Truth'][i] = structuredClone(ocrAll.active[i]);
+  }
+
   initOCRVersion('Ground Truth');
   setCurrentHOCR('Ground Truth');
 
@@ -1019,17 +997,17 @@ async function compareGroundTruthClick(n) {
       const imgBinary = await imageCache.getBinary(n);
 
       const res = await globalThis.gs.compareHOCR({
-        pageA: globalThis.ocrAll.active[i],
-        pageB: globalThis.ocrAll['Ground Truth'][i],
+        pageA: ocrAll.active[i],
+        pageB: ocrAll['Ground Truth'][i],
         binaryImage: imgBinary,
-        pageMetricsObj: globalThis.pageMetricsArr[i],
+        pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
 
       // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
       // rather than the currently active OCR.
       // Assigning to "active" will overwrite whatever version the user currently has open.
-      globalThis.ocrAll.active[i] = res.page;
+      ocrAll.active[i] = res.page;
 
       globalThis.evalStats[i] = res.metrics;
       if (globalThis.debugLog === undefined) globalThis.debugLog = '';
@@ -1041,17 +1019,17 @@ async function compareGroundTruthClick(n) {
   const imgBinary = await imageCache.getBinary(n);
 
   const res = await globalThis.gs.compareHOCR({
-    pageA: globalThis.ocrAll.active[n],
-    pageB: globalThis.ocrAll['Ground Truth'][n],
+    pageA: ocrAll.active[n],
+    pageB: ocrAll['Ground Truth'][n],
     binaryImage: imgBinary,
-    pageMetricsObj: globalThis.pageMetricsArr[n],
+    pageMetricsObj: pageMetricsArr[n],
     options: compOptions,
   });
 
   // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
   // rather than the currently active OCR.
   // Assigning to "active" will overwrite whatever version the user currently has open.
-  globalThis.ocrAll.active[n] = res.page;
+  ocrAll.active[n] = res.page;
   if (globalThis.debugLog === undefined) globalThis.debugLog = '';
   globalThis.debugLog += res.debugLog;
 
@@ -1154,341 +1132,14 @@ export async function showDebugImages() {
 
 globalThis.showDebugImages = showDebugImages;
 
-let rect1;
-
-/**
- * Recognize area selected by user in Tesseract.
- *
- * @param {boolean} [wordMode=false] - Assume selection is single word.
- * @param {boolean} [printCoordsOnly=false] - Print rect coords only, do not run recognition. Used for debugging.
- *
- * Note: This function assumes OCR data already exists, which this function is adding to.
- * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all".
- * Even if recognizing an page for the first time using "recognize area" did not produce an error,
- * it would still be problematic, as running "recognize all" afterwards would overwrite everything.
- */
-function recognizeAreaClick(wordMode = false, printCoordsOnly = false) {
-  globalThis.touchScrollMode = false;
-
-  canvas.on('mouse:down', (o) => {
-    const pointer = canvas.getPointer(o.e);
-    origX = pointer.x;
-    origY = pointer.y;
-    rect1 = new fabric.Rect({
-      left: origX,
-      top: origY,
-      originX: 'left',
-      originY: 'top',
-      width: pointer.x - origX,
-      height: pointer.y - origY,
-      angle: 0,
-      fill: 'rgba(255,0,0,0.5)',
-      transparentCorners: false,
-    });
-    canvas.add(rect1);
-    canvas.renderAll();
-    canvas.on('mouse:move', (o) => {
-      const pointer = canvas.getPointer(o.e);
-
-      if (origX > pointer.x) {
-        rect1.set({ left: Math.abs(pointer.x) });
-      }
-      if (origY > pointer.y) {
-        rect1.set({ top: Math.abs(pointer.y) });
-      }
-
-      rect1.set({ width: Math.abs(origX - pointer.x) });
-      rect1.set({ height: Math.abs(origY - pointer.y) });
-
-      canvas.renderAll();
-    });
-  }, { once: true });
-
-  // mouse:up:before must be used so this code runs ahead of fabric internal logic.
-  // Without this changes to active selection caused by mouse movement may change rect object.
-  canvas.on('mouse:up:before', async (o) => {
-    globalThis.touchScrollMode = true;
-
-    if (rect1.width < 4 || rect1.height < 4) {
-      canvas.remove(rect1);
-      return;
-    }
-
-    const canvasCoords = {
-      left: rect1.left, top: rect1.top, width: rect1.width, height: rect1.height,
-    };
-
-    // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
-    const imageRotated = true;
-    const canvasRotated = autoRotateCheckboxElem.checked;
-    const angle = globalThis.pageMetricsArr[cp.n].angle || 0;
-
-    const imageCoords = coords.canvasToImage(canvasCoords, imageRotated, canvasRotated, cp.n, angle);
-
-    canvas.remove(rect1);
-
-    if (printCoordsOnly) {
-      const debugCoords = {
-        left: imageCoords.left,
-        top: imageCoords.top,
-        right: imageCoords.left + imageCoords.width,
-        bottom: imageCoords.top + imageCoords.height,
-        topInv: globalThis.pageMetricsArr[cp.n].dims.height - imageCoords.top,
-        bottomInv: globalThis.pageMetricsArr[cp.n].dims.height - (imageCoords.top + imageCoords.height),
-      };
-      console.log(debugCoords);
-      return;
-    }
-
-    // When a user is manually selecting words to recognize, they are assumed to be in the same block.
-    const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
-    const n = cp.n;
-
-    if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
-    const res0 = await recognizePage(globalThis.gs, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
-
-    const resLegacy = await res0[0];
-    const resLSTM = await res0[1];
-
-    const debug = false;
-    if (debug) {
-      console.log(resLegacy.recognize);
-    }
-
-    const pageObjLSTM = resLSTM.convert.lstm.pageObj;
-    const pageObjLegacy = resLegacy.convert.legacy.pageObj;
-
-    const debugLabel = 'recognizeArea';
-
-    if (debugLabel && !globalThis.debugImg[debugLabel]) {
-      globalThis.debugImg[debugLabel] = new Array(imageCache.pageCount);
-      for (let i = 0; i < imageCache.pageCount; i++) {
-        globalThis.debugImg[debugLabel][i] = [];
-      }
-    }
-
-    /** @type {Parameters<import('./js/generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
-    const compOptions = {
-      mode: 'comb',
-      debugLabel,
-      ignoreCap: ignoreCapElem.checked,
-      ignorePunct: ignorePunctElem.checked,
-      confThreshHigh: parseInt(confThreshHighElem.value),
-      confThreshMed: parseInt(confThreshMedElem.value),
-      legacyLSTMComb: true,
-    };
-
-    const imgBinary = await imageCache.getBinary(n);
-
-    const res = await globalThis.gs.compareHOCR({
-      pageA: pageObjLegacy,
-      pageB: pageObjLSTM,
-      binaryImage: imgBinary,
-      pageMetricsObj: globalThis.pageMetricsArr[n],
-      options: compOptions,
-    });
-
-    if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-    globalThis.debugLog += res.debugLog;
-
-    globalThis.debugImg[debugLabel][n].push(...res.debugImg);
-
-    combineData(res.page, globalThis.ocrAll.active[n], globalThis.pageMetricsArr[n]);
-
-    if (n === cp.n) displayPage(cp.n);
-
-    canvas.renderAll();
-    resetCanvasEventListeners();
-  }, { once: true });
-}
-
-let newWordInit = true;
-
-let rect; let origX; let
-  origY;
-function addWordClick() {
-  newWordInit = false;
-  globalThis.touchScrollMode = false;
-
-  canvas.on('mouse:down', (o) => {
-    const pointer = canvas.getPointer(o.e);
-    origX = pointer.x;
-    origY = pointer.y;
-    rect = new fabric.Rect({
-      left: origX,
-      top: origY,
-      originX: 'left',
-      originY: 'top',
-      width: pointer.x - origX,
-      height: pointer.y - origY,
-      angle: 0,
-      fill: 'rgba(255,0,0,0.5)',
-      transparentCorners: false,
-    });
-    canvas.add(rect);
-    canvas.renderAll();
-
-    canvas.on('mouse:move', (o) => {
-      const pointer = canvas.getPointer(o.e);
-
-      if (origX > pointer.x) {
-        rect.set({ left: Math.abs(pointer.x) });
-      }
-      if (origY > pointer.y) {
-        rect.set({ top: Math.abs(pointer.y) });
-      }
-
-      rect.set({ width: Math.abs(origX - pointer.x) });
-      rect.set({ height: Math.abs(origY - pointer.y) });
-
-      canvas.renderAll();
-    });
-  });
-
-  // mouse:up:before must be used so this code runs ahead of fabric internal logic.
-  // Without this changes to active selection caused by mouse movement may change rect object.
-  canvas.on('mouse:up:before', async (o) => {
-    resetCanvasEventListeners();
-    globalThis.touchScrollMode = true;
-    if (newWordInit) { return; }
-    newWordInit = true;
-
-    const fillColorHex = '#00ff7b';
-
-    let fillArg;
-    if (displayModeElem.value === 'invis') {
-      fillArg = 'black';
-    } else if (displayModeElem.value === 'ebook') {
-      fillArg = 'black';
-    } else {
-      fillArg = fillColorHex;
-    }
-    // const rectLeft = rect.left + (rect?.ownMatrixCache?.value[4] || 0);
-    // const rectTop = rect.top + (rect?.ownMatrixCache?.value[5] || 0);
-    const rectLeft = rect.left + (rect?.group?.left || 0);
-    const rectTop = rect.top + (rect?.group?.top || 0);
-
-    const wordText = 'A';
-    // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
-    let angleAdjXRect = 0;
-    let angleAdjYRect = 0;
-    let sinAngle = 0;
-    let shiftX = 0;
-    let shiftY = 0;
-    if (autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[cp.n].angle ?? 0) > 0.05) {
-      const rotateAngle = globalThis.pageMetricsArr[cp.n].angle || 0;
-
-      const pageDims = globalThis.pageMetricsArr[cp.n].dims;
-
-      sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
-      const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
-
-      shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
-      shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
-
-      const baselineY = (rectTop + rect.height) - (rect.height) / 3;
-
-      const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (rectLeft - shiftX);
-      const angleAdjXInt = sinAngle * ((baselineY - shiftY) - angleAdjYInt * 0.5);
-
-      angleAdjXRect = angleAdjXInt + shiftX;
-      angleAdjYRect = angleAdjYInt + shiftY;
-    }
-
-    // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
-    const rectTopHOCR = rectTop - angleAdjYRect;
-    const rectBottomHOCR = rectTop + rect.height - angleAdjYRect;
-
-    const rectLeftHOCR = rectLeft - angleAdjXRect;
-    const rectRightHOCR = rectLeft + rect.width - angleAdjXRect;
-
-    const wordBox = {
-      left: rectLeftHOCR, top: rectTopHOCR, right: rectRightHOCR, bottom: rectBottomHOCR,
-    };
-
-    const pageObj = new ocr.OcrPage(cp.n, globalThis.ocrAll.active[cp.n].dims);
-    // Create a temporary line to hold the word until it gets combined.
-    // This should not be used after `combineData` is run as it is not the final line.
-    const lineObjTemp = new ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
-    pageObj.lines = [lineObjTemp];
-    const wordIDNew = getRandomAlphanum(10);
-    const wordObj = new ocr.OcrWord(lineObjTemp, wordText, wordBox, wordIDNew);
-    // Words added by user are assumed to be correct.
-    wordObj.conf = 100;
-    lineObjTemp.words = [wordObj];
-
-    combineData(pageObj, globalThis.ocrAll.active[cp.n], globalThis.pageMetricsArr[cp.n], true, false);
-
-    // Get line word was added to in main data.
-    // This will have different metrics from `lineObj` when the line was combined into an existing line.
-    const wordObjNew = ocr.getPageWord(globalThis.ocrAll.active[cp.n], wordIDNew);
-
-    const fontSize = await calcLineFontSize(wordObjNew.line);
-
-    const enableRotation = autoRotateCheckboxElem.checked && Math.abs(globalThis.pageMetricsArr[cp.n].angle ?? 0) > 0.05;
-
-    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
-    const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
-
-    const box = wordObjNew.bbox;
-    const linebox = wordObjNew.line.bbox;
-    const baseline = wordObjNew.line.baseline;
-
-    let visualBaseline;
-    if (enableRotation) {
-      visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
-    } else {
-      visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
-    }
-
-    const textBackgroundColor = search.search && wordText.includes(search.search) ? '#4278f550' : '';
-
-    const fontObj = fontAll.getFont('Default');
-
-    const textbox = new ITextWord(wordText, {
-      left: rectLeft,
-      top: visualBaseline,
-      word: wordObjNew,
-      topBaseline: visualBaseline,
-      topBaselineOrig: visualBaseline,
-      baselineAdj: 0,
-      originY: 'bottom',
-      fill: fillArg,
-      fill_proof: fillColorHex,
-      fill_ebook: 'black',
-      fontFamily: fontObj.fontFaceName,
-      fontStyle: 'normal',
-      fontFamilyLookup: fontAll.defaultFontName,
-      fontStyleLookup: 'normal',
-      fontObj,
-      textBackgroundColor,
-      visualWidth: rect.width,
-      visualLeft: rectLeft,
-      visualBaseline,
-      defaultFontFamily: true,
-      opacity: 1,
-      // charSpacing: kerning * 1000 / wordFontSize
-      fontSize,
-    });
-
-    canvas.remove(rect);
-    canvas.add(textbox);
-    canvas.renderAll();
-    resetCanvasEventListeners();
-  });
-}
-
-/** @type {Array<PageMetrics>} */
-globalThis.pageMetricsArr = [];
-
 // Resets the environment.
 async function clearFiles() {
   cp.n = 0;
   globalThis.pageCount = 0;
-  globalThis.ocrAll.active = [];
-  globalThis.layout = [];
+  ocrAll.active = [];
+  layoutAll.length = 0;
   replaceObjectProperties(fontMetricsObj);
-  globalThis.pageMetricsArr = [];
+  pageMetricsArr.length = 0;
   globalThis.convertPageWarn = [];
 
   if (globalThis.binaryScheduler) {
@@ -1501,7 +1152,7 @@ async function clearFiles() {
 
   globalThis.loadCount = 0;
 
-  canvas.clear();
+  stage.clear();
   pageCountElem.textContent = '';
   pageNumElem.value = '';
   downloadFileNameElem.value = '';
@@ -1582,7 +1233,7 @@ async function importFiles(curFiles) {
 
   globalThis.state.downloadReady = false;
 
-  globalThis.pageMetricsArr = [];
+  pageMetricsArr.length = 0;
 
   // Sort files into (1) HOCR files, (2) image files, or (3) unsupported using extension.
   /** @type {Array<File>} */
@@ -1632,7 +1283,7 @@ async function importFiles(curFiles) {
 
   // Extract text from PDF document
   // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
-  globalThis.inputDataModes.extractTextMode = document.getElementById('extractTextCheckbox').checked && globalThis.inputDataModes.pdfMode && !xmlModeImport;
+  globalThis.inputDataModes.extractTextMode = extractTextCheckboxElem.checked && globalThis.inputDataModes.pdfMode && !xmlModeImport;
   const stextModeExtract = globalThis.inputDataModes.extractTextMode;
 
   addLayoutBoxElem.disabled = false;
@@ -1720,7 +1371,7 @@ async function importFiles(curFiles) {
     const pdfFile = pdfFilesAll[0];
     globalThis.inputFileNames = [pdfFile.name];
 
-    const skipText = document.getElementById('omitNativeTextCheckbox').checked;
+    const skipText = omitNativeTextCheckboxElem.checked;
 
     // Start loading mupdf workers as soon as possible, without waiting for `pdfFile.arrayBuffer` (which can take a while).
     imageCache.getMuPDFScheduler();
@@ -1801,7 +1452,9 @@ async function importFiles(curFiles) {
 
       // Restore layout data from previous session (if applicable)
       if (ocrData.layoutObj) {
-        globalThis.layout = ocrData.layoutObj;
+        for (let i = 0; i < ocrData.layoutObj.length; i++) {
+          layoutAll[i] = ocrData.layoutObj[i];
+        }
         existingLayout = true;
       }
 
@@ -1838,9 +1491,8 @@ async function importFiles(curFiles) {
   globalThis.defaultLayout = {};
 
   if (!existingLayout) {
-    globalThis.layout = Array(globalThis.pageCount);
-    for (let i = 0; i < globalThis.layout.length; i++) {
-      globalThis.layout[i] = { default: true, boxes: {} };
+    for (let i = 0; i < globalThis.pageCount; i++) {
+      layoutAll[i] = new LayoutPage();
     }
   }
 
@@ -1892,7 +1544,7 @@ async function importFiles(curFiles) {
 
       imageCache.nativeSrc[i] = imgWrapper;
 
-      globalThis.pageMetricsArr[i] = new PageMetrics(imageDims);
+      pageMetricsArr[i] = new PageMetrics(imageDims);
       globalThis.convertPageActiveProgress.increment();
 
       if (i === 0) displayPage(0);
@@ -1915,13 +1567,12 @@ async function importFiles(curFiles) {
     // Process HOCR using web worker, reading from file first if that has not been done already
     convertOCRAllBrowser(globalThis.hocrCurrentRaw, true, format, oemName, scribeMode).then(async () => {
       if (layoutFilesAll.length > 0) await readLayoutFile(layoutFilesAll[0]);
-      await calculateOverallPageMetrics();
 
       // Skip this step if optimization info was already restored from a previous session.
       if (!existingOpt) {
         await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
-        setFontMetricsAll(globalThis.ocrAll.active);
-        await runFontOptimizationBrowser(globalThis.ocrAll.active);
+        setFontMetricsAll(ocrAll.active);
+        await runFontOptimizationBrowser(ocrAll.active);
       }
       downloadElem.disabled = false;
       globalThis.state.downloadReady = true;
@@ -1955,7 +1606,7 @@ async function importFiles(curFiles) {
 async function readLayoutFile(file) {
   const layoutStr = await readTextFile(file);
   try {
-    const layoutObj = JSON.parse(layoutStr);
+    const layoutObj = /** @type {Array<LayoutPage>} */(JSON.parse(layoutStr));
 
     // Layout files may optionally provide an attribute named `system` which contains `length` and `height` used for the full page.
     // These are used to normalize the coorinates, and are necessary when the layout analysis uses a different coordinate
@@ -1967,16 +1618,18 @@ async function readLayoutFile(file) {
         const width = value?.system?.width;
         const height = value?.system?.height;
         if (width && height) {
-          value.coords[0] *= (globalThis.pageMetricsArr[i].dims.width / width);
-          value.coords[2] *= (globalThis.pageMetricsArr[i].dims.width / width);
+          value.coords.left *= (pageMetricsArr[i].dims.width / width);
+          value.coords.right *= (pageMetricsArr[i].dims.width / width);
 
-          value.coords[1] *= (globalThis.pageMetricsArr[i].dims.height / height);
-          value.coords[3] *= (globalThis.pageMetricsArr[i].dims.height / height);
+          value.coords.top *= (pageMetricsArr[i].dims.height / height);
+          value.coords.bottom *= (pageMetricsArr[i].dims.height / height);
         }
       }
     }
 
-    globalThis.layout = layoutObj;
+    for (let i = 0; i < layoutObj.length; i++) {
+      layoutAll[i] = layoutObj[i];
+    }
   } catch (e) {
     console.log('Unable to parse contents of layout file.');
     console.log(e);
@@ -2005,77 +1658,9 @@ globalThis.state = {
   canvasDimsN: -1,
 };
 
-const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
-
-let widthHeightInitial = true;
-/**
- *
- * @param {dims} imgDims - Dimensions of image
- */
-export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false) => {
-  const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
-
-  // Re-set width/height, in case the size of the window changed since originally set.
-  canvas.setHeight(totalHeight);
-  canvas.setWidth(document.documentElement.clientWidth);
-
-  // The first time this function is run, the canvas is centered and zoomed to fit the image.
-  // After that, whatever the user does with the canvas is preserved.
-  if (widthHeightInitial) {
-    widthHeightInitial = false;
-    const interfaceHeight = 100;
-    const bottomMarginHeight = 50;
-    const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
-
-    const zoom = targetHeight / imgDims.height;
-
-    canvas.setViewportTransform([zoom, 0, 0, zoom, ((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2), interfaceHeight]);
-  } else {
-    let changeVpt = false;
-    const vpt = canvas.viewportTransform.slice(0);
-    // Nudge the document into the viewport, using the lesser of:
-    // (1) the shift required to put 50% of the document into view, or
-    // (2) the shift required to fill 50% of the viewport.
-    // Both conditions are necessary for this to work as expected at all zoom levels.
-    if (canvas.viewportTransform[4] < imgDims.width * canvas.viewportTransform[0] * -0.5
-    && canvas.viewportTransform[4] < (canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]))) {
-      const newX = Math.min(imgDims.width * canvas.viewportTransform[0] * -0.5, canvas.width / 2 - (imgDims.width * canvas.viewportTransform[0]));
-      vpt[4] = newX;
-      changeVpt = true;
-    } else if (canvas.viewportTransform[4] > canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5)
-    && canvas.viewportTransform[4] > canvas.width / 2) {
-      const newX = Math.max(canvas.width - (imgDims.width * canvas.viewportTransform[0] * 0.5), canvas.width / 2);
-      vpt[4] = newX;
-      changeVpt = true;
-    }
-
-    if (canvas.viewportTransform[5] < imgDims.height * canvas.viewportTransform[0] * -0.5
-      && canvas.viewportTransform[5] < (canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]))) {
-      const newX = Math.min(imgDims.height * canvas.viewportTransform[0] * -0.5, canvas.height / 2 - (imgDims.height * canvas.viewportTransform[0]));
-      vpt[5] = newX;
-      changeVpt = true;
-    } else if (canvas.viewportTransform[5] > canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5)
-      && canvas.viewportTransform[5] > canvas.height / 2) {
-      const newX = Math.max(canvas.height - (imgDims.height * canvas.viewportTransform[0] * 0.5), canvas.height / 2);
-      vpt[5] = newX;
-      changeVpt = true;
-    }
-
-    if (changeVpt) canvas.setViewportTransform(vpt);
-  }
-
-  if (enableConflictsViewer) {
-    const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
-
-    debugCanvasParentDivElem.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll;z-index:10`);
-  } else {
-    showHideElem(debugCanvasParentDivElem, false);
-  }
-};
-
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n) {
-  let ocrData = globalThis.ocrAll.active?.[n];
+  let ocrData = ocrAll.active?.[n];
 
   // Return early if there is not enough data to render a page yet
   // (0) Necessary info is not defined yet
@@ -2084,7 +1669,7 @@ export async function renderPageQueue(n) {
   const noInput = !globalThis.inputDataModes.xmlMode[n] && !(globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode);
   // (2) XML data should exist but does not (yet)
   const xmlMissing = globalThis.inputDataModes.xmlMode[n]
-    && (ocrData === undefined || ocrData === null || globalThis.pageMetricsArr[n].dims === undefined);
+    && (ocrData === undefined || ocrData === null || pageMetricsArr[n].dims === undefined);
 
   const imageMissing = false;
   const pdfMissing = false;
@@ -2109,42 +1694,25 @@ export async function renderPageQueue(n) {
   if (globalThis.inputDataModes.evalMode) {
     await compareGroundTruthClick(n);
     // ocrData must be re-assigned after comparing to ground truth or it will not update.
-    ocrData = globalThis.ocrAll.active?.[n];
+    ocrData = ocrAll.active?.[n];
   }
 
-  let renderNum;
-  // Clear canvas if objects (anything but the background) exists
-  if (canvas.getObjects().length) {
-    canvas.clear();
-    // Drop any transformation in process.
-    // This prevents errors if the user is in the middle of scaling an object when the page is rendered.
-    canvas._currentTransform = false;
-    resetCanvasEventListeners();
-  }
-
-  cp.renderStatus = 0;
+  destroyWords();
 
   // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
   // (whether by quickly changing pages or on the same page).
   // TODO: Find a better solution.
   cp.renderNum += 1;
-  renderNum = cp.renderNum;
-
-  if (cp.n === n && cp.renderNum === renderNum) {
-    cp.renderStatus += 1;
-    selectDisplayMode(getDisplayMode());
-  } else {
-    globalThis.state.promiseResolve();
-    return;
-  }
+  const renderNum = cp.renderNum;
 
   // The active OCR version may have changed, so this needs to be re-checked.
   if (cp.n === n && globalThis.inputDataModes.xmlMode[n]) {
-    await renderPage(canvas, ocrData, globalThis.pageMetricsArr[n].angle, 0);
+    renderPage(ocrData);
     if (cp.n === n && cp.renderNum === renderNum) {
-      cp.renderStatus += 1;
       await selectDisplayMode(getDisplayMode());
     }
+  } else {
+    await selectDisplayMode(getDisplayMode());
   }
 
   globalThis.state.promiseResolve();
@@ -2160,19 +1728,6 @@ export async function displayPage(n) {
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
     pageNumElem.value = (cp.n + 1).toString();
     return;
-  }
-
-  // The following is a quick fix for a bug, there may be a better way to do this.
-  // Without this block of code, if the user is editing a word and then changes the page,
-  // the changes are applied to the word with the same ID on the next page.
-  // Simply running `canvas.discardActiveObject()` does not fix, as that function
-  // does not wait for all code triggered by events to finish running.
-  // Therefore, if the page is changed while an object is selected, we deselect all objects
-  // and then wait for an arbitrary amount of time for any event-related code to run.
-  if (canvas.getActiveObject()) {
-    console.log('Deselecting active object before changing pages.');
-    canvas.discardActiveObject();
-    await sleep(10);
   }
 
   working = true;
@@ -2310,20 +1865,6 @@ export async function runFontOptimizationBrowser(ocrArr) {
     optimizeFontElem.checked = false;
   }
   renderPageQueue(cp.n);
-}
-
-/**
- * This function calculates a global left margin, which is not currently used.
- * Leaving the code for now in case this is useful in the future.
- */
-export function calculateOverallPageMetrics() {
-  // It is possible for image resolution to vary page-to-page, so the left margin must be calculated
-  // as a percent to remain visually identical between pages.
-  const leftAllPer = new Array(globalThis.pageMetricsArr.length);
-  for (let i = 0; i < globalThis.pageMetricsArr.length; i++) {
-    leftAllPer[i] = globalThis.pageMetricsArr[i].left / globalThis.pageMetricsArr[i].dims.width;
-  }
-  leftGlobal = quantile(leftAllPer, 0.5);
 }
 
 // Set default settings

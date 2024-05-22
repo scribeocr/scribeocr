@@ -384,7 +384,9 @@ function convertTableLayoutAbbyy(ocrStr) {
 
       const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
 
-      tableBoxes[id] = new LayoutBox(priority, [cellLeft, tableCoords[1], cellRight, tableCoords[3]]);
+      tableBoxes[id] = new LayoutBox(id, priority, {
+        left: cellLeft, top: tableCoords[1], right: cellRight, bottom: tableCoords[3],
+      });
       tableBoxes[id].type = 'dataColumn';
       tableBoxes[id].table = i;
     }
@@ -455,7 +457,9 @@ function convertTableLayoutAbbyy(ocrStr) {
 
         const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
 
-        tableBoxes[id] = new LayoutBox(priority, [cellLeft, tableCoords[1], cellRight, tableCoords[3]]);
+        tableBoxes[id] = new LayoutBox(id, priority, {
+          left: cellLeft, top: tableCoords[1], right: cellRight, bottom: tableCoords[3],
+        });
         tableBoxes[id].type = 'dataColumn';
         tableBoxes[id].table = i;
       }

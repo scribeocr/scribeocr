@@ -1,5 +1,6 @@
 import { quantile } from './miscUtils.js';
 import ocr from './objects/ocrObjects.js';
+import { pageMetricsArr } from './containers/miscContainer.js';
 
 /**
  * Convert an array of ocrPage objects to plain text, or XML for a Word document.
@@ -43,7 +44,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
     let lineSpaceMedian = null;
 
     if (removeLineBreaks) {
-      const angle = globalThis.pageMetricsArr[g].angle * -1 ?? 0;
+      const angle = pageMetricsArr[g].angle * -1 ?? 0;
 
       /** @type {?number} */
       let y2Prev = null;

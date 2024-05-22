@@ -1,5 +1,5 @@
 import {
-  FontContainerFont, loadFontContainerAll, fontAll, checkMultiFontMode, FontContainerAll,
+  FontContainerFont, loadFontContainerAll, fontAll, checkMultiFontMode, FontContainerAll, loadFont,
 } from './containers/fontContainer.js';
 
 /**
@@ -78,8 +78,13 @@ export async function loadFontContainerAllRaw() {
   return loadFontContainerAll(srcObj);
 }
 
-export function loadChiSimFont() {
-  fontAll.supp.chi_sim = new FontContainerFont('NotoSansSC', 'normal', 'sans', 'NotoSansSC-Regular.ttf', false, null);
+/**
+ * Loads chi_sim font. Returns early if already loaded.
+ */
+export async function loadChiSimFont() {
+  // We currently assume only one version of chi_sim exists so there is never a valid reason to re-load.
+  if (fontAll.supp.chi_sim) return;
+  fontAll.supp.chi_sim = await loadFont('NotoSansSC', 'normal', 'sans', 'NotoSansSC-Regular.ttf', false);
 }
 
 /**

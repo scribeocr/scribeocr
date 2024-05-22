@@ -4,6 +4,8 @@ import ocr from './objects/ocrObjects.js';
 
 import { saveAs } from './miscUtils.js';
 
+import { layoutAll } from './containers/miscContainer.js';
+
 /**
  * @param {OcrPage} pageObj
  */
@@ -33,6 +35,7 @@ export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xl
 /**
  * Convert a single table into HTML or Excel XML rows
  * @param {OcrPage} pageObj
+ * @param {Object<string, import('./objects/layoutObjects.js').LayoutBox>} boxes
  */
 function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
   const wordArr = [];
@@ -40,7 +43,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
   const wordPriorityArr = [];
 
   // Sort boxes by left bound.
-  const boxesArr = Object.values(boxes).sort((a, b) => a.coords[0] - b.coords[0]);
+  const boxesArr = Object.values(boxes).sort((a, b) => a.coords.left - b.coords.left);
 
   // Unlike when exporting to text, anything not in a rectangle is excluded by default
   // priorityArr.fill(boxesArr.length+1);
@@ -281,7 +284,7 @@ export async function writeXlsx(hocrCurrent) {
     }
     if (addPageNumberColumnMode) extraCols.push(String(i + 1));
 
-    const cellsObj = createCells(hocrCurrent[i], globalThis.layout[i], extraCols, rowCount);
+    const cellsObj = createCells(hocrCurrent[i], layoutAll[i], extraCols, rowCount);
     rowCount += cellsObj.rows;
     sheetContent += cellsObj.content;
   }

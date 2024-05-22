@@ -4,18 +4,22 @@ import { calcOverlap } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
 import { saveAs } from '../miscUtils.js';
 import { imageStrToBlob } from '../imageUtils.js';
-import { cp, setCanvasWidthHeightZoom } from '../../main.js';
+import { cp } from '../../main.js';
 import { imageCache } from '../containers/imageContainer.js';
 import { drawDebugImages } from '../debug.js';
+import {
+  stage, layerText, canvasObj, setCanvasWidthHeightZoom,
+} from './interfaceCanvas.js';
+import { layoutAll, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
 export function printSelectedWords(printOCR = true) {
-  const selectedObjects = window.canvas.getActiveObjects();
+  const selectedObjects = canvasObj.selectedWordArr;
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
-      console.log(selectedObjects[i].word);
+      console.log(selectedObjects[i].attrs.word);
     } else {
       console.log(selectedObjects[i]);
     }
@@ -23,14 +27,14 @@ export function printSelectedWords(printOCR = true) {
 }
 
 export async function evalSelectedLine() {
-  const selectedObjects = window.canvas.getActiveObjects();
+  const selectedObjects = canvasObj.selectedWordArr;
   if (!selectedObjects || selectedObjects.length === 0) return;
 
-  const word0 = /** @type {OcrWord} */ (selectedObjects[0].word);
+  const word0 = selectedObjects[0].word;
 
   const imageBinary = await imageCache.getBinary(cp.n);
 
-  const pageMetricsObj = globalThis.pageMetricsArr[cp.n];
+  const pageMetricsObj = pageMetricsArr[cp.n];
 
   const lineObj = ocr.cloneLine(word0.line);
 
@@ -52,48 +56,23 @@ export async function evalSelectedLine() {
 
   await drawDebugImages({ ctx: globalThis.ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
 
-  setCanvasWidthHeightZoom(globalThis.pageMetricsArr[cp.n].dims, true);
+  setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, true);
 }
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 
-/**
- * Crops a canvas area and returns a data URL of the cropped area using OffscreenCanvas.
- * @param {HTMLCanvasElement} canvas - The canvas element to be cropped.
- * @param {number} startX - The starting x-coordinate for the crop area.
- * @param {number} startY - The starting y-coordinate for the crop area.
- * @param {number} width - The width of the crop area.
- * @param {number} height - The height of the crop area.
- * @returns {Promise<string>} A promise that resolves to the data URL of the cropped canvas area.
- */
-async function getCroppedCanvasDataURL(canvas, startX, startY, width, height) {
-  // Create a new OffscreenCanvas
-  const offscreen = new OffscreenCanvas(width, height);
-  const ctx = offscreen.getContext('2d');
-
-  // Draw the cropped area on the new OffscreenCanvas
-  ctx.drawImage(canvas, startX, startY, width, height, 0, 0, width, height);
-
-  // Convert the OffscreenCanvas to a Blob, then to a data URL
-  return new Promise((resolve, reject) => {
-    offscreen.convertToBlob().then((blob) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  });
-}
-
 export async function downloadCanvas() {
-  const dims = globalThis.pageMetricsArr[cp.n].dims;
+  const dims = pageMetricsArr[cp.n].dims;
 
-  const startX = globalThis.canvas.viewportTransform[4] > 0 ? Math.round(globalThis.canvas.viewportTransform[4]) : 0;
-  const startY = globalThis.canvas.viewportTransform[5] > 0 ? Math.round(globalThis.canvas.viewportTransform[5]) : 0;
-  const width = dims.width * globalThis.canvas.viewportTransform[0];
-  const height = dims.height * globalThis.canvas.viewportTransform[3];
+  const startX = layerText.x() > 0 ? Math.round(layerText.x()) : 0;
+  const startY = layerText.y() > 0 ? Math.round(layerText.y()) : 0;
+  const width = dims.width * layerText.scaleX();
+  const height = dims.height * layerText.scaleY();
 
-  const canvasDataStr = await getCroppedCanvasDataURL(globalThis.canvas.lowerCanvasEl, startX, startY, width, height);
+  const canvasDataStr = stage.toDataURL({
+    x: startX, y: startY, width, height,
+  });
+
   const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
   const imgBlob = imageStrToBlob(canvasDataStr);
   saveAs(imgBlob, fileName);
@@ -124,8 +103,8 @@ export async function downloadAllImages() {
 globalThis.downloadAllImages = downloadAllImages;
 
 export function getExcludedText() {
-  for (let i = 0; i <= globalThis.ocrAll.active.length; i++) {
-    const textArr = getExcludedTextPage(globalThis.ocrAll.active[i], globalThis.layout[i]);
+  for (let i = 0; i <= ocrAll.active.length; i++) {
+    const textArr = getExcludedTextPage(ocrAll.active[i], layoutAll[i]);
 
     if (textArr.length > 0) {
       textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));
@@ -138,6 +117,8 @@ export function getExcludedText() {
 
 /**
  * @param {OcrPage} pageA
+ * @param {import('../objects/layoutObjects.js').LayoutPage} layoutObj
+ * @param {boolean} [applyExclude=true]
  */
 export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
   const excludedArr = [];

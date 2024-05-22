@@ -1,5 +1,5 @@
 // These function are used to render a word to a basic HTML Canvas element.
-// This differs from the code that renders to the main viewer canvas, which uses Fabric.js.
+// This differs from the code that renders to the main viewer canvas, which uses Konva.js.
 
 import { calcWordMetrics, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
 import { fontAll } from '../containers/fontContainer.js';
@@ -18,7 +18,7 @@ export async function drawWordActual(ctx, words, imageBinaryBit, imgDims, angle,
   if (!ctx) throw new Error('Canvases must be defined before running this function.');
 
   // The font/style from the first word is used for the purposes of font metrics
-  const lineFontSize = await calcLineFontSize(words[0].line);
+  const lineFontSize = calcLineFontSize(words[0].line);
 
   if (!lineFontSize) {
     // This condition should not occur as checks are implemented in the code that calls this function.
@@ -28,7 +28,7 @@ export async function drawWordActual(ctx, words, imageBinaryBit, imgDims, angle,
 
   const fontI = fontAll.getWordFont(words[0]);
 
-  const fontOpentypeI = await fontI.opentype;
+  const fontOpentypeI = fontI.opentype;
   ctx.font = `${fontI.fontFaceStyle} ${1000}px ${fontI.fontFaceName}`;
 
   const oMetrics = ctx.measureText('o');
@@ -147,11 +147,11 @@ export const drawWordRender = async function (ctx, word, offsetX = 0, cropY = 0,
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!ctx) throw new Error('Canvases must be defined before running this function.');
 
-  lineFontSize = lineFontSize || (await calcLineFontSize(word.line)) || 10;
+  lineFontSize = lineFontSize || calcLineFontSize(word.line) || 10;
 
   //   const wordText = altText ? ocr.replaceLigatures(altText) : ocr.replaceLigatures(word.text);
 
-  const wordFontSize = (await calcWordFontSize(word)) || lineFontSize;
+  const wordFontSize = calcWordFontSize(word) || lineFontSize;
 
   if (!wordFontSize) {
     console.log('Font size not found');
@@ -176,7 +176,7 @@ export const drawWordRender = async function (ctx, word, offsetX = 0, cropY = 0,
 
   const y = baselineY - cropY;
 
-  const wordMetrics = await calcWordMetrics(word);
+  const wordMetrics = calcWordMetrics(word);
   const advanceArr = wordMetrics.advanceArr;
   const kerningArr = wordMetrics.kerningArr;
   const charSpacing = wordMetrics.charSpacing;

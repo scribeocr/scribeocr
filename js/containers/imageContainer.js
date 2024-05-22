@@ -8,6 +8,8 @@ import Tesseract from '../../tess/tesseract.esm.min.js';
 
 import { getPngDimensions, getJpegDimensions, getImageBitmap } from '../imageUtils.js';
 
+import { pageMetricsArr } from './miscContainer.js';
+
 function range(min, max) {
   const result = [];
   for (let i = min; i <= max; i++) {
@@ -63,7 +65,7 @@ const compatible = (img, props) => {
     return false;
   } if (props.rotated === true && img.rotated === false) {
     // An unrotated image is considered compatible with a rotated request if the angle is very close to 0.
-    if (Math.abs(globalThis.pageMetricsArr[img.n].angle || 0) > 0.05) {
+    if (Math.abs(pageMetricsArr[img.n].angle || 0) > 0.05) {
       return false;
     }
   }
@@ -81,6 +83,32 @@ export const imageUtils = {
   requiresUndo,
   compatible,
 };
+
+let skipTextMode = false;
+
+export class MuPDFScheduler {
+  constructor(scheduler, workers) {
+    this.scheduler = scheduler;
+    /** @type {Array<Awaited<ReturnType<typeof initMuPDFWorker>>>} */
+    this.workers = workers;
+    /**
+     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>[1]} args
+     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>>}
+     */
+    this.pageTextXML = async (args) => (await this.scheduler.addJob('pageTextXML', args));
+    /**
+     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>[1]} args
+     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>>}
+     */
+    this.drawPageAsPNG = async (args) => (await this.scheduler.addJob('drawPageAsPNG', args));
+  }
+}
+
+/**
+ * The dimensions that each page would be, if it was rendered at 300 DPI.
+ * @type {Array<dims>}
+ */
+const pdfDims300Arr = [];
 
 export class ImageWrapper {
   /**
@@ -194,7 +222,7 @@ class ImageCache {
     if (this.inputModes.image) {
       this.native[n] = this.nativeSrc[n];
     } else if (this.inputModes.pdf) {
-      const pageMetrics = globalThis.pageMetricsArr[n];
+      const pageMetrics = pageMetricsArr[n];
 
       const targetWidth = pageMetrics.dims.width;
       const dpi = 300 * (targetWidth / pdfDims300Arr[n].width);
@@ -216,7 +244,7 @@ class ImageCache {
   transformImage = async (n, props, saveNativeImage = true) => {
     const inputImage = await Promise.resolve(this.native[n]);
 
-    let pageAngle = globalThis.pageMetricsArr[n].angle || 0;
+    let pageAngle = pageMetricsArr[n].angle || 0;
     if (Math.abs(pageAngle) < 0.05) pageAngle = 0;
 
     // If no preference is specified for rotation, default to true.
@@ -462,7 +490,7 @@ class ImageCache {
       // In addition to capping the resolution, also switch the width/height
       pdfDims300Arr.forEach((x, i) => {
         const pageDims = { width: Math.round(x.width * pageDPI[i] / 300), height: Math.round(x.height * pageDPI[i] / 300) };
-        globalThis.pageMetricsArr[i] = new PageMetrics(pageDims);
+        pageMetricsArr[i] = new PageMetrics(pageDims);
       });
 
       if (extractStext) {
@@ -477,29 +505,3 @@ class ImageCache {
 }
 
 export const imageCache = new ImageCache();
-
-let skipTextMode = false;
-
-export class MuPDFScheduler {
-  constructor(scheduler, workers) {
-    this.scheduler = scheduler;
-    /** @type {Array<Awaited<ReturnType<typeof initMuPDFWorker>>>} */
-    this.workers = workers;
-    /**
-     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>[1]} args
-     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>>}
-     */
-    this.pageTextXML = async (args) => (await this.scheduler.addJob('pageTextXML', args));
-    /**
-     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>[1]} args
-     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>>}
-     */
-    this.drawPageAsPNG = async (args) => (await this.scheduler.addJob('drawPageAsPNG', args));
-  }
-}
-
-/**
- * The dimensions that each page would be, if it was rendered at 300 DPI.
- * @type {Array<dims>}
- */
-const pdfDims300Arr = [];

@@ -193,14 +193,14 @@ export async function evalWords({
   const cosAngle = Math.cos(angle * -1 * (Math.PI / 180)) || 1;
   const sinAngle = Math.sin(angle * -1 * (Math.PI / 180)) || 0;
 
-  const lineFontSizeA = await calcLineFontSize(wordsA[0].line);
+  const lineFontSizeA = calcLineFontSize(wordsA[0].line);
 
   // If font size cannot be accurately calculated, do not bother comparing.
   if (!lineFontSizeA) return { metricA: 1, metricB: 1 };
 
   let lineFontSizeB = lineFontSizeA;
   if (!useAFontSize && wordsB?.[0]) {
-    const lineFontSizeBCalc = await calcLineFontSize(wordsB[0].line);
+    const lineFontSizeBCalc = calcLineFontSize(wordsB[0].line);
     lineFontSizeB = lineFontSizeBCalc || lineFontSizeA;
   }
 
@@ -426,11 +426,11 @@ async function penalizeWord(wordObjs) {
   if (wordObjs.length === 1 && /^[a-z][.,-]$/i.test(wordStr)) {
     const word = wordObjs[0];
     const wordTextArr = wordStr.split('');
-    const wordFontSize = await calcLineFontSize(word.line);
+    const wordFontSize = calcLineFontSize(word.line);
     if (!wordFontSize) return penalty;
 
     const fontI = fontAll.getWordFont(word);
-    const fontOpentypeI = await fontI.opentype;
+    const fontOpentypeI = fontI.opentype;
 
     // These calculations differ from the standard word width calculations,
     // because they do not include left/right bearings.
@@ -1214,7 +1214,7 @@ export async function nudgePageFontSize({
   page, binaryImage, imageRotated, pageMetricsObj, view = false,
 }) {
   const func = async (lineJ, x) => {
-    const fontSizeBase = await calcLineFontSize(lineJ);
+    const fontSizeBase = calcLineFontSize(lineJ);
     if (!fontSizeBase) return;
     lineJ._size = fontSizeBase + x;
   };

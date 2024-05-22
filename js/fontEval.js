@@ -1,6 +1,6 @@
 import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js';
 import { optimizeFontContainerAll, fontAll } from './containers/fontContainer.js';
-import { fontMetricsObj } from './containers/miscContainer.js';
+import { fontMetricsObj, pageMetricsArr } from './containers/miscContainer.js';
 import { imageCache } from './containers/imageContainer.js';
 
 /**
@@ -30,7 +30,7 @@ export async function evalPageFonts(font, pageArr, n = 500) {
         font: font.normal.family,
         page: pageArr[i],
         binaryImage: imageI,
-        pageMetricsObj: globalThis.pageMetricsArr[i],
+        pageMetricsObj: pageMetricsArr[i],
       });
       // Browser case
     } else {
@@ -38,7 +38,7 @@ export async function evalPageFonts(font, pageArr, n = 500) {
         font: font.normal.family,
         page: pageArr[i],
         binaryImage: imageI,
-        pageMetricsObj: globalThis.pageMetricsArr[i],
+        pageMetricsObj: pageMetricsArr[i],
       });
     }
 

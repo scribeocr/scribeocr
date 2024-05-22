@@ -1,5 +1,6 @@
 import { showDebugImages } from '../main.js';
 import { imageCache } from './containers/imageContainer.js';
+import { ocrAll, pageMetricsArr } from './containers/miscContainer.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images
@@ -10,8 +11,8 @@ export async function evalOverlapDocument() {
 
   const promiseArr = [];
 
-  for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
-    const ocrPageI = globalThis.ocrAll.active[i];
+  for (let i = 0; i < ocrAll.active.length; i++) {
+    const ocrPageI = ocrAll.active[i];
 
     const imgBinary = await imageCache.getBinary(i);
 
@@ -48,17 +49,17 @@ export async function nudgeDoc(func, view = false) {
 
   const promiseArr = [];
 
-  globalThis.debugImg.nudge = new Array(globalThis.ocrAll.active.length);
+  globalThis.debugImg.nudge = new Array(ocrAll.active.length);
 
-  for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
-    const ocrPageI = globalThis.ocrAll.active[i];
+  for (let i = 0; i < ocrAll.active.length; i++) {
+    const ocrPageI = ocrAll.active[i];
 
     const imgBinary = await imageCache.getBinary(i);
 
     promiseArr.push(globalThis.generalScheduler.addJob(func, {
       page: ocrPageI, binaryImage: imgBinary, pageMetricsObj: pageMetricsArr[i], view,
     }).then((res) => {
-      globalThis.ocrAll.active[i] = res.data.page;
+      ocrAll.active[i] = res.data.page;
       improveCt += res.data.improveCt;
       totalCt += res.data.totalCt;
       if (res.data.debug) globalThis.debugImg.nudge[i] = res.data.debug;

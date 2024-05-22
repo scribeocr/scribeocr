@@ -1,8 +1,11 @@
 /**
+ * @param {string} id
  * @param {number} priority
  * @param {bbox} coords
  */
-export function LayoutBox(priority, coords) {
+export function LayoutBox(id, priority, coords) {
+  /** @type {string} */
+  this.id = id;
   /** @type {number} */
   this.priority = priority;
   /** @type {bbox} */
@@ -15,4 +18,11 @@ export function LayoutBox(priority, coords) {
   this.inclusionRule = 'majority';
   /** @type {string} */
   this.inclusionLevel = 'word';
+}
+
+export function LayoutPage() {
+  /** @type {boolean} */
+  this.default = true;
+  /** @type {Object<string, LayoutBox>} */
+  this.boxes = {};
 }

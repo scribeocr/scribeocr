@@ -10,7 +10,9 @@
 import opentype from '../../lib/opentype.module.min.js';
 
 if (typeof process === 'object') {
+  // @ts-ignore
   globalThis.self = globalThis;
+  // @ts-ignore
   const { createRequire } = await import('module');
   globalThis.require = createRequire(import.meta.url);
   const { fileURLToPath } = await import('url');
@@ -18,6 +20,7 @@ if (typeof process === 'object') {
   globalThis.__dirname = dirname(fileURLToPath(import.meta.url));
   // Browser worker case
 } else if (globalThis.document === undefined) {
+  // @ts-ignore
   globalThis.window = {};
 }
 
@@ -28,6 +31,26 @@ export function relToAbsPath(fileName) {
   const url = new URL(fileName, import.meta.url);
   return url.protocol === 'file:' ? url.host + url.pathname : url.href;
 }
+
+/**
+   *
+   * @param {string|ArrayBuffer} src
+   */
+const getFontAbsPath = (src) => { // eslint-disable-line no-shadow
+  // Do not edit `src` if it is already an ArrayBuffer rather than a path.
+  if (typeof (src) !== 'string') return src;
+  // Do not edit `src` if it is already an absolute URL
+  if (/^(\/|http)/i.test(src)) return src;
+
+  // Alternative .ttf versions of the fonts are used for Node.js, as `node-canvas` does not currently (reliably) support .woff files.
+  // See https://github.com/Automattic/node-canvas/issues/1737
+  if (typeof process === 'object') {
+    const srcTtf = src.replace(/\.\w{1,5}$/i, '.ttf');
+    return relToAbsPath(`../../fonts_ttf/${srcTtf}`);
+  }
+
+  return relToAbsPath(`../../fonts/${src}`);
+};
 
 /**
  * Checks whether `multiFontMode` should be enabled or disabled.
@@ -42,17 +65,18 @@ export function relToAbsPath(fileName) {
 export function checkMultiFontMode(fontMetricsObj) {
   let defaultFontObs = 0;
   let namedFontObs = 0;
-  if (fontMetricsObj.Default?.obs) { defaultFontObs += fontMetricsObj.Default?.obs; }
-  if (fontMetricsObj.SerifDefault?.obs) { namedFontObs += fontMetricsObj.SerifDefault?.obs; }
-  if (fontMetricsObj.SansDefault?.obs) { namedFontObs += fontMetricsObj.SansDefault?.obs; }
+  if (fontMetricsObj.Default?.obs) { defaultFontObs += (fontMetricsObj.Default?.obs || 0); }
+  if (fontMetricsObj.SerifDefault?.obs) { namedFontObs += (fontMetricsObj.SerifDefault?.obs || 0); }
+  if (fontMetricsObj.SansDefault?.obs) { namedFontObs += (fontMetricsObj.SansDefault?.obs || 0); }
 
   return namedFontObs > defaultFontObs;
 }
 
 /**
  * @param {string|ArrayBuffer} src
+ * @param {?Object.<string, number>} [kerningPairs=null]
  */
-async function loadOpentype(src, kerningPairs = null) {
+export async function loadOpentype(src, kerningPairs = null) {
   const font = typeof (src) === 'string' ? await opentype.load(src) : await opentype.parse(src, { lowMemory: false });
   font.tables.gsub = null;
   // Re-apply kerningPairs object so when toArrayBuffer is called on this font later (when making a pdf) kerning data will be included
@@ -99,11 +123,23 @@ export function loadFontFace(fontFamily, fontStyle, src) {
   // Add font to document
   fontSet.add(fontFace);
 
-  // Clear fabric.js cache to delete old metrics
-  if (globalThis.fabric) fabric.util.clearFabricFontCache(fontFamily);
-  if (globalThis.fabric) fabric.util.clearFabricFontCache(`${fontFamily} Small Caps`);
-
   return fontFace;
+}
+
+/**
+ * Load font from source and return a FontContainerFont object.
+ * This function is used to load the Chinese font.
+ * @param {string} family
+ * @param {string} style
+ * @param {("sans"|"serif")} type
+ * @param {string|ArrayBuffer} src
+ * @param {boolean} opt
+ *
+ */
+export async function loadFont(family, style, type, src, opt) {
+  const srcAbs = getFontAbsPath(src);
+  const fontObj = await loadOpentype(srcAbs);
+  return new FontContainerFont(family, style, type, srcAbs, opt, fontObj);
 }
 
 /**
@@ -113,11 +149,11 @@ export function loadFontFace(fontFamily, fontStyle, src) {
  * @param {("sans"|"serif")} type
  * @param {string|ArrayBuffer} src
  * @param {boolean} opt
- * @param {*} kerningPairs - Kerning paris to re-apply
+ * @param {opentype.Font} opentypeObj - Kerning paris to re-apply
  * @property {string} family -
  * @property {string} style -
  * @property {string|ArrayBuffer} src
- * @property {Promise<opentype.Font>} opentype -
+ * @property {opentype.Font} opentype -
  * @property {string} fontFaceName -
  * @property {string} fontFaceStyle -
  * @property {boolean} opt -
@@ -127,32 +163,12 @@ export function loadFontFace(fontFamily, fontStyle, src) {
  * First, it is not necessary.  Setting the font on a canvas (the only reason loading a `FontFace` is needed) is done through refering `fontFaceName` and `fontFaceStyle`.
  * Second, it results in errors being thrown when used in Node.js, as `FontFace` will be undefined in this case.
  */
-export function FontContainerFont(family, style, type, src, opt, kerningPairs = null) {
+export function FontContainerFont(family, style, type, src, opt, opentypeObj) {
   // As FontFace objects are included in the document FontFaceSet object,
   // they need to all have unique names.
   let fontFaceName = family;
   if (opt) fontFaceName += ' Opt';
   if (style === 'small-caps') fontFaceName += ' Small Caps';
-
-  /**
-   *
-   * @param {string|ArrayBuffer} src
-   */
-  const getFontAbsPath = (src) => { // eslint-disable-line no-shadow
-    // Do not edit `src` if it is already an ArrayBuffer rather than a path.
-    if (typeof (src) !== 'string') return src;
-    // Do not edit `src` if it is already an absolute URL
-    if (/^(\/|http)/i.test(src)) return src;
-
-    // Alternative .ttf versions of the fonts are used for Node.js, as `node-canvas` does not currently (reliably) support .woff files.
-    // See https://github.com/Automattic/node-canvas/issues/1737
-    if (typeof process === 'object') {
-      const srcTtf = src.replace(/\.\w{1,5}$/i, '.ttf');
-      return relToAbsPath(`../../fonts_ttf/${srcTtf}`);
-    }
-
-    return relToAbsPath(`../../fonts/${src}`);
-  };
 
   /** @type {string} */
   this.family = family;
@@ -161,9 +177,9 @@ export function FontContainerFont(family, style, type, src, opt, kerningPairs = 
   /** @type {boolean} */
   this.opt = opt;
   /** @type {string|ArrayBuffer} */
-  this.src = getFontAbsPath(src);
-  /** @type {Promise<opentype.Font>} */
-  this.opentype = loadOpentype(this.src, kerningPairs);
+  this.src = src;
+  /** @type {opentype.Font} */
+  this.opentype = opentypeObj;
   /** @type {string} */
   this.fontFaceName = fontFaceName;
   /** @type {string} */
@@ -194,26 +210,40 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
     }
   }
 
+  const scrNormal = getFontAbsPath(fontFamily.normal.src);
+  const scrItalic = getFontAbsPath(fontFamily.italic.src);
+  const scrSmallCaps = getFontAbsPath(fontFamily['small-caps'].src);
+
   // If there are no statistics to use for optimization, create "optimized" font by simply copying the raw font without modification.
   // This should only occur when `multiFontMode` is true, but a document contains no sans words or no serif words.
   if (!fontMetricsObj[fontMetricsType]) {
-    const normalOptFont = new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, fontFamily.normal.src, true, null);
-    const italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, fontFamily.italic.src, true, null);
-    const smallCapsOptFont = new FontContainerFont(fontFamily['small-caps'].family, fontFamily['small-caps'].style, fontFamily['small-caps'].type, fontFamily['small-caps'].src, true, null);
+    const opentypeFontArr = await Promise.all([loadOpentype(scrNormal, null), loadOpentype(scrItalic, null), loadOpentype(scrSmallCaps, null)]);
+    const normalOptFont = new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, scrNormal, true, opentypeFontArr[0]);
+    const italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, scrItalic, true, opentypeFontArr[1]);
+    const smallCapsOptFont = new FontContainerFont(fontFamily['small-caps'].family, fontFamily['small-caps'].style, fontFamily['small-caps'].type, scrSmallCaps, true, opentypeFontArr[2]);
     return new FontContainerFamily(normalOptFont, italicOptFont, smallCapsOptFont);
   }
 
   const metricsNormal = fontMetricsObj[fontMetricsType][fontFamily.normal.style];
   const normalOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.normal.src, fontMetricsObj: metricsNormal, style: fontFamily.normal.style })
-    .then((x) => new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, x.fontData, true, x.kerningPairs));
+    .then(async (x) => {
+      const font = await loadOpentype(x.fontData, x.kerningPairs);
+      return new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, fontFamily.normal.type, x.fontData, true, font);
+    });
 
   const metricsItalic = fontMetricsObj[fontMetricsType][fontFamily.italic.style];
   const italicOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style })
-    .then((x) => new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, x.fontData, true, x.kerningPairs));
+    .then(async (x) => {
+      const font = await loadOpentype(x.fontData, x.kerningPairs);
+      return new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, fontFamily.italic.type, x.fontData, true, font);
+    });
 
   const metricsSmallCaps = fontMetricsObj[fontMetricsType][fontFamily['small-caps'].style];
   const smallCapsOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily['small-caps'].src, fontMetricsObj: metricsSmallCaps, style: fontFamily['small-caps'].style })
-    .then((x) => new FontContainerFont(fontFamily['small-caps'].family, fontFamily['small-caps'].style, fontFamily['small-caps'].type, x.fontData, true, x.kerningPairs));
+    .then(async (x) => {
+      const font = await loadOpentype(x.fontData, x.kerningPairs);
+      return new FontContainerFont(fontFamily['small-caps'].family, fontFamily['small-caps'].style, fontFamily['small-caps'].type, x.fontData, true, font);
+    });
 
   return new FontContainerFamily(await normalOptFont, await italicOptFont, await smallCapsOptFont);
 }
@@ -241,14 +271,19 @@ export function FontContainerFamily(fontNormal, fontItalic, fontSmallCaps) {
  * @param {string|ArrayBuffer} italicSrc
  * @param {string|ArrayBuffer} smallCapsSrc
  * @param {boolean} opt
- * @param {*} normalKerningPairs
- * @param {*} italicKerningPairs
- * @param {*} smallCapsKerningPairs
+ * @param {?Object.<string, number>} normalKerningPairs
+ * @param {?Object.<string, number>} italicKerningPairs
+ * @param {?Object.<string, number>} smallCapsKerningPairs
  */
-export function loadFontContainerFamily(family, type, normalSrc, italicSrc, smallCapsSrc, opt = false, normalKerningPairs = null, italicKerningPairs = null, smallCapsKerningPairs = null) {
-  const normal = new FontContainerFont(family, 'normal', type, normalSrc, opt, normalKerningPairs);
-  const italic = new FontContainerFont(family, 'italic', type, italicSrc, opt, italicKerningPairs);
-  const smallCaps = new FontContainerFont(family, 'small-caps', type, smallCapsSrc, opt, smallCapsKerningPairs);
+export async function loadFontContainerFamily(family, type, normalSrc, italicSrc, smallCapsSrc, opt = false, normalKerningPairs = null, italicKerningPairs = null, smallCapsKerningPairs = null) {
+  const scrNormal = getFontAbsPath(normalSrc);
+  const scrItalic = getFontAbsPath(italicSrc);
+  const scrSmallCaps = getFontAbsPath(smallCapsSrc);
+  const opentypeFontArr = await Promise.all([loadOpentype(scrNormal, normalKerningPairs), loadOpentype(scrItalic, italicKerningPairs), loadOpentype(scrSmallCaps, smallCapsKerningPairs)]);
+
+  const normal = new FontContainerFont(family, 'normal', type, normalSrc, opt, opentypeFontArr[0]);
+  const italic = new FontContainerFont(family, 'italic', type, italicSrc, opt, opentypeFontArr[1]);
+  const smallCaps = new FontContainerFont(family, 'small-caps', type, smallCapsSrc, opt, opentypeFontArr[2]);
   return new FontContainerFamily(normal, italic, smallCaps);
 }
 
@@ -290,16 +325,23 @@ export function FontContainerAll({
  * @param {boolean} opt
  * @returns
  */
-export function loadFontContainerAll({
+export async function loadFontContainerAll({
   Carlito, Century, NimbusRomNo9L, NimbusSans, Garamond, Palatino,
 }, opt = false) {
+  const CarlitoObj = await loadFontContainerFamily('Carlito', 'sans', Carlito.normal, Carlito.italic, Carlito.smallCaps, opt);
+  const CenturyObj = await loadFontContainerFamily('Century', 'serif', Century.normal, Century.italic, Century.smallCaps, opt);
+  const GaramondObj = await loadFontContainerFamily('Garamond', 'serif', Garamond.normal, Garamond.italic, Garamond.smallCaps, opt);
+  const PalatinoObj = await loadFontContainerFamily('Palatino', 'serif', Palatino.normal, Palatino.italic, Palatino.smallCaps, opt);
+  const NimbusRomNo9LObj = await loadFontContainerFamily('NimbusRomNo9L', 'serif', NimbusRomNo9L.normal, NimbusRomNo9L.italic, NimbusRomNo9L.smallCaps, opt);
+  const NimbusSansObj = await loadFontContainerFamily('NimbusSans', 'sans', NimbusSans.normal, NimbusSans.italic, NimbusSans.smallCaps, opt);
+
   return new FontContainerAll({
-    Carlito: loadFontContainerFamily('Carlito', 'sans', Carlito.normal, Carlito.italic, Carlito.smallCaps, opt),
-    Century: loadFontContainerFamily('Century', 'serif', Century.normal, Century.italic, Century.smallCaps, opt),
-    Garamond: loadFontContainerFamily('Garamond', 'serif', Garamond.normal, Garamond.italic, Garamond.smallCaps, opt),
-    Palatino: loadFontContainerFamily('Palatino', 'serif', Palatino.normal, Palatino.italic, Palatino.smallCaps, opt),
-    NimbusRomNo9L: loadFontContainerFamily('NimbusRomNo9L', 'serif', NimbusRomNo9L.normal, NimbusRomNo9L.italic, NimbusRomNo9L.smallCaps, opt),
-    NimbusSans: loadFontContainerFamily('NimbusSans', 'sans', NimbusSans.normal, NimbusSans.italic, NimbusSans.smallCaps, opt),
+    Carlito: await CarlitoObj,
+    Century: await CenturyObj,
+    Garamond: await GaramondObj,
+    Palatino: await PalatinoObj,
+    NimbusRomNo9L: await NimbusRomNo9LObj,
+    NimbusSans: await NimbusSansObj,
   });
 }
 
@@ -309,13 +351,20 @@ export function loadFontContainerAll({
  * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
  */
 export async function optimizeFontContainerAll(fontPrivate, fontMetricsObj) {
+  const carlitoObj = await optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj);
+  const centuryObj = await optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj);
+  const garamondObj = await optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj);
+  const palatinoObj = await optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj);
+  const nimbusRomNo9LObj = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj);
+  const nimbusSansObj = await optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj);
+
   return new FontContainerAll({
-    Carlito: await optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj),
-    Century: await optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj),
-    Garamond: await optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj),
-    Palatino: await optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj),
-    NimbusRomNo9L: await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj),
-    NimbusSans: await optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj),
+    Carlito: await carlitoObj,
+    Century: await centuryObj,
+    Garamond: await garamondObj,
+    Palatino: await palatinoObj,
+    NimbusRomNo9L: await nimbusRomNo9LObj,
+    NimbusSans: await nimbusSansObj,
   });
 }
 

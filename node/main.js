@@ -23,7 +23,11 @@ import { drawDebugImages } from '../js/debug.js';
 
 import { fontAll } from '../js/containers/fontContainer.js';
 import { loadFontContainerAllRaw } from '../js/fontContainerMain.js';
-import { fontMetricsObj } from '../js/containers/miscContainer.js';
+import {
+  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
+} from '../js/containers/miscContainer.js';
+
+import { LayoutPage } from '../js/objects/layoutObjects.js';
 
 import { setFontMetricsAll } from '../js/fontStatistics.js';
 
@@ -62,10 +66,10 @@ function dumpHOCRAll(fileName) {
     'sans-font': fontAll.sansDefaultName,
     'serif-font': fontAll.serifDefaultName,
     'enable-opt': enableOpt,
-    layout: globalThis.layout,
+    layout: layoutAll,
   };
 
-  for (const [key, value] of Object.entries(globalThis.ocrAll)) {
+  for (const [key, value] of Object.entries(ocrAll)) {
     if (key === 'active') continue;
     const hocrOut = renderHOCR(value, 0, value.length - 1, meta);
     const outputPath = `${debugDir}/${path.basename(fileName).replace(/\.\w{1,5}$/i, '')}_${key}.hocr`;
@@ -138,13 +142,22 @@ async function main(func, params) {
     extractTextMode: false,
   };
 
+  let existingLayout = false;
+
   /** @type {("hocr" | "abbyy" | "stext")} */
   let ocrFormat = 'hocr';
   if (['conf', 'check', 'eval', 'overlay'].includes(func)) {
     if (params.ocrFile) {
-      const ocr1 = await importOCRFiles([params.ocrFile]);
-      globalThis.hocrCurrentRaw = ocr1.hocrRaw;
-      if (ocr1.abbyyMode) ocrFormat = 'abbyy';
+      const ocrData = await importOCRFiles([params.ocrFile]);
+      globalThis.hocrCurrentRaw = ocrData.hocrRaw;
+      if (ocrData.abbyyMode) ocrFormat = 'abbyy';
+
+      if (ocrData.layoutObj) {
+        for (let i = 0; i < ocrData.layoutObj.length; i++) {
+          layoutAll[i] = ocrData.layoutObj[i];
+        }
+        existingLayout = true;
+      }
     } else {
       throw new Error(`OCR file required for function ${func} but not provided.`);
     }
@@ -163,7 +176,6 @@ async function main(func, params) {
   const printConf = func === 'check' || func === 'conf' || params.printConf || false;
 
   const pageCountHOCR = globalThis.hocrCurrentRaw ? globalThis.hocrCurrentRaw.length : 0;
-  globalThis.pageMetricsArr = [];
 
   let fileData;
   let mupdfWorker;
@@ -187,7 +199,7 @@ async function main(func, params) {
 
       if (!globalThis.hocrCurrentRaw) {
         const imageDims = await imageUtils.getDims(imgWrapper);
-        globalThis.pageMetricsArr[0] = new PageMetrics(imageDims);
+        pageMetricsArr[0] = new PageMetrics(imageDims);
       }
     }
   }
@@ -198,22 +210,21 @@ async function main(func, params) {
   // }
   const pageCount = pageCountImage ?? pageCountHOCR;
 
-  globalThis.layout = Array(pageCount);
-  for (let i = 0; i < globalThis.layout.length; i++) {
-    globalThis.layout[i] = { default: true, boxes: {} };
+  if (!existingLayout) {
+    for (let i = 0; i < pageCount; i++) {
+      layoutAll[i] = new LayoutPage();
+    }
   }
 
-  globalThis.ocrAll = {
-    active: Array(pageCount),
-    'User Upload': Array(pageCount),
-    'Tesseract Legacy': Array(pageCount),
-    'Tesseract LSTM': Array(pageCount),
-    'Tesseract Combined Temp': Array(pageCount),
-    'Tesseract Combined': Array(pageCount),
-    Combined: Array(pageCount),
-  };
+  ocrAll.active = Array(pageCount);
+  ocrAll['User Upload'] = Array(pageCount);
+  ocrAll['Tesseract Legacy'] = Array(pageCount);
+  ocrAll['Tesseract LSTM'] = Array(pageCount);
+  ocrAll['Tesseract Combined Temp'] = Array(pageCount);
+  ocrAll['Tesseract Combined'] = Array(pageCount);
+  ocrAll.Combined = Array(pageCount);
 
-  globalThis.ocrAll.active = globalThis.ocrAll['User Upload'];
+  ocrAll.active = ocrAll['User Upload'];
 
   /** @type {Array<EvalMetrics>} */
   const evalMetricsArr = [];
@@ -236,8 +247,8 @@ async function main(func, params) {
   if (func === 'conf' || (printConf && !robustConfMode)) {
     let wordsTotal = 0;
     let wordsHighConf = 0;
-    for (let i = 0; i < globalThis.ocrAll.active.length; i++) {
-      const words = ocr.getPageWords(globalThis.ocrAll.active[i]);
+    for (let i = 0; i < ocrAll.active.length; i++) {
+      const words = ocr.getPageWords(ocrAll.active[i]);
       for (let j = 0; j < words.length; j++) {
         const word = words[j];
         wordsTotal += 1;
@@ -307,7 +318,7 @@ async function main(func, params) {
     // This is set to Tesseract Legacy so results are consistent with the browser version, which uses Legacy data to run `selectDefaultFontsDocument`.
     // Conceptually speaking, it probably makes more sense to use LSTM as that is higher quality on average and is not "overfitted" due to being
     // used for font optimization.
-    if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Legacy'];
+    if (func === 'eval' || func === 'recognize') ocrAll.active = ocrAll['Tesseract Legacy'];
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < imageCache.pageCount; i++) {
@@ -320,20 +331,20 @@ async function main(func, params) {
       const imgBinary = await imageCache.getBinary(i);
 
       const res = await compareHOCR({
-        pageA: globalThis.ocrAll['Tesseract Legacy'][i],
-        pageB: globalThis.ocrAll['Tesseract LSTM'][i],
+        pageA: ocrAll['Tesseract Legacy'][i],
+        pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
-        pageMetricsObj: globalThis.pageMetricsArr[i],
+        pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
 
-      globalThis.ocrAll['Tesseract Combined Temp'][i] = res.page;
+      ocrAll['Tesseract Combined Temp'][i] = res.page;
     }
 
     // Switching active data here for consistency with browser version.
-    if (func === 'eval' || func === 'recognize') globalThis.ocrAll.active = globalThis.ocrAll['Tesseract Combined Temp'];
-    setFontMetricsAll(globalThis.ocrAll['Tesseract Combined Temp']);
-    enableOpt = await runFontOptimization(globalThis.ocrAll['Tesseract Combined Temp']);
+    if (func === 'eval' || func === 'recognize') ocrAll.active = ocrAll['Tesseract Combined Temp'];
+    setFontMetricsAll(ocrAll['Tesseract Combined Temp']);
+    enableOpt = await runFontOptimization(ocrAll['Tesseract Combined Temp']);
 
     output.text = '';
 
@@ -350,10 +361,10 @@ async function main(func, params) {
       const imgBinary = await imageCache.getBinary(i);
 
       const res = await compareHOCR({
-        pageA: globalThis.ocrAll['Tesseract Legacy'][i],
-        pageB: globalThis.ocrAll['Tesseract LSTM'][i],
+        pageA: ocrAll['Tesseract Legacy'][i],
+        pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
-        pageMetricsObj: globalThis.pageMetricsArr[i],
+        pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
 
@@ -365,13 +376,13 @@ async function main(func, params) {
         await writeDebugImages(ctxDebug, [res.debugImg], filePath);
       }
 
-      globalThis.ocrAll['Tesseract Combined'][i] = res.page;
+      ocrAll['Tesseract Combined'][i] = res.page;
 
       if (func === 'recognize') output.text += ocr.getPageText(res.page);
     }
   } else {
-    setFontMetricsAll(globalThis.ocrAll.active);
-    await runFontOptimization(globalThis.ocrAll.active);
+    setFontMetricsAll(ocrAll.active);
+    await runFontOptimization(ocrAll.active);
   }
 
   if (robustConfMode || func === 'eval') {
@@ -392,25 +403,25 @@ async function main(func, params) {
 
       // In "check" mode, the provided OCR is being compared against OCR from the built-in engine.
       // In "eval" mode, the OCR from the built-in engine is compared against provided ground truth OCR data.
-      const pageA = func === 'eval' ? globalThis.ocrAll['Tesseract Combined'][i] : globalThis.ocrAll['User Upload'][i];
-      const pageB = func === 'eval' ? globalThis.ocrAll['User Upload'][i] : globalThis.ocrAll['Tesseract Combined'][i];
+      const pageA = func === 'eval' ? ocrAll['Tesseract Combined'][i] : ocrAll['User Upload'][i];
+      const pageB = func === 'eval' ? ocrAll['User Upload'][i] : ocrAll['Tesseract Combined'][i];
 
       const res = await compareHOCR({
         pageA,
         pageB,
         binaryImage: imgBinary,
-        pageMetricsObj: globalThis.pageMetricsArr[i],
+        pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
 
       if (debugMode) compLogs.Combined[i] = res.debugLog;
 
-      globalThis.ocrAll.Combined[i] = res.page;
+      ocrAll.Combined[i] = res.page;
 
       if (res.metrics) evalMetricsArr.push(res.metrics);
     }
 
-    globalThis.ocrAll.active = globalThis.ocrAll.Combined;
+    ocrAll.active = ocrAll.Combined;
 
     const evalMetricsDoc = reduceEvalMetrics(evalMetricsArr);
 
@@ -427,7 +438,7 @@ async function main(func, params) {
   }
 
   if (func === 'overlay' && backgroundArg) {
-    const pdfStr = await hocrToPDF(globalThis.ocrAll.active, 0, -1, 'proof', true, false);
+    const pdfStr = await hocrToPDF(ocrAll.active, 0, -1, 'proof', true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
 

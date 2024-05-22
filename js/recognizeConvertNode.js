@@ -1,6 +1,7 @@
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { imageCache } from './containers/imageContainer.js';
+import { layoutAll, ocrAll, pageMetricsArr } from './containers/miscContainer.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
   await globalThis.generalScheduler.ready;
@@ -43,22 +44,22 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
 export async function convertPageCallbackNode({
   pageObj, fontMetricsObj, layoutBoxes, warn,
 }, n, mainData, engineName) {
-  if (engineName) globalThis.ocrAll[engineName][n] = pageObj;
+  if (engineName) ocrAll[engineName][n] = pageObj;
 
   // If this is flagged as the "main" data, then save the stats.
   if (mainData) {
     globalThis.convertPageWarn[n] = warn;
 
     // The page metrics object may have been initialized earlier through some other method (e.g. using PDF info).
-    if (!globalThis.pageMetricsArr[n]) {
-      globalThis.pageMetricsArr[n] = new PageMetrics(pageObj.dims);
+    if (!pageMetricsArr[n]) {
+      pageMetricsArr[n] = new PageMetrics(pageObj.dims);
     }
 
-    globalThis.pageMetricsArr[n].angle = pageObj.angle;
+    pageMetricsArr[n].angle = pageObj.angle;
   }
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(globalThis.layout[n].boxes).length === 0) globalThis.layout[n].boxes = layoutBoxes;
+  if (Object.keys(layoutAll[n].boxes).length === 0) layoutAll[n].boxes = layoutBoxes;
 }
 
 /**

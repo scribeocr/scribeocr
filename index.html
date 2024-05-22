@@ -10,6 +10,12 @@
       --bs-blue: #287bb5;
     }
 
+    .prevent-select {
+      -webkit-user-select: none; /* Safari */
+      -ms-user-select: none; /* IE 10 and IE 11 */
+      user-select: none; /* Standard syntax */
+    }
+
     /* The min-width should correspond to the "md" breakpoint in bootstrap. */
     @media (max-width: 768px) {
 
@@ -189,9 +195,6 @@
   <script src="./js/runFirst.js" defer></script>
   <script src="./lib/bootstrap.bundle.min.js" defer></script>
 
-  <script src="./lib/fabric.min.js" defer></script>
-
-  <!-- <script src="./lib/FileSaver.js" async></script> -->
   <script type="module" src="main.js"></script>
 
 </head>
@@ -208,22 +211,22 @@
           <div class="col-xl-6 order-3 order-xl-1" id="nav-tab-container">
             <div class="nav nav-tabs" id="nav-tab" role="tablist" style="flex-wrap:nowrap">
 
-              <a class="nav-link collapsed" id="nav-recognize-tab" data-bs-toggle="collapse"
+              <a class="nav-link collapsed prevent-select" id="nav-recognize-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
-              <a class="nav-link collapsed" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval"
+              <a class="nav-link collapsed prevent-select" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval"
                 type="button" role="tab" aria-controls="nav-eval" style="display:none">Evaluate</a>
 
-              <a class="nav-link collapsed" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view"
+              <a class="nav-link collapsed prevent-select" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view"
                 type="button" role="tab" aria-controls="nav-view">View</a>
-              <a class="nav-link collapsed" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit"
+              <a class="nav-link collapsed prevent-select" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit"
                 type="button" role="tab" aria-controls="nav-edit">Edit</a>
-              <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout"
+              <a class="nav-link collapsed prevent-select" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout"
                 type="button" role="tab" aria-controls="nav-layout" style="display:none">Layout</a>
 
               <!-- <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout" type="button" role="tab" aria-controls="nav-layout">Layout</a> -->
-              <a class="nav-link collapsed" id="nav-download-tab" data-bs-toggle="collapse"
+              <a class="nav-link collapsed prevent-select" id="nav-download-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</a>
-              <a class="nav-link collapsed" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about"
+              <a class="nav-link collapsed prevent-select" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about"
                 type="button" role="tab" aria-controls="nav-about">Info</a>
 
             </div>
@@ -574,7 +577,7 @@
                     </div>
                     <div class="collapse" id="collapseRange">
                       <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
-                        <input type="range" class="form-range" id="rangeBaseline" max="100">
+                        <input type="range" class="form-range" id="rangeBaseline" max="50">
                       </div>
                     </div>
                     <div class="row">
@@ -1572,44 +1575,47 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
       </div>
     </div>
   </div>
-  <div class="container">
-    <div class="container" style="position:absolute;top:100px;height:80vh">
-
-      <fieldset class="upload_dropZone text-center p-4" id="uploadDropZone"
-        style="height:100%;z-index:10;position:relative;width:90%">
-        <legend class="visually-hidden">Image uploader</legend>
-
-        <div style="position:relative;top:35%">
-          <p class="small">Drag &amp; drop files inside dashed region<br><i>or</i></p>
-          <input type="file" class="position-absolute invisible" id="openFileInput" multiple="">
-          <label class="btn btn-info mb-3" for="openFileInput" id="openFileInputLabel" style="min-width:8rem">Select
-            Files</label>
-          <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"
-            style="display:inline!important">
+  <div style="height:100vh">
+    <div class="container">
+      <div class="container" style="position:absolute;top:100px;height:80vh">
+  
+        <fieldset class="upload_dropZone text-center p-4" id="uploadDropZone"
+          style="height:100%;z-index:10;position:relative;width:90%">
+          <legend class="visually-hidden">Image uploader</legend>
+  
+          <div style="position:relative;top:35%">
+            <p class="small">Drag &amp; drop files inside dashed region<br><i>or</i></p>
+            <input type="file" class="position-absolute invisible" id="openFileInput" multiple="">
+            <label class="btn btn-info mb-3" for="openFileInput" id="openFileInputLabel" style="min-width:8rem">Select
+              Files</label>
+            <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"
+              style="display:inline!important">
+            </div>
+            <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"></div>
+            <p class="small">Need help? View the <a href="https://docs.scribeocr.com">docs</a>.<br></p>
           </div>
-          <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"></div>
-          <p class="small">Need help? View the <a href="https://docs.scribeocr.com">docs</a>.<br></p>
-        </div>
-      </fieldset>
+        </fieldset>
+      </div>
+  
     </div>
-
+    <div class="container" id="legendCanvasParentDiv"
+      style="position:absolute;right:0;height:80vh;width:20vw;top:20vh;z-index:10;display:none;pointer-events:none">
+      <canvas id="legendCanvas"></canvas>
+    </div>
+  
+  
+    <div id="c"></div>
+    <table id="dataPreview" class="dataPreview" style="display:none;margin-top:2em"></table>
+    <canvas id="d" style="display:none"></canvas>
+    <div id="debugCanvasParentDiv" style="display:none">
+      <canvas id="g"></canvas>
+    </div>
+    <img id="imgInvis" style="display:none;" />
+  
+    <!-- Do not delete -->
+    <div id="exTest" style="display:none;width:1ex;font-family:'Times New Roman';font-size:100px"></div>
+  
   </div>
-  <div class="container" id="legendCanvasParentDiv"
-    style="position:absolute;right:0;height:80vh;width:20vw;top:20vh;z-index:10;display:none;pointer-events:none">
-    <canvas id="legendCanvas"></canvas>
-  </div>
-
-
-  <canvas id="c" width="450" height="600"></canvas>
-  <table id="dataPreview" class="dataPreview" style="display:none;margin-top:2em"></table>
-  <canvas id="d" style="display:none"></canvas>
-  <div id="debugCanvasParentDiv" style="display:none">
-    <canvas id="g"></canvas>
-  </div>
-  <img id="imgInvis" style="display:none;" />
-
-  <!-- Do not delete -->
-  <div id="exTest" style="display:none;width:1ex;font-family:'Times New Roman';font-size:100px"></div>
 
 
 </body>

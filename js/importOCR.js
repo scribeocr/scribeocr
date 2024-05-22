@@ -26,7 +26,8 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
   let pageCountHOCR;
   let hocrRaw;
   let fontMetricsObj;
-  let layoutObj;
+  /** @type{?Array<import('./objects/layoutObjects.js').LayoutPage>} */
+  let layoutObj = null;
   let defaultFont;
   let enableOpt;
   let sansFont;
@@ -96,7 +97,7 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
       if (fontMetricsStr) fontMetricsObj = JSON.parse(fontMetricsStr);
 
       const layoutStr = getMeta('layout');
-      if (layoutStr) layoutObj = JSON.parse(layoutStr);
+      if (layoutStr) layoutObj = /** @type{Array<import('./objects/layoutObjects.js').LayoutPage>} */ (JSON.parse(layoutStr));
 
       const enableOptStr = getMeta('enable-opt');
       if (enableOptStr) enableOpt = enableOptStr;

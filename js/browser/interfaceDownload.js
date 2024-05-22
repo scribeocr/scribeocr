@@ -7,10 +7,9 @@ import {
 } from '../miscUtils.js';
 import { renderText } from '../exportRenderText.js';
 import { renderHOCRBrowser } from '../exportRenderHOCRBrowser.js';
-import { writeDocx } from '../exportWriteDocx.js';
-import { writeXlsx } from '../exportWriteTabular.js';
 import { reorderHOCR } from '../modifyOCR.js';
 import { getDisplayMode } from './interfaceView.js';
+import { layoutAll, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 
 import { hocrToPDF } from '../exportPDF.js';
 
@@ -189,10 +188,10 @@ export async function handleDownload() {
   if (downloadType !== 'hocr' && downloadType !== 'xlsx' && enableLayoutElem.checked) {
     // Reorder HOCR elements according to layout boxes
     for (let i = minValue; i <= maxValue; i++) {
-      hocrDownload.push(reorderHOCR(globalThis.ocrAll.active[i], globalThis.layout[i]));
+      hocrDownload.push(reorderHOCR(ocrAll.active[i], layoutAll[i]));
     }
   } else {
-    hocrDownload = globalThis.ocrAll.active;
+    hocrDownload = ocrAll.active;
   }
 
   if (downloadType === 'pdf') {
@@ -200,8 +199,8 @@ export async function handleDownload() {
     const dimsLimit = { width: -1, height: -1 };
     if (standardizeSizeMode) {
       for (let i = minValue; i <= maxValue; i++) {
-        dimsLimit.height = Math.max(dimsLimit.height, globalThis.pageMetricsArr[i].dims.height);
-        dimsLimit.width = Math.max(dimsLimit.width, globalThis.pageMetricsArr[i].dims.width);
+        dimsLimit.height = Math.max(dimsLimit.height, pageMetricsArr[i].dims.height);
+        dimsLimit.width = Math.max(dimsLimit.width, pageMetricsArr[i].dims.width);
       }
     }
 
@@ -305,7 +304,7 @@ export async function handleDownload() {
           // Angle the PDF viewer is instructed to rotated the image by.
           // This method is currently only used when rotation is needed but the user's (unrotated) source images are being used.
           // If the images are being rendered, then rotation is expected to be applied within the rendering process.
-          const angleImagePdf = autoRotateCheckboxElem.checked && !renderImage ? (globalThis.pageMetricsArr[i].angle || 0) * -1 : 0;
+          const angleImagePdf = autoRotateCheckboxElem.checked && !renderImage ? (pageMetricsArr[i].angle || 0) * -1 : 0;
 
           await w.overlayTextImageAddPage({
             doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle: angleImagePdf,
@@ -366,7 +365,7 @@ export async function handleDownload() {
   } else if (downloadType === 'hocr') {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
-    renderHOCRBrowser(globalThis.ocrAll.active);
+    renderHOCRBrowser(ocrAll.active);
     downloadProgress.increment();
   } else if (downloadType === 'text') {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
@@ -385,13 +384,15 @@ export async function handleDownload() {
   } else if (downloadType === 'docx') {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
-
+    // Less common export formats are loaded dynamically to reduce initial load time.
+    const writeDocx = (await import('../exportWriteDocx.js')).writeDocx;
     writeDocx(hocrDownload);
     downloadProgress.increment();
   } else if (downloadType === 'xlsx') {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
-
+    // Less common export formats are loaded dynamically to reduce initial load time.
+    const writeXlsx = (await import('../exportWriteTabular.js')).writeXlsx;
     writeXlsx(hocrDownload);
     downloadProgress.increment();
   }

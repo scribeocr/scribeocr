@@ -1,4 +1,5 @@
 import { imageCache, ImageWrapper } from './containers/imageContainer.js';
+import { pageMetricsArr } from './containers/miscContainer.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -16,7 +17,7 @@ export const calcRecognizeRotateArgs = async (n, areaMode) => {
   // Threshold (in radians) under which page angle is considered to be effectively 0.
   const angleThresh = 0.0008726646;
 
-  const angle = globalThis.pageMetricsArr[n]?.angle;
+  const angle = pageMetricsArr[n]?.angle;
 
   // Whether the page angle is already known (or needs to be detected)
   const angleKnown = typeof (angle) === 'number';
@@ -74,7 +75,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
     ...tessOptions,
   };
 
-  const pageDims = globalThis.pageMetricsArr[n].dims;
+  const pageDims = pageMetricsArr[n].dims;
 
   // If `legacy` and `lstm` are both `false`, recognition is not run, but layout analysis is.
   // This combination of options would be set for debug mode, where the point of running Tesseract
@@ -97,7 +98,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
       debugVis,
     },
     n,
-    knownAngle: globalThis.pageMetricsArr[n].angle,
+    knownAngle: pageMetricsArr[n].angle,
     pageDims,
   });
 
@@ -116,7 +117,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
 
   // parseDebugInfo(res0.recognize.debug);
 
-  if (!angleKnown) globalThis.pageMetricsArr[n].angle = res0.recognize.rotateRadians * (180 / Math.PI) * -1;
+  if (!angleKnown) pageMetricsArr[n].angle = res0.recognize.rotateRadians * (180 / Math.PI) * -1;
 
   // An image is rotated if either the source was rotated or rotation was applied by Tesseract.
   const isRotated = Boolean(res0.recognize.rotateRadians || 0) || nativeN.rotated;
