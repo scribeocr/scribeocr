@@ -374,7 +374,6 @@ export class KonvaIText extends Konva.Shape {
       debugger;
     }
 
-    console.log('Creating input');
     canvasObj.input = document.createElement('span');
 
     const text = textNode.charArr.join('');
@@ -415,12 +414,16 @@ export class KonvaIText extends Konva.Shape {
     // canvasObj.input.style.overflow = 'hidden';
 
     canvasObj.inputRemove = () => {
-      console.log('Removing input');
-      textNode.word.text = ocr.replaceLigatures(canvasObj.input.textContent);
+      const textNew = ocr.replaceLigatures(canvasObj.input?.textContent || '').trim();
+
+      // Words are not allowed to be empty
+      if (textNew) {
+        textNode.word.text = textNew;
+        textNode.editTextCallback(textNode);
+      }
+      updateWordCanvas(textNode);
       canvasObj.input.remove();
       canvasObj.input = null;
-      updateWordCanvas(textNode);
-      textNode.editTextCallback(textNode);
     };
 
     // Update the Konva Text node after editing
@@ -452,14 +455,9 @@ export class KonvaOcrWord extends KonvaIText {
    * @param {number} options.visualLeft
    * @param {number} options.yActual
    * @param {number} options.topBaseline
-   * @param {string} options.fontStyle
-   * @param {string} options.fontFaceName
-   * @param {import('../objects/ocrObjects.js').OcrWord} options.word
+   * @param {OcrWord} options.word
    * @param {number} options.rotation
-   * @param {string} options.fontStyleLookup
-   * @param {string} options.fontFamilyLookup
    * @param {boolean} options.outline - Draw black outline around text.
-   * @param {boolean} options.selected - Draw blue outline around text.
    * @param {boolean} options.fillBox
    */
   constructor({
@@ -1192,9 +1190,6 @@ export function renderPage(page) {
       const box = wordObj.bbox;
 
       const wordDropCap = wordObj.dropcap;
-      const fontStyle = wordObj.style;
-
-      const fontI = fontAll.getWordFont(wordObj);
 
       const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
 
@@ -1221,10 +1216,6 @@ export function renderPage(page) {
         yActual: top,
         topBaseline: visualBaseline,
         rotation: angleArg,
-        fontStyle,
-        fontFaceName: fontI.fontFaceName,
-        fontStyleLookup: fontStyle,
-        fontFamilyLookup: fontI.family,
         word: wordObj,
         outline: outlineWord,
         fillBox: matchIdArr.includes(wordObj.id),

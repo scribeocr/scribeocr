@@ -5,13 +5,12 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { calcWordMetrics, addLigatures, calcLineFontSize } from '../fontUtils.js';
 import { renderPageQueue, cp, displayPage } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import {
   stage, layerText, updateWordCanvas, KonvaOcrWord, canvasObj,
-  getCanvasWords, getWordFillOpacity,
+  getCanvasWords,
   destroyControls,
 } from './interfaceCanvas.js';
 import { combineData } from '../modifyOCR.js';
@@ -352,8 +351,6 @@ export async function addWordManual({
     visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
   }
 
-  const fontObj = fontAll.getFont('Default');
-
   const displayMode = displayModeElem.value;
   const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
   const outlineWord = outlineWordsElem.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
@@ -363,10 +360,6 @@ export async function addWordManual({
     yActual: visualBaseline,
     topBaseline: visualBaseline,
     rotation: angleArg,
-    fontStyle: 'normal',
-    fontFaceName: fontObj.fontFaceName,
-    fontStyleLookup: 'normal',
-    fontFamilyLookup: fontAll.defaultFontName,
     word: wordObj,
     outline: outlineWord,
     fillBox: false,
