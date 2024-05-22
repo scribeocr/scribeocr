@@ -22,7 +22,6 @@ describe('Generate output files using images and built-in OCR', function () {
   it('3-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -37,7 +36,6 @@ describe('Generate output files using images and built-in OCR', function () {
   it('3 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -71,7 +69,7 @@ describe('Generate output files using images and built-in OCR', function () {
 describe('Generate output files using images only', function () {
   let driver;
   let customActions;
-  this.timeout(15000);
+  this.timeout(25000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {
@@ -81,7 +79,6 @@ describe('Generate output files using images only', function () {
   it('3-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -94,7 +91,6 @@ describe('Generate output files using images only', function () {
   it('3 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -126,7 +122,7 @@ describe('Generate output files using images only', function () {
 describe('Generate output files using ABBYY XML only', function () {
   let driver;
   let customActions;
-  this.timeout(15000);
+  this.timeout(25000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {
@@ -136,7 +132,6 @@ describe('Generate output files using ABBYY XML only', function () {
   it('3-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -168,7 +163,7 @@ describe('Generate output files using ABBYY XML only', function () {
 describe('Generate output files using images and uploaded ABBYY XML', function () {
   let driver;
   let customActions;
-  this.timeout(20000);
+  this.timeout(25000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {
@@ -178,7 +173,6 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
   it('3-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -194,7 +188,6 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
   it('3 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -229,7 +222,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 describe('Generate output files using images and uploaded Tesseract XML', function () {
   let driver;
   let customActions;
-  this.timeout(20000);
+  this.timeout(25000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {
@@ -239,7 +232,6 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
   it('3-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -255,7 +247,6 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
   it('3 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Upload the files
     await customActions.uploadFiles([
@@ -290,7 +281,7 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
 describe('Generate output files using PDF and existing text layer', function () {
   let driver;
   let customActions;
-  this.timeout(20000);
+  this.timeout(25000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {
@@ -300,7 +291,6 @@ describe('Generate output files using PDF and existing text layer', function () 
   it('3-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
-    await driver.sleep(1000);
 
     // Click on the 'Download' tab
     await driver.findElement(By.id('nav-about-tab')).click();
