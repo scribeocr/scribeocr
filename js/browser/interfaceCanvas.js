@@ -351,17 +351,15 @@ export class KonvaIText extends Konva.Shape {
   static addTextInput = (textNode) => {
     const pointerCoordsRel = layerText.getRelativePointerPosition();
     let letterIndex = 0;
-    let leftI = textNode.visualLeft;
+    let leftI = textNode.visualLeft - textNode.leftSideBearing;
     for (let i = 0; i < textNode.charArr.length; i++) {
       // For most letters, the letter is selected if the pointer is in the left 75% of the advance.
       // This could be rewritten to be more precise by using the actual bounding box of each letter,
       // however this would require calculating additional metrics for each letter.
       // The 75% rule is a compromise, as setting to 50% would be unintuitive for users trying to select the letter they want to edit,
       // and setting to 100% would be unintuitive for users trying to position the cursor between letters.
-      // Several exceptions exist, where a 50% rule is used instead:
-      // (1) For the last letter, since using the 75% rule would make it extremely difficult to select the end of the word.
-      // (2) For slim characters (i, l), where 75% of the advance often extends past the actual letter.
-      const cutOffPer = i + 1 === textNode.charArr.length || textNode.charArr[i].match(/[il]/) ? 0.5 : 0.75;
+      // For the last letter, since using the 75% rule would make it extremely difficult to select the end of the word.
+      const cutOffPer = i + 1 === textNode.charArr.length ? 0.5 : 0.75;
       const cutOff = leftI + textNode.advanceArrTotal[i] * cutOffPer;
       if (pointerCoordsRel?.x && cutOff > pointerCoordsRel.x) break;
       letterIndex++;
