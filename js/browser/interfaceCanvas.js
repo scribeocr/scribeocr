@@ -153,10 +153,7 @@ export async function updateWordCanvas(wordI) {
 
   wordI.charSpacing = charSpacingFinal;
 
-  // Re-set the x position of the word.
-  // This is necessary as changing the font/style/etc. can change the left bearing,
-  // which requires shifting the word left/right to maintain the same visual position.
-  wordI.x(wordI.visualLeft - leftSideBearing);
+  wordI.leftSideBearing = leftSideBearing;
 
   const width = wordI.widthFromOCR ? wordI.word.bbox.right - wordI.word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
 
@@ -253,12 +250,10 @@ export class KonvaIText extends Konva.Shape {
       advanceArrTotal.push(leftI);
     }
 
-    const x = visualLeft - leftSideBearing;
-
     const width = widthFromOCR ? word.bbox.right - word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
 
     super({
-      x,
+      x: visualLeft,
       // `y` is what Konva sees as the y value, which corresponds to where the top of the interactive box is drawn.
       y: yActual - fontSize * 0.6,
       width,
@@ -278,7 +273,7 @@ export class KonvaIText extends Konva.Shape {
 
         shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
 
-        let leftI = 0;
+        let leftI = 0 - this.leftSideBearing;
         for (let i = 0; i < shape.charArr.length; i++) {
           const charI = shape.charArr[i];
           context.fillText(charI, leftI, shape.fontSize * 0.6);
@@ -320,6 +315,7 @@ export class KonvaIText extends Konva.Shape {
     this.charArr = charArr;
     this.charSpacing = charSpacingFinal;
     this.advanceArrTotal = advanceArrTotal;
+    this.leftSideBearing = leftSideBearing;
     this.fontSize = fontSize;
     // `yActual` contains the y value that we want to draw the text at, which is usually the baseline.
     this.yActual = yActual;
@@ -355,14 +351,17 @@ export class KonvaIText extends Konva.Shape {
   static addTextInput = (textNode) => {
     const pointerCoordsRel = layerText.getRelativePointerPosition();
     let letterIndex = 0;
-    let leftI = textNode.x();
+    let leftI = textNode.visualLeft;
     for (let i = 0; i < textNode.charArr.length; i++) {
-      // For most letters, the letter is selected if the pointer is in the left 75% of the letter.
-      // This is a compromise, as setting to 50% would be unintuitive for users trying to select the letter they want to edit,
+      // For most letters, the letter is selected if the pointer is in the left 75% of the advance.
+      // This could be rewritten to be more precise by using the actual bounding box of each letter,
+      // however this would require calculating additional metrics for each letter.
+      // The 75% rule is a compromise, as setting to 50% would be unintuitive for users trying to select the letter they want to edit,
       // and setting to 100% would be unintuitive for users trying to position the cursor between letters.
-      // The exception is for the last letter, where the letter is selected if the pointer is in the left 50% of the letter.
-      // This is because using the 75% rule would make it extremely difficult to select the end of the word.
-      const cutOffPer = i + 1 === textNode.charArr.length ? 0.5 : 0.75;
+      // Several exceptions exist, where a 50% rule is used instead:
+      // (1) For the last letter, since using the 75% rule would make it extremely difficult to select the end of the word.
+      // (2) For slim characters (i, l), where 75% of the advance often extends past the actual letter.
+      const cutOffPer = i + 1 === textNode.charArr.length || textNode.charArr[i].match(/[il]/) ? 0.5 : 0.75;
       const cutOff = leftI + textNode.advanceArrTotal[i] * cutOffPer;
       if (pointerCoordsRel?.x && cutOff > pointerCoordsRel.x) break;
       letterIndex++;
@@ -383,7 +382,8 @@ export class KonvaIText extends Konva.Shape {
 
     const charSpacingHTML = textNode.charSpacing * scale;
 
-    const { x: x1, y: y1 } = textNode.getAbsolutePosition();
+    let { x: x1, y: y1 } = textNode.getAbsolutePosition();
+    x1 -= textNode.leftSideBearing * scale;
 
     const fontSizeHTML = textNode.fontSize * scale;
 
