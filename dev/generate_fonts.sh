@@ -3,7 +3,7 @@ proc_fonts_dir="fonts"
 all_fonts=1
 temp_dir=`mktemp --directory`
 
-while IFS= read -r file
+while IFS= read -r file || [[ -n "$file" ]]; do
 do
     if [[ -f $file ]]; then
         filename=$(basename "$file")

@@ -1,17 +1,29 @@
+#!/bin/bash
 
-## Create small caps font
-node node/createSmallCapsFont.js fonts/NimbusRomNo9L-Reg.woff fonts/NimbusRomNo9L-RegSmallCaps.woff
-node node/createSmallCapsFont.js fonts/NimbusSanL-Reg.woff fonts/NimbusSanL-RegSmallCaps.woff
-node node/createSmallCapsFont.js fonts/Carlito-Regular.woff fonts/Carlito-SmallCaps.woff
-node node/createSmallCapsFont.js fonts/C059-Roman.woff fonts/C059-SmallCaps.woff
-node node/createSmallCapsFont.js fonts/EBGaramond-Regular.woff fonts/EBGaramond-SmallCaps.woff
-node node/createSmallCapsFont.js fonts/P052-Roman.woff fonts/P052-SmallCaps.woff
+proc_fonts_dir="fonts"
 
-## Run through FontForge to reduce file sizes
-## FontForge produces much smaller files than Opentype.js--presumably it applies compression but Opentype.js does not.
-python dev/processFontSmallCaps2.py fonts/NimbusRomNo9L-RegSmallCaps.woff fonts/NimbusRomNo9L-RegSmallCaps.woff
-python dev/processFontSmallCaps2.py fonts/NimbusSanL-RegSmallCaps.woff fonts/NimbusSanL-RegSmallCaps.woff
-python dev/processFontSmallCaps2.py fonts/Carlito-SmallCaps.woff fonts/Carlito-SmallCaps.woff
-python dev/processFontSmallCaps2.py fonts/C059-SmallCaps.woff fonts/C059-SmallCaps.woff
-python dev/processFontSmallCaps2.py fonts/EBGaramond-SmallCaps.woff fonts/EBGaramond-SmallCaps.woff
-python dev/processFontSmallCaps2.py fonts/P052-SmallCaps.woff fonts/P052-SmallCaps.woff
+# Read from fontListSmallCaps.txt and process each font
+while IFS= read -r file || [[ -n "$file" ]]; do
+    echo $file
+
+    filename=$(basename "$file")
+    filename_without_extension="${filename%.*}"
+
+    inputFont="fonts/${filename_without_extension}.woff"
+    intermediateFont="fonts/${filename_without_extension}SmallCaps.1.otf"
+    finalFont="fonts/${filename_without_extension}SmallCaps.otf"
+    finalWebFont="fonts/${filename_without_extension}SmallCaps.woff"
+
+    # Create small caps font
+    node node/createSmallCapsFont.js "$inputFont" "$intermediateFont"
+
+    # Subset font to remove ligatures, which are still lowercase.
+    hb-subset --output-file="$finalFont" --text-file=dev/charSetSmallCaps.txt "$intermediateFont"
+
+    # Run through FontForge to reduce file sizes
+    python dev/processFontSmallCaps2.py "$finalFont" "$finalWebFont"
+
+    rm -f "$intermediateFont"
+    rm -f "$finalFont"
+
+done < "dev/fontListSmallCaps.txt"

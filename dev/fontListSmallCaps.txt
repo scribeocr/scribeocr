@@ -1,0 +1,6 @@
+fonts/NimbusRomNo9L-Reg.woff
+fonts/NimbusSanL-Reg.woff
+fonts/Carlito-Regular.woff
+fonts/C059-Roman.woff
+fonts/EBGaramond-Regular.woff
+fonts/P052-Roman.woff
