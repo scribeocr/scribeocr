@@ -26,6 +26,8 @@ export async function convertPageHocr({
 }) {
   rotateAngle = rotateAngle || 0;
 
+  const langsSet = new Set();
+
   let currentLang = 'eng';
 
   const angleRisePage = [];
@@ -358,7 +360,9 @@ export async function convertPageHocr({
   const warn = { char: charMode ? '' : 'char_warning' };
 
   pass2(pageObj, rotateAngle);
-  pass3(pageObj);
+  const langSet = pass3(pageObj);
 
-  return { pageObj, layoutBoxes: {}, warn };
+  return {
+    pageObj, layoutBoxes: {}, warn, langSet,
+  };
 }

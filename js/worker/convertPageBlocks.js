@@ -148,7 +148,9 @@ export async function convertPageBlocks({
   if (upscale) ocr.scalePage(pageObj, 0.5);
 
   pass2(pageObj, rotateAngle);
-  pass3(pageObj);
+  const langSet = pass3(pageObj);
 
-  return { pageObj, layoutBoxes: {}, warn: { char: '' } };
+  return {
+    pageObj, layoutBoxes: {}, warn: { char: '' }, langSet,
+  };
 }

@@ -8,6 +8,7 @@ import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
 import { imageCache } from './containers/imageContainer.js';
 import { layoutAll, ocrAll, pageMetricsArr } from './containers/miscContainer.js';
+import { loadChiSimFont } from './fontContainerMain.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
@@ -150,16 +151,18 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
  * This function is called after running a `convertPage` (or `recognizeAndConvert`) function, updating the globals with the results.
  * This needs to be a separate function from `convertOCRPage`, given that sometimes recognition and conversion are combined by using `recognizeAndConvert`.
  *
- * @param {Object} params - Object returned by `convertPage` functions
+ * @param {Awaited<ReturnType<typeof import('./worker/generalWorker.js').recognizeAndConvert>>['convert']} params
  * @param {number} n
  * @param {boolean} mainData
  * @param {string} engineName - Name of OCR engine.
  * @returns
  */
 export async function convertPageCallbackBrowser({
-  pageObj, layoutBoxes, warn,
+  pageObj, layoutBoxes, warn, langSet,
 }, n, mainData, engineName) {
   if (engineName) ocrAll[engineName][n] = pageObj;
+
+  if (langSet.has('chi_sim')) await loadChiSimFont();
 
   if (['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName)) ocrAll['Tesseract Latest'][n] = pageObj;
 

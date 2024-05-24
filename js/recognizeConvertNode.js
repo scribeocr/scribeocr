@@ -2,6 +2,7 @@ import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { imageCache } from './containers/imageContainer.js';
 import { layoutAll, ocrAll, pageMetricsArr } from './containers/miscContainer.js';
+import { loadChiSimFont } from './fontContainerMain.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
   await globalThis.generalScheduler.ready;
@@ -35,15 +36,17 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
  * This function is called after running a `convertPage` (or `recognizeAndConvert`) function, updating the globals with the results.
  * This needs to be a separate function from `convertOCRPage`, given that sometimes recognition and conversion are combined by using `recognizeAndConvert`.
  *
- * @param {Object} params - Object returned by `convertPage` functions
+ * @param {Awaited<ReturnType<typeof import('./worker/generalWorker.js').recognizeAndConvert>>['convert']} params
  * @param {number} n
  * @param {boolean} mainData
  * @param {string} engineName - Name of OCR engine.
  * @returns
  */
 export async function convertPageCallbackNode({
-  pageObj, fontMetricsObj, layoutBoxes, warn,
+  pageObj, layoutBoxes, warn, langSet,
 }, n, mainData, engineName) {
+  if (langSet.has('chi_sim')) await loadChiSimFont();
+
   if (engineName) ocrAll[engineName][n] = pageObj;
 
   // If this is flagged as the "main" data, then save the stats.

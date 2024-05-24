@@ -184,11 +184,13 @@ export function pass2(pageObj, rotateAngle) {
 /**
  * Pass 3 iterates over all words/letters in the OCR object, calculating statistics and applying corrections.
  * All OCR objects (Tesseract/Abbyy/Stext) should be run through this function before returning.
+ * Returns a set containing all languages detected in the OCR object.
  *
  * @param {OcrPage} pageObj - Page object to apply corrections to. Edited in place.
  */
 export function pass3(pageObj) {
-  /** @type {Object.<string, FontMetricsRawFamily>} */
+  /** @type {Set<string>} */
+  const langSet = new Set();
 
   // Calculate page angle, if not already set to non-zero value.
   // If a page angle is already defined, that indicates that angle was already detected and rotation was applied in pre-processing,
@@ -219,6 +221,8 @@ export function pass3(pageObj) {
     for (const wordObj of lineObj.words) {
       const letterArr = wordObj.text.split('');
       const charObjArr = wordObj.chars;
+
+      langSet.add(wordObj.lang);
 
       // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
       if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
@@ -352,4 +356,6 @@ export function pass3(pageObj) {
       wordObj.text = ocr.replaceLigatures(letterArr.join(''));
     }
   }
+
+  return langSet;
 }

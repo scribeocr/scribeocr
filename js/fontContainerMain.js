@@ -78,13 +78,24 @@ export async function loadFontContainerAllRaw() {
   return loadFontContainerAll(srcObj);
 }
 
+let chiReadyRes;
+let chiReady;
+
 /**
  * Loads chi_sim font. Returns early if already loaded.
  */
 export async function loadChiSimFont() {
-  // We currently assume only one version of chi_sim exists so there is never a valid reason to re-load.
-  if (fontAll.supp.chi_sim) return;
+  if (chiReady) return chiReady;
+
+  chiReady = new Promise((resolve, reject) => {
+    chiReadyRes = resolve;
+  });
+
   fontAll.supp.chi_sim = await loadFont('NotoSansSC', 'normal', 'sans', 'NotoSansSC-Regular.ttf', false);
+
+  chiReadyRes();
+
+  return chiReady;
 }
 
 /**

@@ -256,7 +256,7 @@ export async function convertPageStext({ ocrStr, n }) {
 
   pageObj.angle = angleOut;
 
-  pass3(pageObj);
+  const langSet = pass3(pageObj);
 
-  return { pageObj, layoutBoxes: {} };
+  return { pageObj, layoutBoxes: {}, langSet };
 }

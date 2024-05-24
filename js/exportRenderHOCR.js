@@ -69,6 +69,10 @@ export function renderHOCR(ocrData, minValue, maxValue, meta) {
 
         hocrOut += "'";
 
+        // Tesseract HOCR specifies default language for a paragraph in the "ocr_par" element,
+        // however as ScribeOCR does not currently have a paragarph object, every word must have its language specified.
+        hocrOut += ` lang='${wordObj.lang}'`;
+
         // TODO: Why are we representing font family and style using the `style` HTML element here?
         // This is not how Tesseract does things, and our own parsing script does not appear to be written to re-import it properly.
         // Add "style" attribute (if applicable)
