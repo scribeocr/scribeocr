@@ -1560,6 +1560,7 @@ async function importFiles(curFiles) {
 
   if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
     toggleEditButtons(false);
+    /** @type {("hocr" | "abbyy" | "stext")} */
     let format = 'hocr';
     if (abbyyMode) format = 'abbyy';
     if (stextMode) format = 'stext';

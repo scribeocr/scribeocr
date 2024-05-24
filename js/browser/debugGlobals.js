@@ -9,11 +9,13 @@ import { imageCache } from '../containers/imageContainer.js';
 import {
   stage, layerText, layerBackground, layerOverlay,
 } from './interfaceCanvas.js';
+import { fontMetricsObj } from '../containers/miscContainer.js';
 
 // Expose functions in global object for debugging purposes.
 export const df = {
   calcLineFontSize,
   fontAll,
+  fontMetricsObj,
   imageCache,
   stage,
   layerText,

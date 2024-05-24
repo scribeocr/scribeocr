@@ -167,7 +167,8 @@ export async function updateWordCanvas(wordI) {
   wordI.fontSize = fontSize;
   wordI.show();
 
-  wordI.draw();
+  // Test `wordI.parent` to avoid race condition where `wordI` is destroyed before this function completes.
+  if (wordI.parent) wordI.draw();
 }
 
 /**
