@@ -11,6 +11,19 @@ import {
 } from './interfaceCanvas.js';
 import { fontMetricsObj } from '../containers/miscContainer.js';
 
+/**
+ *
+ * @param {string} char
+ * @returns
+ */
+const getCharMetrics = (char) => {
+  const charCode = char.charCodeAt(0);
+  // return fontMetricsObj[charCode];
+  const height = df.fontMetricsObj.SerifDefault.normal.height[charCode];
+  const width = df.fontMetricsObj.SerifDefault.normal.width[charCode];
+  return { height, width };
+};
+
 // Expose functions in global object for debugging purposes.
 export const df = {
   calcLineFontSize,
@@ -21,4 +34,5 @@ export const df = {
   layerText,
   layerBackground,
   layerOverlay,
+  getCharMetrics,
 };

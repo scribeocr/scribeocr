@@ -65,7 +65,8 @@ export function pass2(pageObj, rotateAngle) {
           }
         } else {
           // Otherwise, all the letters need to be about the same size for this to be small caps.
-          const allLetterHeightArr = wordObj.chars.map((x) => x.bbox.bottom - x.bbox.top);
+          const letterChars = wordObj.chars.filter((x) => /[a-z]/i.test(x.text));
+          const allLetterHeightArr = letterChars.map((x) => x.bbox.bottom - x.bbox.top);
           const allLetterHeightMax = Math.max(...allLetterHeightArr);
           const allLetterHeightMin = Math.min(...allLetterHeightArr);
 
@@ -78,7 +79,7 @@ export function pass2(pageObj, rotateAngle) {
     }
 
     if (smallCapsWordArr.length >= 3) {
-      const titleCaseTotal = titleCaseArr.reduce((x, y) => x + y, 0);
+      const titleCaseTotal = titleCaseArr.reduce((x, y) => Number(x) + Number(y), 0);
 
       for (let k = 0; k < smallCapsWordArr.length; k++) {
         const wordObj = smallCapsWordArr[k];
@@ -158,7 +159,10 @@ export function pass2(pageObj, rotateAngle) {
 
       const charCoreArr = wordObj.chars.slice(0, wordObj.chars.length - superN);
       // Use cloned characters to avoid issues with character objects being shared in multiple words.
-      const charSuperArr = wordObjSup.chars.slice(wordObj.chars.length - superN, wordObj.chars.length);
+      // We know `wordObjSup.chars` exists as we already checked that `wordObj.chars` exists.
+      const wordObjSupChars = /** @type {OcrChar[]} */ (wordObjSup.chars);
+
+      const charSuperArr = wordObjSupChars.slice(wordObj.chars.length - superN, wordObj.chars.length);
       const textCore = charCoreArr.map((x) => x.text).join('');
       const textSuper = charSuperArr.map((x) => x.text).join('');
 

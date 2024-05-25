@@ -520,8 +520,20 @@ export class KonvaOcrWord extends KonvaIText {
 
     if (!wordFirst) return;
 
-    wordFontElem.value = wordFirst.fontFamilyLookup;
-    fontSizeElem.value = String(wordFirst.fontSize);
+    const fontFamilySelectedArr = Array.from(new Set(canvasObj.selectedWordArr.map((x) => (x.fontFamilyLookup))));
+    const fontSizeSelectedArr = Array.from(new Set(canvasObj.selectedWordArr.map((x) => (x.fontSize))));
+
+    if (fontFamilySelectedArr.length === 1) {
+      wordFontElem.value = String(wordFirst.fontFamilyLookup);
+    } else {
+      wordFontElem.value = '';
+    }
+
+    if (fontSizeSelectedArr.length === 1) {
+      fontSizeElem.value = String(wordFirst.fontSize);
+    } else {
+      fontSizeElem.value = '';
+    }
 
     if (wordFirst.word.sup !== styleSuperElem.classList.contains('active')) {
       styleSuperButton.toggle();
