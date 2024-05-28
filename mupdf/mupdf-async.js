@@ -105,6 +105,7 @@ export async function initMuPDFWorker() {
   mupdf.pageTextXHTML = wrap('pageTextXHTML');
   mupdf.pageTextXML = wrap('pageTextXML');
   mupdf.pageTextJSON = wrap('pageTextJSON');
+  mupdf.extractAllFonts = wrap('extractAllFonts');
   mupdf.search = wrap('search');
   mupdf.drawPageAsPNG = wrap('drawPageAsPNG');
   mupdf.overlayText = wrap('overlayText');

@@ -88,6 +88,7 @@ globalThis.FS = FS;
 
 let wasm_pageText;
 let wasm_checkNativeText;
+let wasm_extractAllFonts;
 
 Module.onRuntimeInitialized = function () {
   Module.ccall('initContext');
@@ -108,6 +109,7 @@ Module.onRuntimeInitialized = function () {
   mupdf.writePDF = Module.cwrap('writePDF', 'null', ['number', 'number', 'number', 'number', 'number', 'number']);
   mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
   mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
+  wasm_extractAllFonts = Module.cwrap('extractAllFonts', 'number', ['number']);
   wasm_pageText = Module.cwrap('pageText', 'string', ['number', 'number', 'number', 'number', 'number']);
   mupdf.searchJSON = Module.cwrap('search', 'string', ['number', 'number', 'number', 'string']);
   mupdf.loadOutline = Module.cwrap('loadOutline', 'number', ['number']);
@@ -120,6 +122,24 @@ Module.onRuntimeInitialized = function () {
   mupdf.writeDocument = Module.cwrap('writeDocument', 'null', []);
   postMessage('READY');
   ready = true;
+};
+
+/**
+ *
+ * @param {number} doc
+ */
+mupdf.extractAllFonts = function (doc) {
+  const fontCount = wasm_extractAllFonts(doc);
+
+  const fontArr = [];
+  for (let i = 0; i < fontCount; i++) {
+    // TODO: Make this work for more than 9 fonts
+    const fontFile = `font-000${i + 1}.ttf`;
+    fontArr.push(FS.readFile(fontFile));
+    FS.unlink(fontFile);
+  }
+
+  return fontArr;
 };
 
 /**
@@ -376,16 +396,40 @@ mupdf.pageLinks = function (doc, page, dpi) {
   return JSON.parse(mupdf.pageLinksJSON(doc, page, dpi));
 };
 
-mupdf.pageText = function (doc, page, dpi, skip_text_invis = false) {
-  return wasm_pageText(doc, page, dpi, 0, skip_text_invis);
+/**
+ *
+ * @param {number} doc
+ * @param {Object} args
+ * @param {number} args.page
+ * @param {number} args.dpi
+ * @param {boolean} args.skipTextInvis
+ */
+mupdf.pageText = function (doc, { page, dpi, skipTextInvis = false }) {
+  return wasm_pageText(doc, page, dpi, 0, skipTextInvis);
 };
 
-mupdf.pageTextHTML = function (doc, page, dpi, skip_text_invis = false) {
-  return wasm_pageText(doc, page, dpi, 1, skip_text_invis);
+/**
+ *
+ * @param {number} doc
+ * @param {Object} args
+ * @param {number} args.page
+ * @param {number} args.dpi
+ * @param {boolean} args.skipTextInvis
+ */
+mupdf.pageTextHTML = function (doc, { page, dpi, skipTextInvis = false }) {
+  return wasm_pageText(doc, page, dpi, 1, skipTextInvis);
 };
 
-mupdf.pageTextXHTML = function (doc, page, dpi, skip_text_invis = false) {
-  return wasm_pageText(doc, page, dpi, 2, skip_text_invis);
+/**
+ *
+ * @param {number} doc
+ * @param {Object} args
+ * @param {number} args.page
+ * @param {number} args.dpi
+ * @param {boolean} args.skipTextInvis
+ */
+mupdf.pageTextXHTML = function (doc, { page, dpi, skipTextInvis = false }) {
+  return wasm_pageText(doc, page, dpi, 2, skipTextInvis);
 };
 
 /**
@@ -401,8 +445,16 @@ mupdf.pageTextXML = function (doc, { page, dpi, skipTextInvis = false }) {
   return wasm_pageText(doc, page, dpi, 3, skipTextInvis);
 };
 
-mupdf.pageTextJSON = function (doc, page, dpi, skip_text_invis = false) {
-  return JSON.parse(wasm_pageText(doc, page, dpi, 4, skip_text_invis));
+/**
+ *
+ * @param {number} doc
+ * @param {Object} args
+ * @param {number} args.page
+ * @param {number} args.dpi
+ * @param {boolean} args.skipTextInvis
+ */
+mupdf.pageTextJSON = function (doc, { page, dpi, skipTextInvis = false }) {
+  return JSON.parse(wasm_pageText(doc, page, dpi, 4, skipTextInvis));
 };
 
 mupdf.search = function (doc, page, dpi, needle) {
