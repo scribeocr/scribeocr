@@ -19,7 +19,7 @@ export function printSelectedWords(printOCR = true) {
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
-      console.log(selectedObjects[i].attrs.word);
+      console.log(selectedObjects[i].word);
     } else {
       console.log(selectedObjects[i]);
     }

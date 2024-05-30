@@ -100,6 +100,11 @@ export function OcrWord(line, text, bbox, id) {
   this.chars = null;
   /** @type {?{x: number, y: number}} */
   this._angleAdj = null;
+  /**
+   * @type {boolean} - If `true`, left/right coordinates represent the left/rightmost pixel.
+   * If `false`, left/right coordinates represent the start/end of the font bounding box.
+  */
+  this.visualCoords = true;
 }
 
 /**

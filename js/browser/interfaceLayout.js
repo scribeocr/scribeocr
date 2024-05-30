@@ -7,7 +7,7 @@ import { displayPage, cp } from '../../main.js';
 
 import { LayoutBox } from '../objects/layoutObjects.js';
 
-import { layoutAll, ocrAll } from '../containers/miscContainer.js';
+import { layoutAll, ocrAll, inputDataModes } from '../containers/miscContainer.js';
 
 import ocr from '../objects/ocrObjects.js';
 
@@ -224,6 +224,7 @@ export class KonvaLayout extends Konva.Rect {
       pageObj.lines = [lineObjTemp];
       const wordIDNew = getRandomAlphanum(10);
       const wordObj = new ocr.OcrWord(lineObjTemp, String(layoutBox.priority), box, wordIDNew);
+      wordObj.visualCoords = false;
       wordObj.size = 50;
       const label = new KonvaIText({
         visualLeft: origX + width * 0.5,
@@ -334,7 +335,7 @@ export async function updateDataPreview() {
 
   const extraCols = [];
   if (addFilenameMode) {
-    if (globalThis.inputDataModes.pdfMode) {
+    if (inputDataModes.pdfMode) {
       extraCols.push(globalThis.inputFileNames[0]);
     } else {
       extraCols.push(globalThis.inputFileNames[cp.n]);

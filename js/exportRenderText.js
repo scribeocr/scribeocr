@@ -44,7 +44,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
     let lineSpaceMedian = null;
 
     if (removeLineBreaks) {
-      const angle = pageMetricsArr[g].angle * -1 ?? 0;
+      const angle = (pageMetricsArr[g].angle || 0) * -1;
 
       /** @type {?number} */
       let y2Prev = null;
@@ -135,7 +135,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
           let fontStyle = '';
           if (wordObj.style === 'italic') {
             fontStyle = '<w:i/>';
-          } else if (wordObj.style === 'small-caps') {
+          } else if (wordObj.style === 'smallCaps') {
             fontStyle = '<w:smallCaps/>';
           }
 

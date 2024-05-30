@@ -1,5 +1,5 @@
 import {
-  FontContainerFont, loadFontContainerAll, fontAll, checkMultiFontMode, FontContainerAll, loadFont,
+  FontContainerFont, loadFontsFromSource, fontAll, checkMultiFontMode, loadFont,
 } from './containers/fontContainer.js';
 
 /**
@@ -46,6 +46,7 @@ async function fontPathToArrayBuffer(fileName) {
 }
 
 async function fontPathToArrayBufferAll(fileNameObj) {
+  /** @type {Object<string, fontSrc>} */
   const result = {};
   const resArr = Object.entries(fileNameObj).map(async (x) => {
     const [key, value] = x;
@@ -63,7 +64,7 @@ async function fontPathToArrayBufferAll(fileNameObj) {
 /**
  * Load all raw (unoptimized) fonts.  This function is where font file names are hard-coded.
  */
-export async function loadFontContainerAllRaw() {
+export async function loadBuiltInFontsRaw() {
   const srcPathObj = {
     Carlito: { normal: 'Carlito-Regular.woff', italic: 'Carlito-Italic.woff', smallCaps: 'Carlito-RegularSmallCaps.woff' },
     Century: { normal: 'C059-Roman.woff', italic: 'C059-Italic.woff', smallCaps: 'C059-RomanSmallCaps.woff' },
@@ -75,7 +76,7 @@ export async function loadFontContainerAllRaw() {
 
   const srcObj = await fontPathToArrayBufferAll(srcPathObj);
 
-  return loadFontContainerAll(srcObj);
+  return loadFontsFromSource(srcObj);
 }
 
 let chiReadyRes;
@@ -119,43 +120,43 @@ export async function enableDisableFontOpt(enable, useInitial = false, forceWork
 
   // Enable/disable optimized font in workers
   if (browserMode) {
-    await setFontAllWorker(globalThis.generalScheduler, forceWorkerUpdate);
+    await setBuiltInFontsWorker(globalThis.generalScheduler, forceWorkerUpdate);
   } else {
     // const { setFontAll } = await import('./worker/compareOCRModule.js');
     // setFontAll(fontAll);
   }
 }
 
-let loadedRaw = false;
-let loadedOpt = false;
+let loadedBuiltInRaw = false;
+let loadedBuiltInOpt = false;
 
 /**
  *
  * @param {*} scheduler
  * @param {boolean} [force=false] - If true, forces the worker to update the font data even if the font data of this type is already loaded.
  */
-export async function setFontAllWorker(scheduler, force = false) {
+export async function setBuiltInFontsWorker(scheduler, force = false) {
   if (!fontAll.active) return;
 
   const opt = fontAll.active.Carlito.normal.opt || fontAll.active.NimbusRomNo9L.normal.opt;
 
-  const alreadyLoaded = (!opt && loadedRaw) || (opt && loadedOpt);
+  const loadedBuiltIn = (!opt && loadedBuiltInRaw) || (opt && loadedBuiltInOpt);
 
   // If the active font data is not already loaded, load it now.
   // This assumes that only one version of the raw/optimized fonts ever exist--
   // it does not check whether the current optimized font changed since it was last loaded.
-  if (!alreadyLoaded || force) {
+  if (!loadedBuiltIn || force) {
     const resArr = [];
     for (let i = 0; i < scheduler.workers.length; i++) {
       const worker = scheduler.workers[i];
-      const res = worker.loadFontContainerAllWorker({
+      const res = worker.loadFontsWorker({
         src: {
-          Carlito: { normal: fontAll.active.Carlito.normal.src, italic: fontAll.active.Carlito.italic.src, smallCaps: fontAll.active.Carlito['small-caps'].src },
-          Century: { normal: fontAll.active.Century.normal.src, italic: fontAll.active.Century.italic.src, smallCaps: fontAll.active.Century['small-caps'].src },
-          Garamond: { normal: fontAll.active.Garamond.normal.src, italic: fontAll.active.Garamond.italic.src, smallCaps: fontAll.active.Garamond['small-caps'].src },
-          Palatino: { normal: fontAll.active.Palatino.normal.src, italic: fontAll.active.Palatino.italic.src, smallCaps: fontAll.active.Palatino['small-caps'].src },
-          NimbusRomNo9L: { normal: fontAll.active.NimbusRomNo9L.normal.src, italic: fontAll.active.NimbusRomNo9L.italic.src, smallCaps: fontAll.active.NimbusRomNo9L['small-caps'].src },
-          NimbusSans: { normal: fontAll.active.NimbusSans.normal.src, italic: fontAll.active.NimbusSans.italic.src, smallCaps: fontAll.active.NimbusSans['small-caps'].src },
+          Carlito: { normal: fontAll.active.Carlito.normal.src, italic: fontAll.active.Carlito.italic.src, smallCaps: fontAll.active.Carlito.smallCaps.src },
+          Century: { normal: fontAll.active.Century.normal.src, italic: fontAll.active.Century.italic.src, smallCaps: fontAll.active.Century.smallCaps.src },
+          Garamond: { normal: fontAll.active.Garamond.normal.src, italic: fontAll.active.Garamond.italic.src, smallCaps: fontAll.active.Garamond.smallCaps.src },
+          Palatino: { normal: fontAll.active.Palatino.normal.src, italic: fontAll.active.Palatino.italic.src, smallCaps: fontAll.active.Palatino.smallCaps.src },
+          NimbusRomNo9L: { normal: fontAll.active.NimbusRomNo9L.normal.src, italic: fontAll.active.NimbusRomNo9L.italic.src, smallCaps: fontAll.active.NimbusRomNo9L.smallCaps.src },
+          NimbusSans: { normal: fontAll.active.NimbusSans.normal.src, italic: fontAll.active.NimbusSans.italic.src, smallCaps: fontAll.active.NimbusSans.smallCaps.src },
         },
         opt,
       });
@@ -163,16 +164,55 @@ export async function setFontAllWorker(scheduler, force = false) {
     }
     await Promise.all(resArr);
 
-    // Theoretically this should be changed to use promises to avoid the race condition when `setFontAllWorker` is called multiple times quickly and `loadFontContainerAllWorker` is still running.
+    // Theoretically this should be changed to use promises to avoid the race condition when `setBuiltInFontsWorker` is called multiple times quickly and `loadFontsWorker` is still running.
     if (opt) {
-      loadedOpt = true;
+      loadedBuiltInOpt = true;
     } else {
-      loadedRaw = true;
+      loadedBuiltInRaw = true;
     }
   }
 
   // Set the active font in the workers to match the active font in `fontAll`
   const resArr = [];
+  for (let i = 0; i < scheduler.workers.length; i++) {
+    const worker = scheduler.workers[i];
+    const res = worker.setFontActiveWorker({ opt, sansDefaultName: fontAll.sansDefaultName, serifDefaultName: fontAll.serifDefaultName });
+    resArr.push(res);
+  }
+  await Promise.all(resArr);
+}
+
+/**
+ *
+ * @param {*} scheduler
+ */
+export async function setUploadFontsWorker(scheduler) {
+  if (!fontAll.active) return;
+
+  /** @type {Object<string, fontSrc>} */
+  const fontsUpload = {};
+  for (const [key, value] of Object.entries(fontAll.active)) {
+    if (!['Carlito', 'Century', 'Garamond', 'Palatino', 'NimbusRomNo9L', 'NimbusSans'].includes(key)) {
+      fontsUpload[key] = { normal: value?.normal?.src, italic: value?.italic?.src, smallCaps: value?.smallCaps?.src };
+    }
+  }
+
+  if (Object.keys(fontsUpload).length === 0) return;
+
+  const resArr1 = [];
+  for (let i = 0; i < scheduler.workers.length; i++) {
+    const worker = scheduler.workers[i];
+    const res = worker.loadFontsWorker({
+      src: fontsUpload,
+      opt: false, // Uploaded fonts are not modified.
+    });
+    resArr1.push(res);
+  }
+  await Promise.all(resArr1);
+
+  // Set the active font in the workers to match the active font in `fontAll`
+  const resArr = [];
+  const opt = fontAll.active.Carlito.normal.opt || fontAll.active.NimbusRomNo9L.normal.opt;
   for (let i = 0; i < scheduler.workers.length; i++) {
     const worker = scheduler.workers[i];
     const res = worker.setFontActiveWorker({ opt, sansDefaultName: fontAll.sansDefaultName, serifDefaultName: fontAll.serifDefaultName });

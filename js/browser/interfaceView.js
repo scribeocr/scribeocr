@@ -9,7 +9,7 @@ import {
 } from './interfaceCanvas.js';
 import Konva from '../../lib/konva/index.js';
 import { renderLayoutBoxes } from './interfaceLayout.js';
-import { pageMetricsArr } from '../containers/miscContainer.js';
+import { pageMetricsArr, inputDataModes } from '../containers/miscContainer.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
@@ -80,7 +80,7 @@ export const selectDisplayMode = async (x) => {
   const pageDims = pageMetricsArr[cp.n].dims;
 
   // Include a background image if appropriate
-  if (['invis', 'proof', 'eval'].includes(x) && (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode)) {
+  if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
     cp.backgroundOpts.originX = 'center';
     cp.backgroundOpts.originY = 'center';
 

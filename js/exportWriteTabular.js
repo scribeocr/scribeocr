@@ -4,10 +4,15 @@ import ocr from './objects/ocrObjects.js';
 
 import { saveAs } from './miscUtils.js';
 
-import { layoutAll } from './containers/miscContainer.js';
+import { layoutAll, inputDataModes } from './containers/miscContainer.js';
 
 /**
  * @param {OcrPage} pageObj
+ * @param {import('./objects/layoutObjects.js').LayoutPage} layoutObj
+ * @param {Array<string>} extraCols
+ * @param {number} startRow
+ * @param {boolean} xlsxMode
+ * @param {boolean} htmlMode
  */
 export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return { content: '', rows: 0 };
@@ -35,7 +40,12 @@ export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xl
 /**
  * Convert a single table into HTML or Excel XML rows
  * @param {OcrPage} pageObj
- * @param {Object<string, import('./objects/layoutObjects.js').LayoutBox>} boxes
+ * @param {Array<import('./objects/layoutObjects.js').LayoutBox>} boxes
+ * @param {Array<string>} extraCols
+ * @param {number} startRow
+ * @param {boolean} xlsxMode
+ * @param {boolean} htmlMode
+ * @param {boolean} previewMode
  */
 function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
   const wordArr = [];
@@ -105,6 +115,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
 
   // Split lines into separate arrays for each column
   let lastCol = -1;
+  /** @type {Array<Array<{word: OcrWord, box: bbox}>>} */
   const colArr = [];
   for (let i = 0; i <= boxesArr.length; i++) {
     for (let j = 0; j < wordPriorityArr.length; j++) {
@@ -213,7 +224,7 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
           let fontStyle;
           if (wordObj.style === 'italic') {
             fontStyle = '<i/>';
-          } else if (wordObj.style === 'small-caps') {
+          } else if (wordObj.style === 'smallCaps') {
             fontStyle = '<smallCaps/>';
           } else {
             fontStyle = '';
@@ -265,8 +276,11 @@ export async function writeXlsx(hocrCurrent) {
   const { xlsxStrings, sheetStart, sheetEnd } = await import('./xlsxFiles.js');
   const { BlobWriter, TextReader, ZipWriter } = await import('../lib/zip.js/index.js');
 
-  const addFilenameMode = document.getElementById('xlsxFilenameColumn').checked;
-  const addPageNumberColumnMode = document.getElementById('xlsxPageNumberColumn').checked;
+  const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
+  const xlsxPageNumberColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxPageNumberColumn'));
+
+  const addFilenameMode = xlsxFilenameColumnElem.checked;
+  const addPageNumberColumnMode = xlsxPageNumberColumnElem.checked;
 
   const zipFileWriter = new BlobWriter();
   const zipWriter = new ZipWriter(zipFileWriter);
@@ -274,6 +288,7 @@ export async function writeXlsx(hocrCurrent) {
   let sheetContent = sheetStart;
   let rowCount = 0;
   for (let i = 0; i < hocrCurrent.length; i++) {
+    /** @type {Array<string>} */
     const extraCols = [];
     if (addFilenameMode) {
       if (inputDataModes.pdfMode) {

@@ -22,7 +22,7 @@ import { hocrToPDF } from '../js/exportPDF.js';
 import { drawDebugImages } from '../js/debug.js';
 
 import { fontAll } from '../js/containers/fontContainer.js';
-import { loadFontContainerAllRaw } from '../js/fontContainerMain.js';
+import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
 import {
   fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
 } from '../js/containers/miscContainer.js';
@@ -101,7 +101,7 @@ async function writeDebugImages(ctx, compDebugArrArr, filePath) {
   fs.writeFileSync(filePath, buffer0);
 }
 
-await loadFontContainerAllRaw().then((x) => {
+await loadBuiltInFontsRaw().then((x) => {
   fontAll.raw = x;
   if (!fontAll.active) fontAll.active = fontAll.raw;
 });
@@ -127,20 +127,6 @@ async function main(func, params) {
 
   // const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
   // if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
-
-  /** @type {inputDataModes} */
-  globalThis.inputDataModes = {
-  // true if OCR data exists (whether from upload or built-in engine)
-    xmlMode: [],
-    // true if user uploaded pdf
-    pdfMode: false,
-    // true if user uploaded image files (.png, .jpeg)
-    imageMode: false,
-    // true if user re-uploaded HOCR data created by Scribe OCR
-    resumeMode: false,
-    // true if stext is extracted from a PDF (rather than text layer uploaded seprately)
-    extractTextMode: false,
-  };
 
   let existingLayout = false;
 

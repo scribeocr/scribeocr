@@ -119,7 +119,7 @@ export function addLigatures(wordText, fontOpentype) {
       }
       if (charLig) {
         const glyphLig = fontOpentype.charToGlyph(charLig);
-        if (glyphLig && glyphLig.name !== '.notdef') {
+        if (glyphLig && glyphLig.index > 0 && glyphLig.name !== '.notdef') {
           wordCharArrOut.push(charLig);
           i++;
           continue;
@@ -151,7 +151,8 @@ function calcWordCharMetrics(wordText, fontOpentype) {
     const charI = wordTextArr[i];
     const charJ = wordTextArr[i + 1];
     const glyphI = fontOpentype.charToGlyph(charI);
-    if (!glyphI || glyphI.name === '.notdef') console.log(`Character ${charI} is not defined in font ${fontOpentype.tables.name.fontFamily.en} ${fontOpentype.tables.name.fontSubfamily.en}`);
+    const fontName = fontOpentype.tables.name.postScriptName.en;
+    if (!glyphI || glyphI.name === '.notdef') console.log(`Character ${charI} is not defined in font ${fontName}`);
     advanceArr.push(glyphI.advanceWidth);
 
     if (charJ) {
@@ -205,7 +206,8 @@ export function calcWordMetrics(word, angle = 0) {
   const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing || 0;
   const wordRightBearing = wordLastGlyphMetrics.rightSideBearing || 0;
 
-  const wordWidthPx = (wordWidth1 - wordRightBearing - wordLeftBearing) * (fontSize / fontOpentype.unitsPerEm);
+  const wordWidth = word.visualCoords ? wordWidth1 - wordRightBearing - wordLeftBearing : wordWidth1;
+  const wordWidthPx = wordWidth * (fontSize / fontOpentype.unitsPerEm);
   const wordLeftBearingPx = wordLeftBearing * (fontSize / fontOpentype.unitsPerEm);
   const wordRightBearingPx = wordRightBearing * (fontSize / fontOpentype.unitsPerEm);
 

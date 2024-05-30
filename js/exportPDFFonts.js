@@ -103,7 +103,7 @@ function createFontDescriptor(font, objIndex, style = 'normal', embeddedObjIndex
 
   // Symbolic is always set to false, even if the font contains glyphs outside the Adobe standard Latin character set.
   // This is because symbolic fonts are only used when embedded, and this does not appear to matter for embedded fonts.
-  objOut += `/Flags ${String(generateFontFlags(serif, style === 'italic', style === 'small-caps', false))}`;
+  objOut += `/Flags ${String(generateFontFlags(serif, style === 'italic', style === 'smallCaps', false))}`;
 
   if (embeddedObjIndex === null || embeddedObjIndex === undefined) {
     objOut += '>>\nendobj\n\n';

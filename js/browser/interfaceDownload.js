@@ -9,7 +9,9 @@ import { renderText } from '../exportRenderText.js';
 import { renderHOCRBrowser } from '../exportRenderHOCRBrowser.js';
 import { reorderHOCR } from '../modifyOCR.js';
 import { getDisplayMode } from './interfaceView.js';
-import { layoutAll, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
+import {
+  layoutAll, ocrAll, pageMetricsArr, inputDataModes,
+} from '../containers/miscContainer.js';
 
 import { hocrToPDF } from '../exportPDF.js';
 
@@ -216,7 +218,7 @@ export async function handleDownload() {
       const downloadProgress = initializeProgress('generate-download-progress-collapse', (maxValue + 1) * steps);
       await sleep(0);
 
-      const insertInputPDF = globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked;
+      const insertInputPDF = inputDataModes.pdfMode && addOverlayCheckboxElem.checked;
 
       const rotateBackground = !insertInputPDF && autoRotateCheckboxElem.checked;
 
@@ -257,7 +259,7 @@ export async function handleDownload() {
       let content;
 
       // If the input document is a .pdf and "Add Text to Import PDF" option is enabled, we insert the text into that pdf (rather than making a new one from scratch)
-      if (globalThis.inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
+      if (inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
         // Text is always skipped for PDF downloads, regardless of whether it was skipped when rendering PNG files.
         // (1) If native text was skipped when rendering .png files, then it should be skipped in the output PDF for consistency.
         // (2) If native text was included when rendering .png files, then any text should be in the recognition OCR data,
@@ -276,7 +278,7 @@ export async function handleDownload() {
         for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
 
         // If the input is a series of images, those images need to be inserted into a new pdf
-      } else if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) {
+      } else if (inputDataModes.pdfMode || inputDataModes.imageMode) {
         const colorMode = /** @type {('color'|'gray'|'binary')} */ (colorModeElem.value);
 
         const props = { rotated: autoRotateCheckboxElem.checked, upscaled: false, colorMode };
@@ -284,7 +286,7 @@ export async function handleDownload() {
 
         // An image could be rendered if either (1) binary is selected or (2) the input data is a PDF.
         // Otherwise, the images uploaded by the user are used.
-        const renderImage = binary || globalThis.inputDataModes.pdfMode;
+        const renderImage = binary || inputDataModes.pdfMode;
 
         // Pre-render to benefit from parallel processing, since the loop below is synchronous.
         if (renderImage) await imageCache.preRenderRange(minValue, maxValue, binary, props, downloadProgress);
@@ -295,7 +297,7 @@ export async function handleDownload() {
           let image;
           if (binary) {
             image = await imageCache.getBinary(i, props);
-          } else if (globalThis.inputDataModes.pdfMode) {
+          } else if (inputDataModes.pdfMode) {
             image = await imageCache.getNative(i, props);
           } else {
             image = await imageCache.nativeSrc[i];

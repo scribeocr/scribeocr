@@ -90,6 +90,8 @@ function hideProgress2(id) {
 globalThis.debugImg = {};
 
 export async function recognizeAllClick() {
+  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
+
   const debugMode = true;
 
   // User can select engine directly using advanced options, or indirectly using basic options.

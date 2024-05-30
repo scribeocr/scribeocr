@@ -799,9 +799,9 @@ export async function compareHOCR({
 
                       // Switch to small caps/non-small caps based on style of replacement word.
                       // This is not relevant for italics as the LSTM engine does not detect italics.
-                      if (wordB.style === 'small-caps' && wordA.style !== 'small-caps') {
-                        wordA.style = 'small-caps';
-                      } else if (wordB.style !== 'small-caps' && wordA.style === 'small-caps') {
+                      if (wordB.style === 'smallCaps' && wordA.style !== 'smallCaps') {
+                        wordA.style = 'smallCaps';
+                      } else if (wordB.style !== 'smallCaps' && wordA.style === 'smallCaps') {
                         wordA.style = 'normal';
                       }
                     } else {

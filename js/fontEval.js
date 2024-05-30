@@ -10,6 +10,8 @@ import { imageCache } from './containers/imageContainer.js';
  * @param {number} n - Number of words to compare
  */
 export async function evalPageFonts(font, pageArr, n = 500) {
+  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
+
   const browserMode = typeof process === 'undefined';
 
   let metricTotal = 0;
@@ -178,7 +180,7 @@ export async function runFontOptimization(ocrArr) {
 
     if (globalThis.df) globalThis.df.evalRaw = evalRaw;
 
-    if (calculateOpt && fontAll.optInitial) {
+    if (calculateOpt && Object.keys(fontAll.optInitial).length > 0) {
       // Enable optimized fonts
       await enableDisableFontOpt(true, true, true);
 

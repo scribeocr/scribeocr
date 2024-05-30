@@ -8,7 +8,7 @@ import { convertPageStext } from './convertPageStext.js';
 import { convertPageBlocks } from './convertPageBlocks.js';
 
 import { optimizeFont } from './optimizeFontModule.js';
-import { loadFontContainerAll, fontAll } from '../containers/fontContainer.js';
+import { loadFontsFromSource, fontAll } from '../containers/fontContainer.js';
 import {
   evalPageFont, evalPage, evalWords, compareHOCR, nudgePageFontSize, nudgePageBaseline,
 } from './compareOCRModule.js';
@@ -235,11 +235,25 @@ export const recognize = async ({ image, options, output }) => {
   return res1.data;
 };
 
-async function loadFontContainerAllWorker({ src, opt }) {
+/**
+ * Sets font data in `fontAll`.
+ * Used to set font data in workers.
+ * @param {Object} args
+ * @param {Parameters<loadFontsFromSource>[0]} args.src
+ * @param {Parameters<loadFontsFromSource>[1]} args.opt
+ */
+async function loadFontsWorker({ src, opt }) {
+  const fonts = await loadFontsFromSource(src, opt);
   if (opt) {
-    fontAll.opt = await loadFontContainerAll(src, opt);
+    if (fontAll.opt) {
+      Object.assign(fontAll.opt, fonts);
+    } else {
+      fontAll.opt = fonts;
+    }
+  } else if (fontAll.raw) {
+    Object.assign(fontAll.raw, fonts);
   } else {
-    fontAll.raw = await loadFontContainerAll(src, opt);
+    fontAll.raw = fonts;
   }
   return true;
 }
@@ -308,7 +322,7 @@ addEventListener('message', async (e) => {
     recognizeAndConvert,
 
     // Change state of worker
-    loadFontContainerAllWorker,
+    loadFontsWorker,
     setFontActiveWorker,
     setDefaultFontNameWorker,
   })[func](args)

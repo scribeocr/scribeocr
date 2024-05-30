@@ -63,7 +63,7 @@ export async function initGeneralWorker() {
     obj.recognizeAndConvert = wrap('recognizeAndConvert');
     obj.recognizeAndConvert2 = wrap2('recognizeAndConvert2');
 
-    obj.loadFontContainerAllWorker = wrap('loadFontContainerAllWorker');
+    obj.loadFontsWorker = wrap('loadFontsWorker');
     obj.setFontActiveWorker = wrap('setFontActiveWorker');
     obj.setDefaultFontNameWorker = wrap('setDefaultFontNameWorker');
 
