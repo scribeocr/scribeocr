@@ -306,8 +306,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     lineOrigin[0] = lineLeftAdj;
     lineOrigin[1] = lineTopAdj;
 
-    let xTotalDebug = lineLeftAdj;
-
     textStream += '[ ';
 
     let wordBoxLast = {
@@ -398,8 +396,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
         const wordSpaceExtraPx = (wordSpaceAdj - wordSpaceExpectedPx + spacingAdj + angleAdjWordX) * (100 / tzCurrent);
 
-        xTotalDebug += spaceWidthGlyph + charSpacingLast + wordSpaceExtraPx;
-
         if (pdfFontTypeCurrent === 0) {
           const spaceChar = wordFontOpentype.charToGlyphIndex(' ').toString(16).padStart(4, '0');
           textStream += `<${spaceChar}> ${String(Math.round(wordSpaceExtraPx * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
@@ -451,8 +447,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
       textStream += '[ ';
 
-      let printDebug = true;
-
       // Non-ASCII and special characters are encoded/escaped using winEncodingLookup
       for (let k = 0; k < charArr.length; k++) {
         const letter = charArr[k];
@@ -484,14 +478,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
             kern = Math.round((wordSpaceNextAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (-1000 / wordFontSize));
           }
-
-          if (pageObj.n === 0 && printDebug) {
-            console.log(`Word: ${word.text}, pdf start: ${xTotalDebug}, word start: ${word.bbox.left}`);
-            printDebug = false;
-          }
-          xTotalDebug += kern * (-1000 / wordFontSize);
-          xTotalDebug += charSpacing;
-          xTotalDebug += wordFontOpentype.charToGlyph(letter).advanceWidth * (wordFontSize / wordFontOpentype.unitsPerEm);
 
           // PDFs render text based on a "widths" PDF object, rather than the advance width in the embedded font file.
           // The widths are in 1/1000 of a unit, and this PDF object is created by mupdf.
