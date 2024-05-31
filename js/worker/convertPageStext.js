@@ -129,7 +129,10 @@ export async function convertPageStext({ ocrStr, n }) {
 
     const baselineLast = [bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].left, bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].baseline];
 
-    const baselineSlope = (baselineLast[1] - baselineFirst[1]) / (baselineLast[0] - baselineFirst[0]) || 0;
+    const rise = baselineLast[1] - baselineFirst[1];
+    const run = baselineLast[0] - baselineFirst[0];
+
+    const baselineSlope = !run ? 0 : rise / run;
 
     // NOTE: This section can probably be deleted for stext as it seems specific to Abbyy
     // While Abbyy XML already provides line bounding boxes, these have been observed to be (at times)
