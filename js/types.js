@@ -35,9 +35,6 @@
 /**
  * @typedef {import("./containers/fontContainer.js").FontContainerFamily} FontContainerFamily
  */
-// /**
-//  * @typedef {import("./containers/fontContainer.js").FontContainerAll} FontContainerAll
-//  */
 
 /**
  * @typedef {object} fontSrcBuiltIn

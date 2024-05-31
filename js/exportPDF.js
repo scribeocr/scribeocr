@@ -485,11 +485,6 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
             kern = Math.round((wordSpaceNextAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (-1000 / wordFontSize));
           }
 
-          // if (kern !== 0) {
-          //   console.log(`${kern}`);
-          //   console.log(wordFontOpentype);
-          // }
-
           if (pageObj.n === 0 && printDebug) {
             console.log(`Word: ${word.text}, pdf start: ${xTotalDebug}, word start: ${word.bbox.left}`);
             printDebug = false;

@@ -509,42 +509,45 @@ class ImageCache {
         pageMetricsArr[i] = new PageMetrics(pageDims);
       });
 
-      muPDFScheduler.extractAllFonts().then(async (x) => {
-        globalThis.fontArr = [];
-        for (let i = 0; i < x.length; i++) {
-          const src = x[i].buffer;
-          const fontObj = await loadOpentype(src);
-          const fontNameEmbedded = fontObj.names.postScriptName.en;
-          const fontFamilyEmbedded = fontObj.names?.fontFamily?.en || fontNameEmbedded.replace(/-\w+$/, '');
+      // WIP: Extract fonts embedded in PDFs.
+      if (false) {
+        muPDFScheduler.extractAllFonts().then(async (x) => {
+          globalThis.fontArr = [];
+          for (let i = 0; i < x.length; i++) {
+            const src = x[i].buffer;
+            const fontObj = await loadOpentype(src);
+            const fontNameEmbedded = fontObj.names.postScriptName.en;
+            const fontFamilyEmbedded = fontObj.names?.fontFamily?.en || fontNameEmbedded.replace(/-\w+$/, '');
 
-          // Skip bold and bold-italic fonts for now.
-          if (fontNameEmbedded.match(/bold/i)) continue;
+            // Skip bold and bold-italic fonts for now.
+            if (fontNameEmbedded.match(/bold/i)) continue;
 
-          let fontStyle = 'normal';
-          if (fontNameEmbedded.match(/italic/i)) {
-            fontStyle = 'italic';
-          } else if (fontNameEmbedded.match(/bold/i)) {
+            let fontStyle = 'normal';
+            if (fontNameEmbedded.match(/italic/i)) {
+              fontStyle = 'italic';
+            } else if (fontNameEmbedded.match(/bold/i)) {
             // Bold fonts should be enabled at some later point.
             // While we previously found that we were unable to detect bold fonts reliably,
             // when importing from PDFs, we do not need to guess.
             // fontStyle = 'bold';
+            }
+            const type = determineSansSerif(fontFamilyEmbedded) === 'SansDefault' ? 'sans' : 'serif';
+
+            // mupdf replaces spaces with underscores in font names.
+            const fontName = fontFamilyEmbedded.replace(/[^+]+\+/g, '').replace(/\s/g, '_');
+
+            if (!fontAll.raw[fontName]) {
+              fontAll.raw[fontName] = {};
+            }
+
+            if (!fontAll.raw[fontName][fontStyle]) {
+              fontAll.raw[fontName][fontStyle] = new FontContainerFont(fontName, fontStyle, src, false, fontObj);
+            }
           }
-          const type = determineSansSerif(fontFamilyEmbedded) === 'SansDefault' ? 'sans' : 'serif';
 
-          // mupdf replaces spaces with underscores in font names.
-          const fontName = fontFamilyEmbedded.replace(/[^+]+\+/g, '').replace(/\s/g, '_');
-
-          if (!fontAll.raw[fontName]) {
-            fontAll.raw[fontName] = {};
-          }
-
-          if (!fontAll.raw[fontName][fontStyle]) {
-            fontAll.raw[fontName][fontStyle] = new FontContainerFont(fontName, fontStyle, src, false, fontObj);
-          }
-        }
-
-        await setUploadFontsWorker(globalThis.generalScheduler);
-      });
+          await setUploadFontsWorker(globalThis.generalScheduler);
+        });
+      }
 
       if (extractStext) {
         globalThis.hocrCurrentRaw = Array(this.pageCount);

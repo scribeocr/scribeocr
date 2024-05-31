@@ -472,7 +472,6 @@ export class KonvaOcrWord extends KonvaIText {
       fillBox,
       opacity,
       fill,
-      // widthFromOCR: true,
       editTextCallback: () => {},
     });
 
