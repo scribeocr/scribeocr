@@ -294,7 +294,7 @@ export function determineSansSerif(fontName) {
   /** @type {('SansDefault'|'SerifDefault'|'Default')} */
   let fontFamily = 'Default';
   // Font support is currently limited to 1 font for Sans and 1 font for Serif.
-  if (fontName) {
+  if (fontName && fontName !== 'Default') {
     // First, test to see if "sans" or "serif" is in the name of the font
     if (/(^|\W|_)sans($|\W|_)/i.test(fontName)) {
       fontFamily = 'SansDefault';
