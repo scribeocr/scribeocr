@@ -26,8 +26,6 @@ export async function convertPageHocr({
 }) {
   rotateAngle = rotateAngle || 0;
 
-  const langsSet = new Set();
-
   let currentLang = 'eng';
 
   const angleRisePage = [];
@@ -299,7 +297,7 @@ export async function convertPageHocr({
       if (styleStr && /italic/i.test(styleStr)) {
         fontStyle = 'italic';
       } else if (styleStr && /small-caps/i.test(styleStr)) {
-        fontStyle = 'small-caps';
+        fontStyle = 'smallCaps';
       }
 
       const confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/)?.[1] || '0';

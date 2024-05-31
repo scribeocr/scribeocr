@@ -7,7 +7,9 @@ import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
 import { imageCache } from './containers/imageContainer.js';
-import { layoutAll, ocrAll, pageMetricsArr } from './containers/miscContainer.js';
+import {
+  layoutAll, ocrAll, pageMetricsArr, inputDataModes,
+} from './containers/miscContainer.js';
 import { loadChiSimFont } from './fontContainerMain.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
@@ -93,7 +95,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 
   // Upscaling is enabled only for image data, and only if the user has explicitly enabled it.
   // For PDF data, if upscaling is desired, that should be handled by rendering the PDF at a higher resolution.
-  const upscale = globalThis.inputDataModes.imageMode && enableUpscaleElem.checked;
+  const upscale = inputDataModes.imageMode && enableUpscaleElem.checked;
 
   const config = { upscale };
 

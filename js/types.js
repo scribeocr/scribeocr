@@ -35,9 +35,20 @@
 /**
  * @typedef {import("./containers/fontContainer.js").FontContainerFamily} FontContainerFamily
  */
+
 /**
- * @typedef {import("./containers/fontContainer.js").FontContainerAll} FontContainerAll
- */
+ * @typedef {object} fontSrcBuiltIn
+ * @property {string|ArrayBuffer} normal
+ * @property {string|ArrayBuffer} italic
+ * @property {string|ArrayBuffer} smallCaps
+*/
+
+/**
+ * @typedef {object} fontSrcUpload
+ * @property {?string|ArrayBuffer} normal
+ * @property {?string|ArrayBuffer} italic
+ * @property {?string|ArrayBuffer} smallCaps
+*/
 
 /**
  * @typedef {import("../lib/opentype.module.min.js").Font} opentype.Font

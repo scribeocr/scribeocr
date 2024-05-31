@@ -9,7 +9,7 @@ import { imageCache } from '../containers/imageContainer.js';
 import {
   stage, layerText, layerBackground, layerOverlay,
 } from './interfaceCanvas.js';
-import { fontMetricsObj } from '../containers/miscContainer.js';
+import { fontMetricsObj, pageMetricsArr, ocrAll } from '../containers/miscContainer.js';
 
 /**
  *
@@ -21,7 +21,24 @@ const getCharMetrics = (char) => {
   // return fontMetricsObj[charCode];
   const height = df.fontMetricsObj.SerifDefault.normal.height[charCode];
   const width = df.fontMetricsObj.SerifDefault.normal.width[charCode];
-  return { height, width };
+
+  const charMetricsRaw = fontAll.raw[df.fontAll.serifDefaultName].normal.opentype.charToGlyph(char).getMetrics();
+  const oMetricsRaw = fontAll.raw[df.fontAll.serifDefaultName].normal.opentype.charToGlyph('o').getMetrics();
+
+  const oHeightRaw = oMetricsRaw.yMax - oMetricsRaw.yMin;
+  const heightFontRaw = (charMetricsRaw.yMax - charMetricsRaw.yMin) / oHeightRaw;
+  const widthFontRaw = (charMetricsRaw.xMax - charMetricsRaw.xMin) / oHeightRaw;
+
+  const charMetrics = fontAll.active[df.fontAll.serifDefaultName].normal.opentype.charToGlyph(char).getMetrics();
+  const oMetrics = fontAll.active[df.fontAll.serifDefaultName].normal.opentype.charToGlyph('o').getMetrics();
+
+  const oHeight = oMetrics.yMax - oMetrics.yMin;
+  const heightFont = (charMetrics.yMax - charMetrics.yMin) / oHeight;
+  const widthFont = (charMetrics.xMax - charMetrics.xMin) / oHeight;
+
+  return {
+    height, width, heightFont, widthFont, heightFontRaw, widthFontRaw,
+  };
 };
 
 // Expose functions in global object for debugging purposes.
@@ -35,4 +52,6 @@ export const df = {
   layerBackground,
   layerOverlay,
   getCharMetrics,
+  pageMetricsArr,
+  ocrAll,
 };

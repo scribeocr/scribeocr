@@ -49,7 +49,7 @@ const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById(
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
 
 styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic'); });
-styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('small-caps'); });
+styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('smallCaps'); });
 styleSuperElem.addEventListener('click', toggleSuperSelectedWords);
 
 const styleItalicButton = new bootstrap.Button(styleItalicElem);
@@ -92,7 +92,7 @@ export async function changeWordFontStyle(style) {
   if ((newStyleLookup === 'italic') !== styleItalicElem.classList.contains('active')) {
     styleItalicButton.toggle();
   }
-  if ((newStyleLookup === 'small-caps') !== styleSmallCapsElem.classList.contains('active')) {
+  if ((newStyleLookup === 'smallCaps') !== styleSmallCapsElem.classList.contains('active')) {
     styleSmallCapsButton.toggle();
   }
 

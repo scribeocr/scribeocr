@@ -138,24 +138,24 @@ export async function updateWordCanvas(wordI) {
     advanceArr, fontSize, kerningArr, charSpacing, leftSideBearing,
   } = calcWordMetrics(wordI.word);
 
-  const charSpacingFinal = wordI.widthFromOCR ? charSpacing : 0;
+  // const charSpacingFinal = wordI.widthFromOCR ? charSpacing : 0;
 
   const advanceArrTotal = [];
   for (let i = 0; i < advanceArr.length; i++) {
     let leftI = 0;
     leftI += advanceArr[i] || 0;
     leftI += kerningArr[i] || 0;
-    leftI += charSpacingFinal || 0;
+    leftI += charSpacing || 0;
     advanceArrTotal.push(leftI);
   }
 
   wordI.advanceArrTotal = advanceArrTotal;
 
-  wordI.charSpacing = charSpacingFinal;
+  wordI.charSpacing = charSpacing;
 
   wordI.leftSideBearing = leftSideBearing;
 
-  const width = wordI.widthFromOCR ? wordI.word.bbox.right - wordI.word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
+  const width = !wordI.word.visualCoords ? wordI.word.bbox.right - wordI.word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
 
   wordI.width(width);
 
@@ -224,20 +224,17 @@ export class KonvaIText extends Konva.Shape {
    * @param {boolean} [options.fillBox=false]
    * @param {number} [options.opacity=1]
    * @param {string} [options.fill='black']
-   * @param {boolean} [options.widthFromOCR=false] - If `true`, the `bbox` property from the `OcrWord` object is considered the actual width of the word.
-   *    This impacts character spacing calculations, and the width property of the Konva text box and transformer.
-   *    Setting to `true` is desirable when using actual OCR data, but not when using dummy data.
    * @param {Function} options.editTextCallback
    */
   constructor({
     visualLeft, yActual, word, rotation = 0,
-    outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', widthFromOCR = false, editTextCallback,
+    outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', editTextCallback,
   }) {
     const {
       visualWidth, charSpacing, leftSideBearing, fontSize, charArr, advanceArr, kerningArr,
     } = calcWordMetrics(word);
 
-    const charSpacingFinal = widthFromOCR ? charSpacing : 0;
+    // const charSpacingFinal = widthFromOCR ? charSpacing : 0;
 
     const scaleX = word.dropcap ? ((word.bbox.right - word.bbox.left) / visualWidth) : 1;
 
@@ -246,11 +243,11 @@ export class KonvaIText extends Konva.Shape {
       let leftI = 0;
       leftI += advanceArr[i] || 0;
       leftI += kerningArr[i] || 0;
-      leftI += charSpacingFinal || 0;
+      leftI += charSpacing || 0;
       advanceArrTotal.push(leftI);
     }
 
-    const width = widthFromOCR ? word.bbox.right - word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
+    const width = !word.visualCoords ? word.bbox.right - word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
 
     super({
       x: visualLeft,
@@ -273,7 +270,7 @@ export class KonvaIText extends Konva.Shape {
 
         shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
 
-        let leftI = 0 - this.leftSideBearing;
+        let leftI = shape.word.visualCoords ? 0 - this.leftSideBearing : 0;
         for (let i = 0; i < shape.charArr.length; i++) {
           const charI = shape.charArr[i];
           context.fillText(charI, leftI, shape.fontSize * 0.6);
@@ -313,7 +310,7 @@ export class KonvaIText extends Konva.Shape {
 
     this.word = word;
     this.charArr = charArr;
-    this.charSpacing = charSpacingFinal;
+    this.charSpacing = charSpacing;
     this.advanceArrTotal = advanceArrTotal;
     this.leftSideBearing = leftSideBearing;
     this.fontSize = fontSize;
@@ -328,7 +325,7 @@ export class KonvaIText extends Konva.Shape {
     this.outline = outline;
     this.selected = selected;
     this.fillBox = fillBox;
-    this.widthFromOCR = widthFromOCR;
+    // this.widthFromOCR = widthFromOCR;
     this.editTextCallback = editTextCallback;
 
     this.addEventListener('dblclick dbltap', () => {
@@ -381,7 +378,7 @@ export class KonvaIText extends Konva.Shape {
     const charSpacingHTML = textNode.charSpacing * scale;
 
     let { x: x1, y: y1 } = textNode.getAbsolutePosition();
-    x1 -= textNode.leftSideBearing * scale;
+    if (textNode.word.visualCoords) x1 -= textNode.leftSideBearing * scale;
 
     const fontSizeHTML = textNode.fontSize * scale;
 
@@ -475,7 +472,6 @@ export class KonvaOcrWord extends KonvaIText {
       fillBox,
       opacity,
       fill,
-      widthFromOCR: true,
       editTextCallback: () => {},
     });
 
@@ -542,7 +538,7 @@ export class KonvaOcrWord extends KonvaIText {
     if (italic !== styleItalicElem.classList.contains('active')) {
       styleItalicButton.toggle();
     }
-    const smallCaps = wordFirst.fontStyleLookup === 'small-caps';
+    const smallCaps = wordFirst.fontStyleLookup === 'smallCaps';
     if (smallCaps !== styleSmallCapsElem.classList.contains('active')) {
       styleSmallCapsButton.toggle();
     }

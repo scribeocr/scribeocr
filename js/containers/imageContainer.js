@@ -9,6 +9,12 @@ import Tesseract from '../../tess/tesseract.esm.min.js';
 import { getPngDimensions, getJpegDimensions, getImageBitmap } from '../imageUtils.js';
 
 import { pageMetricsArr } from './miscContainer.js';
+import {
+  FontContainerFont, loadOpentype, fontAll,
+} from './fontContainer.js';
+import { setUploadFontsWorker } from '../fontContainerMain.js';
+
+import { determineSansSerif } from '../miscUtils.js';
 
 function range(min, max) {
   const result = [];
@@ -96,6 +102,16 @@ export class MuPDFScheduler {
      * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>>}
      */
     this.pageTextXML = async (args) => (await this.scheduler.addJob('pageTextXML', args));
+    /**
+     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextJSON>[1]} args
+     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextJSON>>}
+     */
+    this.pageTextJSON = async (args) => (await this.scheduler.addJob('pageTextJSON', args));
+    /**
+     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.extractAllFonts>[1]} args
+     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.extractAllFonts>>}
+     */
+    this.extractAllFonts = async (args) => (await this.scheduler.addJob('extractAllFonts', args));
     /**
      * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>[1]} args
      * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>>}
@@ -485,7 +501,7 @@ class ImageCache {
     if (setPageMetrics) {
     // For reasons that are unclear, a small number of pages have been rendered into massive files
     // so a hard-cap on resolution must be imposed.
-      const pageDPI = pdfDims300Arr.map((x) => 300 * 2000 / Math.max(x.width, 2000));
+      const pageDPI = pdfDims300Arr.map((x) => 300 * 2000 / x.width, 2000);
 
       // In addition to capping the resolution, also switch the width/height
       pdfDims300Arr.forEach((x, i) => {
@@ -493,10 +509,52 @@ class ImageCache {
         pageMetricsArr[i] = new PageMetrics(pageDims);
       });
 
+      // WIP: Extract fonts embedded in PDFs.
+      if (false) {
+        muPDFScheduler.extractAllFonts().then(async (x) => {
+          globalThis.fontArr = [];
+          for (let i = 0; i < x.length; i++) {
+            const src = x[i].buffer;
+            const fontObj = await loadOpentype(src);
+            const fontNameEmbedded = fontObj.names.postScriptName.en;
+            const fontFamilyEmbedded = fontObj.names?.fontFamily?.en || fontNameEmbedded.replace(/-\w+$/, '');
+
+            // Skip bold and bold-italic fonts for now.
+            if (fontNameEmbedded.match(/bold/i)) continue;
+
+            let fontStyle = 'normal';
+            if (fontNameEmbedded.match(/italic/i)) {
+              fontStyle = 'italic';
+            } else if (fontNameEmbedded.match(/bold/i)) {
+            // Bold fonts should be enabled at some later point.
+            // While we previously found that we were unable to detect bold fonts reliably,
+            // when importing from PDFs, we do not need to guess.
+            // fontStyle = 'bold';
+            }
+            const type = determineSansSerif(fontFamilyEmbedded) === 'SansDefault' ? 'sans' : 'serif';
+
+            // mupdf replaces spaces with underscores in font names.
+            const fontName = fontFamilyEmbedded.replace(/[^+]+\+/g, '').replace(/\s/g, '_');
+
+            if (!fontAll.raw[fontName]) {
+              fontAll.raw[fontName] = {};
+            }
+
+            if (!fontAll.raw[fontName][fontStyle]) {
+              fontAll.raw[fontName][fontStyle] = new FontContainerFont(fontName, fontStyle, src, false, fontObj);
+            }
+          }
+
+          await setUploadFontsWorker(globalThis.generalScheduler);
+        });
+      }
+
       if (extractStext) {
         globalThis.hocrCurrentRaw = Array(this.pageCount);
         const resArr = pageDPI.map(async (x, i) => {
-          globalThis.hocrCurrentRaw[i] = await muPDFScheduler.pageTextXML({ page: i + 1, dpi: Math.round(x) });
+          // While using `pageTextJSON` would save some parsing, unfortunately that format only includes line-level granularity.
+          // The XML format is the only built-in mupdf format that includes character-level granularity.
+          globalThis.hocrCurrentRaw[i] = await muPDFScheduler.pageTextXML({ page: i + 1, dpi: x });
         });
         await Promise.all(resArr);
       }

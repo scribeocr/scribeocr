@@ -1,7 +1,7 @@
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  quantile, mean50, unescapeXml, round6, determineSansSerif,
+  mean50, unescapeXml, round6,
 } from '../miscUtils.js';
 
 import { pass3 } from './convertPageShared.js';
@@ -25,9 +25,6 @@ export async function convertPageStext({ ocrStr, n }) {
   const pageDimsMatch = ocrStr.match(/<page .+?width=['"]([\d.-]+)['"] height=['"]([\d.-]+)['"]/);
   const pageDims = { height: parseInt(pageDimsMatch[2]), width: parseInt(pageDimsMatch[1]) };
 
-  const lineLeft = [];
-  const lineTop = [];
-
   const pageObj = new ocr.OcrPage(n, pageDims);
 
   /**
@@ -38,13 +35,9 @@ export async function convertPageStext({ ocrStr, n }) {
   function convertLineStext(xmlLine, lineNum, n = 1) {
     const stylesLine = {};
 
-    // Unlike Tesseract HOCR, Abbyy XML does not provide accurate metrics for determining font size, so they are calculated here.
-    // Strangely, while Abbyy XML does provide a "baseline" attribute, it is often wildly incorrect (sometimes falling outside of the bounding box entirely).
-    // One guess as to why is that coordinates calculated pre-dewarping are used along with a baseline calculated post-dewarping.
-    // Regardless of the reason, baseline is recalculated here.
-    const lineAllHeightArr = [];
-    const baselineSlopeArr = [];
-    const baselineFirst = [];
+    // Remove the <block> tag to avoid the regex matching it instead of the <line> tag.
+    // We currently have no "block" level object, however this may be useful in the future.
+    xmlLine = xmlLine.replace(/<block[^>]*?>/i, '');
 
     const xmlLinePreChar = xmlLine.match(/^[\s\S]*?(?=<char)/)?.[0];
     if (!xmlLinePreChar) { return (''); }
@@ -53,26 +46,12 @@ export async function convertPageStext({ ocrStr, n }) {
     const fontName = xmlLineFormatting?.match(/name=['"]([^'"]*)/)?.[1];
     const fontSize = parseFloat(xmlLineFormatting?.match(/size\=['"]([^'"]*)/)?.[1]);
 
-    const fontFamily = determineSansSerif(fontName);
+    const fontFamily = fontName?.replace(/-.+/g, '') || 'Default';
 
     // Currently no method of detecting drop caps for stext
     const dropCap = false;
-    // let dropCapMatch = xmlLine.match(abbyyDropCapRegex);
-    // if (dropCapMatch != null && parseInt(dropCapMatch[1]) > 0) {
-    //   dropCap = true;
-    // }
 
-    let lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=['"](\s*[\d.-]+)(\s*[\d.-]+)?(\s*[\d.-]+)?(\s*[\d.-]+)?/g)][0].slice(1, 5).map((x) => Math.max(parseFloat(x), 0));
-
-    if (lineBoxArr == null) { return (''); }
-    lineBoxArr = [...lineBoxArr].map((x) => parseInt(x));
-    // Only calculate baselines from lines 200px+.
-    // This avoids short "lines" (e.g. page numbers) that often report wild values.
-    if ((lineBoxArr[4] - lineBoxArr[2]) >= 200) {
-      // angleRisePage.push(baseline[0]);
-      lineLeft.push(lineBoxArr[2]);
-      lineTop.push(lineBoxArr[3]);
-    }
+    const lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=['"](\s*[\d.-]+)(\s*[\d.-]+)?(\s*[\d.-]+)?(\s*[\d.-]+)?/g)][0].slice(1, 5).map((x) => Math.max(parseFloat(x), 0));
 
     // These regex remove blank characters that occur next to changes in formatting to avoid making too many words.
     // stext is confirmed to (at least sometimes) change formatting before a space character rather than after
@@ -88,11 +67,11 @@ export async function convertPageStext({ ocrStr, n }) {
 
     if (wordStrArr.length === 0) return (['', 0]);
 
-    const bboxes = Array(wordStrArr.length);
-    // let cuts = Array(wordStrArr.length);
-    let text = Array(wordStrArr.length);
-    text = text.fill('');
-    let styleArr = Array(wordStrArr.length);
+    /** @type {Array<Array<{left: number, top: number, right: number, bottom: number, baseline: number}>>} */
+    const bboxes = [];
+    /** @type {Array<string>} */
+    const text = [];
+    let styleArr = [];
     styleArr = styleArr.fill('normal');
 
     for (let i = 0; i < wordStrArr.length; i++) {
@@ -101,90 +80,84 @@ export async function convertPageStext({ ocrStr, n }) {
       if (letterArr.length === 0) continue;
       if (typeof (letterArr[0][1]) !== 'undefined') {
         if (dropCap && i === 0) {
-          styleArr[i] = 'dropcap';
+          styleArr.push('dropcap');
           // } else if (/superscript\=[\'\"](1|true)/i.test(letterArr[0][1])) {
           //   styleArr[i] = "sup";
         } else if (/italic/i.test(letterArr[0][1])) {
-          styleArr[i] = 'italic';
+          styleArr.push('italic');
           stylesLine.italic = true;
         } else if (/small\W?cap/i.test(letterArr[0][1])) {
-          styleArr[i] = 'small-caps';
-          stylesLine['small-caps'] = true;
+          styleArr.push('smallCaps');
+          stylesLine.smallCaps = true;
         } else {
-          styleArr[i] = 'normal';
+          styleArr.push('normal');
           stylesLine.normal = true;
         }
-      } else if (i > 0) {
-        if (styleArr[i - 1] === 'dropcap') {
-          styleArr[i] = 'normal';
+      } else if (styleArr.length > 0) {
+        if (styleArr[styleArr.length - 1] === 'dropcap') {
+          styleArr.push('normal');
         } else {
-          styleArr[i] = styleArr[i - 1];
+          styleArr.push(styleArr[styleArr.length - 1]);
         }
       }
 
-      bboxes[i] = [];
+      bboxes.push([]);
+      text.push('');
 
       for (let j = 0; j < letterArr.length; j++) {
-        bboxes[i][j] = [];
-        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][2])));
-        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][3])));
-        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][4])));
-        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][5])));
-        // The 5th element is the y coordinate of the baseline, which is not in the Abbyy version
-        bboxes[i][j].push(Math.round(parseFloat(letterArr[j][6])));
-
-        // All text in stext is considered correct/high confidence
-        const letterSusp = false;
+        bboxes[bboxes.length - 1].push({
+          left: Math.round(parseFloat(letterArr[j][2])),
+          top: Math.round(parseFloat(letterArr[j][3])),
+          right: Math.round(parseFloat(letterArr[j][4])),
+          bottom: Math.round(parseFloat(letterArr[j][5])),
+          baseline: Math.round(parseFloat(letterArr[j][6])),
+        });
 
         const contentStrLetter = letterArr[j][7];
-        text[i] += contentStrLetter;
-
-        lineAllHeightArr.push(bboxes[i][j][3] - bboxes[i][j][1]);
-        if (!letterSusp && !(dropCap && i === 0)) {
-          // To calculate the slope of the baseline (and therefore image angle) the position of each glyph that starts (approximately) on the
-          // baseline is compared to the first such glyph.  This is less precise than a true "best fit" approach, but hopefully with enough data
-          // points it will all average out.
-          if (baselineFirst.length === 0) {
-            baselineFirst.push(bboxes[i][j][0], bboxes[i][j][4]);
-          } else {
-            baselineSlopeArr.push((bboxes[i][j][4] - baselineFirst[1]) / (bboxes[i][j][0] - baselineFirst[0]));
-          }
-        }
+        text[text.length - 1] += contentStrLetter;
       }
     }
+
+    // Return if there are no letters in the line.
+    // This commonly happens for "lines" that contain only space characters.
+    if (bboxes.length === 0) return (['', 0]);
+
+    // To calculate the slope of the baseline (and therefore image angle) the position of each glyph that starts (approximately) on the
+    // baseline is compared to the first such glyph.  This is less precise than a true "best fit" approach, but hopefully with enough data
+    // points it will all average out.
+    const baselineFirst = [bboxes[0][0].left, bboxes[0][0].baseline];
+
+    const baselineLast = [bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].left, bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].baseline];
+
+    const rise = baselineLast[1] - baselineFirst[1];
+    const run = baselineLast[0] - baselineFirst[0];
+
+    const baselineSlope = !run ? 0 : rise / run;
 
     // NOTE: This section can probably be deleted for stext as it seems specific to Abbyy
     // While Abbyy XML already provides line bounding boxes, these have been observed to be (at times)
     // completely different than a bounding box calculated from a union of all letters in the line.
     // Therefore, the line bounding boxes are recaclculated here.
-    const lineBoxArrCalc = new Array(4);
     // reduce((acc, val) => acc.concat(val), []) is used as a drop-in replacement for flat() with significantly better performance
-    lineBoxArrCalc[0] = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[0]).filter((x) => x > 0));
-    lineBoxArrCalc[1] = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[1]).filter((x) => x > 0));
-    lineBoxArrCalc[2] = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[2]).filter((x) => x > 0));
-    lineBoxArrCalc[3] = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[3]).filter((x) => x > 0));
+    // const lineLeft = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[0]).filter((x) => x > 0));
+    // const lineTop = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[1]).filter((x) => x > 0));
+    // const lineRight = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[2]).filter((x) => x > 0));
+    // const lineBottom = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[3]).filter((x) => x > 0));
 
-    const baselineSlope = quantile(baselineSlopeArr, 0.5) || 0;
+    const lineBbox = {
+      left: lineBoxArr[0], top: lineBoxArr[1], right: lineBoxArr[2], bottom: lineBoxArr[3],
+    };
 
     // baselinePoint should be the offset between the bottom of the line bounding box, and the baseline at the leftmost point
-    let baselinePoint = baselineFirst[1] - lineBoxArrCalc[3];
+    let baselinePoint = baselineFirst[1] - lineBbox.bottom;
     if (baselineSlope < 0) {
-      baselinePoint -= baselineSlope * (baselineFirst[0] - lineBoxArrCalc[0]);
+      baselinePoint -= baselineSlope * (baselineFirst[0] - lineBbox.left);
     }
     baselinePoint = baselinePoint || 0;
 
-    // In a small number of cases the bounding box cannot be calculated because all individual character-level bounding boxes are at 0 (and therefore skipped)
-    // In this case the original line-level bounding box from Abbyy is used
-    const lineBoxOut1 = Number.isFinite(lineBoxArrCalc[0]) && Number.isFinite(lineBoxArrCalc[1]) && Number.isFinite(lineBoxArrCalc[2])
-        && Number.isFinite(lineBoxArrCalc[3]) ? lineBoxArrCalc : lineBoxArr.slice(2, 6);
-
-    const lineBbox = {
-      left: lineBoxOut1[0], top: lineBoxOut1[1], right: lineBoxOut1[2], bottom: lineBoxOut1[3],
-    };
-
     const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
 
-    // TODO: This is very back-of-the-napkin, should figure out how to be more precise.
+    // This is only a rough estimate, however since `size` is set on individual words, this value should not matter.
     const letterHeightOut = fontSize * 0.6;
 
     const lineObj = new ocr.OcrLine(pageObj, lineBbox, baselineOut, letterHeightOut, null);
@@ -194,10 +167,10 @@ export async function convertPageStext({ ocrStr, n }) {
       if (text[i].trim() == '') { continue; }
       const bboxesI = bboxes[i];
 
-      const bboxesILeft = Math.min(...bboxesI.map((x) => x[0]));
-      const bboxesIRight = Math.max(...bboxesI.map((x) => x[2]));
-      const bboxesITop = Math.min(...bboxesI.map((x) => x[1]));
-      const bboxesIBottom = Math.max(...bboxesI.map((x) => x[3]));
+      const bboxesILeft = Math.min(...bboxesI.map((x) => x.left));
+      const bboxesIRight = Math.max(...bboxesI.map((x) => x.right));
+      const bboxesITop = Math.min(...bboxesI.map((x) => x.top));
+      const bboxesIBottom = Math.max(...bboxesI.map((x) => x.bottom));
 
       const id = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
 
@@ -208,6 +181,10 @@ export async function convertPageStext({ ocrStr, n }) {
       };
 
       const wordObj = new ocr.OcrWord(lineObj, wordText, bbox, id);
+      wordObj.size = fontSize;
+
+      // In stext, the coordinates are based on font bounding boxes, not where pixels start/end.
+      wordObj.visualCoords = false;
 
       // There is no confidence information in stext.
       // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
@@ -215,8 +192,8 @@ export async function convertPageStext({ ocrStr, n }) {
 
       if (styleArr[i] === 'italic') {
         wordObj.style = 'italic';
-      } else if (styleArr[i] === 'small-caps') {
-        wordObj.style = 'small-caps';
+      } else if (styleArr[i] === 'smallCaps') {
+        wordObj.style = 'smallCaps';
       }
 
       if (fontFamily !== 'Default') {

@@ -1,9 +1,9 @@
 import { winEncodingLookup } from '../fonts/encoding.js';
 
 import {
-  calcWordFontSize, calcWordMetrics, subsetFont,
+  calcWordMetrics, subsetFont,
 } from './fontUtils.js';
-import { fontAll } from './containers/fontContainer.js';
+import { fontAll, loadOpentype } from './containers/fontContainer.js';
 
 import { createEmbeddedFontType1, createEmbeddedFontType0 } from './exportPDFFonts.js';
 
@@ -271,7 +271,11 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       continue;
     }
 
-    let wordFontSize = calcWordFontSize(word);
+    // let wordFontSize = calcWordFontSize(word);
+
+    const word0Metrics = calcWordMetrics(word, angle);
+
+    let wordFontSize = word0Metrics.fontSize;
 
     // Set font and font size
     ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][word.style]);
@@ -281,7 +285,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     // Reset baseline to line baseline
     textStream += '0 Ts\n';
 
-    const word0Metrics = calcWordMetrics(word, angle);
+    const word0LeftBearing = word.visualCoords ? word0Metrics.leftSideBearing : 0;
 
     let tz = 100;
     if (word.dropcap) {
@@ -290,7 +294,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     }
 
     // Move to next line
-    const lineLeftAdj = wordBox.left - word0Metrics.leftSideBearing * (tz / 100) + angleAdjLine.x;
+    const lineLeftAdj = wordBox.left - word0LeftBearing * (tz / 100) + angleAdjLine.x;
     const lineTopAdj = linebox.bottom + baseline[1] + angleAdjLine.y;
 
     if (rotateText) {
@@ -311,6 +315,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     let charSpacingLast = 0;
     let spacingAdj = 0;
     let kernSpacing = false;
+    let wordLast = word;
     let wordFontOpentypeLast = wordFontOpentype;
     let fontSizeLast = wordFontSize;
     let tsCurrent = 0;
@@ -324,7 +329,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       wordFontSize = wordMetrics.fontSize;
       const charSpacing = wordMetrics.charSpacing;
       const charArr = wordMetrics.charArr;
-      const wordLeftBearing = wordMetrics.leftSideBearing;
+      const wordLeftBearing = word.visualCoords ? wordMetrics.leftSideBearing : 0;
 
       wordBox = word.bbox;
 
@@ -385,32 +390,34 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         // (4) the current character spacing value (applied twice--both before and after the space character).
         const spaceWidthGlyph = wordFontOpentypeLast.charToGlyph(' ').advanceWidth * (fontSizeLast / wordFontOpentypeLast.unitsPerEm);
 
-        const wordSpaceExpected = (spaceWidthGlyph + charSpacingLast * 2 + wordRightBearingLast) + wordLeftBearing;
+        const wordSpaceExpectedPx = (spaceWidthGlyph + charSpacingLast * 2 + wordRightBearingLast) + wordLeftBearing;
 
         // Ad-hoc adjustment needed to replicate wordSpace
         // const wordSpaceExtra = (wordSpace + angleSpaceAdjXWord - spaceWidth - charSpacing * 2 - wordLeftBearing - wordRightBearingLast + spacingAdj);
-        const wordSpaceExtra = (wordSpaceAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (100 / tzCurrent);
+        const wordSpaceExtraPx = (wordSpaceAdj - wordSpaceExpectedPx + spacingAdj + angleAdjWordX) * (100 / tzCurrent);
 
         if (pdfFontTypeCurrent === 0) {
           const spaceChar = wordFontOpentype.charToGlyphIndex(' ').toString(16).padStart(4, '0');
-          textStream += `<${spaceChar}> ${String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
+          textStream += `<${spaceChar}> ${String(Math.round(wordSpaceExtraPx * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
         } else {
-          textStream += `( ) ${String(Math.round(wordSpaceExtra * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
+          textStream += `( ) ${String(Math.round(wordSpaceExtraPx * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
         }
       }
       kernSpacing = false;
 
       wordBoxLast = wordBox;
 
-      const wordLastGlyphMetrics = wordFontOpentype.charToGlyph(charArr.at(-1)).getMetrics();
-      wordRightBearingLast = wordLastGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm);
+      const wordLastGlyph = wordFontOpentype.charToGlyph(charArr.at(-1));
+      const wordLastGlyphMetrics = wordLastGlyph.getMetrics();
+      wordRightBearingLast = wordLast.visualCoords ? wordLastGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
 
       // In general, we assume that (given our adjustments to character spacing) the rendered word has the same width as the image of that word.
       // However, this assumption does not hold for single-character words, as there is no space between character to adjust.
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space.
       // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
       if (charArr.length === 1 && !word.dropcap) {
-        spacingAdj = wordWidthAdj - ((wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) * (wordFontSize / wordFontOpentype.unitsPerEm)) - angleAdjWordX;
+        const lastCharWidth = (wordLast.visualCoords ? (wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) : wordLastGlyph.advanceWidth) * (wordFontSize / wordFontOpentype.unitsPerEm);
+        spacingAdj = wordWidthAdj - lastCharWidth - angleAdjWordX;
       } else {
         spacingAdj = 0 - angleAdjWordX;
       }
@@ -463,16 +470,30 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
             const wordGlyphMetrics = wordFontOpentype.charToGlyph(charArr.at(-1)).getMetrics();
             const wordNextGlyphMetrics = wordFontOpentype.charToGlyph(wordNext.text.substr(0, 1)).getMetrics();
 
-            const wordRightBearing = wordGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm);
+            const wordRightBearing = word.visualCoords ? wordGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
 
-            const wordNextLeftBearing = wordNextGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm);
+            const wordNextLeftBearing = wordNext.visualCoords ? wordNextGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
 
             const wordSpaceExpected = charSpacing + wordRightBearing + wordNextLeftBearing;
 
             kern = Math.round((wordSpaceNextAdj - wordSpaceExpected + spacingAdj + angleAdjWordX) * (-1000 / wordFontSize));
           }
+
+          // PDFs render text based on a "widths" PDF object, rather than the advance width in the embedded font file.
+          // The widths are in 1/1000 of a unit, and this PDF object is created by mupdf.
+          // The widths output in this object are converted to integers, which creates a rounding error when the font em size is not 1000.
+          // All built-in fonts are already 1000 to avoid this, however custom fonts may not be.
+          // This results in a small rounding error for the advance of each character, which adds up, as PDF positioning is cumulative.
+          // To correct for this, the error is calculated and added to the kerning value.
+          const charAdvance = wordFontOpentype.charToGlyph(letter).advanceWidth;
+          const charWidthPdfPrecise = charAdvance * (1000 / wordFontOpentype.unitsPerEm);
+          const charWidthPdfRound = Math.floor(charWidthPdfPrecise);
+          const charWidthError = charWidthPdfRound - charWidthPdfPrecise;
+
+          const charAdj = kern + charWidthError;
+
           if (pdfFontTypeCurrent === 0) {
-            textStream += `<${letterEnc}> ${String(Math.round(kern * 1e6) / 1e6)} `;
+            textStream += `<${letterEnc}> ${String(Math.round(charAdj * 1e6) / 1e6)} `;
           } else {
             textStream += `(${letterEnc}) ${String(Math.round(kern * 1e6) / 1e6)} `;
           }
@@ -494,6 +515,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         }
       }
 
+      wordLast = word;
       wordFontOpentypeLast = wordFontOpentype;
       charSpacingLast = charSpacing;
     }

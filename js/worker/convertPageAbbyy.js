@@ -143,8 +143,8 @@ export async function convertPageAbbyy({ ocrStr, n }) {
           styleArr[i] = 'italic';
           stylesLine.italic = true;
         } else if (/smallcaps=['"](1|true)/i.test(letterArr[0][1])) {
-          styleArr[i] = 'small-caps';
-          stylesLine['small-caps'] = true;
+          styleArr[i] = 'smallCaps';
+          stylesLine.smallCaps = true;
         } else {
           styleArr[i] = 'normal';
           stylesLine.normal = true;
@@ -160,7 +160,7 @@ export async function convertPageAbbyy({ ocrStr, n }) {
       // Abbyy will sometimes misidentify capital letters immediately following drop caps as small caps,
       // when they are only small in relation to the drop cap (rather than the main text).
       let dropCapFix = false;
-      if (dropCap && i === 1 && styleArr[i] === 'small-caps') {
+      if (dropCap && i === 1 && styleArr[i] === 'smallCaps') {
         styleArr[i] = 'normal';
         dropCapFix = true;
       }
@@ -287,8 +287,8 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
       if (styleArr[i] === 'italic') {
         wordObj.style = 'italic';
-      } else if (styleArr[i] === 'small-caps') {
-        wordObj.style = 'small-caps';
+      } else if (styleArr[i] === 'smallCaps') {
+        wordObj.style = 'smallCaps';
       }
 
       if (fontFamily !== 'Default') {

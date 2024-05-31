@@ -76,12 +76,12 @@ export function renderHOCR(ocrData, minValue, maxValue, meta) {
         // TODO: Why are we representing font family and style using the `style` HTML element here?
         // This is not how Tesseract does things, and our own parsing script does not appear to be written to re-import it properly.
         // Add "style" attribute (if applicable)
-        if (['italic', 'small-caps'].includes(wordObj.style) || (wordObj.font && wordObj.font !== 'Default')) {
+        if (['italic', 'smallCaps'].includes(wordObj.style) || (wordObj.font && wordObj.font !== 'Default')) {
           hocrOut += ' style=\'';
 
           if (wordObj.style === 'italic') {
             hocrOut += 'font-style:italic;';
-          } else if (wordObj.style === 'small-caps') {
+          } else if (wordObj.style === 'smallCaps') {
             hocrOut += 'font-variant:small-caps;';
           }
 

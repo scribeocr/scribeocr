@@ -21,12 +21,12 @@ import { convertOCRAllBrowser } from './js/recognizeConvertBrowser.js';
 
 import { runFontOptimization } from './js/fontEval.js';
 import {
-  enableDisableFontOpt, setFontAllWorker, loadFontContainerAllRaw, setDefaultFontAuto,
+  enableDisableFontOpt, setBuiltInFontsWorker, loadBuiltInFontsRaw, setDefaultFontAuto,
 } from './js/fontContainerMain.js';
 import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer.js';
 
 import {
-  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
+  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr, inputDataModes,
 } from './js/containers/miscContainer.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
@@ -120,7 +120,7 @@ debugDownloadImageElem.addEventListener('click', downloadCurrentImage);
 
 debugEvalLineElem.addEventListener('click', evalSelectedLine);
 
-const fontAllRawReady = loadFontContainerAllRaw().then((x) => {
+const fontAllRawReady = loadBuiltInFontsRaw().then((x) => {
   fontAll.raw = x;
   if (!fontAll.active) fontAll.active = fontAll.raw;
 });
@@ -129,32 +129,6 @@ const fontAllRawReady = loadFontContainerAllRaw().then((x) => {
 // https://getbootstrap.com/docs/5.0/components/tooltips/
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
-
-/**
- * @typedef inputDataModes
- * @type {object}
- * @property {Boolean[]} xmlMode - true if OCR data exists (whether from upload or built-in engine)
- * @property {Boolean} pdfMode - true if user uploaded pdf
- * @property {Boolean} imageMode - true if user uploaded image files (.png, .jpeg)
- * @property {Boolean} resumeMode - true if user re-uploaded HOCR data created by Scribe OCR
- * @property {Boolean} extractTextMode - true if stext is extracted from a PDF (rather than text layer uploaded seprately)
- * @property {Boolean} evalMode - true if ground truth data is uploaded
- */
-/** @type {inputDataModes} */
-globalThis.inputDataModes = {
-  // true if OCR data exists (whether from upload or built-in engine)
-  xmlMode: [],
-  // true if user uploaded pdf
-  pdfMode: false,
-  // true if user uploaded image files (.png, .jpeg)
-  imageMode: false,
-  // true if user re-uploaded HOCR data created by Scribe OCR
-  resumeMode: false,
-  // true if stext is extracted from a PDF (rather than text layer uploaded seprately)
-  extractTextMode: false,
-  // true if ground truth data is uploaded
-  evalMode: false,
-};
 
 /**
  * @typedef cp
@@ -339,8 +313,6 @@ selectDebugVisElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 const createGroundTruthElem = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 createGroundTruthElem.addEventListener('click', createGroundTruthClick);
 
-const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
-
 const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
@@ -382,7 +354,6 @@ export const enableXlsxExportClick = () => {
 enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
-const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
 const extractTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('extractTextCheckbox'));
 const omitNativeTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
 
@@ -957,7 +928,7 @@ function createGroundTruthClick() {
   createGroundTruthElem.disabled = true;
   // compareGroundTruthElem.disabled = false;
 
-  globalThis.inputDataModes.evalMode = true;
+  inputDataModes.evalMode = true;
 
   // Calculate statistics
   compareGroundTruthClick(cp.n);
@@ -1275,23 +1246,23 @@ async function importFiles(curFiles) {
     insertAlertMessage(errorText);
   }
 
-  globalThis.inputDataModes.pdfMode = pdfFilesAll.length === 1;
-  globalThis.inputDataModes.imageMode = !!(imageFilesAll.length > 0 && !globalThis.inputDataModes.pdfMode);
-  imageCache.inputModes.image = !!(imageFilesAll.length > 0 && !globalThis.inputDataModes.pdfMode);
+  inputDataModes.pdfMode = pdfFilesAll.length === 1;
+  inputDataModes.imageMode = !!(imageFilesAll.length > 0 && !inputDataModes.pdfMode);
+  imageCache.inputModes.image = !!(imageFilesAll.length > 0 && !inputDataModes.pdfMode);
 
   const xmlModeImport = hocrFilesAll.length > 0;
 
   // Extract text from PDF document
   // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
-  globalThis.inputDataModes.extractTextMode = extractTextCheckboxElem.checked && globalThis.inputDataModes.pdfMode && !xmlModeImport;
-  const stextModeExtract = globalThis.inputDataModes.extractTextMode;
+  inputDataModes.extractTextMode = extractTextCheckboxElem.checked && inputDataModes.pdfMode && !xmlModeImport;
+  const stextModeExtract = inputDataModes.extractTextMode;
 
   addLayoutBoxElem.disabled = false;
   deleteLayoutBoxElem.disabled = false;
   setDefaultLayoutElem.disabled = false;
   revertLayoutElem.disabled = false;
 
-  if (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode) {
+  if (inputDataModes.imageMode || inputDataModes.pdfMode) {
     recognizeAllElem.disabled = false;
     // recognizePageElem.disabled = false;
     recognizeAreaElem.disabled = false;
@@ -1304,7 +1275,7 @@ async function importFiles(curFiles) {
     while (colorModeElemOptions.length > 0) {
       colorModeElemOptions[0].remove();
     }
-    if (globalThis.inputDataModes.imageMode) {
+    if (inputDataModes.imageMode) {
       const option = document.createElement('option');
       option.text = 'Native';
       option.value = 'color';
@@ -1327,7 +1298,7 @@ async function importFiles(curFiles) {
     colorModeElem.add(option);
 
     // For PDF inputs, enable "Add Text to Import PDF" option
-    if (globalThis.inputDataModes.pdfMode) {
+    if (inputDataModes.pdfMode) {
       addOverlayCheckboxElem.checked = true;
       addOverlayCheckboxElem.disabled = false;
     } else {
@@ -1349,7 +1320,7 @@ async function importFiles(curFiles) {
   // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   let progressMax = 0;
-  if (globalThis.inputDataModes.imageMode) progressMax += imageFilesAll.length;
+  if (inputDataModes.imageMode) progressMax += imageFilesAll.length;
   if (xmlModeImport) progressMax += hocrFilesAll.length;
 
   // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
@@ -1367,7 +1338,7 @@ async function importFiles(curFiles) {
   let abbyyMode = false;
   let scribeMode = false;
 
-  if (globalThis.inputDataModes.pdfMode) {
+  if (inputDataModes.pdfMode) {
     const pdfFile = pdfFilesAll[0];
     globalThis.inputFileNames = [pdfFile.name];
 
@@ -1382,7 +1353,7 @@ async function importFiles(curFiles) {
     await imageCache.openMainPDF(pdfFileData, skipText, !xmlModeImport, stextModeExtract);
 
     pageCountImage = imageCache.pageCount;
-  } else if (globalThis.inputDataModes.imageMode) {
+  } else if (inputDataModes.imageMode) {
     globalThis.inputFileNames = imageFilesAll.map((x) => x.name);
     pageCountImage = imageFilesAll.length;
   }
@@ -1392,7 +1363,7 @@ async function importFiles(curFiles) {
   const oemName = 'User Upload';
   let stextMode;
 
-  if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
+  if (xmlModeImport || inputDataModes.extractTextMode) {
     document.getElementById('combineModeOptions')?.setAttribute('style', '');
 
     initOCRVersion(oemName);
@@ -1478,7 +1449,7 @@ async function importFiles(curFiles) {
   const pageCountHOCR = globalThis.hocrCurrentRaw?.length;
 
   // If both OCR data and image data are present, confirm they have the same number of pages
-  if (xmlModeImport && (globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode)) {
+  if (xmlModeImport && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
     if (pageCountImage !== pageCountHOCR) {
       const warningHTML = `Page mismatch detected. Image data has ${pageCountImage} pages while OCR data has ${pageCountHOCR} pages.`;
       insertAlertMessage(warningHTML, false);
@@ -1496,14 +1467,14 @@ async function importFiles(curFiles) {
     }
   }
 
-  globalThis.inputDataModes.xmlMode = new Array(globalThis.pageCount);
-  if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
-    globalThis.inputDataModes.xmlMode.fill(true);
+  inputDataModes.xmlMode = new Array(globalThis.pageCount);
+  if (xmlModeImport || inputDataModes.extractTextMode) {
+    inputDataModes.xmlMode.fill(true);
   } else {
-    globalThis.inputDataModes.xmlMode.fill(false);
+    inputDataModes.xmlMode.fill(false);
   }
 
-  if (globalThis.inputDataModes.pdfMode && !xmlModeImport) {
+  if (inputDataModes.pdfMode && !xmlModeImport) {
     // Render first handful of pages for pdfs so the interface starts off responsive
     // In the case of OCR data, this step is triggered elsewhere after all the data loads
     displayPage(0);
@@ -1511,7 +1482,7 @@ async function importFiles(curFiles) {
 
   globalThis.loadCount = 0;
 
-  if (globalThis.inputDataModes.imageMode) {
+  if (inputDataModes.imageMode) {
     imageCache.pageCount = globalThis.pageCount;
     for (let i = 0; i < globalThis.pageCount; i++) {
     // Currently, images are loaded once at a time.
@@ -1558,7 +1529,7 @@ async function importFiles(curFiles) {
     }
   }
 
-  if (xmlModeImport || globalThis.inputDataModes.extractTextMode) {
+  if (xmlModeImport || inputDataModes.extractTextMode) {
     toggleEditButtons(false);
     /** @type {("hocr" | "abbyy" | "stext")} */
     let format = 'hocr';
@@ -1585,7 +1556,7 @@ async function importFiles(curFiles) {
   if (dummyLoadingBar) globalThis.convertPageActiveProgress.increment();
 
   // Enable downloads now for pdf imports if no HOCR data exists
-  if (globalThis.inputDataModes.pdfMode && !xmlModeImport) {
+  if (inputDataModes.pdfMode && !xmlModeImport) {
     downloadElem.disabled = false;
     globalThis.state.downloadReady = true;
   }
@@ -1665,11 +1636,11 @@ export async function renderPageQueue(n) {
 
   // Return early if there is not enough data to render a page yet
   // (0) Necessary info is not defined yet
-  const noInfo = globalThis.inputDataModes.xmlMode[n] === undefined;
+  const noInfo = inputDataModes.xmlMode[n] === undefined;
   // (1) No data has been imported
-  const noInput = !globalThis.inputDataModes.xmlMode[n] && !(globalThis.inputDataModes.imageMode || globalThis.inputDataModes.pdfMode);
+  const noInput = !inputDataModes.xmlMode[n] && !(inputDataModes.imageMode || inputDataModes.pdfMode);
   // (2) XML data should exist but does not (yet)
-  const xmlMissing = globalThis.inputDataModes.xmlMode[n]
+  const xmlMissing = inputDataModes.xmlMode[n]
     && (ocrData === undefined || ocrData === null || pageMetricsArr[n].dims === undefined);
 
   const imageMissing = false;
@@ -1692,7 +1663,7 @@ export async function renderPageQueue(n) {
     globalThis.state.promiseResolve = resolve;
   });
 
-  if (globalThis.inputDataModes.evalMode) {
+  if (inputDataModes.evalMode) {
     await compareGroundTruthClick(n);
     // ocrData must be re-assigned after comparing to ground truth or it will not update.
     ocrData = ocrAll.active?.[n];
@@ -1707,7 +1678,7 @@ export async function renderPageQueue(n) {
   const renderNum = cp.renderNum;
 
   // The active OCR version may have changed, so this needs to be re-checked.
-  if (cp.n === n && globalThis.inputDataModes.xmlMode[n]) {
+  if (cp.n === n && inputDataModes.xmlMode[n]) {
     renderPage(ocrData);
     if (cp.n === n && cp.renderNum === renderNum) {
       await selectDisplayMode(getDisplayMode());
@@ -1733,7 +1704,7 @@ export async function displayPage(n) {
 
   working = true;
 
-  if (globalThis.inputDataModes.xmlMode[cp.n]) {
+  if (inputDataModes.xmlMode[cp.n]) {
     // TODO: This is currently run whenever the page is changed.
     // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
     updateFindStats();
@@ -1749,7 +1720,7 @@ export async function displayPage(n) {
   if (showConflictsElem.checked) showDebugImages();
 
   // Render background images ahead and behind current page to reduce delay when switching pages
-  if (globalThis.inputDataModes.pdfMode || globalThis.inputDataModes.imageMode) imageCache.preRenderAheadBehindBrowser(n, colorModeElem.value === 'binary');
+  if (inputDataModes.pdfMode || inputDataModes.imageMode) imageCache.preRenderAheadBehindBrowser(n, colorModeElem.value === 'binary');
 
   working = false;
 }
@@ -1838,7 +1809,7 @@ export async function initGeneralScheduler() {
 
   // Send raw fonts to workers after they have loaded in the main thread.
   await fontAllRawReady;
-  await setFontAllWorker(globalThis.generalScheduler);
+  await setBuiltInFontsWorker(globalThis.generalScheduler);
 
   resReady(true);
 }

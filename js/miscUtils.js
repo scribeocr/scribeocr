@@ -72,7 +72,7 @@ export function sleep(ms) {
 }
 
 /**
- * Unescapes XML in a string
+ * Unescapes XML in a string. This should be replaced with a more robust solution.
  * @param {String} string
  * @return {String}
  */
@@ -85,6 +85,7 @@ export function unescapeXml(string) {
     .replace(/&gt;/g, '>')
     .replace(/&#39;/g, "'")
     .replace(/&#34;/g, '"')
+    .replace(/&#x2013;/g, '–')
     .replace(/&#x2014;/g, '—')
     .replace(/&#x8211;/g, '–')
     .replace(/&#x201c;/g, '“')
@@ -93,7 +94,20 @@ export function unescapeXml(string) {
     .replace(/&#x2019;/g, '’')
     .replace(/&#xa7;/g, '§')
     // Soft hyphen
-    .replace(/&#xad;/g, '-');
+    .replace(/&#xad;/g, '-')
+    // Minus sign
+    .replace(/&#x2212;/g, '−')
+    .replace(/&#x2026;/g, '…')
+
+    .replace(/&#xd7;/g, '×')
+
+    .replace(/&#xae;/g, '®')
+    .replace(/&#xa9;/g, '©')
+
+    .replace(/&#x2022;/g, '•')
+    .replace(/&#xe9;/g, 'é')
+
+    .replace(/&#xb6;/g, '¶');
 }
 
 // Reads OCR files, which may be compressed as .gz or uncompressed
@@ -263,8 +277,8 @@ export function replaceObjectProperties(obj, obj2 = {}) {
 // Should be added to if additional fonts are encountered
 // Fonts that should not be added (both Sans and Serif variants):
 // DejaVu
-const serifFonts = ['SerifDefault', 'Baskerville', 'Book', 'C059', 'Cambria', 'Century_Schoolbook', 'Courier', 'Garamond', 'Georgia', 'P052', 'Times'];
-const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Tahoma', 'Trebuchet', 'Verdana'];
+const serifFonts = ['SerifDefault', 'Baskerville', 'Book', 'C059', 'Cambria', 'Century', 'Courier', 'Garamond', 'Georgia', 'Minion', 'P052', 'Palatino', 'Times'];
+const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Myriad', 'Tahoma', 'Trebuchet', 'Verdana'];
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x, y) => `${x}|${y}`), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x, y) => `${x}|${y}`), 'i');
@@ -274,15 +288,13 @@ const sansFontsRegex = new RegExp(sansFonts.reduce((x, y) => `${x}|${y}`), 'i');
  *
  * @param {string|null|undefined} fontName - The name of the font to determine the type of. If the font name
  * is falsy, the function will return "Default".
- * @returns {string} fontFamily - The determined type of the font. Possible values are "SansDefault",
- * "SerifDefault", or "Default" (if the font type cannot be determined).
- * @throws {console.log} - Logs an error message to the console if the font is unidentified and
- * it is not the "Default Metrics Font".
+ * @returns {('SansDefault'|'SerifDefault'|'Default')}
  */
 export function determineSansSerif(fontName) {
+  /** @type {('SansDefault'|'SerifDefault'|'Default')} */
   let fontFamily = 'Default';
   // Font support is currently limited to 1 font for Sans and 1 font for Serif.
-  if (fontName) {
+  if (fontName && fontName !== 'Default') {
     // First, test to see if "sans" or "serif" is in the name of the font
     if (/(^|\W|_)sans($|\W|_)/i.test(fontName)) {
       fontFamily = 'SansDefault';

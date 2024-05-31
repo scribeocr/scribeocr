@@ -38,7 +38,7 @@ export function FontMetricsFont() {
 export function FontMetricsFamily() {
   this.normal = new FontMetricsFont();
   this.italic = new FontMetricsFont();
-  this['small-caps'] = new FontMetricsFont();
+  this.smallCaps = new FontMetricsFont();
   this.obs = 0;
 }
 
@@ -65,5 +65,5 @@ export function FontMetricsRawFont() {
 export function FontMetricsRawFamily() {
   this.normal = new FontMetricsRawFont();
   this.italic = new FontMetricsRawFont();
-  this['small-caps'] = new FontMetricsRawFont();
+  this.smallCaps = new FontMetricsRawFont();
 }
