@@ -27,7 +27,18 @@ export const evalInternalCLI = async (pdfFile, ocrFile) => {
   process.exitCode = 0;
 };
 
+/**
+ *
+ * @param {string} pdfFile - Path to PDF file.
+ * @param {*} ocrFile
+ * @param {*} outputDir
+ * @param {Object} options
+ * @param {boolean} [options.robust]
+ * @param {boolean} [options.conf]
+ * @param {boolean} [options.vis]
+ */
 export const overlayCLI = async (pdfFile, ocrFile, outputDir, options) => {
+  options.overlayMode = options.vis ? 'proof' : 'invis';
   await overlay(pdfFile, ocrFile, outputDir, options);
   process.exitCode = 0;
 };

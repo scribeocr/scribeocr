@@ -193,8 +193,10 @@ mupdf.cleanFile = function (data) {
  * @param {number} args.maxpage
  * @param {number} args.pagewidth
  * @param {number} args.pageheight
- * @param {Boolean} args.humanReadable
- * @param {Boolean} args.skipText
+ * @param {Boolean} args.humanReadable - If `true`, the output PDF will be human-readable in a text editor.
+ *    This should only be used for debugging purposes, as it results in a much larger file size.
+ * @param {Boolean} args.skipText - If `true`, visible text in the source PDF will be omitted.
+ *    Invisible text in the source PDF is omitted regardless of this setting.
  * @returns
  */
 mupdf.overlayText = function (doc1, {

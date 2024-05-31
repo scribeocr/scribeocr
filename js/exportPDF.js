@@ -3,7 +3,7 @@ import { winEncodingLookup } from '../fonts/encoding.js';
 import {
   calcWordMetrics, subsetFont,
 } from './fontUtils.js';
-import { fontAll, loadOpentype } from './containers/fontContainer.js';
+import { fontAll } from './containers/fontContainer.js';
 
 import { createEmbeddedFontType1, createEmbeddedFontType0 } from './exportPDFFonts.js';
 
@@ -37,18 +37,6 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
   // It would likely be more performant to only add the fonts that are actually used up front.
   const exportFontObj = fontAll.getContainer('active');
 
-  // Get count of various objects inserted into pdf
-  let fontCount = 0;
-  for (const [familyKey, familyObj] of Object.entries(exportFontObj)) {
-    for (const [key, value] of Object.entries(familyObj)) {
-      fontCount += 1;
-    }
-  }
-
-  // This will need to be edited if Type 1 fonts are added back in.
-  let fontObjCount = fontCount * 6;
-  if (fontAll.supp.chi_sim) fontObjCount += 6;
-
   if (maxpage === -1) {
     maxpage = hocrArr.length - 1;
   }
@@ -56,22 +44,14 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
   // This can happen if (1) `hocrArr` is length 0 and (2) `maxpage` is left as the default (-1).
   if (maxpage < 0) throw new Error('PDF with negative page count requested.');
 
-  let pdfOut = '%PDF-1.7\n%¥±ë\n\n';
-
-  pdfOut += '1 0 obj\n<< /Type /Catalog\n/Pages 2 0 R>>\nendobj\n\n';
-
-  pdfOut += '2 0 obj\n<< /Type /Pages\n/Kids [';
-  for (let i = 0; i < (maxpage - minpage + 1); i++) {
-    pdfOut += `${String(3 + fontObjCount + 2 + i * 2)} 0 R\n`;
-  }
-  pdfOut += `]\n/Count ${String(maxpage - minpage + 1)}>>\nendobj\n\n`;
-
   // Add fonts
   // All fonts are added at this step.
   // The fonts that are not used will be removed by muPDF later.
   let fontI = 0;
   let objectI = 3;
   const pdfFonts = {};
+  /** @type {Array<string>} */
+  const pdfFontObjStrArr = [];
   let pdfFontsStr = '';
   for (const [familyKey, familyObj] of Object.entries(exportFontObj)) {
     pdfFonts[familyKey] = {};
@@ -84,16 +64,21 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
       // If the latter is true, then a composite font is needed, even if the font is a standard 14 font.
       const isStandardFont = false;
       if (isStandardFont) {
-        pdfOut += createEmbeddedFontType1(font, objectThis);
-        objectI += 3;
+        const fontObjArrI = createEmbeddedFontType1(font, objectThis);
+        for (let j = 0; j < fontObjArrI.length; j++) {
+          pdfFontObjStrArr.push(fontObjArrI[j]);
+        }
+        objectI += fontObjArrI.length;
         pdfFonts[familyKey][key] = { type: 1, name: `/F${String(fontI)}` };
       } else {
-        pdfOut += createEmbeddedFontType0(font, objectThis);
-        objectI += 6;
+        const fontObjArrI = createEmbeddedFontType0(font, objectThis);
+        for (let j = 0; j < fontObjArrI.length; j++) {
+          pdfFontObjStrArr.push(fontObjArrI[j]);
+        }
+        objectI += fontObjArrI.length;
         pdfFonts[familyKey][key] = { type: 0, name: `/F${String(fontI)}` };
       }
 
-      // pdfFonts[familyKey][key] = `/F${String(fontI)}`;
       pdfFontsStr += `/F${String(fontI)} ${String(objectThis)} 0 R\n`;
       fontI++;
     }
@@ -108,69 +93,123 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     const charArr = ocr.getDistinctChars(hocrArr);
     fontChiSimExport = await subsetFont(font, charArr);
 
-    pdfOut += createEmbeddedFontType0(fontChiSimExport, objectI);
+    const fontObjArr = createEmbeddedFontType0(fontChiSimExport, objectI);
+    for (let j = 0; j < fontObjArr.length; j++) {
+      pdfFontObjStrArr.push(fontObjArr[j]);
+    }
+    objectI += fontObjArr.length;
 
-    // pdfFonts.NotoSansSC.normal = `/F${String(fontI)}`;
     pdfFonts.NotoSansSC.normal = { type: 0, name: `/F${String(fontI)}` };
 
     pdfFontsStr += `/F${String(fontI)} ${String(objectI)} 0 R\n`;
-
-    objectI += 6;
   }
 
   // Add resource dictionary
   // For simplicity, all pages currently get the same resource dictionary.
   // It contains references to every font, as well as a graphics state with 0 opacity (used for invisible text in OCR mode).
-  pdfOut += `${String(objectI)} 0 obj\n<<`;
+  let resourceDictObjStr = `${String(objectI)} 0 obj\n<<`;
 
-  pdfOut += `/Font<<${pdfFontsStr}>>`;
+  resourceDictObjStr += `/Font<<${pdfFontsStr}>>`;
 
-  pdfOut += '/ExtGState<<';
-  pdfOut += '/GS0 <</ca 0.0>>';
-  pdfOut += `/GS1 <</ca ${proofOpacity}>>`;
-  pdfOut += '>>';
+  resourceDictObjStr += '/ExtGState<<';
+  resourceDictObjStr += '/GS0 <</ca 0.0>>';
+  resourceDictObjStr += `/GS1 <</ca ${proofOpacity}>>`;
+  resourceDictObjStr += '>>';
 
-  pdfOut += '>>\nendobj\n\n';
+  resourceDictObjStr += '>>\nendobj\n\n';
+
+  /** @type {Array<string>} */
+  const pdfPageObjStrArr = [];
+
+  pdfPageObjStrArr.push(resourceDictObjStr);
 
   const pageResourceStr = `/Resources ${String(objectI)} 0 R`;
 
   objectI++;
 
   // Add pages
+  const pageIndexArr = [];
   for (let i = minpage; i <= maxpage; i++) {
     const angle = pageMetricsArr[i].angle || 0;
     const { dims } = pageMetricsArr[i];
 
     // eslint-disable-next-line no-await-in-loop
-    pdfOut += (await ocrPageToPDF(hocrArr[i], dims, dimsLimit, objectI, 2, pageResourceStr, pdfFonts,
+    const objArr = (await ocrPageToPDF(hocrArr[i], dims, dimsLimit, objectI, 2, pageResourceStr, pdfFonts,
       textMode, angle, rotateText, rotateBackground, confThreshHigh, confThreshMed, fontChiSimExport));
-    objectI += 2;
+
+    for (let j = 0; j < objArr.length; j++) {
+      pdfPageObjStrArr.push(objArr[j]);
+    }
+
+    objectI += objArr.length;
+
+    // This assumes the "page" is always the last object returned by `ocrPageToPDF`.
+    pageIndexArr.push(objectI - 1);
+
     if (progress) progress.increment();
   }
 
-  // This part is completely wrong (copy/pasted from an example document), however it does not seem to impact the ability to view the document,
-  // and muPDF fixes for the documents where we use it.
-  pdfOut += String.raw`xref
-  0 5
-  0000000000 65535 f 
-  0000000018 00000 n 
-  0000000077 00000 n 
-  0000000178 00000 n 
-  0000000457 00000 n 
-  trailer
-    <<  /Root 1 0 R
-        /Size 5
-    >>
-  startxref
-  565
-  %%EOF
-  `;
+  /** @type {Array<string>} */
+  const pdfObjStrArr = [];
+
+  let pdfOut = '%PDF-1.7\n%µ¶n\n';
+
+  pdfObjStrArr.push('1 0 obj\n<</Type /Catalog\n/Pages 2 0 R>>\nendobj\n\n');
+
+  let pagesObjStr = '2 0 obj\n<</Type /Pages\n/Kids [';
+  for (let i = 0; i < (maxpage - minpage + 1); i++) {
+    pagesObjStr += `${String(pageIndexArr[i])} 0 R\n`;
+  }
+  pagesObjStr += `]\n/Count ${String(maxpage - minpage + 1)}>>\nendobj\n\n`;
+
+  pdfObjStrArr.push(pagesObjStr);
+
+  const offsetArr = [];
+  for (let i = 0; i < pdfObjStrArr.length; i++) {
+    offsetArr.push(pdfOut.length + 2);
+    pdfOut += pdfObjStrArr[i];
+  }
+
+  for (let i = 0; i < pdfFontObjStrArr.length; i++) {
+    offsetArr.push(pdfOut.length + 2);
+    pdfOut += pdfFontObjStrArr[i];
+  }
+
+  for (let i = 0; i < pdfPageObjStrArr.length; i++) {
+    offsetArr.push(pdfOut.length + 2);
+    pdfOut += pdfPageObjStrArr[i];
+  }
+
+  // The 0th object always exists, and contains no meaningful data.
+  const objCount = pdfObjStrArr.length + pdfFontObjStrArr.length + pdfPageObjStrArr.length + 1;
+
+  const xrefOffset = pdfOut.length + 2;
+
+  let xrefStr = `xref\n0 ${objCount}\n`;
+
+  xrefStr += '0000000000 65535 f\n';
+
+  for (let i = 0; i < offsetArr.length; i++) {
+    xrefStr += `${offsetArr[i].toString().padStart(10, '0')} 00000 n\n`;
+  }
+
+  xrefStr += `trailer
+  <<  /Root 1 0 R
+      /Size ${objCount}
+  >>
+startxref
+${xrefOffset}
+%%EOF`;
+
+  pdfOut += xrefStr;
 
   return pdfOut;
 }
 
 /**
- *
+ * Generates PDF objects for a single page of OCR data.
+ * Generally returns an array of 2 strings, the first being the text content object, and the second being the page object.
+ * If there is no text content, only the page object is returned.
  * @param {OcrPage} pageObj
  * @param {dims} inputDims
  * @param {dims} outputDims
@@ -185,7 +224,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
  * @param {number} confThreshHigh
  * @param {number} confThreshMed
  * @param {?import('opentype.js').Font} fontChiSim
- * @returns
+ * @returns {Promise<string[]>}
  */
 async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, parentIndex, pageResourceStr, pdfFonts, textMode, angle,
   rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75, fontChiSim = null) {
@@ -196,36 +235,61 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
   const noContent = !pageObj || pageObj.lines.length === 0;
 
   // Start 2nd object: Page
-  let secondObj = `${String(firstObjIndex + 1)} 0 obj\n<</Type/Page/MediaBox[0 0 ${String(outputDims.width)} ${String(outputDims.height)}]`;
+  const pageIndex = noContent ? firstObjIndex : firstObjIndex + 1;
+  let pageObjStr = `${String(pageIndex)} 0 obj\n<</Type/Page/MediaBox[0 0 ${String(outputDims.width)} ${String(outputDims.height)}]`;
 
-  if (!noContent) secondObj += `/Contents ${String(firstObjIndex)} 0 R`;
+  if (!noContent) pageObjStr += `/Contents ${String(firstObjIndex)} 0 R`;
 
-  secondObj += `${pageResourceStr}/Parent ${parentIndex} 0 R>>\nendobj\n\n`;
+  pageObjStr += `${pageResourceStr}/Parent ${parentIndex} 0 R>>\nendobj\n\n`;
 
   // If there is no text content, return the empty page with no contents
-  if (noContent) return secondObj;
+  if (noContent) return [pageObjStr];
 
+  let textContentObjStr = await ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle,
+    rotateText, rotateBackground, confThreshHigh, confThreshMed, fontChiSim);
+
+  textContentObjStr = `${String(firstObjIndex)} 0 obj\n<</Length ${String(textContentObjStr.length)} >>\nstream\n${textContentObjStr}\nendstream\nendobj\n\n`;
+
+  return [textContentObjStr, pageObjStr];
+}
+
+/**
+ *
+ * @param {OcrPage} pageObj
+ * @param {dims} outputDims
+ * @param {*} pdfFonts
+ * @param {("ebook"|"eval"|"proof"|"invis")} textMode -
+ * @param {number} angle
+ * @param {boolean} rotateText
+ * @param {boolean} rotateBackground
+ * @param {number} confThreshHigh
+ * @param {number} confThreshMed
+ * @param {?import('opentype.js').Font} fontChiSim
+ * @returns
+ */
+async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle,
+  rotateText = false, rotateBackground = false, confThreshHigh = 85, confThreshMed = 75, fontChiSim = null) {
   const { lines } = pageObj;
 
   const sinAngle = Math.sin(angle * (Math.PI / 180));
   const cosAngle = Math.cos(angle * (Math.PI / 180));
 
   // Start 1st object: Text Content
-  let textStream = '';
+  let textContentObjStr = '';
 
   if (textMode === 'invis') {
-    textStream += '/GS0 gs\n';
+    textContentObjStr += '/GS0 gs\n';
   } else if (['proof', 'eval'].includes(textMode)) {
-    textStream += '/GS1 gs\n';
+    textContentObjStr += '/GS1 gs\n';
   }
 
-  textStream += 'BT\n';
+  textContentObjStr += 'BT\n';
 
   // Locations are often specified using an offset against the leftmost point of the current line.
   const lineOrigin = [0, 0];
 
   // Move cursor to top of the page
-  textStream += `1 0 0 1 0 ${String(outputDims.height)} Tm\n`;
+  textContentObjStr += `1 0 0 1 0 ${String(outputDims.height)} Tm\n`;
 
   let pdfFontCurrent = '';
   let pdfFontTypeCurrent = 0;
@@ -258,7 +322,7 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
     let fillColorCurrent = fillColor;
 
-    textStream += `${fillColor}\n`;
+    textContentObjStr += `${fillColor}\n`;
 
     let wordFont = fontAll.getWordFont(word);
 
@@ -280,10 +344,10 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     // Set font and font size
     ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][word.style]);
 
-    textStream += `${pdfFontCurrent} ${String(wordFontSize)} Tf\n`;
+    textContentObjStr += `${pdfFontCurrent} ${String(wordFontSize)} Tf\n`;
 
     // Reset baseline to line baseline
-    textStream += '0 Ts\n';
+    textContentObjStr += '0 Ts\n';
 
     const word0LeftBearing = word.visualCoords ? word0Metrics.leftSideBearing : 0;
 
@@ -298,15 +362,15 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
     const lineTopAdj = linebox.bottom + baseline[1] + angleAdjLine.y;
 
     if (rotateText) {
-      textStream += `${String(cosAngle)} ${String(-sinAngle)} ${String(sinAngle)} ${String(cosAngle)} ${String(lineLeftAdj)} ${String(outputDims.height - lineTopAdj + 1)} Tm\n`;
+      textContentObjStr += `${String(cosAngle)} ${String(-sinAngle)} ${String(sinAngle)} ${String(cosAngle)} ${String(lineLeftAdj)} ${String(outputDims.height - lineTopAdj + 1)} Tm\n`;
     } else {
-      textStream += `${String(1)} ${String(0)} ${String(0)} ${String(1)} ${String(lineLeftAdj)} ${String(outputDims.height - lineTopAdj + 1)} Tm\n`;
+      textContentObjStr += `${String(1)} ${String(0)} ${String(0)} ${String(1)} ${String(lineLeftAdj)} ${String(outputDims.height - lineTopAdj + 1)} Tm\n`;
     }
 
     lineOrigin[0] = lineLeftAdj;
     lineOrigin[1] = lineTopAdj;
 
-    textStream += '[ ';
+    textContentObjStr += '[ ';
 
     let wordBoxLast = {
       left: 0, top: 0, right: 0, bottom: 0,
@@ -398,9 +462,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
         if (pdfFontTypeCurrent === 0) {
           const spaceChar = wordFontOpentype.charToGlyphIndex(' ').toString(16).padStart(4, '0');
-          textStream += `<${spaceChar}> ${String(Math.round(wordSpaceExtraPx * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
+          textContentObjStr += `<${spaceChar}> ${String(Math.round(wordSpaceExtraPx * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
         } else {
-          textStream += `( ) ${String(Math.round(wordSpaceExtraPx * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
+          textContentObjStr += `( ) ${String(Math.round(wordSpaceExtraPx * (-1000 / fontSizeLast) * 1e6) / 1e6)}`;
         }
       }
       kernSpacing = false;
@@ -422,30 +486,30 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
         spacingAdj = 0 - angleAdjWordX;
       }
 
-      textStream += ' ] TJ\n';
+      textContentObjStr += ' ] TJ\n';
 
       if (pdfFont !== pdfFontCurrent || wordFontSize !== fontSizeLast) {
-        textStream += `${pdfFont} ${String(wordFontSize)} Tf\n`;
+        textContentObjStr += `${pdfFont} ${String(wordFontSize)} Tf\n`;
         pdfFontCurrent = pdfFont;
         pdfFontTypeCurrent = pdfFontType;
         fontSizeLast = wordFontSize;
       }
       if (fillColor !== fillColorCurrent) {
-        textStream += `${fillColor}\n`;
+        textContentObjStr += `${fillColor}\n`;
         fillColorCurrent = fillColor;
       }
       if (ts !== tsCurrent) {
-        textStream += `${String(ts)} Ts\n`;
+        textContentObjStr += `${String(ts)} Ts\n`;
         tsCurrent = ts;
       }
       if (tz !== tzCurrent) {
-        textStream += `${String(tz)} Tz\n`;
+        textContentObjStr += `${String(tz)} Tz\n`;
         tzCurrent = tz;
       }
 
-      textStream += `${String(Math.round(charSpacing * 1e6) / 1e6)} Tc\n`;
+      textContentObjStr += `${String(Math.round(charSpacing * 1e6) / 1e6)} Tc\n`;
 
-      textStream += '[ ';
+      textContentObjStr += '[ ';
 
       // Non-ASCII and special characters are encoded/escaped using winEncodingLookup
       for (let k = 0; k < charArr.length; k++) {
@@ -493,9 +557,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
           const charAdj = kern + charWidthError;
 
           if (pdfFontTypeCurrent === 0) {
-            textStream += `<${letterEnc}> ${String(Math.round(charAdj * 1e6) / 1e6)} `;
+            textContentObjStr += `<${letterEnc}> ${String(Math.round(charAdj * 1e6) / 1e6)} `;
           } else {
-            textStream += `(${letterEnc}) ${String(Math.round(kern * 1e6) / 1e6)} `;
+            textContentObjStr += `(${letterEnc}) ${String(Math.round(kern * 1e6) / 1e6)} `;
           }
 
           if (charLig) {
@@ -508,9 +572,9 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
 
           if (pdfFontTypeCurrent === 0) {
             const spaceChar = wordFontOpentype.charToGlyphIndex(' ').toString(16).padStart(4, '0');
-            textStream += `<${spaceChar}> ${String(Math.round(kern * 1e6) / 1e6)} `;
+            textContentObjStr += `<${spaceChar}> ${String(Math.round(kern * 1e6) / 1e6)} `;
           } else {
-            textStream += `( ) ${String(Math.round(kern * 1e6) / 1e6)} `;
+            textContentObjStr += `( ) ${String(Math.round(kern * 1e6) / 1e6)} `;
           }
         }
       }
@@ -520,12 +584,10 @@ async function ocrPageToPDF(pageObj, inputDims, outputDims, firstObjIndex, paren
       charSpacingLast = charSpacing;
     }
 
-    textStream += ' ] TJ\n';
+    textContentObjStr += ' ] TJ\n';
   }
 
-  textStream += 'ET';
+  textContentObjStr += 'ET';
 
-  const pdfOut = `${String(firstObjIndex)} 0 obj\n<</Length ${String(textStream.length)} >>\nstream\n${textStream}\nendstream\nendobj\n\n${secondObj}`;
-
-  return pdfOut;
+  return textContentObjStr;
 }

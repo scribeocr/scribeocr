@@ -118,37 +118,37 @@ function createFontDescriptor(font, objIndex, style = 'normal', embeddedObjIndex
 }
 
 /**
- * Converts a Opentype.js font object into a string for adding to a PDF.
+ * Converts a Opentype.js font object into an array of strings containing PDF objects.
  * The font is represented as a simple "Type 1" font.
  *
  * @param {opentype.Font} font - Opentype.js font object
  * @param {number} firstObjIndex - Index for the first PDF object
  * @param {boolean} [isStandardFont=false] - Whether the font is a standard font.
  *  Standard fonts are not embedded in the PDF.
- * @returns {string} The font object string.
+ * @returns {Array<string>}
  */
 export function createEmbeddedFontType1(font, firstObjIndex, style = 'normal', isStandardFont = false) {
   // Start 1st object: Font Dictionary
-  let objOut = `${String(firstObjIndex)} 0 obj\n<</Type/Font/Subtype/Type1`;
+  let fontDictObjStr = `${String(firstObjIndex)} 0 obj\n<</Type/Font/Subtype/Type1`;
 
   // Add font name
-  objOut += `\n/BaseFont/${font.tables.name.postScriptName.en}`;
+  fontDictObjStr += `\n/BaseFont/${font.tables.name.postScriptName.en}`;
 
-  objOut += '/Encoding/WinAnsiEncoding';
+  fontDictObjStr += '/Encoding/WinAnsiEncoding';
 
   // const cmapIndices = Object.keys(font.tables.cmap.glyphIndexMap).map((x) => parseInt(x));
 
-  objOut += '/Widths[';
+  fontDictObjStr += '/Widths[';
   for (let i = 0; i < win1252Chars.length; i++) {
     const advanceNorm = Math.round(font.charToGlyph(win1252Chars[i]).advanceWidth * (1000 / font.unitsPerEm));
-    objOut += `${String(advanceNorm)} `;
+    fontDictObjStr += `${String(advanceNorm)} `;
   }
-  objOut += ']/FirstChar 32/LastChar 255';
+  fontDictObjStr += ']/FirstChar 32/LastChar 255';
 
-  objOut += `/FontDescriptor ${String(firstObjIndex + 1)} 0 R>>\nendobj\n\n`;
+  fontDictObjStr += `/FontDescriptor ${String(firstObjIndex + 1)} 0 R>>\nendobj\n\n`;
 
   // Start 2nd object: Font Descriptor
-  objOut += createFontDescriptor(font, firstObjIndex + 1, style, isStandardFont ? null : firstObjIndex + 2);
+  const fontDescObjStr = createFontDescriptor(font, firstObjIndex + 1, style, isStandardFont ? null : firstObjIndex + 2);
 
   // objOut += `${String(firstObjIndex + 1)} 0 obj\n<</Type/FontDescriptor`;
 
@@ -183,15 +183,15 @@ export function createEmbeddedFontType1(font, firstObjIndex, style = 'normal', i
   const fontBuffer = font.toArrayBuffer();
   const fontHexStr = hex(fontBuffer);
 
-  objOut += `${String(firstObjIndex + 2)} 0 obj\n<</Length1 ${String(fontBuffer.byteLength)}/Subtype/OpenType/Length ${String(fontHexStr.length)}/Filter/ASCIIHexDecode>>\nstream\n`;
+  let fontFileObjStr = `${String(firstObjIndex + 2)} 0 obj\n<</Length1 ${String(fontBuffer.byteLength)}/Subtype/OpenType/Length ${String(fontHexStr.length)}/Filter/ASCIIHexDecode>>\nstream\n`;
 
-  objOut += `${fontHexStr}\nendstream\nendobj\n\n`;
+  fontFileObjStr += `${fontHexStr}\nendstream\nendobj\n\n`;
 
-  return objOut;
+  return [fontDictObjStr, fontDescObjStr, fontFileObjStr];
 }
 
 /**
- * Converts a Opentype.js font object into a string for adding to a PDF.
+ * Converts a Opentype.js font object into an array of strings for adding to a PDF.
  * The font is represented as a composite "Type 0" font.
  *
  * @param {opentype.Font} font - Opentype.js font object
@@ -204,21 +204,21 @@ export function createEmbeddedFontType1(font, firstObjIndex, style = 'normal', i
  */
 export function createEmbeddedFontType0(font, firstObjIndex, style = 'normal') {
   // Start 1st object: Font Dictionary
-  let objOut = `${String(firstObjIndex)} 0 obj\n<</Type/Font/Subtype/Type0`;
+  let fontDictObjStr = `${String(firstObjIndex)} 0 obj\n<</Type/Font/Subtype/Type0`;
 
   // The relevant table is sometimes but not always in a property named `windows`.
   const namesTable = font.names.windows || font.names;
 
   // Add font name
-  objOut += `/BaseFont/${namesTable.postScriptName.en}`;
+  fontDictObjStr += `/BaseFont/${namesTable.postScriptName.en}`;
 
-  objOut += '/Encoding/Identity-H';
+  fontDictObjStr += '/Encoding/Identity-H';
 
   // objOut += `/ToUnicode ${String(firstObjIndex + 1)} 0 R`;
 
-  objOut += `/DescendantFonts[${String(firstObjIndex + 5)} 0 R]`;
+  fontDictObjStr += `/DescendantFonts[${String(firstObjIndex + 4)} 0 R]`;
 
-  objOut += '>>endobj\n\n';
+  fontDictObjStr += '>>endobj\n\n';
 
   // Start 2nd object: ToUnicode CMap
   // objOut += `${String(firstObjIndex + 1)} 0 obj\n`;
@@ -231,7 +231,7 @@ export function createEmbeddedFontType0(font, firstObjIndex, style = 'normal') {
   // objOut += '\nendstream\nendobj\n\n';
 
   // Start 3rd object: FontDescriptor
-  objOut += createFontDescriptor(font, firstObjIndex + 2, style, firstObjIndex + 4);
+  const fontDescObjStr = createFontDescriptor(font, firstObjIndex + 1, style, firstObjIndex + 3);
 
   // objOut += `${String(firstObjIndex + 2)} 0 obj\n`;
 
@@ -244,7 +244,7 @@ export function createEmbeddedFontType0(font, firstObjIndex, style = 'normal') {
   // objOut += '\nendobj\n\n';
 
   // Start 4th object: widths
-  objOut += `${String(firstObjIndex + 3)} 0 obj\n`;
+  let widthsObjStr = `${String(firstObjIndex + 2)} 0 obj\n`;
 
   // There are 2 ways to represent the widths of the glyphs in a CIDFontType2.
   // (1) [first glyph index] [array of widths]
@@ -254,33 +254,33 @@ export function createEmbeddedFontType0(font, firstObjIndex, style = 'normal') {
   // However, only the first method is used here, as mupdf rewrites the widths object.
   // The widths object needs to be present and accurate, as otherwise the glyphs will not be displayed correctly,
   // however it is not important that the widths be efficiently represented at this point.
-  objOut += '[ 0 [';
+  widthsObjStr += '[ 0 [';
   for (let i = 0; i < font.glyphs.length; i++) {
     const advanceNorm = Math.round(font.glyphs.glyphs[String(i)].advanceWidth * (1000 / font.unitsPerEm));
-    objOut += `${String(advanceNorm)} `;
+    widthsObjStr += `${String(advanceNorm)} `;
   }
-  objOut += '] ]';
+  widthsObjStr += '] ]';
 
-  objOut += '\nendobj\n\n';
+  widthsObjStr += '\nendobj\n\n';
 
   // Start 5th object: Font File
   const fontBuffer = font.toArrayBuffer();
   const fontHexStr = hex(fontBuffer);
 
-  objOut += `${String(firstObjIndex + 4)} 0 obj\n<</Length1 ${String(fontBuffer.byteLength)}/Subtype/OpenType/Length ${String(fontHexStr.length)}/Filter/ASCIIHexDecode>>\nstream\n`;
+  let fontFileObjStr = `${String(firstObjIndex + 3)} 0 obj\n<</Length1 ${String(fontBuffer.byteLength)}/Subtype/OpenType/Length ${String(fontHexStr.length)}/Filter/ASCIIHexDecode>>\nstream\n`;
 
-  objOut += `${fontHexStr}\nendstream\nendobj\n\n`;
+  fontFileObjStr += `${fontHexStr}\nendstream\nendobj\n\n`;
 
   // Start 6th object: Font
-  objOut += `${String(firstObjIndex + 5)} 0 obj\n`;
+  let fontObjStr = `${String(firstObjIndex + 4)} 0 obj\n`;
 
-  objOut += '<</Type/Font/Subtype/CIDFontType2/CIDSystemInfo<</Registry(Adobe)/Ordering(Identity)/Supplement 0>>';
+  fontObjStr += '<</Type/Font/Subtype/CIDFontType2/CIDSystemInfo<</Registry(Adobe)/Ordering(Identity)/Supplement 0>>';
 
-  objOut += `/BaseFont/${namesTable.postScriptName.en}/FontDescriptor ${String(firstObjIndex + 2)} 0 R`;
+  fontObjStr += `/BaseFont/${namesTable.postScriptName.en}/FontDescriptor ${String(firstObjIndex + 1)} 0 R`;
 
-  objOut += `/W ${String(firstObjIndex + 3)} 0 R`;
+  fontObjStr += `/W ${String(firstObjIndex + 2)} 0 R`;
 
-  objOut += '>>\nendobj\n\n';
+  fontObjStr += '>>\nendobj\n\n';
 
-  return objOut;
+  return [fontDictObjStr, fontDescObjStr, widthsObjStr, fontFileObjStr, fontObjStr];
 }

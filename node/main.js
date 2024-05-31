@@ -120,6 +120,7 @@ globalThis.visInstructions = [];
  * @param {Array<string>} [params.list]
  * @param {boolean} [params.robustConfMode]
  * @param {boolean} [params.printConf]
+ * @param {"eval" | "ebook" | "proof" | "invis"} [params.overlayMode]
  *
  */
 async function main(func, params) {
@@ -150,7 +151,7 @@ async function main(func, params) {
   }
 
   const backgroundArg = params.pdfFile;
-  const outputDir = params.outputDir;
+  const outputDir = params.outputDir || '.';
 
   if (outputDir) fs.mkdirSync(outputDir, { recursive: true });
 
@@ -424,7 +425,8 @@ async function main(func, params) {
   }
 
   if (func === 'overlay' && backgroundArg) {
-    const pdfStr = await hocrToPDF(ocrAll.active, 0, -1, 'proof', true, false);
+    const overlayMode = params.overlayMode || 'invis';
+    const pdfStr = await hocrToPDF(ocrAll.active, 0, -1, overlayMode, true, false);
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
 
@@ -455,7 +457,21 @@ async function main(func, params) {
       });
     }
 
-    const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '_vis.pdf')}`;
+    // If printing a visible overlay, the file name is suffixed with "_vis" to avoid getting it mixed up with the normal file.
+    // If printing an invisible overlay, the file name is suffixed with "_ocr" only if the output directory is the same as the input directory, to avoid overwriting the input file.
+    // If printing an invisible overlay to a separate output directory, the file name is not suffixed.
+    let outputSuffix = '';
+    if (overlayMode === 'proof') {
+      outputSuffix = '_vis';
+    } else if (overlayMode === 'invis') {
+      const resolvedInputFile = path.dirname(path.resolve(backgroundArg));
+      const resolvedOutputDir = path.resolve(outputDir);
+      if (resolvedInputFile === resolvedOutputDir) {
+        outputSuffix = '_ocr';
+      }
+    }
+
+    const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, `${outputSuffix}.pdf`)}`;
 
     await writeFile(outputPath, content);
   }
@@ -498,11 +514,14 @@ export const evalInternal = async (pdfFile, ocrFile) => (main('eval', { pdfFile,
  * @param {string} pdfFile - Path to PDF file.
  * @param {*} ocrFile
  * @param {*} outputDir
- * @param {*} options
+ * @param {Object} options
+ * @param {boolean} [options.robust]
+ * @param {boolean} [options.conf]
+ * @param {"eval" | "ebook" | "proof" | "invis"} [options.overlayMode]
  * @returns
  */
 export const overlay = async (pdfFile, ocrFile, outputDir, options) => (main('overlay', {
-  pdfFile, ocrFile, outputDir, robustConfMode: options?.robust || false, printConf: options?.conf || false,
+  pdfFile, ocrFile, outputDir, robustConfMode: options?.robust || false, printConf: options?.conf || false, overlayMode: options?.overlayMode || 'invis',
 }));
 
 /**

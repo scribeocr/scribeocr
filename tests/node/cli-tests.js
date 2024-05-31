@@ -74,7 +74,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir);
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { vis: true });
 
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 
@@ -85,7 +85,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { conf: true });
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { conf: true, vis: true });
 
     expect(consoleOutput).to.include('Confidence: 0.939');
 
@@ -99,7 +99,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true });
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, vis: true });
 
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 
@@ -110,7 +110,7 @@ describe('Check Node.js commands.', () => {
     const tmpDir = await tmpUnique.get();
 
     // Call the function
-    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, conf: true });
+    await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, conf: true, vis: true });
 
     if (!/0.929/.test(consoleOutput)) originalConsoleLog(consoleOutput);
 

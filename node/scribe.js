@@ -31,9 +31,10 @@ program
   .argument('<pdf_file>', 'Input PDF file.')
   .argument('<ocr_file>', 'Input OCR file.  Accepts .hocr and Abbyy .xml (with character-level data enabled).')
   .argument('[output_dir]', 'Directory for output file(s).', '.')
+  .option('-v, --vis', 'Print OCR text visibly over provided PDF file with colors coded by confidence.')
   .option('-c, --conf', 'Print average confidence metric for document.')
   .option('-r, --robust', 'Generate confidence metrics by running Tesseract OCR and comparing, rather than using confidence info in provided data.')
-  .description('Print OCR text visibly over provided PDF file and save result as PDF.')
+  .description('Add OCR data to provided PDF file and save result as PDF.')
   .action(overlayCLI);
 
 program

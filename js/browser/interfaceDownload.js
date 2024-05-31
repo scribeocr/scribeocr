@@ -260,10 +260,10 @@ export async function handleDownload() {
 
       // If the input document is a .pdf and "Add Text to Import PDF" option is enabled, we insert the text into that pdf (rather than making a new one from scratch)
       if (inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
-        // Text is always skipped for PDF downloads, regardless of whether it was skipped when rendering PNG files.
-        // (1) If native text was skipped when rendering .png files, then it should be skipped in the output PDF for consistency.
-        // (2) If native text was included when rendering .png files, then any text should be in the recognition OCR data,
-        //  so including both would result in duplicative text.
+        const skipText = false;
+        // TODO: Figure out how to handle duplicative text--where the same text is in the source document and the OCR overlay.
+        // An earlier version handled this by deleting the text in the source document,
+        // however this resulted in results that were not as expected by the user (a visual element disappeared).
         content = await w.overlayText({
           doc2: pdfOverlay,
           minpage: minValue,
@@ -271,7 +271,6 @@ export async function handleDownload() {
           pagewidth: dimsLimit.width,
           pageheight: dimsLimit.height,
           humanReadable: humanReadablePDFElem.checked,
-          skipText: true,
         });
 
         // Fill up progress bar to 100%

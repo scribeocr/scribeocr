@@ -14,6 +14,8 @@ const abbyySplitRegex = /(?:<charParams[^>]*>\s*<\/charParams>)|(?:<\/formatting
 
 const abbyyCharRegex = /(<formatting[^>]+>\s*)?<charParams l=['"](\d*)['"] t=['"](\d*)['"] r=['"](\d*)['"] b=['"](\d*)['"](?: suspicious=['"](\w*)['"])?[^>]*>([^<]*)<\/charParams>/ig;
 
+const debugMode = false;
+
 /**
  * @param {Object} params
  * @param {string} params.ocrStr
@@ -256,7 +258,7 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
-      if (text[i].trim() == '') { continue; }
+      if (text[i].trim() === '') { continue; }
       const bboxesI = bboxes[i];
 
       // Abbyy-specific fix:
@@ -353,6 +355,11 @@ function convertTableLayoutAbbyy(ocrStr) {
 
     const table = tables[i];
     const tableCoords = table.match(/<block blockType=['"]Table['"][^>]*?l=['"](\d+)['"] t=['"](\d+)['"] r=['"](\d+)['"] b=['"](\d+)['"]/i)?.slice(1, 5).map((x) => parseInt(x));
+
+    if (!tableCoords || tableCoords[0] === undefined || tableCoords[1] === undefined || tableCoords[2] === undefined || tableCoords[3] === undefined) {
+      console.log('Failed to parse table');
+      continue;
+    }
 
     let leftLast = tableCoords?.[0];
 
@@ -464,7 +471,7 @@ function convertTableLayoutAbbyy(ocrStr) {
         tableBoxes[id].table = i;
       }
 
-      console.log(`Table width does not match sum of rows (${String(tableCoords[2])} vs ${String(leftLast)}), calculated new layout boxes using column contents.`);
+      if (debugMode) console.log(`Table width does not match sum of rows (${String(tableCoords[2])} vs ${String(leftLast)}), calculated new layout boxes using column contents.`);
     }
 
     Object.assign(boxes, tableBoxes);
