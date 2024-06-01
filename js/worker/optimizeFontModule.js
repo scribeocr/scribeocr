@@ -97,14 +97,18 @@ const calculateKerningPairs = (font, fontMetricsObj, xHeight, style) => {
     const metricsFirst = font.glyphs.glyphs[indexFirst].getMetrics();
     const metricsSecond = font.glyphs.glyphs[indexSecond].getMetrics();
 
-    // Calculate target (measured) space between two characters.
-    // This is calculated as the average between two measurements.
-    const value2 = fontMetricsObj.kerning2[key];
     const fontKern1 = Math.round(value * xHeight);
     let spaceTarget = fontKern1;
-    if (value2) {
-      const fontKern2 = Math.round(value2 * xHeight);
-      spaceTarget = Math.round((fontKern1 + fontKern2) / 2);
+
+    // Calculate target (measured) space between two characters.
+    // This is calculated as the average between two measurements.
+    // This did not exist in an older version of the code, so this should be optional and skipped if the data is not present.
+    if (fontMetricsObj.kerning2) {
+      const value2 = fontMetricsObj.kerning2[key];
+      if (value2) {
+        const fontKern2 = Math.round(value2 * xHeight);
+        spaceTarget = Math.round((fontKern1 + fontKern2) / 2);
+      }
     }
 
     // Calculate current space between these 2 glyphs (without kerning adjustments)
