@@ -25,6 +25,7 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
   let hocrArrPages;
   let pageCountHOCR;
   let hocrRaw;
+  /** @type  {?Object.<string, FontMetricsFamily>} */
   let fontMetricsObj;
   /** @type{?Array<import('./objects/layoutObjects.js').LayoutPage>} */
   let layoutObj = null;
@@ -94,7 +95,14 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
     // Hopefully this case is rare enough that it does not come up often.
     if (singleHOCRMode) {
       const fontMetricsStr = getMeta('font-metrics');
-      if (fontMetricsStr) fontMetricsObj = JSON.parse(fontMetricsStr);
+      if (fontMetricsStr) {
+        fontMetricsObj = /** @type  {Object.<string, FontMetricsFamily>} */ (JSON.parse(fontMetricsStr));
+
+        // Older versions of the font metrics object used 'small-caps' instead of 'smallCaps'.
+        for (const key in fontMetricsObj) {
+          if (fontMetricsObj[key]['small-caps'] && !fontMetricsObj[key].smallCaps) fontMetricsObj[key].smallCaps = fontMetricsObj[key]['small-caps'];
+        }
+      }
 
       const layoutStr = getMeta('layout');
       if (layoutStr) layoutObj = /** @type{Array<import('./objects/layoutObjects.js').LayoutPage>} */ (JSON.parse(layoutStr));
