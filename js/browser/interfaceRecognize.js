@@ -7,7 +7,7 @@ import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 import { loadChiSimFont } from '../fontContainerMain.js';
 import { imageCache } from '../containers/imageContainer.js';
-import { setFontMetricsAll } from '../fontStatistics.js';
+import { calcFontMetricsFromPages } from '../fontStatistics.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 
 const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
@@ -129,7 +129,7 @@ export async function recognizeAllClick() {
 
     // Metrics from the LSTM model are so inaccurate they are not worth using.
     if (oemMode === 'legacy') {
-      setFontMetricsAll(ocrAll['Tesseract Legacy']);
+      calcFontMetricsFromPages(ocrAll['Tesseract Legacy']);
       await runFontOptimizationBrowser(ocrAll['Tesseract Legacy']);
     }
   } else if (oemMode === 'combined') {
@@ -192,7 +192,7 @@ export async function recognizeAllClick() {
     // Evaluate default fonts using up to 5 pages.
     const pageNum = Math.min(imageCache.pageCount - 1, 5);
     await imageCache.preRenderRange(0, pageNum, true);
-    setFontMetricsAll(ocrAll['Tesseract Combined Temp']);
+    calcFontMetricsFromPages(ocrAll['Tesseract Combined Temp']);
     await runFontOptimizationBrowser(ocrAll['Tesseract Combined Temp']);
     initOCRVersion('Combined');
     setCurrentHOCR('Combined');

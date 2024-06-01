@@ -29,7 +29,7 @@ import {
 
 import { LayoutPage } from '../js/objects/layoutObjects.js';
 
-import { setFontMetricsAll } from '../js/fontStatistics.js';
+import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 
 const writeFile = util.promisify(fs.writeFile);
 
@@ -330,7 +330,7 @@ async function main(func, params) {
 
     // Switching active data here for consistency with browser version.
     if (func === 'eval' || func === 'recognize') ocrAll.active = ocrAll['Tesseract Combined Temp'];
-    setFontMetricsAll(ocrAll['Tesseract Combined Temp']);
+    calcFontMetricsFromPages(ocrAll['Tesseract Combined Temp']);
     enableOpt = await runFontOptimization(ocrAll['Tesseract Combined Temp']);
 
     output.text = '';
@@ -368,7 +368,7 @@ async function main(func, params) {
       if (func === 'recognize') output.text += ocr.getPageText(res.page);
     }
   } else {
-    setFontMetricsAll(ocrAll.active);
+    calcFontMetricsFromPages(ocrAll.active);
     await runFontOptimization(ocrAll.active);
   }
 

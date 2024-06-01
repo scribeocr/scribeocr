@@ -34,7 +34,7 @@ import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 import { LayoutPage } from './js/objects/layoutObjects.js';
 
 import {
-  checkCharWarn, setFontMetricsAll,
+  checkCharWarn, calcFontMetricsFromPages,
 } from './js/fontStatistics.js';
 
 import { drawDebugImages } from './js/debug.js';
@@ -1386,32 +1386,29 @@ async function importFiles(curFiles) {
 
       // Restore font metrics and optimize font from previous session (if applicable)
       if (ocrData.fontMetricsObj && Object.keys(ocrData.fontMetricsObj).length > 0) {
+        existingOpt = true;
+
         replaceObjectProperties(fontMetricsObj, ocrData.fontMetricsObj);
         await globalThis.generalScheduler.ready;
         setDefaultFontAuto(fontMetricsObj);
+
+        // If `ocrData.enableOpt` is `false`, then the metrics are present but ignored.
+        // This occurs if optimization was found to decrease accuracy for both sans and serif,
+        // not simply because the user disabled optimization in the view settings.
+        // If no `enableOpt` property exists but metrics are present, then optimization is enabled.
+        if (ocrData.enableOpt === 'false') {
+          optimizeFontElem.disabled = true;
+          optimizeFontElem.checked = false;
+        } else {
+          const fontRaw = fontAll.getContainer('raw');
+          fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
+          optimizeFontElem.disabled = false;
+          optimizeFontElem.checked = true;
+          await enableDisableFontOpt(true);
+        }
       }
 
       if (ocrData.defaultFont) fontAll.defaultFontName = ocrData.defaultFont;
-
-      if (ocrData.enableOpt === 'true') {
-        const fontRaw = fontAll.getContainer('raw');
-        fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
-        optimizeFontElem.disabled = false;
-        optimizeFontElem.checked = true;
-        await enableDisableFontOpt(true);
-        existingOpt = true;
-      } else if (ocrData.enableOpt === 'false') {
-        optimizeFontElem.disabled = true;
-        optimizeFontElem.checked = false;
-        existingOpt = true;
-      // If font metrics are available but enableOpt is not specified, default to using them.
-      } else if (ocrData.fontMetricsObj) {
-        const fontRaw = fontAll.getContainer('raw');
-        fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
-        optimizeFontElem.disabled = false;
-        optimizeFontElem.checked = true;
-        await enableDisableFontOpt(true);
-      }
 
       if (ocrData.sansFont) {
         fontAll.sansDefaultName = ocrData.sansFont;
@@ -1543,7 +1540,7 @@ async function importFiles(curFiles) {
       // Skip this step if optimization info was already restored from a previous session.
       if (!existingOpt) {
         await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
-        setFontMetricsAll(ocrAll.active);
+        calcFontMetricsFromPages(ocrAll.active);
         await runFontOptimizationBrowser(ocrAll.active);
       }
       downloadElem.disabled = false;
