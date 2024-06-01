@@ -117,7 +117,12 @@ export async function convertPageHocr({
       const lineXHeightFinalStr = titleStrLine.match(/x_x_height\s+([\d.-]+)/)?.[1];
       if (lineAscHeightFinalStr) lineAscHeightFinal = parseFloat(lineAscHeightFinalStr);
       if (lineXHeightFinalStr) lineXHeightFinal = parseFloat(lineXHeightFinalStr);
-    } else {
+    }
+
+    // This is not an `else` because old versions of Scribe used the same metrics as Tesseract,
+    // so it is possible that `scribeMode` is `true` but this block still needs to be run.
+    // This can likely be removed at some point in the future, as this change occured very early in Scribe's development.
+    if (!lineAscHeightFinal && !lineXHeightFinal) {
       // Line font size metrics as reported by Tesseract.
       // As these are frequently not correct (as Tesseract calculates them before character recognition),
       // so they may be replaced later by versions we calculate.
