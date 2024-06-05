@@ -286,7 +286,7 @@ export async function handleDownload() {
       }
 
       // If the input is a series of images, those images need to be inserted into a new pdf
-      if (inputDataModes.pdfMode || inputDataModes.imageMode || insertInputFailed) {
+      if (!insertInputPDF && (inputDataModes.pdfMode || inputDataModes.imageMode) || insertInputFailed) {
         const colorMode = /** @type {('color'|'gray'|'binary')} */ (colorModeElem.value);
 
         const props = { rotated: rotateBackground, upscaled: false, colorMode };

@@ -466,7 +466,7 @@ const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementByI
 recognizeWordElem.addEventListener('click', () => (canvasObj.mode = 'recognizeWord'));
 
 const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
-debugPrintCoordsElem.addEventListener('click', () => () => (canvasObj.mode = 'printCoords'));
+debugPrintCoordsElem.addEventListener('click', () => (canvasObj.mode = 'printCoords'));
 
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
 const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
