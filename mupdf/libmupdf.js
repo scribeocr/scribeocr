@@ -628,13 +628,13 @@ function unexportedRuntimeSymbol(sym) {
 }
 
 var ASM_CONSTS = {
- 1868304: () => {
+ 1863368: () => {
   throw new libmupdf.TryLaterError("operation in progress");
  },
- 1868367: $0 => {
+ 1863431: $0 => {
   throw new Error(UTF8ToString($0));
  },
- 1868406: () => {
+ 1863470: () => {
   throw new Error("Cannot create MuPDF context!");
  }
 };
@@ -4221,7 +4221,6 @@ var wasmImports = {
  /** @export */ invoke_fi: invoke_fi,
  /** @export */ invoke_fii: invoke_fii,
  /** @export */ invoke_fiii: invoke_fiii,
- /** @export */ invoke_fiiif: invoke_fiiif,
  /** @export */ invoke_fiiifiif: invoke_fiiifiif,
  /** @export */ invoke_fiiii: invoke_fiiii,
  /** @export */ invoke_fiiiii: invoke_fiiiii,
@@ -4245,7 +4244,6 @@ var wasmImports = {
  /** @export */ invoke_iiiiiiiii: invoke_iiiiiiiii,
  /** @export */ invoke_iiiiiiiiii: invoke_iiiiiiiiii,
  /** @export */ invoke_iiiiiiiiiii: invoke_iiiiiiiiiii,
- /** @export */ invoke_iiiiiiiiiiii: invoke_iiiiiiiiiiii,
  /** @export */ invoke_iiiiiiiiiiiiii: invoke_iiiiiiiiiiiiii,
  /** @export */ invoke_iiiiiiiiiiiiiiiii: invoke_iiiiiiiiiiiiiiiii,
  /** @export */ invoke_iiiiiiiij: invoke_iiiiiiiij,
@@ -4391,9 +4389,9 @@ var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmE
 
 var dynCall_ji = Module["dynCall_ji"] = createExportWrapper("dynCall_ji", 2);
 
-var dynCall_viiji = Module["dynCall_viiji"] = createExportWrapper("dynCall_viiji", 6);
-
 var dynCall_viiijjiijjjjiiiiiiii = Module["dynCall_viiijjiijjjjiiiiiiii"] = createExportWrapper("dynCall_viiijjiijjjjiiiiiiii", 26);
+
+var dynCall_viiji = Module["dynCall_viiji"] = createExportWrapper("dynCall_viiji", 6);
 
 var dynCall_jji = Module["dynCall_jji"] = createExportWrapper("dynCall_jji", 4);
 
@@ -4403,11 +4401,11 @@ var dynCall_vij = Module["dynCall_vij"] = createExportWrapper("dynCall_vij", 4);
 
 var dynCall_jii = Module["dynCall_jii"] = createExportWrapper("dynCall_jii", 3);
 
+var dynCall_iij = Module["dynCall_iij"] = createExportWrapper("dynCall_iij", 4);
+
 var dynCall_viij = Module["dynCall_viij"] = createExportWrapper("dynCall_viij", 5);
 
 var dynCall_viiij = Module["dynCall_viiij"] = createExportWrapper("dynCall_viiij", 6);
-
-var dynCall_iij = Module["dynCall_iij"] = createExportWrapper("dynCall_iij", 4);
 
 var dynCall_jiii = Module["dynCall_jiii"] = createExportWrapper("dynCall_jiii", 4);
 
@@ -4695,10 +4693,10 @@ function invoke_iiiiifiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
  }
 }
 
-function invoke_iiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8) {
+function invoke_iiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
  var sp = stackSave();
  try {
-  return getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8);
+  return getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
@@ -4717,10 +4715,10 @@ function invoke_viiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
  }
 }
 
-function invoke_iiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
+function invoke_iiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8) {
  var sp = stackSave();
  try {
-  return getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9);
+  return getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
@@ -4926,10 +4924,10 @@ function invoke_fiii(index, a1, a2, a3) {
  }
 }
 
-function invoke_fiiif(index, a1, a2, a3, a4) {
+function invoke_iif(index, a1, a2) {
  var sp = stackSave();
  try {
-  return getWasmTableEntry(index)(a1, a2, a3, a4);
+  return getWasmTableEntry(index)(a1, a2);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
@@ -5102,17 +5100,6 @@ function invoke_viiiiff(index, a1, a2, a3, a4, a5, a6) {
  }
 }
 
-function invoke_iiiiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
- var sp = stackSave();
- try {
-  return getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0) throw e;
-  _setThrew(1, 0);
- }
-}
-
 function invoke_viiffii(index, a1, a2, a3, a4, a5, a6) {
  var sp = stackSave();
  try {
@@ -5146,17 +5133,6 @@ function invoke_viiiif(index, a1, a2, a3, a4, a5) {
  }
 }
 
-function invoke_iif(index, a1, a2) {
- var sp = stackSave();
- try {
-  return getWasmTableEntry(index)(a1, a2);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0) throw e;
-  _setThrew(1, 0);
- }
-}
-
 function invoke_viiiiiff(index, a1, a2, a3, a4, a5, a6, a7) {
  var sp = stackSave();
  try {
@@ -5168,10 +5144,10 @@ function invoke_viiiiiff(index, a1, a2, a3, a4, a5, a6, a7) {
  }
 }
 
-function invoke_viiji(index, a1, a2, a3, a4, a5) {
+function invoke_ji(index, a1) {
  var sp = stackSave();
  try {
-  dynCall_viiji(index, a1, a2, a3, a4, a5);
+  return dynCall_ji(index, a1);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
@@ -5179,10 +5155,10 @@ function invoke_viiji(index, a1, a2, a3, a4, a5) {
  }
 }
 
-function invoke_ji(index, a1) {
+function invoke_viiji(index, a1, a2, a3, a4, a5) {
  var sp = stackSave();
  try {
-  return dynCall_ji(index, a1);
+  dynCall_viiji(index, a1, a2, a3, a4, a5);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
@@ -5212,10 +5188,10 @@ function invoke_jii(index, a1, a2) {
  }
 }
 
-function invoke_viij(index, a1, a2, a3, a4) {
+function invoke_iij(index, a1, a2, a3) {
  var sp = stackSave();
  try {
-  dynCall_viij(index, a1, a2, a3, a4);
+  return dynCall_iij(index, a1, a2, a3);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
@@ -5234,10 +5210,10 @@ function invoke_viiij(index, a1, a2, a3, a4, a5) {
  }
 }
 
-function invoke_jiii(index, a1, a2, a3) {
+function invoke_viij(index, a1, a2, a3, a4) {
  var sp = stackSave();
  try {
-  return dynCall_jiii(index, a1, a2, a3);
+  dynCall_viij(index, a1, a2, a3, a4);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
@@ -5245,10 +5221,10 @@ function invoke_jiii(index, a1, a2, a3) {
  }
 }
 
-function invoke_iij(index, a1, a2, a3) {
+function invoke_jiii(index, a1, a2, a3) {
  var sp = stackSave();
  try {
-  return dynCall_iij(index, a1, a2, a3);
+  return dynCall_jiii(index, a1, a2, a3);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0) throw e;
