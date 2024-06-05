@@ -258,29 +258,38 @@ export async function handleDownload() {
 
       let content;
 
+      let insertInputFailed = false;
+
       // If the input document is a .pdf and "Add Text to Import PDF" option is enabled, we insert the text into that pdf (rather than making a new one from scratch)
-      if (inputDataModes.pdfMode && addOverlayCheckboxElem.checked) {
+      if (insertInputPDF) {
         const skipText = false;
         // TODO: Figure out how to handle duplicative text--where the same text is in the source document and the OCR overlay.
         // An earlier version handled this by deleting the text in the source document,
         // however this resulted in results that were not as expected by the user (a visual element disappeared).
-        content = await w.overlayText({
-          doc2: pdfOverlay,
-          minpage: minValue,
-          maxpage: maxValue,
-          pagewidth: dimsLimit.width,
-          pageheight: dimsLimit.height,
-          humanReadable: humanReadablePDFElem.checked,
-        });
+        try {
+          content = await w.overlayText({
+            doc2: pdfOverlay,
+            minpage: minValue,
+            maxpage: maxValue,
+            pagewidth: dimsLimit.width,
+            pageheight: dimsLimit.height,
+            humanReadable: humanReadablePDFElem.checked,
+          });
 
-        // Fill up progress bar to 100%
-        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+          // Fill up progress bar to 100%
+          for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+        } catch (error) {
+          console.error('Failed to insert contents into input PDF, creating new PDF from rendered images instead.');
+          console.error(error);
+          insertInputFailed = true;
+        }
+      }
 
-        // If the input is a series of images, those images need to be inserted into a new pdf
-      } else if (inputDataModes.pdfMode || inputDataModes.imageMode) {
+      // If the input is a series of images, those images need to be inserted into a new pdf
+      if (inputDataModes.pdfMode || inputDataModes.imageMode || insertInputFailed) {
         const colorMode = /** @type {('color'|'gray'|'binary')} */ (colorModeElem.value);
 
-        const props = { rotated: autoRotateCheckboxElem.checked, upscaled: false, colorMode };
+        const props = { rotated: rotateBackground, upscaled: false, colorMode };
         const binary = colorModeElem.value === 'binary';
 
         // An image could be rendered if either (1) binary is selected or (2) the input data is a PDF.
@@ -305,7 +314,7 @@ export async function handleDownload() {
           // Angle the PDF viewer is instructed to rotated the image by.
           // This method is currently only used when rotation is needed but the user's (unrotated) source images are being used.
           // If the images are being rendered, then rotation is expected to be applied within the rendering process.
-          const angleImagePdf = autoRotateCheckboxElem.checked && !renderImage ? (pageMetricsArr[i].angle || 0) * -1 : 0;
+          const angleImagePdf = rotateBackground && !renderImage ? (pageMetricsArr[i].angle || 0) * -1 : 0;
 
           await w.overlayTextImageAddPage({
             doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle: angleImagePdf,
@@ -318,7 +327,7 @@ export async function handleDownload() {
         for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
 
         // Otherwise, there is only OCR data and not image data.
-      } else {
+      } else if (!insertInputPDF) {
         content = await w.write({
           doc1: pdfOverlay, minpage: minValue, maxpage: maxValue, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, humanReadable: humanReadablePDFElem.checked,
         });
