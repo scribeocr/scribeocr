@@ -297,7 +297,9 @@ export function pass3(pageObj) {
 
     // If ascHeight and xHeight are both known, however one is clearly wrong, delete whichever has fewer observations.
     // This commonly comes up when a line has >90% numbers, however a few (potentially misidentified) lowercase letters are present.
-    if (lineAscHeight && lineXHeight && lineXHeight >= lineAscHeight * 0.9) {
+    // Additionally, this deletes the values that Tesseract makes up when it does not have enough data to calculate them.
+    // For example, Tesseract will still report xHeight for a line that only contains capital letters.
+    if (lineObj.ascHeight && lineObj.xHeight && lineObj.xHeight >= lineObj.ascHeight * 0.9) {
       if (lineAscHeightArr.length > lineXHeightArr.length) {
         lineObj.xHeight = null;
       } else {

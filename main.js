@@ -421,7 +421,14 @@ document.getElementById('outlineLines')?.addEventListener('click', () => { rende
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
-displayLabelOptionsElem.addEventListener('click', () => { if (displayLabelOptionsElem.className !== 'dropdown-item') return; setCurrentHOCR(displayLabelOptionsElem.innerHTML); });
+displayLabelOptionsElem.addEventListener('click', (e) => {
+  // The elements this event are intended for are the individual elements of the list (not `displayLabelOptionsElem`),
+  // which do not exist yet at this point in the code.
+  // @ts-ignore
+  if (e.target.className !== 'dropdown-item') return;
+  // @ts-ignore
+  setCurrentHOCR(e.target.innerHTML);
+});
 
 const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
 downloadElem.addEventListener('click', handleDownload);

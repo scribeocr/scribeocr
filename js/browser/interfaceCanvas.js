@@ -7,7 +7,7 @@ import { addWordManual, recognizeArea } from './interfaceEdit.js';
 import ocr from '../objects/ocrObjects.js';
 import { showHideElem } from '../miscUtils.js';
 import {
-  KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxes,
+  KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxesArea,
 } from './interfaceLayout.js';
 import { cp, search } from '../../main.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
@@ -135,27 +135,30 @@ export async function updateWordCanvas(wordI) {
 
   // 1. Re-calculate left position given potentially new left bearing
   const {
-    advanceArr, fontSize, kerningArr, charSpacing, leftSideBearing,
+    advanceArr, fontSize, kerningArr, charSpacing, leftSideBearing, rightSideBearing,
   } = calcWordMetrics(wordI.word);
 
-  // const charSpacingFinal = wordI.widthFromOCR ? charSpacing : 0;
+  const charSpacingFinal = !wordI.dynamicWidth ? charSpacing : 0;
 
   const advanceArrTotal = [];
   for (let i = 0; i < advanceArr.length; i++) {
     let leftI = 0;
     leftI += advanceArr[i] || 0;
     leftI += kerningArr[i] || 0;
-    leftI += charSpacing || 0;
+    leftI += charSpacingFinal || 0;
     advanceArrTotal.push(leftI);
   }
 
   wordI.advanceArrTotal = advanceArrTotal;
 
-  wordI.charSpacing = charSpacing;
+  wordI.charSpacing = charSpacingFinal;
 
   wordI.leftSideBearing = leftSideBearing;
 
-  const width = !wordI.word.visualCoords ? wordI.word.bbox.right - wordI.word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
+  let width = wordI.dynamicWidth ? advanceArrTotal.reduce((a, b) => a + b, 0) : wordI.word.bbox.right - wordI.word.bbox.left;
+
+  // Subtract the side bearings from the width if they are not excluded from the `ocrWord` coordinates.
+  if (!wordI.dynamicWidth && !wordI.word.excludesBearings) width -= (leftSideBearing + rightSideBearing);
 
   wordI.width(width);
 
@@ -215,7 +218,7 @@ export class KonvaIText extends Konva.Shape {
    * While it uses an `OcrWord` object for input information, it is not directly tied to OCR, and can be used for any text with a dummy `OcrWord`.
    * Any logic specific to OCR should be handled in the `OcrWord` object.
    * @param {Object} options
-   * @param {number} options.visualLeft
+   * @param {number} options.x
    * @param {number} options.yActual
    * @param {import('../objects/ocrObjects.js').OcrWord} options.word
    * @param {number} [options.rotation=0]
@@ -224,17 +227,19 @@ export class KonvaIText extends Konva.Shape {
    * @param {boolean} [options.fillBox=false]
    * @param {number} [options.opacity=1]
    * @param {string} [options.fill='black']
+   * @param {boolean} [options.dynamicWidth=false] - If `true`, the width of the text box will be calculated dynamically based on the text content, rather than using the bounding box.
+   *    This is used for dummy text boxes that are not tied to OCR, however should be `false` for OCR text boxes.
    * @param {Function} options.editTextCallback
    */
   constructor({
-    visualLeft, yActual, word, rotation = 0,
-    outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', editTextCallback,
+    x, yActual, word, rotation = 0,
+    outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', dynamicWidth = false, editTextCallback,
   }) {
     const {
-      visualWidth, charSpacing, leftSideBearing, fontSize, charArr, advanceArr, kerningArr,
+      visualWidth, charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr,
     } = calcWordMetrics(word);
 
-    // const charSpacingFinal = widthFromOCR ? charSpacing : 0;
+    const charSpacingFinal = !dynamicWidth ? charSpacing : 0;
 
     const scaleX = word.dropcap ? ((word.bbox.right - word.bbox.left) / visualWidth) : 1;
 
@@ -243,14 +248,21 @@ export class KonvaIText extends Konva.Shape {
       let leftI = 0;
       leftI += advanceArr[i] || 0;
       leftI += kerningArr[i] || 0;
-      leftI += charSpacing || 0;
+      leftI += charSpacingFinal || 0;
       advanceArrTotal.push(leftI);
     }
 
-    const width = !word.visualCoords ? word.bbox.right - word.bbox.left : advanceArrTotal.reduce((a, b) => a + b, 0);
+    // The `dynamicWidth` option is useful for dummy text boxes that are not tied to OCR, however should be `false` for OCR text boxes.
+    // Setting to `true` for OCR text results in no change for most words, however can cause fringe issues with some words.
+    // For example, in some cases Tesseract will misidentify a single character as a multi-character word.
+    // In this case, the total advance may be negative, making this method of calculating the width incorrect.
+    let width = dynamicWidth ? advanceArrTotal.reduce((a, b) => a + b, 0) : word.bbox.right - word.bbox.left;
+
+    // Subtract the side bearings from the width if they are not excluded from the `ocrWord` coordinates.
+    if (!dynamicWidth && !word.excludesBearings) width -= (leftSideBearing + rightSideBearing);
 
     super({
-      x: visualLeft,
+      x,
       // `y` is what Konva sees as the y value, which corresponds to where the top of the interactive box is drawn.
       y: yActual - fontSize * 0.6,
       width,
@@ -270,7 +282,7 @@ export class KonvaIText extends Konva.Shape {
 
         shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
 
-        let leftI = shape.word.visualCoords ? 0 - this.leftSideBearing : 0;
+        let leftI = shape.word.excludesBearings ? 0 - this.leftSideBearing : 0;
         for (let i = 0; i < shape.charArr.length; i++) {
           const charI = shape.charArr[i];
           context.fillText(charI, leftI, shape.fontSize * 0.6);
@@ -310,7 +322,7 @@ export class KonvaIText extends Konva.Shape {
 
     this.word = word;
     this.charArr = charArr;
-    this.charSpacing = charSpacing;
+    this.charSpacing = charSpacingFinal;
     this.advanceArrTotal = advanceArrTotal;
     this.leftSideBearing = leftSideBearing;
     this.fontSize = fontSize;
@@ -321,11 +333,10 @@ export class KonvaIText extends Konva.Shape {
     this.fontFaceName = fontI.fontFaceName;
     this.fontFamilyLookup = fontI.family;
     this.fontStyleLookup = word.style;
-    this.visualLeft = visualLeft;
     this.outline = outline;
     this.selected = selected;
     this.fillBox = fillBox;
-    // this.widthFromOCR = widthFromOCR;
+    this.dynamicWidth = dynamicWidth;
     this.editTextCallback = editTextCallback;
 
     this.addEventListener('dblclick dbltap', () => {
@@ -348,7 +359,7 @@ export class KonvaIText extends Konva.Shape {
   static addTextInput = (textNode) => {
     const pointerCoordsRel = layerText.getRelativePointerPosition();
     let letterIndex = 0;
-    let leftI = textNode.visualLeft - textNode.leftSideBearing;
+    let leftI = textNode.x() - textNode.leftSideBearing;
     for (let i = 0; i < textNode.charArr.length; i++) {
       // For most letters, the letter is selected if the pointer is in the left 75% of the advance.
       // This could be rewritten to be more precise by using the actual bounding box of each letter,
@@ -378,7 +389,7 @@ export class KonvaIText extends Konva.Shape {
     const charSpacingHTML = textNode.charSpacing * scale;
 
     let { x: x1, y: y1 } = textNode.getAbsolutePosition();
-    if (textNode.word.visualCoords) x1 -= textNode.leftSideBearing * scale;
+    if (textNode.word.excludesBearings) x1 -= textNode.leftSideBearing * scale;
 
     const fontSizeHTML = textNode.fontSize * scale;
 
@@ -463,7 +474,7 @@ export class KonvaOcrWord extends KonvaIText {
     const { fill, opacity } = getWordFillOpacity(word);
 
     super({
-      visualLeft,
+      x: visualLeft,
       // `y` is what Konva sees as the y value, which corresponds to where the top of the interactive box is drawn.
       yActual,
       word,
@@ -498,7 +509,7 @@ export class KonvaOcrWord extends KonvaIText {
 
       if (leftMode) {
         this.word.bbox.left += leftDelta;
-        this.visualLeft += leftDelta;
+        this.x(this.x() + leftDelta);
       } else {
         this.word.bbox.right += widthDelta;
       }
@@ -635,7 +646,7 @@ stage.on('mousemove touchmove', (e) => {
 });
 
 stage.on('mouseup touchend', (event) => {
-  // For dragging layout boxes, other events are needed to top the drag.
+  // For dragging layout boxes, other events are needed to stop the drag.
   if (!globalThis.layoutMode) {
     event.evt.preventDefault();
     event.evt.stopPropagation();
@@ -670,7 +681,7 @@ stage.on('mouseup touchend', (event) => {
       KonvaOcrWord.updateUI();
       layerText.batchDraw();
     } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
-      selectLayoutBoxes(box);
+      selectLayoutBoxesArea(box);
       KonvaLayout.updateUI();
       layerOverlay.batchDraw();
     }
@@ -687,7 +698,7 @@ stage.on('mouseup touchend', (event) => {
     KonvaOcrWord.updateUI();
   } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
     const box = selectingRectangle.getClientRect();
-    selectLayoutBoxes(box);
+    selectLayoutBoxesArea(box);
     KonvaLayout.updateUI();
   } else if (canvasObj.mode === 'addWord') {
     const box = selectingRectangle.getClientRect({ relativeTo: layerText });

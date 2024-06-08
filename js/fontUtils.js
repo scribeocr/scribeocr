@@ -206,7 +206,7 @@ export function calcWordMetrics(word, angle = 0) {
   const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing || 0;
   const wordRightBearing = wordLastGlyphMetrics.rightSideBearing || 0;
 
-  const wordWidth = word.visualCoords ? wordWidth1 - wordRightBearing - wordLeftBearing : wordWidth1;
+  const wordWidth = word.excludesBearings ? wordWidth1 - wordRightBearing - wordLeftBearing : wordWidth1;
   const wordWidthPx = wordWidth * (fontSize / fontOpentype.unitsPerEm);
   const wordLeftBearingPx = wordLeftBearing * (fontSize / fontOpentype.unitsPerEm);
   const wordRightBearingPx = wordRightBearing * (fontSize / fontOpentype.unitsPerEm);

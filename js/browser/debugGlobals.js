@@ -9,7 +9,9 @@ import { imageCache } from '../containers/imageContainer.js';
 import {
   stage, layerText, layerBackground, layerOverlay,
 } from './interfaceCanvas.js';
-import { fontMetricsObj, pageMetricsArr, ocrAll } from '../containers/miscContainer.js';
+import {
+  fontMetricsObj, pageMetricsArr, ocrAll, layoutAll,
+} from '../containers/miscContainer.js';
 
 /**
  *
@@ -54,4 +56,5 @@ export const df = {
   getCharMetrics,
   pageMetricsArr,
   ocrAll,
+  layoutAll,
 };

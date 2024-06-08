@@ -197,10 +197,11 @@ let objectsLine;
 
 const baselineRange = 25;
 export function adjustBaseline() {
-  globalThis.bsCollapse.toggle();
-
   const selectedObjects = canvasObj.selectedWordArr;
   if (!selectedObjects || selectedObjects.length === 0) return;
+
+  // Only open if a word is selected.
+  globalThis.bsCollapse.toggle();
 
   rangeBaselineElem.value = String(baselineRange + selectedObjects[0].baselineAdj);
 
