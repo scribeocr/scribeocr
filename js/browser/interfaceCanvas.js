@@ -603,6 +603,9 @@ function selectWords(box) {
 let clearSelectionStart = false;
 
 stage.on('mousedown touchstart', (e) => {
+  // Left click only
+  if (e.evt.button !== 0) return;
+
   clearSelectionStart = e.target instanceof Konva.Stage || e.target instanceof Konva.Image;
 
   if (canvasObj.isTouchScreen && canvasObj.mode === 'select') return;
