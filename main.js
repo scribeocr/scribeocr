@@ -275,7 +275,11 @@ export function insertAlertMessage(innerHTML, error = true, parentElemId = 'aler
 
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'));
 
-globalThis.bsCollapse = new bootstrap.Collapse(document.getElementById('collapseRange'), { toggle: false });
+const collapseRangeElem = /** @type {HTMLDivElement} */(document.getElementById('collapseRange'));
+globalThis.collapseRangeCollapse = new bootstrap.Collapse(collapseRangeElem, { toggle: false });
+
+const collapseSetLayoutBoxTableElem = /** @type {HTMLDivElement} */(document.getElementById('collapseSetLayoutBoxTable'));
+globalThis.collapseSetLayoutBoxTableCollapse = new bootstrap.Collapse(collapseSetLayoutBoxTableElem, { toggle: false });
 
 // Add various event listners to HTML elements
 const nextElem = /** @type {HTMLInputElement} */(document.getElementById('next'));
@@ -343,11 +347,14 @@ enableLayoutElem.addEventListener('click', () => showHideElem(/** @type {HTMLDiv
 
 const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
+const dataTableOptionsElem = /** @type {HTMLDivElement} */(document.getElementById('dataTableOptions'));
+
 export const enableXlsxExportClick = () => {
   // Adding layouts is required for xlsx exports
   if (!enableLayoutElem.checked) enableLayoutElem.click();
 
   showHideElem(formatLabelOptionXlsxElem, enableXlsxExportElem.checked);
+  showHideElem(dataTableOptionsElem, enableXlsxExportElem.checked);
 
   updateDataPreview();
 };

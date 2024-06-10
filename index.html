@@ -322,6 +322,9 @@
                         </ul>
                       </div>
                     </div>
+                  </div>
+                  <div class="col col-lg-2" id="dataTableOptions" style="display:none">
+                    <label>Data Tables</label>
                     <div class="btn-group mb-2" style="width:100%;">
                       <button type="button" id="addDataTable" class="btn btn-secondary btn-sm"
                       style="width:100%;text-align:left">
@@ -329,17 +332,14 @@
                         <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm15 2h-4v3h4zm0 4h-4v3h4zm0 4h-4v3h3a1 1 0 0 0 1-1zm-5 3v-3H6v3zm-5 0v-3H1v2a1 1 0 0 0 1 1zm-4-4h4V8H1zm0-4h4V4H1zm5-3v3h4V4zm4 4H6v3h4z"/>
                       </svg> Add Data Table</button>
                     </div>
-                  </div>
-                  <div class="col col-lg-2">
-                    <label>Data Tables</label>
-                    <div class="form-group">
+                    <div class="form-group mb-2">
                       <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
-                        href="#setLayoutBoxTableDropdown" style="min-width:100%;text-align:left">
+                        href="#collapseSetLayoutBoxTable" style="min-width:100%;text-align:left">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-layout-three-columns" viewBox="0 0 16 16">
                           <path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM1.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5H5V1zM10 15V1H6v14zm1 0h3.5a.5.5 0 0 0 .5-.5v-13a.5.5 0 0 0-.5-.5H11z"/>
                         </svg> Set Table</button>
                     </div>
-                    <div class="collapse" id="setLayoutBoxTableDropdown">
+                    <div class="collapse" id="collapseSetLayoutBoxTable">
                       <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
                         <div class="input-group">
                           <span style="margin-right:0.5rem;margin-top:0.25rem;">Table: </span>
@@ -1358,8 +1358,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                           <label><input class="form-check-input" type="checkbox" id="enableLayout"> Edit Layout</label>
                         </div>
                         <div class="form-check form-switch">
-                          <label><input class="form-check-input" type="checkbox" id="enableXlsxExport"> Xlsx
-                            Export</label>
+                          <label><input class="form-check-input" type="checkbox" id="enableXlsxExport"> Extract Tables</label>
                         </div>
                       </div>
                     </div>

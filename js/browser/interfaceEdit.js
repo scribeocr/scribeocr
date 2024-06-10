@@ -201,7 +201,7 @@ export function adjustBaseline() {
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   // Only open if a word is selected.
-  globalThis.bsCollapse.toggle();
+  globalThis.collapseRangeCollapse.toggle();
 
   rangeBaselineElem.value = String(baselineRange + selectedObjects[0].baselineAdj);
 

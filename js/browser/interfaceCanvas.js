@@ -216,7 +216,8 @@ export const canvasObj = {
 };
 
 export const destroyControls = () => {
-  globalThis.bsCollapse.hide();
+  globalThis.collapseRangeCollapse.hide();
+  globalThis.collapseSetLayoutBoxTableCollapse.hide();
   canvasObj.controlArr.forEach((control) => control.destroy());
   canvasObj.controlArr.length = 0;
 
