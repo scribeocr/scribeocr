@@ -8,6 +8,8 @@ import ocr from '../objects/ocrObjects.js';
 import { showHideElem } from '../miscUtils.js';
 import {
   KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxesArea,
+  addLayoutDataTableClick, mergeDataColumns, checkDataColumnsAdjacent,
+  splitDataColumn,
 } from './interfaceLayout.js';
 import { cp, search } from '../../main.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
@@ -53,6 +55,115 @@ stage.add(layerBackground);
 stage.add(layerText);
 stage.add(layerOverlay);
 
+const createContextMenuHTML = () => {
+  const menuDiv = document.createElement('div');
+  menuDiv.id = 'menu';
+
+  const innerDiv = document.createElement('div');
+
+  const splitButton = document.createElement('button');
+  splitButton.id = 'contextMenuSplitColumnButton';
+  splitButton.textContent = 'Split Column';
+  splitButton.style.display = 'none';
+  splitButton.addEventListener('click', splitDataColumnClick);
+
+  const mergeButton = document.createElement('button');
+  mergeButton.id = 'contextMenuMergeColumnButtons';
+  mergeButton.textContent = 'Merge Columns';
+  mergeButton.style.display = 'none';
+  mergeButton.addEventListener('click', mergeDataColumnsClick);
+
+  innerDiv.appendChild(splitButton);
+  innerDiv.appendChild(mergeButton);
+
+  menuDiv.appendChild(innerDiv);
+
+  return menuDiv;
+};
+
+const mergeDataColumnsClick = () => {
+  hideContextMenu();
+  mergeDataColumns(canvasObj.selectedDataColumnArr);
+};
+
+const splitDataColumnClick = () => {
+  hideContextMenu();
+  const ptr = layerOverlay.getRelativePointerPosition();
+  if (!ptr) return;
+  splitDataColumn(canvasObj.selectedDataColumnArr[0], ptr.x);
+};
+
+const menuNode = createContextMenuHTML();
+document.body.appendChild(menuNode);
+
+const contextMenuMergeColumnButtonsElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeColumnButtons'));
+const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
+
+const hideContextMenu = () => {
+  contextMenuMergeColumnButtonsElem.style.display = 'none';
+  contextMenuSplitColumnButtonElem.style.display = 'none';
+  menuNode.style.display = 'none';
+};
+
+const style = document.createElement('style');
+
+// Add CSS rules to the style element
+style.textContent = `
+  #menu {
+    display: none;
+    position: absolute;
+    width: 130px;
+    background-color: white;
+    box-shadow: 0 0 5px grey;
+    border-radius: 3px;
+  }
+  #menu button {
+    width: 100%;
+    background-color: white;
+    border: none;
+    margin: 0;
+    padding: 10px;
+    text-wrap: nowrap;
+    text-align: left;
+  }
+  #menu button:hover {
+    background-color: lightgray;
+  }`;
+
+document.head.appendChild(style);
+
+stage.on('contextmenu', (e) => {
+  // prevent default behavior
+
+  if (e.target === stage) {
+    // if we are on empty place of the stage we will do nothing
+    return;
+  }
+
+  let enableMerge = false;
+  let enableSplit = false;
+
+  // The "Merge Columns" button will be enabled if multiple adjacent columns are selected.
+  if (canvasObj.selectedDataColumnArr.length > 1 && checkDataColumnsAdjacent(canvasObj.selectedDataColumnArr)) enableMerge = true;
+  if (canvasObj.selectedDataColumnArr.length === 1) enableSplit = true;
+
+  if (!(enableMerge || enableSplit)) return;
+
+  if (enableMerge) {
+    contextMenuMergeColumnButtonsElem.style.display = 'initial';
+  }
+  if (enableSplit) {
+    contextMenuSplitColumnButtonElem.style.display = 'initial';
+  }
+
+  e.evt.preventDefault();
+
+  menuNode.style.display = 'initial';
+  const containerRect = stage.container().getBoundingClientRect();
+  menuNode.style.top = `${containerRect.top + stage.getPointerPosition().y + 4}px`;
+  menuNode.style.left = `${containerRect.left + stage.getPointerPosition().x + 4}px`;
+});
+
 const selectingRectangle = new Konva.Rect({
   fill: 'rgba(40,123,181,0.5)',
   visible: true,
@@ -71,8 +182,12 @@ export const canvasObj = {
   selectedWordArr: [],
   /** @type {Array<KonvaLayout>} */
   layoutBoxArr: [],
+  /** @type {Array<import('./interfaceLayout.js').KonvaDataTable>} */
+  layoutDataTableArr: [],
   /** @type {Array<KonvaLayout>} */
   selectedLayoutBoxArr: [],
+  /** @type {Array<import('./interfaceLayout.js').KonvaDataColumn>} */
+  selectedDataColumnArr: [],
   /** @type {?HTMLSpanElement} */
   input: null,
   /** @type {?Function} */
@@ -83,7 +198,7 @@ export const canvasObj = {
   bbox: {
     top: 0, left: 0, right: 0, bottom: 0,
   },
-  /** @type {('select'|'addWord'|'recognizeWord'|'recognizeArea'|'printCoords'|'addLayoutBoxOrder'|'addLayoutBoxExclude'|'addLayoutBoxDataColumn')} */
+  /** @type {('select'|'addWord'|'recognizeWord'|'recognizeArea'|'printCoords'|'addLayoutBoxOrder'|'addLayoutBoxExclude'|'addLayoutBoxDataTable')} */
   mode: 'select',
   isTouchScreen: navigator?.maxTouchPoints > 0,
   drag: {
@@ -107,6 +222,7 @@ export const destroyControls = () => {
 
   canvasObj.selectedWordArr.forEach((shape) => (shape.deselect()));
   canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.deselect()));
+  canvasObj.selectedDataColumnArr.forEach((shape) => (shape.deselect()));
 
   if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
 };
@@ -119,6 +235,12 @@ export const destroyLineOutlines = () => {
 export const destroyLayoutBoxes = () => {
   canvasObj.layoutBoxArr.forEach((x) => x.destroy());
   canvasObj.layoutBoxArr.length = 0;
+  destroyLayoutDataTables();
+};
+
+export const destroyLayoutDataTables = () => {
+  canvasObj.layoutDataTableArr.forEach((x) => x.destroy());
+  canvasObj.layoutDataTableArr.length = 0;
 };
 
 /**
@@ -603,6 +725,8 @@ function selectWords(box) {
 let clearSelectionStart = false;
 
 stage.on('mousedown touchstart', (e) => {
+  hideContextMenu();
+
   // Left click only
   if (e.evt.button !== 0) return;
 
@@ -671,9 +795,20 @@ stage.on('mouseup touchend', (event) => {
   // `stopDragPinch` runs regardless of whether this actually is a drag/pinch, since `isDragging` can be enabled for taps.
   stopDragPinch(event);
 
-  // Handle the case where no rectangle is drawn (i.e. a click event).
+  // Exit early if the user could be attempting to merge multiple columns.
+  if (event.evt.button === 2) {
+    const ptr = stage.getPointerPosition();
+    if (!ptr) return;
+    const box = {
+      x: ptr.x, y: ptr.y, width: 1, height: 1,
+    };
+    const layoutBoxes = canvasObj.selectedDataColumnArr.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
+    if (layoutBoxes.length > 0) return;
+  }
+
+  // Handle the case where no rectangle is drawn (i.e. a click event), or the rectangle is is extremely small.
   // Clicks are handled in the same function as rectangle selections as using separate events lead to issues when multiple events were triggered.
-  if (!selectingRectangle.visible()) {
+  if (!selectingRectangle.visible() || (selectingRectangle.width() < 5 && selectingRectangle.height() < 5)) {
     const ptr = stage.getPointerPosition();
     if (!ptr) return;
     const box = {
@@ -684,7 +819,7 @@ stage.on('mouseup touchend', (event) => {
       KonvaOcrWord.updateUI();
       layerText.batchDraw();
     } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
-      selectLayoutBoxesArea(box);
+      selectLayoutBoxesArea(box, !event.evt.ctrlKey);
       KonvaLayout.updateUI();
       layerOverlay.batchDraw();
     }
@@ -721,9 +856,9 @@ stage.on('mouseup touchend', (event) => {
   } else if (canvasObj.mode === 'addLayoutBoxExclude') {
     const box = selectingRectangle.getClientRect({ relativeTo: layerText });
     addLayoutBoxClick(box, 'exclude');
-  } else if (canvasObj.mode === 'addLayoutBoxDataColumn') {
+  } else if (canvasObj.mode === 'addLayoutBoxDataTable') {
     const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    addLayoutBoxClick(box, 'dataColumn');
+    addLayoutDataTableClick(box);
   }
 
   canvasObj.mode = 'select';
@@ -896,7 +1031,6 @@ stage.on('wheel', (event) => {
  */
 const startDrag = (event) => {
   canvasObj.drag.isDragging = true;
-  canvasObj.drag.dragDeltaTotal = 0;
   canvasObj.drag.lastX = event.evt.x;
   canvasObj.drag.lastY = event.evt.y;
   event.evt.preventDefault();

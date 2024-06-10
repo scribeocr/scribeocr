@@ -3,6 +3,7 @@ import ocr from '../objects/ocrObjects.js';
 import { pass2, pass3 } from './convertPageShared.js';
 
 import { determineSansSerif, getTextScript } from '../miscUtils.js';
+import { LayoutDataTablePage } from '../objects/layoutObjects.js';
 
 // TODO: Add rotation.
 
@@ -151,6 +152,6 @@ export async function convertPageBlocks({
   const langSet = pass3(pageObj);
 
   return {
-    pageObj, layoutBoxes: {}, warn: { char: '' }, langSet,
+    pageObj, dataTables: new LayoutDataTablePage(), warn: { char: '' }, langSet,
   };
 }

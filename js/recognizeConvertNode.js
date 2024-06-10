@@ -1,7 +1,9 @@
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { imageCache } from './containers/imageContainer.js';
-import { layoutAll, ocrAll, pageMetricsArr } from './containers/miscContainer.js';
+import {
+  layoutAll, ocrAll, pageMetricsArr, layoutDataTableAll,
+} from './containers/miscContainer.js';
 import { loadChiSimFont } from './fontContainerMain.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
@@ -43,7 +45,7 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
  * @returns
  */
 export async function convertPageCallbackNode({
-  pageObj, layoutBoxes, warn, langSet,
+  pageObj, dataTables, warn, langSet,
 }, n, mainData, engineName) {
   if (langSet.has('chi_sim')) await loadChiSimFont();
 
@@ -62,7 +64,7 @@ export async function convertPageCallbackNode({
   }
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(layoutAll[n].boxes).length === 0) layoutAll[n].boxes = layoutBoxes;
+  if (Object.keys(layoutDataTableAll[n].tables).length === 0) layoutDataTableAll[n] = dataTables;
 }
 
 /**

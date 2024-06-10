@@ -5,6 +5,7 @@ import {
 } from '../miscUtils.js';
 
 import { pass2, pass3 } from './convertPageShared.js';
+import { LayoutDataTablePage } from '../objects/layoutObjects.js';
 
 // If enabled, raw strings are saved in OCR objects for debugging purposes.
 const debugMode = true;
@@ -366,6 +367,6 @@ export async function convertPageHocr({
   const langSet = pass3(pageObj);
 
   return {
-    pageObj, layoutBoxes: {}, warn, langSet,
+    pageObj, dataTables: new LayoutDataTablePage(), warn, langSet,
   };
 }

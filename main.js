@@ -27,11 +27,12 @@ import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer
 
 import {
   fontMetricsObj, layoutAll, ocrAll, pageMetricsArr, inputDataModes,
+  layoutDataTableAll,
 } from './js/containers/miscContainer.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 
-import { LayoutPage } from './js/objects/layoutObjects.js';
+import { LayoutDataTablePage, LayoutPage } from './js/objects/layoutObjects.js';
 
 import {
   checkCharWarn, calcFontMetricsFromPages,
@@ -478,33 +479,22 @@ debugPrintCoordsElem.addEventListener('click', () => (canvasObj.mode = 'printCoo
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
 const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
 const addLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeExclude'));
-const addLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeDataColumn'));
+const addDataTableElem = /** @type {HTMLInputElement} */(document.getElementById('addDataTable'));
 
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
 
 addLayoutBoxElem.addEventListener('click', () => {
-  canvasObj.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataColumn' }[layoutBoxTypeElem.textContent];
+  canvasObj.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
 });
 addLayoutBoxTypeOrderElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxOrder'));
 addLayoutBoxTypeExcludeElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxExclude'));
-addLayoutBoxTypeDataColumnElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxDataColumn'));
-
-const deleteLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('deleteLayoutBox'));
-deleteLayoutBoxElem.addEventListener('click', () => deleteLayoutBoxClick());
+addDataTableElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxDataTable'));
 
 const setDefaultLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('setDefaultLayout'));
 setDefaultLayoutElem.addEventListener('click', () => setDefaultLayoutClick());
 
 const revertLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('revertLayout'));
 revertLayoutElem.addEventListener('click', () => revertLayoutClick());
-
-const setLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeOrder'));
-const setLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeExclude'));
-const setLayoutBoxTypeDataColumnElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTypeDataColumn'));
-
-setLayoutBoxTypeOrderElem.addEventListener('click', () => setLayoutBoxTypeClick('order'));
-setLayoutBoxTypeExcludeElem.addEventListener('click', () => setLayoutBoxTypeClick('exclude'));
-setLayoutBoxTypeDataColumnElem.addEventListener('click', () => setLayoutBoxTypeClick('dataColumn'));
 
 const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
 const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
@@ -518,9 +508,6 @@ setLayoutBoxInclusionLevelLineElem.addEventListener('click', () => setLayoutBoxI
 
 const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
 setLayoutBoxTableElem.addEventListener('change', () => { setLayoutBoxTable(setLayoutBoxTableElem.value); });
-
-const showExcludedTextElem = /** @type {HTMLInputElement} */(document.getElementById('showExcludedText'));
-showExcludedTextElem.addEventListener('click', () => getExcludedText());
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
 ignorePunctElem.addEventListener('change', () => { renderPageQueue(cp.n); });
@@ -1148,7 +1135,6 @@ async function clearFiles() {
   // compareGroundTruthElem.disabled = true;
   uploadOCRButtonElem.disabled = true;
   addLayoutBoxElem.disabled = true;
-  deleteLayoutBoxElem.disabled = true;
   setDefaultLayoutElem.disabled = true;
   revertLayoutElem.disabled = true;
   toggleEditButtons(true);
@@ -1265,7 +1251,6 @@ async function importFiles(curFiles) {
   const stextModeExtract = inputDataModes.extractTextMode;
 
   addLayoutBoxElem.disabled = false;
-  deleteLayoutBoxElem.disabled = false;
   setDefaultLayoutElem.disabled = false;
   revertLayoutElem.disabled = false;
 
@@ -1468,6 +1453,7 @@ async function importFiles(curFiles) {
   if (!existingLayout) {
     for (let i = 0; i < globalThis.pageCount; i++) {
       layoutAll[i] = new LayoutPage();
+      layoutDataTableAll[i] = new LayoutDataTablePage();
     }
   }
 
@@ -1580,6 +1566,8 @@ async function importFiles(curFiles) {
  * @param {File} file
  */
 async function readLayoutFile(file) {
+  // TODO: This function needs to be updated to support data tables.
+  // Alternatively, this entire function could be cut, as it is unclear why this needs to exist.
   const layoutStr = await readTextFile(file);
   try {
     const layoutObj = /** @type {Array<LayoutPage>} */(JSON.parse(layoutStr));

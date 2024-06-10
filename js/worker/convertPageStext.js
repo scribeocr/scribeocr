@@ -5,6 +5,7 @@ import {
 } from '../miscUtils.js';
 
 import { pass3 } from './convertPageShared.js';
+import { LayoutDataTablePage } from '../objects/layoutObjects.js';
 
 const stextSplitRegex = /(?:<char[^>]*?c=['"]\s+['"]\/>)|(?:<\/font>\s*(?=<font))/ig;
 // The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
@@ -235,5 +236,5 @@ export async function convertPageStext({ ocrStr, n }) {
 
   const langSet = pass3(pageObj);
 
-  return { pageObj, layoutBoxes: {}, langSet };
+  return { pageObj, dataTables: new LayoutDataTablePage(), langSet };
 }

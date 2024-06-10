@@ -8,7 +8,7 @@ import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';
 import { imageCache } from './containers/imageContainer.js';
 import {
-  layoutAll, ocrAll, pageMetricsArr, inputDataModes,
+  layoutAll, ocrAll, pageMetricsArr, inputDataModes, layoutDataTableAll,
 } from './containers/miscContainer.js';
 import { loadChiSimFont } from './fontContainerMain.js';
 
@@ -160,7 +160,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
  * @returns
  */
 export async function convertPageCallbackBrowser({
-  pageObj, layoutBoxes, warn, langSet,
+  pageObj, dataTables, warn, langSet,
 }, n, mainData, engineName) {
   if (engineName) ocrAll[engineName][n] = pageObj;
 
@@ -183,7 +183,7 @@ export async function convertPageCallbackBrowser({
   inputDataModes.xmlMode[n] = true;
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(layoutAll[n].boxes).length === 0) layoutAll[n].boxes = layoutBoxes;
+  if (Object.keys(layoutDataTableAll[n].tables).length === 0) layoutDataTableAll[n] = dataTables;
 
   // If this is the page the user has open, render it to the canvas
   const oemActive = document.getElementById('displayLabelText')?.innerHTML;

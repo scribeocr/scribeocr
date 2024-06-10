@@ -48,8 +48,8 @@ export interface ShapeConfig extends NodeConfig {
     strokeEnabled?: boolean;
     lineJoin?: LineJoin;
     lineCap?: LineCap;
-    sceneFunc?: (con: Context, shape: Shape) => void;
-    hitFunc?: (con: Context, shape: Shape) => void;
+    sceneFunc?: <T extends Shape>(con: Context, shape: T) => void;
+    hitFunc?: <T extends Shape>(con: Context, shape: T) => void;
     shadowColor?: string;
     shadowBlur?: number;
     shadowOffset?: Vector2d;

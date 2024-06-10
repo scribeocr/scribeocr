@@ -8,7 +8,7 @@ import {
   layerOverlay, getWordFillOpacity,
 } from './interfaceCanvas.js';
 import Konva from '../../lib/konva/index.js';
-import { renderLayoutBoxes } from './interfaceLayout.js';
+import { renderLayoutBoxes, renderLayoutDataTables } from './interfaceLayout.js';
 import { pageMetricsArr, inputDataModes } from '../containers/miscContainer.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));

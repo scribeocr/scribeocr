@@ -4,30 +4,22 @@ import ocr from './objects/ocrObjects.js';
 
 import { saveAs } from './miscUtils.js';
 
-import { layoutAll, inputDataModes } from './containers/miscContainer.js';
+import { layoutAll, inputDataModes, layoutDataTableAll } from './containers/miscContainer.js';
 
 /**
- * @param {OcrPage} pageObj
- * @param {import('./objects/layoutObjects.js').LayoutPage} layoutObj
+ * @param {ReturnType<extractTableContent>} tableWordObj
  * @param {Array<string>} extraCols
  * @param {number} startRow
  * @param {boolean} xlsxMode
  * @param {boolean} htmlMode
  */
-export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
-  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return { content: '', rows: 0 };
-
-  const tableIndexes = [...new Set(Object.values(layoutObj.boxes).map((x) => x.table))];
-
-  if (tableIndexes.length === 0) return { content: '', rows: 0 };
-
+export function createCells(tableWordObj, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false) {
   let textStr = '';
   let rowIndex = startRow;
   let rowCount = 0;
-  for (const i of tableIndexes) {
-    // Filter layout boxes to specific table
-    const boxesArg = Object.values(layoutObj.boxes).filter((x) => x.type === 'dataColumn' && x.table === i);
-    const cellsSingle = createCellsSingle(pageObj, boxesArg, extraCols, rowIndex, xlsxMode, htmlMode);
+
+  for (const [key, value] of Object.entries(tableWordObj)) {
+    const cellsSingle = createCellsSingle(value.rowWordArr, extraCols, rowIndex, xlsxMode, htmlMode);
     textStr += cellsSingle.content;
     rowIndex += cellsSingle.rows;
     rowCount += cellsSingle.rows;
@@ -36,18 +28,33 @@ export function createCells(pageObj, layoutObj, extraCols = [], startRow = 0, xl
   return { content: textStr, rows: rowCount };
 }
 
+/**
+ *
+ * @param {OcrPage} pageObj
+ * @param {import('./objects/layoutObjects.js').LayoutDataTablePage} layoutObj
+ * @returns
+ */
+export function extractTableContent(pageObj, layoutObj) {
+  /** @type {Object<string, ReturnType<extractSingleTableContent>>} */
+  const tableWordObj = {};
+
+  if (!layoutObj?.tables || Object.keys(layoutObj.tables).length === 0) return tableWordObj;
+
+  for (const [key, value] of Object.entries(layoutObj.tables)) {
+    tableWordObj[key] = extractSingleTableContent(pageObj, Object.values(value.boxes));
+  }
+
+  return tableWordObj;
+}
+
 // TODO: This currently creates junk rows with only punctuation, as those bounding boxes are so small they often do not overlap with other lines.
 /**
- * Convert a single table into HTML or Excel XML rows
+ * Extracts words from a page that are within the bounding boxes of the table, organized into arrays of rows and columns.
+ * The output is in the form of a 3D array, where the first dimension is the row, the second dimension is the column, and the third dimension is the word.
  * @param {OcrPage} pageObj
  * @param {Array<import('./objects/layoutObjects.js').LayoutBox>} boxes
- * @param {Array<string>} extraCols
- * @param {number} startRow
- * @param {boolean} xlsxMode
- * @param {boolean} htmlMode
- * @param {boolean} previewMode
  */
-function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
+export function extractSingleTableContent(pageObj, boxes) {
   const wordArr = [];
   const boxArr = [];
   const wordPriorityArr = [];
@@ -134,13 +141,16 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
   colArr.forEach((x) => x.sort((a, b) => a.box.bottom - b.box.bottom));
 
   // Create rows
-  let rowIndex = 0;
   // let lastBottom = 0;
   const indexArr = Array(colArr.length);
   indexArr.fill(0);
   const lengthArr = colArr.map((x) => x.length);
 
-  const dataObj = {};
+  /** @type {Array<Array<Array<OcrWord>>>} */
+  const rowWordArr = [];
+
+  /** @type {Array<number>} */
+  const rowBottomArr = [];
 
   // To split lines into cells, the highest line on the page (that has not already been assigned to a cell) is idenified,
   // and establishes a the vertical bounds of a new row.
@@ -156,25 +166,46 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
       left: 0, top: 0, right: 5000, bottom: compArrBox[0].box.bottom,
     };
 
+    /** @type {Array<Array<OcrWord>>} */
+    const colWordArr = [];
+    for (let i = 0; i < colArr.length; i++) {
+      colWordArr[i] = [];
+    }
+    let rowBottom;
+
     for (let i = 0; i < indexArr.length; i++) {
       for (let j = indexArr[i]; j < colArr[i].length; j++) {
         const overlap = calcOverlap(colArr[i][j].box, rowBox);
         if (overlap > 0.5) {
-          if (!dataObj[`${String(rowIndex)},${String(i)}`]) dataObj[`${String(rowIndex)},${String(i)}`] = [];
-          dataObj[`${String(rowIndex)},${String(i)}`].push(colArr[i][j].word);
+          colWordArr[i].push(colArr[i][j].word);
+          if (!rowBottom || colArr[i][j].box.bottom > rowBottom) rowBottom = colArr[i][j].box.bottom;
           indexArr[i]++;
         } else {
           break;
         }
       }
     }
-    rowIndex++;
+    rowWordArr.push(colWordArr);
+    rowBottomArr.push(rowBottom);
   }
 
+  return { rowWordArr, rowBottomArr };
+}
+
+/**
+ * Convert a single table into HTML or Excel XML rows
+ * @param {ReturnType<extractSingleTableContent>['rowWordArr']} ocrTableWords
+ * @param {Array<string>} extraCols
+ * @param {number} startRow
+ * @param {boolean} xlsxMode
+ * @param {boolean} htmlMode
+ * @param {boolean} previewMode
+ */
+function createCellsSingle(ocrTableWords, extraCols = [], startRow = 0, xlsxMode = true, htmlMode = false, previewMode = true) {
   const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
 
   let textStr = '';
-  for (let i = 0; i < rowIndex; i++) {
+  for (let i = 0; i < ocrTableWords.length; i++) {
     if (xlsxMode) {
       textStr += `<row r="${String(startRow + i + 1)}">`;
     } else if (htmlMode) {
@@ -195,8 +226,8 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
       }
     }
 
-    for (let j = 0; j < colArr.length; j++) {
-      const words = dataObj[`${String(i)},${String(j)}`];
+    for (let j = 0; j < ocrTableWords[i].length; j++) {
+      const words = ocrTableWords[i][j];
 
       // In xlsx, empty cells are omitted entirely.  For other formats they are included.
       if (!words || words.length === 0) {
@@ -269,10 +300,14 @@ function createCellsSingle(pageObj, boxes, extraCols = [], startRow = 0, xlsxMod
     }
   }
 
-  return { content: textStr, rows: rowIndex };
+  return { content: textStr, rows: ocrTableWords.length };
 }
 
-export async function writeXlsx(hocrCurrent) {
+/**
+ *
+ * @param {Array<OcrPage>} ocrPageArr
+ */
+export async function writeXlsx(ocrPageArr) {
   const { xlsxStrings, sheetStart, sheetEnd } = await import('./xlsxFiles.js');
   const { BlobWriter, TextReader, ZipWriter } = await import('../lib/zip.js/index.js');
 
@@ -287,7 +322,7 @@ export async function writeXlsx(hocrCurrent) {
 
   let sheetContent = sheetStart;
   let rowCount = 0;
-  for (let i = 0; i < hocrCurrent.length; i++) {
+  for (let i = 0; i < ocrPageArr.length; i++) {
     /** @type {Array<string>} */
     const extraCols = [];
     if (addFilenameMode) {
@@ -299,7 +334,8 @@ export async function writeXlsx(hocrCurrent) {
     }
     if (addPageNumberColumnMode) extraCols.push(String(i + 1));
 
-    const cellsObj = createCells(hocrCurrent[i], layoutAll[i], extraCols, rowCount);
+    const tableWordObj = extractTableContent(ocrPageArr[i], layoutDataTableAll[i]);
+    const cellsObj = createCells(tableWordObj, extraCols, rowCount);
     rowCount += cellsObj.rows;
     sheetContent += cellsObj.content;
   }

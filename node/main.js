@@ -24,10 +24,10 @@ import { drawDebugImages } from '../js/debug.js';
 import { fontAll } from '../js/containers/fontContainer.js';
 import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
 import {
-  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
+  fontMetricsObj, layoutAll, layoutDataTableAll, ocrAll, pageMetricsArr,
 } from '../js/containers/miscContainer.js';
 
-import { LayoutPage } from '../js/objects/layoutObjects.js';
+import { LayoutDataTablePage, LayoutPage } from '../js/objects/layoutObjects.js';
 
 import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 
@@ -200,6 +200,7 @@ async function main(func, params) {
   if (!existingLayout) {
     for (let i = 0; i < pageCount; i++) {
       layoutAll[i] = new LayoutPage();
+      layoutDataTableAll[i] = new LayoutDataTablePage();
     }
   }
 
