@@ -16,6 +16,7 @@ import ocr from '../objects/ocrObjects.js';
 import {
   getCanvasWords, layerOverlay, canvasObj, destroyLayoutBoxes, destroyControls, getCanvasLayoutBoxes, updateWordCanvas,
   KonvaIText, stage, destroyLayoutDataTables,
+  hideContextMenu,
 } from './interfaceCanvas.js';
 
 import { extractSingleTableContent } from '../exportWriteTabular.js';
@@ -95,11 +96,21 @@ export function addLayoutBoxClick({
 }
 
 export function deleteLayoutBoxClick() {
+  hideContextMenu();
   canvasObj.selectedLayoutBoxArr.forEach((obj) => {
     delete layoutAll[cp.n].boxes[obj.layoutBox.id];
     obj.destroy();
   });
   destroyControls();
+}
+
+export function deleteLayoutDataTableClick() {
+  hideContextMenu();
+  if (canvasObj.selectedDataColumnArr.length === 0) return;
+
+  canvasObj.selectedDataColumnArr[0].konvaTable.delete();
+  destroyControls();
+  layerOverlay.batchDraw();
 }
 
 export function toggleSelectableWords(selectable = true) {
@@ -657,6 +668,11 @@ export class KonvaDataTable {
       return this;
     };
 
+    this.delete = () => {
+      delete layoutDataTableAll[cp.n].tables[this.layoutDataTable.id];
+      this.destroy();
+    };
+
     this.tableRect.addEventListener('transform', () => {
       KonvaDataTable.updateTableBoxVertical(this);
     });
@@ -930,7 +946,6 @@ function renderLayoutBox(layoutBox) {
   const konvaLayout = new KonvaLayout(layoutBox);
   canvasObj.layoutBoxArr.push(konvaLayout);
   layerOverlay.add(konvaLayout);
-  console.log(konvaLayout);
   if (konvaLayout.label) layerOverlay.add(konvaLayout.label);
 }
 

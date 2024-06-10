@@ -1358,6 +1358,7 @@ async function importFiles(curFiles) {
   }
 
   let existingLayout = false;
+  let existingLayoutDataTable = false;
   let existingOpt = false;
   const oemName = 'User Upload';
   let stextMode;
@@ -1425,6 +1426,13 @@ async function importFiles(curFiles) {
         existingLayout = true;
       }
 
+      if (ocrData.layoutDataTableObj) {
+        for (let i = 0; i < ocrData.layoutDataTableObj.length; i++) {
+          layoutDataTableAll[i] = ocrData.layoutDataTableObj[i];
+        }
+        existingLayoutDataTable = true;
+      }
+
       stextModeImport = ocrData.stextMode;
       abbyyMode = ocrData.abbyyMode;
       scribeMode = ocrData.scribeMode;
@@ -1460,6 +1468,11 @@ async function importFiles(curFiles) {
   if (!existingLayout) {
     for (let i = 0; i < globalThis.pageCount; i++) {
       layoutAll[i] = new LayoutPage();
+    }
+  }
+
+  if (!existingLayoutDataTable) {
+    for (let i = 0; i < globalThis.pageCount; i++) {
       layoutDataTableAll[i] = new LayoutDataTablePage();
     }
   }

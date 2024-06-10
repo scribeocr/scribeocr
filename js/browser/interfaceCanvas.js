@@ -10,6 +10,8 @@ import {
   KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxesArea,
   addLayoutDataTableClick, mergeDataColumns, checkDataColumnsAdjacent,
   splitDataColumn,
+  deleteLayoutBoxClick,
+  deleteLayoutDataTableClick,
 } from './interfaceLayout.js';
 import { cp, search } from '../../main.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
@@ -73,8 +75,22 @@ const createContextMenuHTML = () => {
   mergeButton.style.display = 'none';
   mergeButton.addEventListener('click', mergeDataColumnsClick);
 
+  const deleteLayoutButton = document.createElement('button');
+  deleteLayoutButton.id = 'contextMenuDeleteLayoutBoxButton';
+  deleteLayoutButton.textContent = 'Delete';
+  deleteLayoutButton.style.display = 'none';
+  deleteLayoutButton.addEventListener('click', deleteLayoutBoxClick);
+
+  const deleteTableButton = document.createElement('button');
+  deleteTableButton.id = 'contextMenuDeleteTableButton';
+  deleteTableButton.textContent = 'Delete Table';
+  deleteTableButton.style.display = 'none';
+  deleteTableButton.addEventListener('click', deleteLayoutDataTableClick);
+
   innerDiv.appendChild(splitButton);
   innerDiv.appendChild(mergeButton);
+  innerDiv.appendChild(deleteLayoutButton);
+  innerDiv.appendChild(deleteTableButton);
 
   menuDiv.appendChild(innerDiv);
 
@@ -98,10 +114,14 @@ document.body.appendChild(menuNode);
 
 const contextMenuMergeColumnButtonsElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeColumnButtons'));
 const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
+const contextMenuDeleteLayoutBoxButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutBoxButton'));
+const contextMenuDeleteTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteTableButton'));
 
-const hideContextMenu = () => {
+export const hideContextMenu = () => {
   contextMenuMergeColumnButtonsElem.style.display = 'none';
   contextMenuSplitColumnButtonElem.style.display = 'none';
+  contextMenuDeleteLayoutBoxButtonElem.style.display = 'none';
+  contextMenuDeleteTableButtonElem.style.display = 'none';
   menuNode.style.display = 'none';
 };
 
@@ -112,7 +132,7 @@ style.textContent = `
   #menu {
     display: none;
     position: absolute;
-    width: 130px;
+    width: 140px;
     background-color: white;
     box-shadow: 0 0 5px grey;
     border-radius: 3px;
@@ -142,18 +162,28 @@ stage.on('contextmenu', (e) => {
 
   let enableMerge = false;
   let enableSplit = false;
+  let enableDelete = false;
+  let enableDeleteTable = false;
 
   // The "Merge Columns" button will be enabled if multiple adjacent columns are selected.
   if (canvasObj.selectedDataColumnArr.length > 1 && checkDataColumnsAdjacent(canvasObj.selectedDataColumnArr)) enableMerge = true;
   if (canvasObj.selectedDataColumnArr.length === 1) enableSplit = true;
+  if (canvasObj.selectedLayoutBoxArr.length > 0) enableDelete = true;
+  if (canvasObj.selectedDataColumnArr.length > 0 && canvasObj.selectedDataColumnArr.length === canvasObj.selectedDataColumnArr[0].konvaTable.columns.length) enableDeleteTable = true;
 
-  if (!(enableMerge || enableSplit)) return;
+  if (!(enableMerge || enableSplit || enableDelete || enableDeleteTable)) return;
 
   if (enableMerge) {
     contextMenuMergeColumnButtonsElem.style.display = 'initial';
   }
   if (enableSplit) {
     contextMenuSplitColumnButtonElem.style.display = 'initial';
+  }
+  if (enableDelete) {
+    contextMenuDeleteLayoutBoxButtonElem.style.display = 'initial';
+  }
+  if (enableDeleteTable) {
+    contextMenuDeleteTableButtonElem.style.display = 'initial';
   }
 
   e.evt.preventDefault();
