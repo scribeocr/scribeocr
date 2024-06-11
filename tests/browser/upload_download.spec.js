@@ -244,6 +244,19 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
     await customActions.downloadAllFormats();
   });
 
+  it('3-page .pdf file (old Scribe version)', async function () {
+    // Navigate to the page
+    await driver.get(appURL);
+
+    // Upload the files
+    await customActions.uploadFiles([
+      'scribe_test_pdf1.pdf',
+      'scribe_test_pdf1_202404.hocr',
+    ]);
+
+    await customActions.downloadAllFormats();
+  });
+
   it('3 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);

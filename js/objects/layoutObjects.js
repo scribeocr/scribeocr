@@ -26,3 +26,21 @@ export function LayoutPage() {
   /** @type {Object<string, LayoutBox>} */
   this.boxes = {};
 }
+
+/**
+ *
+ * @param {number} id
+ */
+export function LayoutDataTable(id) {
+  /** @type {number} */
+  this.id = id;
+  /** @type {Object<string, LayoutBox>} */
+  this.boxes = {};
+}
+
+export function LayoutDataTablePage() {
+  /** @type {boolean} */
+  this.default = true;
+  /** @type {Object<string, LayoutDataTable>} */
+  this.tables = {};
+}

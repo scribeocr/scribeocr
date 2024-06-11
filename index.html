@@ -300,11 +300,9 @@
             <div class="row">
               <div class="col-1 height-helper" style="width:1px;padding:0"></div>
               <div class="col">
-
                 <div class="row" style="padding:0.4rem;">
-                  <label>Layout Boxes</label>
-
                   <div class="col col-lg-2">
+                    <label>Layout Boxes</label>
                     <div class="form-group mb-2">
                       <div class="btn-group" style="width:100%;">
                         <button type="button" id="addLayoutBox" class="btn btn-secondary btn-sm"
@@ -319,41 +317,39 @@
                           <span class="visually-hidden">Toggle Dropdown</span>
                         </button>
                         <ul class="dropdown-menu">
-                          <!-- <li><a class="dropdown-item" id="recognizeNumber">Recognize Number</a></li> -->
                           <li><a class="dropdown-item" id="addLayoutBoxTypeOrder">Order</a></li>
                           <li><a class="dropdown-item" id="addLayoutBoxTypeExclude">Exclude</a></li>
-                          <li><a class="dropdown-item" id="addLayoutBoxTypeDataColumn">Data Column</a></li>
                         </ul>
                       </div>
                     </div>
-
-                    <div class="form-group">
-                      <button type="button" id="deleteLayoutBox" class="btn btn-secondary btn-sm"
-                        style="width:100%;text-align:left" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-trash3" viewBox="0 0 16 16">
-                          <path
-                            d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z" />
-                        </svg> Delete Box</button>
+                  </div>
+                  <div class="col col-lg-2" id="dataTableOptions" style="display:none">
+                    <label>Data Tables</label>
+                    <div class="btn-group mb-2" style="width:100%;">
+                      <button type="button" id="addDataTable" class="btn btn-secondary btn-sm"
+                      style="width:100%;text-align:left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-table" viewBox="0 0 16 16">
+                        <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm15 2h-4v3h4zm0 4h-4v3h4zm0 4h-4v3h3a1 1 0 0 0 1-1zm-5 3v-3H6v3zm-5 0v-3H1v2a1 1 0 0 0 1 1zm-4-4h4V8H1zm0-4h4V4H1zm5-3v3h4V4zm4 4H6v3h4z"/>
+                      </svg> Add Data Table</button>
+                    </div>
+                    <div class="form-group mb-2">
+                      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
+                        href="#collapseSetLayoutBoxTable" style="min-width:100%;text-align:left">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-layout-three-columns" viewBox="0 0 16 16">
+                          <path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM1.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5H5V1zM10 15V1H6v14zm1 0h3.5a.5.5 0 0 0 .5-.5v-13a.5.5 0 0 0-.5-.5H11z"/>
+                        </svg> Set Table</button>
+                    </div>
+                    <div class="collapse" id="collapseSetLayoutBoxTable">
+                      <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
+                        <div class="input-group">
+                          <span style="margin-right:0.5rem;margin-top:0.25rem;">Table: </span>
+                          <input type="text" id="setLayoutBoxTable" class="form-control btn-sm">
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div class="col col-lg-2">
-                    <div class="btn-group mb-2" style="width:100%;">
-                      <button type="button" id="setLayoutBoxType" class="btn btn-secondary btn-sm dropdown-toggle"
-                        data-bs-toggle="dropdown" aria-expanded="false" style="width:100%;text-align:left">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-wrench-adjustable-circle" viewBox="0 0 16 16">
-                          <path d="M12.496 8a4.491 4.491 0 0 1-1.703 3.526L9.497 8.5l2.959-1.11c.027.2.04.403.04.61Z" />
-                          <path
-                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0Zm-1 0a7 7 0 1 0-13.202 3.249l1.988-1.657a4.5 4.5 0 0 1 7.537-4.623L7.497 6.5l1 2.5 1.333 3.11c-.56.251-1.18.39-1.833.39a4.49 4.49 0 0 1-1.592-.29L4.747 14.2A7 7 0 0 0 15 8Zm-8.295.139a.25.25 0 0 0-.288-.376l-1.5.5.159.474.808-.27-.595.894a.25.25 0 0 0 .287.376l.808-.27-.595.894a.25.25 0 0 0 .287.376l1.5-.5-.159-.474-.808.27.596-.894a.25.25 0 0 0-.288-.376l-.808.27.596-.894Z" />
-                        </svg> Set Box Type</button>
-                      <ul class="dropdown-menu">
-                        <!-- <li><a class="dropdown-item" id="recognizeNumber">Recognize Number</a></li> -->
-                        <li><a class="dropdown-item" id="setLayoutBoxTypeOrder">Order</a></li>
-                        <li><a class="dropdown-item" id="setLayoutBoxTypeExclude">Exclude</a></li>
-                        <li><a class="dropdown-item" id="setLayoutBoxTypeDataColumn">Data Column</a></li>
-                      </ul>
-                    </div>
+                    <label>General</label>
                     <div class="btn-group" style="width:100%;">
                       <div class="form-group" style="width:100%;">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
@@ -387,8 +383,9 @@
                         </div>
                       </div>
                     </div>
-                  </div>
+                   </div>
                   <div class="col col-lg-2">
+                    <label>Defaults</label>
                     <div class="form-group mb-2">
                       <button type="button" id="setDefaultLayout" class="btn btn-secondary btn-sm"
                         style="width:100%;text-align:left" disabled>
@@ -408,33 +405,6 @@
                           <path
                             d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z" />
                         </svg> Revert To Default</button>
-                    </div>
-                  </div>
-
-                  <div class="col col-lg-2">
-                    <button type="button" id="showExcludedText" class="btn btn-secondary btn-sm mb-2"
-                      style="width:100%;text-align:left">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                        class="bi bi-eyeglasses" viewBox="0 0 16 16">
-                        <path
-                          d="M4 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm2.625.547a3 3 0 0 0-5.584.953H.5a.5.5 0 0 0 0 1h.541A3 3 0 0 0 7 8a1 1 0 0 1 2 0 3 3 0 0 0 5.959.5h.541a.5.5 0 0 0 0-1h-.541a3 3 0 0 0-5.584-.953A1.993 1.993 0 0 0 8 6c-.532 0-1.016.208-1.375.547zM14 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
-                      </svg> Show Excluded Text</button>
-                    <div class="form-group">
-                      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
-                        href="#setLayoutBoxTableDropdown" style="min-width:100%;text-align:left">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-table" viewBox="0 0 16 16">
-                          <path
-                            d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z" />
-                        </svg> Set Table</button>
-                    </div>
-                    <div class="collapse" id="setLayoutBoxTableDropdown">
-                      <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
-                        <div class="input-group">
-                          <span style="margin-right:0.5rem;margin-top:0.25rem;">Table: </span>
-                          <input type="text" id="setLayoutBoxTable" class="form-control btn-sm">
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -1388,8 +1358,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                           <label><input class="form-check-input" type="checkbox" id="enableLayout"> Edit Layout</label>
                         </div>
                         <div class="form-check form-switch">
-                          <label><input class="form-check-input" type="checkbox" id="enableXlsxExport"> Xlsx
-                            Export</label>
+                          <label><input class="form-check-input" type="checkbox" id="enableXlsxExport"> Extract Tables</label>
                         </div>
                       </div>
                     </div>

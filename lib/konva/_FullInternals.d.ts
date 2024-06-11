@@ -1,4 +1,5 @@
 import { Image } from './shapes/Image.js';
+import { Line } from './shapes/Line.js';
 import { Rect } from './shapes/Rect.js';
 import { Text } from './shapes/Text.js';
 import { Transformer } from './shapes/Transformer.js';
@@ -167,6 +168,7 @@ export declare const Konva: {
     Canvas: typeof import("./Canvas.js").Canvas;
 } & {
     Image: typeof Image;
+    Line: typeof Line;
     Rect: typeof Rect;
     Text: typeof Text;
     Transformer: typeof Transformer;

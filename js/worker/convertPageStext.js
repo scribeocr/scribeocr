@@ -5,6 +5,7 @@ import {
 } from '../miscUtils.js';
 
 import { pass3 } from './convertPageShared.js';
+import { LayoutDataTablePage } from '../objects/layoutObjects.js';
 
 const stextSplitRegex = /(?:<char[^>]*?c=['"]\s+['"]\/>)|(?:<\/font>\s*(?=<font))/ig;
 // The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
@@ -184,7 +185,7 @@ export async function convertPageStext({ ocrStr, n }) {
       wordObj.size = fontSize;
 
       // In stext, the coordinates are based on font bounding boxes, not where pixels start/end.
-      wordObj.excludesBearings = false;
+      wordObj.visualCoords = false;
 
       // There is no confidence information in stext.
       // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
@@ -235,5 +236,5 @@ export async function convertPageStext({ ocrStr, n }) {
 
   const langSet = pass3(pageObj);
 
-  return { pageObj, layoutBoxes: {}, langSet };
+  return { pageObj, dataTables: new LayoutDataTablePage(), langSet };
 }

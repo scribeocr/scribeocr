@@ -4,7 +4,7 @@ import {
   getRandomAlphanum, quantile, mean50, round6, unescapeXml, determineSansSerif,
 } from '../miscUtils.js';
 
-import { LayoutBox } from '../objects/layoutObjects.js';
+import { LayoutBox, LayoutDataTable, LayoutDataTablePage } from '../objects/layoutObjects.js';
 
 import { pass3, ascCharArr, xCharArr } from './convertPageShared.js';
 
@@ -35,11 +35,11 @@ export async function convertPageAbbyy({ ocrStr, n }) {
     const warn = { char: 'char_error' };
 
     return {
-      pageObj, fontMetricsObj: {}, layoutBoxes: {}, warn,
+      pageObj, fontMetricsObj: {}, dataTables: new LayoutDataTablePage(), warn,
     };
   }
 
-  const boxes = convertTableLayoutAbbyy(ocrStr);
+  const tablesPage = convertTableLayoutAbbyy(ocrStr);
 
   function convertLineAbbyy(xmlLine, lineNum, n = 1) {
     const stylesLine = {};
@@ -333,7 +333,7 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
   const langSet = pass3(pageObj);
 
-  return { pageObj, layoutBoxes: boxes, langSet };
+  return { pageObj, dataTables: tablesPage, langSet };
 }
 
 /**
@@ -344,17 +344,18 @@ function convertTableLayoutAbbyy(ocrStr) {
   // Not sure if this is true or not
   const tableRegex = /<block blockType=["']Table[\s\S]+?(?:<\/block>\s*)/ig;
 
-  const tables = ocrStr.match(tableRegex);
+  const tablesStrArr = ocrStr.match(tableRegex);
 
-  if (!tables) return {};
+  const tablesPage = new LayoutDataTablePage();
 
-  const boxes = {};
+  if (!tablesStrArr) return tablesPage;
 
-  for (let i = 0; i < tables.length; i++) {
+  for (let i = 0; i < tablesStrArr.length; i++) {
+    /** @type {Object<string, LayoutBox>} */
     let tableBoxes = {};
 
-    const table = tables[i];
-    const tableCoords = table.match(/<block blockType=['"]Table['"][^>]*?l=['"](\d+)['"] t=['"](\d+)['"] r=['"](\d+)['"] b=['"](\d+)['"]/i)?.slice(1, 5).map((x) => parseInt(x));
+    const tableStr = tablesStrArr[i];
+    const tableCoords = tableStr.match(/<block blockType=['"]Table['"][^>]*?l=['"](\d+)['"] t=['"](\d+)['"] r=['"](\d+)['"] b=['"](\d+)['"]/i)?.slice(1, 5).map((x) => parseInt(x));
 
     if (!tableCoords || tableCoords[0] === undefined || tableCoords[1] === undefined || tableCoords[2] === undefined || tableCoords[3] === undefined) {
       console.log('Failed to parse table');
@@ -363,7 +364,7 @@ function convertTableLayoutAbbyy(ocrStr) {
 
     let leftLast = tableCoords?.[0];
 
-    const rows = table.match(/<row[\s\S]+?(?:<\/row>\s*)/g);
+    const rows = tableStr.match(/<row[\s\S]+?(?:<\/row>\s*)/g);
 
     // Columns widths are calculated using the cells in a single row.
     // The first row is used unless it contains cells spanning multiple columns,
@@ -374,7 +375,7 @@ function convertTableLayoutAbbyy(ocrStr) {
 
     if (leftLast === null || leftLast === undefined || !firstRowCells) {
       console.warn('Failed to parse table:');
-      console.warn(table);
+      console.warn(tableStr);
       continue;
     }
 
@@ -389,7 +390,7 @@ function convertTableLayoutAbbyy(ocrStr) {
 
       leftLast = cellRight;
 
-      const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
+      const priority = Object.keys(tablesPage.tables).length + Object.keys(tableBoxes).length + 1;
 
       tableBoxes[id] = new LayoutBox(id, priority, {
         left: cellLeft, top: tableCoords[1], right: cellRight, bottom: tableCoords[3],
@@ -462,7 +463,7 @@ function convertTableLayoutAbbyy(ocrStr) {
 
         const id = getRandomAlphanum(10);
 
-        const priority = Object.keys(boxes).length + Object.keys(tableBoxes).length + 1;
+        const priority = 1;
 
         tableBoxes[id] = new LayoutBox(id, priority, {
           left: cellLeft, top: tableCoords[1], right: cellRight, bottom: tableCoords[3],
@@ -474,8 +475,11 @@ function convertTableLayoutAbbyy(ocrStr) {
       if (debugMode) console.log(`Table width does not match sum of rows (${String(tableCoords[2])} vs ${String(leftLast)}), calculated new layout boxes using column contents.`);
     }
 
-    Object.assign(boxes, tableBoxes);
+    const table = new LayoutDataTable(i);
+    table.boxes = tableBoxes;
+
+    tablesPage.tables[String(i)] = table;
   }
 
-  return boxes;
+  return tablesPage;
 }

@@ -29,6 +29,8 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
   let fontMetricsObj;
   /** @type{?Array<import('./objects/layoutObjects.js').LayoutPage>} */
   let layoutObj = null;
+  /** @type{?Array<import('./objects/layoutObjects.js').LayoutDataTablePage>} */
+  let layoutDataTableObj = null;
   let defaultFont;
   let enableOpt;
   let sansFont;
@@ -107,6 +109,9 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
       const layoutStr = getMeta('layout');
       if (layoutStr) layoutObj = /** @type{Array<import('./objects/layoutObjects.js').LayoutPage>} */ (JSON.parse(layoutStr));
 
+      const layoutDataTableStr = getMeta('layout-data-table');
+      if (layoutDataTableStr) layoutDataTableObj = /** @type{Array<import('./objects/layoutObjects.js').LayoutDataTablePage>} */ (JSON.parse(layoutDataTableStr));
+
       const enableOptStr = getMeta('enable-opt');
       if (enableOptStr) enableOpt = enableOptStr;
     }
@@ -122,6 +127,6 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
   }
 
   return {
-    hocrRaw, fontMetricsObj, layoutObj, abbyyMode, stextMode, scribeMode, defaultFont, enableOpt, sansFont, serifFont,
+    hocrRaw, fontMetricsObj, layoutObj, layoutDataTableObj, abbyyMode, stextMode, scribeMode, defaultFont, enableOpt, sansFont, serifFont,
   };
 }

@@ -104,7 +104,7 @@ export function OcrWord(line, text, bbox, id) {
    * @type {boolean} - If `true`, left/right coordinates represent the left/rightmost pixel.
    * If `false`, left/right coordinates represent the start/end of the font bounding box.
   */
-  this.excludesBearings = true;
+  this.visualCoords = true;
 }
 
 /**

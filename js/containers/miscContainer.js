@@ -7,6 +7,9 @@ export const fontMetricsObj = {};
 /** @type {Array<import('../objects/layoutObjects.js').LayoutPage>} */
 export const layoutAll = [];
 
+/** @type {Array<import('../objects/layoutObjects.js').LayoutDataTablePage>} */
+export const layoutDataTableAll = [];
+
 /** @type {Object<string, Array<import('../objects/ocrObjects.js').OcrPage>>} */
 export const ocrAll = { active: [] };
 

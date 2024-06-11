@@ -10,7 +10,7 @@ import {
   stage, layerText, layerBackground, layerOverlay,
 } from './interfaceCanvas.js';
 import {
-  fontMetricsObj, pageMetricsArr, ocrAll, layoutAll,
+  fontMetricsObj, pageMetricsArr, ocrAll, layoutAll, layoutDataTableAll,
 } from '../containers/miscContainer.js';
 
 /**
@@ -57,4 +57,5 @@ export const df = {
   pageMetricsArr,
   ocrAll,
   layoutAll,
+  layoutDataTableAll,
 };

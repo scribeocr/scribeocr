@@ -107,7 +107,8 @@ export function unescapeXml(string) {
     .replace(/&#x2022;/g, '•')
     .replace(/&#xe9;/g, 'é')
 
-    .replace(/&#xb6;/g, '¶');
+    .replace(/&#xb6;/g, '¶')
+    .replace(/&#x2020;/g, '†');
 }
 
 // Reads OCR files, which may be compressed as .gz or uncompressed

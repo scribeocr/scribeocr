@@ -8,6 +8,10 @@ import ocr from '../objects/ocrObjects.js';
 import { showHideElem } from '../miscUtils.js';
 import {
   KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxesArea,
+  addLayoutDataTableClick, mergeDataColumns, checkDataColumnsAdjacent,
+  splitDataColumn,
+  deleteLayoutBoxClick,
+  deleteLayoutDataTableClick,
 } from './interfaceLayout.js';
 import { cp, search } from '../../main.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
@@ -53,6 +57,143 @@ stage.add(layerBackground);
 stage.add(layerText);
 stage.add(layerOverlay);
 
+const createContextMenuHTML = () => {
+  const menuDiv = document.createElement('div');
+  menuDiv.id = 'menu';
+
+  const innerDiv = document.createElement('div');
+
+  const splitButton = document.createElement('button');
+  splitButton.id = 'contextMenuSplitColumnButton';
+  splitButton.textContent = 'Split Column';
+  splitButton.style.display = 'none';
+  splitButton.addEventListener('click', splitDataColumnClick);
+
+  const mergeButton = document.createElement('button');
+  mergeButton.id = 'contextMenuMergeColumnButtons';
+  mergeButton.textContent = 'Merge Columns';
+  mergeButton.style.display = 'none';
+  mergeButton.addEventListener('click', mergeDataColumnsClick);
+
+  const deleteLayoutButton = document.createElement('button');
+  deleteLayoutButton.id = 'contextMenuDeleteLayoutBoxButton';
+  deleteLayoutButton.textContent = 'Delete';
+  deleteLayoutButton.style.display = 'none';
+  deleteLayoutButton.addEventListener('click', deleteLayoutBoxClick);
+
+  const deleteTableButton = document.createElement('button');
+  deleteTableButton.id = 'contextMenuDeleteTableButton';
+  deleteTableButton.textContent = 'Delete Table';
+  deleteTableButton.style.display = 'none';
+  deleteTableButton.addEventListener('click', deleteLayoutDataTableClick);
+
+  innerDiv.appendChild(splitButton);
+  innerDiv.appendChild(mergeButton);
+  innerDiv.appendChild(deleteLayoutButton);
+  innerDiv.appendChild(deleteTableButton);
+
+  menuDiv.appendChild(innerDiv);
+
+  return menuDiv;
+};
+
+const mergeDataColumnsClick = () => {
+  hideContextMenu();
+  mergeDataColumns(canvasObj.selectedDataColumnArr);
+};
+
+const splitDataColumnClick = () => {
+  hideContextMenu();
+  const ptr = layerOverlay.getRelativePointerPosition();
+  if (!ptr) return;
+  splitDataColumn(canvasObj.selectedDataColumnArr[0], ptr.x);
+};
+
+const menuNode = createContextMenuHTML();
+document.body.appendChild(menuNode);
+
+const contextMenuMergeColumnButtonsElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeColumnButtons'));
+const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
+const contextMenuDeleteLayoutBoxButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutBoxButton'));
+const contextMenuDeleteTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteTableButton'));
+
+export const hideContextMenu = () => {
+  contextMenuMergeColumnButtonsElem.style.display = 'none';
+  contextMenuSplitColumnButtonElem.style.display = 'none';
+  contextMenuDeleteLayoutBoxButtonElem.style.display = 'none';
+  contextMenuDeleteTableButtonElem.style.display = 'none';
+  menuNode.style.display = 'none';
+};
+
+const style = document.createElement('style');
+
+// Add CSS rules to the style element
+style.textContent = `
+  #menu {
+    display: none;
+    position: absolute;
+    width: 140px;
+    background-color: white;
+    box-shadow: 0 0 5px grey;
+    border-radius: 3px;
+  }
+  #menu button {
+    width: 100%;
+    background-color: white;
+    border: none;
+    margin: 0;
+    padding: 10px;
+    text-wrap: nowrap;
+    text-align: left;
+  }
+  #menu button:hover {
+    background-color: lightgray;
+  }`;
+
+document.head.appendChild(style);
+
+stage.on('contextmenu', (e) => {
+  // prevent default behavior
+
+  if (e.target === stage) {
+    // if we are on empty place of the stage we will do nothing
+    return;
+  }
+
+  let enableMerge = false;
+  let enableSplit = false;
+  let enableDelete = false;
+  let enableDeleteTable = false;
+
+  // The "Merge Columns" button will be enabled if multiple adjacent columns are selected.
+  if (canvasObj.selectedDataColumnArr.length > 1 && checkDataColumnsAdjacent(canvasObj.selectedDataColumnArr)) enableMerge = true;
+  if (canvasObj.selectedDataColumnArr.length === 1) enableSplit = true;
+  if (canvasObj.selectedLayoutBoxArr.length > 0) enableDelete = true;
+  if (canvasObj.selectedDataColumnArr.length > 0 && canvasObj.selectedDataColumnArr.length === canvasObj.selectedDataColumnArr[0].konvaTable.columns.length) enableDeleteTable = true;
+
+  if (!(enableMerge || enableSplit || enableDelete || enableDeleteTable)) return;
+
+  if (enableMerge) {
+    contextMenuMergeColumnButtonsElem.style.display = 'initial';
+  }
+  if (enableSplit) {
+    contextMenuSplitColumnButtonElem.style.display = 'initial';
+  }
+  if (enableDelete) {
+    contextMenuDeleteLayoutBoxButtonElem.style.display = 'initial';
+  }
+  if (enableDeleteTable) {
+    contextMenuDeleteTableButtonElem.style.display = 'initial';
+  }
+
+  e.evt.preventDefault();
+
+  menuNode.style.display = 'initial';
+  const containerRect = stage.container().getBoundingClientRect();
+  menuNode.style.top = `${containerRect.top + stage.getPointerPosition().y + 4}px`;
+  menuNode.style.left = `${containerRect.left + stage.getPointerPosition().x + 4}px`;
+});
+
 const selectingRectangle = new Konva.Rect({
   fill: 'rgba(40,123,181,0.5)',
   visible: true,
@@ -71,8 +212,12 @@ export const canvasObj = {
   selectedWordArr: [],
   /** @type {Array<KonvaLayout>} */
   layoutBoxArr: [],
+  /** @type {Array<import('./interfaceLayout.js').KonvaDataTable>} */
+  layoutDataTableArr: [],
   /** @type {Array<KonvaLayout>} */
   selectedLayoutBoxArr: [],
+  /** @type {Array<import('./interfaceLayout.js').KonvaDataColumn>} */
+  selectedDataColumnArr: [],
   /** @type {?HTMLSpanElement} */
   input: null,
   /** @type {?Function} */
@@ -83,7 +228,7 @@ export const canvasObj = {
   bbox: {
     top: 0, left: 0, right: 0, bottom: 0,
   },
-  /** @type {('select'|'addWord'|'recognizeWord'|'recognizeArea'|'printCoords'|'addLayoutBoxOrder'|'addLayoutBoxExclude'|'addLayoutBoxDataColumn')} */
+  /** @type {('select'|'addWord'|'recognizeWord'|'recognizeArea'|'printCoords'|'addLayoutBoxOrder'|'addLayoutBoxExclude'|'addLayoutBoxDataTable')} */
   mode: 'select',
   isTouchScreen: navigator?.maxTouchPoints > 0,
   drag: {
@@ -101,12 +246,14 @@ export const canvasObj = {
 };
 
 export const destroyControls = () => {
-  globalThis.bsCollapse.hide();
+  globalThis.collapseRangeCollapse.hide();
+  globalThis.collapseSetLayoutBoxTableCollapse.hide();
   canvasObj.controlArr.forEach((control) => control.destroy());
   canvasObj.controlArr.length = 0;
 
   canvasObj.selectedWordArr.forEach((shape) => (shape.deselect()));
   canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.deselect()));
+  canvasObj.selectedDataColumnArr.forEach((shape) => (shape.deselect()));
 
   if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
 };
@@ -119,6 +266,12 @@ export const destroyLineOutlines = () => {
 export const destroyLayoutBoxes = () => {
   canvasObj.layoutBoxArr.forEach((x) => x.destroy());
   canvasObj.layoutBoxArr.length = 0;
+  destroyLayoutDataTables();
+};
+
+export const destroyLayoutDataTables = () => {
+  canvasObj.layoutDataTableArr.forEach((x) => x.destroy());
+  canvasObj.layoutDataTableArr.length = 0;
 };
 
 /**
@@ -158,7 +311,7 @@ export async function updateWordCanvas(wordI) {
   let width = wordI.dynamicWidth ? advanceArrTotal.reduce((a, b) => a + b, 0) : wordI.word.bbox.right - wordI.word.bbox.left;
 
   // Subtract the side bearings from the width if they are not excluded from the `ocrWord` coordinates.
-  if (!wordI.dynamicWidth && !wordI.word.excludesBearings) width -= (leftSideBearing + rightSideBearing);
+  if (!wordI.dynamicWidth && !wordI.word.visualCoords) width -= (leftSideBearing + rightSideBearing);
 
   wordI.width(width);
 
@@ -259,7 +412,7 @@ export class KonvaIText extends Konva.Shape {
     let width = dynamicWidth ? advanceArrTotal.reduce((a, b) => a + b, 0) : word.bbox.right - word.bbox.left;
 
     // Subtract the side bearings from the width if they are not excluded from the `ocrWord` coordinates.
-    if (!dynamicWidth && !word.excludesBearings) width -= (leftSideBearing + rightSideBearing);
+    if (!dynamicWidth && !word.visualCoords) width -= (leftSideBearing + rightSideBearing);
 
     super({
       x,
@@ -282,7 +435,7 @@ export class KonvaIText extends Konva.Shape {
 
         shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
 
-        let leftI = shape.word.excludesBearings ? 0 - this.leftSideBearing : 0;
+        let leftI = shape.word.visualCoords ? 0 - this.leftSideBearing : 0;
         for (let i = 0; i < shape.charArr.length; i++) {
           const charI = shape.charArr[i];
           context.fillText(charI, leftI, shape.fontSize * 0.6);
@@ -389,7 +542,7 @@ export class KonvaIText extends Konva.Shape {
     const charSpacingHTML = textNode.charSpacing * scale;
 
     let { x: x1, y: y1 } = textNode.getAbsolutePosition();
-    if (textNode.word.excludesBearings) x1 -= textNode.leftSideBearing * scale;
+    if (textNode.word.visualCoords) x1 -= textNode.leftSideBearing * scale;
 
     const fontSizeHTML = textNode.fontSize * scale;
 
@@ -509,7 +662,6 @@ export class KonvaOcrWord extends KonvaIText {
 
       if (leftMode) {
         this.word.bbox.left += leftDelta;
-        this.x(this.x() + leftDelta);
       } else {
         this.word.bbox.right += widthDelta;
       }
@@ -603,6 +755,8 @@ function selectWords(box) {
 let clearSelectionStart = false;
 
 stage.on('mousedown touchstart', (e) => {
+  hideContextMenu();
+
   // Left click only
   if (e.evt.button !== 0) return;
 
@@ -671,9 +825,20 @@ stage.on('mouseup touchend', (event) => {
   // `stopDragPinch` runs regardless of whether this actually is a drag/pinch, since `isDragging` can be enabled for taps.
   stopDragPinch(event);
 
-  // Handle the case where no rectangle is drawn (i.e. a click event).
+  // Exit early if the user could be attempting to merge multiple columns.
+  if (event.evt.button === 2) {
+    const ptr = stage.getPointerPosition();
+    if (!ptr) return;
+    const box = {
+      x: ptr.x, y: ptr.y, width: 1, height: 1,
+    };
+    const layoutBoxes = canvasObj.selectedDataColumnArr.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
+    if (layoutBoxes.length > 0) return;
+  }
+
+  // Handle the case where no rectangle is drawn (i.e. a click event), or the rectangle is is extremely small.
   // Clicks are handled in the same function as rectangle selections as using separate events lead to issues when multiple events were triggered.
-  if (!selectingRectangle.visible()) {
+  if (!selectingRectangle.visible() || (selectingRectangle.width() < 5 && selectingRectangle.height() < 5)) {
     const ptr = stage.getPointerPosition();
     if (!ptr) return;
     const box = {
@@ -684,7 +849,7 @@ stage.on('mouseup touchend', (event) => {
       KonvaOcrWord.updateUI();
       layerText.batchDraw();
     } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
-      selectLayoutBoxesArea(box);
+      selectLayoutBoxesArea(box, !event.evt.ctrlKey);
       KonvaLayout.updateUI();
       layerOverlay.batchDraw();
     }
@@ -721,9 +886,9 @@ stage.on('mouseup touchend', (event) => {
   } else if (canvasObj.mode === 'addLayoutBoxExclude') {
     const box = selectingRectangle.getClientRect({ relativeTo: layerText });
     addLayoutBoxClick(box, 'exclude');
-  } else if (canvasObj.mode === 'addLayoutBoxDataColumn') {
+  } else if (canvasObj.mode === 'addLayoutBoxDataTable') {
     const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    addLayoutBoxClick(box, 'dataColumn');
+    addLayoutDataTableClick(box);
   }
 
   canvasObj.mode = 'select';
@@ -896,7 +1061,6 @@ stage.on('wheel', (event) => {
  */
 const startDrag = (event) => {
   canvasObj.drag.isDragging = true;
-  canvasObj.drag.dragDeltaTotal = 0;
   canvasObj.drag.lastX = event.evt.x;
   canvasObj.drag.lastY = event.evt.y;
   event.evt.preventDefault();

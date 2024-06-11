@@ -1,0 +1,737 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head>
+	<title></title>
+	<meta name='font-metrics' content='{"SerifDefault":{"normal":{"width":{"33":0.352941,"44":0.382353,"45":0.485714,"46":0.323529,"48":1.35897496908,"49":1.31269348452,"50":1.35897496908,"53":1.353715496904,"56":0.963636937968,"57":1.35897496908,"59":0.441176,"65":1.529412,"66":1.264706,"68":1.663935,"69":1.370173,"70":1.470588,"71":1.398136,"72":1.666667,"73":0.588235,"76":1.294118,"77":1.885714,"78":1.485714,"79":1.411765,"80":1.283721,"82":1.324138,"83":1.117647,"84":1.361111,"85":1.545455,"86":1.398136,"87":2.205882,"89":1.529412,"97":0.882353,"98":1.029412,"99":0.794118,"100":0.970588,"101":0.823529,"102":0.823529,"103":1,"104":0.969697,"105":0.411765,"107":1,"108":0.5,"109":1.575758,"110":0.941176,"111":0.911765,"112":1,"114":0.764706,"115":0.727273,"116":0.617647,"117":0.911765,"118":0.911765,"119":1.352941,"120":0.941176,"121":1.085714,"122":0.794118,"8212":2.205882,"8217":0.382353},"height":{"33":1.558824,"44":0.735294,"45":0.294118,"46":0.362791,"48":2.118401286576,"49":2.215171521672,"50":2.238310705128,"53":2.297213987616,"56":1.558824,"57":2.238310705128,"59":1.454545,"65":1.588235,"66":1.558824,"68":1.588235,"69":1.509987,"70":1.617647,"71":1.509987,"72":1.485714,"73":1.529412,"76":1.588235,"77":1.588235,"78":1.514286,"79":1.588235,"80":1.47907,"82":1.482024,"83":1.529412,"84":1.558824,"85":1.636364,"86":1.454061,"87":1.588235,"89":1.617647,"97":1,"98":1.5,"99":1.029412,"100":1.514286,"101":1,"102":1.514286,"103":1.529412,"104":1.529412,"105":1.470588,"107":1.5,"108":1.5,"109":1,"110":1,"111":1.029412,"112":1.558824,"114":0.970588,"115":0.970588,"116":1.294118,"117":1,"118":1,"119":1,"120":0.970588,"121":1.529412,"122":0.970588,"8212":0.264706,"8217":0.735294},"kerning":{"56,49":0.17005366898399998,"65,85":0.110345,"85,82":0.165517,"82,69":0.137931,"69,76":0.110345,"76,73":0.055172,"73,65":0.082759,"65,46":0.110345,"83,104":0.117647,"104,101":0.117647,"115,116":0.088235,"116,97":0.058824,"97,110":0.029412,"110,100":0.088235,"100,115":0.147059,"98,101":0.121212,"101,102":0.058824,"102,111":-0.264706,"111,114":0.088235,"114,101":0.058824,"109,101":0.147059,"110,111":0.117647,"111,119":0.117647,"119,44":0.058824,"65,110":0.058824,"105,110":0.117647,"110,102":0.205882,"102,97":-0.264706,"110,116":0.117647,"116,105":0.060606,"110,101":0.088235,"116,101":0.030303,"101,108":0.030303,"108,108":0.147059,"108,105":0.176471,"105,103":0.058824,"103,101":0.117647,"101,110":0.030303,"110,99":0.058824,"99,101":0.058824,"101,44":-0.114286,"87,105":0.142857,"105,116":0.121212,"116,104":0.029412,"115,119":0.085714,"119,101":0.085714,"101,101":0.088235,"101,116":0.085714,"116,110":0.171429,"101,115":0.060606,"115,115":0.058824,"111,110":0.088235,"101,114":0.058824,"98,114":0.088235,"114,111":0.058824,"119,46":0.117647,"72,101":0,"114,105":0.058824,"103,104":0.029412,"104,116":0.088235,"116,45":0.058824,"45,98":0.028571,"98,108":0.058824,"108,117":0.2,"117,101":0.028571,"101,121":0.029412,"121,101":0.114286,"69,108":0.142857,"108,121":0.083333,"121,115":0.142857,"115,105":0.058824,"105,97":0.171429,"83,112":0.117647,"112,97":0.121212,"97,114":0.058824,"114,107":0,"107,108":0.205882,"108,101":0.117647,"119,105":0.147059,"115,111":0.058824,"111,109":0.114286,"116,108":-0.055556,"118,105":0.117647,"105,115":0.088235,"105,111":0.117647,"79,102":0.117647,"101,97":0.058824,"114,108":0.058824,"105,101":0.142857,"104,117":0.117647,"117,109":0.147059,"109,97":0.121212,"110,108":0.085714,"115,110":-0.171429,"115,44":0.058824,"83,117":0.088235,"117,99":0.117647,"99,104":0.029412,"97,115":0.060606,"115,112":0.030303,"112,105":0.085714,"105,114":0.171429,"114,109":0.088235,"109,115":0.147059,"109,105":0.142857,"111,102":0.088235,"102,116":-0.029412,"99,97":0.029412,"84,111":0.057143,"101,105":0.117647,"111,117":0.088235,"117,108":0.088235,"108,115":0.117647,"108,111":0.117647,"111,118":0.028571,"118,101":0.111111,"97,118":0.090909,"110,115":0.055556,"97,98":0.058824,"98,111":-0.083333,"101,46":0.121212,"78,111":0.142857,"115,101":0.090909,"114,98":-0.028571,"98,115":-0.171429,"105,109":0.147059,"109,109":0.2,"110,103":0.117647,"73,110":-0.055556,"84,104":0.058824,"104,111":0.055556,"117,103":0,"116,44":0.058824,"109,121":0.088235,"105,99":0.088235,"103,108":0.029412,"114,121":0.029412,"102,114":-0.181818,"114,97":0.058824,"97,117":0.088235,"83,105":0.057143,"105,108":0.114286,"98,117":0.088235,"117,116":0.117647,"104,121":0.058824,"121,109":0.083333,"109,110":-0.055556,"110,105":0.088235,"77,97":0.088235,"110,121":0.028571,"101,109":0.117647,"108,100":0.117647,"111,108":0.057143,"121,44":0.088235,"103,44":-0.057143,"100,105":0.147059,"105,118":0.114286,"72,121":-0.027778,"100,101":0.147059,"101,112":0.058824,"112,108":0.030303,"97,99":0.058824,"104,105":0.117647,"72,111":0.029412,"109,111":0.147059,"114,116":0.088235,"97,108":0,"116,115":0.088235,"104,97":0.088235,"97,116":0.085714,"112,114":0.088235,"84,114":0.029412,"114,117":0.117647,"104,115":0.085714,"118,97":0.055556,"111,115":0.088235,"112,111":0.088235,"116,111":0.085714,"79,110":0.085714,"101,111":-0.114286,"97,100":0.088235,"104,114":0.117647,"116,8217":0.058824,"8217,115":0.088235,"100,111":0.117647,"115,46":0.029412,"103,111":0.088235,"115,104":0,"103,114":0.060606,"72,69":0.131579,"69,78":0.078947,"78,82":0.052632,"82,89":0.026316,"89,8217":0.078947,"8217,83":0.131579,"71,82":0.083888,"82,65":0.083888,"65,86":0.083888,"86,69":0.167776,"69,46":0.157895,"49,49":0.328172981424,"49,53":0.36919499380799997,"83,116":0.205882,"105,100":0.088235,"99,111":0.058824,"101,99":0.088235,"99,114":0.030303,"101,100":0.088235,"117,110":0.147059,"100,44":0.176471,"107,101":0.147059,"110,97":0.117647,"114,114":0.030303,"119,104":0.088235,"108,97":0.121212,"97,121":0.029412,"117,112":0.088235,"109,112":0.176471,"112,101":0.090909,"108,99":0.147059,"119,111":0.147059,"117,115":0.121212,"116,116":0.088235,"100,97":0.117647,"121,46":0.176471,"121,111":0.176471,"66,101":0.117647,"114,99":0.029412,"101,8212":0.147059,"100,114":0.117647,"100,8212":0.029412,"110,8217":0.088235,"112,104":0.058824,"111,112":0.088235,"116,114":0.058824,"105,102":0.205882,"108,8212":0,"99,107":0.029412,"112,119":0.088235,"119,97":0.088235,"114,100":0.058824,"77,121":0.029412,"97,119":0.029412,"8212,109":0.088235,"97,105":0.088235,"108,44":0.117647,"97,109":0.117647,"102,117":-0.205882,"116,33":0.617647,"111,111":0.142857,"97,107":0,"112,116":0.085714,"111,100":0.117647,"100,59":0.342857,"66,97":0.147059,"107,119":0.205882,"109,98":0.181818,"80,97":0.117647,"108,102":0.176471,"102,8212":-0.294118,"8212,112":0.029412,"99,108":0,"121,33":0.636364,"114,115":0.058824,"102,101":-0.235294,"87,97":0.117647,"105,107":0.088235,"102,44":-0.294118,"100,119":0.117647,"104,33":0.529412,"79,104":0.117647,"115,33":0.5,"104,44":0.058824,"68,101":0.117647,"73,115":0.5,"109,117":0.176471,"116,121":0,"100,117":0.088235,"77,117":0.088235,"114,110":0.088235,"101,33":0.529412,"84,72":0.111628,"80,65":0.111628,"65,83":0.076923,"83,84":0.083721,"84,46":0.051282,"50,48":0.239818837104,"48,57":0.239818837104,"69,114":0.090909,"114,44":0.030303,"65,115":0.088235,"111,107":0.029412,"98,97":0.147059,"101,118":0.088235,"107,44":0.205882,"85,110":0.060606,"110,104":0.030303,"97,112":0.058824,"112,112":0.121212,"112,121":0.060606,"97,103":0,"76,105":0.088235,"103,105":0.088235,"99,105":0.058824,"107,105":0.147059,"105,122":0.117647,"122,122":0.029412,"122,121":0,"103,97":0.058824,"110,44":0.205882,"111,121":0.088235,"70,114":0.058824,"101,8217":0.058824,"119,110":0.090909,"110,46":0.205882,"89,101":0.058824,"66,117":0.176471,"111,116":0.058824,"101,59":0.470588,"83,109":0.205882,"116,119":0.088235,"110,107":0.058824,"45,112":0.088235,"115,117":0.088235,"69,97":0.090909,"116,117":0,"117,114":0.117647,"99,116":0.088235,"114,46":0.029412,"97,59":0.441176,"108,46":0.176471,"117,100":0.088235,"111,44":0.088235,"87,101":0.235294,"66,121":0.060606,"112,117":0.147059,"114,103":0.029412,"100,8217":0.088235,"105,98":0.117647,"115,99":0.088235,"99,117":0.058824,"101,120":0.088235,"120,99":0.058824,"69,120":0.029412,"120,112":0.058824,"107,110":0.147059,"115,8212":0,"116,8212":0,"65,114":0.029412,"115,59":0.515152,"116,46":0.090909},"kerning2":{"56,49":-0.29237302944,"65,85":-0.13855799999999996,"85,82":0.16551699999999991,"82,69":0.03672399999999998,"69,76":-0.025152000000000063,"76,73":-0.00892499999999996,"73,65":-0.03975700000000004,"65,46":0.14543699999999998,"83,104":-0.02852100000000002,"104,101":0.115865,"115,116":0.0588240000000001,"116,97":0.05882299999999996,"97,110":0.030252999999999974,"110,100":0.11764700000000006,"100,115":0.21390300000000007,"98,101":0.11764700000000006,"101,102":0,"102,111":-0.264706,"111,114":0.08823499999999995,"114,101":0.0588240000000001,"109,101":0.17647100000000004,"110,111":0.11764699999999995,"111,119":0.11764700000000006,"119,44":0.117647,"65,110":0.05882399999999999,"105,110":0.08823599999999998,"110,102":0.17647100000000004,"102,97":-0.32352900000000007,"110,116":0.09663900000000003,"116,105":0,"110,101":0.11764700000000006,"116,101":0.029411999999999994,"101,108":0.015152000000000054,"108,108":0.08823499999999995,"108,105":0.08823500000000001,"105,103":0.08571400000000007,"103,101":0.08823600000000009,"101,110":0.05882399999999999,"110,99":0.08823500000000006,"99,101":0.0588240000000001,"101,44":0.006535999999999986,"87,105":0.18823499999999999,"105,116":0.11764700000000006,"116,104":0.0008909999999999751,"115,119":-0.038654999999999884,"119,101":0.11764700000000006,"101,101":0.08823600000000009,"101,116":0.07932300000000003,"116,110":0.14453800000000006,"101,115":0.06684500000000004,"115,115":0.03743300000000005,"111,110":0.08823599999999998,"101,114":0.08377900000000005,"98,114":0.08377900000000005,"114,111":0.05882299999999996,"119,46":0.117647,"72,101":0.009804000000000035,"114,105":0.07308300000000001,"103,104":0.0017319999999999558,"104,116":0.08823500000000006,"116,45":0.043698000000000015,"45,98":-0.029411999999999994,"98,108":0.08823499999999995,"108,117":0.23109199999999996,"117,101":0.09075700000000009,"101,121":-0.02689000000000008,"121,101":0.11764700000000006,"69,108":0.014286000000000021,"108,121":0.028572000000000042,"121,115":0.101298,"115,105":0.058823000000000014,"105,97":0.1747899999999999,"83,112":0.14705900000000005,"112,97":0.08734399999999998,"97,114":0.05347599999999997,"114,107":0.03030299999999997,"107,108":0.14705900000000005,"108,101":0.11932799999999999,"119,105":0.13109200000000004,"115,111":0.05882299999999996,"111,109":0.1301239999999999,"116,108":-0.04285699999999998,"118,105":0.117647,"105,115":0.06684500000000004,"105,111":0.11680599999999985,"79,102":0.14705900000000005,"101,97":0.05882299999999996,"114,108":0.08823499999999995,"105,101":0.09075700000000009,"104,117":0.08823499999999995,"117,109":0.10071300000000005,"109,97":0.11764699999999995,"110,108":0.15714300000000003,"115,110":-0.11260500000000007,"115,44":0.029411999999999994,"83,117":0.05882299999999996,"117,99":0.11764700000000006,"99,104":0.03030299999999997,"97,115":0.06060600000000005,"115,112":0.05882399999999999,"112,105":0.07394899999999999,"105,114":0.11764700000000006,"114,109":0.10071300000000005,"109,115":0.125668,"109,105":0.15966399999999997,"111,102":0.08823600000000009,"102,116":0.03949600000000009,"99,97":0,"84,111":0.031091999999999897,"101,105":0.147059,"111,117":0.11764699999999995,"117,108":0.11764699999999995,"108,115":0.101298,"108,111":0.08823499999999995,"111,118":0.08823499999999995,"118,101":0.0588240000000001,"97,118":0.08823499999999995,"110,115":0.05050500000000002,"97,98":0.029411999999999994,"98,111":-0.07843200000000006,"101,46":0.120915,"78,111":0.11680599999999985,"115,101":0.0588240000000001,"114,98":0.08487400000000012,"98,115":-0.07012999999999991,"105,109":0.19567099999999993,"109,109":0.08138500000000004,"110,103":0.11764700000000006,"73,110":-0.08006500000000005,"84,104":0.0008909999999999751,"104,111":0.05882299999999996,"117,103":0,"116,44":0.029411999999999994,"109,121":0.09075699999999998,"105,99":0.09159600000000001,"103,108":-0.029411999999999994,"114,121":-0.02510800000000013,"102,114":-0.25042,"114,97":0.05882299999999996,"97,117":0.08823499999999995,"83,105":-0.01176499999999997,"105,108":0.10606099999999996,"98,117":0.11680599999999985,"117,116":0.14705900000000005,"104,121":0.09075699999999998,"121,109":0.03535299999999997,"109,110":0.08739499999999989,"110,105":0.10252100000000003,"77,97":0.029411999999999994,"110,121":0.028572000000000042,"101,109":0.10071300000000005,"108,100":0.14705900000000005,"111,108":0,"121,44":0.08823500000000001,"103,44":-0.039495999999999976,"100,105":0.13109200000000004,"105,118":0.08823499999999995,"72,121":-0.08571400000000007,"100,101":0.11764700000000006,"101,112":0.028570999999999902,"112,108":0.04545500000000002,"97,99":0.05882299999999996,"104,105":0.117647,"72,111":0.029410999999999965,"109,111":0.11764699999999995,"114,116":0.0588240000000001,"97,108":0.05882399999999999,"116,115":0.06684500000000004,"104,97":0.05882299999999996,"97,116":0.08823500000000006,"112,114":0.05882299999999996,"84,114":0,"114,117":0.11764699999999995,"104,115":0.044156000000000084,"118,97":0.006535999999999986,"111,115":0.06684500000000004,"112,111":0.05882299999999996,"116,111":0.08823499999999995,"79,110":0.030252999999999974,"101,111":-0.026051000000000046,"97,100":0.05882399999999999,"104,114":0.11764700000000006,"116,8217":0.058823000000000014,"8217,115":0.09625600000000001,"100,111":0.11764699999999995,"115,46":0.147059,"103,111":0.08823499999999995,"115,104":0.0008909999999999751,"103,114":0.029411999999999994,"72,69":-0.34453200000000006,"69,78":-0.3278190000000001,"78,82":-0.21887499999999993,"82,89":-0.4241489999999999,"89,8217":0.03870000000000001,"8217,83":-0.27554200000000006,"71,82":0.129923,"82,65":0.03649999999999998,"65,86":0.08388799999999996,"86,69":0.16777599999999993,"69,46":0.12383899999999998,"49,49":0.3281745402480001,"49,53":0.36919499380800014,"83,116":0.11764700000000006,"105,100":0.11764700000000006,"99,111":0.05882299999999996,"101,99":0.08467000000000002,"99,114":0.029411999999999994,"101,100":0.11764700000000006,"117,110":0.11764799999999997,"100,44":0.147059,"107,101":0.14616800000000008,"110,97":0.11764699999999995,"114,114":0.05882299999999996,"119,104":0.11853800000000003,"108,97":0.14794999999999991,"97,121":0.03549800000000003,"117,112":0.08823500000000006,"109,112":0.17647100000000004,"112,101":0.08823600000000009,"108,99":0.11764700000000006,"119,111":0.11764699999999995,"117,115":0.09625600000000001,"116,116":0.08823500000000006,"100,97":0.11764699999999995,"121,46":0.176471,"121,111":0.14705899999999994,"66,101":0.08823600000000009,"114,99":0.029410999999999965,"101,8212":0.0882360000000002,"100,114":0.08823499999999995,"100,8212":0.029412000000000216,"110,8217":0.08823500000000001,"112,104":0.05971499999999996,"111,112":0.05882399999999999,"116,114":0.08823499999999995,"105,102":0.17647100000000004,"108,8212":0,"99,107":0,"112,119":0.08823500000000006,"119,97":0.05882299999999996,"114,100":0.05882399999999999,"77,121":0.0025209999999999955,"97,119":0.05882399999999999,"8212,109":0.10071300000000005,"97,105":0.07308300000000001,"108,44":0.08823500000000001,"97,109":0.07130100000000006,"102,117":-0.20588300000000004,"116,33":0.5882350000000001,"111,111":0.11680599999999985,"97,107":-0.029411999999999994,"112,116":0.0680670000000001,"111,100":0.11764700000000006,"100,59":0.301681,"66,97":0.08823499999999995,"107,119":0.14705900000000005,"109,98":0.21301199999999998,"80,97":0.08823499999999995,"108,102":0.14705900000000005,"102,8212":-0.35294099999999995,"8212,112":0.029411999999999994,"99,108":0,"121,33":0.6167560000000001,"114,115":0.03743300000000005,"102,101":-0.235294,"87,97":0.08823499999999995,"105,107":0.11764700000000006,"102,44":-0.264706,"100,119":0.05882399999999999,"104,33":0.529412,"79,104":0.14795000000000003,"115,33":0.49999999999999994,"104,44":0.058823000000000014,"68,101":0.08823600000000009,"73,115":0.47860899999999995,"109,117":0.20944700000000005,"116,121":0.0025209999999999955,"100,117":0.14705899999999994,"77,117":0.08823499999999995,"114,110":0.029411999999999994,"101,33":0.49999999999999994,"84,72":-0.020154999999999923,"80,65":0.08919300000000008,"65,83":-0.0013680000000000359,"83,84":-0.02157600000000004,"84,46":0.11236799999999997,"50,48":0.2398188371040002,"48,57":0.2398188371040002,"69,114":0.08377900000000005,"114,44":0.04188900000000001,"65,115":0.09625600000000001,"111,107":0.05882399999999999,"98,97":0.11764699999999995,"101,118":0.14705899999999994,"107,44":0.176471,"85,110":0.08912699999999996,"110,104":0.06060599999999994,"97,112":0.06060599999999994,"112,112":0.15151500000000007,"112,121":0.065801,"97,103":-0.029411999999999994,"76,105":0.147059,"103,105":0.058823000000000014,"99,105":0.02941100000000002,"107,105":0.08823500000000001,"105,122":0.08823500000000006,"122,122":0.029410999999999965,"122,121":0.0025209999999999955,"103,97":0.05882299999999996,"110,44":0.176471,"111,121":0.03193299999999999,"70,114":0.08823499999999995,"101,8217":0.058823000000000014,"119,110":0.11942999999999993,"110,46":0.20588299999999998,"89,101":0.0588240000000001,"66,117":0.14705899999999994,"111,116":0.08823500000000006,"101,59":0.47058900000000004,"83,109":0.07130100000000006,"116,119":0.05882399999999999,"110,107":0.05882399999999999,"45,112":0.08823500000000006,"115,117":0.05882299999999996,"69,97":0.0570409999999999,"116,117":0.029410999999999965,"117,114":0.14438499999999999,"99,116":0.08823500000000006,"114,46":0.029411999999999994,"97,59":0.44117700000000004,"108,46":0.176471,"117,100":0.05882399999999999,"111,44":0.058823000000000014,"87,101":0.20588300000000004,"66,121":0.09610399999999997,"112,117":0.029410999999999965,"114,103":0,"100,8217":0.029411999999999994,"105,98":0.11764700000000006,"115,99":0.08823500000000006,"99,117":0.05882299999999996,"101,120":0.08823599999999998,"120,99":0.08823500000000006,"69,120":0.029411999999999994,"120,112":0.05882399999999999,"107,110":0.05882399999999999,"115,8212":-0.029411000000000076,"116,8212":0,"65,114":0.05882299999999996,"115,59":0.49821799999999994,"116,46":0.040107000000000004},"variants":{},"heightCaps":1.558824,"obs":2344,"obsCaps":128},"italic":{"width":{},"height":{},"kerning":{},"kerning2":{},"variants":{"serif_italic_y":false,"serif_open_k":true,"serif_pointy_vw":true,"serif_stem_sans_pq":true},"heightCaps":0,"obs":0,"obsCaps":0},"small-caps":{"width":{},"height":{},"kerning":{},"kerning2":{},"variants":{},"heightCaps":0,"obs":0,"obsCaps":0},"obs":2344}}'></meta>
+	<meta name='default-font' content='SerifDefault'></meta>
+	<meta name='sans-font' content='Carlito'></meta>
+	<meta name='serif-font' content='Century'></meta>
+	<meta name='enable-opt' content='true'></meta>
+	<meta name='layout' content='[{"default":true,"boxes":{}},{"default":true,"boxes":{}},{"default":true,"boxes":{}}]'></meta>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+	<meta name='ocr-system' content='scribeocr' />
+	<meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize'/>
+</head>
+<body>
+	<div class='ocr_page' title='bbox 0 0 1938 3355'>
+		<span class='ocr_line' title="bbox 691 268 1633 324; baseline 0 -8; x_x_height 38; x_asc_height 55">
+			<span class='ocrx_word' id='word_1_0' title='bbox 691 278 968 317;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>annnun.</span>
+			<span class='ocrx_word' id='word_1_1' title='bbox 1563 268 1633 324;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>81</span>
+		</span>
+		<span class='ocr_line' title="bbox 663 453 1008 509; baseline 0.005797 -2; x_x_height 36.25; x_asc_height 54">
+			<span class='ocrx_word' id='word_1_2' title='bbox 663 453 1008 509;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>AURELIA.</span>
+		</span>
+		<span class='ocr_line' title="bbox 328 605 1027 676; baseline -0.001431 -16; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_1_3' title='bbox 328 605 591 673;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>Beautiful,</span>
+			<span class='ocrx_word' id='word_1_4' title='bbox 615 607 716 659;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_1_5' title='bbox 753 608 1027 676;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>spirit-like,</span>
+		</span>
+		<span class='ocr_line' title="bbox 394 699 1175 765; baseline -0.002561 -13; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_6' title='bbox 394 699 497 753;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>She</span>
+			<span class='ocrx_word' id='word_1_7' title='bbox 523 700 700 752;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>stands</span>
+			<span class='ocrx_word' id='word_1_8' title='bbox 724 700 897 752;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>before</span>
+			<span class='ocrx_word' id='word_1_9' title='bbox 922 718 1008 754;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>me</span>
+			<span class='ocrx_word' id='word_1_10' title='bbox 1042 717 1175 765;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>now,</span>
+		</span>
+		<span class='ocr_line' title="bbox 322 790 1030 865; baseline -0.004237 -19; x_x_height 37; x_asc_height 51">
+			<span class='ocrx_word' id='word_1_11' title='bbox 322 790 407 846;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>An</span>
+			<span class='ocrx_word' id='word_1_12' title='bbox 429 792 665 846;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>infantine</span>
+			<span class='ocrx_word' id='word_1_13' title='bbox 701 793 1030 865;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>intelligence,</span>
+		</span>
+		<span class='ocr_line' title="bbox 396 883 1242 940; baseline 0 -1; x_x_height 35; x_asc_height 53">
+			<span class='ocrx_word' id='word_1_14' title='bbox 396 883 544 940;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>With</span>
+			<span class='ocrx_word' id='word_1_15' title='bbox 569 895 835 940;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sweetness</span>
+			<span class='ocrx_word' id='word_1_16' title='bbox 857 903 925 940;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>on</span>
+			<span class='ocrx_word' id='word_1_17' title='bbox 962 886 1053 939;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>her</span>
+			<span class='ocrx_word' id='word_1_18' title='bbox 1088 886 1242 939;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>brow.</span>
+		</span>
+		<span class='ocr_line' title="bbox 322 976 1172 1049; baseline 0 -18; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_19' title='bbox 322 977 439 1031;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Her</span>
+			<span class='ocrx_word' id='word_1_20' title='bbox 473 979 781 1049;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>bright-blue</span>
+			<span class='ocrx_word' id='word_1_21' title='bbox 803 996 929 1048;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>eyes</span>
+			<span class='ocrx_word' id='word_1_22' title='bbox 954 976 1172 1047;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Elysian</span>
+		</span>
+		<span class='ocr_line' title="bbox 324 1067 1242 1139; baseline 0.002179 -20; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_23' title='bbox 324 1067 543 1139;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Sparkle</span>
+			<span class='ocrx_word' id='word_1_24' title='bbox 572 1067 695 1121;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>with</span>
+			<span class='ocrx_word' id='word_1_25' title='bbox 720 1084 867 1119;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>some</span>
+			<span class='ocrx_word' id='word_1_26' title='bbox 881 1070 1058 1135;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>gentle</span>
+			<span class='ocrx_word' id='word_1_27' title='bbox 1081 1070 1242 1121;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>vision</span>
+		</span>
+		<span class='ocr_line' title="bbox 320 1155 1171 1222; baseline 0.001175 -13; x_x_height 35; x_asc_height 53">
+			<span class='ocrx_word' id='word_1_28' title='bbox 320 1155 401 1210;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Of</span>
+			<span class='ocrx_word' id='word_1_29' title='bbox 419 1156 623 1210;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>earliest</span>
+			<span class='ocrx_word' id='word_1_30' title='bbox 641 1157 830 1210;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>human</span>
+			<span class='ocrx_word' id='word_1_31' title='bbox 856 1157 1171 1222;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sinlessness,</span>
+		</span>
+		<span class='ocr_line' title="bbox 320 1250 1275 1322; baseline 0 -20; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_32' title='bbox 320 1250 455 1302;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Such</span>
+			<span class='ocrx_word' id='word_1_33' title='bbox 478 1268 535 1304;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>as</span>
+			<span class='ocrx_word' id='word_1_34' title='bbox 570 1252 714 1322;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>spirit</span>
+			<span class='ocrx_word' id='word_1_35' title='bbox 747 1253 908 1304;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>forms</span>
+			<span class='ocrx_word' id='word_1_36' title='bbox 927 1250 1095 1321;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>might</span>
+			<span class='ocrx_word' id='word_1_37' title='bbox 1117 1269 1275 1322;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>press,</span>
+		</span>
+		<span class='ocr_line' title="bbox 323 1342 1171 1409; baseline 0.001179 -12; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_38' title='bbox 323 1342 471 1398;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>With</span>
+			<span class='ocrx_word' id='word_1_39' title='bbox 495 1362 528 1397;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_1_40' title='bbox 562 1345 667 1397;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>soft</span>
+			<span class='ocrx_word' id='word_1_41' title='bbox 689 1345 790 1398;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_1_42' title='bbox 815 1355 974 1398;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sweet</span>
+			<span class='ocrx_word' id='word_1_43' title='bbox 991 1362 1171 1409;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>caress,</span>
+		</span>
+		<span class='ocr_line' title="bbox 315 1434 1207 1508; baseline 0.001121 -19; x_x_height 35; x_asc_height 51">
+			<span class='ocrx_word' id='word_1_44' title='bbox 315 1434 397 1489;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>To</span>
+			<span class='ocrx_word' id='word_1_45' title='bbox 415 1437 546 1490;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>their</span>
+			<span class='ocrx_word' id='word_1_46' title='bbox 570 1437 706 1490;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>souls</span>
+			<span class='ocrx_word' id='word_1_47' title='bbox 722 1437 784 1490;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_1_48' title='bbox 798 1437 926 1508;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>light</span>
+			<span class='ocrx_word' id='word_1_49' title='bbox 947 1438 1049 1490;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_1_50' title='bbox 1073 1438 1207 1501;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>love,</span>
+		</span>
+		<span class='ocr_line' title="bbox 321 1529 1239 1584; baseline 0.001089 -1; x_x_height 36; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_51' title='bbox 321 1529 379 1583;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>In</span>
+			<span class='ocrx_word' id='word_1_52' title='bbox 403 1529 489 1583;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_1_53' title='bbox 513 1530 706 1584;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>heaven</span>
+			<span class='ocrx_word' id='word_1_54' title='bbox 732 1530 794 1584;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_1_55' title='bbox 819 1530 1037 1584;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>heavens</span>
+			<span class='ocrx_word' id='word_1_56' title='bbox 1057 1531 1239 1584;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>above.</span>
+		</span>
+		<span class='ocr_line' title="bbox 321 1623 1422 1693; baseline 0 -17; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_57' title='bbox 321 1623 458 1676;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Now</span>
+			<span class='ocrx_word' id='word_1_58' title='bbox 483 1624 621 1676;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>these</span>
+			<span class='ocrx_word' id='word_1_59' title='bbox 648 1624 852 1693;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>flashing</span>
+			<span class='ocrx_word' id='word_1_60' title='bbox 875 1625 997 1676;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>orbs</span>
+			<span class='ocrx_word' id='word_1_61' title='bbox 1020 1641 1106 1676;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>are</span>
+			<span class='ocrx_word' id='word_1_62' title='bbox 1130 1625 1422 1693;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>swimming</span>
+		</span>
+		<span class='ocr_line' title="bbox 388 1716 1158 1786; baseline -0.001299 -17; x_x_height 36; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_63' title='bbox 388 1716 442 1769;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>In</span>
+			<span class='ocrx_word' id='word_1_64' title='bbox 467 1733 500 1768;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_1_65' title='bbox 520 1716 689 1786;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>enlmy</span>
+			<span class='ocrx_word' id='word_1_66' title='bbox 714 1733 800 1769;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sea</span>
+			<span class='ocrx_word' id='word_1_67' title='bbox 823 1717 884 1768;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_1_68' title='bbox 907 1716 1158 1785;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Thought,</span>
+		</span>
+		<span class='ocr_line' title="bbox 391 1796 1207 1880; baseline -0.002451 -19; x_x_height 35; x_asc_height 49">
+			<span class='ocrx_word' id='word_1_69' title='bbox 391 1796 542 1864;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>With</span>
+			<span class='ocrx_word' id='word_1_70' title='bbox 566 1825 599 1861;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_1_71' title='bbox 622 1810 807 1880;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mystic</span>
+			<span class='ocrx_word' id='word_1_72' title='bbox 828 1808 975 1879;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>glory</span>
+			<span class='ocrx_word' id='word_1_73' title='bbox 992 1808 1207 1879;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>fraught,</span>
+		</span>
+		<span class='ocr_line' title="bbox 312 1900 1167 1973; baseline 0.00117 -19; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_74' title='bbox 312 1900 533 1973;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Silently</span>
+			<span class='ocrx_word' id='word_1_75' title='bbox 556 1903 651 1956;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>but</span>
+			<span class='ocrx_word' id='word_1_76' title='bbox 682 1903 895 1972;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sweetly</span>
+			<span class='ocrx_word' id='word_1_77' title='bbox 921 1902 1167 1972;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>hymning</span>
+		</span>
+		<span class='ocr_line' title="bbox 313 1993 1250 2065; baseline 0 -17; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_78' title='bbox 313 1993 481 2065;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Many</span>
+			<span class='ocrx_word' id='word_1_79' title='bbox 505 2012 571 2048;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>an</span>
+			<span class='ocrx_word' id='word_1_80' title='bbox 606 1995 810 2049;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>anthem</span>
+			<span class='ocrx_word' id='word_1_81' title='bbox 837 1996 966 2048;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mild</span>
+			<span class='ocrx_word' id='word_1_82' title='bbox 989 1996 1086 2048;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_1_83' title='bbox 1113 1995 1250 2065;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>holy,</span>
+		</span>
+		<span class='ocr_line' title="bbox 313 2087 1276 2160; baseline -0.001038 -17; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_84' title='bbox 313 2087 481 2160;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Many</span>
+			<span class='ocrx_word' id='word_1_85' title='bbox 503 2106 535 2143;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_1_86' title='bbox 553 2106 692 2160;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>song,</span>
+			<span class='ocrx_word' id='word_1_87' title='bbox 728 2090 897 2143;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>divine</span>
+			<span class='ocrx_word' id='word_1_88' title='bbox 920 2090 1018 2142;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_1_89' title='bbox 1040 2089 1276 2159;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>lowly—</span>
+		</span>
+		<span class='ocr_line' title="bbox 314 2180 1375 2252; baseline -0.001885 -17; x_x_height 36; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_90' title='bbox 314 2180 531 2252;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Hymns</span>
+			<span class='ocrx_word' id='word_1_91' title='bbox 553 2183 652 2235;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_1_92' title='bbox 675 2183 909 2236;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>anthems</span>
+			<span class='ocrx_word' id='word_1_93' title='bbox 933 2183 1121 2252;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>deeply</span>
+			<span class='ocrx_word' id='word_1_94' title='bbox 1147 2183 1375 2252;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>teaching</span>
+		</span>
+		<span class='ocr_line' title="bbox 380 2275 1151 2340; baseline -0.001297 -12; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_95' title='bbox 380 2275 521 2329;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>How</span>
+			<span class='ocrx_word' id='word_1_96' title='bbox 543 2277 808 2331;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>immortal</span>
+			<span class='ocrx_word' id='word_1_97' title='bbox 833 2278 879 2329;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>is</span>
+			<span class='ocrx_word' id='word_1_98' title='bbox 902 2275 990 2330;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_1_99' title='bbox 1005 2275 1116 2329;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>soul</span>
+			<span class='ocrx_word' id='word_1_100' title='bbox 1131 2296 1151 2340;x_wconf 0'>;</span>
+		</span>
+		<span class='ocr_line' title="bbox 311 2365 1345 2440; baseline 0 -21; x_x_height 36; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_101' title='bbox 311 2365 587 2439;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Thoughts,</span>
+			<span class='ocrx_word' id='word_1_102' title='bbox 607 2369 717 2423;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>that</span>
+			<span class='ocrx_word' id='word_1_103' title='bbox 737 2387 824 2422;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>are</span>
+			<span class='ocrx_word' id='word_1_104' title='bbox 847 2370 1058 2440;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>intently</span>
+			<span class='ocrx_word' id='word_1_105' title='bbox 1077 2367 1345 2439;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>preaching</span>
+		</span>
+		<span class='ocr_line' title="bbox 384 2459 1306 2529; baseline -0.002169 -14; x_x_height 36; x_asc_height 50">
+			<span class='ocrx_word' id='word_1_106' title='bbox 384 2459 589 2529;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Truths,</span>
+			<span class='ocrx_word' id='word_1_107' title='bbox 612 2480 671 2514;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>as</span>
+			<span class='ocrx_word' id='word_1_108' title='bbox 688 2471 801 2516;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>vast</span>
+			<span class='ocrx_word' id='word_1_109' title='bbox 823 2480 882 2515;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>as</span>
+			<span class='ocrx_word' id='word_1_110' title='bbox 905 2462 1054 2515;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>those</span>
+			<span class='ocrx_word' id='word_1_111' title='bbox 1078 2462 1188 2515;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>that</span>
+			<span class='ocrx_word' id='word_1_112' title='bbox 1212 2462 1306 2514;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>roll</span>
+		</span>
+		<span class='ocr_line' title="bbox 387 2554 1234 2626; baseline -0.005903 -16; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_113' title='bbox 387 2554 697 2626;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>Ceaselessly</span>
+			<span class='ocrx_word' id='word_1_114' title='bbox 723 2555 857 2607;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>from</span>
+			<span class='ocrx_word' id='word_1_115' title='bbox 881 2554 1001 2623;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>pole</span>
+			<span class='ocrx_word' id='word_1_116' title='bbox 1024 2563 1080 2606;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_1_117' title='bbox 1104 2554 1234 2623;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>pole,</span>
+		</span>
+		<span class='ocr_line' title="bbox 316 2647 1002 2719; baseline -0.004373 -17; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_118' title='bbox 316 2649 400 2702;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>On</span>
+			<span class='ocrx_word' id='word_1_119' title='bbox 425 2650 515 2702;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_1_120' title='bbox 538 2650 782 2702;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>meteoric</span>
+			<span class='ocrx_word' id='word_1_121' title='bbox 805 2647 1002 2719;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>pinions</span>
+		</span>
+		<span class='ocr_line' title="bbox 311 2738 1589 2814; baseline -0.007825 -16; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_1_122' title='bbox 311 2742 448 2798;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>That</span>
+			<span class='ocrx_word' id='word_1_123' title='bbox 482 2743 666 2814;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>spread</span>
+			<span class='ocrx_word' id='word_1_124' title='bbox 694 2742 818 2814;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>light</span>
+			<span class='ocrx_word' id='word_1_125' title='bbox 844 2741 1058 2810;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>through</span>
+			<span class='ocrx_word' id='word_1_126' title='bbox 1082 2738 1267 2809;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>night’s</span>
+			<span class='ocrx_word' id='word_1_127' title='bbox 1288 2738 1589 2790;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>dominions.</span>
+		</span>
+		<span class='ocr_line' title="bbox 315 2908 1418 2985; baseline -0.00816 -18; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_1_128' title='bbox 315 2913 460 2967;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Here</span>
+			<span class='ocrx_word' id='word_1_129' title='bbox 483 2914 580 2967;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_1_130' title='bbox 601 2913 741 2965;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>there</span>
+			<span class='ocrx_word' id='word_1_131' title='bbox 760 2913 943 2985;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>golden</span>
+			<span class='ocrx_word' id='word_1_132' title='bbox 969 2911 1178 2981;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>ringlets</span>
+			<span class='ocrx_word' id='word_1_133' title='bbox 1212 2908 1418 2960;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>shadow</span>
+		</span>
+		<span class='ocr_line' title="bbox 381 3005 1380 3073; baseline -0.006006 -12; x_x_height 36; x_asc_height 52">
+			<span class='ocrx_word' id='word_1_134' title='bbox 381 3008 498 3061;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Her</span>
+			<span class='ocrx_word' id='word_1_135' title='bbox 522 3009 614 3063;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>fair</span>
+			<span class='ocrx_word' id='word_1_136' title='bbox 638 3009 780 3061;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>brow</span>
+			<span class='ocrx_word' id='word_1_137' title='bbox 806 3008 930 3060;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>with</span>
+			<span class='ocrx_word' id='word_1_138' title='bbox 955 3005 1194 3073;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>witching</span>
+			<span class='ocrx_word' id='word_1_139' title='bbox 1213 3017 1380 3073;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>grace,</span>
+		</span>
+		<span class='ocr_line' title="bbox 525 3103 583 3157; baseline 0 0; x_x_height 34.857139587402344; x_asc_height 54">
+			<span class='ocrx_word' id='word_1_140' title='bbox 525 3103 583 3157;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>D</span>
+		</span>
+	</div>
+	<div class='ocr_page' title='bbox 0 0 2000 3465'>
+		<span class='ocr_line' title="bbox 664 280 1753 342; baseline 0.004591 -5; x_x_height 38.000003814697266; x_asc_height 38">
+			<span class='ocrx_word' id='word_2_0' title='bbox 664 280 921 339;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>HENRY’S</span>
+			<span class='ocrx_word' id='word_2_1' title='bbox 963 301 1182 341;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>GRAVE.</span>
+			<span class='ocrx_word' id='word_2_2' title='bbox 1639 286 1753 342;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>115</span>
+		</span>
+		<span class='ocr_line' title="bbox 611 479 1259 535; baseline 0.003086 -2; x_x_height 35.761905670166016; x_asc_height 53">
+			<span class='ocrx_word' id='word_2_3' title='bbox 611 480 774 534;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>HEN</span>
+			<span class='ocrx_word' id='word_2_4' title='bbox 782 479 938 534;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>RY’S</span>
+			<span class='ocrx_word' id='word_2_5' title='bbox 980 480 1259 535;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>GRAVE.</span>
+		</span>
+		<span class='ocr_line' title="bbox 182 614 1346 686; baseline 0.001718 -20; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_6' title='bbox 182 614 434 686;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Standing</span>
+			<span class='ocrx_word' id='word_2_7' title='bbox 461 615 638 667;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>beside</span>
+			<span class='ocrx_word' id='word_2_8' title='bbox 666 615 751 667;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_9' title='bbox 779 616 1108 669;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>consecrated</span>
+			<span class='ocrx_word' id='word_2_10' title='bbox 1134 616 1346 682;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mound,</span>
+		</span>
+		<span class='ocr_line' title="bbox 254 708 1639 781; baseline 0.000722 -20; x_x_height 33; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_11' title='bbox 254 708 388 762;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>That</span>
+			<span class='ocrx_word' id='word_2_12' title='bbox 415 710 632 762;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>marked</span>
+			<span class='ocrx_word' id='word_2_13' title='bbox 656 710 744 763;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_14' title='bbox 784 728 986 764;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>narrow</span>
+			<span class='ocrx_word' id='word_2_15' title='bbox 1011 729 1174 781;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>grave</span>
+			<span class='ocrx_word' id='word_2_16' title='bbox 1202 711 1426 764;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>wherein</span>
+			<span class='ocrx_word' id='word_2_17' title='bbox 1445 711 1508 763;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>he</span>
+			<span class='ocrx_word' id='word_2_18' title='bbox 1538 711 1639 781;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>lay,</span>
+		</span>
+		<span class='ocr_line' title="bbox 182 803 1533 876; baseline 0.00148 -21; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_19' title='bbox 182 803 202 855;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>I</span>
+			<span class='ocrx_word' id='word_2_20' title='bbox 227 804 445 875;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>thought</span>
+			<span class='ocrx_word' id='word_2_21' title='bbox 472 823 610 876;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>upon</span>
+			<span class='ocrx_word' id='word_2_22' title='bbox 636 806 723 859;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_23' title='bbox 746 805 1044 876;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Trumpet’s</span>
+			<span class='ocrx_word' id='word_2_24' title='bbox 1071 806 1318 859;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>welcome</span>
+			<span class='ocrx_word' id='word_2_25' title='bbox 1355 806 1533 872;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sound,</span>
+		</span>
+		<span class='ocr_line' title="bbox 252 895 1457 967; baseline 0.00083 -18; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_26' title='bbox 252 895 389 950;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>That</span>
+			<span class='ocrx_word' id='word_2_27' title='bbox 414 898 588 950;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>would</span>
+			<span class='ocrx_word' id='word_2_28' title='bbox 613 914 795 951;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>arouse</span>
+			<span class='ocrx_word' id='word_2_29' title='bbox 836 897 943 949;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>him</span>
+			<span class='ocrx_word' id='word_2_30' title='bbox 971 898 1023 949;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>in</span>
+			<span class='ocrx_word' id='word_2_31' title='bbox 1051 897 1138 950;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_32' title='bbox 1163 898 1318 950;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>latter</span>
+			<span class='ocrx_word' id='word_2_33' title='bbox 1338 898 1457 967;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>day.</span>
+		</span>
+		<span class='ocr_line' title="bbox 179 1047 1421 1118; baseline -0.00161 -17; x_x_height 33; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_33b' title='bbox 179 1047 200 1101;x_wconf 0'>I</span>
+			<span class='ocrx_word' id='word_2_34b' title='bbox 219 1048 436 1118;x_wconf 0'>thought</span>
+			<span class='ocrx_word' id='word_2_35' title='bbox 462 1048 523 1101;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_36' title='bbox 540 1047 628 1101;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_37' title='bbox 653 1066 830 1118;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>young</span>
+			<span class='ocrx_word' id='word_2_38' title='bbox 856 1049 1021 1118;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>spirit,</span>
+			<span class='ocrx_word' id='word_2_39' title='bbox 1049 1048 1159 1100;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>that</span>
+			<span class='ocrx_word' id='word_2_40' title='bbox 1195 1048 1296 1100;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>had</span>
+			<span class='ocrx_word' id='word_2_41' title='bbox 1320 1048 1421 1100;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>fled</span>
+		</span>
+		<span class='ocr_line' title="bbox 252 1143 1509 1215; baseline 0 -19; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_2_42' title='bbox 252 1144 469 1215;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Beyond</span>
+			<span class='ocrx_word' id='word_2_43' title='bbox 496 1144 583 1197;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_44' title='bbox 610 1145 822 1197;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>keenest</span>
+			<span class='ocrx_word' id='word_2_45' title='bbox 847 1143 1026 1197;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>search</span>
+			<span class='ocrx_word' id='word_2_46' title='bbox 1053 1145 1113 1196;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_47' title='bbox 1123 1144 1316 1196;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>human</span>
+			<span class='ocrx_word' id='word_2_48' title='bbox 1336 1161 1509 1214;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>eye—</span>
+		</span>
+		<span class='ocr_line' title="bbox 179 1239 1387 1308; baseline 0 -17; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_49' title='bbox 179 1239 399 1308;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Beyond</span>
+			<span class='ocrx_word' id='word_2_50' title='bbox 425 1239 511 1291;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_51' title='bbox 538 1240 708 1292;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>limits</span>
+			<span class='ocrx_word' id='word_2_52' title='bbox 734 1240 796 1292;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_53' title='bbox 823 1257 854 1292;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_2_54' title='bbox 879 1240 1047 1292;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>world</span>
+			<span class='ocrx_word' id='word_2_55' title='bbox 1074 1239 1137 1292;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_56' title='bbox 1151 1239 1387 1292;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>dread—</span>
+		</span>
+		<span class='ocr_line' title="bbox 252 1333 1385 1405; baseline 0.000883 -19; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_2_57' title='bbox 252 1333 469 1405;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Beyond</span>
+			<span class='ocrx_word' id='word_2_58' title='bbox 496 1334 582 1387;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_59' title='bbox 608 1335 756 1388;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>reach</span>
+			<span class='ocrx_word' id='word_2_60' title='bbox 782 1335 844 1387;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_61' title='bbox 871 1333 1035 1387;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>man’s</span>
+			<span class='ocrx_word' id='word_2_62' title='bbox 1060 1334 1385 1405;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>philosophy.</span>
+		</span>
+		<span class='ocr_line' title="bbox 178 1483 1363 1565; baseline -0.000844 -27; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_63' title='bbox 178 1483 305 1565;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_2_64' title='bbox 331 1504 388 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>as</span>
+			<span class='ocrx_word' id='word_2_65' title='bbox 415 1486 435 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>I</span>
+			<span class='ocrx_word' id='word_2_66' title='bbox 462 1493 636 1539;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>strove</span>
+			<span class='ocrx_word' id='word_2_67' title='bbox 664 1493 719 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_2_68' title='bbox 744 1485 828 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>lift</span>
+			<span class='ocrx_word' id='word_2_69' title='bbox 850 1485 938 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_70' title='bbox 965 1486 1157 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>distant</span>
+			<span class='ocrx_word' id='word_2_71' title='bbox 1185 1486 1363 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>veil—</span>
+		</span>
+		<span class='ocr_line' title="bbox 249 1580 1460 1653; baseline 0.000826 -20; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_72' title='bbox 249 1580 328 1634;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>To</span>
+			<span class='ocrx_word' id='word_2_73' title='bbox 349 1582 494 1635;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>track</span>
+			<span class='ocrx_word' id='word_2_74' title='bbox 523 1581 608 1635;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_75' title='bbox 647 1582 796 1653;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>spirit</span>
+			<span class='ocrx_word' id='word_2_76' title='bbox 832 1582 884 1633;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>in</span>
+			<span class='ocrx_word' id='word_2_77' title='bbox 911 1582 974 1634;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>its</span>
+			<span class='ocrx_word' id='word_2_78' title='bbox 1002 1582 1215 1651;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>upward</span>
+			<span class='ocrx_word' id='word_2_79' title='bbox 1241 1580 1460 1651;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>flight—</span>
+		</span>
+		<span class='ocr_line' title="bbox 176 1675 1569 1747; baseline -0.001436 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_2_80' title='bbox 176 1675 279 1747;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>My</span>
+			<span class='ocrx_word' id='word_2_81' title='bbox 308 1677 452 1729;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mind</span>
+			<span class='ocrx_word' id='word_2_82' title='bbox 479 1695 586 1730;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>was</span>
+			<span class='ocrx_word' id='word_2_83' title='bbox 611 1677 931 1747;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>awed—my</span>
+			<span class='ocrx_word' id='word_2_84' title='bbox 958 1678 1124 1730;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>vision</span>
+			<span class='ocrx_word' id='word_2_85' title='bbox 1152 1677 1364 1729;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>seemed</span>
+			<span class='ocrx_word' id='word_2_86' title='bbox 1385 1684 1440 1729;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_2_87' title='bbox 1467 1676 1569 1743;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>fail,</span>
+		</span>
+		<span class='ocr_line' title="bbox 249 1769 1531 1842; baseline 0 -18; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_88' title='bbox 249 1769 373 1824;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_2_89' title='bbox 400 1773 468 1824;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>all</span>
+			<span class='ocrx_word' id='word_2_90' title='bbox 496 1773 708 1825;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>became</span>
+			<span class='ocrx_word' id='word_2_91' title='bbox 750 1771 994 1824;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>confused</span>
+			<span class='ocrx_word' id='word_2_92' title='bbox 1019 1789 1075 1823;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>as</span>
+			<span class='ocrx_word' id='word_2_93' title='bbox 1100 1771 1333 1824;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>blackest</span>
+			<span class='ocrx_word' id='word_2_94' title='bbox 1357 1771 1531 1842;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>night!</span>
+		</span>
+		<span class='ocr_line' title="bbox 176 1922 1275 1989; baseline -0.00273 -13; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_95' title='bbox 176 1923 196 1976;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>I</span>
+			<span class='ocrx_word' id='word_2_96' title='bbox 219 1941 323 1976;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>was</span>
+			<span class='ocrx_word' id='word_2_97' title='bbox 349 1941 413 1975;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>an</span>
+			<span class='ocrx_word' id='word_2_98' title='bbox 439 1931 584 1975;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>atom</span>
+			<span class='ocrx_word' id='word_2_99' title='bbox 609 1923 671 1975;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_100' title='bbox 687 1940 834 1975;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mere</span>
+			<span class='ocrx_word' id='word_2_101' title='bbox 859 1922 1051 1975;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mortal</span>
+			<span class='ocrx_word' id='word_2_102' title='bbox 1079 1922 1275 1989;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mould,</span>
+		</span>
+		<span class='ocr_line' title="bbox 249 2017 1715 2089; baseline 0.000682 -18; x_x_height 35; x_asc_height 52">
+			<span class='ocrx_word' id='word_2_103' title='bbox 249 2017 363 2072;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Too</span>
+			<span class='ocrx_word' id='word_2_104' title='bbox 388 2020 537 2072;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>weak</span>
+			<span class='ocrx_word' id='word_2_105' title='bbox 563 2025 618 2072;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_2_106' title='bbox 645 2020 816 2089;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>pierce</span>
+			<span class='ocrx_word' id='word_2_107' title='bbox 844 2018 931 2072;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_108' title='bbox 957 2018 1143 2089;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>depths</span>
+			<span class='ocrx_word' id='word_2_109' title='bbox 1163 2017 1274 2070;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>that</span>
+			<span class='ocrx_word' id='word_2_110' title='bbox 1300 2018 1414 2071;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>soul</span>
+			<span class='ocrx_word' id='word_2_111' title='bbox 1441 2017 1543 2071;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>had</span>
+			<span class='ocrx_word' id='word_2_112' title='bbox 1569 2021 1715 2087;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>trod;</span>
+		</span>
+		<span class='ocr_line' title="bbox 178 2114 1569 2185; baseline 0 -18; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_113' title='bbox 178 2115 458 2168;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Backward</span>
+			<span class='ocrx_word' id='word_2_114' title='bbox 485 2122 539 2167;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_2_115' title='bbox 565 2114 708 2167;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>earth</span>
+			<span class='ocrx_word' id='word_2_116' title='bbox 747 2132 843 2185;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>my</span>
+			<span class='ocrx_word' id='word_2_117' title='bbox 871 2114 1165 2185;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>wandering</span>
+			<span class='ocrx_word' id='word_2_118' title='bbox 1185 2131 1361 2165;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>senses</span>
+			<span class='ocrx_word' id='word_2_119' title='bbox 1387 2114 1569 2181;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>rolled,</span>
+		</span>
+		<span class='ocr_line' title="bbox 249 2208 1538 2280; baseline -0.000776 -18; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_120' title='bbox 249 2208 372 2263;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_2_121' title='bbox 399 2227 496 2280;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>my</span>
+			<span class='ocrx_word' id='word_2_122' title='bbox 523 2228 621 2280;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>eye</span>
+			<span class='ocrx_word' id='word_2_123' title='bbox 646 2210 820 2263;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>rested</span>
+			<span class='ocrx_word' id='word_2_124' title='bbox 846 2227 913 2261;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>on</span>
+			<span class='ocrx_word' id='word_2_125' title='bbox 940 2209 1025 2262;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_126' title='bbox 1052 2209 1342 2278;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>crumbling</span>
+			<span class='ocrx_word' id='word_2_127' title='bbox 1369 2210 1538 2261;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sod—</span>
+		</span>
+		<span class='ocr_line' title="bbox 179 2376 1313 2448; baseline 0.000882 -19; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_128' title='bbox 179 2376 308 2429;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Part</span>
+			<span class='ocrx_word' id='word_2_129' title='bbox 334 2376 396 2429;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_130' title='bbox 423 2378 822 2448;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>myself—poor</span>
+			<span class='ocrx_word' id='word_2_131' title='bbox 847 2376 1138 2447;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>perishable</span>
+			<span class='ocrx_word' id='word_2_132' title='bbox 1166 2376 1313 2448;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>clay!</span>
+		</span>
+		<span class='ocr_line' title="bbox 250 2471 1609 2543; baseline 0.000736 -19; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_2_133' title='bbox 250 2471 361 2524;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>The</span>
+			<span class='ocrx_word' id='word_2_134' title='bbox 390 2472 525 2526;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>child</span>
+			<span class='ocrx_word' id='word_2_135' title='bbox 552 2471 726 2525;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>whose</span>
+			<span class='ocrx_word' id='word_2_136' title='bbox 747 2489 891 2525;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>corse</span>
+			<span class='ocrx_word' id='word_2_137' title='bbox 910 2471 1133 2525;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>beneath</span>
+			<span class='ocrx_word' id='word_2_138' title='bbox 1158 2490 1256 2543;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>my</span>
+			<span class='ocrx_word' id='word_2_139' title='bbox 1284 2472 1388 2525;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>feet</span>
+			<span class='ocrx_word' id='word_2_140' title='bbox 1412 2472 1503 2525;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>did</span>
+			<span class='ocrx_word' id='word_2_141' title='bbox 1528 2472 1609 2539;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>lie,</span>
+		</span>
+		<span class='ocr_line' title="bbox 179 2567 1384 2638; baseline -0.00083 -17; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_142' title='bbox 179 2567 332 2636;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Was,</span>
+			<span class='ocrx_word' id='word_2_143' title='bbox 356 2569 459 2621;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>like</span>
+			<span class='ocrx_word' id='word_2_144' title='bbox 486 2569 694 2638;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>myself,</span>
+			<span class='ocrx_word' id='word_2_145' title='bbox 720 2569 817 2620;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>but</span>
+			<span class='ocrx_word' id='word_2_146' title='bbox 855 2569 1061 2635;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mortal,</span>
+			<span class='ocrx_word' id='word_2_147' title='bbox 1088 2569 1384 2638;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>yesterday,</span>
+		</span>
+		<span class='ocr_line' title="bbox 252 2661 1531 2734; baseline 0 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_2_148' title='bbox 252 2661 380 2717;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_2_149' title='bbox 404 2681 536 2731;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>now,</span>
+			<span class='ocrx_word' id='word_2_150' title='bbox 562 2681 593 2715;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_2_151' title='bbox 618 2664 832 2716;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>dweller</span>
+			<span class='ocrx_word' id='word_2_152' title='bbox 857 2663 982 2715;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>with</span>
+			<span class='ocrx_word' id='word_2_153' title='bbox 1009 2663 1094 2715;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_154' title='bbox 1121 2663 1257 2715;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>blest</span>
+			<span class='ocrx_word' id='word_2_155' title='bbox 1283 2680 1352 2716;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>on</span>
+			<span class='ocrx_word' id='word_2_156' title='bbox 1377 2662 1531 2734;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>high!</span>
+		</span>
+		<span class='ocr_line' title="bbox 196 2835 1386 2908; baseline -0.00084 -18; x_x_height 34; x_asc_height 53">
+			<span class='ocrx_word' id='word_2_157' title='bbox 196 2836 311 2891;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Oh!</span>
+			<span class='ocrx_word' id='word_2_158' title='bbox 351 2837 603 2908;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Mystery</span>
+			<span class='ocrx_word' id='word_2_159' title='bbox 625 2838 685 2890;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_2_160' title='bbox 701 2837 1013 2908;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Mysteries!</span>
+			<span class='ocrx_word' id='word_2_161' title='bbox 1055 2835 1154 2905;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Oh,</span>
+			<span class='ocrx_word' id='word_2_162' title='bbox 1182 2837 1386 2891;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Death!</span>
+		</span>
+		<span class='ocr_line' title="bbox 256 2932 1242 3004; baseline -0.002028 -18; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_163' title='bbox 256 2932 358 2986;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Isit</span>
+			<span class='ocrx_word' id='word_2_164' title='bbox 383 2934 487 2986;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_2_165' title='bbox 513 2952 663 2986;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>muse</span>
+			<span class='ocrx_word' id='word_2_166' title='bbox 691 2934 746 2985;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>in</span>
+			<span class='ocrx_word' id='word_2_167' title='bbox 772 2935 906 3004;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>deep</span>
+			<span class='ocrx_word' id='word_2_168' title='bbox 944 2933 1242 3003;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>solemnity,</span>
+		</span>
+		<span class='ocr_line' title="bbox 186 3026 1388 3099; baseline -0.000832 -19; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_169' title='bbox 186 3026 308 3081;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_2_170' title='bbox 336 3030 547 3081;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>wonder</span>
+			<span class='ocrx_word' id='word_2_171' title='bbox 573 3030 688 3082;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>how</span>
+			<span class='ocrx_word' id='word_2_172' title='bbox 718 3029 802 3082;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_2_173' title='bbox 831 3030 950 3082;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>dust</span>
+			<span class='ocrx_word' id='word_2_174' title='bbox 975 3028 1089 3081;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>that</span>
+			<span class='ocrx_word' id='word_2_175' title='bbox 1126 3028 1388 3099;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>perisheth</span>
+		</span>
+		<span class='ocr_line' title="bbox 260 3122 1494 3194; baseline 0.001621 -19; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_2_176' title='bbox 260 3122 409 3176;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Must</span>
+			<span class='ocrx_word' id='word_2_177' title='bbox 434 3142 553 3194;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>pass</span>
+			<span class='ocrx_word' id='word_2_178' title='bbox 579 3133 632 3177;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_2_179' title='bbox 658 3125 744 3177;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>life</span>
+			<span class='ocrx_word' id='word_2_180' title='bbox 770 3125 964 3177;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>eternal</span>
+			<span class='ocrx_word' id='word_2_181' title='bbox 990 3125 1084 3176;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>but</span>
+			<span class='ocrx_word' id='word_2_182' title='bbox 1110 3123 1328 3193;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>through</span>
+			<span class='ocrx_word' id='word_2_183' title='bbox 1348 3123 1494 3177;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>thee!</span>
+		</span>
+	</div>
+	<div class='ocr_page' title='bbox 0 0 2000 3465'>
+		<span class='ocr_line' title="bbox 814 281 1814 339; baseline -0.002 0; x_x_height 38.999999046325684; x_asc_height 39">
+			<span class='ocrx_word' id='word_3_0' title='bbox 814 298 931 339;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>THE</span>
+			<span class='ocrx_word' id='word_3_1' title='bbox 972 299 1133 339;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>PAST.</span>
+			<span class='ocrx_word' id='word_3_2' title='bbox 1700 281 1814 337;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>209</span>
+		</span>
+		<span class='ocr_line' title="bbox 771 472 1191 528; baseline 0.002381 -2; x_x_height 35.83333206176758; x_asc_height 53">
+			<span class='ocrx_word' id='word_3_3' title='bbox 771 473 930 527;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>THE</span>
+			<span class='ocrx_word' id='word_3_4' title='bbox 986 472 1191 528;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>PAST.</span>
+		</span>
+		<span class='ocr_line' title="bbox 237 608 1310 679; baseline 0 -17; x_x_height 33; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_5' title='bbox 237 608 401 663;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Erase</span>
+			<span class='ocrx_word' id='word_3_6' title='bbox 426 610 466 661;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>it</span>
+			<span class='ocrx_word' id='word_3_7' title='bbox 490 610 625 661;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>from</span>
+			<span class='ocrx_word' id='word_3_8' title='bbox 663 626 758 679;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>my</span>
+			<span class='ocrx_word' id='word_3_9' title='bbox 790 608 1060 677;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>memory!</span>
+			<span class='ocrx_word' id='word_3_10' title='bbox 1101 608 1197 674;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>for,</span>
+			<span class='ocrx_word' id='word_3_11' title='bbox 1223 608 1310 662;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>lo!</span>
+		</span>
+		<span class='ocr_line' title="bbox 237 703 1448 771; baseline -0.000826 -14; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_12' title='bbox 237 703 319 758;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>As</span>
+			<span class='ocrx_word' id='word_3_13' title='bbox 345 705 366 757;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>I</span>
+			<span class='ocrx_word' id='word_3_14' title='bbox 390 705 514 757;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>look</span>
+			<span class='ocrx_word' id='word_3_15' title='bbox 540 705 814 757;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>backward</span>
+			<span class='ocrx_word' id='word_3_16' title='bbox 841 722 906 757;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>on</span>
+			<span class='ocrx_word' id='word_3_17' title='bbox 933 705 1020 757;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_18' title='bbox 1046 705 1260 757;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>devious</span>
+			<span class='ocrx_word' id='word_3_19' title='bbox 1287 705 1448 771;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>track,</span>
+		</span>
+		<span class='ocr_line' title="bbox 242 799 1234 871; baseline -0.003024 -18; x_x_height 33; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_20' title='bbox 242 799 505 871;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Unhappy</span>
+			<span class='ocrx_word' id='word_3_21' title='bbox 524 800 722 870;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>images</span>
+			<span class='ocrx_word' id='word_3_22' title='bbox 748 817 835 852;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>are</span>
+			<span class='ocrx_word' id='word_3_23' title='bbox 862 818 983 852;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>seen</span>
+			<span class='ocrx_word' id='word_3_24' title='bbox 1010 808 1064 851;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_3_25' title='bbox 1101 817 1234 869;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>pass,</span>
+		</span>
+		<span class='ocr_line' title="bbox 240 892 1489 964; baseline -0.003203 -15; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_26' title='bbox 240 895 373 949;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Like</span>
+			<span class='ocrx_word' id='word_3_27' title='bbox 398 895 485 947;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_28' title='bbox 513 894 637 947;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>wild</span>
+			<span class='ocrx_word' id='word_3_29' title='bbox 664 892 847 963;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>shapes</span>
+			<span class='ocrx_word' id='word_3_30' title='bbox 873 894 923 945;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>in</span>
+			<span class='ocrx_word' id='word_3_31' title='bbox 951 911 981 945;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_3_32' title='bbox 1006 892 1311 964;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Magician’s</span>
+			<span class='ocrx_word' id='word_3_33' title='bbox 1336 894 1489 964;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>glass,</span>
+		</span>
+		<span class='ocr_line' title="bbox 242 989 1424 1060; baseline -0.000846 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_34' title='bbox 242 989 462 1060;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Making</span>
+			<span class='ocrx_word' id='word_3_35' title='bbox 487 989 574 1041;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_36' title='bbox 599 989 747 1041;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>brain</span>
+			<span class='ocrx_word' id='word_3_37' title='bbox 774 1006 922 1059;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>grow</span>
+			<span class='ocrx_word' id='word_3_38' title='bbox 948 989 1094 1059;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>dizzy</span>
+			<span class='ocrx_word' id='word_3_39' title='bbox 1122 1007 1178 1041;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>as</span>
+			<span class='ocrx_word' id='word_3_40' title='bbox 1204 989 1331 1060;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>they</span>
+			<span class='ocrx_word' id='word_3_41' title='bbox 1356 1007 1424 1059;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>go</span>
+		</span>
+		<span class='ocr_line' title="bbox 240 1084 1416 1155; baseline -0.001701 -17; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_42' title='bbox 240 1084 364 1138;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_3_43' title='bbox 393 1101 542 1138;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>come</span>
+			<span class='ocrx_word' id='word_3_44' title='bbox 568 1084 733 1155;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>again,</span>
+			<span class='ocrx_word' id='word_3_45' title='bbox 753 1102 809 1136;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>as</span>
+			<span class='ocrx_word' id='word_3_46' title='bbox 836 1085 884 1135;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>if</span>
+			<span class='ocrx_word' id='word_3_47' title='bbox 899 1085 1186 1155;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>employed</span>
+			<span class='ocrx_word' id='word_3_48' title='bbox 1213 1092 1267 1137;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_3_49' title='bbox 1292 1085 1416 1138;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>rack</span>
+		</span>
+		<span class='ocr_line' title="bbox 241 1180 1564 1246; baseline 0 -13; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_50' title='bbox 241 1180 353 1233;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>The</span>
+			<span class='ocrx_word' id='word_3_51' title='bbox 378 1180 573 1233;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>human</span>
+			<span class='ocrx_word' id='word_3_52' title='bbox 599 1180 763 1246;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mind,</span>
+			<span class='ocrx_word' id='word_3_53' title='bbox 789 1180 889 1232;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_3_54' title='bbox 916 1197 1065 1233;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>cause</span>
+			<span class='ocrx_word' id='word_3_55' title='bbox 1092 1180 1178 1232;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_56' title='bbox 1206 1188 1342 1232;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>tears</span>
+			<span class='ocrx_word' id='word_3_57' title='bbox 1370 1187 1423 1233;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_3_58' title='bbox 1445 1180 1564 1233;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>flow</span>
+		</span>
+		<span class='ocr_line' title="bbox 243 1272 1788 1343; baseline 0.001294 -15; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_59' title='bbox 243 1274 412 1329;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>From</span>
+			<span class='ocrx_word' id='word_3_60' title='bbox 442 1272 599 1327;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Life’s</span>
+			<span class='ocrx_word' id='word_3_61' title='bbox 638 1291 754 1327;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>own</span>
+			<span class='ocrx_word' id='word_3_62' title='bbox 783 1275 1026 1328;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>fountain.</span>
+			<span class='ocrx_word' id='word_3_63' title='bbox 1103 1272 1227 1343;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Yes,</span>
+			<span class='ocrx_word' id='word_3_64' title='bbox 1256 1293 1399 1328;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>erase</span>
+			<span class='ocrx_word' id='word_3_65' title='bbox 1426 1275 1513 1328;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_66' title='bbox 1552 1275 1680 1329;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>Past</span>
+			<span class='ocrx_word' id='word_3_67' title='bbox 1699 1276 1788 1330;x_wconf 0'>!---</span>
+		</span>
+		<span class='ocr_line' title="bbox 242 1370 1749 1441; baseline 0 -17; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_68' title='bbox 242 1370 362 1439;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>But,</span>
+			<span class='ocrx_word' id='word_3_69' title='bbox 388 1388 457 1423;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>no</span>
+			<span class='ocrx_word' id='word_3_70' title='bbox 475 1370 657 1423;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>!—not</span>
+			<span class='ocrx_word' id='word_3_71' title='bbox 681 1370 906 1422;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>all—for</span>
+			<span class='ocrx_word' id='word_3_72' title='bbox 933 1387 1082 1422;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>some</span>
+			<span class='ocrx_word' id='word_3_73' title='bbox 1106 1388 1262 1440;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>green</span>
+			<span class='ocrx_word' id='word_3_74' title='bbox 1290 1379 1435 1441;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>spots</span>
+			<span class='ocrx_word' id='word_3_75' title='bbox 1462 1389 1549 1424;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>are</span>
+			<span class='ocrx_word' id='word_3_76' title='bbox 1576 1371 1749 1440;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>there;</span>
+		</span>
+		<span class='ocr_line' title="bbox 243 1465 1833 1545; baseline -0.001258 -25; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_77' title='bbox 243 1466 425 1534;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Small,</span>
+			<span class='ocrx_word' id='word_3_78' title='bbox 453 1466 722 1536;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>twinkling</span>
+			<span class='ocrx_word' id='word_3_79' title='bbox 742 1473 888 1532;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>stars,</span>
+			<span class='ocrx_word' id='word_3_80' title='bbox 915 1467 1238 1537;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>out-peering</span>
+			<span class='ocrx_word' id='word_3_81' title='bbox 1263 1465 1484 1536;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>through</span>
+			<span class='ocrx_word' id='word_3_82' title='bbox 1502 1466 1587 1519;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_83' title='bbox 1612 1467 1791 1538;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>gloom</span>
+			<span class='ocrx_word' id='word_3_84' title='bbox 1819 1496 1833 1545;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>;</span>
+		</span>
+		<span class='ocr_line' title="bbox 246 1561 1755 1633; baseline 0.000663 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_85' title='bbox 246 1561 440 1615;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Warm</span>
+			<span class='ocrx_word' id='word_3_86' title='bbox 466 1562 666 1633;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>gleams</span>
+			<span class='ocrx_word' id='word_3_87' title='bbox 691 1562 753 1615;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_3_88' title='bbox 767 1561 1006 1633;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sunlight,</span>
+			<span class='ocrx_word' id='word_3_89' title='bbox 1033 1561 1198 1616;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>which</span>
+			<span class='ocrx_word' id='word_3_90' title='bbox 1224 1563 1291 1615;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>do</span>
+			<span class='ocrx_word' id='word_3_91' title='bbox 1320 1563 1622 1616;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sometimes</span>
+			<span class='ocrx_word' id='word_3_92' title='bbox 1647 1571 1755 1616;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>cast</span>
+		</span>
+		<span class='ocr_line' title="bbox 245 1656 1644 1711; baseline 0.000715 -1; x_x_height 33; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_93' title='bbox 245 1656 402 1710;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Their</span>
+			<span class='ocrx_word' id='word_3_94' title='bbox 429 1658 641 1710;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mellow</span>
+			<span class='ocrx_word' id='word_3_95' title='bbox 667 1657 791 1709;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>tints</span>
+			<span class='ocrx_word' id='word_3_96' title='bbox 819 1656 1013 1711;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>within.</span>
+			<span class='ocrx_word' id='word_3_97' title='bbox 1089 1656 1255 1710;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>These</span>
+			<span class='ocrx_word' id='word_3_98' title='bbox 1281 1659 1386 1710;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>will</span>
+			<span class='ocrx_word' id='word_3_99' title='bbox 1427 1658 1644 1711;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>entomb</span>
+		</span>
+		<span class='ocr_line' title="bbox 174 1752 1240 1819; baseline -0.003752 -12; x_x_height 33; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_100' title='bbox 174 1753 318 1806;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Each</span>
+			<span class='ocrx_word' id='word_3_101' title='bbox 349 1753 516 1805;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sullen</span>
+			<span class='ocrx_word' id='word_3_102' title='bbox 544 1752 752 1805;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>shadow</span>
+			<span class='ocrx_word' id='word_3_103' title='bbox 772 1753 824 1804;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>in</span>
+			<span class='ocrx_word' id='word_3_104' title='bbox 849 1753 917 1804;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>its</span>
+			<span class='ocrx_word' id='word_3_105' title='bbox 944 1761 1107 1805;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>secret</span>
+			<span class='ocrx_word' id='word_3_106' title='bbox 1132 1753 1240 1819;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>lair,</span>
+		</span>
+		<span class='ocr_line' title="bbox 175 1847 1531 1919; baseline 0 -17; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_107' title='bbox 175 1847 300 1903;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_3_108' title='bbox 327 1847 486 1919;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Hope</span>
+			<span class='ocrx_word' id='word_3_109' title='bbox 514 1865 639 1918;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>may</span>
+			<span class='ocrx_word' id='word_3_110' title='bbox 667 1848 822 1900;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>make</span>
+			<span class='ocrx_word' id='word_3_111' title='bbox 848 1847 934 1900;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_112' title='bbox 960 1848 1130 1900;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>future</span>
+			<span class='ocrx_word' id='word_3_113' title='bbox 1155 1856 1399 1919;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>prospect</span>
+			<span class='ocrx_word' id='word_3_114' title='bbox 1426 1849 1531 1902;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>fair.</span>
+		</span>
+		<span class='ocr_line' title="bbox 248 1998 1558 2069; baseline 0 -16; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_115' title='bbox 248 1998 393 2069;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Yea;</span>
+			<span class='ocrx_word' id='word_3_116' title='bbox 432 1999 504 2052;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>let</span>
+			<span class='ocrx_word' id='word_3_117' title='bbox 530 1999 671 2052;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>them</span>
+			<span class='ocrx_word' id='word_3_118' title='bbox 699 1999 840 2052;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>rest!</span>
+			<span class='ocrx_word' id='word_3_119' title='bbox 884 1998 904 2051;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>I</span>
+			<span class='ocrx_word' id='word_3_120' title='bbox 933 2000 1106 2052;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>would</span>
+			<span class='ocrx_word' id='word_3_121' title='bbox 1134 2007 1227 2052;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>not</span>
+			<span class='ocrx_word' id='word_3_122' title='bbox 1252 2000 1433 2052;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>banish</span>
+			<span class='ocrx_word' id='word_3_123' title='bbox 1460 2018 1558 2053;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>one</span>
+		</span>
+		<span class='ocr_line' title="bbox 251 2094 1367 2148; baseline 0.000896 -1; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_124' title='bbox 251 2095 404 2148;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Stern</span>
+			<span class='ocrx_word' id='word_3_125' title='bbox 432 2095 761 2148;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>recollection</span>
+			<span class='ocrx_word' id='word_3_126' title='bbox 788 2094 925 2148;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>from</span>
+			<span class='ocrx_word' id='word_3_127' title='bbox 951 2096 1018 2147;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>its</span>
+			<span class='ocrx_word' id='word_3_128' title='bbox 1043 2095 1228 2148;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>chosen</span>
+			<span class='ocrx_word' id='word_3_129' title='bbox 1256 2095 1367 2148;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>cell.</span>
+		</span>
+		<span class='ocr_line' title="bbox 254 2190 1604 2261; baseline 0 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_130' title='bbox 254 2190 418 2244;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Thick</span>
+			<span class='ocrx_word' id='word_3_131' title='bbox 444 2190 624 2244;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>clouds</span>
+			<span class='ocrx_word' id='word_3_132' title='bbox 650 2207 778 2261;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>may</span>
+			<span class='ocrx_word' id='word_3_133' title='bbox 805 2190 885 2244;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>for</span>
+			<span class='ocrx_word' id='word_3_134' title='bbox 911 2209 942 2243;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>a</span>
+			<span class='ocrx_word' id='word_3_135' title='bbox 968 2197 1211 2244;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>moment</span>
+			<span class='ocrx_word' id='word_3_136' title='bbox 1235 2190 1354 2243;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>hide</span>
+			<span class='ocrx_word' id='word_3_137' title='bbox 1381 2190 1468 2244;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_138' title='bbox 1495 2210 1604 2259;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>sun,</span>
+		</span>
+		<span class='ocr_line' title="bbox 260 2287 1258 2358; baseline -0.001002 -18; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_139' title='bbox 260 2287 366 2340;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>But</span>
+			<span class='ocrx_word' id='word_3_140' title='bbox 391 2288 561 2339;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>lessen</span>
+			<span class='ocrx_word' id='word_3_141' title='bbox 586 2295 678 2340;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>not</span>
+			<span class='ocrx_word' id='word_3_142' title='bbox 701 2287 781 2339;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>his</span>
+			<span class='ocrx_word' id='word_3_143' title='bbox 799 2288 986 2358;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>glory;</span>
+			<span class='ocrx_word' id='word_3_144' title='bbox 1028 2305 1157 2340;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>even</span>
+			<span class='ocrx_word' id='word_3_145' title='bbox 1185 2305 1258 2354;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>so,</span>
+		</span>
+		<span class='ocr_line' title="bbox 257 2381 1545 2453; baseline 0 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_146' title='bbox 257 2381 367 2435;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>We</span>
+			<span class='ocrx_word' id='word_3_147' title='bbox 394 2381 520 2434;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>hold</span>
+			<span class='ocrx_word' id='word_3_148' title='bbox 548 2381 730 2435;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>within</span>
+			<span class='ocrx_word' id='word_3_149' title='bbox 758 2401 819 2434;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>us</span>
+			<span class='ocrx_word' id='word_3_150' title='bbox 846 2382 983 2435;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>what</span>
+			<span class='ocrx_word' id='word_3_151' title='bbox 1009 2382 1071 2435;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_3_152' title='bbox 1086 2382 1218 2435;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>dark</span>
+			<span class='ocrx_word' id='word_3_153' title='bbox 1243 2383 1343 2435;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_3_154' title='bbox 1371 2383 1545 2453;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>bright</span>
+		</span>
+		<span class='ocr_line' title="bbox 256 2473 1583 2546; baseline 0.000754 -19; x_x_height 33; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_155' title='bbox 256 2475 340 2546;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>By</span>
+			<span class='ocrx_word' id='word_3_156' title='bbox 369 2492 465 2527;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>our</span>
+			<span class='ocrx_word' id='word_3_157' title='bbox 491 2491 608 2526;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>own</span>
+			<span class='ocrx_word' id='word_3_158' title='bbox 637 2474 772 2526;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>wills</span>
+			<span class='ocrx_word' id='word_3_159' title='bbox 792 2473 927 2526;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>have</span>
+			<span class='ocrx_word' id='word_3_160' title='bbox 953 2474 1087 2526;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>been</span>
+			<span class='ocrx_word' id='word_3_161' title='bbox 1112 2474 1398 2544;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>implanted</span>
+			<span class='ocrx_word' id='word_3_162' title='bbox 1426 2475 1583 2528;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>there.</span>
+		</span>
+		<span class='ocr_line' title="bbox 258 2568 1548 2641; baseline -0.000775 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_163' title='bbox 258 2569 383 2624;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>And</span>
+			<span class='ocrx_word' id='word_3_164' title='bbox 409 2586 488 2622;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>we</span>
+			<span class='ocrx_word' id='word_3_165' title='bbox 515 2587 606 2622;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>can</span>
+			<span class='ocrx_word' id='word_3_166' title='bbox 633 2587 796 2641;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>purge</span>
+			<span class='ocrx_word' id='word_3_167' title='bbox 822 2569 955 2622;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>from</span>
+			<span class='ocrx_word' id='word_3_168' title='bbox 996 2570 1083 2622;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_169' title='bbox 1109 2568 1300 2623;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mind’s</span>
+			<span class='ocrx_word' id='word_3_170' title='bbox 1326 2571 1548 2624;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>crucible</span>
+		</span>
+		<span class='ocr_line' title="bbox 259 2665 1478 2737; baseline 0 -17; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_171' title='bbox 259 2666 371 2720;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>The</span>
+			<span class='ocrx_word' id='word_3_172' title='bbox 398 2684 544 2720;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>scum</span>
+			<span class='ocrx_word' id='word_3_173' title='bbox 574 2667 637 2719;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>of</span>
+			<span class='ocrx_word' id='word_3_174' title='bbox 653 2665 822 2719;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Error</span>
+			<span class='ocrx_word' id='word_3_175' title='bbox 838 2666 947 2720;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>that</span>
+			<span class='ocrx_word' id='word_3_176' title='bbox 966 2667 1207 2720;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>excludes</span>
+			<span class='ocrx_word' id='word_3_177' title='bbox 1233 2666 1323 2720;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>the</span>
+			<span class='ocrx_word' id='word_3_178' title='bbox 1346 2667 1478 2737;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>light</span>
+		</span>
+		<span class='ocr_line' title="bbox 264 2761 1550 2834; baseline -0.000778 -18; x_x_height 34; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_179' title='bbox 264 2761 345 2816;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Of</span>
+			<span class='ocrx_word' id='word_3_180' title='bbox 360 2762 539 2817;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>Truth,</span>
+			<span class='ocrx_word' id='word_3_181' title='bbox 616 2762 937 2834;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Experience</span>
+			<span class='ocrx_word' id='word_3_182' title='bbox 963 2763 1199 2816;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>teacheth</span>
+			<span class='ocrx_word' id='word_3_183' title='bbox 1224 2781 1287 2815;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>us</span>
+			<span class='ocrx_word' id='word_3_184' title='bbox 1313 2770 1367 2815;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_3_185' title='bbox 1394 2764 1550 2816;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>know</span>
+		</span>
+		<span class='ocr_line' title="bbox 263 2858 1715 2930; baseline -0.000689 -19; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_186' title='bbox 263 2858 400 2912;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>That</span>
+			<span class='ocrx_word' id='word_3_187' title='bbox 424 2858 554 2929;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>light</span>
+			<span class='ocrx_word' id='word_3_188' title='bbox 582 2859 684 2911;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_3_189' title='bbox 711 2859 1205 2912;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>darkness—moral</span>
+			<span class='ocrx_word' id='word_3_190' title='bbox 1235 2859 1339 2928;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>day</span>
+			<span class='ocrx_word' id='word_3_191' title='bbox 1367 2859 1471 2911;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>and</span>
+			<span class='ocrx_word' id='word_3_192' title='bbox 1497 2859 1715 2930;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>night—</span>
+		</span>
+		<span class='ocr_line' title="bbox 267 2953 1307 3009; baseline 0.000962 -2; x_x_height 34; x_asc_height 51">
+			<span class='ocrx_word' id='word_3_193' title='bbox 267 2953 378 3007;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Are</span>
+			<span class='ocrx_word' id='word_3_194' title='bbox 396 2955 621 3007;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>incident</span>
+			<span class='ocrx_word' id='word_3_195' title='bbox 648 2962 705 3007;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>to</span>
+			<span class='ocrx_word' id='word_3_196' title='bbox 734 2955 951 3006;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>mortals</span>
+			<span class='ocrx_word' id='word_3_197' title='bbox 970 2954 1096 3009;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>here</span>
+			<span class='ocrx_word' id='word_3_198' title='bbox 1122 2955 1307 3008;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>below.</span>
+		</span>
+		<span class='ocr_line' title="bbox 195 3049 1406 3120; baseline -0.000826 -17; x_x_height 33; x_asc_height 52">
+			<span class='ocrx_word' id='word_3_199' title='bbox 195 3049 336 3118;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>Yes;</span>
+			<span class='ocrx_word' id='word_3_200' title='bbox 373 3050 449 3103;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>let</span>
+			<span class='ocrx_word' id='word_3_201' title='bbox 476 3068 561 3103;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>me</span>
+			<span class='ocrx_word' id='word_3_202' title='bbox 588 3049 763 3103;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>rather</span>
+			<span class='ocrx_word' id='word_3_203' title='bbox 792 3068 940 3102;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>muse</span>
+			<span class='ocrx_word' id='word_3_204' title='bbox 968 3068 1035 3103;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>on</span>
+			<span class='ocrx_word' id='word_3_205' title='bbox 1077 3067 1252 3102;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>errors</span>
+			<span class='ocrx_word' id='word_3_206' title='bbox 1277 3058 1406 3120;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>past,</span>
+		</span>
+		<span class='ocr_line' title="bbox 198 3145 1557 3217; baseline -0.000736 -18; x_x_height 33; x_asc_height 50">
+			<span class='ocrx_word' id='word_3_207' title='bbox 198 3145 308 3199;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>The</span>
+			<span class='ocrx_word' id='word_3_208' title='bbox 335 3146 487 3198;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>silent</span>
+			<span class='ocrx_word' id='word_3_209' title='bbox 515 3147 772 3199;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>monitors</span>
+			<span class='ocrx_word' id='word_3_210' title='bbox 812 3146 920 3198;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>that</span>
+			<span class='ocrx_word' id='word_3_211' title='bbox 945 3147 1094 3216;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>bring</span>
+			<span class='ocrx_word' id='word_3_212' title='bbox 1121 3164 1181 3197;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>us</span>
+			<span class='ocrx_word' id='word_3_213' title='bbox 1206 3163 1360 3217;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>peace</span>
+			<span class='ocrx_word' id='word_3_214' title='bbox 1377 3154 1429 3198;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>at</span>
+			<span class='ocrx_word' id='word_3_215' title='bbox 1446 3146 1557 3199;x_wconf 100;x_font SerifDefault' style='font-family:SerifDefault'>last.</span>
+		</span>
+		<span class='ocr_line' title="bbox 588 3234 641 3277; baseline 0 -15; x_x_height 17.563636779785156; x_asc_height 24">
+			<span class='ocrx_word' id='word_3_216' title='bbox 588 3234 641 3277;x_wconf 0;x_font SerifDefault' style='font-family:SerifDefault'>T*</span>
+		</span>
+	</div>
+</body>
+</html>

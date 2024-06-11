@@ -349,7 +349,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
     // Reset baseline to line baseline
     textContentObjStr += '0 Ts\n';
 
-    const word0LeftBearing = word.excludesBearings ? word0Metrics.leftSideBearing : 0;
+    const word0LeftBearing = word.visualCoords ? word0Metrics.leftSideBearing : 0;
 
     let tz = 100;
     if (word.dropcap) {
@@ -393,7 +393,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       wordFontSize = wordMetrics.fontSize;
       const charSpacing = wordMetrics.charSpacing;
       const charArr = wordMetrics.charArr;
-      const wordLeftBearing = word.excludesBearings ? wordMetrics.leftSideBearing : 0;
+      const wordLeftBearing = word.visualCoords ? wordMetrics.leftSideBearing : 0;
 
       wordBox = word.bbox;
 
@@ -473,14 +473,14 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
 
       const wordLastGlyph = wordFontOpentype.charToGlyph(charArr.at(-1));
       const wordLastGlyphMetrics = wordLastGlyph.getMetrics();
-      wordRightBearingLast = wordLast.excludesBearings ? wordLastGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
+      wordRightBearingLast = wordLast.visualCoords ? wordLastGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
 
       // In general, we assume that (given our adjustments to character spacing) the rendered word has the same width as the image of that word.
       // However, this assumption does not hold for single-character words, as there is no space between character to adjust.
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space.
       // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
       if (charArr.length === 1 && !word.dropcap) {
-        const lastCharWidth = (wordLast.excludesBearings ? (wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) : wordLastGlyph.advanceWidth) * (wordFontSize / wordFontOpentype.unitsPerEm);
+        const lastCharWidth = (wordLast.visualCoords ? (wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) : wordLastGlyph.advanceWidth) * (wordFontSize / wordFontOpentype.unitsPerEm);
         spacingAdj = wordWidthAdj - lastCharWidth - angleAdjWordX;
       } else {
         spacingAdj = 0 - angleAdjWordX;
@@ -534,9 +534,9 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
             const wordGlyphMetrics = wordFontOpentype.charToGlyph(charArr.at(-1)).getMetrics();
             const wordNextGlyphMetrics = wordFontOpentype.charToGlyph(wordNext.text.substr(0, 1)).getMetrics();
 
-            const wordRightBearing = word.excludesBearings ? wordGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
+            const wordRightBearing = word.visualCoords ? wordGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
 
-            const wordNextLeftBearing = wordNext.excludesBearings ? wordNextGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
+            const wordNextLeftBearing = wordNext.visualCoords ? wordNextGlyphMetrics.xMin * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
 
             const wordSpaceExpected = charSpacing + wordRightBearing + wordNextLeftBearing;
 
