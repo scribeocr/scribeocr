@@ -84,6 +84,8 @@ export async function changeWordFontStyle(style) {
   const selectedObjects = canvasObj.selectedWordArr;
   if (!selectedObjects || selectedObjects.length === 0) return;
 
+  if (canvasObj.inputRemove) canvasObj.inputRemove();
+
   // If first word style already matches target style, disable the style.
   const enable = selectedObjects[0].fontStyleLookup !== style;
   const newStyleLookup = enable ? style : 'normal';

@@ -245,15 +245,38 @@ export const canvasObj = {
 
 };
 
-export const destroyControls = () => {
+export const deselectAllWords = () => {
+  canvasObj.selectedWordArr.forEach((shape) => (shape.deselect()));
+  canvasObj.selectedWordArr.length = 0;
+};
+
+export const deselectAllLayoutBoxes = () => {
+  canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.deselect()));
+  canvasObj.selectedLayoutBoxArr.length = 0;
+};
+
+export const deselectAllDataColumns = () => {
+  canvasObj.selectedDataColumnArr.forEach((shape) => (shape.deselect()));
+  canvasObj.selectedDataColumnArr.length = 0;
+};
+
+export const deselectAll = () => {
+  deselectAllWords();
+  deselectAllLayoutBoxes();
+  deselectAllDataColumns();
+};
+
+/**
+ *
+ * @param {boolean} [deselect=true] - Deselect all words, layout boxes, and data columns.
+ */
+export const destroyControls = (deselect = true) => {
   globalThis.collapseRangeCollapse.hide();
   globalThis.collapseSetLayoutBoxTableCollapse.hide();
   canvasObj.controlArr.forEach((control) => control.destroy());
   canvasObj.controlArr.length = 0;
 
-  canvasObj.selectedWordArr.forEach((shape) => (shape.deselect()));
-  canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.deselect()));
-  canvasObj.selectedDataColumnArr.forEach((shape) => (shape.deselect()));
+  if (deselect) deselectAll();
 
   if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
 };
@@ -584,6 +607,7 @@ export class KonvaIText extends Konva.Shape {
       updateWordCanvas(textNode);
       canvasObj.input.remove();
       canvasObj.input = null;
+      canvasObj.inputRemove = null;
     };
 
     // Update the Konva Text node after editing
@@ -712,7 +736,6 @@ export class KonvaOcrWord extends KonvaIText {
    * @param {KonvaOcrWord} textNode
    */
   static addControls = (textNode) => {
-    destroyControls();
     const trans = new Konva.Transformer({
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
@@ -741,8 +764,10 @@ layerText.add(trans);
 function selectWords(box) {
   const shapes = getCanvasWords();
 
-  canvasObj.selectedWordArr.length = 0;
-  canvasObj.selectedWordArr.push(...shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect())));
+  const existingSelectedWordsId = canvasObj.selectedWordArr.map((x) => x.word.id);
+  const newSelectedWords = shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()) && !existingSelectedWordsId.includes(shape.word.id));
+
+  canvasObj.selectedWordArr.push(...newSelectedWords);
 
   if (canvasObj.selectedWordArr.length > 1) {
     canvasObj.selectedWordArr.forEach((shape) => (shape.select()));
@@ -845,6 +870,7 @@ stage.on('mouseup touchend', (event) => {
       x: ptr.x, y: ptr.y, width: 1, height: 1,
     };
     if (canvasObj.mode === 'select' && !globalThis.layoutMode) {
+      destroyControls(!event.evt.ctrlKey);
       selectWords(box);
       KonvaOcrWord.updateUI();
       layerText.batchDraw();
@@ -860,7 +886,7 @@ stage.on('mouseup touchend', (event) => {
   selectingRectangle.visible(false);
 
   if (canvasObj.mode === 'select' && !globalThis.layoutMode) {
-    if (globalThis.layoutMode) return;
+    destroyControls(!event.evt.ctrlKey);
     const box = selectingRectangle.getClientRect();
     selectWords(box);
     KonvaOcrWord.updateUI();
