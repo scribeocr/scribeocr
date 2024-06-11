@@ -371,7 +371,7 @@ export class KonvaLayout extends Konva.Rect {
       pageObj.lines = [lineObjTemp];
       const wordIDNew = getRandomAlphanum(10);
       const wordObj = new ocr.OcrWord(lineObjTemp, String(layoutBox.priority), box, wordIDNew);
-      wordObj.excludesBearings = false;
+      wordObj.visualCoords = false;
       wordObj.size = 50;
       const label = new KonvaIText({
         x: origX + width * 0.5,

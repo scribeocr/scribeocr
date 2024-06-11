@@ -311,7 +311,7 @@ export async function updateWordCanvas(wordI) {
   let width = wordI.dynamicWidth ? advanceArrTotal.reduce((a, b) => a + b, 0) : wordI.word.bbox.right - wordI.word.bbox.left;
 
   // Subtract the side bearings from the width if they are not excluded from the `ocrWord` coordinates.
-  if (!wordI.dynamicWidth && !wordI.word.excludesBearings) width -= (leftSideBearing + rightSideBearing);
+  if (!wordI.dynamicWidth && !wordI.word.visualCoords) width -= (leftSideBearing + rightSideBearing);
 
   wordI.width(width);
 
@@ -412,7 +412,7 @@ export class KonvaIText extends Konva.Shape {
     let width = dynamicWidth ? advanceArrTotal.reduce((a, b) => a + b, 0) : word.bbox.right - word.bbox.left;
 
     // Subtract the side bearings from the width if they are not excluded from the `ocrWord` coordinates.
-    if (!dynamicWidth && !word.excludesBearings) width -= (leftSideBearing + rightSideBearing);
+    if (!dynamicWidth && !word.visualCoords) width -= (leftSideBearing + rightSideBearing);
 
     super({
       x,
@@ -435,7 +435,7 @@ export class KonvaIText extends Konva.Shape {
 
         shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
 
-        let leftI = shape.word.excludesBearings ? 0 - this.leftSideBearing : 0;
+        let leftI = shape.word.visualCoords ? 0 - this.leftSideBearing : 0;
         for (let i = 0; i < shape.charArr.length; i++) {
           const charI = shape.charArr[i];
           context.fillText(charI, leftI, shape.fontSize * 0.6);
@@ -542,7 +542,7 @@ export class KonvaIText extends Konva.Shape {
     const charSpacingHTML = textNode.charSpacing * scale;
 
     let { x: x1, y: y1 } = textNode.getAbsolutePosition();
-    if (textNode.word.excludesBearings) x1 -= textNode.leftSideBearing * scale;
+    if (textNode.word.visualCoords) x1 -= textNode.leftSideBearing * scale;
 
     const fontSizeHTML = textNode.fontSize * scale;
 
@@ -662,7 +662,6 @@ export class KonvaOcrWord extends KonvaIText {
 
       if (leftMode) {
         this.word.bbox.left += leftDelta;
-        this.x(this.x() + leftDelta);
       } else {
         this.word.bbox.right += widthDelta;
       }

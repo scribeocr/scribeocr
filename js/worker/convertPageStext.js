@@ -185,7 +185,7 @@ export async function convertPageStext({ ocrStr, n }) {
       wordObj.size = fontSize;
 
       // In stext, the coordinates are based on font bounding boxes, not where pixels start/end.
-      wordObj.excludesBearings = false;
+      wordObj.visualCoords = false;
 
       // There is no confidence information in stext.
       // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
