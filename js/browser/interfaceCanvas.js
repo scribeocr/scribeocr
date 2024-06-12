@@ -875,7 +875,8 @@ stage.on('mouseup touchend', (event) => {
       KonvaOcrWord.updateUI();
       layerText.batchDraw();
     } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
-      selectLayoutBoxesArea(box, !event.evt.ctrlKey);
+      destroyControls(!event.evt.ctrlKey);
+      selectLayoutBoxesArea(box);
       KonvaLayout.updateUI();
       layerOverlay.batchDraw();
     }
@@ -891,6 +892,7 @@ stage.on('mouseup touchend', (event) => {
     selectWords(box);
     KonvaOcrWord.updateUI();
   } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
+    destroyControls(!event.evt.ctrlKey);
     const box = selectingRectangle.getClientRect();
     selectLayoutBoxesArea(box);
     KonvaLayout.updateUI();

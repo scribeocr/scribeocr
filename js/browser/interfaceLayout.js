@@ -51,7 +51,9 @@ export function addLayoutDataTableClick({
     left: x, top: y, right: x + width, bottom: y + height,
   };
 
-  const dataTable = new LayoutDataTable(Object.keys(layoutDataTableAll[cp.n]?.tables).length || 0);
+  if (!layoutDataTableAll[cp.n].tables) layoutDataTableAll[cp.n].tables = {};
+
+  const dataTable = new LayoutDataTable(Object.keys(layoutDataTableAll[cp.n].tables).length);
 
   const id = getRandomAlphanum(10);
 
@@ -166,7 +168,7 @@ export function setLayoutBoxTypeClick(type) {
  */
 export function setLayoutBoxTable(tableDisplay) {
   const table = parseInt(tableDisplay) - 1;
-  if (Number.isNaN(table) || table < 0) return;
+  if (Number.isNaN(table) || table < 0 || canvasObj.selectedDataColumnArr.length === 0) return;
 
   canvasObj.selectedDataColumnArr.forEach((x) => {
     x.delete();
@@ -615,7 +617,8 @@ export class KonvaDataColumn extends KonvaLayout {
 
 export class KonvaDataTable {
   /**
-   * @param {OcrPage} pageObj
+   * @param {OcrPage|undefined} pageObj - The page object that the table is on.
+   *    This can be undefined in the fringe case where the user makes layout boxes without any OCR data.
    * @param {import('../objects/layoutObjects.js').LayoutDataTable} layoutDataTable
    * @param {boolean} [lockColumns=true]
    */
@@ -693,17 +696,22 @@ export class KonvaDataTable {
       layerOverlay.add(colLine);
     }
 
-    const tableWordObj = extractSingleTableContent(pageObj, layoutBoxesArr);
+    /** @type {Array<InstanceType<typeof Konva.Line>>} */
+    this.rowLines = [];
 
-    this.rowLines = tableWordObj.rowBottomArr.map((rowBottom) => new Konva.Line({
-      points: [tableLeft, rowBottom, tableRight, rowBottom],
-      stroke: 'rgba(0,0,0,0.25)',
-      strokeWidth: 1,
-    }));
+    if (pageObj) {
+      const tableWordObj = extractSingleTableContent(pageObj, layoutBoxesArr);
 
-    this.rowLines.forEach((rowLine) => {
-      layerOverlay.add(rowLine);
-    });
+      this.rowLines = tableWordObj.rowBottomArr.map((rowBottom) => new Konva.Line({
+        points: [tableLeft, rowBottom, tableRight, rowBottom],
+        stroke: 'rgba(0,0,0,0.25)',
+        strokeWidth: 1,
+      }));
+
+      this.rowLines.forEach((rowLine) => {
+        layerOverlay.add(rowLine);
+      });
+    }
 
     layerOverlay.batchDraw();
 
@@ -900,28 +908,20 @@ export const splitDataColumn = (column, x) => {
  * @param {number} box.height
  * @param {number} box.x
  * @param {number} box.y
- * @param {boolean} [clearSelection=true]
  */
-export function selectLayoutBoxesArea(box, clearSelection = true) {
+export function selectLayoutBoxesArea(box) {
   const shapes = getCanvasLayoutBoxes();
 
   const layoutBoxes = shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
 
-  selectLayoutBoxes(layoutBoxes, clearSelection);
+  selectLayoutBoxes(layoutBoxes);
 }
 
 /**
  *
  * @param {Array<KonvaLayout>} konvaLayoutBoxes
- * @param {boolean} [clearSelection=true]
  */
-export function selectLayoutBoxes(konvaLayoutBoxes, clearSelection = true) {
-  destroyControls();
-
-  if (clearSelection) {
-    canvasObj.selectedLayoutBoxArr.length = 0;
-    canvasObj.selectedDataColumnArr.length = 0;
-  }
+export function selectLayoutBoxes(konvaLayoutBoxes) {
   for (let i = 0; i < konvaLayoutBoxes.length; i++) {
     const objI = konvaLayoutBoxes[i];
     if (objI instanceof KonvaDataColumn) {
