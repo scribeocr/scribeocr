@@ -29,9 +29,13 @@ const defaultConfigs = {
   // tessedit_pageseg_mode: Tesseract.PSM["SINGLE_COLUMN"],
   tessedit_pageseg_mode: Tesseract.PSM.AUTO,
   hocr_char_boxes: '1',
+  // TODO: Rework how config options interact with options set by the user.
+  // Specifically, no non-default options (that impact recognition) should be set when the engine is "vanilla",
+  // and the filters for non-English characters should only be set for the English language.
   // The Tesseract LSTM engine frequently identifies a bar character "|"
   // This is virtually always a false positive (usually "I").
-  tessedit_char_blacklist: '|éï',
+  // tessedit_char_blacklist: '|éï',
+  tessedit_char_blacklist: '|',
   max_page_gradient_recognize: '100',
   hocr_font_info: '1',
   // This option disables an undesirable behavior where Tesseract categorizes blobs *of any size* as noise,
