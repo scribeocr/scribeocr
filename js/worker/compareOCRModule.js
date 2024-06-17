@@ -23,17 +23,24 @@ let viewCtx2;
 
 // Browser case
 if (browserMode) {
-  const canvasAlt = new OffscreenCanvas(200, 200);
-  calcCtx = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasAlt.getContext('2d'));
+  // For whatever reason, this can fail silently in some browsers that do not support OffscreenCanvas, where the worker simply stops running.
+  // Therefore, an explicit error message is added here to make the issue evident. Features will still fail, so this is not a fix.
+  try {
+    const canvasAlt = new OffscreenCanvas(200, 200);
+    calcCtx = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasAlt.getContext('2d'));
 
-  const canvasComp0 = new OffscreenCanvas(200, 200);
-  viewCtx0 = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasComp0.getContext('2d'));
+    const canvasComp0 = new OffscreenCanvas(200, 200);
+    viewCtx0 = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasComp0.getContext('2d'));
 
-  const canvasComp1 = new OffscreenCanvas(200, 200);
-  viewCtx1 = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasComp1.getContext('2d'));
+    const canvasComp1 = new OffscreenCanvas(200, 200);
+    viewCtx1 = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasComp1.getContext('2d'));
 
-  const canvasComp2 = new OffscreenCanvas(200, 200);
-  viewCtx2 = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasComp2.getContext('2d'));
+    const canvasComp2 = new OffscreenCanvas(200, 200);
+    viewCtx2 = /** @type {OffscreenCanvasRenderingContext2D} */ (canvasComp2.getContext('2d'));
+  } catch (error) {
+    console.log('Failed to create OffscreenCanvas. This browser likely does not support OffscreenCanvas.');
+    console.error(error);
+  }
 }
 
 let tmpUniqueDir = null;
