@@ -101,22 +101,22 @@ export class MuPDFScheduler {
      * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>[1]} args
      * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>>}
      */
-    this.pageTextXML = async (args) => (await this.scheduler.addJob('pageTextXML', args));
+    this.pageTextXML = (args) => (this.scheduler.addJob('pageTextXML', args));
     /**
      * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextJSON>[1]} args
      * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextJSON>>}
      */
-    this.pageTextJSON = async (args) => (await this.scheduler.addJob('pageTextJSON', args));
+    this.pageTextJSON = (args) => (this.scheduler.addJob('pageTextJSON', args));
     /**
      * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.extractAllFonts>[1]} args
      * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.extractAllFonts>>}
      */
-    this.extractAllFonts = async (args) => (await this.scheduler.addJob('extractAllFonts', args));
+    this.extractAllFonts = (args) => (this.scheduler.addJob('extractAllFonts', args));
     /**
      * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>[1]} args
      * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.drawPageAsPNG>>}
      */
-    this.drawPageAsPNG = async (args) => (await this.scheduler.addJob('drawPageAsPNG', args));
+    this.drawPageAsPNG = (args) => (this.scheduler.addJob('drawPageAsPNG', args));
   }
 }
 
@@ -404,32 +404,43 @@ class ImageCache {
     }
   };
 
+  /**
+   * Pre-render ahead and behind the current page.
+   * This is similar to `preRenderRange`, however has several differences:
+   * (1) Starts rendering at the current page, and goes outward from there.
+   * (2) Also renders image bitmaps (not just the image strings), and deletes them when they are sufficiently far away.
+   * @param {number} curr
+   * @param {boolean} binary
+   */
   preRenderAheadBehindBrowser = async (curr, binary = false) => {
+    const resArr = [];
     if (binary) {
-      await this.getBinaryBitmap(curr);
+      resArr.push(this.getBinaryBitmap(curr));
     } else {
-      await this.getNativeBitmap(curr);
+      resArr.push(this.getNativeBitmap(curr));
     }
 
     // Delete images that are sufficiently far away from the current page to save memory.
     this.#cleanBitmapCache(curr);
 
-    for (let i = 0; i < this.cacheRenderPages; i++) {
+    for (let i = 0; i <= this.cacheRenderPages; i++) {
       if (curr - i >= 0) {
         if (binary) {
-          await this.getBinaryBitmap(curr - i);
+          resArr.push(this.getBinaryBitmap(curr - i));
         } else {
-          await this.getNativeBitmap(curr - i);
+          resArr.push(this.getNativeBitmap(curr - i));
         }
       }
       if (curr + i < this.pageCount) {
         if (binary) {
-          await this.getBinaryBitmap(curr + i);
+          resArr.push(this.getBinaryBitmap(curr + i));
         } else {
-          await this.getNativeBitmap(curr + i);
+          resArr.push(this.getNativeBitmap(curr + i));
         }
       }
     }
+
+    await Promise.all(resArr);
   };
 
   #cleanBitmapCache = (curr) => {
