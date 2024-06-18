@@ -1446,7 +1446,7 @@ export function renderPage(page) {
     const linebox = lineObj.bbox;
     const { baseline } = lineObj;
 
-    const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(lineObj) : { x: 0, y: 0 };
+    const angleAdjLine = enableRotation ? ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
 
     if (outlineLinesElem.checked) {
       const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));

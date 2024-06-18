@@ -318,7 +318,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       }
     }
 
-    const angleAdjLine = (rotateBackground && Math.abs(angle ?? 0) > 0.05) ? ocr.calcLineAngleAdj(lineObj) : { x: 0, y: 0 };
+    const angleAdjLine = (rotateBackground && Math.abs(angle ?? 0) > 0.05) ? ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
 
     let fillColorCurrent = fillColor;
 

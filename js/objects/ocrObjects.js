@@ -234,7 +234,7 @@ const deletePageWords = (page, ids) => {
         // If there are still words in this line, re-calculate the line bounding box.
         // To avoid duplicative calculations this only happens once at the end of the line or after all ids have been deleted.
         } else if (j + 1 === page.lines[i].words.length || ids.length === 0) {
-          ocr.calcLineBbox(page.lines[i]);
+          ocr.updateLineBbox(page.lines[i]);
         }
         // Return if all ids have been deleted.
         if (ids.length === 0) return;
@@ -298,41 +298,32 @@ const getPageText = (page) => {
 
 /**
  * Calculates adjustments to line x and y coordinates needed to auto-rotate the page.
+ * This is the rotation applied to the first word in the line (not the entire line bbox).
  * @param {OcrLine} line
  */
-function calcLineAngleAdj(line) {
-  if (line._angleAdj === null) {
-    line._angleAdj = { x: 0, y: 0 };
-
-    const { angle } = line.page;
-    if (Math.abs(angle ?? 0) > 0.05) {
-      const sinAngle = Math.sin(angle * (Math.PI / 180));
-      const cosAngle = Math.cos(angle * (Math.PI / 180));
-
-      const imgDims = line.page.dims;
-      const linebox = line.bbox;
-      const { baseline } = line;
-
-      const shiftX = sinAngle * (imgDims.height * 0.5) * -1 || 0;
-      const shiftY = sinAngle * ((imgDims.width - shiftX) * 0.5) || 0;
-
-      const x = linebox.left;
-      const y = linebox.bottom + baseline[1];
-
-      const xRot = x * cosAngle - sinAngle * y;
-      const angleAdjXInt = x - xRot;
-      const angleAdjYInt = sinAngle * (linebox.left + angleAdjXInt / 2) * -1;
-
-      line._angleAdj = { x: angleAdjXInt + shiftX, y: angleAdjYInt + shiftY };
-    }
+function calcLineStartAngleAdj(line) {
+  if (!line.words[0]) {
+    console.log('No words in line, report as bug.');
+    return { x: 0, y: 0 };
   }
+
+  const angle = line.page.angle * -1;
+  const dims = line.page.dims;
+  const sinAngle = Math.sin(angle * (Math.PI / 180));
+  const cosAngle = Math.cos(angle * (Math.PI / 180));
+
+  const bbox = line.words[0].bbox;
+
+  const bboxRot = rotateBbox(bbox, cosAngle, sinAngle, dims.width, dims.height);
+
+  line._angleAdj = { x: bboxRot.left - bbox.left, y: bboxRot.bottom - bbox.bottom };
 
   return line._angleAdj;
 }
 
 /**
  * Calculates adjustments to word x and y coordinates needed to auto-rotate the page.
- * The numbers returned are *in addition* to the adjustment applied to the entire line (calculated by `calcLineAngleAdj`).
+ * The numbers returned are *in addition* to the adjustment applied to the entire line (calculated by `calcLineStartAngleAdj`).
  *
  * @param {OcrWord} word
  */
@@ -390,23 +381,32 @@ function escapeXml(string) {
 }
 
 /**
+ *
+ * @param {Array<bbox>} bboxArr
+ * @returns
+ */
+const calcBboxUnion = (bboxArr) => ({
+  left: Math.min(...bboxArr.map((x) => x.left)),
+  top: Math.min(...bboxArr.map((x) => x.top)),
+  right: Math.max(...bboxArr.map((x) => x.right)),
+  bottom: Math.max(...bboxArr.map((x) => x.bottom)),
+});
+
+/**
  * Re-calculate bbox for line
  * @param {OcrLine} line
  * @param {boolean} adjustBaseline - Adjust baseline so that there is no visual change due to this function.
  *
- * `adjustBaseline` should generally be `true`, as calling `calcLineBbox` is not expected to change the appearance of the baseline.
+ * `adjustBaseline` should generally be `true`, as calling `updateLineBbox` is not expected to change the appearance of the baseline.
  * The only case where this argument is `false` is when the baseline is adjusted elsewhere in the code,
  * notably in `rotateLine`.
  */
-function calcLineBbox(line, adjustBaseline = true) {
+function updateLineBbox(line, adjustBaseline = true) {
   const lineboxBottomOrig = line.bbox.bottom;
 
   const wordBoxArr = line.words.map((x) => x.bbox);
 
-  line.bbox.left = Math.min(...wordBoxArr.map((x) => x.left));
-  line.bbox.top = Math.min(...wordBoxArr.map((x) => x.top));
-  line.bbox.right = Math.max(...wordBoxArr.map((x) => x.right));
-  line.bbox.bottom = Math.max(...wordBoxArr.map((x) => x.bottom));
+  line.bbox = calcBboxUnion(wordBoxArr);
 
   if (adjustBaseline) line.baseline[1] += (lineboxBottomOrig - line.bbox.bottom);
 }
@@ -467,6 +467,7 @@ function rotateLine(line, angle, dims = null, useCharLevel = false) {
   // If the angle is 0 (or very close) return early.
   if (Math.abs(angle) <= 0.05) return;
 
+  // TODO: Is there ever a reason to use the page dims instead of the line dims?
   const dims1 = dims || line.page.dims;
 
   const sinAngle = Math.sin(angle * (Math.PI / 180));
@@ -495,7 +496,7 @@ function rotateLine(line, angle, dims = null, useCharLevel = false) {
   const lineBoxRot = rotateBbox(line.bbox, cosAngle, sinAngle, dims1.width, dims1.height);
 
   // Re-calculate line bbox by taking union of word bboxes
-  calcLineBbox(line, false);
+  updateLineBbox(line, false);
 
   // Adjust baseline
   const baselineOffsetAdj = lineBoxRot.bottom - line.bbox.bottom;
@@ -595,8 +596,8 @@ const ocr = {
   OcrLine,
   OcrWord,
   OcrChar,
-  calcLineAngleAdj,
-  calcLineBbox,
+  calcLineStartAngleAdj,
+  updateLineBbox,
   calcWordBbox,
   calcWordAngleAdj,
   getPageWord,

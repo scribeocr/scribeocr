@@ -348,7 +348,7 @@ export async function addWordManual({
   const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-  const angleAdjLine = enableRotation ? ocr.calcLineAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
+  const angleAdjLine = enableRotation ? ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
   const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
   const box = wordObjNew.bbox;

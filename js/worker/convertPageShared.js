@@ -18,9 +18,9 @@ export function pass2(pageObj, rotateAngle) {
   // Re-calculate line bounding box and adjust baseline.
   // Note: this must happen before the roatation step, as that step assumes the bounding boxes are correct.
   // Data from Tesseract can omit certain characters when calculating line-level bounding boxes.
-  // Therefore, the bounding box is recalculated using `ocr.calcLineBbox` (which is used by the editor).
+  // Therefore, the bounding box is recalculated using `ocr.updateLineBbox` (which is used by the editor).
   for (const lineObj of pageObj.lines) {
-    ocr.calcLineBbox(lineObj);
+    ocr.updateLineBbox(lineObj);
   }
 
   // Transform bounding boxes if rotation is specified.

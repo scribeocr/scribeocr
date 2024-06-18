@@ -166,7 +166,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
       }
 
       // Recalculate bounding box for line
-      ocr.calcLineBbox(match);
+      ocr.updateLineBbox(match);
     } else {
       for (let i = 0; i < wordsNew.length; i++) {
         const wordNew = wordsNew[i];

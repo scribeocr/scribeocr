@@ -6,6 +6,7 @@
 import { fontAll } from '../containers/fontContainer.js';
 import { calcLineFontSize } from '../fontUtils.js';
 import { imageCache } from '../containers/imageContainer.js';
+import ocr from '../objects/ocrObjects.js';
 import {
   stage, layerText, layerBackground, layerOverlay,
 } from './interfaceCanvas.js';
@@ -55,6 +56,7 @@ export const df = {
   layerOverlay,
   getCharMetrics,
   pageMetricsArr,
+  ocr,
   ocrAll,
   layoutAll,
   layoutDataTableAll,
