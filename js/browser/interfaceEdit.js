@@ -27,6 +27,7 @@ const fontPlusElem = /** @type {HTMLInputElement} */(document.getElementById('fo
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 
 const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
+const styleBoldElem = /** @type {HTMLInputElement} */(document.getElementById('styleBold'));
 const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
 const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
@@ -49,10 +50,12 @@ const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById(
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
 
 styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic'); });
+styleBoldElem.addEventListener('click', () => { changeWordFontStyle('bold'); });
 styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('smallCaps'); });
 styleSuperElem.addEventListener('click', toggleSuperSelectedWords);
 
 const styleItalicButton = new bootstrap.Button(styleItalicElem);
+const styleBoldButton = new bootstrap.Button(styleBoldElem);
 const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
@@ -87,14 +90,17 @@ export async function changeWordFontStyle(style) {
   if (canvasObj.inputRemove) canvasObj.inputRemove();
 
   // If first word style already matches target style, disable the style.
-  const enable = selectedObjects[0].fontStyleLookup !== style;
-  const newStyleLookup = enable ? style : 'normal';
+  const enable = selectedObjects[0].fontStyle !== style;
+  const newStyle = enable ? style : 'normal';
 
   // For some reason the buttons can go out of sync, so this should prevent that.
-  if ((newStyleLookup === 'italic') !== styleItalicElem.classList.contains('active')) {
+  if ((newStyle === 'italic') !== styleItalicElem.classList.contains('active')) {
     styleItalicButton.toggle();
   }
-  if ((newStyleLookup === 'smallCaps') !== styleSmallCapsElem.classList.contains('active')) {
+  if ((newStyle === 'bold') !== styleBoldElem.classList.contains('active')) {
+    styleBoldButton.toggle();
+  }
+  if ((newStyle === 'smallCaps') !== styleSmallCapsElem.classList.contains('active')) {
     styleSmallCapsButton.toggle();
   }
 
@@ -102,17 +108,17 @@ export async function changeWordFontStyle(style) {
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
 
-    wordI.word.style = newStyleLookup;
+    wordI.word.style = newStyle;
 
-    wordI.fontStyleLookup = newStyleLookup;
+    wordI.fontStyle = newStyle;
 
-    const fontI = fontAll.getFont(wordI.fontFamilyLookup, newStyleLookup);
+    const fontI = fontAll.getFont(wordI.fontFamilyLookup, newStyle);
 
     wordI.fontFaceName = fontI.fontFaceName;
     wordI.fontFaceStyle = fontI.fontFaceStyle;
+    wordI.fontFaceWeight = fontI.fontFaceWeight;
 
     wordI.fontFamilyLookup = fontI.family;
-    wordI.fontStyleLookup = fontI.style;
 
     await updateWordCanvas(wordI);
   }
@@ -163,7 +169,7 @@ export async function changeWordFontFamily(fontName) {
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
 
-    const fontI = fontAll.getFont(fontName, wordI.fontStyleLookup);
+    const fontI = fontAll.getFont(fontName, wordI.fontStyle);
 
     if (fontName === 'Default') {
       wordI.word.font = null;
@@ -173,9 +179,10 @@ export async function changeWordFontFamily(fontName) {
 
     wordI.fontFaceName = fontI.fontFaceName;
     wordI.fontFaceStyle = fontI.fontFaceStyle;
+    wordI.fontFaceWeight = fontI.fontFaceWeight;
 
     wordI.fontFamilyLookup = fontI.family;
-    wordI.fontStyleLookup = fontI.style;
+    wordI.fontStyle = fontI.style;
 
     await updateWordCanvas(wordI);
   }
@@ -267,6 +274,7 @@ export function toggleEditButtons(disable = true) {
   fontSizeElem.disabled = disable;
 
   styleItalicElem.disabled = disable;
+  styleBoldElem.disabled = disable;
   styleSmallCapsElem.disabled = disable;
   styleSuperElem.disabled = disable;
 

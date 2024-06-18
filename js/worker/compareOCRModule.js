@@ -247,7 +247,7 @@ export async function evalWords({
 
     const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-    await drawWordRender(calcCtx, word, offsetX, cropY, lineFontSizeA, ctxView, Boolean(angle));
+    await drawWordRender(calcCtx, word, offsetX, cropY, ctxView, Boolean(angle));
   }
 
   const imageDataExpectedA = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;
@@ -306,7 +306,7 @@ export async function evalWords({
 
       const offsetX = (x - x0) * cosAngle - sinAngle * (y - y0);
 
-      await drawWordRender(calcCtx, word, offsetX, cropY, lineFontSizeB, ctxView, Boolean(angle));
+      await drawWordRender(calcCtx, word, offsetX, cropY, ctxView, Boolean(angle));
     }
 
     const imageDataExpectedB = calcCtx.getImageData(0, 0, calcCtx.canvas.width, calcCtx.canvas.height).data;

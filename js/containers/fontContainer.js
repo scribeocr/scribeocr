@@ -94,12 +94,13 @@ const fontFaceObj = {};
  * @param {string} fontFamily - Font family name
  * @param {string} fontStyle - Font style.  May only be "normal" or "italic",
  *   as small-caps fonts should be loaded as a "normal" variant with a different font name.
+ * @param {string} fontWeight
  * @param {string|ArrayBuffer} src - Font source
  */
-export function loadFontFace(fontFamily, fontStyle, src) {
+export function loadFontFace(fontFamily, fontStyle, fontWeight, src) {
   const src1 = typeof (src) === 'string' ? `url(${src})` : src;
 
-  const fontFace = new FontFace(fontFamily, src1, { style: fontStyle });
+  const fontFace = new FontFace(fontFamily, src1, { style: fontStyle, weight: fontWeight });
 
   // Fonts are stored in `document.fonts` for the main thread and `WorkerGlobalScope.fonts` for workers
   const fontSet = globalThis.document ? globalThis.document.fonts : globalThis.fonts;
@@ -110,13 +111,17 @@ export function loadFontFace(fontFamily, fontStyle, src) {
     fontFaceObj[fontFamily] = {};
   }
 
+  if (typeof (fontFaceObj[fontFamily][fontStyle]) === 'undefined') {
+    fontFaceObj[fontFamily][fontStyle] = {};
+  }
+
   // Delete font if it already exists
-  if (typeof (fontFaceObj[fontFamily][fontStyle]) !== 'undefined') {
-    fontSet.delete(fontFaceObj[fontFamily][fontStyle]);
+  if (typeof (fontFaceObj[fontFamily][fontStyle][fontWeight]) !== 'undefined') {
+    fontSet.delete(fontFaceObj[fontFamily][fontStyle][fontWeight]);
   }
 
   // Stored font for future, so it can be deleted if needed
-  fontFaceObj[fontFamily][fontStyle] = fontFace;
+  fontFaceObj[fontFamily][fontStyle][fontWeight] = fontFace;
 
   // Force loading to occur now
   fontFace.load();
@@ -189,7 +194,7 @@ export function FontContainerFont(family, style, src, opt, opentypeObj) {
   /** @type {("sans"|"serif")} */
   this.type = determineSansSerif(this.family) === 'SansDefault' ? 'sans' : 'serif';
 
-  if (typeof FontFace !== 'undefined') loadFontFace(this.fontFaceName, this.fontFaceStyle, this.src);
+  if (typeof FontFace !== 'undefined') loadFontFace(this.fontFaceName, this.fontFaceStyle, this.fontFaceWeight, this.src);
 }
 
 /**
@@ -214,16 +219,18 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
 
   const scrNormal = getFontAbsPath(fontFamily.normal.src);
   const scrItalic = getFontAbsPath(fontFamily.italic.src);
-  const scrSmallCaps = getFontAbsPath(fontFamily.smallCaps.src);
+  const scrBold = getFontAbsPath(fontFamily.bold.src);
 
   // If there are no statistics to use for optimization, create "optimized" font by simply copying the raw font without modification.
   // This should only occur when `multiFontMode` is true, but a document contains no sans words or no serif words.
   if (!fontMetricsObj[fontMetricsType]) {
-    const opentypeFontArr = await Promise.all([loadOpentype(scrNormal, null), loadOpentype(scrItalic, null), loadOpentype(scrSmallCaps, null)]);
+    const opentypeFontArr = await Promise.all([loadOpentype(scrNormal, null), loadOpentype(scrItalic, null), loadOpentype(scrBold, null)]);
     const normalOptFont = new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, scrNormal, true, opentypeFontArr[0]);
     const italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, scrItalic, true, opentypeFontArr[1]);
-    const smallCapsOptFont = new FontContainerFont(fontFamily.smallCaps.family, fontFamily.smallCaps.style, scrSmallCaps, true, opentypeFontArr[2]);
-    return { normal: await normalOptFont, italic: await italicOptFont, smallCaps: await smallCapsOptFont };
+    const boldOptFont = new FontContainerFont(fontFamily.bold.family, fontFamily.bold.style, scrBold, true, opentypeFontArr[2]);
+    return {
+      normal: await normalOptFont, italic: await italicOptFont, bold: await boldOptFont,
+    };
   }
 
   const metricsNormal = fontMetricsObj[fontMetricsType][fontFamily.normal.style];
@@ -240,28 +247,26 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
       return new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, x.fontData, true, font);
     });
 
-  const metricsSmallCaps = fontMetricsObj[fontMetricsType][fontFamily.smallCaps.style];
-  const smallCapsOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.smallCaps.src, fontMetricsObj: metricsSmallCaps, style: fontFamily.smallCaps.style })
-    .then(async (x) => {
-      const font = await loadOpentype(x.fontData, x.kerningPairs);
-      return new FontContainerFont(fontFamily.smallCaps.family, fontFamily.smallCaps.style, x.fontData, true, font);
-    });
+  // Bold fonts are not optimized, as we currently have no accurate way to determine if characters are bold within OCR, so do not have bold metrics.
+  const boldOptFont = loadOpentype(scrBold, null).then((opentypeFont) => new FontContainerFont(fontFamily.bold.family, fontFamily.bold.style, scrBold, true, opentypeFont));
 
-  return { normal: await normalOptFont, italic: await italicOptFont, smallCaps: await smallCapsOptFont };
+  return {
+    normal: await normalOptFont, italic: await italicOptFont, bold: await boldOptFont,
+  };
 }
 
 /**
  * @typedef {Object} FontContainerFamilyBuiltIn
  * @property {FontContainerFont} normal
  * @property {FontContainerFont} italic
- * @property {FontContainerFont} smallCaps
+ * @property {FontContainerFont} bold
  */
 
 /**
  * @typedef {Object} FontContainerFamilyUpload
  * @property {?FontContainerFont} normal
  * @property {?FontContainerFont} italic
- * @property {?FontContainerFont} smallCaps
+ * @property {?FontContainerFont} bold
  */
 
 /**
@@ -273,13 +278,6 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
  * Palatino: FontContainerFamilyBuiltIn, NimbusRomNo9L: FontContainerFamilyBuiltIn, NimbusSans: FontContainerFamilyBuiltIn, [key:string]: FontContainerFamily}} FontContainer
  */
 
-// const carlitoObj = await optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj);
-// const centuryObj = await optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj);
-// const garamondObj = await optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj);
-// const palatinoObj = await optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj);
-// const nimbusRomNo9LObj = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj);
-// const nimbusSansObj = await optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj);
-
 /**
  *
  * @param {string} family
@@ -287,7 +285,9 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
  * @param {boolean} opt
  */
 export async function loadFontContainerFamily(family, src, opt = false) {
-  const res = { normal: null, italic: null, smallCaps: null };
+  const res = {
+    normal: null, italic: null, bold: null,
+  };
 
   const loadType = (type) => new Promise((resolve) => {
     const srcType = src[type];
@@ -302,7 +302,7 @@ export async function loadFontContainerFamily(family, src, opt = false) {
     });
   });
 
-  Promise.allSettled([loadType('normal'), loadType('italic'), loadType('smallCaps')]);
+  Promise.allSettled([loadType('normal'), loadType('italic'), loadType('bold')]);
 
   return res;
 }
@@ -397,14 +397,39 @@ class FontCont {
     this.getFont = (family, style = 'normal', lang = 'eng', container = 'active') => {
       const fontCont = this.getContainer(container);
 
+      // The normal, italic, and bold styles have their own font files.
+      // The smallCaps style is created from the normal font file, except replacing lowercase letters with capitals drawn smaller.
+      const styleLookup = style === 'smallCaps' ? 'normal' : style;
+
       if (lang === 'chi_sim') {
         if (!this.supp.chi_sim) throw new Error('chi_sim font does not exist.');
         return this.supp.chi_sim;
       }
 
-      // If the font does not exist, replace with the appropriate default.
-      // This may occur if there is an uploaded normal font, but not corresponding italic or small-caps font.
-      if (!fontCont?.[family]?.[style]) {
+      // Option 1: If we have access to the font, use it.
+      // Option 2: If we do not have access to the font, but it closely resembles a built-in font, use the built-in font.
+      if (!fontCont?.[family]?.[styleLookup]) {
+        if (/Times/i.test(family)) {
+          family = 'NimbusRomNo9L';
+        } else if (/Helvetica/i.test(family)) {
+          family = 'NimbusSans';
+        } else if (/Arial/i.test(family)) {
+          family = 'NimbusSans';
+        } else if (/Century/i.test(family)) {
+          family = 'Century';
+        } else if (/Palatino/i.test(family)) {
+          family = 'Palatino';
+        } else if (/Garamond/i.test(family)) {
+          family = 'Garamond';
+        } else if (/Carlito/i.test(family)) {
+          family = 'Carlito';
+        } else if (/Calibri/i.test(family)) {
+          family = 'Carlito';
+        }
+      }
+
+      // Option 3: If the font still is not identified, use the default sans/serif font.
+      if (!fontCont?.[family]?.[styleLookup]) {
         family = determineSansSerif(family);
       }
 
@@ -413,8 +438,8 @@ class FontCont {
 
       if (family === 'SerifDefault') family = this.serifDefaultName;
       if (family === 'SansDefault') family = this.sansDefaultName;
-      const fontRes = fontCont[family][style];
-      if (!fontRes) throw new Error(`Font container does not contain ${family} (${style}).`);
+      const fontRes = fontCont[family][styleLookup];
+      if (!fontRes) throw new Error(`Font container does not contain ${family} (${styleLookup}).`);
       return fontRes;
     };
 

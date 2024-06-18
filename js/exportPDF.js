@@ -342,7 +342,8 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
     let wordFontSize = word0Metrics.fontSize;
 
     // Set font and font size
-    ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][word.style]);
+    const fontStyle = word.style === 'smallCaps' ? 'normal' : word.style;
+    ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][fontStyle]);
 
     textContentObjStr += `${pdfFontCurrent} ${String(wordFontSize)} Tf\n`;
 
@@ -394,6 +395,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       const charSpacing = wordMetrics.charSpacing;
       const charArr = wordMetrics.charArr;
       const wordLeftBearing = word.visualCoords ? wordMetrics.leftSideBearing : 0;
+      const kerningArr = wordMetrics.kerningArr;
 
       wordBox = word.bbox;
 
@@ -442,7 +444,8 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       }
 
       // const pdfFont = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFontFamily][word.style];
-      const { name: pdfFont, type: pdfFontType } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][word.style];
+      const fontStyle = word.style === 'smallCaps' ? 'normal' : word.style;
+      const { name: pdfFont, type: pdfFontType } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][fontStyle];
 
       const wordWidthAdj = (wordBox.right - wordBox.left) / cosAngle;
       const wordSpaceAdj = (wordBox.left - wordBoxLast.right) / cosAngle;
@@ -471,15 +474,13 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
 
       wordBoxLast = wordBox;
 
-      const wordLastGlyph = wordFontOpentype.charToGlyph(charArr.at(-1));
-      const wordLastGlyphMetrics = wordLastGlyph.getMetrics();
-      wordRightBearingLast = wordLast.visualCoords ? wordLastGlyphMetrics.rightSideBearing * (wordFontSize / wordFontOpentype.unitsPerEm) : 0;
-
       // In general, we assume that (given our adjustments to character spacing) the rendered word has the same width as the image of that word.
       // However, this assumption does not hold for single-character words, as there is no space between character to adjust.
       // Therefore, we calculate the difference between the rendered and actual word and apply an adjustment to the width of the next space.
       // (This does not apply to drop caps as those have horizontal scaling applied to exactly match the image.)
       if (charArr.length === 1 && !word.dropcap) {
+        const wordLastGlyph = wordFontOpentype.charToGlyph(charArr.at(-1));
+        const wordLastGlyphMetrics = wordLastGlyph.getMetrics();
         const lastCharWidth = (wordLast.visualCoords ? (wordLastGlyphMetrics.xMax - wordLastGlyphMetrics.xMin) : wordLastGlyph.advanceWidth) * (wordFontSize / wordFontOpentype.unitsPerEm);
         spacingAdj = wordWidthAdj - lastCharWidth - angleAdjWordX;
       } else {
@@ -488,11 +489,12 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
 
       textContentObjStr += ' ] TJ\n';
 
-      if (pdfFont !== pdfFontCurrent || wordFontSize !== fontSizeLast) {
-        textContentObjStr += `${pdfFont} ${String(wordFontSize)} Tf\n`;
+      const fontSize = word.style === 'smallCaps' && word.text[0] && word.text[0] !== word.text[0].toUpperCase() ? wordFontSize * 0.8 : wordFontSize;
+      if (pdfFont !== pdfFontCurrent || fontSize !== fontSizeLast) {
+        textContentObjStr += `${pdfFont} ${String(fontSize)} Tf\n`;
         pdfFontCurrent = pdfFont;
         pdfFontTypeCurrent = pdfFontType;
-        fontSizeLast = wordFontSize;
+        fontSizeLast = fontSize;
       }
       if (fillColor !== fillColorCurrent) {
         textContentObjStr += `${fillColor}\n`;
@@ -513,19 +515,15 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
 
       // Non-ASCII and special characters are encoded/escaped using winEncodingLookup
       for (let k = 0; k < charArr.length; k++) {
-        const letter = charArr[k];
-        const letterNext = charArr[k + 1];
+        const letterSrc = charArr[k];
+        const letter = word.style === 'smallCaps' ? charArr[k].toUpperCase() : charArr[k];
+        const fontSizeLetter = word.style === 'smallCaps' && letterSrc !== letter ? wordFontSize * 0.8 : wordFontSize;
 
         const letterEnc = pdfFontTypeCurrent === 0 ? wordFontOpentype.charToGlyphIndex(letter).toString(16).padStart(4, '0') : winEncodingLookup[letter];
-        if (letter) {
-          let kern = 0;
-          if (letterNext) {
-            const glyph1 = wordFontOpentype.charToGlyph(letter);
-            const glyph2 = wordFontOpentype.charToGlyph(letterNext);
-            kern = wordFontOpentype.getKerningValue(glyph1, glyph2) * (-1000 / wordFontOpentype.unitsPerEm);
+        if (letterEnc) {
+          let kern = (kerningArr[k] || 0) * (-1000 / fontSizeLetter);
 
-          // Between two Chinese characters, kerning values are used rather than spaces
-          } else if (word.lang === 'chi_sim' && j + 1 < words.length && words[j + 1].lang === 'chi_sim') {
+          if (word.lang === 'chi_sim' && j + 1 < words.length && words[j + 1].lang === 'chi_sim') {
             kernSpacing = true;
             const wordNext = words[j + 1];
             const wordSpaceNextAdj = (wordNext.bbox.left - wordBox.right) / cosAngle;
@@ -556,6 +554,14 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
 
           const charAdj = kern + charWidthError;
 
+          if (pdfFont !== pdfFontCurrent || fontSizeLetter !== fontSizeLast) {
+            textContentObjStr += ' ] TJ\n';
+            textContentObjStr += `${pdfFont} ${String(fontSizeLetter)} Tf\n`;
+            fontSizeLast = fontSizeLetter;
+            textContentObjStr += `${String(Math.round(charSpacing * 1e6) / 1e6)} Tc\n`;
+            textContentObjStr += '[ ';
+          }
+
           if (pdfFontTypeCurrent === 0) {
             textContentObjStr += `<${letterEnc}> ${String(Math.round(charAdj * 1e6) / 1e6)} `;
           } else {
@@ -580,6 +586,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       }
 
       wordLast = word;
+      wordRightBearingLast = wordLast.visualCoords ? wordMetrics.rightSideBearing : 0;
       wordFontOpentypeLast = wordFontOpentype;
       charSpacingLast = charSpacing;
     }

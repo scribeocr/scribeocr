@@ -29,7 +29,7 @@ export async function drawWordActual(ctx, words, imageBinaryBit, imgDims, angle,
   const fontI = fontAll.getWordFont(words[0]);
 
   const fontOpentypeI = fontI.opentype;
-  ctx.font = `${fontI.fontFaceStyle} ${1000}px ${fontI.fontFaceName}`;
+  ctx.font = `${fontI.fontFaceStyle} ${fontI.fontFaceWeight} ${1000}px ${fontI.fontFaceName}`;
 
   const oMetrics = ctx.measureText('o');
 
@@ -117,16 +117,27 @@ export async function drawWordActual(ctx, words, imageBinaryBit, imgDims, angle,
    *    and should include kerning and character spacing.
    * @param {FontContainerFont} font
    * @param {number} size
+   * @param {string} style
    * @param {string} fillStyle
    */
-const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, size, fillStyle = 'black') => {
-  ctx.font = `${font.fontFaceStyle} ${size}px ${font.fontFaceName}`;
+const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, size, style, fillStyle = 'black') => {
+  ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size}px ${font.fontFaceName}`;
   ctx.fillStyle = fillStyle;
   ctx.textBaseline = 'alphabetic';
 
   let leftI = left;
   for (let i = 0; i < charArr.length; i++) {
-    const charI = charArr[i];
+    let charI = charArr[i];
+
+    if (style === 'smallCaps') {
+      if (charI === charI.toUpperCase()) {
+        ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size}px ${font.fontFaceName}`;
+      } else {
+        charI = charI.toUpperCase();
+        ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size * 0.8}px ${font.fontFaceName}`;
+      }
+    }
+
     ctx.fillText(charI, leftI, bottom);
     leftI += advanceArr[i];
   }
@@ -139,24 +150,12 @@ const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, s
    * @param {OcrWord} word
    * @param {number} offsetX
    * @param {number} cropY
-   * @param {number} lineFontSize
    * @param {?CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctxView
    * @param {boolean} [imageRotated=false] -
    */
-export const drawWordRender = async function (ctx, word, offsetX = 0, cropY = 0, lineFontSize = 0, ctxView = null, imageRotated = false) {
+export const drawWordRender = async (ctx, word, offsetX = 0, cropY = 0, ctxView = null, imageRotated = false) => {
   if (!fontAll.active) throw new Error('Fonts must be defined before running this function.');
   if (!ctx) throw new Error('Canvases must be defined before running this function.');
-
-  lineFontSize = lineFontSize || calcLineFontSize(word.line) || 10;
-
-  //   const wordText = altText ? ocr.replaceLigatures(altText) : ocr.replaceLigatures(word.text);
-
-  const wordFontSize = calcWordFontSize(word) || lineFontSize;
-
-  if (!wordFontSize) {
-    console.log('Font size not found');
-    return;
-  }
 
   const fontI = fontAll.getWordFont(word);
 
@@ -180,6 +179,7 @@ export const drawWordRender = async function (ctx, word, offsetX = 0, cropY = 0,
   const advanceArr = wordMetrics.advanceArr;
   const kerningArr = wordMetrics.kerningArr;
   const charSpacing = wordMetrics.charSpacing;
+  const wordFontSize = wordMetrics.fontSize;
 
   const advanceArrTotal = [];
   for (let i = 0; i < advanceArr.length; i++) {
@@ -190,11 +190,12 @@ export const drawWordRender = async function (ctx, word, offsetX = 0, cropY = 0,
     advanceArrTotal.push(leftI);
   }
 
-  const left = 1 - wordMetrics.leftSideBearing + offsetX;
+  let left = 1 + offsetX;
+  if (word.visualCoords) left -= wordMetrics.leftSideBearing;
 
-  await printWordOnCanvas(ctx, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize);
+  await printWordOnCanvas(ctx, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.style);
 
   if (ctxView) {
-    await printWordOnCanvas(ctxView, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, 'red');
+    await printWordOnCanvas(ctxView, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.style, 'red');
   }
 };

@@ -46,14 +46,14 @@ async function fontPathToArrayBuffer(fileName) {
 }
 
 async function fontPathToArrayBufferAll(fileNameObj) {
-  /** @type {Object<string, fontSrc>} */
+  /** @type {Object<string, fontSrcBuiltIn|fontSrcUpload>} */
   const result = {};
   const resArr = Object.entries(fileNameObj).map(async (x) => {
     const [key, value] = x;
     result[key] = {
       normal: await fontPathToArrayBuffer(value.normal),
       italic: await fontPathToArrayBuffer(value.italic),
-      smallCaps: await fontPathToArrayBuffer(value.smallCaps),
+      bold: await fontPathToArrayBuffer(value.bold),
     };
     return true;
   });
@@ -66,12 +66,24 @@ async function fontPathToArrayBufferAll(fileNameObj) {
  */
 export async function loadBuiltInFontsRaw() {
   const srcPathObj = {
-    Carlito: { normal: 'Carlito-Regular.woff', italic: 'Carlito-Italic.woff', smallCaps: 'Carlito-RegularSmallCaps.woff' },
-    Century: { normal: 'C059-Roman.woff', italic: 'C059-Italic.woff', smallCaps: 'C059-RomanSmallCaps.woff' },
-    Garamond: { normal: 'EBGaramond-Regular.woff', italic: 'EBGaramond-Italic.woff', smallCaps: 'EBGaramond-RegularSmallCaps.woff' },
-    Palatino: { normal: 'P052-Roman.woff', italic: 'P052-Italic.woff', smallCaps: 'P052-RomanSmallCaps.woff' },
-    NimbusRomNo9L: { normal: 'NimbusRomNo9L-Reg.woff', italic: 'NimbusRomNo9L-RegIta.woff', smallCaps: 'NimbusRomNo9L-RegSmallCaps.woff' },
-    NimbusSans: { normal: 'NimbusSanL-Reg.woff', italic: 'NimbusSanL-RegIta.woff', smallCaps: 'NimbusSanL-RegSmallCaps.woff' },
+    Carlito: {
+      normal: 'Carlito-Regular.woff', italic: 'Carlito-Italic.woff', bold: 'Carlito-Bold.woff',
+    },
+    Century: {
+      normal: 'C059-Roman.woff', italic: 'C059-Italic.woff', bold: 'C059-Bold.woff',
+    },
+    Garamond: {
+      normal: 'EBGaramond-Regular.woff', italic: 'EBGaramond-Italic.woff', bold: 'EBGaramond-Bold.woff',
+    },
+    Palatino: {
+      normal: 'P052-Roman.woff', italic: 'P052-Italic.woff', bold: 'P052-Bold.woff',
+    },
+    NimbusRomNo9L: {
+      normal: 'NimbusRomNo9L-Reg.woff', italic: 'NimbusRomNo9L-RegIta.woff', bold: 'NimbusRomNo9L-Med.woff',
+    },
+    NimbusSans: {
+      normal: 'NimbusSanL-Reg.woff', italic: 'NimbusSanL-RegIta.woff', bold: 'NimbusSanL-Bol.woff',
+    },
   };
 
   const srcObj = await fontPathToArrayBufferAll(srcPathObj);
@@ -151,12 +163,36 @@ export async function setBuiltInFontsWorker(scheduler, force = false) {
       const worker = scheduler.workers[i];
       const res = worker.loadFontsWorker({
         src: {
-          Carlito: { normal: fontAll.active.Carlito.normal.src, italic: fontAll.active.Carlito.italic.src, smallCaps: fontAll.active.Carlito.smallCaps.src },
-          Century: { normal: fontAll.active.Century.normal.src, italic: fontAll.active.Century.italic.src, smallCaps: fontAll.active.Century.smallCaps.src },
-          Garamond: { normal: fontAll.active.Garamond.normal.src, italic: fontAll.active.Garamond.italic.src, smallCaps: fontAll.active.Garamond.smallCaps.src },
-          Palatino: { normal: fontAll.active.Palatino.normal.src, italic: fontAll.active.Palatino.italic.src, smallCaps: fontAll.active.Palatino.smallCaps.src },
-          NimbusRomNo9L: { normal: fontAll.active.NimbusRomNo9L.normal.src, italic: fontAll.active.NimbusRomNo9L.italic.src, smallCaps: fontAll.active.NimbusRomNo9L.smallCaps.src },
-          NimbusSans: { normal: fontAll.active.NimbusSans.normal.src, italic: fontAll.active.NimbusSans.italic.src, smallCaps: fontAll.active.NimbusSans.smallCaps.src },
+          Carlito: {
+            normal: fontAll.active.Carlito.normal.src,
+            italic: fontAll.active.Carlito.italic.src,
+            bold: fontAll.active.Carlito.bold.src,
+          },
+          Century: {
+            normal: fontAll.active.Century.normal.src,
+            italic: fontAll.active.Century.italic.src,
+            bold: fontAll.active.Century.bold.src,
+          },
+          Garamond: {
+            normal: fontAll.active.Garamond.normal.src,
+            italic: fontAll.active.Garamond.italic.src,
+            bold: fontAll.active.Garamond.bold.src,
+          },
+          Palatino: {
+            normal: fontAll.active.Palatino.normal.src,
+            italic: fontAll.active.Palatino.italic.src,
+            bold: fontAll.active.Palatino.bold.src,
+          },
+          NimbusRomNo9L: {
+            normal: fontAll.active.NimbusRomNo9L.normal.src,
+            italic: fontAll.active.NimbusRomNo9L.italic.src,
+            bold: fontAll.active.NimbusRomNo9L.bold.src,
+          },
+          NimbusSans: {
+            normal: fontAll.active.NimbusSans.normal.src,
+            italic: fontAll.active.NimbusSans.italic.src,
+            bold: fontAll.active.NimbusSans.bold.src,
+          },
         },
         opt,
       });
@@ -189,11 +225,13 @@ export async function setBuiltInFontsWorker(scheduler, force = false) {
 export async function setUploadFontsWorker(scheduler) {
   if (!fontAll.active) return;
 
-  /** @type {Object<string, fontSrc>} */
+  /** @type {Object<string, fontSrcBuiltIn|fontSrcUpload>} */
   const fontsUpload = {};
   for (const [key, value] of Object.entries(fontAll.active)) {
     if (!['Carlito', 'Century', 'Garamond', 'Palatino', 'NimbusRomNo9L', 'NimbusSans'].includes(key)) {
-      fontsUpload[key] = { normal: value?.normal?.src, italic: value?.italic?.src, smallCaps: value?.smallCaps?.src };
+      fontsUpload[key] = {
+        normal: value?.normal?.src, italic: value?.italic?.src, bold: value?.bold?.src,
+      };
     }
   }
 

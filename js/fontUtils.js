@@ -168,7 +168,7 @@ function calcWordCharMetrics(wordText, fontOpentype) {
 /**
  * @typedef WordMetrics
  * @type {object}
- * @property {Array<string>} charArr
+ * @property {Array<string>} charArr - Array of characters in the word, including any ligature replacements.
  * @property {number} visualWidth - Width of printed characters in px (does not include left/right bearings).
  * @property {number} leftSideBearing - Width of left bearing in px.
  * @property {number} rightSideBearing - Width of right bearing in px.
@@ -193,18 +193,31 @@ export function calcWordMetrics(word, angle = 0) {
 
   const charArr = addLigatures(word.text, fontOpentype);
 
-  const { advanceArr, kerningArr } = calcWordCharMetrics(charArr, fontOpentype);
+  const charArr2 = word.style === 'smallCaps' ? charArr.map((x) => (x.toUpperCase())) : charArr;
+
+  const { advanceArr, kerningArr } = calcWordCharMetrics(charArr2, fontOpentype);
+
+  if (word.style === 'smallCaps') {
+    for (let i = 0; i < charArr2.length; i++) {
+      if (charArr2[i] !== charArr[i]) {
+        advanceArr[i] *= 0.8;
+        if (kerningArr[i]) kerningArr[i] *= 0.8;
+      }
+    }
+  }
 
   const advanceTotal = advanceArr.reduce((a, b) => a + b, 0);
   const kerningTotal = kerningArr.reduce((a, b) => a + b, 0);
 
   const wordWidth1 = advanceTotal + kerningTotal;
 
-  const wordLastGlyphMetrics = fontOpentype.charToGlyph(charArr.at(-1)).getMetrics();
-  const wordFirstGlyphMetrics = fontOpentype.charToGlyph(charArr[0]).getMetrics();
+  const wordLastGlyphMetrics = fontOpentype.charToGlyph(charArr2.at(-1)).getMetrics();
+  const wordFirstGlyphMetrics = fontOpentype.charToGlyph(charArr2[0]).getMetrics();
 
-  const wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing || 0;
-  const wordRightBearing = wordLastGlyphMetrics.rightSideBearing || 0;
+  let wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing || 0;
+  let wordRightBearing = wordLastGlyphMetrics.rightSideBearing || 0;
+  if (word.style === 'smallCaps' && charArr2[0] !== charArr[0]) wordLeftBearing *= 0.8;
+  if (word.style === 'smallCaps' && charArr2[charArr2.length - 1] !== charArr[charArr2.length - 1]) wordRightBearing *= 0.8;
 
   const wordWidth = word.visualCoords ? wordWidth1 - wordRightBearing - wordLeftBearing : wordWidth1;
   const wordWidthPx = wordWidth * (fontSize / fontOpentype.unitsPerEm);
@@ -215,14 +228,21 @@ export function calcWordMetrics(word, angle = 0) {
   const kerningArrPx = kerningArr.map((x) => x * (fontSize / fontOpentype.unitsPerEm));
 
   let charSpacing = 0;
-  if (charArr.length > 1) {
+  if (charArr2.length > 1) {
     const cosAngle = Math.cos(angle * (Math.PI / 180));
     const actualWidth = (word.bbox.right - word.bbox.left) / cosAngle;
-    charSpacing = Math.round((actualWidth - wordWidthPx) / (charArr.length - 1) * 1e6) / 1e6;
+    charSpacing = Math.round((actualWidth - wordWidthPx) / (charArr2.length - 1) * 1e6) / 1e6;
   }
 
   return {
-    visualWidth: wordWidthPx, leftSideBearing: wordLeftBearingPx, rightSideBearing: wordRightBearingPx, advanceArr: advanceArrPx, kerningArr: kerningArrPx, charSpacing, fontSize, charArr,
+    visualWidth: wordWidthPx,
+    leftSideBearing: wordLeftBearingPx,
+    rightSideBearing: wordRightBearingPx,
+    advanceArr: advanceArrPx,
+    kerningArr: kerningArrPx,
+    charSpacing,
+    fontSize,
+    charArr,
   };
 }
 

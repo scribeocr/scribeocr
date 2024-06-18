@@ -524,6 +524,7 @@ function cloneLine(line) {
 /**
  * Clones word.  Does not clone line or page.
  * Should be used rather than `structuredClone` for performance reasons.
+ * TODO: Rewrite this so it is dynamic and does not break every time we edit the properties of OcrWord.
  * @param {OcrWord} word
  */
 function cloneWord(word) {
@@ -537,6 +538,8 @@ function cloneWord(word) {
   wordNew.lang = word.lang;
   wordNew.compTruth = word.compTruth;
   wordNew.matchTruth = word.matchTruth;
+  wordNew.visualCoords = word.visualCoords;
+  wordNew.raw = word.raw;
   if (word.chars) {
     wordNew.chars = [];
     for (const char of word.chars) {

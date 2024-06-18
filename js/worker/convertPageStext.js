@@ -4,18 +4,7 @@ import {
   mean50, unescapeXml, round6,
 } from '../miscUtils.js';
 
-import { pass3 } from './convertPageShared.js';
 import { LayoutDataTablePage } from '../objects/layoutObjects.js';
-
-const stextSplitRegex = /(?:<char[^>]*?c=['"]\s+['"]\/>)|(?:<\/font>\s*(?=<font))/ig;
-// The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
-const stextCharRegex = /(<font[^>]+>\s*)?<char quad=['"](\s*[\d.-]+)(\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(\s*[\d.-]+)(\s*[\d.-]+)[^>]*?y=['"]([\d.-]+)['"][^>]*?c=['"]([^'"]+)['"]\s*\/>/ig;
-
-// Conversion function for "stext" (or "structured text" output from mupdf)
-// This format is more similar to Abbyy XML and is based on that parsing code.
-// The following features were removed (compared with Abbyy XML):
-// - Drop cap detection
-// - Superscript detection
 
 /**
  * @param {Object} params
@@ -34,8 +23,6 @@ export async function convertPageStext({ ocrStr, n }) {
      * @param {number} n
      */
   function convertLineStext(xmlLine, lineNum, n = 1) {
-    const stylesLine = {};
-
     // Remove the <block> tag to avoid the regex matching it instead of the <line> tag.
     // We currently have no "block" level object, however this may be useful in the future.
     xmlLine = xmlLine.replace(/<block[^>]*?>/i, '');
@@ -49,73 +36,95 @@ export async function convertPageStext({ ocrStr, n }) {
 
     const fontFamily = fontName?.replace(/-.+/g, '') || 'Default';
 
-    // Currently no method of detecting drop caps for stext
-    const dropCap = false;
-
     const lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=['"](\s*[\d.-]+)(\s*[\d.-]+)?(\s*[\d.-]+)?(\s*[\d.-]+)?/g)][0].slice(1, 5).map((x) => Math.max(parseFloat(x), 0));
-
-    // These regex remove blank characters that occur next to changes in formatting to avoid making too many words.
-    // stext is confirmed to (at least sometimes) change formatting before a space character rather than after
-    xmlLine = xmlLine.replaceAll(/(<\/font>\s*<font[^>]*>\s*)<char[^>]*?c=['"]\s+['"]\/>/ig, '$1');
-    xmlLine = xmlLine.replaceAll(/<char[^>]*?c=['"]\s+['"]\/>(\s*<\/font>\s*<font[^>]*>\s*)/ig, '$1');
-
-    // Remove spaces that are the first characters of words
-    xmlLine = xmlLine.replaceAll(/(<font[^>]*>\s*)<char[^>]*?c=['"]\s+['"]\/>/ig, '$1');
 
     // Unlike Tesseract, stext does not have a native "word" unit (it provides only lines and letters).
     // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
-    const wordStrArr = xmlLine.split(stextSplitRegex);
+    const wordStrArr = xmlLine.split(/(?:<char[^>]*?c=['"]\s+['"]\/>)/ig);
 
     if (wordStrArr.length === 0) return (['', 0]);
 
-    /** @type {Array<Array<{left: number, top: number, right: number, bottom: number, baseline: number}>>} */
+    /** @type {Array<Array<{left: number, top: number, right: number, bottom: number}>>} */
     const bboxes = [];
-    /** @type {Array<string>} */
+
+    let baselineFirst = 0;
+    let baselineLast = 0;
+
+    /** @type {Array<Array<string>>} */
     const text = [];
+    let currentStyle = 'normal';
+    let currentSize = 0;
+    /** @type {Array<string>} */
     let styleArr = [];
     styleArr = styleArr.fill('normal');
 
     for (let i = 0; i < wordStrArr.length; i++) {
       const wordStr = wordStrArr[i];
-      const letterArr = [...wordStr.matchAll(stextCharRegex)];
-      if (letterArr.length === 0) continue;
-      if (typeof (letterArr[0][1]) !== 'undefined') {
-        if (dropCap && i === 0) {
-          styleArr.push('dropcap');
-          // } else if (/superscript\=[\'\"](1|true)/i.test(letterArr[0][1])) {
-          //   styleArr[i] = "sup";
-        } else if (/italic/i.test(letterArr[0][1])) {
-          styleArr.push('italic');
-          stylesLine.italic = true;
-        } else if (/small\W?cap/i.test(letterArr[0][1])) {
-          styleArr.push('smallCaps');
-          stylesLine.smallCaps = true;
-        } else {
-          styleArr.push('normal');
-          stylesLine.normal = true;
-        }
-      } else if (styleArr.length > 0) {
-        if (styleArr[styleArr.length - 1] === 'dropcap') {
-          styleArr.push('normal');
-        } else {
-          styleArr.push(styleArr[styleArr.length - 1]);
-        }
-      }
 
-      bboxes.push([]);
-      text.push('');
+      // Fonts can be changed at any point in the word string.
+      // Sometimes the font is changed before a space character, and othertimes it is changed after the space character.
+      // This regex splits the string into elements that contain either (1) a font change or (2) a character.
+      // The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
+      const stextCharRegex = /(<font[^>]+>\s*)|<char quad=['"](\s*[\d.-]+)(\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(\s*[\d.-]+)(\s*[\d.-]+)[^>]*?y=['"]([\d.-]+)['"][^>]*?c=['"]([^'"]+)['"]\s*\/>/ig;
 
-      for (let j = 0; j < letterArr.length; j++) {
+      const letterOrFontArr = [...wordStr.matchAll(stextCharRegex)];
+
+      if (letterOrFontArr.length === 0) continue;
+
+      let wordInit = false;
+
+      for (let j = 0; j < letterOrFontArr.length; j++) {
+        const fontStr = letterOrFontArr[j][1];
+        if (fontStr) {
+          // While small caps can be printed using special "small caps" fonts, they can also be printed using a regular font with a size change.
+          // This block of code detects small caps printed in title case by checking for a decrease in font size after the first letter.
+          let smallCapsAlt = false;
+          const sizeStr = fontStr?.match(/size=['"]([^'"]*)/)?.[1];
+          if (sizeStr) {
+            const newSize = parseFloat(sizeStr);
+            const secondLetter = wordInit && bboxes[bboxes.length - 1].length === 1;
+            if (secondLetter && newSize < currentSize && currentSize > 0) {
+              smallCapsAlt = true;
+            }
+            currentSize = newSize || currentSize;
+          }
+
+          if (smallCapsAlt) {
+            currentStyle = 'smallCapsAlt';
+            // The word is already initialized, so we need to change the last element of the style array.
+            // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
+            styleArr[styleArr.length - 1] = 'smallCapsAlt';
+          } else if (/italic/i.test(fontStr)) {
+            currentStyle = 'italic';
+          } else if (/small\W?cap/i.test(fontStr)) {
+            currentStyle = 'smallCaps';
+          } else if (/bold/i.test(fontStr)) {
+            currentStyle = 'bold';
+          } else {
+            currentStyle = 'normal';
+          }
+
+          continue;
+        }
+
+        if (!wordInit) {
+          styleArr.push(currentStyle);
+          bboxes.push([]);
+          text.push([]);
+          wordInit = true;
+        }
+
         bboxes[bboxes.length - 1].push({
-          left: Math.round(parseFloat(letterArr[j][2])),
-          top: Math.round(parseFloat(letterArr[j][3])),
-          right: Math.round(parseFloat(letterArr[j][4])),
-          bottom: Math.round(parseFloat(letterArr[j][5])),
-          baseline: Math.round(parseFloat(letterArr[j][6])),
+          left: Math.round(parseFloat(letterOrFontArr[j][2])),
+          top: Math.round(parseFloat(letterOrFontArr[j][3])),
+          right: Math.round(parseFloat(letterOrFontArr[j][4])),
+          bottom: Math.round(parseFloat(letterOrFontArr[j][5])),
         });
 
-        const contentStrLetter = letterArr[j][7];
-        text[text.length - 1] += contentStrLetter;
+        if (baselineFirst === 0) baselineFirst = parseFloat(letterOrFontArr[j][6]);
+        baselineLast = parseFloat(letterOrFontArr[j][6]);
+
+        text[text.length - 1].push(letterOrFontArr[j][7]);
       }
     }
 
@@ -123,37 +132,17 @@ export async function convertPageStext({ ocrStr, n }) {
     // This commonly happens for "lines" that contain only space characters.
     if (bboxes.length === 0) return (['', 0]);
 
-    // To calculate the slope of the baseline (and therefore image angle) the position of each glyph that starts (approximately) on the
-    // baseline is compared to the first such glyph.  This is less precise than a true "best fit" approach, but hopefully with enough data
-    // points it will all average out.
-    const baselineFirst = [bboxes[0][0].left, bboxes[0][0].baseline];
-
-    const baselineLast = [bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].left, bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].baseline];
-
-    const rise = baselineLast[1] - baselineFirst[1];
-    const run = baselineLast[0] - baselineFirst[0];
+    const rise = baselineLast - baselineFirst;
+    const run = bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].right - bboxes[0][0].left;
 
     const baselineSlope = !run ? 0 : rise / run;
-
-    // NOTE: This section can probably be deleted for stext as it seems specific to Abbyy
-    // While Abbyy XML already provides line bounding boxes, these have been observed to be (at times)
-    // completely different than a bounding box calculated from a union of all letters in the line.
-    // Therefore, the line bounding boxes are recaclculated here.
-    // reduce((acc, val) => acc.concat(val), []) is used as a drop-in replacement for flat() with significantly better performance
-    // const lineLeft = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[0]).filter((x) => x > 0));
-    // const lineTop = Math.min(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[1]).filter((x) => x > 0));
-    // const lineRight = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[2]).filter((x) => x > 0));
-    // const lineBottom = Math.max(...bboxes.reduce((acc, val) => acc.concat(val), []).map((x) => x[3]).filter((x) => x > 0));
 
     const lineBbox = {
       left: lineBoxArr[0], top: lineBoxArr[1], right: lineBoxArr[2], bottom: lineBoxArr[3],
     };
 
     // baselinePoint should be the offset between the bottom of the line bounding box, and the baseline at the leftmost point
-    let baselinePoint = baselineFirst[1] - lineBbox.bottom;
-    if (baselineSlope < 0) {
-      baselinePoint -= baselineSlope * (baselineFirst[0] - lineBbox.left);
-    }
+    let baselinePoint = baselineFirst - lineBbox.bottom;
     baselinePoint = baselinePoint || 0;
 
     const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
@@ -165,7 +154,9 @@ export async function convertPageStext({ ocrStr, n }) {
 
     let lettersKept = 0;
     for (let i = 0; i < text.length; i++) {
-      if (text[i].trim() == '') { continue; }
+      const wordText = unescapeXml(text[i].join(''));
+
+      if (wordText.trim() == '') { continue; }
       const bboxesI = bboxes[i];
 
       const bboxesILeft = Math.min(...bboxesI.map((x) => x.left));
@@ -175,14 +166,14 @@ export async function convertPageStext({ ocrStr, n }) {
 
       const id = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
 
-      const wordText = unescapeXml(text[i]);
-
       const bbox = {
         left: bboxesILeft, top: bboxesITop, right: bboxesIRight, bottom: bboxesIBottom,
       };
 
       const wordObj = new ocr.OcrWord(lineObj, wordText, bbox, id);
       wordObj.size = fontSize;
+
+      wordObj.chars = bboxesI.map((x, ind) => new ocr.OcrChar(text[i][ind], x));
 
       // In stext, the coordinates are based on font bounding boxes, not where pixels start/end.
       wordObj.visualCoords = false;
@@ -191,10 +182,18 @@ export async function convertPageStext({ ocrStr, n }) {
       // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
       wordObj.conf = 100;
 
-      if (styleArr[i] === 'italic') {
+      if (styleArr[i] === 'smallCapsAlt' && !/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text)) {
+        wordObj.style = 'smallCaps';
+        wordObj.chars.slice(1).forEach((x) => {
+          x.text = x.text.toLowerCase();
+        });
+        wordObj.text = wordObj.chars.map((x) => x.text).join('');
+      } else if (styleArr[i] === 'italic') {
         wordObj.style = 'italic';
       } else if (styleArr[i] === 'smallCaps') {
         wordObj.style = 'smallCaps';
+      } else if (styleArr[i] === 'bold') {
+        wordObj.style = 'bold';
       }
 
       if (fontFamily !== 'Default') {
@@ -234,7 +233,10 @@ export async function convertPageStext({ ocrStr, n }) {
 
   pageObj.angle = angleOut;
 
-  const langSet = pass3(pageObj);
+  // TODO: Get other languages working with stext.
+  /** @type {Set<string>} */
+  const langSet = new Set();
+  langSet.add('eng');
 
   return { pageObj, dataTables: new LayoutDataTablePage(), langSet };
 }

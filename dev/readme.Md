@@ -6,8 +6,6 @@ The fonts included in the live site are standardized versions of the raw fonts f
 
 1. `generate_fonts.sh`
 	1. Generate normal and italic fonts.
-2. `generate_small_caps.sh`
-	1. Generate small caps fonts.
 3. `generate_fonts_ttf.sh`
 	1. Generate `.ttf` versions of all fonts.
 	2. Due to a bug in `canvas` for Node.js, `.ttf` fonts must be used instead of `.woff` fonts.

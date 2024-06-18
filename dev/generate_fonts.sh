@@ -3,7 +3,14 @@ proc_fonts_dir="fonts"
 all_fonts=1
 temp_dir=`mktemp --directory`
 
-while IFS= read -r file || [[ -n "$file" ]]; do
+## Hard-code the date to 0 to ensure that the output is deterministic.
+## If this is not set, the output will be different each time the script is run even if nothing changes,
+## which will massively inflate the size of the Git repository.
+## See: https://reproducible-builds.org/docs/source-date-epoch/
+## https://github.com/fontforge/fontforge/pull/2943
+export SOURCE_DATE_EPOCH=0
+
+while IFS= read -r file || [[ -n "$file" ]];
 do
     if [[ -f $file ]]; then
         filename=$(basename "$file")

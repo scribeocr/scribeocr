@@ -23,6 +23,7 @@ const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wo
 const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
 
 const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
+const styleBoldElem = /** @type {HTMLInputElement} */(document.getElementById('styleBold'));
 const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
 const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
@@ -37,6 +38,7 @@ const outlineLinesElem = /** @type {HTMLInputElement} */(document.getElementById
 const outlineWordsElem = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
 
 const styleItalicButton = new bootstrap.Button(styleItalicElem);
+const styleBoldButton = new bootstrap.Button(styleBoldElem);
 const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
@@ -451,7 +453,7 @@ export class KonvaIText extends Konva.Shape {
        * @param {KonvaIText} shape
        */
       sceneFunc: (context, shape) => {
-        context.font = `${shape.fontFaceStyle} ${shape.fontSize}px ${shape.fontFaceName}`;
+        context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize}px ${shape.fontFaceName}`;
         context.textBaseline = 'alphabetic';
         context.fillStyle = shape.fill();
         context.lineWidth = 1;
@@ -460,7 +462,17 @@ export class KonvaIText extends Konva.Shape {
 
         let leftI = shape.word.visualCoords ? 0 - this.leftSideBearing : 0;
         for (let i = 0; i < shape.charArr.length; i++) {
-          const charI = shape.charArr[i];
+          let charI = shape.charArr[i];
+
+          if (shape.fontStyle === 'smallCaps') {
+            if (charI === charI.toUpperCase()) {
+              context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize}px ${shape.fontFaceName}`;
+            } else {
+              charI = charI.toUpperCase();
+              context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize * 0.8}px ${shape.fontFaceName}`;
+            }
+          }
+
           context.fillText(charI, leftI, shape.fontSize * 0.6);
 
           leftI += shape.advanceArrTotal[i];
@@ -506,9 +518,10 @@ export class KonvaIText extends Konva.Shape {
     this.yActual = yActual;
     this.lastWidth = this.width();
     this.fontFaceStyle = fontI.fontFaceStyle;
+    this.fontFaceWeight = fontI.fontFaceWeight;
     this.fontFaceName = fontI.fontFaceName;
     this.fontFamilyLookup = fontI.family;
-    this.fontStyleLookup = word.style;
+    this.fontStyle = word.style;
     this.outline = outline;
     this.selected = selected;
     this.fillBox = fillBox;
@@ -530,24 +543,24 @@ export class KonvaIText extends Konva.Shape {
 
   /**
    * Position and show the input for editing.
-   * @param {KonvaIText} textNode
+   * @param {KonvaIText} itext
    */
-  static addTextInput = (textNode) => {
+  static addTextInput = (itext) => {
     const pointerCoordsRel = layerText.getRelativePointerPosition();
     let letterIndex = 0;
-    let leftI = textNode.x() - textNode.leftSideBearing;
-    for (let i = 0; i < textNode.charArr.length; i++) {
+    let leftI = itext.x() - itext.leftSideBearing;
+    for (let i = 0; i < itext.charArr.length; i++) {
       // For most letters, the letter is selected if the pointer is in the left 75% of the advance.
       // This could be rewritten to be more precise by using the actual bounding box of each letter,
       // however this would require calculating additional metrics for each letter.
       // The 75% rule is a compromise, as setting to 50% would be unintuitive for users trying to select the letter they want to edit,
       // and setting to 100% would be unintuitive for users trying to position the cursor between letters.
       // For the last letter, since using the 75% rule would make it extremely difficult to select the end of the word.
-      const cutOffPer = i + 1 === textNode.charArr.length ? 0.5 : 0.75;
-      const cutOff = leftI + textNode.advanceArrTotal[i] * cutOffPer;
+      const cutOffPer = i + 1 === itext.charArr.length ? 0.5 : 0.75;
+      const cutOff = leftI + itext.advanceArrTotal[i] * cutOffPer;
       if (pointerCoordsRel?.x && cutOff > pointerCoordsRel.x) break;
       letterIndex++;
-      leftI += textNode.advanceArrTotal[i];
+      leftI += itext.advanceArrTotal[i];
     }
 
     if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
@@ -558,36 +571,50 @@ export class KonvaIText extends Konva.Shape {
 
     canvasObj.input = document.createElement('span');
 
-    const text = textNode.charArr.join('');
+    const text = itext.charArr.join('');
 
     const scale = layerText.scaleY();
 
-    const charSpacingHTML = textNode.charSpacing * scale;
+    const charSpacingHTML = itext.charSpacing * scale;
 
-    let { x: x1, y: y1 } = textNode.getAbsolutePosition();
-    if (textNode.word.visualCoords) x1 -= textNode.leftSideBearing * scale;
+    let { x: x1, y: y1 } = itext.getAbsolutePosition();
+    if (itext.word.visualCoords) x1 -= itext.leftSideBearing * scale;
 
-    const fontSizeHTML = textNode.fontSize * scale;
+    const fontSizeHTML = itext.fontSize * scale;
 
     const canvas = /** @type {HTMLCanvasElement} */ (document.createElement('canvas'));
     const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
 
-    const fontI = fontAll.getWordFont(textNode.word);
+    const fontI = fontAll.getWordFont(itext.word);
 
-    ctx.font = `${textNode.fontFaceStyle} ${fontSizeHTML}px ${fontI.fontFaceName}`;
+    ctx.font = `${itext.fontFaceStyle} ${itext.fontFaceWeight} ${fontSizeHTML}px ${fontI.fontFaceName}`;
 
     const metrics = ctx.measureText(text);
+
+    const fontSizeHTMLSmallCaps = itext.fontSize * scale * 0.8;
 
     canvasObj.input.style.position = 'absolute';
     canvasObj.input.style.left = `${x1}px`;
     canvasObj.input.style.top = `${y1 - metrics.fontBoundingBoxAscent + fontSizeHTML * 0.6}px`; // Align with baseline
     canvasObj.input.style.fontSize = `${fontSizeHTML}px`;
-    canvasObj.input.style.fontFamily = textNode.fontFaceName;
-    canvasObj.input.textContent = text;
+    canvasObj.input.style.fontFamily = itext.fontFaceName;
+
+    // We cannot make the text uppercase in the input field, as this would result in the text being saved as uppercase.
+    // Additionally, while there is a small-caps CSS property, it does not allow for customizing the size of the small caps.
+    // Therefore, we handle small caps by making all text print as uppercase using the `text-transform` CSS property,
+    // and then wrapping each letter in a span with a smaller font size.
+    if (itext.fontStyle === 'smallCaps') {
+      canvasObj.input.style.textTransform = 'uppercase';
+      canvasObj.input.innerHTML = text.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
+    } else {
+      canvasObj.input.textContent = text;
+    }
+
     canvasObj.input.style.letterSpacing = `${charSpacingHTML}px`;
-    canvasObj.input.style.color = textNode.fill();
-    canvasObj.input.style.opacity = String(textNode.opacity());
-    canvasObj.input.style.fontStyle = textNode.fontFaceStyle;
+    canvasObj.input.style.color = itext.fill();
+    canvasObj.input.style.opacity = String(itext.opacity());
+    canvasObj.input.style.fontStyle = itext.fontFaceStyle;
+    canvasObj.input.style.fontWeight = itext.fontFaceWeight;
     // Line height must match the height of the font bounding box for the font metrics to be accurate.
     canvasObj.input.style.lineHeight = `${metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent}px`;
     canvasObj.input.contentEditable = 'true';
@@ -596,15 +623,23 @@ export class KonvaIText extends Konva.Shape {
     canvasObj.input.style.whiteSpace = 'nowrap';
     // canvasObj.input.style.overflow = 'hidden';
 
+    if (itext.fontStyle === 'smallCaps') {
+      canvasObj.input.oninput = () => {
+        const index = getCursorIndex();
+        canvasObj.input.innerHTML = canvasObj.input.textContent.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
+        setCursor(index);
+      };
+    }
+
     canvasObj.inputRemove = () => {
       const textNew = ocr.replaceLigatures(canvasObj.input?.textContent || '').trim();
 
       // Words are not allowed to be empty
       if (textNew) {
-        textNode.word.text = textNew;
-        textNode.editTextCallback(textNode);
+        itext.word.text = textNew;
+        itext.editTextCallback(itext);
       }
-      updateWordCanvas(textNode);
+      updateWordCanvas(itext);
       canvasObj.input.remove();
       canvasObj.input = null;
       canvasObj.inputRemove = null;
@@ -617,18 +652,52 @@ export class KonvaIText extends Konva.Shape {
 
     canvasObj.input.focus();
 
+    /**
+     * Returns the cursor position relative to the start of the text box, including all text nodes.
+     * @returns {number}
+     */
+    const getCursorIndex = () => {
+      const sel = /** @type {Selection} */ (window.getSelection());
+      let nodePrev = sel.anchorNode?.parentElement.className === 'input-sub' ? sel.anchorNode?.parentElement.previousSibling : sel.anchorNode?.previousSibling;
+      let nodePrevText = nodePrev?.nodeType === 3 ? nodePrev : nodePrev?.childNodes[0];
+
+      let index = sel.anchorOffset;
+      while (nodePrevText) {
+        index += nodePrev.textContent?.length || 0;
+        nodePrev = nodePrev.className === 'input-sub' ? nodePrev.previousSibling : nodePrev?.previousSibling;
+        nodePrevText = nodePrev?.nodeType === 3 ? nodePrev : nodePrev?.childNodes[0];
+      }
+      // console.log(`Cursor index: ${index} (from ${sel.anchorOffset})`);
+      return index;
+    };
+
+    const setCursor = (index) => {
     // Set the cursor to the correct position
-    const range = document.createRange();
-    const sel = /** @type {Selection} */ (window.getSelection());
+      const range = document.createRange();
+      const sel = /** @type {Selection} */ (window.getSelection());
 
-    range.setStart(canvasObj.input.childNodes[0], letterIndex);
-    range.collapse(true);
+      let letterI = 0;
+      for (let i = 0; i < canvasObj.input.childNodes.length; i++) {
+        const node = canvasObj.input.childNodes[i];
+        const nodeLen = node.textContent?.length || 0;
+        if (letterI + nodeLen >= index) {
+          const textNode = node.nodeType === 3 ? node : node.childNodes[0];
+          // console.log(`Setting cursor to index ${index - letterI} in node ${i}`);
+          range.setStart(textNode, index - letterI);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          break;
+        } else {
+          letterI += nodeLen;
+        }
+      }
+    };
 
-    sel.removeAllRanges();
-    sel.addRange(range);
+    setCursor(letterIndex);
 
-    textNode.hide();
-    textNode.draw();
+    itext.hide();
+    itext.draw();
   };
 }
 
@@ -721,11 +790,15 @@ export class KonvaOcrWord extends KonvaIText {
     if (wordFirst.word.sup !== styleSuperElem.classList.contains('active')) {
       styleSuperButton.toggle();
     }
-    const italic = wordFirst.fontStyleLookup === 'italic';
+    const italic = wordFirst.fontStyle === 'italic';
     if (italic !== styleItalicElem.classList.contains('active')) {
       styleItalicButton.toggle();
     }
-    const smallCaps = wordFirst.fontStyleLookup === 'smallCaps';
+    const bold = wordFirst.fontStyle === 'bold';
+    if (bold !== styleBoldElem.classList.contains('active')) {
+      styleBoldButton.toggle();
+    }
+    const smallCaps = wordFirst.fontStyle === 'smallCaps';
     if (smallCaps !== styleSmallCapsElem.classList.contains('active')) {
       styleSmallCapsButton.toggle();
     }
@@ -733,9 +806,9 @@ export class KonvaOcrWord extends KonvaIText {
 
   /**
    * Add controls for editing.
-   * @param {KonvaOcrWord} textNode
+   * @param {KonvaOcrWord} itext
    */
-  static addControls = (textNode) => {
+  static addControls = (itext) => {
     const trans = new Konva.Transformer({
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
@@ -743,7 +816,7 @@ export class KonvaOcrWord extends KonvaIText {
     canvasObj.controlArr.push(trans);
     layerText.add(trans);
 
-    trans.nodes([textNode]);
+    trans.nodes([itext]);
   };
 }
 

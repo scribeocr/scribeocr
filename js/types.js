@@ -40,14 +40,14 @@
  * @typedef {object} fontSrcBuiltIn
  * @property {string|ArrayBuffer} normal
  * @property {string|ArrayBuffer} italic
- * @property {string|ArrayBuffer} smallCaps
+ * @property {string|ArrayBuffer} bold
 */
 
 /**
  * @typedef {object} fontSrcUpload
  * @property {?string|ArrayBuffer} normal
  * @property {?string|ArrayBuffer} italic
- * @property {?string|ArrayBuffer} smallCaps
+ * @property {?string|ArrayBuffer} bold
 */
 
 /**
