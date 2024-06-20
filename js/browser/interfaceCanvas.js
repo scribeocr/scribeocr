@@ -1438,7 +1438,8 @@ export function renderPage(page) {
 
   const angle = pageMetricsArr[cp.n].angle || 0;
 
-  const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
+  // Layout mode features assume that auto-rotate is enabled.
+  const enableRotation = (autoRotateCheckboxElem.checked || globalThis.layoutMode) && Math.abs(angle ?? 0) > 0.05;
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 

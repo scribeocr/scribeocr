@@ -828,9 +828,14 @@ navLayoutElem.addEventListener('show.bs.collapse', (e) => {
     Konva.autoDrawEnabled = true;
     if (!layoutAll[cp.n]) return;
 
-    toggleSelectableWords(false);
-    destroyControls();
-    renderLayoutBoxes();
+    // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
+    if (!autoRotateCheckboxElem.checked) {
+      renderPageQueue(cp.n);
+    } else {
+      toggleSelectableWords(false);
+      destroyControls();
+      renderLayoutBoxes();
+    }
   }
 });
 
@@ -838,10 +843,16 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
     globalThis.layoutMode = false;
     Konva.autoDrawEnabled = false;
-    toggleSelectableWords(true);
-    destroyLayoutBoxes();
-    destroyControls();
-    layerOverlay.batchDraw();
+
+    // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
+    if (!autoRotateCheckboxElem.checked) {
+      renderPageQueue(cp.n);
+    } else {
+      toggleSelectableWords(true);
+      destroyLayoutBoxes();
+      destroyControls();
+      layerOverlay.batchDraw();
+    }
   }
 });
 

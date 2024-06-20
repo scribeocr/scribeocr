@@ -359,6 +359,13 @@ export class KonvaLayout extends Konva.Rect {
     this.destroy = () => {
       if (this.label) this.label.destroy();
       this.label = undefined;
+      // Deselect the box if it is selected.
+      for (let i = 0; i < canvasObj.selectedDataColumnArr.length; i++) {
+        if (canvasObj.selectedDataColumnArr[i].layoutBox.id === this.layoutBox.id) {
+          canvasObj.selectedDataColumnArr.splice(i, 1);
+          i--;
+        }
+      }
       this.destroyRect();
       return this;
     };

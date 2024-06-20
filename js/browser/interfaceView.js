@@ -90,10 +90,10 @@ export const selectDisplayMode = async (x) => {
 
     let rotation = 0;
     // Case where rotation is requested and the image has not already been rotated
-    if (autoRotateCheckboxElem.checked && !backgroundImage.rotated) {
+    if ((autoRotateCheckboxElem.checked || globalThis.layoutMode) && !backgroundImage.rotated) {
       rotation = (pageMetricsArr[cp.n].angle || 0) * -1;
     // Case where rotation is not requested and the image has already been rotated
-    } else if (!autoRotateCheckboxElem.checked && backgroundImage.rotated) {
+    } else if (!(autoRotateCheckboxElem.checked || globalThis.layoutMode) && backgroundImage.rotated) {
       rotation = pageMetricsArr[cp.n].angle || 0;
     }
 
