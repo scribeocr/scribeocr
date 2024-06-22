@@ -4,7 +4,7 @@ import ocr from './objects/ocrObjects.js';
 
 import { saveAs } from './miscUtils.js';
 
-import { layoutAll, inputDataModes, layoutDataTableAll } from './containers/miscContainer.js';
+import { inputDataModes, layoutDataTableAll } from './containers/miscContainer.js';
 
 /**
  * @param {ReturnType<extractTableContent>} tableWordObj
@@ -52,15 +52,25 @@ export function extractTableContent(pageObj, layoutObj) {
  * Extracts words from a page that are within the bounding boxes of the table, organized into arrays of rows and columns.
  * The output is in the form of a 3D array, where the first dimension is the row, the second dimension is the column, and the third dimension is the word.
  * @param {OcrPage} pageObj
- * @param {Array<import('./objects/layoutObjects.js').LayoutBox>} boxes
+ * @param {Array<import('./objects/layoutObjects.js').LayoutBoxBase>} boxes
  */
 export function extractSingleTableContent(pageObj, boxes) {
+  /** @type {Array<OcrWord>} */
   const wordArr = [];
+  /** @type {Array<bbox>} */
   const boxArr = [];
+  /** @type {Array<number>} */
   const wordPriorityArr = [];
 
   // Sort boxes by left bound.
   const boxesArr = Object.values(boxes).sort((a, b) => a.coords.left - b.coords.left);
+
+  const tableBox = {
+    left: boxesArr[0].coords.left,
+    top: boxesArr[0].coords.top,
+    right: boxesArr[boxesArr.length - 1].coords.right,
+    bottom: boxesArr[boxesArr.length - 1].coords.bottom,
+  };
 
   // Unlike when exporting to text, anything not in a rectangle is excluded by default
   // priorityArr.fill(boxesArr.length+1);
@@ -69,12 +79,15 @@ export function extractSingleTableContent(pageObj, boxes) {
     const lineObj = ocr.cloneLine(pageObj.lines[i]);
     ocr.rotateLine(lineObj, pageObj.angle * -1, pageObj.dims);
 
+    // Skip lines that are entirely outside the table
+    if (lineObj.bbox.left > tableBox.right || lineObj.bbox.right < tableBox.left || lineObj.bbox.top > tableBox.bottom || lineObj.bbox.bottom < tableBox.top) continue;
+
     // First, check for overlap with line-level boxes.
     const lineBoxALeft = {
       left: lineObj.bbox.left, top: lineObj.bbox.top, right: lineObj.bbox.left + 1, bottom: lineObj.bbox.bottom,
     };
 
-    let boxFound = false;
+    let boxFoundLine = false;
     // It is possible for a single line to match the inclusion criteria for multiple boxes.
     // Only the first (leftmost) match is used.
     for (let j = 0; j < boxesArr.length; j++) {
@@ -90,15 +103,16 @@ export function extractSingleTableContent(pageObj, boxes) {
           boxArr.push(lineObj.bbox);
           wordPriorityArr.push(j);
         }
-        boxFound = true;
+        boxFoundLine = true;
         break;
       }
     }
 
-    if (boxFound) continue;
+    if (boxFoundLine) continue;
 
     // Second, check for overlap on the word-level boxes.
     for (const wordObj of lineObj.words) {
+      let boxFoundWord = false;
       for (let j = 0; j < boxesArr.length; j++) {
         const obj = boxesArr[j];
 
@@ -114,6 +128,24 @@ export function extractSingleTableContent(pageObj, boxes) {
           wordArr.push(wordObj);
           boxArr.push(wordObj.bbox);
           wordPriorityArr.push(j);
+          boxFoundWord = true;
+          break;
+        }
+      }
+
+      if (boxFoundWord) continue;
+
+      // It is possible for a word that is 100% within the table to not be included in any columns if the user sets particular inclusion rules.
+      // To prevent this, any word that is unassigned with the user-specified inclusion rules is assigned using the word-level+majority rule.
+      for (let j = 0; j < boxesArr.length; j++) {
+        const obj = boxesArr[j];
+
+        const overlap = calcOverlap(wordObj.bbox, obj.coords);
+
+        if (overlap > 0.5) {
+          wordArr.push(wordObj);
+          boxArr.push(wordObj.bbox);
+          wordPriorityArr.push(j);
           break;
         }
       }
@@ -121,16 +153,13 @@ export function extractSingleTableContent(pageObj, boxes) {
   }
 
   // Split lines into separate arrays for each column
-  let lastCol = -1;
+  // let lastCol = -1;
   /** @type {Array<Array<{word: OcrWord, box: bbox}>>} */
   const colArr = [];
-  for (let i = 0; i <= boxesArr.length; i++) {
+  for (let i = 0; i < boxesArr.length; i++) {
+    colArr.push([]);
     for (let j = 0; j < wordPriorityArr.length; j++) {
       if (wordPriorityArr[j] === i) {
-        if (i !== lastCol) {
-          colArr.push([]);
-          lastCol = i;
-        }
         colArr[colArr.length - 1].push({ word: wordArr[j], box: boxArr[j] });
       }
     }

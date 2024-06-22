@@ -9,9 +9,8 @@ import { renderPageQueue, cp, displayPage } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import {
-  stage, layerText, updateWordCanvas, KonvaOcrWord, canvasObj,
+  stage, layerText, updateWordCanvas, KonvaOcrWord, CanvasObjs,
   getCanvasWords,
-  destroyControls,
 } from './interfaceCanvas.js';
 import { combineData } from '../modifyOCR.js';
 import { getRandomAlphanum } from '../miscUtils.js';
@@ -60,7 +59,7 @@ const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
 const styleSuperButton = new bootstrap.Button(styleSuperElem);
 
 export function deleteSelectedWords() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   const selectedN = selectedObjects.length;
   const selectedIds = [];
 
@@ -71,7 +70,7 @@ export function deleteSelectedWords() {
   }
   ocr.deletePageWords(ocrAll.active[cp.n], selectedIds);
 
-  destroyControls();
+  CanvasObjs.destroyControls();
 
   layerText.batchDraw();
 
@@ -84,10 +83,10 @@ export function deleteSelectedWords() {
  * @param {string} style
  */
 export async function changeWordFontStyle(style) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
-  if (canvasObj.inputRemove) canvasObj.inputRemove();
+  if (CanvasObjs.inputRemove) CanvasObjs.inputRemove();
 
   // If first word style already matches target style, disable the style.
   const enable = selectedObjects[0].fontStyle !== style;
@@ -130,7 +129,7 @@ export async function changeWordFontStyle(style) {
  * @param {string} fontSizeStr - String containing (1) 'plus', (2) 'minus', or (3) a numeric size.
  */
 export async function changeWordFontSize(fontSizeStr) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   let fontSize;
@@ -162,7 +161,7 @@ export async function changeWordFontSize(fontSizeStr) {
 }
 
 export async function changeWordFontFamily(fontName) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   if (!selectedObjects) return;
 
   const selectedN = selectedObjects.length;
@@ -190,7 +189,7 @@ export async function changeWordFontFamily(fontName) {
 }
 
 export function toggleSuperSelectedWords() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
@@ -206,7 +205,7 @@ let objectsLine;
 
 const baselineRange = 25;
 export function adjustBaseline() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   // Only open if a word is selected.

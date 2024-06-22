@@ -90,6 +90,7 @@ function hideProgress2(id) {
 globalThis.debugImg = {};
 
 export async function recognizeAllClick() {
+  await globalThis.generalScheduler.ready;
   if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
 
   const debugMode = true;

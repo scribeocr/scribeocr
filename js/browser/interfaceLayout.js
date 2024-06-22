@@ -5,7 +5,9 @@ import { getRandomAlphanum, showHideElem } from '../miscUtils.js';
 
 import { displayPage, cp } from '../../main.js';
 
-import { LayoutBox, LayoutDataTable, LayoutDataTablePage } from '../objects/layoutObjects.js';
+import {
+  LayoutDataColumn, LayoutDataTable, LayoutDataTablePage, LayoutRegion, calcTableBbox,
+} from '../objects/layoutObjects.js';
 
 import {
   layoutAll, ocrAll, inputDataModes, layoutDataTableAll,
@@ -14,14 +16,12 @@ import {
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  getCanvasWords, layerOverlay, canvasObj, destroyLayoutBoxes, destroyControls, getCanvasLayoutBoxes, updateWordCanvas,
-  KonvaIText, stage, destroyLayoutDataTables,
+  getCanvasWords, layerOverlay, getCanvasLayoutBoxes, updateWordCanvas,
+  KonvaIText, stage, CanvasObjs,
   hideContextMenu,
 } from './interfaceCanvas.js';
 
 import { extractSingleTableContent } from '../exportWriteTabular.js';
-
-const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
 
 const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
@@ -37,6 +37,24 @@ const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(docume
 const setLayoutBoxInclusionLevelWordElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelWord'));
 const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
 
+// const colColors = ['rgba(40,123,181,0.3)', 'rgba(201,74,83,0.3)', 'rgba(45,134,61,0.3)'];
+const colColorsHex = ['#287bb5', '#19aa9a', '#099b57'];
+
+/**
+ * Converts a hex color to rgba with a specified alpha.
+ * @param {string} hex - The hex color code.
+ * @param {number} alpha - The alpha value for the rgba color.
+ * @returns {string} The rgba color string.
+ */
+const hexToRgba = (hex, alpha) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const setAlpha = (color, alpha) => color.replace(/,\s*[\d.]+\)/, `,${alpha})`);
+
 /**
  * @param {Object} box
  * @param {number} box.x
@@ -51,18 +69,10 @@ export function addLayoutDataTableClick({
     left: x, top: y, right: x + width, bottom: y + height,
   };
 
-  if (!layoutDataTableAll[cp.n].tables) layoutDataTableAll[cp.n].tables = {};
+  const dataTable = new LayoutDataTable();
+  const layoutBox = new LayoutDataColumn(bbox, dataTable);
 
-  const dataTable = new LayoutDataTable(Object.keys(layoutDataTableAll[cp.n].tables).length);
-
-  const id = getRandomAlphanum(10);
-
-  const priority = 1;
-
-  const layoutBox = new LayoutBox(id, priority, bbox);
-  layoutBox.type = 'dataColumn';
-
-  dataTable.boxes[id] = layoutBox;
+  dataTable.boxes[layoutBox.id] = layoutBox;
 
   layoutDataTableAll[cp.n].tables[dataTable.id] = dataTable;
 
@@ -75,43 +85,44 @@ export function addLayoutDataTableClick({
  * @param {number} box.y
  * @param {number} box.width
  * @param {number} box.height
- * @param {('order'|'exclude'|'dataColumn')} type
+ * @param {('order'|'exclude')} type
  */
 export function addLayoutBoxClick({
   x, y, width, height,
 }, type) {
-  layoutBoxTypeElem.textContent = { order: 'Order', exclude: 'Exclude', dataColumn: 'Column' }[type];
-
-  const id = getRandomAlphanum(10);
+  layoutBoxTypeElem.textContent = { order: 'Order', exclude: 'Exclude' }[type];
 
   // Maximum priority for boxes that already exist
-  const maxPriority = Math.max(...Object.values(layoutAll[cp.n].boxes).map((x) => x.priority), 0);
+  const maxPriority = Math.max(...Object.values(layoutAll[cp.n].boxes).map((x) => x.order), -1);
 
   const bbox = {
     left: x, top: y, right: x + width, bottom: y + height,
   };
 
-  layoutAll[cp.n].boxes[id] = new LayoutBox(id, maxPriority + 1, bbox);
-  layoutAll[cp.n].boxes[id].type = type;
+  const region = new LayoutRegion(maxPriority + 1, bbox, type);
+
+  layoutAll[cp.n].boxes[region.id] = region;
 
   renderLayoutBoxes();
 }
 
 export function deleteLayoutBoxClick() {
   hideContextMenu();
-  canvasObj.selectedLayoutBoxArr.forEach((obj) => {
+  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
+  selectedLayoutBoxes.forEach((obj) => {
     delete layoutAll[cp.n].boxes[obj.layoutBox.id];
     obj.destroy();
   });
-  destroyControls();
+  CanvasObjs.destroyControls();
 }
 
 export function deleteLayoutDataTableClick() {
   hideContextMenu();
-  if (canvasObj.selectedDataColumnArr.length === 0) return;
+  const selectedColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
+  if (selectedColumns.length === 0) return;
 
-  canvasObj.selectedDataColumnArr[0].konvaTable.delete();
-  destroyControls();
+  selectedColumns[0].konvaTable.delete();
+  CanvasObjs.destroyControls();
   layerOverlay.batchDraw();
 }
 
@@ -154,38 +165,12 @@ export function revertLayoutClick() {
 }
 
 export function setLayoutBoxTypeClick(type) {
-  canvasObj.selectedLayoutBoxArr.forEach((x) => {
+  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
+  selectedLayoutBoxes.forEach((x) => {
     x.layoutBox.type = type;
   });
 
   renderLayoutBoxes();
-}
-
-/**
- *
- * @param {string} tableDisplay
- * @returns
- */
-export function setLayoutBoxTable(tableDisplay) {
-  const table = parseInt(tableDisplay) - 1;
-  if (Number.isNaN(table) || table < 0 || canvasObj.selectedDataColumnArr.length === 0) return;
-
-  canvasObj.selectedDataColumnArr.forEach((x) => {
-    x.delete();
-
-    // Add boxes to new table, and create table if it doesn't exist.
-    if (!layoutDataTableAll[cp.n].tables[table]) {
-      layoutDataTableAll[cp.n].tables[table] = new LayoutDataTable(table);
-    }
-
-    layoutDataTableAll[cp.n].tables[table].boxes[x.layoutBox.id] = x.layoutBox;
-    x.layoutBox.table = table;
-  });
-
-  cleanLayoutDataColumns(layoutDataTableAll[cp.n].tables[table]);
-
-  renderLayoutBoxes();
-  updateDataPreview();
 }
 
 /**
@@ -196,7 +181,7 @@ export function setLayoutBoxTable(tableDisplay) {
  * @param {LayoutDataTable} table
  */
 const cleanLayoutDataColumns = (table) => {
-  const columnsArr = Object.values(table.boxes);
+  const columnsArr = table.boxes;
   columnsArr.sort((a, b) => a.coords.left - b.coords.left);
 
   // Step 1: If columns overlap by a small amount, separate them.
@@ -253,19 +238,23 @@ const cleanLayoutDataColumns = (table) => {
   });
 
   // Replace table boxes with cleaned columns.
-  table.boxes = {};
-  columnsArr.forEach((x) => {
-    table.boxes[x.id] = x;
-  });
+  table.boxes = columnsArr;
 };
 
 export function setLayoutBoxInclusionRuleClick(rule) {
+  // Save the selected boxes to reselect them after re-rendering.
+  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
+  const selectedDataColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
+
+  const selectedArr = selectedLayoutBoxes.map((x) => x.layoutBox.id);
+  selectedArr.push(...selectedDataColumns.map((x) => x.layoutBox.id));
+
   let changed = false;
-  canvasObj.selectedLayoutBoxArr.forEach((x) => {
+  selectedLayoutBoxes.forEach((x) => {
     changed = changed || x.layoutBox.inclusionRule !== rule;
     x.layoutBox.inclusionRule = rule;
   });
-  canvasObj.selectedDataColumnArr.forEach((x) => {
+  selectedDataColumns.forEach((x) => {
     changed = changed || x.layoutBox.inclusionRule !== rule;
     x.layoutBox.inclusionRule = rule;
   });
@@ -273,17 +262,25 @@ export function setLayoutBoxInclusionRuleClick(rule) {
   if (changed) {
     renderLayoutBoxes();
     updateDataPreview();
+    selectLayoutBoxesById(selectedArr);
   }
 }
 
 export function setLayoutBoxInclusionLevelClick(level) {
+  // Save the selected boxes to reselect them after re-rendering.
+  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
+  const selectedDataColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
+
+  const selectedArr = selectedLayoutBoxes.map((x) => x.layoutBox.id);
+  selectedArr.push(...selectedDataColumns.map((x) => x.layoutBox.id));
+
   let changed = false;
-  canvasObj.selectedLayoutBoxArr.forEach((x) => {
+  selectedLayoutBoxes.forEach((x) => {
     changed = changed || x.layoutBox.inclusionLevel !== level;
     x.layoutBox.inclusionLevel = level;
   });
 
-  canvasObj.selectedDataColumnArr.forEach((x) => {
+  selectedDataColumns.forEach((x) => {
     changed = changed || x.layoutBox.inclusionLevel !== level;
     x.layoutBox.inclusionLevel = level;
   });
@@ -291,11 +288,12 @@ export function setLayoutBoxInclusionLevelClick(level) {
   if (changed) {
     renderLayoutBoxes();
     updateDataPreview();
+    selectLayoutBoxesById(selectedArr);
   }
 }
 
 export function renderLayoutBoxes() {
-  destroyLayoutBoxes();
+  CanvasObjs.destroyLayoutBoxes();
   Object.values(layoutAll[cp.n].boxes).forEach((box) => {
     renderLayoutBox(box);
   });
@@ -303,8 +301,6 @@ export function renderLayoutBoxes() {
 
   layerOverlay.batchDraw();
 }
-
-const colors = ['rgba(24,166,217,0.25)', 'rgba(73,104,115,0.25)', 'rgba(52,217,169,0.25)', 'rgba(222,117,109,0.25)', 'rgba(194,95,118,0.25)'];
 
 /**
  * Subclass of Konva.Rect that represents a layout box, which is a rectangle that represents a region of the page, along with an optional editable textbox.
@@ -315,7 +311,7 @@ const colors = ['rgba(24,166,217,0.25)', 'rgba(73,104,115,0.25)', 'rgba(52,217,1
 export class KonvaLayout extends Konva.Rect {
   /**
    *
-   * @param {LayoutBox} layoutBox
+   * @param {LayoutDataColumn|LayoutRegion} layoutBox
    */
   constructor(layoutBox) {
     const origX = layoutBox.coords.left;
@@ -332,6 +328,10 @@ export class KonvaLayout extends Konva.Rect {
     } else if (layoutBox.type === 'exclude') {
       fill = 'rgba(193,84,57,0.25)';
       stroke = 'rgba(0,137,114,0.4)';
+    } else if (layoutBox.type === 'dataColumn') {
+      const colIndex = layoutBox.table.boxes.findIndex((x) => x.id === layoutBox.id);
+      const colorBase = colColorsHex[colIndex % colColorsHex.length];
+      fill = hexToRgba(colorBase, 0.3);
     }
 
     super({
@@ -347,12 +347,12 @@ export class KonvaLayout extends Konva.Rect {
 
     this.select = () => {
       this.stroke('rgba(40,123,181,1)');
-      this.fill(this.fill().replace(/,[\d.]+\)/, ',0.4)'));
+      this.fill(setAlpha(this.fill(), 0.4));
     };
 
     this.deselect = () => {
       this.stroke('rgba(40,123,181,0.4)');
-      this.fill(this.fill().replace(/,[\d.]+\)/, ',0.25)'));
+      this.fill(setAlpha(this.fill(), 0.25));
     };
 
     this.destroyRect = this.destroy;
@@ -360,17 +360,13 @@ export class KonvaLayout extends Konva.Rect {
       if (this.label) this.label.destroy();
       this.label = undefined;
       // Deselect the box if it is selected.
-      for (let i = 0; i < canvasObj.selectedDataColumnArr.length; i++) {
-        if (canvasObj.selectedDataColumnArr[i].layoutBox.id === this.layoutBox.id) {
-          canvasObj.selectedDataColumnArr.splice(i, 1);
-          i--;
-        }
-      }
+      CanvasObjs.CanvasSelection.deselectDataColumnsByIds([this.layoutBox.id]);
+
       this.destroyRect();
       return this;
     };
 
-    if (layoutBox.type === 'order') {
+    if (layoutBox instanceof LayoutRegion) {
       // Create dummy ocr data for the order box
       const pageObj = new ocr.OcrPage(cp.n, { width: 1, height: 1 });
       const box = {
@@ -379,7 +375,7 @@ export class KonvaLayout extends Konva.Rect {
       const lineObjTemp = new ocr.OcrLine(pageObj, box, [0, 0], 10, null);
       pageObj.lines = [lineObjTemp];
       const wordIDNew = getRandomAlphanum(10);
-      const wordObj = new ocr.OcrWord(lineObjTemp, String(layoutBox.priority), box, wordIDNew);
+      const wordObj = new ocr.OcrWord(lineObjTemp, String(layoutBox.order), box, wordIDNew);
       wordObj.visualCoords = false;
       wordObj.size = 50;
       const label = new KonvaIText({
@@ -388,7 +384,7 @@ export class KonvaLayout extends Konva.Rect {
         word: wordObj,
         dynamicWidth: true,
         editTextCallback: async (obj) => {
-          layoutBox.priority = parseInt(obj.word.text);
+          layoutBox.order = parseInt(obj.word.text);
         },
       });
       this.label = label;
@@ -401,7 +397,7 @@ export class KonvaLayout extends Konva.Rect {
     });
 
     this.addEventListener('dragmove', () => {
-      if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
+      if (CanvasObjs.input && CanvasObjs.input.parentElement && CanvasObjs.inputRemove) CanvasObjs.inputRemove();
       if (this.label) {
         this.label.x(this.x() + this.width() * 0.5);
         this.label.yActual = this.y() + this.height() * 0.5;
@@ -427,7 +423,7 @@ export class KonvaLayout extends Konva.Rect {
         enabledAnchors,
         rotateEnabled: false,
       });
-      canvasObj.controlArr.push(trans);
+      CanvasObjs.controlArr.push(trans);
       layerOverlay.add(trans);
       trans.nodes([konvaLayout.konvaTable.tableRect]);
       return;
@@ -437,7 +433,7 @@ export class KonvaLayout extends Konva.Rect {
       enabledAnchors,
       rotateEnabled: false,
     });
-    canvasObj.controlArr.push(trans);
+    CanvasObjs.controlArr.push(trans);
     layerOverlay.add(trans);
 
     trans.nodes([konvaLayout]);
@@ -459,20 +455,11 @@ export class KonvaLayout extends Konva.Rect {
   }
 
   /**
-   * Update the UI to reflect the properties of the word(s) in `canvasObj.selectedWordArr`.
-   * This should be called when any word is selected, after adding them to `canvasObj.selectedWordArr`.
+   * Update the UI to reflect the properties of the selected objects.
+   * Should be called after new objects are selected.
    */
   static updateUI = () => {
-    const tablesSelectedArr = Array.from(new Set(canvasObj.selectedDataColumnArr.map((x) => (x.layoutBox.table))));
-
-    if (tablesSelectedArr.length === 1) {
-      setLayoutBoxTableElem.value = String(tablesSelectedArr[0] + 1);
-    } else {
-      setLayoutBoxTableElem.value = '';
-    }
-
-    const inclusionRuleArr = Array.from(new Set(canvasObj.selectedDataColumnArr.map((x) => (x.layoutBox.inclusionRule))));
-    const inclusionLevelArr = Array.from(new Set(canvasObj.selectedDataColumnArr.map((x) => (x.layoutBox.inclusionLevel))));
+    const { inclusionRuleArr, inclusionLevelArr } = CanvasObjs.CanvasSelection.getLayoutBoxProperties();
 
     if (inclusionRuleArr.length === 1) {
       setLayoutBoxInclusionRuleMajorityElem.checked = inclusionRuleArr[0] === 'majority';
@@ -518,7 +505,7 @@ export class KonvaDataColSep extends Konva.Line {
       },
       hitFunc(context, shape) {
         context.beginPath();
-        context.rect(-2, 0, 4, shape.height());
+        context.rect(-5, 0, 5, shape.height());
         context.closePath();
         context.fillStrokeShape(shape);
       },
@@ -567,6 +554,9 @@ export class KonvaDataColSep extends Konva.Line {
       this.columnRight.x(this.columnRight.layoutBox.coords.left);
       this.columnRight.width(this.columnRight.layoutBox.coords.right - this.columnRight.layoutBox.coords.left);
     });
+    this.addEventListener('dragend', () => {
+      KonvaDataTable.colorTableWords(this.konvaTable);
+    });
 
     this.on('mouseover', () => {
       document.body.style.cursor = 'col-resize';
@@ -580,32 +570,34 @@ export class KonvaDataColSep extends Konva.Line {
 export class KonvaDataColumn extends KonvaLayout {
   /**
    *
-   * @param {LayoutBox} layoutBox
+   * @param {LayoutDataColumn} layoutBox
    * @param {KonvaDataTable} konvaTable
    */
   constructor(layoutBox, konvaTable) {
     super(layoutBox);
+    // Overwrite layoutBox so type inference works correctly, and `layoutBox` gets type `LayoutDataColumn` instead of `LayoutBox`.
+    this.layoutBox = layoutBox;
     this.konvaTable = konvaTable;
     this.draggable(false);
     this.select = () => {
-      this.konvaTable.tableRect.fill(this.konvaTable.tableRect.fill().replace(/,[\d.]+\)/, ',0.3)'));
-      this.fill(this.konvaTable.tableRect.fill().replace(/,[\d.]+\)/, ',0.1)'));
+      this.fill(setAlpha(this.fill(), 0.5));
       this.fillEnabled(true);
     };
     this.deselect = () => {
-      this.konvaTable.tableRect.fill(this.konvaTable.tableRect.fill().replace(/,0.3\)/, ',0.25)'));
+      this.fill(setAlpha(this.fill(), 0.3));
       this.strokeEnabled(false);
-      this.fillEnabled(false);
     };
 
     /**
      * Delete the column, both from the layout data and from the canvas.
      */
     this.delete = () => {
-      delete layoutDataTableAll[cp.n].tables[this.layoutBox.table].boxes[this.layoutBox.id];
+      const colIndexI = this.layoutBox.table.boxes.findIndex((x) => x.id === this.layoutBox.id);
+      this.layoutBox.table.boxes.splice(colIndexI, 1);
       this.destroy();
-      if (Object.keys(layoutDataTableAll[cp.n].tables[this.layoutBox.table].boxes).length === 0) {
-        delete layoutDataTableAll[cp.n].tables[this.layoutBox.table];
+      if (this.layoutBox.table.boxes.length === 0) {
+        const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === this.layoutBox.table.id);
+        layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
         this.konvaTable.destroy();
       }
     };
@@ -631,12 +623,12 @@ export class KonvaDataTable {
    */
   constructor(pageObj, layoutDataTable, lockColumns = true) {
     // The `columns` array is expected to be sorted left to right in other code.
-    const layoutBoxesArr = Object.values(layoutDataTable.boxes).sort((a, b) => a.coords.left - b.coords.left);
+    this.layoutBoxesArr = Object.values(layoutDataTable.boxes).sort((a, b) => a.coords.left - b.coords.left);
 
-    const tableLeft = Math.min(...layoutBoxesArr.map((x) => x.coords.left));
-    const tableRight = Math.max(...layoutBoxesArr.map((x) => x.coords.right));
-    const tableTop = Math.min(...layoutBoxesArr.map((x) => x.coords.top));
-    const tableBottom = Math.max(...layoutBoxesArr.map((x) => x.coords.bottom));
+    const tableLeft = Math.min(...this.layoutBoxesArr.map((x) => x.coords.left));
+    const tableRight = Math.max(...this.layoutBoxesArr.map((x) => x.coords.right));
+    const tableTop = Math.min(...this.layoutBoxesArr.map((x) => x.coords.top));
+    const tableBottom = Math.max(...this.layoutBoxesArr.map((x) => x.coords.bottom));
     const tableWidth = tableRight - tableLeft;
     const tableHeight = tableBottom - tableTop;
 
@@ -644,18 +636,17 @@ export class KonvaDataTable {
       left: tableLeft, top: tableTop, right: tableRight, bottom: tableBottom,
     };
 
-    const fill = colors[layoutDataTable.id % colors.length];
-
     const tableRect = new Konva.Rect({
       x: tableLeft,
       y: tableTop,
       width: tableWidth,
       height: tableHeight,
-      fill,
-      stroke: 'rgba(40,123,181,0.4)',
-      strokeWidth: 2,
+      stroke: 'rgba(40,123,181,1)',
+      strokeWidth: 5,
       draggable: false,
     });
+
+    this.pageObj = pageObj;
 
     this.layoutDataTable = layoutDataTable;
     this.lockColumns = lockColumns;
@@ -664,22 +655,31 @@ export class KonvaDataTable {
 
     layerOverlay.add(tableRect);
 
-    this.columns = layoutBoxesArr.map((layoutBox) => new KonvaDataColumn(layoutBox, this));
+    this.columns = this.layoutBoxesArr.map((layoutBox) => new KonvaDataColumn(layoutBox, this));
 
     this.columns.forEach((column) => {
       layerOverlay.add(column);
     });
 
+    /**
+     * Removes the table from the canvas.
+     * Does not impact the underlying data.
+     */
     this.destroy = () => {
       this.tableRect.destroy();
       this.columns.forEach((column) => column.destroy());
       this.colLines.forEach((colLine) => colLine.destroy());
       this.rowLines.forEach((rowLine) => rowLine.destroy());
+      this.rowSpans.forEach((rowSpan) => rowSpan.destroy());
       return this;
     };
 
+    /**
+     * Delete the table, both from the layout data and from the canvas.
+    */
     this.delete = () => {
-      delete layoutDataTableAll[cp.n].tables[this.layoutDataTable.id];
+      const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === this.layoutDataTable.id);
+      layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
       this.destroy();
     };
 
@@ -690,7 +690,6 @@ export class KonvaDataTable {
     this.tableRect.addEventListener('transformend', () => {
       // `KonvaDataTable.updateTableBoxHorizontal` deletes data, so is only run once after the user finishes resizing the table.
       KonvaDataTable.updateTableBoxHorizontal(this);
-      this.destroy();
       renderLayoutDataTable(this.layoutDataTable);
       layerOverlay.batchDraw();
     });
@@ -706,14 +705,18 @@ export class KonvaDataTable {
     /** @type {Array<InstanceType<typeof Konva.Line>>} */
     this.rowLines = [];
 
+    this.rowSpans = [];
+
     if (pageObj) {
-      const tableWordObj = extractSingleTableContent(pageObj, layoutBoxesArr);
+      const tableWordObj = extractSingleTableContent(pageObj, this.layoutBoxesArr);
 
       this.rowLines = tableWordObj.rowBottomArr.map((rowBottom) => new Konva.Line({
         points: [tableLeft, rowBottom, tableRight, rowBottom],
         stroke: 'rgba(0,0,0,0.25)',
         strokeWidth: 1,
       }));
+
+      KonvaDataTable.colorTableWords(this, tableWordObj);
 
       this.rowLines.forEach((rowLine) => {
         layerOverlay.add(rowLine);
@@ -723,6 +726,64 @@ export class KonvaDataTable {
     layerOverlay.batchDraw();
 
     updateDataPreview();
+  }
+
+  /**
+   * Calculate what words are in each column and color them accordingly.
+   * @param {KonvaDataTable} konvaDataTable
+   * @param {ReturnType<typeof extractSingleTableContent>} [tableWordObj] - The words in the table, if already calculated.
+   *    If not provided, this function will calculate them. This is an expensive operation, so should not be done repeatedly without reason.
+   */
+  static colorTableWords(konvaDataTable, tableWordObj) {
+    if (!konvaDataTable.pageObj) return;
+
+    if (!tableWordObj) tableWordObj = extractSingleTableContent(konvaDataTable.pageObj, konvaDataTable.layoutBoxesArr);
+
+    konvaDataTable.rowSpans.forEach((rowSpan) => rowSpan.destroy());
+
+    /** @type {Array<Array<string>>} */
+    const colWordIdArr = [];
+    for (let i = 0; i < konvaDataTable.columns.length; i++) {
+      colWordIdArr.push([]);
+    }
+
+    for (let i = 0; i < tableWordObj.rowWordArr.length; i++) {
+      const row = tableWordObj.rowWordArr[i];
+      for (let j = 0; j < row.length; j++) {
+        const wordArr = row[j];
+        if (wordArr.length === 0) continue;
+        colWordIdArr[j].push(...wordArr.map((word) => (word.id)));
+        const wordBoxArr = wordArr.map((word) => word.bbox);
+        const spanBox = ocr.calcBboxUnion(wordBoxArr);
+        const colorBase = colColorsHex[j % colColorsHex.length];
+        const fillCol = hexToRgba(colorBase, 0.3);
+        const stroke = fillCol;
+
+        const rowSpan = new Konva.Rect({
+          x: spanBox.left,
+          y: spanBox.top,
+          width: spanBox.right - spanBox.left,
+          height: spanBox.bottom - spanBox.top,
+          fill: fillCol,
+          stroke,
+          strokeWidth: 1,
+        });
+        konvaDataTable.rowSpans.push(rowSpan);
+        layerOverlay.add(rowSpan);
+      }
+    }
+
+    const canvasWords = getCanvasWords();
+    for (let i = 0; i < colWordIdArr.length; i++) {
+      const colWordIndex = colWordIdArr[i];
+      const colorBase = colColorsHex[i % colColorsHex.length];
+      const fillCol = setAlpha(colorBase, 1);
+      // const fillCol = colColors[i % colColors.length].replace(/,[\d.]+\)/, ',1)');
+      canvasWords.filter((x) => colWordIndex.includes(x.word.id)).forEach((x) => {
+        x.fill(fillCol);
+        x.opacity(1);
+      });
+    }
   }
 
   /**
@@ -807,7 +868,8 @@ export class KonvaDataTable {
 }
 
 /**
- *
+ * Render a layout data table on the canvas.
+ * If the data table already exists on the canvas, it is automatically removed.
  * @param {import('../objects/layoutObjects.js').LayoutDataTable} layoutDataTable
  */
 function renderLayoutDataTable(layoutDataTable) {
@@ -815,13 +877,16 @@ function renderLayoutDataTable(layoutDataTable) {
     console.log(`Skipping table ${layoutDataTable?.id} as it has no boxes`);
     return;
   }
+  const konvaLayoutExisting = CanvasObjs.layoutDataTableArr.find((x) => x.layoutDataTable.id === layoutDataTable.id);
+  if (konvaLayoutExisting) CanvasObjs.destroyLayoutDataTablesById(konvaLayoutExisting.layoutDataTable.id);
+
   const konvaLayout = new KonvaDataTable(ocrAll.active[cp.n], layoutDataTable);
-  canvasObj.layoutDataTableArr.push(konvaLayout);
+  CanvasObjs.layoutDataTableArr.push(konvaLayout);
 }
 
 export function renderLayoutDataTables() {
   if (!layoutDataTableAll[cp.n].tables) return;
-  destroyLayoutDataTables();
+  CanvasObjs.destroyLayoutDataTables();
   Object.values(layoutDataTableAll[cp.n].tables).forEach((table) => {
     renderLayoutDataTable(table);
   });
@@ -840,13 +905,59 @@ export const checkDataColumnsAdjacent = (selectedDataColumns) => {
   let colI = selectedDataColumns[0];
   let adjacent = true;
   for (let i = 1; i < selectedDataColumns.length; i++) {
-    colI = colI.next();
-    if (!selectedDataColumnsIds.includes(colI.layoutBox.id)) {
+    const colINext = colI.next();
+    if (!colINext || !selectedDataColumnsIds.includes(colINext.layoutBox.id)) {
       adjacent = false;
       break;
     }
+    colI = colINext;
   }
   return adjacent;
+};
+
+/**
+ *
+ * @param {LayoutDataTable} table
+ */
+const getAdjacentTables = (table) => {
+  const adjacentTables = [];
+
+  const tableBox = calcTableBbox(table);
+
+  const tableYMid = (tableBox.top + tableBox.bottom) / 2;
+
+  // Filter to tables that have vertial overlap, and sort by horizontal position.
+  const tablesBoxesAll = layoutDataTableAll[cp.n].tables.map((x) => calcTableBbox(x));
+  const tables = layoutDataTableAll[cp.n].tables.filter((x, i) => tablesBoxesAll[i].top < tableYMid && tablesBoxesAll[i].bottom > tableYMid).sort((a, b) => {
+    const boxA = calcTableBbox(a);
+    const boxB = calcTableBbox(b);
+    return boxA.left - boxB.left;
+  });
+
+  const index = tables.findIndex((x) => x.id === table.id);
+
+  if (index > 0) adjacentTables.push(tables[index - 1]);
+  if (index < tables.length - 1) adjacentTables.push(tables[index + 1]);
+  return adjacentTables;
+};
+
+/**
+ *
+ * @param {Array<LayoutDataTable>} dataTables
+ * @returns
+ */
+export const checkDataTablesAdjacent = (dataTables) => {
+  for (let i = 0; i < dataTables.length - 1; i++) {
+    const table = dataTables[i];
+    const tableNext = dataTables[i + 1];
+    const adjacentTableIds = getAdjacentTables(table).map((x) => x.id);
+
+    if (!adjacentTableIds.includes(tableNext.id)) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 /**
@@ -858,6 +969,11 @@ export const mergeDataColumns = (columns) => {
   // The selection may change between the time when the user clicks the context menu and when this function is called.
   if (!columns || columns.length < 2 || !checkDataColumnsAdjacent(columns)) return;
 
+  // Make copy so `.delete()` doesn't affect the loop.
+  columns = columns.slice();
+
+  const table = columns[0].konvaTable.layoutDataTable;
+
   // Expand leftmost column to include the width of all columns.
   columns.sort((a, b) => a.x() - b.x());
   columns[0].layoutBox.coords.right = columns[columns.length - 1].layoutBox.coords.right;
@@ -867,7 +983,33 @@ export const mergeDataColumns = (columns) => {
   }
 
   columns[0].konvaTable.destroy();
-  renderLayoutDataTable(columns[0].konvaTable.layoutDataTable);
+  renderLayoutDataTable(table);
+};
+
+/**
+ *
+ * @param {Array<LayoutDataTable>} tables
+ */
+export const mergeDataTables = (tables) => {
+  // Double-check that columns are adjacent before merging.
+  // The selection may change between the time when the user clicks the context menu and when this function is called.
+  if (!tables || tables.length < 2 || !checkDataTablesAdjacent(tables)) return;
+
+  const tableFirst = tables[0];
+
+  for (let i = 1; i < tables.length; i++) {
+    tables[i].boxes.forEach((x) => {
+      x.table = tableFirst;
+      tableFirst.boxes.push(x);
+    });
+    const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === tables[i].id);
+    layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
+  }
+
+  cleanLayoutDataColumns(tableFirst);
+
+  renderLayoutBoxes();
+  updateDataPreview();
 };
 
 /**
@@ -895,17 +1037,52 @@ export const splitDataColumn = (column, x) => {
 
   column.layoutBox.coords = bboxLeft;
 
-  const id = getRandomAlphanum(10);
+  const layoutBoxLeft = new LayoutDataColumn(bboxRight, column.layoutBox.table);
 
-  const priority = 1;
+  column.konvaTable.layoutDataTable.boxes.push(layoutBoxLeft);
 
-  const layoutBoxRight = new LayoutBox(id, priority, bboxRight);
-  layoutBoxRight.type = 'dataColumn';
-
-  column.konvaTable.layoutDataTable.boxes[id] = layoutBoxRight;
+  column.konvaTable.layoutDataTable.boxes.sort((a, b) => a.coords.left - b.coords.left);
 
   column.konvaTable.destroy();
   renderLayoutDataTable(column.konvaTable.layoutDataTable);
+};
+
+/**
+ * Splits a table into two or three tables.
+ * All columns in `columns` are inserted into a new table, all columns to the left of `columns` are inserted into a new table,
+ * and all columns to the right of `columns` are inserted into a new table.
+ * The old table is removed.
+ * @param {Array<KonvaDataColumn>} columns
+ */
+export const splitDataTable = (columns) => {
+  // For this function to be run, `columns` must be a subset of the columns in a single table, and the columns must be adjacent.
+  if (!columns || columns.length === 0 || columns.length === columns[0].layoutBox.table.boxes.length || !checkDataColumnsAdjacent(columns)) return;
+
+  columns.sort((a, b) => a.x() - b.x());
+
+  const layoutDataColumns0 = columns[0].layoutBox.table.boxes.filter((x) => x.coords.left < columns[0].layoutBox.coords.left);
+  const layoutDataColumns1 = columns.map((x) => x.layoutBox);
+  const layoutDataColumns2 = columns[0].layoutBox.table.boxes.filter((x) => x.coords.left > columns[columns.length - 1].layoutBox.coords.left);
+
+  // Remove old table
+  const tableExisting = layoutDataColumns1[0].table;
+  const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === tableExisting.id);
+  layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
+
+  [layoutDataColumns0, layoutDataColumns1, layoutDataColumns2].forEach((layoutDataColumns) => {
+    if (layoutDataColumns.length === 0) return;
+
+    const table = new LayoutDataTable();
+
+    layoutDataColumns.forEach((layoutDataColumn) => {
+      layoutDataColumn.table = table;
+      table.boxes.push(layoutDataColumn);
+    });
+
+    layoutDataTableAll[cp.n].tables.push(table);
+  });
+
+  renderLayoutDataTables();
 };
 
 /**
@@ -926,32 +1103,44 @@ export function selectLayoutBoxesArea(box) {
 
 /**
  *
- * @param {Array<KonvaLayout>} konvaLayoutBoxes
+ * @param {Array<string>} layoutBoxIdArr
  */
-export function selectLayoutBoxes(konvaLayoutBoxes) {
-  for (let i = 0; i < konvaLayoutBoxes.length; i++) {
-    const objI = konvaLayoutBoxes[i];
-    if (objI instanceof KonvaDataColumn) {
-      canvasObj.selectedDataColumnArr.push(objI);
-    } else {
-      canvasObj.selectedLayoutBoxArr.push(objI);
-    }
-  }
+export function selectLayoutBoxesById(layoutBoxIdArr) {
+  const konvaLayoutBoxes = CanvasObjs.layoutBoxArr.filter((x) => layoutBoxIdArr.includes(x.layoutBox.id));
 
-  // Boxes can only be resized one at a time
-  if (konvaLayoutBoxes.length === 1) KonvaLayout.addControls(konvaLayoutBoxes[0]);
+  CanvasObjs.layoutDataTableArr.forEach((table) => {
+    table.columns.forEach((column) => {
+      if (layoutBoxIdArr.includes(column.layoutBox.id)) konvaLayoutBoxes.push(column);
+    });
+  });
 
-  canvasObj.selectedDataColumnArr.forEach((shape) => (shape.select()));
-  canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.select()));
+  selectLayoutBoxes(konvaLayoutBoxes);
 }
 
 /**
  *
- * @param {LayoutBox} layoutBox
+ * @param {Array<KonvaLayout>} konvaLayoutBoxes
+ */
+export function selectLayoutBoxes(konvaLayoutBoxes) {
+  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
+  const selectedDataColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
+
+  CanvasObjs.CanvasSelection.addKonvaLayoutBoxes(konvaLayoutBoxes);
+
+  // Boxes can only be resized one at a time
+  if (konvaLayoutBoxes.length === 1) KonvaLayout.addControls(konvaLayoutBoxes[0]);
+
+  selectedDataColumns.forEach((shape) => (shape.select()));
+  selectedLayoutBoxes.forEach((shape) => (shape.select()));
+}
+
+/**
+ *
+ * @param {LayoutDataColumn|LayoutRegion} layoutBox
  */
 function renderLayoutBox(layoutBox) {
   const konvaLayout = new KonvaLayout(layoutBox);
-  canvasObj.layoutBoxArr.push(konvaLayout);
+  CanvasObjs.layoutBoxArr.push(konvaLayout);
   layerOverlay.add(konvaLayout);
   if (konvaLayout.label) layerOverlay.add(konvaLayout.label);
 }

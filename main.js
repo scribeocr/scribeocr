@@ -46,7 +46,7 @@ import {
 import { getAllFileEntries } from './js/drag-and-drop.js';
 
 // Functions for various UI tabs
-import { selectDisplayMode, getDisplayMode } from './js/browser/interfaceView.js';
+import { selectDisplayMode, getDisplayMode, setWordColorOpacity } from './js/browser/interfaceView.js';
 
 import {
   deleteSelectedWords, changeWordFontSize, changeWordFontFamily,
@@ -55,13 +55,13 @@ import {
 
 import {
   deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
-  updateDataPreview, setLayoutBoxTable, renderLayoutBoxes, toggleSelectableWords,
+  updateDataPreview, renderLayoutBoxes, toggleSelectableWords,
 } from './js/browser/interfaceLayout.js';
 
 import {
-  stage, layerText, destroyWords, canvasObj,
-  getCanvasWords, setCanvasWidthHeightZoom, destroyLayoutBoxes, destroyControls, renderPage,
-  layerOverlay,
+  stage, layerText, destroyWords,
+  getCanvasWords, setCanvasWidthHeightZoom, renderPage,
+  layerOverlay, CanvasObjs,
 } from './js/browser/interfaceCanvas.js';
 
 // Third party libraries
@@ -278,9 +278,6 @@ const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pag
 const collapseRangeElem = /** @type {HTMLDivElement} */(document.getElementById('collapseRange'));
 globalThis.collapseRangeCollapse = new bootstrap.Collapse(collapseRangeElem, { toggle: false });
 
-const collapseSetLayoutBoxTableElem = /** @type {HTMLDivElement} */(document.getElementById('collapseSetLayoutBoxTable'));
-globalThis.collapseSetLayoutBoxTableCollapse = new bootstrap.Collapse(collapseSetLayoutBoxTableElem, { toggle: false });
-
 // Add various event listners to HTML elements
 const nextElem = /** @type {HTMLInputElement} */(document.getElementById('next'));
 const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev'));
@@ -396,7 +393,7 @@ rangeBaselineElem.addEventListener('mouseup', () => { adjustBaselineRangeChange(
 
 document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedWords);
 
-document.getElementById('addWord')?.addEventListener('click', () => (canvasObj.mode = 'addWord'));
+document.getElementById('addWord')?.addEventListener('click', () => (CanvasObjs.mode = 'addWord'));
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
@@ -476,12 +473,12 @@ recognizeAllElem.addEventListener('click', () => {
 });
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
-recognizeAreaElem.addEventListener('click', () => (canvasObj.mode = 'recognizeArea'));
+recognizeAreaElem.addEventListener('click', () => (CanvasObjs.mode = 'recognizeArea'));
 const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
-recognizeWordElem.addEventListener('click', () => (canvasObj.mode = 'recognizeWord'));
+recognizeWordElem.addEventListener('click', () => (CanvasObjs.mode = 'recognizeWord'));
 
 const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
-debugPrintCoordsElem.addEventListener('click', () => (canvasObj.mode = 'printCoords'));
+debugPrintCoordsElem.addEventListener('click', () => (CanvasObjs.mode = 'printCoords'));
 
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
 const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
@@ -491,11 +488,11 @@ const addDataTableElem = /** @type {HTMLInputElement} */(document.getElementById
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
 
 addLayoutBoxElem.addEventListener('click', () => {
-  canvasObj.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
+  CanvasObjs.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
 });
-addLayoutBoxTypeOrderElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxOrder'));
-addLayoutBoxTypeExcludeElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxExclude'));
-addDataTableElem.addEventListener('click', () => (canvasObj.mode = 'addLayoutBoxDataTable'));
+addLayoutBoxTypeOrderElem.addEventListener('click', () => (CanvasObjs.mode = 'addLayoutBoxOrder'));
+addLayoutBoxTypeExcludeElem.addEventListener('click', () => (CanvasObjs.mode = 'addLayoutBoxExclude'));
+addDataTableElem.addEventListener('click', () => (CanvasObjs.mode = 'addLayoutBoxDataTable'));
 
 const setDefaultLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('setDefaultLayout'));
 setDefaultLayoutElem.addEventListener('click', () => setDefaultLayoutClick());
@@ -512,9 +509,6 @@ const setLayoutBoxInclusionLevelWordElem = /** @type {HTMLInputElement} */(docum
 const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
 setLayoutBoxInclusionLevelWordElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick('word'));
 setLayoutBoxInclusionLevelLineElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick('line'));
-
-const setLayoutBoxTableElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxTable'));
-setLayoutBoxTableElem.addEventListener('change', () => { setLayoutBoxTable(setLayoutBoxTableElem.value); });
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
 ignorePunctElem.addEventListener('change', () => { renderPageQueue(cp.n); });
@@ -799,7 +793,7 @@ export function setCurrentHOCR(x) {
 // This function cleans up any changes/event listners caused by the initial click in such cases.
 const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
 navBarElem.addEventListener('click', (e) => {
-  canvasObj.mode = 'select';
+  CanvasObjs.mode = 'select';
   globalThis.touchScrollMode = true; // Is this still used?
 }, true);
 
@@ -833,7 +827,7 @@ navLayoutElem.addEventListener('show.bs.collapse', (e) => {
       renderPageQueue(cp.n);
     } else {
       toggleSelectableWords(false);
-      destroyControls();
+      CanvasObjs.destroyControls();
       renderLayoutBoxes();
     }
   }
@@ -849,9 +843,11 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
       renderPageQueue(cp.n);
     } else {
       toggleSelectableWords(true);
-      destroyLayoutBoxes();
-      destroyControls();
+      CanvasObjs.destroyLayoutBoxes();
+      CanvasObjs.destroyControls();
+      setWordColorOpacity();
       layerOverlay.batchDraw();
+      layerText.batchDraw();
     }
   }
 });

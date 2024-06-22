@@ -8,14 +8,14 @@ import { cp } from '../../main.js';
 import { imageCache } from '../containers/imageContainer.js';
 import { drawDebugImages } from '../debug.js';
 import {
-  stage, layerText, canvasObj, setCanvasWidthHeightZoom,
+  stage, layerText, CanvasObjs, setCanvasWidthHeightZoom,
 } from './interfaceCanvas.js';
 import { layoutAll, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 
 const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
 export function printSelectedWords(printOCR = true) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
@@ -27,7 +27,7 @@ export function printSelectedWords(printOCR = true) {
 }
 
 export async function evalSelectedLine() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   const word0 = selectedObjects[0].word;
@@ -125,10 +125,10 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return excludedArr;
 
-  const priorityArr = Array(pageA.lines.length);
+  const orderArr = Array(pageA.lines.length);
 
   // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
-  priorityArr.fill(10);
+  orderArr.fill(10);
 
   for (let i = 0; i < pageA.lines.length; i++) {
     const lineA = pageA.lines[i];
@@ -137,7 +137,7 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
       const overlap = calcOverlap(lineA.bbox, obj.coords);
       if (overlap > 0.5) {
         if (obj.type === 'order') {
-          priorityArr[i] = obj.priority;
+          orderArr[i] = obj.order;
         } else if (obj.type === 'exclude' && applyExclude) {
           const { words } = lineA;
           let text = '';

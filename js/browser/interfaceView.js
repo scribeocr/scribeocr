@@ -59,7 +59,7 @@ function displayModeClick(x) {
 /**
  * Changes color and opacity of words based on the current display mode.
  */
-function setWordColorOpacity() {
+export function setWordColorOpacity() {
   getCanvasWords().forEach((obj) => {
     const { opacity, fill } = getWordFillOpacity(obj.word);
     obj.fill(fill);

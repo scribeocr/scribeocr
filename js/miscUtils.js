@@ -2,6 +2,18 @@
 // Various utility functions used in other files.
 
 /**
+ *
+ * @param {Array<bbox>} bboxArr
+ * @returns
+ */
+export const calcBboxUnion = (bboxArr) => ({
+  left: Math.min(...bboxArr.map((x) => x.left)),
+  top: Math.min(...bboxArr.map((x) => x.top)),
+  right: Math.max(...bboxArr.map((x) => x.right)),
+  bottom: Math.max(...bboxArr.map((x) => x.bottom)),
+});
+
+/**
  * Generates a random integer.
  *
  * @param {number} min - The minimum value (inclusive).
