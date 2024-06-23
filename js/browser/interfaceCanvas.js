@@ -15,8 +15,6 @@ import {
   updateDataPreview,
 } from './interfaceLayout.js';
 
-const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
-
 const styleItalicButton = new Button(elem.edit.styleItalic);
 const styleBoldButton = new Button(elem.edit.styleBold);
 const styleSmallCapsButton = new Button(elem.edit.styleSmallCaps);
@@ -463,10 +461,10 @@ export function getWordFillOpacity(word) {
     opacity = 1;
     fill = 'black';
   } else if (displayMode === 'eval') {
-    opacity = parseFloat(rangeOpacityElem.value || '80') / 100;
+    opacity = parseFloat(elem.view.rangeOpacity.value || '80') / 100;
     fill = fillColorHexMatch;
   } else {
-    opacity = parseFloat(rangeOpacityElem.value || '80') / 100;
+    opacity = parseFloat(elem.view.rangeOpacity.value || '80') / 100;
     fill = fillColorHex;
   }
 
@@ -497,7 +495,7 @@ export class KonvaIText extends Konva.Shape {
     outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', dynamicWidth = false, editTextCallback,
   }) {
     const {
-      visualWidth, charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr,
+      charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr,
     } = calcWordMetrics(word);
 
     const charSpacingFinal = !dynamicWidth ? charSpacing : 0;
@@ -997,6 +995,5 @@ export function renderPage(page) {
 }
 
 export {
-  layerBackground, layerOverlay, layerText, stage
+  layerBackground, layerOverlay, layerText, stage,
 };
-

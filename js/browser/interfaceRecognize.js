@@ -18,8 +18,6 @@ import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { elem } from './elems.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 
-const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
-
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));
 
@@ -100,7 +98,7 @@ export async function recognizeAllClick() {
   let oemMode;
   if (enableAdvancedRecognitionElem.checked) {
     oemMode = oemLabelTextElem.innerHTML.toLowerCase();
-  } else if (ocrQualityElem.value === '1') {
+  } else if (elem.recognize.ocrQuality.value === '1') {
     oemMode = 'combined';
   } else {
     oemMode = 'legacy';
@@ -235,7 +233,7 @@ export async function recognizeAllClick() {
       if (userUploadMode) {
         if (elem.recognize.combineMode.value === 'conf') {
           /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
-          const compOptions = {
+          const compOptions2 = {
             debugLabel: 'Combined',
             supplementComp: true,
             ignoreCap: ignoreCapElem.checked,
@@ -245,23 +243,23 @@ export async function recognizeAllClick() {
             editConf: true,
           };
 
-          const res = await globalThis.gs.compareHOCR({
+          const res2 = await globalThis.gs.compareHOCR({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinary,
             pageMetricsObj: pageMetricsArr[i],
-            options: compOptions,
+            options: compOptions2,
           });
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-          globalThis.debugLog += res.debugLog;
+          globalThis.debugLog += res2.debugLog;
 
-          debugImg.Combined[i] = res.debugImg;
+          debugImg.Combined[i] = res2.debugImg;
 
-          ocrAll.Combined[i] = res.page;
+          ocrAll.Combined[i] = res2.page;
         } else {
           /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
-          const compOptions = {
+          const compOptions2 = {
             mode: 'comb',
             debugLabel: 'Combined',
             supplementComp: true,
@@ -271,20 +269,20 @@ export async function recognizeAllClick() {
             confThreshMed: parseInt(elem.info.confThreshMed.value),
           };
 
-          const res = await globalThis.gs.compareHOCR({
+          const res2 = await globalThis.gs.compareHOCR({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinary,
             pageMetricsObj: pageMetricsArr[i],
-            options: compOptions,
+            options: compOptions2,
           });
 
           if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-          globalThis.debugLog += res.debugLog;
+          globalThis.debugLog += res2.debugLog;
 
-          debugImg.Combined[i] = res.debugImg;
+          debugImg.Combined[i] = res2.debugImg;
 
-          ocrAll.Combined[i] = res.page;
+          ocrAll.Combined[i] = res2.page;
         }
       }
     }

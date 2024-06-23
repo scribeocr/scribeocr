@@ -33,7 +33,6 @@ elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
 const styleItalicButton = new Button(elem.edit.styleItalic);
 const styleBoldButton = new Button(elem.edit.styleBold);
 const styleSmallCapsButton = new Button(elem.edit.styleSmallCaps);
-const styleSuperButton = new Button(elem.edit.styleSuper);
 
 export function deleteSelectedWords() {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();

@@ -27,10 +27,6 @@ import {
 import { extractSingleTableContent } from '../exportWriteTabular.js';
 import { elem } from './elems.js';
 
-const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
-const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
-const xlsxPageNumberColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxPageNumberColumn'));
-
 const dataPreviewElem = /** @type {HTMLElement} */ (document.getElementById('dataPreview'));
 
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
@@ -1101,7 +1097,7 @@ export async function updateDataPreview() {
 
   if (!globalThis.inputFileNames || !ocrAll.active[cp.n]) return;
 
-  const showDataPreview = enableXlsxExportElem.checked;
+  const showDataPreview = elem.info.enableXlsxExport.checked;
 
   showHideElem(dataPreviewElem, showDataPreview);
 

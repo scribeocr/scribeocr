@@ -133,21 +133,13 @@ window.addEventListener('wheel', (event) => {
  */
 globalThis.ctxDebug = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('g')).getContext('2d'));
 
-const debugDownloadCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
-const debugDownloadImageElem = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadImage'));
+elem.info.debugPrintWordsOCR.addEventListener('click', () => printSelectedWords(true));
+elem.info.debugPrintWordsCanvas.addEventListener('click', () => printSelectedWords(false));
 
-const debugPrintWordsCanvasElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
-const debugPrintWordsOCRElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsOCR'));
+elem.info.debugDownloadCanvas.addEventListener('click', downloadCanvas);
+elem.info.debugDownloadImage.addEventListener('click', downloadCurrentImage);
 
-const debugEvalLineElem = /** @type {HTMLInputElement} */(document.getElementById('debugEvalLine'));
-
-debugPrintWordsOCRElem.addEventListener('click', () => printSelectedWords(true));
-debugPrintWordsCanvasElem.addEventListener('click', () => printSelectedWords(false));
-
-debugDownloadCanvasElem.addEventListener('click', downloadCanvas);
-debugDownloadImageElem.addEventListener('click', downloadCurrentImage);
-
-debugEvalLineElem.addEventListener('click', evalSelectedLine);
+elem.info.debugEvalLine.addEventListener('click', evalSelectedLine);
 
 const fontAllRawReady = loadBuiltInFontsRaw().then((x) => {
   fontAll.raw = x;
@@ -375,21 +367,17 @@ enableRecognitionElem.addEventListener('click', enableRecognitionClick);
 
 enableLayoutElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab')), enableLayoutElem.checked));
 
-const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
-
-const dataTableOptionsElem = /** @type {HTMLDivElement} */(document.getElementById('dataTableOptions'));
-
 export const enableXlsxExportClick = () => {
   // Adding layouts is required for xlsx exports
   if (!enableLayoutElem.checked) enableLayoutElem.click();
 
-  showHideElem(formatLabelOptionXlsxElem, enableXlsxExportElem.checked);
-  showHideElem(dataTableOptionsElem, enableXlsxExportElem.checked);
+  showHideElem(formatLabelOptionXlsxElem, elem.info.enableXlsxExport.checked);
+  showHideElem(elem.info.dataTableOptions, elem.info.enableXlsxExport.checked);
 
   updateDataPreview();
 };
 
-enableXlsxExportElem.addEventListener('click', enableXlsxExportClick);
+elem.info.enableXlsxExport.addEventListener('click', enableXlsxExportClick);
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const extractTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('extractTextCheckbox'));
@@ -592,12 +580,8 @@ docxReflowCheckboxElem.addEventListener('click', () => {
   }
 });
 
-const matchCountElem = /** @type {HTMLInputElement} */(document.getElementById('matchCount'));
-const matchCurrentElem = /** @type {HTMLInputElement} */(document.getElementById('matchCurrent'));
-const prevMatchElem = /** @type {HTMLInputElement} */(document.getElementById('prevMatch'));
-const nextMatchElem = /** @type {HTMLInputElement} */(document.getElementById('nextMatch'));
-prevMatchElem.addEventListener('click', () => prevMatchClick());
-nextMatchElem.addEventListener('click', () => nextMatchClick());
+elem.nav.prevMatch.addEventListener('click', () => prevMatchClick());
+elem.nav.nextMatch.addEventListener('click', () => nextMatchClick());
 
 function prevMatchClick() {
   if (cp.n === 0) return;
@@ -635,8 +619,8 @@ function findTextClick(text) {
     search.total = 0;
   }
 
-  matchCurrentElem.textContent = calcMatchNumber(cp.n);
-  matchCountElem.textContent = String(search.total);
+  elem.nav.matchCurrent.textContent = calcMatchNumber(cp.n);
+  elem.nav.matchCount.textContent = String(search.total);
 }
 
 /**
@@ -703,8 +687,8 @@ function updateFindStats() {
     // Calculate total number of matches
     search.total = search.matches.reduce((partialSum, a) => partialSum + a, 0);
 
-    matchCurrentElem.textContent = calcMatchNumber(cp.n);
-    matchCountElem.textContent = String(search.total);
+    elem.nav.matchCurrent.textContent = calcMatchNumber(cp.n);
+    elem.nav.matchCount.textContent = String(search.total);
   }
 }
 
@@ -1752,7 +1736,7 @@ export async function displayPage(n) {
     updateFindStats();
   }
 
-  matchCurrentElem.textContent = calcMatchNumber(n);
+  elem.nav.matchCurrent.textContent = calcMatchNumber(n);
 
   cp.n = n;
   pageNumElem.value = (cp.n + 1).toString();

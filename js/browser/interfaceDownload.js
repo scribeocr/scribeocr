@@ -43,8 +43,6 @@ const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElem
 
 const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
-const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
-
 const downloadSourcePDFElem = /** @type {HTMLInputElement} */(document.getElementById('downloadSourcePDF'));
 
 downloadSourcePDFElem.addEventListener('click', async () => {
@@ -227,7 +225,7 @@ export async function handleDownload() {
       // The `maxpage` argument must be set manually to `globalThis.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
       // In all other cases, this should be equivalent to using the default argument of `-1` (which results in `hocrDownload.length` being used).
       const pdfStr = await hocrToPDF(hocrDownload, 0, globalThis.pageCount - 1, getDisplayMode(), rotateText, rotateBackground,
-        { width: -1, height: -1 }, downloadProgress, confThreshHigh, confThreshMed, parseFloat(rangeOpacityElem.value || '80') / 100);
+        { width: -1, height: -1 }, downloadProgress, confThreshHigh, confThreshMed, parseFloat(elem.view.rangeOpacity.value || '80') / 100);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -336,7 +334,7 @@ export async function handleDownload() {
       await sleep(0);
 
       const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, getDisplayMode(), false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed,
-        parseFloat(rangeOpacityElem.value || '80') / 100);
+        parseFloat(elem.view.rangeOpacity.value || '80') / 100);
 
       // The PDF is still run through muPDF, even thought in eBook mode no background layer is added.
       // This is because muPDF cleans up the PDF we made in the previous step, including:

@@ -7,10 +7,20 @@ class nav {
   static zoomIn = /** @type {HTMLInputElement} */(document.getElementById('zoomIn'));
 
   static zoomOut = /** @type {HTMLInputElement} */(document.getElementById('zoomOut'));
+
+  static matchCount = /** @type {HTMLInputElement} */(document.getElementById('matchCount'));
+
+  static matchCurrent = /** @type {HTMLInputElement} */(document.getElementById('matchCurrent'));
+
+  static prevMatch = /** @type {HTMLInputElement} */(document.getElementById('prevMatch'));
+
+  static nextMatch = /** @type {HTMLInputElement} */(document.getElementById('nextMatch'));
 }
 
 class recognize {
   static combineMode = /** @type {HTMLSelectElement} */(document.getElementById('combineMode'));
+
+  static ocrQuality = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 }
 
 class view {
@@ -23,6 +33,8 @@ class view {
   static outlineLines = /** @type {HTMLInputElement} */(document.getElementById('outlineLines'));
 
   static outlineWords = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
+
+  static rangeOpacity = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
 }
 
 class edit {
@@ -63,10 +75,33 @@ class layout {
   static setLayoutBoxInclusionLevelLine = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
 }
 
+class download {
+  static xlsxFilenameColumn = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
+
+  static xlsxPageNumberColumn = /** @type {HTMLInputElement} */(document.getElementById('xlsxPageNumberColumn'));
+}
+
 class info {
   static confThreshHigh = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
 
   static confThreshMed = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
+
+  static debugDownloadCanvas = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
+
+  static debugDownloadImage = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadImage'));
+
+  static debugPrintWordsCanvas = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
+
+  static debugPrintWordsOCR = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsOCR'));
+
+  static debugEvalLine = /** @type {HTMLInputElement} */(document.getElementById('debugEvalLine'));
+
+  // Optional features.
+  static enableRecognition = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
+
+  static enableXlsxExport = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
+
+  static dataTableOptions = /** @type {HTMLDivElement} */(document.getElementById('dataTableOptions'));
 }
 
 export class elem {
@@ -79,6 +114,8 @@ export class elem {
   static edit = edit;
 
   static layout = layout;
+
+  static download = download;
 
   static info = info;
 }

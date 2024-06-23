@@ -24,8 +24,6 @@ elem.view.displayMode.addEventListener('change', () => { displayModeClick(elem.v
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 
-const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
-
 const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
 
 /**
@@ -41,7 +39,7 @@ export function getDisplayMode() {
   return value;
 }
 
-rangeOpacityElem.addEventListener('input', () => {
+elem.view.rangeOpacity.addEventListener('input', () => {
   setWordColorOpacity();
   layerText.batchDraw();
 });
