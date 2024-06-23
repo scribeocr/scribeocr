@@ -41,3 +41,8 @@ export const inputDataModes = {
   // true if ground truth data is uploaded
   evalMode: false,
 };
+
+/**
+ * @type {{[key: string]: Array<Array<CompDebugBrowser>> | undefined}}
+ */
+export const debugImg = {};

@@ -7,27 +7,35 @@
 // TODO: This file contains many miscellaneous functions and would benefit from being refactored.
 // Additionally, various data stored as global variables
 
+import { Collapse, Tooltip } from './lib/bootstrap.esm.bundle.min.js';
 import Konva from './lib/konva/index.js';
 
 import { importOCRFiles } from './js/importOCR.js';
 
 import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
 
-import { recognizeAllClick, getLangText } from './js/browser/interfaceRecognize.js';
+import { getLangText, recognizeAllClick } from './js/browser/interfaceRecognize.js';
 
 import { handleDownload, setFormatLabel, updatePdfPagesLabel } from './js/browser/interfaceDownload.js';
 
 import { convertOCRAllBrowser } from './js/recognizeConvertBrowser.js';
 
-import { runFontOptimization } from './js/fontEval.js';
+import { fontAll, optimizeFontContainerAll } from './js/containers/fontContainer.js';
 import {
-  enableDisableFontOpt, setBuiltInFontsWorker, loadBuiltInFontsRaw, setDefaultFontAuto,
+  enableDisableFontOpt,
+  loadBuiltInFontsRaw,
+  setBuiltInFontsWorker,
+  setDefaultFontAuto,
 } from './js/fontContainerMain.js';
-import { optimizeFontContainerAll, fontAll } from './js/containers/fontContainer.js';
+import { runFontOptimization } from './js/fontEval.js';
 
 import {
-  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr, inputDataModes,
+  debugImg,
+  fontMetricsObj,
+  inputDataModes,
+  layoutAll,
   layoutDataTableAll,
+  ocrAll, pageMetricsArr,
 } from './js/containers/miscContainer.js';
 
 import { PageMetrics } from './js/objects/pageMetricsObjects.js';
@@ -35,33 +43,46 @@ import { PageMetrics } from './js/objects/pageMetricsObjects.js';
 import { LayoutDataTablePage, LayoutPage } from './js/objects/layoutObjects.js';
 
 import {
-  checkCharWarn, calcFontMetricsFromPages,
+  calcFontMetricsFromPages,
+  checkCharWarn,
 } from './js/fontStatistics.js';
 
 import { drawDebugImages } from './js/debug.js';
 
-import {
-  getRandomAlphanum, sleep, occurrences, readTextFile, replaceObjectProperties, showHideElem,
-} from './js/miscUtils.js';
 import { getAllFileEntries } from './js/drag-and-drop.js';
+import {
+  getRandomAlphanum,
+  occurrences, readTextFile, replaceObjectProperties, showHideElem,
+  sleep,
+} from './js/miscUtils.js';
 
 // Functions for various UI tabs
-import { selectDisplayMode, getDisplayMode, setWordColorOpacity } from './js/browser/interfaceView.js';
+import { getDisplayMode, selectDisplayMode, setWordColorOpacity } from './js/browser/interfaceView.js';
 
 import {
-  deleteSelectedWords, changeWordFontSize, changeWordFontFamily,
-  adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange, toggleEditButtons,
+  adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange,
+  changeWordFontFamily,
+  changeWordFontSize,
+  deleteSelectedWords,
+  toggleEditButtons,
 } from './js/browser/interfaceEdit.js';
 
 import {
-  deleteLayoutBoxClick, setDefaultLayoutClick, revertLayoutClick, setLayoutBoxTypeClick, setLayoutBoxInclusionRuleClick, setLayoutBoxInclusionLevelClick,
-  updateDataPreview, renderLayoutBoxes, toggleSelectableWords,
+  renderLayoutBoxes,
+  revertLayoutClick,
+  setDefaultLayoutClick,
+  setLayoutBoxInclusionLevelClick,
+  setLayoutBoxInclusionRuleClick,
+  toggleSelectableWords,
+  updateDataPreview,
 } from './js/browser/interfaceLayout.js';
 
 import {
-  stage, layerText, destroyWords,
-  getCanvasWords, setCanvasWidthHeightZoom, renderPage,
-  layerOverlay, CanvasObjs,
+  layerOverlay,
+  layerText,
+  renderPage,
+  ScribeCanvas,
+  stage,
 } from './js/browser/interfaceCanvas.js';
 
 // Third party libraries
@@ -69,7 +90,7 @@ import Tesseract from './tess/tesseract.esm.min.js';
 
 // Debugging functions
 // import { initConvertPageWorker } from './js/convertPage.js';
-import { initGeneralWorker, GeneralScheduler } from './js/generalWorkerMain.js';
+import { GeneralScheduler, initGeneralWorker } from './js/generalWorkerMain.js';
 
 // Load default settings
 import { setDefaults } from './js/browser/setDefaults.js';
@@ -77,10 +98,17 @@ import { setDefaults } from './js/browser/setDefaults.js';
 import ocr from './js/objects/ocrObjects.js';
 
 import {
-  printSelectedWords, downloadCanvas, evalSelectedLine, getExcludedText, downloadCurrentImage,
+  downloadCanvas,
+  downloadCurrentImage,
+  evalSelectedLine,
+  printSelectedWords,
 } from './js/browser/interfaceDebug.js';
 
 import { df } from './js/browser/debugGlobals.js';
+import { elem } from './js/browser/elems.js';
+import {
+  getLayerCenter, setCanvasWidthHeightZoom, zoomAllLayers,
+} from './js/browser/interfaceCanvasInteraction.js';
 
 globalThis.df = df;
 
@@ -129,7 +157,7 @@ const fontAllRawReady = loadBuiltInFontsRaw().then((x) => {
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
+const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new Tooltip(tooltipTriggerEl));
 
 /**
  * @typedef cp
@@ -276,7 +304,7 @@ export function insertAlertMessage(innerHTML, error = true, parentElemId = 'aler
 const pageNumElem = /** @type {HTMLInputElement} */(document.getElementById('pageNum'));
 
 const collapseRangeElem = /** @type {HTMLDivElement} */(document.getElementById('collapseRange'));
-globalThis.collapseRangeCollapse = new bootstrap.Collapse(collapseRangeElem, { toggle: false });
+globalThis.collapseRangeCollapse = new Collapse(collapseRangeElem, { toggle: false });
 
 // Add various event listners to HTML elements
 const nextElem = /** @type {HTMLInputElement} */(document.getElementById('next'));
@@ -285,11 +313,16 @@ const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev')
 nextElem.addEventListener('click', () => displayPage(cp.n + 1));
 prevElem.addEventListener('click', () => displayPage(cp.n - 1));
 
-// const rangeLeftMarginElem = /** @type {HTMLInputElement} */(document.getElementById('rangeLeftMargin'));
+elem.nav.zoomIn.addEventListener('click', () => {
+  zoomAllLayers(1.1, getLayerCenter(layerText));
+});
 
-const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
-colorModeElem.addEventListener('change', () => {
-  imageCache.colorModeDefault = colorModeElem.value;
+elem.nav.zoomOut.addEventListener('click', () => {
+  zoomAllLayers(0.9, getLayerCenter(layerText));
+});
+
+elem.view.colorMode.addEventListener('change', () => {
+  imageCache.colorModeDefault = elem.view.colorMode.value;
   renderPageQueue(cp.n);
 });
 
@@ -377,12 +410,10 @@ uploadOCRDataElem.addEventListener('show.bs.collapse', () => {
   }
 });
 
-document.getElementById('fontMinus')?.addEventListener('click', () => { changeWordFontSize('minus'); });
-document.getElementById('fontPlus')?.addEventListener('click', () => { changeWordFontSize('plus'); });
-const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
-fontSizeElem.addEventListener('change', () => { changeWordFontSize(fontSizeElem.value); });
-const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
-wordFontElem.addEventListener('change', () => { changeWordFontFamily(wordFontElem.value); });
+elem.edit.fontMinus.addEventListener('click', () => { changeWordFontSize('minus'); });
+elem.edit.fontPlus.addEventListener('click', () => { changeWordFontSize('plus'); });
+elem.edit.fontSize.addEventListener('change', () => { changeWordFontSize(elem.edit.fontSize.value); });
+elem.edit.wordFont.addEventListener('change', () => { changeWordFontFamily(elem.edit.wordFont.value); });
 
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 document.getElementById('editBaseline')?.addEventListener('click', adjustBaseline);
@@ -391,9 +422,9 @@ const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementByI
 rangeBaselineElem.addEventListener('input', () => { adjustBaselineRange(rangeBaselineElem.value); });
 rangeBaselineElem.addEventListener('mouseup', () => { adjustBaselineRangeChange(rangeBaselineElem.value); });
 
-document.getElementById('deleteWord')?.addEventListener('click', deleteSelectedWords);
+elem.edit.deleteWord.addEventListener('click', deleteSelectedWords);
 
-document.getElementById('addWord')?.addEventListener('click', () => (CanvasObjs.mode = 'addWord'));
+document.getElementById('addWord')?.addEventListener('click', () => (ScribeCanvas.mode = 'addWord'));
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
 const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
@@ -414,13 +445,10 @@ optimizeFontDebugElem.addEventListener('click', () => {
   }
 });
 
-const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
-const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-confThreshHighElem.addEventListener('change', () => { renderPageQueue(cp.n); });
-confThreshMedElem.addEventListener('change', () => { renderPageQueue(cp.n); });
+elem.info.confThreshHigh.addEventListener('change', () => { renderPageQueue(cp.n); });
+elem.info.confThreshMed.addEventListener('change', () => { renderPageQueue(cp.n); });
 
-const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-autoRotateCheckboxElem.addEventListener('click', () => { renderPageQueue(cp.n); });
+elem.view.autoRotateCheckbox.addEventListener('click', () => { renderPageQueue(cp.n); });
 document.getElementById('outlineWords')?.addEventListener('click', () => { renderPageQueue(cp.n); });
 document.getElementById('outlineLines')?.addEventListener('click', () => { renderPageQueue(cp.n); });
 
@@ -473,12 +501,12 @@ recognizeAllElem.addEventListener('click', () => {
 });
 
 const recognizeAreaElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
-recognizeAreaElem.addEventListener('click', () => (CanvasObjs.mode = 'recognizeArea'));
+recognizeAreaElem.addEventListener('click', () => (ScribeCanvas.mode = 'recognizeArea'));
 const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
-recognizeWordElem.addEventListener('click', () => (CanvasObjs.mode = 'recognizeWord'));
+recognizeWordElem.addEventListener('click', () => (ScribeCanvas.mode = 'recognizeWord'));
 
 const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
-debugPrintCoordsElem.addEventListener('click', () => (CanvasObjs.mode = 'printCoords'));
+debugPrintCoordsElem.addEventListener('click', () => (ScribeCanvas.mode = 'printCoords'));
 
 const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
 const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
@@ -488,11 +516,11 @@ const addDataTableElem = /** @type {HTMLInputElement} */(document.getElementById
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
 
 addLayoutBoxElem.addEventListener('click', () => {
-  CanvasObjs.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
+  ScribeCanvas.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
 });
-addLayoutBoxTypeOrderElem.addEventListener('click', () => (CanvasObjs.mode = 'addLayoutBoxOrder'));
-addLayoutBoxTypeExcludeElem.addEventListener('click', () => (CanvasObjs.mode = 'addLayoutBoxExclude'));
-addDataTableElem.addEventListener('click', () => (CanvasObjs.mode = 'addLayoutBoxDataTable'));
+addLayoutBoxTypeOrderElem.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxOrder'));
+addLayoutBoxTypeExcludeElem.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxExclude'));
+addDataTableElem.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxDataTable'));
 
 const setDefaultLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('setDefaultLayout'));
 setDefaultLayoutElem.addEventListener('click', () => setDefaultLayoutClick());
@@ -500,15 +528,11 @@ setDefaultLayoutElem.addEventListener('click', () => setDefaultLayoutClick());
 const revertLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('revertLayout'));
 revertLayoutElem.addEventListener('click', () => revertLayoutClick());
 
-const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
-const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
-setLayoutBoxInclusionRuleMajorityElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick('majority'));
-setLayoutBoxInclusionRuleLeftElem.addEventListener('click', () => setLayoutBoxInclusionRuleClick('left'));
+elem.layout.setLayoutBoxInclusionRuleMajority.addEventListener('click', () => setLayoutBoxInclusionRuleClick('majority'));
+elem.layout.setLayoutBoxInclusionRuleLeft.addEventListener('click', () => setLayoutBoxInclusionRuleClick('left'));
 
-const setLayoutBoxInclusionLevelWordElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelWord'));
-const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
-setLayoutBoxInclusionLevelWordElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick('word'));
-setLayoutBoxInclusionLevelLineElem.addEventListener('click', () => setLayoutBoxInclusionLevelClick('line'));
+elem.layout.setLayoutBoxInclusionLevelWord.addEventListener('click', () => setLayoutBoxInclusionLevelClick('word'));
+elem.layout.setLayoutBoxInclusionLevelLine.addEventListener('click', () => setLayoutBoxInclusionLevelClick('line'));
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
 ignorePunctElem.addEventListener('change', () => { renderPageQueue(cp.n); });
@@ -518,8 +542,6 @@ ignoreCapElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreExtra'));
 ignoreExtraElem.addEventListener('change', () => { renderPageQueue(cp.n); });
-
-const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
 
 const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
 pdfPageMinElem.addEventListener('keyup', (event) => {
@@ -640,7 +662,7 @@ export const search = {
 function highlightcp(text) {
   const matchIdArr = ocr.getMatchingWordIds(text, ocrAll.active[cp.n]);
 
-  getCanvasWords().forEach((wordObj) => {
+  ScribeCanvas.getKonvaWords().forEach((wordObj) => {
     if (matchIdArr.includes(wordObj.word.id)) {
       wordObj.fillBox = true;
     } else {
@@ -793,7 +815,7 @@ export function setCurrentHOCR(x) {
 // This function cleans up any changes/event listners caused by the initial click in such cases.
 const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
 navBarElem.addEventListener('click', (e) => {
-  CanvasObjs.mode = 'select';
+  ScribeCanvas.mode = 'select';
   globalThis.touchScrollMode = true; // Is this still used?
 }, true);
 
@@ -823,11 +845,11 @@ navLayoutElem.addEventListener('show.bs.collapse', (e) => {
     if (!layoutAll[cp.n]) return;
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
-    if (!autoRotateCheckboxElem.checked) {
+    if (!elem.view.autoRotateCheckbox.checked) {
       renderPageQueue(cp.n);
     } else {
       toggleSelectableWords(false);
-      CanvasObjs.destroyControls();
+      ScribeCanvas.destroyControls();
       renderLayoutBoxes();
     }
   }
@@ -839,12 +861,13 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
     Konva.autoDrawEnabled = false;
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
-    if (!autoRotateCheckboxElem.checked) {
+    if (!elem.view.autoRotateCheckbox.checked) {
       renderPageQueue(cp.n);
     } else {
       toggleSelectableWords(true);
-      CanvasObjs.destroyLayoutBoxes();
-      CanvasObjs.destroyControls();
+      ScribeCanvas.destroyRegions();
+      ScribeCanvas.destroyLayoutDataTables();
+      ScribeCanvas.destroyControls();
       setWordColorOpacity();
       layerOverlay.batchDraw();
       layerText.batchDraw();
@@ -868,7 +891,7 @@ export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI =
 
   if (!progressCollapse) throw new Error(`Progress bar with ID ${id} not found.`);
 
-  const progressCollapseObj = new bootstrap.Collapse(progressCollapse, { toggle: false });
+  const progressCollapseObj = new Collapse(progressCollapse, { toggle: false });
 
   const progressBar = progressCollapse.getElementsByClassName('progress-bar')[0];
 
@@ -931,7 +954,7 @@ function createGroundTruthClick() {
   const option = document.createElement('option');
   option.text = 'Evaluate Mode (Compare with Ground Truth)';
   option.value = 'eval';
-  displayModeElem.add(option);
+  elem.view.displayMode.add(option);
 
   createGroundTruthElem.disabled = true;
   // compareGroundTruthElem.disabled = false;
@@ -962,8 +985,8 @@ async function compareGroundTruthClick(n) {
   const compOptions = {
     ignoreCap: ignoreCapElem.checked,
     ignorePunct: ignorePunctElem.checked,
-    confThreshHigh: parseInt(confThreshHighElem.value),
-    confThreshMed: parseInt(confThreshMedElem.value),
+    confThreshHigh: parseInt(elem.info.confThreshHigh.value),
+    confThreshMed: parseInt(elem.info.confThreshMed.value),
   };
 
   // Compare all pages if this has not been done already
@@ -1098,9 +1121,9 @@ export async function showDebugImages() {
   /** @type {Array<Array<CompDebugBrowser>>} */
   const compDebugArrArr = [];
 
-  const compDebugArr1 = globalThis.debugImg?.['Tesseract Combined']?.[cp.n];
-  const compDebugArr2 = globalThis.debugImg?.Combined?.[cp.n];
-  const compDebugArr3 = globalThis.debugImg?.recognizeArea?.[cp.n];
+  const compDebugArr1 = debugImg?.['Tesseract Combined']?.[cp.n];
+  const compDebugArr2 = debugImg?.Combined?.[cp.n];
+  const compDebugArr3 = debugImg?.recognizeArea?.[cp.n];
 
   if (compDebugArr1 && compDebugArr1.length > 0) compDebugArrArr.push(compDebugArr1);
   if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);
@@ -1140,8 +1163,8 @@ async function clearFiles() {
   optimizeFontElem.disabled = true;
   downloadElem.disabled = true;
   addOverlayCheckboxElem.disabled = true;
-  confThreshHighElem.disabled = true;
-  confThreshMedElem.disabled = true;
+  elem.info.confThreshHigh.disabled = true;
+  elem.info.confThreshMed.disabled = true;
   recognizeAllElem.disabled = true;
   // recognizePageElem.disabled = true;
   recognizeAreaElem.disabled = true;
@@ -1171,11 +1194,11 @@ async function importOCRFilesSupp() {
   const pageCountHOCR = ocrData.hocrRaw.length;
 
   // Enable confidence threshold input boxes (only used for Tesseract)
-  if (!ocrData.abbyyMode && !ocrData.stextMode && confThreshHighElem.disabled) {
-    confThreshHighElem.disabled = false;
-    confThreshMedElem.disabled = false;
-    confThreshHighElem.value = '85';
-    confThreshMedElem.value = '75';
+  if (!ocrData.abbyyMode && !ocrData.stextMode && elem.info.confThreshHigh.disabled) {
+    elem.info.confThreshHigh.disabled = false;
+    elem.info.confThreshMed.disabled = false;
+    elem.info.confThreshHigh.value = '85';
+    elem.info.confThreshMed.value = '75';
   }
 
   // If both OCR data and image data are present, confirm they have the same number of pages
@@ -1197,7 +1220,7 @@ async function importOCRFilesSupp() {
 
   uploadOCRNameElem.value = '';
   uploadOCRFileElem.value = '';
-  new bootstrap.Collapse(uploadOCRDataElem, { toggle: true });
+  new Collapse(uploadOCRDataElem, { toggle: true });
 
   initOCRVersion(ocrName);
   setCurrentHOCR(ocrName);
@@ -1277,31 +1300,31 @@ async function importFiles(curFiles) {
 
     // Color vs. grayscale is an option passed to mupdf, so can only be used with pdf inputs
     // Binary images are calculated separately by Leptonica (within Tesseract) so apply to both
-    const colorModeElemOptions = colorModeElem.children;
-    while (colorModeElemOptions.length > 0) {
-      colorModeElemOptions[0].remove();
+    const colorModeOptions = elem.view.colorMode.children;
+    while (colorModeOptions.length > 0) {
+      colorModeOptions[0].remove();
     }
     if (inputDataModes.imageMode) {
       const option = document.createElement('option');
       option.text = 'Native';
       option.value = 'color';
       option.selected = true;
-      colorModeElem.add(option);
+      elem.view.colorMode.add(option);
     } else {
       let option = document.createElement('option');
       option.text = 'Color';
       option.value = 'color';
-      colorModeElem.add(option);
+      elem.view.colorMode.add(option);
       option = document.createElement('option');
       option.text = 'Grayscale';
       option.value = 'gray';
       option.selected = true;
-      colorModeElem.add(option);
+      elem.view.colorMode.add(option);
     }
     const option = document.createElement('option');
     option.text = 'Binary';
     option.value = 'binary';
-    colorModeElem.add(option);
+    elem.view.colorMode.add(option);
 
     // For PDF inputs, enable "Add Text to Import PDF" option
     if (inputDataModes.pdfMode) {
@@ -1450,10 +1473,10 @@ async function importFiles(curFiles) {
 
     // Enable confidence threshold input boxes (only used for Tesseract)
     if (!abbyyMode && !stextMode) {
-      confThreshHighElem.disabled = false;
-      confThreshMedElem.disabled = false;
-      confThreshHighElem.value = '85';
-      confThreshMedElem.value = '75';
+      elem.info.confThreshHigh.disabled = false;
+      elem.info.confThreshMed.disabled = false;
+      elem.info.confThreshHigh.value = '85';
+      elem.info.confThreshMed.value = '75';
     }
   }
 
@@ -1688,7 +1711,7 @@ export async function renderPageQueue(n) {
     ocrData = ocrAll.active?.[n];
   }
 
-  destroyWords();
+  ScribeCanvas.destroyWords();
 
   // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
   // (whether by quickly changing pages or on the same page).
@@ -1739,7 +1762,7 @@ export async function displayPage(n) {
   if (showConflictsElem.checked) showDebugImages();
 
   // Render background images ahead and behind current page to reduce delay when switching pages
-  if (inputDataModes.pdfMode || inputDataModes.imageMode) imageCache.preRenderAheadBehindBrowser(n, colorModeElem.value === 'binary');
+  if (inputDataModes.pdfMode || inputDataModes.imageMode) imageCache.preRenderAheadBehindBrowser(n, elem.view.colorMode.value === 'binary');
 
   working = false;
 }

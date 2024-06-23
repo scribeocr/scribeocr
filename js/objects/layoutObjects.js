@@ -50,7 +50,7 @@ export class LayoutRegion extends LayoutBoxBase {
 export function LayoutPage() {
   /** @type {boolean} */
   this.default = true;
-  /** @type {Object<string, LayoutDataColumn|LayoutRegion>} */
+  /** @type {Object<string, LayoutRegion>} */
   this.boxes = {};
 }
 

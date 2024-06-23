@@ -1,22 +1,28 @@
 /* eslint-disable import/no-cycle */
 
+import { Collapse } from '../../lib/bootstrap.esm.bundle.min.js';
 import {
-  initOCRVersion, setOemLabel, initializeProgress, runFontOptimizationBrowser, setCurrentHOCR, renderPageQueue, cp, insertAlertMessage,
+  cp,
+  initOCRVersion,
+  initializeProgress,
+  insertAlertMessage,
+  renderPageQueue,
+  runFontOptimizationBrowser, setCurrentHOCR,
+  setOemLabel,
 } from '../../main.js';
-import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
-import { toggleEditButtons } from './interfaceEdit.js';
-import { loadChiSimFont } from '../fontContainerMain.js';
 import { imageCache } from '../containers/imageContainer.js';
+import { debugImg, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
+import { loadChiSimFont } from '../fontContainerMain.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
-import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
+import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
+import { elem } from './elems.js';
+import { toggleEditButtons } from './interfaceEdit.js';
 
 const ocrQualityElem = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));
 
-const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
-const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
 
@@ -76,18 +82,13 @@ export function getLangText() {
 function hideProgress2(id) {
   const progressCollapse = document.getElementById(id);
   if (progressCollapse.getAttribute('class') === 'collapse show') {
-    (new bootstrap.Collapse(progressCollapse)).hide();
+    (new Collapse(progressCollapse)).hide();
 
     // The collapsing animation needs to end before this can be hidden
   } else if (progressCollapse.getAttribute('class') === 'collapsing') {
     setTimeout(() => hideProgress2(id), 500);
   }
 }
-
-/**
- * @type {{[key: string]: Array<Array<CompDebugBrowser>> | undefined}}
- */
-globalThis.debugImg = {};
 
 export async function recognizeAllClick() {
   await globalThis.generalScheduler.ready;
@@ -143,9 +144,9 @@ export async function recognizeAllClick() {
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
     if (debugMode) {
-      globalThis.debugImg.Combined = new Array(imageCache.pageCount);
+      debugImg.Combined = new Array(imageCache.pageCount);
       for (let i = 0; i < imageCache.pageCount; i++) {
-        globalThis.debugImg.Combined[i] = [];
+        debugImg.Combined[i] = [];
       }
     }
 
@@ -153,9 +154,9 @@ export async function recognizeAllClick() {
       initOCRVersion('Tesseract Combined');
       setCurrentHOCR('Tesseract Combined');
       if (debugMode) {
-        globalThis.debugImg['Tesseract Combined'] = new Array(imageCache.pageCount);
+        debugImg['Tesseract Combined'] = new Array(imageCache.pageCount);
         for (let i = 0; i < imageCache.pageCount; i++) {
-          globalThis.debugImg['Tesseract Combined'][i] = [];
+          debugImg['Tesseract Combined'][i] = [];
         }
       }
     }
@@ -208,8 +209,8 @@ export async function recognizeAllClick() {
         debugLabel: tessCombinedLabel,
         ignoreCap: ignoreCapElem.checked,
         ignorePunct: ignorePunctElem.checked,
-        confThreshHigh: parseInt(confThreshHighElem.value),
-        confThreshMed: parseInt(confThreshMedElem.value),
+        confThreshHigh: parseInt(elem.info.confThreshHigh.value),
+        confThreshMed: parseInt(elem.info.confThreshMed.value),
         legacyLSTMComb: true,
       };
 
@@ -226,21 +227,21 @@ export async function recognizeAllClick() {
       if (globalThis.debugLog === undefined) globalThis.debugLog = '';
       globalThis.debugLog += res.debugLog;
 
-      globalThis.debugImg[tessCombinedLabel][i] = res.debugImg;
+      debugImg[tessCombinedLabel][i] = res.debugImg;
 
       ocrAll[tessCombinedLabel][i] = res.page;
 
       // If the user uploaded data, compare to that as we
       if (userUploadMode) {
-        if (document.getElementById('combineMode')?.value === 'conf') {
+        if (elem.recognize.combineMode.value === 'conf') {
           /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
           const compOptions = {
             debugLabel: 'Combined',
             supplementComp: true,
             ignoreCap: ignoreCapElem.checked,
             ignorePunct: ignorePunctElem.checked,
-            confThreshHigh: parseInt(confThreshHighElem.value),
-            confThreshMed: parseInt(confThreshMedElem.value),
+            confThreshHigh: parseInt(elem.info.confThreshHigh.value),
+            confThreshMed: parseInt(elem.info.confThreshMed.value),
             editConf: true,
           };
 
@@ -255,7 +256,7 @@ export async function recognizeAllClick() {
           if (globalThis.debugLog === undefined) globalThis.debugLog = '';
           globalThis.debugLog += res.debugLog;
 
-          globalThis.debugImg.Combined[i] = res.debugImg;
+          debugImg.Combined[i] = res.debugImg;
 
           ocrAll.Combined[i] = res.page;
         } else {
@@ -266,8 +267,8 @@ export async function recognizeAllClick() {
             supplementComp: true,
             ignoreCap: ignoreCapElem.checked,
             ignorePunct: ignorePunctElem.checked,
-            confThreshHigh: parseInt(confThreshHighElem.value),
-            confThreshMed: parseInt(confThreshMedElem.value),
+            confThreshHigh: parseInt(elem.info.confThreshHigh.value),
+            confThreshMed: parseInt(elem.info.confThreshMed.value),
           };
 
           const res = await globalThis.gs.compareHOCR({
@@ -281,7 +282,7 @@ export async function recognizeAllClick() {
           if (globalThis.debugLog === undefined) globalThis.debugLog = '';
           globalThis.debugLog += res.debugLog;
 
-          globalThis.debugImg.Combined[i] = res.debugImg;
+          debugImg.Combined[i] = res.debugImg;
 
           ocrAll.Combined[i] = res.page;
         }
@@ -298,12 +299,12 @@ export async function recognizeAllClick() {
   renderPageQueue(cp.n);
 
   // Enable confidence threshold input boxes (only used for Tesseract)
-  confThreshHighElem.disabled = false;
-  confThreshMedElem.disabled = false;
+  elem.info.confThreshHigh.disabled = false;
+  elem.info.confThreshMed.disabled = false;
 
   // Set threshold values if not already set
-  confThreshHighElem.value = confThreshHighElem.value || '85';
-  confThreshMedElem.value = confThreshMedElem.value || '75';
+  elem.info.confThreshHigh.value = elem.info.confThreshHigh.value || '85';
+  elem.info.confThreshMed.value = elem.info.confThreshMed.value || '75';
 
   toggleEditButtons(false);
 

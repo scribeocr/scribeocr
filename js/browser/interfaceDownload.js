@@ -1,19 +1,22 @@
 /* eslint-disable import/no-cycle */
 
+import { initializeProgress, insertAlertMessage } from '../../main.js';
 import { imageCache } from '../containers/imageContainer.js';
-import { insertAlertMessage, initializeProgress } from '../../main.js';
 import {
-  sleep, saveAs,
-} from '../miscUtils.js';
-import { renderText } from '../exportRenderText.js';
+  inputDataModes,
+  layoutAll, ocrAll, pageMetricsArr,
+} from '../containers/miscContainer.js';
 import { renderHOCRBrowser } from '../exportRenderHOCRBrowser.js';
+import { renderText } from '../exportRenderText.js';
+import {
+  saveAs,
+  sleep,
+} from '../miscUtils.js';
 import { reorderHOCR } from '../modifyOCR.js';
 import { getDisplayMode } from './interfaceView.js';
-import {
-  layoutAll, ocrAll, pageMetricsArr, inputDataModes,
-} from '../containers/miscContainer.js';
 
 import { hocrToPDF } from '../exportPDF.js';
+import { elem } from './elems.js';
 
 const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
 const pdfPageMaxElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
@@ -29,20 +32,11 @@ const xlsxOptionsElem = /** @type {HTMLElement} */(document.getElementById('xlsx
 
 const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 
-const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
-
-const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-
 const reflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('reflowCheckbox'));
 const pageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
 
 const humanReadablePDFElem = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
 const intermediatePDFElem = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
-
-const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
-
-const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
-const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
 
 const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
@@ -78,7 +72,7 @@ downloadSourcePDFElem.addEventListener('click', async () => {
 // a user trying to add text to an image-based PDF may be surprised by this behavior.
 const pdfAlertElem = insertAlertMessage('To generate a PDF with invisible OCR text, select View > Display Mode > OCR Mode before downloading.', false, 'alertDownloadDiv', false);
 export const enableDisableDownloadPDFAlert = () => {
-  const enable = displayModeElem.value === 'proof' && formatLabelTextElem.textContent === 'PDF';
+  const enable = elem.view.displayMode.value === 'proof' && formatLabelTextElem.textContent === 'PDF';
 
   if (enable) {
     pdfAlertElem.setAttribute('style', '');
@@ -209,18 +203,18 @@ export async function handleDownload() {
     const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.pdf`;
     let pdfBlob;
 
-    const confThreshHigh = parseInt(confThreshHighElem.value) || 85;
-    const confThreshMed = parseInt(confThreshMedElem.value) || 75;
+    const confThreshHigh = parseInt(elem.info.confThreshHigh.value) || 85;
+    const confThreshMed = parseInt(elem.info.confThreshMed.value) || 75;
 
     // For proof or ocr mode the text layer needs to be combined with a background layer
-    if (displayModeElem.value !== 'ebook') {
+    if (elem.view.displayMode.value !== 'ebook') {
       const steps = addOverlayCheckboxElem.checked ? 2 : 3;
       const downloadProgress = initializeProgress('generate-download-progress-collapse', (maxValue + 1) * steps);
       await sleep(0);
 
       const insertInputPDF = inputDataModes.pdfMode && addOverlayCheckboxElem.checked;
 
-      const rotateBackground = !insertInputPDF && autoRotateCheckboxElem.checked;
+      const rotateBackground = !insertInputPDF && elem.view.autoRotateCheckbox.checked;
 
       const rotateText = !rotateBackground;
 
@@ -287,10 +281,10 @@ export async function handleDownload() {
 
       // If the input is a series of images, those images need to be inserted into a new pdf
       if (!insertInputPDF && (inputDataModes.pdfMode || inputDataModes.imageMode) || insertInputFailed) {
-        const colorMode = /** @type {('color'|'gray'|'binary')} */ (colorModeElem.value);
+        const colorMode = /** @type {('color'|'gray'|'binary')} */ (elem.view.colorMode.value);
 
         const props = { rotated: rotateBackground, upscaled: false, colorMode };
-        const binary = colorModeElem.value === 'binary';
+        const binary = elem.view.colorMode.value === 'binary';
 
         // An image could be rendered if either (1) binary is selected or (2) the input data is a PDF.
         // Otherwise, the images uploaded by the user are used.

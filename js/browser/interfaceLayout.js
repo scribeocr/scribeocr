@@ -3,25 +3,29 @@ import Konva from '../../lib/konva/index.js';
 
 import { getRandomAlphanum, showHideElem } from '../miscUtils.js';
 
-import { displayPage, cp } from '../../main.js';
+import { cp, displayPage } from '../../main.js';
 
 import {
-  LayoutDataColumn, LayoutDataTable, LayoutDataTablePage, LayoutRegion, calcTableBbox,
+  LayoutDataColumn, LayoutDataTable, LayoutRegion, calcTableBbox,
 } from '../objects/layoutObjects.js';
 
 import {
-  layoutAll, ocrAll, inputDataModes, layoutDataTableAll,
+  inputDataModes,
+  layoutAll,
+  layoutDataTableAll,
+  ocrAll,
 } from '../containers/miscContainer.js';
 
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  getCanvasWords, layerOverlay, getCanvasLayoutBoxes, updateWordCanvas,
-  KonvaIText, stage, CanvasObjs,
-  hideContextMenu,
+  KonvaIText, ScribeCanvas,
+  getWordFillOpacity,
+  layerOverlay, updateWordCanvas,
 } from './interfaceCanvas.js';
 
 import { extractSingleTableContent } from '../exportWriteTabular.js';
+import { elem } from './elems.js';
 
 const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
@@ -30,12 +34,6 @@ const xlsxPageNumberColumnElem = /** @type {HTMLInputElement} */(document.getEle
 const dataPreviewElem = /** @type {HTMLElement} */ (document.getElementById('dataPreview'));
 
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
-
-const setLayoutBoxInclusionRuleMajorityElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleMajority'));
-const setLayoutBoxInclusionRuleLeftElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionRuleLeft'));
-
-const setLayoutBoxInclusionLevelWordElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelWord'));
-const setLayoutBoxInclusionLevelLineElem = /** @type {HTMLInputElement} */(document.getElementById('setLayoutBoxInclusionLevelLine'));
 
 // const colColors = ['rgba(40,123,181,0.3)', 'rgba(201,74,83,0.3)', 'rgba(45,134,61,0.3)'];
 const colColorsHex = ['#287bb5', '#19aa9a', '#099b57'];
@@ -93,7 +91,7 @@ export function addLayoutBoxClick({
   layoutBoxTypeElem.textContent = { order: 'Order', exclude: 'Exclude' }[type];
 
   // Maximum priority for boxes that already exist
-  const maxPriority = Math.max(...Object.values(layoutAll[cp.n].boxes).map((x) => x.order), -1);
+  const maxPriority = Math.max(...Object.values(layoutAll[cp.n].boxes).map((box) => box.order), -1);
 
   const bbox = {
     left: x, top: y, right: x + width, bottom: y + height,
@@ -106,28 +104,8 @@ export function addLayoutBoxClick({
   renderLayoutBoxes();
 }
 
-export function deleteLayoutBoxClick() {
-  hideContextMenu();
-  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
-  selectedLayoutBoxes.forEach((obj) => {
-    delete layoutAll[cp.n].boxes[obj.layoutBox.id];
-    obj.destroy();
-  });
-  CanvasObjs.destroyControls();
-}
-
-export function deleteLayoutDataTableClick() {
-  hideContextMenu();
-  const selectedColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
-  if (selectedColumns.length === 0) return;
-
-  selectedColumns[0].konvaTable.delete();
-  CanvasObjs.destroyControls();
-  layerOverlay.batchDraw();
-}
-
 export function toggleSelectableWords(selectable = true) {
-  const allObjects = getCanvasWords();
+  const allObjects = ScribeCanvas.getKonvaWords();
   allObjects.forEach((obj) => {
     obj.listening(selectable);
   });
@@ -165,7 +143,7 @@ export function revertLayoutClick() {
 }
 
 export function setLayoutBoxTypeClick(type) {
-  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
+  const selectedLayoutBoxes = ScribeCanvas.CanvasSelection.getKonvaRegions();
   selectedLayoutBoxes.forEach((x) => {
     x.layoutBox.type = type;
   });
@@ -243,14 +221,14 @@ const cleanLayoutDataColumns = (table) => {
 
 export function setLayoutBoxInclusionRuleClick(rule) {
   // Save the selected boxes to reselect them after re-rendering.
-  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
-  const selectedDataColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
+  const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
+  const selectedDataColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
 
-  const selectedArr = selectedLayoutBoxes.map((x) => x.layoutBox.id);
+  const selectedArr = selectedRegions.map((x) => x.layoutBox.id);
   selectedArr.push(...selectedDataColumns.map((x) => x.layoutBox.id));
 
   let changed = false;
-  selectedLayoutBoxes.forEach((x) => {
+  selectedRegions.forEach((x) => {
     changed = changed || x.layoutBox.inclusionRule !== rule;
     x.layoutBox.inclusionRule = rule;
   });
@@ -262,20 +240,20 @@ export function setLayoutBoxInclusionRuleClick(rule) {
   if (changed) {
     renderLayoutBoxes();
     updateDataPreview();
-    selectLayoutBoxesById(selectedArr);
+    ScribeCanvas.CanvasSelection.selectLayoutBoxesById(selectedArr);
   }
 }
 
 export function setLayoutBoxInclusionLevelClick(level) {
   // Save the selected boxes to reselect them after re-rendering.
-  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
-  const selectedDataColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
+  const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
+  const selectedDataColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
 
-  const selectedArr = selectedLayoutBoxes.map((x) => x.layoutBox.id);
+  const selectedArr = selectedRegions.map((x) => x.layoutBox.id);
   selectedArr.push(...selectedDataColumns.map((x) => x.layoutBox.id));
 
   let changed = false;
-  selectedLayoutBoxes.forEach((x) => {
+  selectedRegions.forEach((x) => {
     changed = changed || x.layoutBox.inclusionLevel !== level;
     x.layoutBox.inclusionLevel = level;
   });
@@ -288,18 +266,8 @@ export function setLayoutBoxInclusionLevelClick(level) {
   if (changed) {
     renderLayoutBoxes();
     updateDataPreview();
-    selectLayoutBoxesById(selectedArr);
+    ScribeCanvas.CanvasSelection.selectLayoutBoxesById(selectedArr);
   }
-}
-
-export function renderLayoutBoxes() {
-  CanvasObjs.destroyLayoutBoxes();
-  Object.values(layoutAll[cp.n].boxes).forEach((box) => {
-    renderLayoutBox(box);
-  });
-  renderLayoutDataTables();
-
-  layerOverlay.batchDraw();
 }
 
 /**
@@ -360,13 +328,15 @@ export class KonvaLayout extends Konva.Rect {
       if (this.label) this.label.destroy();
       this.label = undefined;
       // Deselect the box if it is selected.
-      CanvasObjs.CanvasSelection.deselectDataColumnsByIds([this.layoutBox.id]);
+      ScribeCanvas.CanvasSelection.deselectDataColumnsByIds([this.layoutBox.id]);
 
       this.destroyRect();
       return this;
     };
 
-    if (layoutBox instanceof LayoutRegion) {
+    // `instanceof LayoutDataColumn` should not be used to determine the type of the layout box,
+    // as this will fail for layout boxes that were created in another thread.
+    if (layoutBox.type === 'order') {
       // Create dummy ocr data for the order box
       const pageObj = new ocr.OcrPage(cp.n, { width: 1, height: 1 });
       const box = {
@@ -397,7 +367,7 @@ export class KonvaLayout extends Konva.Rect {
     });
 
     this.addEventListener('dragmove', () => {
-      if (CanvasObjs.input && CanvasObjs.input.parentElement && CanvasObjs.inputRemove) CanvasObjs.inputRemove();
+      if (ScribeCanvas.input && ScribeCanvas.input.parentElement && ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
       if (this.label) {
         this.label.x(this.x() + this.width() * 0.5);
         this.label.yActual = this.y() + this.height() * 0.5;
@@ -412,31 +382,21 @@ export class KonvaLayout extends Konva.Rect {
 
   /**
    * Add controls for editing.
-   * @param {KonvaLayout} konvaLayout
+   * @param {KonvaLayout|KonvaDataColumn} konvaLayout
    */
   static addControls = (konvaLayout) => {
     const enabledAnchors = ['middle-left', 'middle-right', 'top-center', 'bottom-center'];
 
-    if (konvaLayout instanceof KonvaDataColumn && konvaLayout.konvaTable.lockColumns) {
-      // const enabledAnchorsTable = ['top-center', 'bottom-center'];
-      const trans = new Konva.Transformer({
-        enabledAnchors,
-        rotateEnabled: false,
-      });
-      CanvasObjs.controlArr.push(trans);
-      layerOverlay.add(trans);
-      trans.nodes([konvaLayout.konvaTable.tableRect]);
-      return;
-    }
+    const shape = konvaLayout instanceof KonvaDataColumn ? konvaLayout.konvaTable.tableRect : konvaLayout;
 
     const trans = new Konva.Transformer({
       enabledAnchors,
       rotateEnabled: false,
     });
-    CanvasObjs.controlArr.push(trans);
+    ScribeCanvas._controlArr.push(trans);
     layerOverlay.add(trans);
 
-    trans.nodes([konvaLayout]);
+    trans.nodes([shape]);
   };
 
   /**
@@ -459,22 +419,22 @@ export class KonvaLayout extends Konva.Rect {
    * Should be called after new objects are selected.
    */
   static updateUI = () => {
-    const { inclusionRuleArr, inclusionLevelArr } = CanvasObjs.CanvasSelection.getLayoutBoxProperties();
+    const { inclusionRuleArr, inclusionLevelArr } = ScribeCanvas.CanvasSelection.getLayoutBoxProperties();
 
     if (inclusionRuleArr.length === 1) {
-      setLayoutBoxInclusionRuleMajorityElem.checked = inclusionRuleArr[0] === 'majority';
-      setLayoutBoxInclusionRuleLeftElem.checked = inclusionRuleArr[0] === 'left';
+      elem.layout.setLayoutBoxInclusionRuleMajority.checked = inclusionRuleArr[0] === 'majority';
+      elem.layout.setLayoutBoxInclusionRuleLeft.checked = inclusionRuleArr[0] === 'left';
     } else {
-      setLayoutBoxInclusionRuleMajorityElem.checked = false;
-      setLayoutBoxInclusionRuleLeftElem.checked = false;
+      elem.layout.setLayoutBoxInclusionRuleMajority.checked = false;
+      elem.layout.setLayoutBoxInclusionRuleLeft.checked = false;
     }
 
     if (inclusionLevelArr.length === 1) {
-      setLayoutBoxInclusionLevelWordElem.checked = inclusionLevelArr[0] === 'word';
-      setLayoutBoxInclusionLevelLineElem.checked = inclusionLevelArr[0] === 'line';
+      elem.layout.setLayoutBoxInclusionLevelWord.checked = inclusionLevelArr[0] === 'word';
+      elem.layout.setLayoutBoxInclusionLevelLine.checked = inclusionLevelArr[0] === 'line';
     } else {
-      setLayoutBoxInclusionLevelWordElem.checked = false;
-      setLayoutBoxInclusionLevelLineElem.checked = false;
+      elem.layout.setLayoutBoxInclusionLevelWord.checked = false;
+      elem.layout.setLayoutBoxInclusionLevelLine.checked = false;
     }
   };
 }
@@ -505,7 +465,7 @@ export class KonvaDataColSep extends Konva.Line {
       },
       hitFunc(context, shape) {
         context.beginPath();
-        context.rect(-5, 0, 5, shape.height());
+        context.rect(-3, 0, 6, shape.height());
         context.closePath();
         context.fillStrokeShape(shape);
       },
@@ -530,6 +490,7 @@ export class KonvaDataColSep extends Konva.Line {
     this.columnRight = columnRight;
 
     this.on('dragstart', () => {
+      ScribeCanvas.drag.isResizingColumns = true;
       const tableWidthAbsolute = konvaTable.tableRect.width() * konvaTable.tableRect.getAbsoluteScale().x;
       const boundLeftTable = konvaTable.tableRect.absolutePosition().x;
       const boundRightTable = konvaTable.tableRect.absolutePosition().x + tableWidthAbsolute;
@@ -555,6 +516,10 @@ export class KonvaDataColSep extends Konva.Line {
       this.columnRight.width(this.columnRight.layoutBox.coords.right - this.columnRight.layoutBox.coords.left);
     });
     this.addEventListener('dragend', () => {
+      ScribeCanvas.drag.isResizingColumns = false;
+      if (this.konvaTable.pageObj) {
+        this.konvaTable.tableContent = extractSingleTableContent(this.konvaTable.pageObj, this.konvaTable.layoutBoxesArr);
+      }
       KonvaDataTable.colorTableWords(this.konvaTable);
     });
 
@@ -565,6 +530,17 @@ export class KonvaDataColSep extends Konva.Line {
       document.body.style.cursor = 'default';
     });
   }
+}
+
+export function renderLayoutBoxes() {
+  ScribeCanvas.destroyRegions();
+  Object.values(layoutAll[cp.n].boxes).forEach((box) => {
+    const konvaLayout = new KonvaLayout(box);
+    ScribeCanvas.addRegion(konvaLayout);
+  });
+  renderLayoutDataTables();
+
+  layerOverlay.batchDraw();
 }
 
 export class KonvaDataColumn extends KonvaLayout {
@@ -642,7 +618,7 @@ export class KonvaDataTable {
       width: tableWidth,
       height: tableHeight,
       stroke: 'rgba(40,123,181,1)',
-      strokeWidth: 5,
+      strokeWidth: 3,
       draggable: false,
     });
 
@@ -707,16 +683,19 @@ export class KonvaDataTable {
 
     this.rowSpans = [];
 
-    if (pageObj) {
-      const tableWordObj = extractSingleTableContent(pageObj, this.layoutBoxesArr);
+    /** @type {?ReturnType<typeof extractSingleTableContent>} */
+    this.tableContent = null;
 
-      this.rowLines = tableWordObj.rowBottomArr.map((rowBottom) => new Konva.Line({
+    if (pageObj) {
+      this.tableContent = extractSingleTableContent(pageObj, this.layoutBoxesArr);
+
+      this.rowLines = this.tableContent.rowBottomArr.map((rowBottom) => new Konva.Line({
         points: [tableLeft, rowBottom, tableRight, rowBottom],
         stroke: 'rgba(0,0,0,0.25)',
         strokeWidth: 1,
       }));
 
-      KonvaDataTable.colorTableWords(this, tableWordObj);
+      KonvaDataTable.colorTableWords(this);
 
       this.rowLines.forEach((rowLine) => {
         layerOverlay.add(rowLine);
@@ -731,13 +710,9 @@ export class KonvaDataTable {
   /**
    * Calculate what words are in each column and color them accordingly.
    * @param {KonvaDataTable} konvaDataTable
-   * @param {ReturnType<typeof extractSingleTableContent>} [tableWordObj] - The words in the table, if already calculated.
-   *    If not provided, this function will calculate them. This is an expensive operation, so should not be done repeatedly without reason.
    */
-  static colorTableWords(konvaDataTable, tableWordObj) {
-    if (!konvaDataTable.pageObj) return;
-
-    if (!tableWordObj) tableWordObj = extractSingleTableContent(konvaDataTable.pageObj, konvaDataTable.layoutBoxesArr);
+  static colorTableWords(konvaDataTable) {
+    if (!konvaDataTable.tableContent) return;
 
     konvaDataTable.rowSpans.forEach((rowSpan) => rowSpan.destroy());
 
@@ -747,8 +722,8 @@ export class KonvaDataTable {
       colWordIdArr.push([]);
     }
 
-    for (let i = 0; i < tableWordObj.rowWordArr.length; i++) {
-      const row = tableWordObj.rowWordArr[i];
+    for (let i = 0; i < konvaDataTable.tableContent.rowWordArr.length; i++) {
+      const row = konvaDataTable.tableContent.rowWordArr[i];
       for (let j = 0; j < row.length; j++) {
         const wordArr = row[j];
         if (wordArr.length === 0) continue;
@@ -767,18 +742,18 @@ export class KonvaDataTable {
           fill: fillCol,
           stroke,
           strokeWidth: 1,
+          listening: false,
         });
         konvaDataTable.rowSpans.push(rowSpan);
         layerOverlay.add(rowSpan);
       }
     }
 
-    const canvasWords = getCanvasWords();
+    const canvasWords = ScribeCanvas.getKonvaWords();
     for (let i = 0; i < colWordIdArr.length; i++) {
       const colWordIndex = colWordIdArr[i];
       const colorBase = colColorsHex[i % colColorsHex.length];
       const fillCol = setAlpha(colorBase, 1);
-      // const fillCol = colColors[i % colColors.length].replace(/,[\d.]+\)/, ',1)');
       canvasWords.filter((x) => colWordIndex.includes(x.word.id)).forEach((x) => {
         x.fill(fillCol);
         x.opacity(1);
@@ -877,16 +852,32 @@ function renderLayoutDataTable(layoutDataTable) {
     console.log(`Skipping table ${layoutDataTable?.id} as it has no boxes`);
     return;
   }
-  const konvaLayoutExisting = CanvasObjs.layoutDataTableArr.find((x) => x.layoutDataTable.id === layoutDataTable.id);
-  if (konvaLayoutExisting) CanvasObjs.destroyLayoutDataTablesById(konvaLayoutExisting.layoutDataTable.id);
+  const konvaLayoutExisting = ScribeCanvas._layoutDataTableArr.find((x) => x.layoutDataTable.id === layoutDataTable.id);
+
+  const wordIdOldArr = konvaLayoutExisting?.tableContent?.rowWordArr.flat().flat().map((x) => x.id);
+
+  if (konvaLayoutExisting) ScribeCanvas.destroyLayoutDataTablesById(konvaLayoutExisting.layoutDataTable.id);
 
   const konvaLayout = new KonvaDataTable(ocrAll.active[cp.n], layoutDataTable);
-  CanvasObjs.layoutDataTableArr.push(konvaLayout);
+
+  // Reset the color for words that are no longer in the table.
+  if (wordIdOldArr) {
+    const wordIdNewArr = konvaLayout.tableContent?.rowWordArr.flat().flat().map((x) => x.id) || [];
+    const wordIdDeselectArr = wordIdOldArr.filter((x) => !wordIdNewArr.includes(x));
+    const canvasDeselectWords = ScribeCanvas.getKonvaWords().filter((x) => wordIdDeselectArr.includes(x.word.id));
+    canvasDeselectWords.forEach((x) => {
+      const { fill, opacity } = getWordFillOpacity(x.word);
+      x.fill(fill);
+      x.opacity(opacity);
+    });
+  }
+
+  ScribeCanvas._layoutDataTableArr.push(konvaLayout);
 }
 
 export function renderLayoutDataTables() {
   if (!layoutDataTableAll[cp.n].tables) return;
-  CanvasObjs.destroyLayoutDataTables();
+  ScribeCanvas.destroyLayoutDataTables();
   Object.values(layoutDataTableAll[cp.n].tables).forEach((table) => {
     renderLayoutDataTable(table);
   });
@@ -1094,55 +1085,10 @@ export const splitDataTable = (columns) => {
  * @param {number} box.y
  */
 export function selectLayoutBoxesArea(box) {
-  const shapes = getCanvasLayoutBoxes();
-
+  const shapes = ScribeCanvas.getKonvaLayoutBoxes();
   const layoutBoxes = shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
 
-  selectLayoutBoxes(layoutBoxes);
-}
-
-/**
- *
- * @param {Array<string>} layoutBoxIdArr
- */
-export function selectLayoutBoxesById(layoutBoxIdArr) {
-  const konvaLayoutBoxes = CanvasObjs.layoutBoxArr.filter((x) => layoutBoxIdArr.includes(x.layoutBox.id));
-
-  CanvasObjs.layoutDataTableArr.forEach((table) => {
-    table.columns.forEach((column) => {
-      if (layoutBoxIdArr.includes(column.layoutBox.id)) konvaLayoutBoxes.push(column);
-    });
-  });
-
-  selectLayoutBoxes(konvaLayoutBoxes);
-}
-
-/**
- *
- * @param {Array<KonvaLayout>} konvaLayoutBoxes
- */
-export function selectLayoutBoxes(konvaLayoutBoxes) {
-  const selectedLayoutBoxes = CanvasObjs.CanvasSelection.getKonvaLayoutBoxes();
-  const selectedDataColumns = CanvasObjs.CanvasSelection.getKonvaDataColumns();
-
-  CanvasObjs.CanvasSelection.addKonvaLayoutBoxes(konvaLayoutBoxes);
-
-  // Boxes can only be resized one at a time
-  if (konvaLayoutBoxes.length === 1) KonvaLayout.addControls(konvaLayoutBoxes[0]);
-
-  selectedDataColumns.forEach((shape) => (shape.select()));
-  selectedLayoutBoxes.forEach((shape) => (shape.select()));
-}
-
-/**
- *
- * @param {LayoutDataColumn|LayoutRegion} layoutBox
- */
-function renderLayoutBox(layoutBox) {
-  const konvaLayout = new KonvaLayout(layoutBox);
-  CanvasObjs.layoutBoxArr.push(konvaLayout);
-  layerOverlay.add(konvaLayout);
-  if (konvaLayout.label) layerOverlay.add(konvaLayout.label);
+  ScribeCanvas.CanvasSelection.selectLayoutBoxes(layoutBoxes);
 }
 
 // Update tabular data preview table

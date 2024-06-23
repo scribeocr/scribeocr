@@ -403,7 +403,6 @@ function convertTableLayoutAbbyy(ocrStr) {
       let colLeftArr = [];
       let colRightArr = [];
 
-      let colsWithData = 0;
       for (let j = 0; j < rows.length; j++) {
         const cells = rows[j].match(/<cell[\s\S]+?(?:<\/cell>\s*)/ig);
         for (let k = 0; k < cells.length; k++) {
@@ -416,7 +415,6 @@ function convertTableLayoutAbbyy(ocrStr) {
           if (!colLeftArr[k]) {
             colLeftArr[k] = [];
             colRightArr[k] = [];
-            colsWithData++;
           }
           colLeftArr[k].push(cellLeft);
           colRightArr[k].push(cellRight);

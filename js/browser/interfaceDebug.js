@@ -1,21 +1,25 @@
 /* eslint-disable import/no-cycle */
 
-import { calcOverlap } from '../modifyOCR.js';
-import ocr from '../objects/ocrObjects.js';
-import { saveAs } from '../miscUtils.js';
-import { imageStrToBlob } from '../imageUtils.js';
 import { cp } from '../../main.js';
 import { imageCache } from '../containers/imageContainer.js';
-import { drawDebugImages } from '../debug.js';
 import {
-  stage, layerText, CanvasObjs, setCanvasWidthHeightZoom,
+  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
+} from '../containers/miscContainer.js';
+import { drawDebugImages } from '../debug.js';
+import { imageStrToBlob } from '../imageUtils.js';
+import { saveAs } from '../miscUtils.js';
+import { calcOverlap } from '../modifyOCR.js';
+import ocr from '../objects/ocrObjects.js';
+import { elem } from './elems.js';
+import {
+  ScribeCanvas,
+  layerText,
+  stage,
 } from './interfaceCanvas.js';
-import { layoutAll, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
-
-const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
+import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
 
 export function printSelectedWords(printOCR = true) {
-  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
@@ -27,7 +31,7 @@ export function printSelectedWords(printOCR = true) {
 }
 
 export async function evalSelectedLine() {
-  const selectedObjects = CanvasObjs.CanvasSelection.getKonvaWords();
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   const word0 = selectedObjects[0].word;
@@ -79,7 +83,7 @@ export async function downloadCanvas() {
 }
 
 export async function downloadImage(n) {
-  const image = colorModeElem.value === 'binary' ? await imageCache.getBinary(n) : await imageCache.getNative(n);
+  const image = elem.view.colorMode.value === 'binary' ? await imageCache.getBinary(n) : await imageCache.getNative(n);
   const filenameBase = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}`;
 
   const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
@@ -92,7 +96,7 @@ export async function downloadCurrentImage() {
 }
 
 export async function downloadAllImages() {
-  const binary = colorModeElem.value === 'binary';
+  const binary = elem.view.colorMode.value === 'binary';
   for (let i = 0; i < imageCache.pageCount; i++) {
     await downloadImage(i);
     // Not all files will be downloaded without a delay between downloads

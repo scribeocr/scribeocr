@@ -8,7 +8,7 @@ import { calcLineFontSize } from '../fontUtils.js';
 import { imageCache } from '../containers/imageContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import {
-  stage, layerText, layerBackground, layerOverlay, CanvasObjs,
+  stage, layerText, layerBackground, layerOverlay, ScribeCanvas,
 } from './interfaceCanvas.js';
 import {
   fontMetricsObj, pageMetricsArr, ocrAll, layoutAll, layoutDataTableAll,
@@ -47,7 +47,7 @@ const getCharMetrics = (char) => {
 // Expose functions in global object for debugging purposes.
 export const df = {
   calcLineFontSize,
-  CanvasObjs,
+  ScribeCanvas,
   fontAll,
   fontMetricsObj,
   imageCache,

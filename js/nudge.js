@@ -1,6 +1,6 @@
 import { showDebugImages } from '../main.js';
 import { imageCache } from './containers/imageContainer.js';
-import { ocrAll, pageMetricsArr } from './containers/miscContainer.js';
+import { debugImg, ocrAll, pageMetricsArr } from './containers/miscContainer.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images
@@ -49,7 +49,7 @@ export async function nudgeDoc(func, view = false) {
 
   const promiseArr = [];
 
-  globalThis.debugImg.nudge = new Array(ocrAll.active.length);
+  debugImg.nudge = new Array(ocrAll.active.length);
 
   for (let i = 0; i < ocrAll.active.length; i++) {
     const ocrPageI = ocrAll.active[i];
@@ -62,7 +62,7 @@ export async function nudgeDoc(func, view = false) {
       ocrAll.active[i] = res.data.page;
       improveCt += res.data.improveCt;
       totalCt += res.data.totalCt;
-      if (res.data.debug) globalThis.debugImg.nudge[i] = res.data.debug;
+      if (res.data.debug) debugImg.nudge[i] = res.data.debug;
     }));
   }
 
