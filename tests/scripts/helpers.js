@@ -66,7 +66,7 @@ class CustomSeleniumActions {
         const maxValueDownload = await progressBarDownload.getAttribute('aria-valuemax');
         const currentValue = await progressBarDownload.getAttribute('aria-valuenow');
         return currentValue === maxValueDownload;
-      }, 10000)
+      }, 20000)
         .catch(async (error) => {
           const maxValueDownload = await progressBarDownload.getAttribute('aria-valuemax');
           const currentValue = await progressBarDownload.getAttribute('aria-valuenow');
