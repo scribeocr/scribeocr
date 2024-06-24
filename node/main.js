@@ -6,6 +6,10 @@ import path from 'path';
 import Tesseract from 'tesseract.js';
 import util from 'util';
 import Worker from 'web-worker';
+// Leave this comment and import here.
+// This needs to be run first, and the comments prevent VSCode from moving it.
+import { runFirst } from './runFirst.js';
+// Leave this comment and import here.
 import { ImageWrapper, imageCache, imageUtils } from '../js/containers/imageContainer.js';
 import { renderHOCR } from '../js/export/exportRenderHOCR.js';
 import { runFontOptimization } from '../js/fontEval.js';
@@ -34,6 +38,9 @@ import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 const writeFile = util.promisify(fs.writeFile);
 
 globalThis.Worker = Worker;
+
+// Leave this line to prevent VSCode from removing the `runFirst` import.
+globalThis.runFirst = runFirst;
 
 let enableOpt = false;
 
