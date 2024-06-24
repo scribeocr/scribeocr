@@ -4,6 +4,7 @@ import ocr from './objects/ocrObjects.js';
 
 import { saveAs } from './miscUtils.js';
 
+import { elem } from './browser/elems.js';
 import { inputDataModes, layoutDataTableAll } from './containers/miscContainer.js';
 
 /**
@@ -335,23 +336,24 @@ function createCellsSingle(ocrTableWords, extraCols = [], startRow = 0, xlsxMode
 /**
  *
  * @param {Array<OcrPage>} ocrPageArr
+ * @param {number} minpage
+ * @param {number} maxpage
  */
-export async function writeXlsx(ocrPageArr) {
+export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
   const { xlsxStrings, sheetStart, sheetEnd } = await import('./xlsxFiles.js');
   const { BlobWriter, TextReader, ZipWriter } = await import('../lib/zip.js/index.js');
 
-  const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
-  const xlsxPageNumberColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxPageNumberColumn'));
+  if (maxpage === -1) maxpage = ocrPageArr.length - 1;
 
-  const addFilenameMode = xlsxFilenameColumnElem.checked;
-  const addPageNumberColumnMode = xlsxPageNumberColumnElem.checked;
+  const addFilenameMode = elem.download.xlsxFilenameColumn.checked;
+  const addPageNumberColumnMode = elem.download.xlsxPageNumberColumn.checked;
 
   const zipFileWriter = new BlobWriter();
   const zipWriter = new ZipWriter(zipFileWriter);
 
   let sheetContent = sheetStart;
   let rowCount = 0;
-  for (let i = 0; i < ocrPageArr.length; i++) {
+  for (let i = minpage; i <= maxpage; i++) {
     /** @type {Array<string>} */
     const extraCols = [];
     if (addFilenameMode) {
@@ -382,8 +384,7 @@ export async function writeXlsx(ocrPageArr) {
 
   const zipFileBlob = await zipFileWriter.getData();
 
-  const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.xlsx`;
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.xlsx`;
 
   saveAs(zipFileBlob, fileName);
 }

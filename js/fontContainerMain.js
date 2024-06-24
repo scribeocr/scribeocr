@@ -1,5 +1,8 @@
 import {
-  FontContainerFont, loadFontsFromSource, fontAll, checkMultiFontMode, loadFont,
+  checkMultiFontMode,
+  fontAll,
+  loadFont,
+  loadFontsFromSource,
 } from './containers/fontContainer.js';
 
 /**
@@ -63,6 +66,7 @@ async function fontPathToArrayBufferAll(fileNameObj) {
 
 /**
  * Load all raw (unoptimized) fonts.  This function is where font file names are hard-coded.
+ * @returns {Promise<import('./containers/fontContainer.js').FontContainer>}
  */
 export async function loadBuiltInFontsRaw() {
   const srcPathObj = {
@@ -88,7 +92,7 @@ export async function loadBuiltInFontsRaw() {
 
   const srcObj = await fontPathToArrayBufferAll(srcPathObj);
 
-  return loadFontsFromSource(srcObj);
+  return /** @type {Promise<import('./containers/fontContainer.js').FontContainer>} */(loadFontsFromSource(srcObj));
 }
 
 let chiReadyRes;

@@ -63,8 +63,6 @@ export async function evalSelectedLine() {
   setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, true);
 }
 
-const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-
 export async function downloadCanvas() {
   const dims = pageMetricsArr[cp.n].dims;
 
@@ -77,14 +75,14 @@ export async function downloadCanvas() {
     x: startX, y: startY, width, height,
   });
 
-  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
   const imgBlob = imageStrToBlob(canvasDataStr);
   saveAs(imgBlob, fileName);
 }
 
 export async function downloadImage(n) {
   const image = elem.view.colorMode.value === 'binary' ? await imageCache.getBinary(n) : await imageCache.getNative(n);
-  const filenameBase = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}`;
+  const filenameBase = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}`;
 
   const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
   const imgBlob = imageStrToBlob(image.src);

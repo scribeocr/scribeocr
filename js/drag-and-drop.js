@@ -2,7 +2,14 @@
 // Taken from: https://stackoverflow.com/questions/3590058/does-html5-allow-drag-drop-upload-of-folders-or-a-folder-tree/53058574#53058574
 
 // Drop handler function to get all files
+
+/**
+ *
+ * @param {DataTransferItemList} dataTransferItemList
+ * @returns {Promise<Array<FileSystemFileEntry>>}
+ */
 export async function getAllFileEntries(dataTransferItemList) {
+  /** @type {Array<FileSystemFileEntry>} */
   const fileEntries = [];
   // Use BFS to traverse entire directory/file structure
   const queue = [];
@@ -24,13 +31,15 @@ export async function getAllFileEntries(dataTransferItemList) {
     }
     queue.push(entry);
   }
-  while (queue.length > 0) {
-    const entry = queue.shift();
+  let entry = queue.shift();
+  while (entry) {
     if (entry.isFile) {
-      fileEntries.push(entry);
+      // The types for the FileSystemEntry interface are incorrect, so this requires some coersion.
+      fileEntries.push(/** @type {FileSystemFileEntry} */(entry));
     } else if (entry.isDirectory) {
-      queue.push(...await readAllDirectoryEntries(entry.createReader()));
+      queue.push(...await readAllDirectoryEntries(/** @type {FileSystemDirectoryEntry} */(entry).createReader()));
     }
+    entry = queue.shift();
   }
   return fileEntries;
 }

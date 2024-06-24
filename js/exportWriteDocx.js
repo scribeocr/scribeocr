@@ -1,27 +1,29 @@
-import { docxStrings, documentStart, documentEnd } from './docxFiles.js';
+import { elem } from './browser/elems.js';
+import { documentEnd, documentStart, docxStrings } from './docxFiles.js';
 
 import { renderText } from './exportRenderText.js';
 
 import { saveAs } from './miscUtils.js';
 
-const docxReflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxReflowCheckbox'));
-const docxPageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
-
 /**
  * Create a Word document from an array of ocrPage objects.
  *
  * @param {Array<OcrPage>} hocrCurrent -
+ * @param {number} minpage - The first page to include in the document.
+ * @param {number} maxpage - The last page to include in the document.
  */
-export async function writeDocx(hocrCurrent) {
+export async function writeDocx(hocrCurrent, minpage = 0, maxpage = -1) {
   const { BlobWriter, TextReader, ZipWriter } = await import('../lib/zip.js/index.js');
 
-  const removeLineBreaks = docxReflowCheckboxElem.checked;
-  const breaksBetweenPages = docxPageBreaksCheckboxElem.checked;
+  if (maxpage === -1) maxpage = hocrCurrent.length - 1;
+
+  const removeLineBreaks = elem.download.docxReflowCheckbox.checked;
+  const breaksBetweenPages = elem.download.docxPageBreaksCheckbox.checked;
 
   const zipFileWriter = new BlobWriter();
   const zipWriter = new ZipWriter(zipFileWriter);
 
-  const textReader = new TextReader(documentStart + renderText(hocrCurrent, removeLineBreaks, breaksBetweenPages, true) + documentEnd);
+  const textReader = new TextReader(documentStart + renderText(hocrCurrent, minpage, maxpage, removeLineBreaks, breaksBetweenPages, true) + documentEnd);
   await zipWriter.add('word/document.xml', textReader);
 
   for (let i = 0; i < docxStrings.length; i++) {
@@ -33,8 +35,7 @@ export async function writeDocx(hocrCurrent) {
 
   const zipFileBlob = await zipFileWriter.getData();
 
-  const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.docx`;
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.docx`;
 
   saveAs(zipFileBlob, fileName);
 }

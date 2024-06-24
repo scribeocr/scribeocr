@@ -206,7 +206,7 @@ zone.addEventListener('drop', async (event) => {
   if (!event.dataTransfer) return;
   const items = await getAllFileEntries(event.dataTransfer.items);
 
-  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => x.file(resolve, reject))));
+  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => { x.file(resolve, reject); })));
   const files = filesPromises.map((x) => x.value);
 
   if (files.length === 0) return;
@@ -245,6 +245,8 @@ globalThis.fetchAndImportFiles = async (urls) => {
   // Extract file name from URL and convert Blobs to File objects
   const files = blobsAndUrls.map(({ blob, url }) => {
     const fileName = url.split('/').pop();
+    // A valid filename is necessary, as the import function uses the filename.
+    if (!fileName) throw new Error(`Failed to extract file name from URL: ${url}`);
     return new File([blob], fileName, { type: blob.type });
   });
 
@@ -299,11 +301,8 @@ const collapseRangeElem = /** @type {HTMLDivElement} */(document.getElementById(
 globalThis.collapseRangeCollapse = new Collapse(collapseRangeElem, { toggle: false });
 
 // Add various event listners to HTML elements
-const nextElem = /** @type {HTMLInputElement} */(document.getElementById('next'));
-const prevElem = /** @type {HTMLInputElement} */(document.getElementById('prev'));
-
-nextElem.addEventListener('click', () => displayPage(cp.n + 1));
-prevElem.addEventListener('click', () => displayPage(cp.n - 1));
+elem.nav.next.addEventListener('click', () => displayPage(cp.n + 1));
+elem.nav.prev.addEventListener('click', () => displayPage(cp.n - 1));
 
 elem.nav.zoomIn.addEventListener('click', () => {
   zoomAllLayers(1.1, getLayerCenter(layerText));
@@ -348,8 +347,6 @@ const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('
 
 enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab')), enableEvalElem.checked));
 
-const enableLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
-
 enableAdvancedRecognitionElem.addEventListener('click', () => {
   const advancedRecognitionOptions1Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions1'));
   const advancedRecognitionOptions2Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions2'));
@@ -365,11 +362,11 @@ export const enableRecognitionClick = () => showHideElem(/** @type {HTMLDivEleme
 
 enableRecognitionElem.addEventListener('click', enableRecognitionClick);
 
-enableLayoutElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab')), enableLayoutElem.checked));
+elem.info.enableLayout.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab')), elem.info.enableLayout.checked));
 
 export const enableXlsxExportClick = () => {
   // Adding layouts is required for xlsx exports
-  if (!enableLayoutElem.checked) enableLayoutElem.click();
+  if (!elem.info.enableLayout.checked) elem.info.enableLayout.click();
 
   showHideElem(formatLabelOptionXlsxElem, elem.info.enableXlsxExport.checked);
   showHideElem(elem.info.dataTableOptions, elem.info.enableXlsxExport.checked);
@@ -379,7 +376,6 @@ export const enableXlsxExportClick = () => {
 
 elem.info.enableXlsxExport.addEventListener('click', enableXlsxExportClick);
 
-const addOverlayCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
 const extractTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('extractTextCheckbox'));
 const omitNativeTextCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
 
@@ -415,13 +411,12 @@ elem.edit.deleteWord.addEventListener('click', deleteSelectedWords);
 document.getElementById('addWord')?.addEventListener('click', () => (ScribeCanvas.mode = 'addWord'));
 document.getElementById('reset')?.addEventListener('click', clearFiles);
 
-const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
-optimizeFontElem.addEventListener('click', () => {
+elem.view.optimizeFont.addEventListener('click', () => {
   // This button does nothing if the debug option optimizeFontDebugElem is enabled.
   // This approach is used rather than disabling the button, as `optimizeFontElem.disabled` is checked in other functions
   // to determine whether font optimization is enabled.
   if (optimizeFontDebugElem.checked) return;
-  optimizeFontClick(optimizeFontElem.checked);
+  optimizeFontClick(elem.view.optimizeFont.checked);
 });
 
 const optimizeFontDebugElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFontDebug'));
@@ -429,7 +424,7 @@ optimizeFontDebugElem.addEventListener('click', () => {
   if (optimizeFontDebugElem.checked) {
     optimizeFontClick(true, true);
   } else {
-    optimizeFontClick(optimizeFontElem.checked);
+    optimizeFontClick(elem.view.optimizeFont.checked);
   }
 });
 
@@ -437,8 +432,8 @@ elem.info.confThreshHigh.addEventListener('change', () => { renderPageQueue(cp.n
 elem.info.confThreshMed.addEventListener('change', () => { renderPageQueue(cp.n); });
 
 elem.view.autoRotateCheckbox.addEventListener('click', () => { renderPageQueue(cp.n); });
-document.getElementById('outlineWords')?.addEventListener('click', () => { renderPageQueue(cp.n); });
-document.getElementById('outlineLines')?.addEventListener('click', () => { renderPageQueue(cp.n); });
+elem.view.outlineWords.addEventListener('click', () => { renderPageQueue(cp.n); });
+elem.view.outlineLines.addEventListener('click', () => { renderPageQueue(cp.n); });
 
 const displayLabelOptionsElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
 const displayLabelTextElem = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
@@ -451,9 +446,8 @@ displayLabelOptionsElem.addEventListener('click', (e) => {
   setCurrentHOCR(e.target.innerHTML);
 });
 
-const downloadElem = /** @type {HTMLInputElement} */(document.getElementById('download'));
-downloadElem.addEventListener('click', handleDownload);
-document.getElementById('pdfPagesLabel')?.addEventListener('click', updatePdfPagesLabel);
+elem.download.download.addEventListener('click', handleDownload);
+elem.download.pdfPagesLabel.addEventListener('click', updatePdfPagesLabel);
 
 const formatLabelOptionPDFElem = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPDF'));
 const formatLabelOptionHOCRElem = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHOCR'));
@@ -496,25 +490,18 @@ recognizeWordElem.addEventListener('click', () => (ScribeCanvas.mode = 'recogniz
 const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
 debugPrintCoordsElem.addEventListener('click', () => (ScribeCanvas.mode = 'printCoords'));
 
-const addLayoutBoxElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBox'));
-const addLayoutBoxTypeOrderElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
-const addLayoutBoxTypeExcludeElem = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeExclude'));
-const addDataTableElem = /** @type {HTMLInputElement} */(document.getElementById('addDataTable'));
-
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
 
-addLayoutBoxElem.addEventListener('click', () => {
+elem.layout.addLayoutBox.addEventListener('click', () => {
   ScribeCanvas.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
 });
-addLayoutBoxTypeOrderElem.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxOrder'));
-addLayoutBoxTypeExcludeElem.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxExclude'));
-addDataTableElem.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxDataTable'));
+elem.layout.addLayoutBoxTypeOrder.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxOrder'));
+elem.layout.addLayoutBoxTypeExclude.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxExclude'));
+elem.layout.addDataTable.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxDataTable'));
 
-const setDefaultLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('setDefaultLayout'));
-setDefaultLayoutElem.addEventListener('click', () => setDefaultLayoutClick());
+elem.layout.setDefaultLayout.addEventListener('click', () => setDefaultLayoutClick());
 
-const revertLayoutElem = /** @type {HTMLInputElement} */(document.getElementById('revertLayout'));
-revertLayoutElem.addEventListener('click', () => revertLayoutClick());
+elem.layout.revertLayout.addEventListener('click', () => revertLayoutClick());
 
 elem.layout.setLayoutBoxInclusionRuleMajority.addEventListener('click', () => setLayoutBoxInclusionRuleClick('majority'));
 elem.layout.setLayoutBoxInclusionRuleLeft.addEventListener('click', () => setLayoutBoxInclusionRuleClick('left'));
@@ -531,22 +518,17 @@ ignoreCapElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 const ignoreExtraElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreExtra'));
 ignoreExtraElem.addEventListener('change', () => { renderPageQueue(cp.n); });
 
-const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
-pdfPageMinElem.addEventListener('keyup', (event) => {
+elem.download.pdfPageMin.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
     updatePdfPagesLabel();
   }
 });
 
-const pdfPageMaxElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
-pdfPageMaxElem.addEventListener('keyup', (event) => {
+elem.download.pdfPageMax.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
     updatePdfPagesLabel();
   }
 });
-
-const pageCountElem = /** @type {HTMLInputElement} */(document.getElementById('pageCount'));
-const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
 
 pageNumElem.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
@@ -554,29 +536,23 @@ pageNumElem.addEventListener('keyup', (event) => {
   }
 });
 
-const reflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('reflowCheckbox'));
-const pageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
-
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
-reflowCheckboxElem.addEventListener('click', () => {
-  if (reflowCheckboxElem.checked) {
-    pageBreaksCheckboxElem.disabled = false;
+elem.download.reflowCheckbox.addEventListener('click', () => {
+  if (elem.download.reflowCheckbox.checked) {
+    elem.download.reflowCheckbox.disabled = false;
   } else {
-    pageBreaksCheckboxElem.disabled = true;
-    pageBreaksCheckboxElem.checked = true;
+    elem.download.pageBreaksCheckbox.disabled = true;
+    elem.download.pageBreaksCheckbox.checked = true;
   }
 });
 
-const docxReflowCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxReflowCheckbox'));
-const docxPageBreaksCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
-
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
-docxReflowCheckboxElem.addEventListener('click', () => {
-  if (docxReflowCheckboxElem.checked) {
-    docxPageBreaksCheckboxElem.disabled = false;
+elem.download.docxReflowCheckbox.addEventListener('click', () => {
+  if (elem.download.docxReflowCheckbox.checked) {
+    elem.download.docxReflowCheckbox.disabled = false;
   } else {
-    docxPageBreaksCheckboxElem.disabled = true;
-    docxPageBreaksCheckboxElem.checked = true;
+    elem.download.docxPageBreaksCheckbox.disabled = true;
+    elem.download.docxPageBreaksCheckbox.checked = true;
   }
 });
 
@@ -718,10 +694,8 @@ function calcMatchNumber(n) {
   return `${String(matchPrev + 1)}-${String(matchPrev + 1 + (matchN - 1))}`;
 }
 
-const xlsxFilenameColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxFilenameColumn'));
-const xlsxPageNumberColumnElem = /** @type {HTMLInputElement} */(document.getElementById('xlsxPageNumberColumn'));
-xlsxFilenameColumnElem.addEventListener('click', updateDataPreview);
-xlsxPageNumberColumnElem.addEventListener('click', updateDataPreview);
+elem.download.xlsxFilenameColumn.addEventListener('click', updateDataPreview);
+elem.download.xlsxPageNumberColumn.addEventListener('click', updateDataPreview);
 
 const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));
 
@@ -813,8 +787,7 @@ navRecognizeElem.addEventListener('hidden.bs.collapse', (e) => {
   }
 });
 
-const navDownloadElem = /** @type {HTMLDivElement} */(document.getElementById('nav-download'));
-navDownloadElem.addEventListener('hidden.bs.collapse', (e) => {
+elem.download.download.addEventListener('hidden.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-download') {
     hideProgress('generate-download-progress-collapse');
   }
@@ -916,7 +889,9 @@ function hideProgress(id) {
   const classStr = progressCollapse.getAttribute('class');
   if (classStr && ['collapse show', 'collapsing'].includes(classStr)) {
     const progressBar = progressCollapse.getElementsByClassName('progress-bar')[0];
-    if (parseInt(progressBar.getAttribute('aria-valuenow')) >= parseInt(progressBar.getAttribute('aria-valuemax'))) {
+    const ariaValueNowStr = /** @type {string} */(progressBar.getAttribute('aria-valuenow'));
+    const ariaValueMaxStr = /** @type {string} */(progressBar.getAttribute('aria-valuemax'));
+    if (parseInt(ariaValueNowStr) >= parseInt(ariaValueMaxStr)) {
       progressCollapse.setAttribute('class', 'collapse');
     }
   }
@@ -1139,14 +1114,14 @@ async function clearFiles() {
   globalThis.loadCount = 0;
 
   stage.clear();
-  pageCountElem.textContent = '';
+  elem.nav.pageCount.textContent = '';
   pageNumElem.value = '';
-  downloadFileNameElem.value = '';
+  elem.download.downloadFileName.value = '';
   // uploaderElem.value = "";
-  optimizeFontElem.checked = false;
-  optimizeFontElem.disabled = true;
-  downloadElem.disabled = true;
-  addOverlayCheckboxElem.disabled = true;
+  elem.view.optimizeFont.checked = false;
+  elem.view.optimizeFont.disabled = true;
+  elem.download.download.disabled = true;
+  elem.info.addOverlayCheckbox.disabled = true;
   elem.info.confThreshHigh.disabled = true;
   elem.info.confThreshMed.disabled = true;
   recognizeAllElem.disabled = true;
@@ -1155,9 +1130,9 @@ async function clearFiles() {
   createGroundTruthElem.disabled = true;
   // compareGroundTruthElem.disabled = true;
   uploadOCRButtonElem.disabled = true;
-  addLayoutBoxElem.disabled = true;
-  setDefaultLayoutElem.disabled = true;
-  revertLayoutElem.disabled = true;
+  elem.layout.addLayoutBox.disabled = true;
+  elem.layout.setDefaultLayout.disabled = true;
+  elem.layout.revertLayout.disabled = true;
   toggleEditButtons(true);
 }
 
@@ -1196,6 +1171,7 @@ async function importOCRFilesSupp() {
 
   toggleEditButtons(false);
 
+  /** @type {("hocr" | "abbyy" | "stext")} */
   let format = 'hocr';
   if (ocrData.abbyyMode) format = 'abbyy';
   if (ocrData.stextMode) format = 'stext';
@@ -1271,9 +1247,9 @@ async function importFiles(curFiles) {
   inputDataModes.extractTextMode = extractTextCheckboxElem.checked && inputDataModes.pdfMode && !xmlModeImport;
   const stextModeExtract = inputDataModes.extractTextMode;
 
-  addLayoutBoxElem.disabled = false;
-  setDefaultLayoutElem.disabled = false;
-  revertLayoutElem.disabled = false;
+  elem.layout.addLayoutBox.disabled = false;
+  elem.layout.setDefaultLayout.disabled = false;
+  elem.layout.revertLayout.disabled = false;
 
   if (inputDataModes.imageMode || inputDataModes.pdfMode) {
     recognizeAllElem.disabled = false;
@@ -1312,11 +1288,11 @@ async function importFiles(curFiles) {
 
     // For PDF inputs, enable "Add Text to Import PDF" option
     if (inputDataModes.pdfMode) {
-      addOverlayCheckboxElem.checked = true;
-      addOverlayCheckboxElem.disabled = false;
+      elem.info.addOverlayCheckbox.checked = true;
+      elem.info.addOverlayCheckbox.disabled = false;
     } else {
-      addOverlayCheckboxElem.checked = false;
-      addOverlayCheckboxElem.disabled = true;
+      elem.info.addOverlayCheckbox.checked = false;
+      elem.info.addOverlayCheckbox.disabled = true;
     }
   }
 
@@ -1327,7 +1303,7 @@ async function importFiles(curFiles) {
   let downloadFileName = pdfFilesAll.length > 0 ? pdfFilesAll[0].name : curFiles[0].name;
   downloadFileName = downloadFileName.replace(/\.\w{1,4}$/, '');
   downloadFileName += '.pdf';
-  downloadFileNameElem.value = downloadFileName;
+  elem.download.downloadFileName.value = downloadFileName;
 
   // The loading bar should be initialized before anything significant runs (e.g. `imageCache.openMainPDF` to provide some visual feedback).
   // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
@@ -1411,13 +1387,14 @@ async function importFiles(curFiles) {
         // not simply because the user disabled optimization in the view settings.
         // If no `enableOpt` property exists but metrics are present, then optimization is enabled.
         if (ocrData.enableOpt === 'false') {
-          optimizeFontElem.disabled = true;
-          optimizeFontElem.checked = false;
+          elem.view.optimizeFont.disabled = true;
+          elem.view.optimizeFont.checked = false;
         } else {
           const fontRaw = fontAll.getContainer('raw');
+          if (!fontRaw) throw new Error('Raw font data not found.');
           fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
-          optimizeFontElem.disabled = false;
-          optimizeFontElem.checked = true;
+          elem.view.optimizeFont.disabled = false;
+          elem.view.optimizeFont.checked = true;
           await enableDisableFontOpt(true);
         }
       }
@@ -1547,7 +1524,7 @@ async function importFiles(curFiles) {
       // Enable downloads now for image imports if no HOCR data exists
       // TODO: PDF downloads are currently broken when images but not OCR text exists
       if (!xmlModeImport && globalThis.convertPageActiveProgress.value === globalThis.convertPageActiveProgress.maxValue) {
-        downloadElem.disabled = false;
+        elem.download.download.disabled = false;
         globalThis.state.downloadReady = true;
       }
     }
@@ -1570,7 +1547,7 @@ async function importFiles(curFiles) {
         calcFontMetricsFromPages(ocrAll.active);
         await runFontOptimizationBrowser(ocrAll.active);
       }
-      downloadElem.disabled = false;
+      elem.download.download.disabled = false;
       globalThis.state.downloadReady = true;
     });
   } else if (layoutFilesAll.length > 0) {
@@ -1581,12 +1558,12 @@ async function importFiles(curFiles) {
 
   // Enable downloads now for pdf imports if no HOCR data exists
   if (inputDataModes.pdfMode && !xmlModeImport) {
-    downloadElem.disabled = false;
+    elem.download.download.disabled = false;
     globalThis.state.downloadReady = true;
   }
 
   pageNumElem.value = '1';
-  pageCountElem.textContent = String(globalThis.pageCount);
+  elem.nav.pageCount.textContent = String(globalThis.pageCount);
 
   // Start loading Tesseract if it was not already loaded.
   // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
@@ -1795,6 +1772,7 @@ globalThis.initTesseractInWorkers = async (anyOk = false) => {
     const resArr = globalThis.generalScheduler.workers.slice(1).map((x) => x.reinitialize({ langs: langArr, vanillaMode }));
     await Promise.allSettled(resArr);
   }
+  // @ts-ignore
   resReady(true);
   return globalThis.generalScheduler.readyTesseract;
 };
@@ -1837,6 +1815,7 @@ export async function initGeneralScheduler() {
   await fontAllRawReady;
   await setBuiltInFontsWorker(globalThis.generalScheduler);
 
+  // @ts-ignore
   resReady(true);
 }
 
@@ -1856,11 +1835,11 @@ initGeneralScheduler();
 export async function runFontOptimizationBrowser(ocrArr) {
   const optImproved = await runFontOptimization(ocrArr);
   if (optImproved) {
-    optimizeFontElem.disabled = false;
-    optimizeFontElem.checked = true;
+    elem.view.optimizeFont.disabled = false;
+    elem.view.optimizeFont.checked = true;
   } else {
-    optimizeFontElem.disabled = true;
-    optimizeFontElem.checked = false;
+    elem.view.optimizeFont.disabled = true;
+    elem.view.optimizeFont.checked = false;
   }
   renderPageQueue(cp.n);
 }

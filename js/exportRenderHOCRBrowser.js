@@ -1,33 +1,30 @@
-import { saveAs } from './miscUtils.js';
-import { renderHOCR } from './exportRenderHOCR.js';
-import { fontMetricsObj, layoutAll, layoutDataTableAll } from './containers/miscContainer.js';
+import { elem } from './browser/elems.js';
 import { fontAll } from './containers/fontContainer.js';
-
-const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-const optimizeFontElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
+import { fontMetricsObj, layoutAll, layoutDataTableAll } from './containers/miscContainer.js';
+import { renderHOCR } from './exportRenderHOCR.js';
+import { saveAs } from './miscUtils.js';
 
 /**
  * @param {Array<OcrPage>} ocrData - ...
+ * @param {number} minpage - The first page to include in the document.
+ * @param {number} maxpage - The last page to include in the document.
  */
-export function renderHOCRBrowser(ocrData) {
-  const minValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMin')).value) - 1;
-  const maxValue = parseInt(/** @type {HTMLInputElement} */(document.getElementById('pdfPageMax')).value) - 1;
-
+export function renderHOCRBrowser(ocrData, minpage, maxpage) {
   const meta = {
     'font-metrics': fontMetricsObj,
     'default-font': fontAll.defaultFontName,
     'sans-font': fontAll.sansDefaultName,
     'serif-font': fontAll.serifDefaultName,
-    'enable-opt': !optimizeFontElem.disabled,
+    'enable-opt': !elem.view.optimizeFont.disabled,
     layout: layoutAll,
     'layout-data-table': layoutDataTableAll,
   };
 
-  const hocrOut = renderHOCR(ocrData, minValue, maxValue, meta);
+  const hocrOut = renderHOCR(ocrData, minpage, maxpage, meta);
 
   const hocrBlob = new Blob([hocrOut], { type: 'text/plain' });
 
-  const fileName = /** @type {HTMLInputElement} */`${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}.hocr`;
+  const fileName = /** @type {HTMLInputElement} */`${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.hocr`;
 
   saveAs(hocrBlob, fileName);
 }

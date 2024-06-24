@@ -66,9 +66,12 @@ export function addLayoutDataTableClick({
   const dataTable = new LayoutDataTable();
   const layoutBox = new LayoutDataColumn(bbox, dataTable);
 
-  dataTable.boxes[layoutBox.id] = layoutBox;
+  dataTable.boxes[0] = layoutBox;
 
-  layoutDataTableAll[cp.n].tables[dataTable.id] = dataTable;
+  layoutDataTableAll[cp.n].tables.push(dataTable);
+
+  layoutAll[cp.n].default = false;
+  layoutDataTableAll[cp.n].default = false;
 
   renderLayoutDataTable(dataTable);
 }
@@ -108,7 +111,6 @@ export function toggleSelectableWords(selectable = true) {
 }
 
 export function setDefaultLayoutClick() {
-  layoutAll[cp.n].default = true;
   globalThis.defaultLayout = structuredClone(layoutAll[cp.n].boxes);
   for (let i = 0; i < layoutAll.length; i++) {
     if (layoutAll[i].default) {
@@ -119,7 +121,6 @@ export function setDefaultLayoutClick() {
 }
 
 export function setDefaultLayoutDataTableClick() {
-  layoutDataTableAll[cp.n].default = true;
   globalThis.defaultLayoutDataTable = structuredClone(layoutDataTableAll[cp.n].tables);
   for (let i = 0; i < layoutDataTableAll.length; i++) {
     if (layoutDataTableAll[i].default) {
@@ -407,6 +408,8 @@ export class KonvaLayout extends Konva.Rect {
     konvaLayout.layoutBox.coords = {
       left: konvaLayout.x(), top: konvaLayout.y(), right, bottom,
     };
+    layoutAll[cp.n].default = false;
+    layoutDataTableAll[cp.n].default = false;
     updateDataPreview();
   }
 
@@ -567,6 +570,8 @@ export class KonvaDataColumn extends KonvaLayout {
       const colIndexI = this.layoutBox.table.boxes.findIndex((x) => x.id === this.layoutBox.id);
       this.layoutBox.table.boxes.splice(colIndexI, 1);
       this.destroy();
+      layoutAll[cp.n].default = false;
+      layoutDataTableAll[cp.n].default = false;
       if (this.layoutBox.table.boxes.length === 0) {
         const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === this.layoutBox.table.id);
         layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
@@ -643,6 +648,16 @@ export class KonvaDataTable {
       this.colLines.forEach((colLine) => colLine.destroy());
       this.rowLines.forEach((rowLine) => rowLine.destroy());
       this.rowSpans.forEach((rowSpan) => rowSpan.destroy());
+
+      // Restore colors of words that were colored by this table.
+      const wordIdArr = this.tableContent?.rowWordArr.flat().flat().map((x) => x.id) || [];
+      const canvasDeselectWords = ScribeCanvas.getKonvaWords().filter((x) => wordIdArr.includes(x.word.id));
+      canvasDeselectWords.forEach((x) => {
+        const { fill, opacity } = getWordFillOpacity(x.word);
+        x.fill(fill);
+        x.opacity(opacity);
+      });
+
       return this;
     };
 
@@ -653,6 +668,8 @@ export class KonvaDataTable {
       const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === this.layoutDataTable.id);
       layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
       this.destroy();
+      layoutAll[cp.n].default = false;
+      layoutDataTableAll[cp.n].default = false;
     };
 
     this.tableRect.addEventListener('transform', () => {
@@ -992,6 +1009,8 @@ export const mergeDataTables = (tables) => {
     const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === tables[i].id);
     layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
   }
+  layoutAll[cp.n].default = false;
+  layoutDataTableAll[cp.n].default = false;
 
   cleanLayoutDataColumns(tableFirst);
 
@@ -1068,6 +1087,9 @@ export const splitDataTable = (columns) => {
 
     layoutDataTableAll[cp.n].tables.push(table);
   });
+
+  layoutAll[cp.n].default = false;
+  layoutDataTableAll[cp.n].default = false;
 
   renderLayoutDataTables();
 };
