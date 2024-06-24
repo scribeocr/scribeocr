@@ -52,7 +52,8 @@ import { drawDebugImages } from './js/debug.js';
 import { getAllFileEntries } from './js/drag-and-drop.js';
 import {
   getRandomAlphanum,
-  occurrences, readTextFile, replaceObjectProperties, showHideElem,
+  occurrences,
+  replaceObjectProperties, showHideElem,
   sleep,
 } from './js/miscUtils.js';
 
@@ -149,7 +150,7 @@ const fontAllRawReady = loadBuiltInFontsRaw().then((x) => {
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-const tooltipList = tooltipTriggerList.map((tooltipTriggerEl) => new Tooltip(tooltipTriggerEl));
+tooltipTriggerList.forEach((tooltipTriggerEl) => new Tooltip(tooltipTriggerEl));
 
 /**
  * @typedef cp
@@ -181,7 +182,6 @@ openFileInputElem.addEventListener('change', () => {
 let highlightActiveCt = 0;
 zone.addEventListener('dragover', (event) => {
   event.preventDefault();
-  console.log('Adding class');
   zone.classList.add('highlight');
   highlightActiveCt++;
 });
@@ -1178,6 +1178,7 @@ async function importOCRFilesSupp() {
 
   uploadOCRNameElem.value = '';
   uploadOCRFileElem.value = '';
+  // eslint-disable-next-line no-new
   new Collapse(uploadOCRDataElem, { toggle: true });
 
   initOCRVersion(ocrName);
@@ -1202,8 +1203,6 @@ async function importFiles(curFiles) {
   /** @type {Array<File>} */
   const pdfFilesAll = [];
   /** @type {Array<File>} */
-  const layoutFilesAll = [];
-  /** @type {Array<File>} */
   const unsupportedFilesAll = [];
   const unsupportedExt = {};
   for (let i = 0; i < curFiles.length; i++) {
@@ -1221,8 +1220,6 @@ async function importFiles(curFiles) {
       hocrFilesAll.push(file);
     } else if (['pdf'].includes(fileExt)) {
       pdfFilesAll.push(file);
-    } else if (['layout'].includes(fileExt)) {
-      layoutFilesAll.push(file);
     } else {
       unsupportedFilesAll.push(file);
       unsupportedExt[fileExt] = true;
@@ -1367,7 +1364,7 @@ async function importFiles(curFiles) {
       // Subset OCR data to avoid uncaught error that occurs when there are more pages of OCR data than image data.
       // While this should be rare, it appears to be fairly common with Archive.org documents.
       // TODO: Add warning message displayed to user for this.
-      if (globalThis.hocrCurrentRaw.length > pageCountImage) {
+      if (pageCountImage && globalThis.hocrCurrentRaw.length > pageCountImage) {
         console.log(`Identified ${globalThis.hocrCurrentRaw.length} pages of OCR data but ${pageCountImage} pages of image/pdf data. Only first ${pageCountImage} pages will be used.`);
         globalThis.hocrCurrentRaw = globalThis.hocrCurrentRaw.slice(0, pageCountImage);
       }
@@ -1491,11 +1488,11 @@ async function importFiles(curFiles) {
       const imgPromise = new Promise((resolve, reject) => {
         const reader = new FileReader();
 
-        reader.onloadend = function () {
+        reader.onloadend = () => {
           resolve(reader.result);
         };
 
-        reader.onerror = function (error) {
+        reader.onerror = (error) => {
           reject(error);
         };
 
@@ -1537,8 +1534,6 @@ async function importFiles(curFiles) {
 
     // Process HOCR using web worker, reading from file first if that has not been done already
     convertOCRAllBrowser(globalThis.hocrCurrentRaw, true, format, oemName, scribeMode).then(async () => {
-      if (layoutFilesAll.length > 0) await readLayoutFile(layoutFilesAll[0]);
-
       // Skip this step if optimization info was already restored from a previous session.
       if (!existingOpt) {
         await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
@@ -1548,8 +1543,6 @@ async function importFiles(curFiles) {
       elem.download.download.disabled = false;
       globalThis.state.downloadReady = true;
     });
-  } else if (layoutFilesAll.length > 0) {
-    await readLayoutFile(layoutFilesAll[0]);
   }
 
   if (dummyLoadingBar) globalThis.convertPageActiveProgress.increment();
@@ -1566,47 +1559,6 @@ async function importFiles(curFiles) {
   // Start loading Tesseract if it was not already loaded.
   // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
   await globalThis.initTesseractInWorkers(true);
-}
-
-/**
- * Function to read layout files.
- * Must be run after dimensions exist in `pageMetricsArr`.
- *
- * @param {File} file
- */
-async function readLayoutFile(file) {
-  // TODO: This function needs to be updated to support data tables.
-  // Alternatively, this entire function could be cut, as it is unclear why this needs to exist.
-  const layoutStr = await readTextFile(file);
-  try {
-    const layoutObj = /** @type {Array<LayoutPage>} */(JSON.parse(layoutStr));
-
-    // Layout files may optionally provide an attribute named `system` which contains `length` and `height` used for the full page.
-    // These are used to normalize the coorinates, and are necessary when the layout analysis uses a different coordinate
-    // system compared to the coordinates used here.
-    for (let i = 0; i < layoutObj.length; i++) {
-      const layoutObjIBoxes = layoutObj[i]?.boxes;
-      if (!layoutObjIBoxes) continue;
-      for (const [key, value] of Object.entries(layoutObjIBoxes)) {
-        const width = value?.system?.width;
-        const height = value?.system?.height;
-        if (width && height) {
-          value.coords.left *= (pageMetricsArr[i].dims.width / width);
-          value.coords.right *= (pageMetricsArr[i].dims.width / width);
-
-          value.coords.top *= (pageMetricsArr[i].dims.height / height);
-          value.coords.bottom *= (pageMetricsArr[i].dims.height / height);
-        }
-      }
-    }
-
-    for (let i = 0; i < layoutObj.length; i++) {
-      layoutAll[i] = layoutObj[i];
-    }
-  } catch (e) {
-    console.log('Unable to parse contents of layout file.');
-    console.log(e);
-  }
 }
 
 /**
