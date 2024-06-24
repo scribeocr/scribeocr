@@ -188,7 +188,7 @@ export function extractSingleTableContent(pageObj, boxes) {
   // If this is true, additional lines from each column can also be inserted into the same row.
   // This is necessary as a "line" in HOCR does not necessarily correspond to a visual line--
   // multiple HOCR "lines" may have the same visual baseline so belong in the same cell.
-  while (!indexArr.every((x, index) => x == lengthArr[index])) {
+  while (!indexArr.every((x, index) => x === lengthArr[index])) {
     // Identify highest unassigned word
     const compArrBox = indexArr.map((x, index) => colArr[index][x]);
     compArrBox.sort((a, b) => a.box.bottom - b.box.bottom);
@@ -376,8 +376,8 @@ export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
   await zipWriter.add('xl/worksheets/sheet1.xml', textReader);
 
   for (let i = 0; i < xlsxStrings.length; i++) {
-    const textReader = new TextReader(xlsxStrings[i].content);
-    await zipWriter.add(xlsxStrings[i].path, textReader);
+    const textReaderI = new TextReader(xlsxStrings[i].content);
+    await zipWriter.add(xlsxStrings[i].path, textReaderI);
   }
 
   await zipWriter.close();

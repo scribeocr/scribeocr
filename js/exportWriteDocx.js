@@ -27,8 +27,8 @@ export async function writeDocx(hocrCurrent, minpage = 0, maxpage = -1) {
   await zipWriter.add('word/document.xml', textReader);
 
   for (let i = 0; i < docxStrings.length; i++) {
-    const textReader = new TextReader(docxStrings[i].content);
-    await zipWriter.add(docxStrings[i].path, textReader);
+    const textReaderI = new TextReader(docxStrings[i].content);
+    await zipWriter.add(docxStrings[i].path, textReaderI);
   }
 
   await zipWriter.close();
