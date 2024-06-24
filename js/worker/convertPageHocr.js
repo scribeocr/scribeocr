@@ -328,6 +328,8 @@ export async function convertPageHocr({
         wordObj.font = fontFamily;
       }
 
+      wordObj.sup = wordSup;
+
       wordObj.conf = wordConf;
 
       lineObj.words.push(wordObj);
