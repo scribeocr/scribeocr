@@ -1,23 +1,22 @@
-import { quantile } from './miscUtils.js';
-import ocr from './objects/ocrObjects.js';
-import { pageMetricsArr } from './containers/miscContainer.js';
+import { pageMetricsArr } from '../containers/miscContainer.js';
+import ocr from '../objects/ocrObjects.js';
+import { quantile } from '../utils/miscUtils.js';
 
 /**
  * Convert an array of ocrPage objects to plain text, or XML for a Word document.
  *
  * @param {Array<OcrPage>} hocrCurrent -
+ * @param {number} minpage - The first page to include in the document.
+ * @param {number} maxpage - The last page to include in the document.
  * @param {boolean} removeLineBreaks - Remove line breaks within what appears to be the same paragraph.
  *    This allows for reflowing text.
  * @param {boolean} breaksBetweenPages - Add line breaks between pages.
  * @param {boolean} docxMode - Create XML for a word document rather than plain text.
  */
-export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
+export function renderText(hocrCurrent, minpage = 0, maxpage = -1, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
   let textStr = '';
 
-  const pdfPageMinElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
-  const pdfPageMaxElem = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
-  const minValue = parseInt(pdfPageMinElem.value);
-  const maxValue = parseInt(pdfPageMaxElem.value);
+  if (maxpage === -1) maxpage = hocrCurrent.length - 1;
 
   let endsEarlyPrev = false;
   let startsLatePrev = false;
@@ -25,7 +24,7 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
 
   let newLine = false;
 
-  for (let g = (minValue - 1); g < maxValue; g++) {
+  for (let g = (minpage - 1); g <= maxpage; g++) {
     if (!hocrCurrent[g]) continue;
 
     const pageObj = hocrCurrent[g];
@@ -137,6 +136,8 @@ export function renderText(hocrCurrent, removeLineBreaks = false, breaksBetweenP
             fontStyle = '<w:i/>';
           } else if (wordObj.style === 'smallCaps') {
             fontStyle = '<w:smallCaps/>';
+          } else if (wordObj.style === 'bold') {
+            fontStyle = '<w:b/>';
           }
 
           if (newLine || fontStyle !== fontStylePrev || (h === 0 && g === 0 && i === 0)) {

@@ -4,15 +4,21 @@
 // This object should never be referenced in code--the functions should be imported instead.
 
 import { fontAll } from '../containers/fontContainer.js';
-import { calcLineFontSize } from '../fontUtils.js';
 import { imageCache } from '../containers/imageContainer.js';
-import ocr from '../objects/ocrObjects.js';
 import {
-  stage, layerText, layerBackground, layerOverlay, canvasObj,
-} from './interfaceCanvas.js';
-import {
-  fontMetricsObj, pageMetricsArr, ocrAll, layoutAll, layoutDataTableAll,
+  fontMetricsObj,
+  layoutAll, layoutDataTableAll,
+  ocrAll,
+  pageMetricsArr,
 } from '../containers/miscContainer.js';
+import ocr from '../objects/ocrObjects.js';
+import { calcLineFontSize } from '../utils/fontUtils.js';
+import {
+  ScribeCanvas,
+  layerBackground, layerOverlay,
+  layerText,
+  stage,
+} from './interfaceCanvas.js';
 
 /**
  *
@@ -47,7 +53,7 @@ const getCharMetrics = (char) => {
 // Expose functions in global object for debugging purposes.
 export const df = {
   calcLineFontSize,
-  canvasObj,
+  ScribeCanvas,
   fontAll,
   fontMetricsObj,
   imageCache,

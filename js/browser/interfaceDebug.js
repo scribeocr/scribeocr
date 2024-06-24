@@ -1,21 +1,25 @@
 /* eslint-disable import/no-cycle */
 
-import { calcOverlap } from '../modifyOCR.js';
-import ocr from '../objects/ocrObjects.js';
-import { saveAs } from '../miscUtils.js';
-import { imageStrToBlob } from '../imageUtils.js';
 import { cp } from '../../main.js';
 import { imageCache } from '../containers/imageContainer.js';
-import { drawDebugImages } from '../debug.js';
 import {
-  stage, layerText, canvasObj, setCanvasWidthHeightZoom,
+  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
+} from '../containers/miscContainer.js';
+import { drawDebugImages } from '../debug.js';
+import { calcOverlap } from '../modifyOCR.js';
+import ocr from '../objects/ocrObjects.js';
+import { imageStrToBlob } from '../utils/imageUtils.js';
+import { saveAs } from '../utils/miscUtils.js';
+import { elem } from './elems.js';
+import {
+  ScribeCanvas,
+  layerText,
+  stage,
 } from './interfaceCanvas.js';
-import { layoutAll, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
-
-const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
+import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
 
 export function printSelectedWords(printOCR = true) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
@@ -27,7 +31,7 @@ export function printSelectedWords(printOCR = true) {
 }
 
 export async function evalSelectedLine() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   const word0 = selectedObjects[0].word;
@@ -59,8 +63,6 @@ export async function evalSelectedLine() {
   setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, true);
 }
 
-const downloadFileNameElem = /** @type {HTMLInputElement} */(document.getElementById('downloadFileName'));
-
 export async function downloadCanvas() {
   const dims = pageMetricsArr[cp.n].dims;
 
@@ -73,14 +75,14 @@ export async function downloadCanvas() {
     x: startX, y: startY, width, height,
   });
 
-  const fileName = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(cp.n)}.png`;
   const imgBlob = imageStrToBlob(canvasDataStr);
   saveAs(imgBlob, fileName);
 }
 
 export async function downloadImage(n) {
-  const image = colorModeElem.value === 'binary' ? await imageCache.getBinary(n) : await imageCache.getNative(n);
-  const filenameBase = `${downloadFileNameElem.value.replace(/\.\w{1,4}$/, '')}`;
+  const image = elem.view.colorMode.value === 'binary' ? await imageCache.getBinary(n) : await imageCache.getNative(n);
+  const filenameBase = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}`;
 
   const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
   const imgBlob = imageStrToBlob(image.src);
@@ -92,7 +94,7 @@ export async function downloadCurrentImage() {
 }
 
 export async function downloadAllImages() {
-  const binary = colorModeElem.value === 'binary';
+  const binary = elem.view.colorMode.value === 'binary';
   for (let i = 0; i < imageCache.pageCount; i++) {
     await downloadImage(i);
     // Not all files will be downloaded without a delay between downloads
@@ -125,10 +127,10 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
 
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return excludedArr;
 
-  const priorityArr = Array(pageA.lines.length);
+  const orderArr = Array(pageA.lines.length);
 
   // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
-  priorityArr.fill(10);
+  orderArr.fill(10);
 
   for (let i = 0; i < pageA.lines.length; i++) {
     const lineA = pageA.lines[i];
@@ -137,7 +139,7 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
       const overlap = calcOverlap(lineA.bbox, obj.coords);
       if (overlap > 0.5) {
         if (obj.type === 'order') {
-          priorityArr[i] = obj.priority;
+          orderArr[i] = obj.order;
         } else if (obj.type === 'exclude' && applyExclude) {
           const { words } = lineA;
           let text = '';

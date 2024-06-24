@@ -1,31 +1,35 @@
 // Code for adding visualization to OCR output
 // Use: `node addOverlay.js [PDF file] [OCR data file] [output directory]`
 
-import fs, { write } from 'fs';
+import fs from 'fs';
 import path from 'path';
+import Tesseract from 'tesseract.js';
 import util from 'util';
 import Worker from 'web-worker';
-import Tesseract from 'tesseract.js';
-import { initGeneralWorker, GeneralScheduler } from '../js/generalWorkerMain.js';
+// Leave this comment and import here.
+// This needs to be run first, and the comments prevent VSCode from moving it.
+import { runFirst } from './runFirst.js';
+// Leave this comment and import here.
+import { ImageWrapper, imageCache, imageUtils } from '../js/containers/imageContainer.js';
+import { renderHOCR } from '../js/export/exportRenderHOCR.js';
 import { runFontOptimization } from '../js/fontEval.js';
-import { imageCache, ImageWrapper, imageUtils } from '../js/containers/imageContainer.js';
-import { renderHOCR } from '../js/exportRenderHOCR.js';
+import { GeneralScheduler, initGeneralWorker } from '../js/generalWorkerMain.js';
 
-import { recognizeAllPagesNode, convertOCRAllNode } from '../js/recognizeConvertNode.js';
-import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
-import ocr from '../js/objects/ocrObjects.js';
-import { reduceEvalMetrics } from '../js/miscUtils.js';
 import { importOCRFiles } from '../js/importOCR.js';
+import ocr from '../js/objects/ocrObjects.js';
 import { PageMetrics } from '../js/objects/pageMetricsObjects.js';
+import { convertOCRAllNode, recognizeAllPagesNode } from '../js/recognizeConvertNode.js';
+import { reduceEvalMetrics } from '../js/utils/miscUtils.js';
+import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
 
-import { hocrToPDF } from '../js/exportPDF.js';
 import { drawDebugImages } from '../js/debug.js';
+import { hocrToPDF } from '../js/export/exportPDF.js';
 
 import { fontAll } from '../js/containers/fontContainer.js';
-import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
 import {
   fontMetricsObj, layoutAll, layoutDataTableAll, ocrAll, pageMetricsArr,
 } from '../js/containers/miscContainer.js';
+import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
 
 import { LayoutDataTablePage, LayoutPage } from '../js/objects/layoutObjects.js';
 
@@ -34,6 +38,9 @@ import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 const writeFile = util.promisify(fs.writeFile);
 
 globalThis.Worker = Worker;
+
+// Leave this line to prevent VSCode from removing the `runFirst` import.
+globalThis.runFirst = runFirst;
 
 let enableOpt = false;
 

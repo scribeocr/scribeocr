@@ -1,14 +1,14 @@
-import { winEncodingLookup } from '../fonts/encoding.js';
+import { winEncodingLookup } from '../../fonts/encoding.js';
 
+import { fontAll } from '../containers/fontContainer.js';
 import {
   calcWordMetrics, subsetFont,
-} from './fontUtils.js';
-import { fontAll } from './containers/fontContainer.js';
+} from '../utils/fontUtils.js';
 
-import { createEmbeddedFontType1, createEmbeddedFontType0 } from './exportPDFFonts.js';
+import { createEmbeddedFontType0, createEmbeddedFontType1 } from './exportPDFFonts.js';
 
-import ocr from './objects/ocrObjects.js';
-import { pageMetricsArr } from './containers/miscContainer.js';
+import { pageMetricsArr } from '../containers/miscContainer.js';
+import ocr from '../objects/ocrObjects.js';
 
 // Creates 3 PDF objects necessary to embed font.
 // These are (1) the font dictionary, (2) the font descriptor, and (3) the font file,

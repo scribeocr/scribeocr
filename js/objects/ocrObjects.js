@@ -1,3 +1,5 @@
+import { calcBboxUnion } from '../utils/miscUtils.js';
+
 /**
  * @param {number} n
  * @param {dims} dims
@@ -381,18 +383,6 @@ function escapeXml(string) {
 }
 
 /**
- *
- * @param {Array<bbox>} bboxArr
- * @returns
- */
-const calcBboxUnion = (bboxArr) => ({
-  left: Math.min(...bboxArr.map((x) => x.left)),
-  top: Math.min(...bboxArr.map((x) => x.top)),
-  right: Math.max(...bboxArr.map((x) => x.right)),
-  bottom: Math.max(...bboxArr.map((x) => x.bottom)),
-});
-
-/**
  * Re-calculate bbox for line
  * @param {OcrLine} line
  * @param {boolean} adjustBaseline - Adjust baseline so that there is no visual change due to this function.
@@ -420,10 +410,7 @@ function calcWordBbox(word) {
 
   const charBoxArr = word.chars.map((x) => x.bbox);
 
-  word.bbox.left = Math.min(...charBoxArr.map((x) => x.left));
-  word.bbox.top = Math.min(...charBoxArr.map((x) => x.top));
-  word.bbox.right = Math.max(...charBoxArr.map((x) => x.right));
-  word.bbox.bottom = Math.max(...charBoxArr.map((x) => x.bottom));
+  word.bbox = calcBboxUnion(charBoxArr);
 }
 
 /**
@@ -598,6 +585,7 @@ const ocr = {
   OcrChar,
   calcLineStartAngleAdj,
   updateLineBbox,
+  calcBboxUnion,
   calcWordBbox,
   calcWordAngleAdj,
   getPageWord,

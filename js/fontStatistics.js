@@ -2,10 +2,13 @@
 // Functions to calculate font metrics and generate new fonts.
 
 import {
-  quantile, round6, replaceObjectProperties, determineSansSerif,
-} from './miscUtils.js';
+  determineSansSerif,
+  quantile,
+  replaceObjectProperties,
+  round6,
+} from './utils/miscUtils.js';
 
-import { FontMetricsFamily, FontMetricsRawFamily, FontMetricsFont } from './objects/fontMetricsObjects.js';
+import { FontMetricsFamily, FontMetricsFont, FontMetricsRawFamily } from './objects/fontMetricsObjects.js';
 
 import { fontMetricsObj } from './containers/miscContainer.js';
 

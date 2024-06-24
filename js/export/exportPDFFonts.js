@@ -1,8 +1,8 @@
 // Function for converting from bufferArray to hex (string)
 // Taken from https://stackoverflow.com/questions/40031688/javascript-arraybuffer-to-hex
 
-import { win1252Chars } from '../fonts/encoding.js';
-import { determineSansSerif } from './miscUtils.js';
+import { win1252Chars } from '../../fonts/encoding.js';
+import { determineSansSerif } from '../utils/miscUtils.js';
 
 /** @type {Array<string>} */
 const byteToHex = [];

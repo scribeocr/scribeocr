@@ -1,4 +1,4 @@
-import { loadImageElem } from './imageUtils.js';
+import { loadImageElem } from './utils/imageUtils.js';
 
 /**
  * @typedef {Object} CompDebugParamsBrowser

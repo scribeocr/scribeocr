@@ -1,9 +1,9 @@
-import { expect, assert } from 'chai';
+import { assert, expect } from 'chai';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
-import { getRandomAlphanum } from '../../js/miscUtils.js';
-import { confCLI, checkCLI, overlayCLI } from '../../node/cli.js';
+import { getRandomAlphanum } from '../../js/utils/miscUtils.js';
+import { checkCLI, confCLI, overlayCLI } from '../../node/cli.js';
 
 globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));
 

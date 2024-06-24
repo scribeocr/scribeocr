@@ -1,7 +1,8 @@
-import {
-  quantile, mean50,
-} from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
+import {
+  mean50,
+  quantile,
+} from '../utils/miscUtils.js';
 
 // Includes all capital letters except for "J" and "Q"
 export const ascCharArr = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',

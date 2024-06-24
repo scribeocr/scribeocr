@@ -1,8 +1,8 @@
 // These function are used to render a word to a basic HTML Canvas element.
 // This differs from the code that renders to the main viewer canvas, which uses Konva.js.
 
-import { calcWordMetrics, calcWordFontSize, calcLineFontSize } from '../fontUtils.js';
 import { fontAll } from '../containers/fontContainer.js';
+import { calcLineFontSize, calcWordMetrics } from '../utils/fontUtils.js';
 
 /**
  * Crop the image data the area containing `words` and render to the `calcCtx.canvas` canvas.

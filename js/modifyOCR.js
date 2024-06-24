@@ -1,5 +1,5 @@
 import ocr from './objects/ocrObjects.js';
-import { getRandomAlphanum } from './miscUtils.js';
+import { getRandomAlphanum } from './utils/miscUtils.js';
 
 /**
  * Returns the proportion of boxA's area contained in boxB
@@ -222,10 +222,10 @@ export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = 
   const hocrALines = pageInt.lines;
   const linesNew = [];
 
-  const priorityArr = Array(hocrALines.length);
+  const orderArr = Array(hocrALines.length);
 
   // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
-  priorityArr.fill(10);
+  orderArr.fill(10);
 
   for (let i = 0; i < hocrALines.length; i++) {
     const hocrALine = hocrALines[i];
@@ -235,18 +235,18 @@ export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = 
       const overlap = calcOverlap(lineBoxA, obj.coords);
       if (overlap > 0.5) {
         if (obj.type === 'order') {
-          priorityArr[i] = obj.priority;
+          orderArr[i] = obj.order;
         } else if (obj.type === 'exclude' && applyExclude) {
           // Priority "11" is used to remove lines
-          priorityArr[i] = 11;
+          orderArr[i] = 11;
         }
       }
     }
   }
 
   for (let i = 0; i <= 10; i++) {
-    for (let j = 0; j < priorityArr.length; j++) {
-      if (priorityArr[j] === i) {
+    for (let j = 0; j < orderArr.length; j++) {
+      if (orderArr[j] === i) {
         linesNew.push(hocrALines[j]);
       }
     }

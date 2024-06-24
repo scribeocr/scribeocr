@@ -1,8 +1,10 @@
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  mean50, unescapeXml, round6,
-} from '../miscUtils.js';
+  mean50,
+  round6,
+  unescapeXml,
+} from '../utils/miscUtils.js';
 
 import { LayoutDataTablePage } from '../objects/layoutObjects.js';
 
@@ -13,6 +15,9 @@ import { LayoutDataTablePage } from '../objects/layoutObjects.js';
  */
 export async function convertPageStext({ ocrStr, n }) {
   const pageDimsMatch = ocrStr.match(/<page .+?width=['"]([\d.-]+)['"] height=['"]([\d.-]+)['"]/);
+
+  if (!pageDimsMatch || !pageDimsMatch[1] || !pageDimsMatch[2]) throw new Error('Page dimensions not found in stext.');
+
   const pageDims = { height: parseInt(pageDimsMatch[2]), width: parseInt(pageDimsMatch[1]) };
 
   const pageObj = new ocr.OcrPage(n, pageDims);
@@ -22,6 +27,7 @@ export async function convertPageStext({ ocrStr, n }) {
      * @param {number} lineNum
      * @param {number} n
      */
+  // eslint-disable-next-line no-shadow
   function convertLineStext(xmlLine, lineNum, n = 1) {
     // Remove the <block> tag to avoid the regex matching it instead of the <line> tag.
     // We currently have no "block" level object, however this may be useful in the future.
@@ -32,7 +38,11 @@ export async function convertPageStext({ ocrStr, n }) {
 
     const xmlLineFormatting = xmlLinePreChar?.match(/<font[^>]+/)?.[0];
     const fontName = xmlLineFormatting?.match(/name=['"]([^'"]*)/)?.[1];
-    const fontSize = parseFloat(xmlLineFormatting?.match(/size\=['"]([^'"]*)/)?.[1]);
+    const fontSizeStr = xmlLineFormatting?.match(/size=['"]([^'"]*)/)?.[1];
+
+    console.assert(fontSizeStr, 'Font size not found in stext.');
+
+    const fontSize = fontSizeStr ? parseFloat(fontSizeStr) : 10;
 
     const fontFamily = fontName?.replace(/-.+/g, '') || 'Default';
 
@@ -156,7 +166,7 @@ export async function convertPageStext({ ocrStr, n }) {
     for (let i = 0; i < text.length; i++) {
       const wordText = unescapeXml(text[i].join(''));
 
-      if (wordText.trim() == '') { continue; }
+      if (wordText.trim() === '') continue;
       const bboxesI = bboxes[i];
 
       const bboxesILeft = Math.min(...bboxesI.map((x) => x.left));
@@ -223,7 +233,7 @@ export async function convertPageStext({ ocrStr, n }) {
   const angleRisePage = [];
   for (let i = 0; i < lineStrArr.length; i++) {
     const lineInt = convertLineStext(lineStrArr[i], i, n);
-    if (lineInt[0] == '') continue;
+    if (!lineInt[0]) continue;
     angleRisePage.push(lineInt[1]);
   }
 

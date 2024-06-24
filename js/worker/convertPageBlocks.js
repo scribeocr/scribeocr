@@ -2,8 +2,8 @@ import ocr from '../objects/ocrObjects.js';
 
 import { pass2, pass3 } from './convertPageShared.js';
 
-import { determineSansSerif, getTextScript } from '../miscUtils.js';
 import { LayoutDataTablePage } from '../objects/layoutObjects.js';
+import { determineSansSerif, getTextScript } from '../utils/miscUtils.js';
 
 // TODO: Add rotation.
 

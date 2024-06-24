@@ -1,11 +1,12 @@
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  unescapeXml, determineSansSerif, getTextScript,
-} from '../miscUtils.js';
+  determineSansSerif, getTextScript,
+  unescapeXml,
+} from '../utils/miscUtils.js';
 
-import { pass2, pass3 } from './convertPageShared.js';
 import { LayoutDataTablePage } from '../objects/layoutObjects.js';
+import { pass2, pass3 } from './convertPageShared.js';
 
 // If enabled, raw strings are saved in OCR objects for debugging purposes.
 const debugMode = true;

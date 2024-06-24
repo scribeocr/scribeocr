@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 
-import { enableXlsxExportClick, enableRecognitionClick } from '../../main.js';
+import { enableRecognitionClick, enableXlsxExportClick } from '../../main.js';
+import { elem } from './elems.js';
 import { setFormatLabel } from './interfaceDownload.js';
 
 const defaults = {
@@ -9,12 +10,9 @@ const defaults = {
   downloadFormat: 'pdf',
 };
 
-const enableXlsxExportElem = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
-const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
-
 export function setDefaults() {
   if (defaults.enableXlsxExport === true) {
-    enableXlsxExportElem.checked = true;
+    elem.info.enableXlsxExport.checked = true;
     enableXlsxExportClick();
   }
 
@@ -23,7 +21,7 @@ export function setDefaults() {
   }
 
   if (defaults.enableRecognition === false) {
-    enableRecognitionElem.checked = false;
+    elem.info.enableRecognition.checked = false;
     enableRecognitionClick();
   }
 }

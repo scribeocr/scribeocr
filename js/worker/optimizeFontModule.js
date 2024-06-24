@@ -1,4 +1,4 @@
-import { quantile } from '../miscUtils.js';
+import { quantile } from '../utils/miscUtils.js';
 
 import opentype from '../../lib/opentype.module.min.js';
 

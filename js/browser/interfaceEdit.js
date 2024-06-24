@@ -5,62 +5,37 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { renderPageQueue, cp, displayPage } from '../../main.js';
-import { fontAll } from '../containers/fontContainer.js';
-import ocr from '../objects/ocrObjects.js';
-import {
-  stage, layerText, updateWordCanvas, KonvaOcrWord, canvasObj,
-  getCanvasWords,
-  destroyControls,
-} from './interfaceCanvas.js';
-import { combineData } from '../modifyOCR.js';
-import { getRandomAlphanum } from '../miscUtils.js';
-import coords from '../coordinates.js';
-import { recognizePage } from '../recognizeConvert.js';
-import { imageCache } from '../containers/imageContainer.js';
+import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
+import { cp, displayPage, renderPageQueue } from '../../main.js';
 import Tesseract from '../../tess/tesseract.esm.min.js';
-import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
-
-const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
-const fontMinusElem = /** @type {HTMLInputElement} */(document.getElementById('fontMinus'));
-const fontPlusElem = /** @type {HTMLInputElement} */(document.getElementById('fontPlus'));
-const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
-
-const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
-const styleBoldElem = /** @type {HTMLInputElement} */(document.getElementById('styleBold'));
-const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
-const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
-
-const deleteWordElem = /** @type {HTMLInputElement} */(document.getElementById('deleteWord'));
-const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
-const recognizeWordDropdownElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWordDropdown'));
-const editBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('editBaseline'));
-const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
-const outlineLinesElem = /** @type {HTMLInputElement} */(document.getElementById('outlineLines'));
-
-const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
-const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
-const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
-const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-
-const outlineWordsElem = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
+import { fontAll } from '../containers/fontContainer.js';
+import { imageCache } from '../containers/imageContainer.js';
+import { debugImg, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
+import coords from '../coordinates.js';
+import { combineData } from '../modifyOCR.js';
+import ocr from '../objects/ocrObjects.js';
+import { recognizePage } from '../recognizeConvert.js';
+import { getRandomAlphanum } from '../utils/miscUtils.js';
+import { elem } from './elems.js';
+import {
+  KonvaOcrWord, ScribeCanvas,
+  layerText, updateWordCanvas,
+} from './interfaceCanvas.js';
 
 const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
 
-styleItalicElem.addEventListener('click', () => { changeWordFontStyle('italic'); });
-styleBoldElem.addEventListener('click', () => { changeWordFontStyle('bold'); });
-styleSmallCapsElem.addEventListener('click', () => { changeWordFontStyle('smallCaps'); });
-styleSuperElem.addEventListener('click', toggleSuperSelectedWords);
+elem.edit.styleItalic.addEventListener('click', () => { changeWordFontStyle('italic'); });
+elem.edit.styleBold.addEventListener('click', () => { changeWordFontStyle('bold'); });
+elem.edit.styleSmallCaps.addEventListener('click', () => { changeWordFontStyle('smallCaps'); });
+elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
 
-const styleItalicButton = new bootstrap.Button(styleItalicElem);
-const styleBoldButton = new bootstrap.Button(styleBoldElem);
-const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
-const styleSuperButton = new bootstrap.Button(styleSuperElem);
+const styleItalicButton = new Button(elem.edit.styleItalic);
+const styleBoldButton = new Button(elem.edit.styleBold);
+const styleSmallCapsButton = new Button(elem.edit.styleSmallCaps);
 
 export function deleteSelectedWords() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   const selectedN = selectedObjects.length;
   const selectedIds = [];
 
@@ -71,12 +46,12 @@ export function deleteSelectedWords() {
   }
   ocr.deletePageWords(ocrAll.active[cp.n], selectedIds);
 
-  destroyControls();
+  ScribeCanvas.destroyControls();
 
   layerText.batchDraw();
 
   // Re-render the page if the user has selected the option to outline lines to update the line boxes.
-  if (outlineLinesElem.checked) renderPageQueue(cp.n);
+  if (elem.view.outlineLines.checked) renderPageQueue(cp.n);
 }
 
 /**
@@ -84,23 +59,23 @@ export function deleteSelectedWords() {
  * @param {string} style
  */
 export async function changeWordFontStyle(style) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
-  if (canvasObj.inputRemove) canvasObj.inputRemove();
+  if (ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
 
   // If first word style already matches target style, disable the style.
   const enable = selectedObjects[0].fontStyle !== style;
   const newStyle = enable ? style : 'normal';
 
   // For some reason the buttons can go out of sync, so this should prevent that.
-  if ((newStyle === 'italic') !== styleItalicElem.classList.contains('active')) {
+  if ((newStyle === 'italic') !== elem.edit.styleItalic.classList.contains('active')) {
     styleItalicButton.toggle();
   }
-  if ((newStyle === 'bold') !== styleBoldElem.classList.contains('active')) {
+  if ((newStyle === 'bold') !== elem.edit.styleBold.classList.contains('active')) {
     styleBoldButton.toggle();
   }
-  if ((newStyle === 'smallCaps') !== styleSmallCapsElem.classList.contains('active')) {
+  if ((newStyle === 'smallCaps') !== elem.edit.styleSmallCaps.classList.contains('active')) {
     styleSmallCapsButton.toggle();
   }
 
@@ -130,7 +105,7 @@ export async function changeWordFontStyle(style) {
  * @param {string} fontSizeStr - String containing (1) 'plus', (2) 'minus', or (3) a numeric size.
  */
 export async function changeWordFontSize(fontSizeStr) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   let fontSize;
@@ -153,7 +128,7 @@ export async function changeWordFontSize(fontSizeStr) {
 
     wordI.word.size = fontSize;
 
-    fontSizeElem.value = String(fontSize);
+    elem.edit.fontSize.value = String(fontSize);
     wordI.fontSize = fontSize;
 
     await updateWordCanvas(wordI);
@@ -162,7 +137,7 @@ export async function changeWordFontSize(fontSizeStr) {
 }
 
 export async function changeWordFontFamily(fontName) {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects) return;
 
   const selectedN = selectedObjects.length;
@@ -190,7 +165,7 @@ export async function changeWordFontFamily(fontName) {
 }
 
 export function toggleSuperSelectedWords() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
@@ -206,20 +181,20 @@ let objectsLine;
 
 const baselineRange = 25;
 export function adjustBaseline() {
-  const selectedObjects = canvasObj.selectedWordArr;
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   // Only open if a word is selected.
   globalThis.collapseRangeCollapse.toggle();
 
-  rangeBaselineElem.value = String(baselineRange + selectedObjects[0].baselineAdj);
+  elem.edit.rangeBaseline.value = String(baselineRange + selectedObjects[0].baselineAdj);
 
   // Unlikely identify lines using the ID of the first word on the line.
   const lineI = selectedObjects[0]?.word?.line?.words[0]?.id;
 
   console.assert(lineI !== undefined, 'Failed to identify line for word.');
 
-  objectsLine = getCanvasWords().filter((x) => x.word.line.words[0].id === lineI);
+  objectsLine = ScribeCanvas.getKonvaWords().filter((x) => x.word.line.words[0].id === lineI);
 }
 
 /**
@@ -268,20 +243,20 @@ export function adjustBaselineRangeChange(value) {
 }
 
 export function toggleEditButtons(disable = true) {
-  wordFontElem.disabled = disable;
-  fontMinusElem.disabled = disable;
-  fontPlusElem.disabled = disable;
-  fontSizeElem.disabled = disable;
+  elem.edit.wordFont.disabled = disable;
+  elem.edit.fontMinus.disabled = disable;
+  elem.edit.fontPlus.disabled = disable;
+  elem.edit.fontSize.disabled = disable;
 
-  styleItalicElem.disabled = disable;
-  styleBoldElem.disabled = disable;
-  styleSmallCapsElem.disabled = disable;
-  styleSuperElem.disabled = disable;
+  elem.edit.styleItalic.disabled = disable;
+  elem.edit.styleBold.disabled = disable;
+  elem.edit.styleSmallCaps.disabled = disable;
+  elem.edit.styleSuper.disabled = disable;
 
-  deleteWordElem.disabled = disable;
-  recognizeWordElem.disabled = disable;
-  recognizeWordDropdownElem.disabled = disable;
-  editBaselineElem.disabled = disable;
+  elem.edit.deleteWord.disabled = disable;
+  elem.edit.recognizeWord.disabled = disable;
+  elem.edit.recognizeWordDropdown.disabled = disable;
+  elem.edit.editBaseline.disabled = disable;
 }
 
 export async function addWordManual({
@@ -294,7 +269,7 @@ export async function addWordManual({
   let sinAngle = 0;
   let shiftX = 0;
   let shiftY = 0;
-  if (autoRotateCheckboxElem.checked && Math.abs(pageMetricsArr[cp.n].angle ?? 0) > 0.05) {
+  if (elem.view.autoRotateCheckbox.checked && Math.abs(pageMetricsArr[cp.n].angle ?? 0) > 0.05) {
     const rotateAngle = pageMetricsArr[cp.n].angle || 0;
 
     const pageDims = pageMetricsArr[cp.n].dims;
@@ -345,7 +320,7 @@ export async function addWordManual({
   if (!wordObjNew) throw new Error('Failed to add word to page.');
 
   const angle = pageMetricsArr[cp.n].angle || 0;
-  const enableRotation = autoRotateCheckboxElem.checked && Math.abs(angle ?? 0) > 0.05;
+  const enableRotation = elem.view.autoRotateCheckbox.checked && Math.abs(angle ?? 0) > 0.05;
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
   const angleAdjLine = enableRotation ? ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
@@ -362,9 +337,9 @@ export async function addWordManual({
     visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
   }
 
-  const displayMode = displayModeElem.value;
-  const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
-  const outlineWord = outlineWordsElem.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
+  const displayMode = elem.view.displayMode.value;
+  const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
+  const outlineWord = elem.view.outlineWords.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
 
   const wordCanvas = new KonvaOcrWord({
     visualLeft: rectLeft,
@@ -376,8 +351,7 @@ export async function addWordManual({
     fillBox: false,
   });
 
-  // Add the text node to the given layer
-  layerText.add(wordCanvas);
+  ScribeCanvas.addWord(wordCanvas);
 
   layerText.batchDraw();
 }
@@ -407,7 +381,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
   const imageRotated = true;
-  const canvasRotated = autoRotateCheckboxElem.checked;
+  const canvasRotated = elem.view.autoRotateCheckbox.checked;
   const angle = pageMetricsArr[cp.n].angle || 0;
 
   const imageCoords = coords.canvasToImage(canvasCoords, imageRotated, canvasRotated, cp.n, angle);
@@ -445,10 +419,10 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   const debugLabel = 'recognizeArea';
 
-  if (debugLabel && !globalThis.debugImg[debugLabel]) {
-    globalThis.debugImg[debugLabel] = new Array(imageCache.pageCount);
+  if (debugLabel && !debugImg[debugLabel]) {
+    debugImg[debugLabel] = new Array(imageCache.pageCount);
     for (let i = 0; i < imageCache.pageCount; i++) {
-      globalThis.debugImg[debugLabel][i] = [];
+      debugImg[debugLabel][i] = [];
     }
   }
 
@@ -458,8 +432,8 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     debugLabel,
     ignoreCap: ignoreCapElem.checked,
     ignorePunct: ignorePunctElem.checked,
-    confThreshHigh: parseInt(confThreshHighElem.value),
-    confThreshMed: parseInt(confThreshMedElem.value),
+    confThreshHigh: parseInt(elem.info.confThreshHigh.value),
+    confThreshMed: parseInt(elem.info.confThreshMed.value),
     legacyLSTMComb: true,
   };
 
@@ -476,7 +450,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   if (globalThis.debugLog === undefined) globalThis.debugLog = '';
   globalThis.debugLog += res.debugLog;
 
-  globalThis.debugImg[debugLabel][n].push(...res.debugImg);
+  debugImg[debugLabel][n].push(...res.debugImg);
 
   combineData(res.page, ocrAll.active[n], pageMetricsArr[n]);
 

@@ -1,11 +1,11 @@
 // This file contains utility functions for calculating statistics using Opentype.js font objects.
 // The only import/dependency this file should have (aside from importing misc utility functions) should be fontObjects.js.
 
-import { getPrevLine } from './objects/ocrObjects.js';
+import { fontAll } from '../containers/fontContainer.js';
+import { getPrevLine } from '../objects/ocrObjects.js';
 import { quantile } from './miscUtils.js';
-import { fontAll } from './containers/fontContainer.js';
 
-import opentype from '../lib/opentype.module.min.js';
+import opentype from '../../lib/opentype.module.min.js';
 
 /**
  *

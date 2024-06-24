@@ -1,28 +1,28 @@
 /* eslint-disable import/no-cycle */
 
-import { renderPageQueue, cp } from '../../main.js';
-import { imageCache, imageUtils } from '../containers/imageContainer.js';
-import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
-import {
-  stage, layerText, layerBackground, getCanvasWords, setCanvasWidthHeightZoom,
-  layerOverlay, getWordFillOpacity,
-} from './interfaceCanvas.js';
 import Konva from '../../lib/konva/index.js';
-import { renderLayoutBoxes, renderLayoutDataTables } from './interfaceLayout.js';
-import { pageMetricsArr, inputDataModes } from '../containers/miscContainer.js';
+import { cp, renderPageQueue } from '../../main.js';
+import { imageCache } from '../containers/imageContainer.js';
+import { inputDataModes, pageMetricsArr } from '../containers/miscContainer.js';
+import { elem } from './elems.js';
+import {
+  ScribeCanvas,
+  getWordFillOpacity,
+  layerBackground,
+  layerOverlay,
+  layerText,
+  stage,
+} from './interfaceCanvas.js';
+import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
+import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
+import { renderLayoutBoxes } from './interfaceLayout.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
 
-const colorModeElem = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
-const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-
-const displayModeElem = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
-displayModeElem.addEventListener('change', () => { displayModeClick(displayModeElem.value); });
+elem.view.displayMode.addEventListener('change', () => { displayModeClick(elem.view.displayMode.value); });
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
-
-const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
 
 const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
 
@@ -31,7 +31,7 @@ const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvas
  * @returns {("invis"|"ebook"|"eval"|"proof")}
  */
 export function getDisplayMode() {
-  const value = displayModeElem.value;
+  const value = elem.view.displayMode.value;
   if (value !== 'invis' && value !== 'ebook' && value !== 'eval' && value !== 'proof') {
     throw new Error(`Invalid display mode: ${value}`);
   }
@@ -39,7 +39,7 @@ export function getDisplayMode() {
   return value;
 }
 
-rangeOpacityElem.addEventListener('input', () => {
+elem.view.rangeOpacity.addEventListener('input', () => {
   setWordColorOpacity();
   layerText.batchDraw();
 });
@@ -59,8 +59,8 @@ function displayModeClick(x) {
 /**
  * Changes color and opacity of words based on the current display mode.
  */
-function setWordColorOpacity() {
-  getCanvasWords().forEach((obj) => {
+export function setWordColorOpacity() {
+  ScribeCanvas.getKonvaWords().forEach((obj) => {
     const { opacity, fill } = getWordFillOpacity(obj.word);
     obj.fill(fill);
     obj.opacity(opacity);
@@ -84,16 +84,16 @@ export const selectDisplayMode = async (x) => {
     cp.backgroundOpts.originX = 'center';
     cp.backgroundOpts.originY = 'center';
 
-    const backgroundImage = colorModeElem.value === 'binary' ? await imageCache.getBinary(cp.n) : await imageCache.getNative(cp.n);
+    const backgroundImage = elem.view.colorMode.value === 'binary' ? await imageCache.getBinary(cp.n) : await imageCache.getNative(cp.n);
 
-    const image = colorModeElem.value === 'binary' ? await imageCache.getBinaryBitmap(cp.n) : await imageCache.getNativeBitmap(cp.n);
+    const image = elem.view.colorMode.value === 'binary' ? await imageCache.getBinaryBitmap(cp.n) : await imageCache.getNativeBitmap(cp.n);
 
     let rotation = 0;
     // Case where rotation is requested and the image has not already been rotated
-    if ((autoRotateCheckboxElem.checked || globalThis.layoutMode) && !backgroundImage.rotated) {
+    if ((elem.view.autoRotateCheckbox.checked || globalThis.layoutMode) && !backgroundImage.rotated) {
       rotation = (pageMetricsArr[cp.n].angle || 0) * -1;
     // Case where rotation is not requested and the image has already been rotated
-    } else if (!(autoRotateCheckboxElem.checked || globalThis.layoutMode) && backgroundImage.rotated) {
+    } else if (!(elem.view.autoRotateCheckbox.checked || globalThis.layoutMode) && backgroundImage.rotated) {
       rotation = pageMetricsArr[cp.n].angle || 0;
     }
 

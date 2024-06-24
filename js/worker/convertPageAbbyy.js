@@ -1,12 +1,17 @@
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  getRandomAlphanum, quantile, mean50, round6, unescapeXml, determineSansSerif,
-} from '../miscUtils.js';
+  determineSansSerif,
+  mean50,
+  quantile,
+  round6, unescapeXml,
+} from '../utils/miscUtils.js';
 
-import { LayoutBox, LayoutDataTable, LayoutDataTablePage } from '../objects/layoutObjects.js';
+import {
+  LayoutDataColumn, LayoutDataTable, LayoutDataTablePage,
+} from '../objects/layoutObjects.js';
 
-import { pass3, ascCharArr, xCharArr } from './convertPageShared.js';
+import { ascCharArr, pass3, xCharArr } from './convertPageShared.js';
 
 const abbyyDropCapRegex = /<par dropCapCharsCount=['"](\d*)/i;
 const abbyyLineBoxRegex = /<line baseline=['"](\d*)['"] l=['"](\d*)['"] t=['"](\d*)['"] r=['"](\d*)['"] b=['"](\d*)['"]>/i;
@@ -351,8 +356,8 @@ function convertTableLayoutAbbyy(ocrStr) {
   if (!tablesStrArr) return tablesPage;
 
   for (let i = 0; i < tablesStrArr.length; i++) {
-    /** @type {Object<string, LayoutBox>} */
-    let tableBoxes = {};
+    /** @type {Array<LayoutDataColumn>} */
+    const tableBoxes = [];
 
     const tableStr = tablesStrArr[i];
     const tableCoords = tableStr.match(/<block blockType=['"]Table['"][^>]*?l=['"](\d+)['"] t=['"](\d+)['"] r=['"](\d+)['"] b=['"](\d+)['"]/i)?.slice(1, 5).map((x) => parseInt(x));
@@ -379,24 +384,20 @@ function convertTableLayoutAbbyy(ocrStr) {
       continue;
     }
 
+    const table = new LayoutDataTable();
+
     for (let j = 0; j < firstRowCells.length; j++) {
       const cell = firstRowCells[j];
       const cellWidth = parseInt(cell.match(/width=['"](\d+)['"]/)?.[1]);
-
-      const id = getRandomAlphanum(10);
 
       const cellLeft = leftLast;
       const cellRight = leftLast + cellWidth;
 
       leftLast = cellRight;
 
-      const priority = Object.keys(tablesPage.tables).length + Object.keys(tableBoxes).length + 1;
-
-      tableBoxes[id] = new LayoutBox(id, priority, {
+      tableBoxes.push(new LayoutDataColumn({
         left: cellLeft, top: tableCoords[1], right: cellRight, bottom: tableCoords[3],
-      });
-      tableBoxes[id].type = 'dataColumn';
-      tableBoxes[id].table = i;
+      }, table));
     }
 
     // Abbyy sometimes provides column widths that are incorrect
@@ -405,7 +406,6 @@ function convertTableLayoutAbbyy(ocrStr) {
       let colLeftArr = [];
       let colRightArr = [];
 
-      let colsWithData = 0;
       for (let j = 0; j < rows.length; j++) {
         const cells = rows[j].match(/<cell[\s\S]+?(?:<\/cell>\s*)/ig);
         for (let k = 0; k < cells.length; k++) {
@@ -418,7 +418,6 @@ function convertTableLayoutAbbyy(ocrStr) {
           if (!colLeftArr[k]) {
             colLeftArr[k] = [];
             colRightArr[k] = [];
-            colsWithData++;
           }
           colLeftArr[k].push(cellLeft);
           colRightArr[k].push(cellRight);
@@ -441,7 +440,7 @@ function convertTableLayoutAbbyy(ocrStr) {
       }
 
       // Re-create boxes
-      tableBoxes = {};
+      tableBoxes.length = 0;
       for (let j = 0; j < colLeftArr.length; j++) {
         let cellLeft;
         if (j === 0) {
@@ -461,24 +460,18 @@ function convertTableLayoutAbbyy(ocrStr) {
           cellRight = Math.round((colLeftMin[j + 1] + colRightMax[j]) / 2);
         }
 
-        const id = getRandomAlphanum(10);
-
-        const priority = 1;
-
-        tableBoxes[id] = new LayoutBox(id, priority, {
+        tableBoxes.push(new LayoutDataColumn({
           left: cellLeft, top: tableCoords[1], right: cellRight, bottom: tableCoords[3],
-        });
-        tableBoxes[id].type = 'dataColumn';
-        tableBoxes[id].table = i;
+        }, table));
       }
 
       if (debugMode) console.log(`Table width does not match sum of rows (${String(tableCoords[2])} vs ${String(leftLast)}), calculated new layout boxes using column contents.`);
     }
 
-    const table = new LayoutDataTable(i);
+    // const table = new LayoutDataTable(i);
     table.boxes = tableBoxes;
 
-    tablesPage.tables[String(i)] = table;
+    tablesPage.tables.push(table);
   }
 
   return tablesPage;

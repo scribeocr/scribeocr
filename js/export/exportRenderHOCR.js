@@ -1,6 +1,6 @@
-import ocr from './objects/ocrObjects.js';
-import { round6 } from './miscUtils.js';
-import { pageMetricsArr } from './containers/miscContainer.js';
+import { pageMetricsArr } from '../containers/miscContainer.js';
+import ocr from '../objects/ocrObjects.js';
+import { round6 } from '../utils/miscUtils.js';
 
 /**
  *

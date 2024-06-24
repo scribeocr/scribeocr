@@ -1,46 +1,25 @@
 /* eslint-disable import/no-cycle */
 
+import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
 import Konva from '../../lib/konva/index.js';
-import { calcWordMetrics, addLigatures } from '../fontUtils.js';
-import { fontAll } from '../containers/fontContainer.js';
-import { addWordManual, recognizeArea } from './interfaceEdit.js';
-import ocr from '../objects/ocrObjects.js';
-import { showHideElem } from '../miscUtils.js';
-import {
-  KonvaLayout, updateDataPreview, addLayoutBoxClick, selectLayoutBoxesArea,
-  addLayoutDataTableClick, mergeDataColumns, checkDataColumnsAdjacent,
-  splitDataColumn,
-  deleteLayoutBoxClick,
-  deleteLayoutDataTableClick,
-} from './interfaceLayout.js';
 import { cp, search } from '../../main.js';
+import { fontAll } from '../containers/fontContainer.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
+import { calcTableBbox } from '../objects/layoutObjects.js';
+import ocr from '../objects/ocrObjects.js';
+import { addLigatures, calcWordMetrics } from '../utils/fontUtils.js';
+import { replaceSmartQuotes } from '../utils/miscUtils.js';
+import { elem } from './elems.js';
+import {
+  KonvaDataColumn,
+  KonvaLayout,
+  updateDataPreview,
+} from './interfaceLayout.js';
 
-const zoomInElem = /** @type {HTMLInputElement} */(document.getElementById('zoomIn'));
-const zoomOutElem = /** @type {HTMLInputElement} */(document.getElementById('zoomOut'));
-
-const wordFontElem = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
-const fontSizeElem = /** @type {HTMLInputElement} */(document.getElementById('fontSize'));
-
-const styleItalicElem = /** @type {HTMLInputElement} */(document.getElementById('styleItalic'));
-const styleBoldElem = /** @type {HTMLInputElement} */(document.getElementById('styleBold'));
-const styleSmallCapsElem = /** @type {HTMLInputElement} */(document.getElementById('styleSmallCaps'));
-const styleSuperElem = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
-
-const confThreshHighElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
-const confThreshMedElem = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-const displayModeElem = /** @type {HTMLInputElement} */(document.getElementById('displayMode'));
-
-const rangeOpacityElem = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
-
-const autoRotateCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
-const outlineLinesElem = /** @type {HTMLInputElement} */(document.getElementById('outlineLines'));
-const outlineWordsElem = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
-
-const styleItalicButton = new bootstrap.Button(styleItalicElem);
-const styleBoldButton = new bootstrap.Button(styleBoldElem);
-const styleSmallCapsButton = new bootstrap.Button(styleSmallCapsElem);
-const styleSuperButton = new bootstrap.Button(styleSuperElem);
+const styleItalicButton = new Button(elem.edit.styleItalic);
+const styleBoldButton = new Button(elem.edit.styleBold);
+const styleSmallCapsButton = new Button(elem.edit.styleSmallCaps);
+const styleSuperButton = new Button(elem.edit.styleSuper);
 
 Konva.autoDrawEnabled = false;
 Konva.dragButtons = [0];
@@ -59,143 +38,6 @@ stage.add(layerBackground);
 stage.add(layerText);
 stage.add(layerOverlay);
 
-const createContextMenuHTML = () => {
-  const menuDiv = document.createElement('div');
-  menuDiv.id = 'menu';
-
-  const innerDiv = document.createElement('div');
-
-  const splitButton = document.createElement('button');
-  splitButton.id = 'contextMenuSplitColumnButton';
-  splitButton.textContent = 'Split Column';
-  splitButton.style.display = 'none';
-  splitButton.addEventListener('click', splitDataColumnClick);
-
-  const mergeButton = document.createElement('button');
-  mergeButton.id = 'contextMenuMergeColumnButtons';
-  mergeButton.textContent = 'Merge Columns';
-  mergeButton.style.display = 'none';
-  mergeButton.addEventListener('click', mergeDataColumnsClick);
-
-  const deleteLayoutButton = document.createElement('button');
-  deleteLayoutButton.id = 'contextMenuDeleteLayoutBoxButton';
-  deleteLayoutButton.textContent = 'Delete';
-  deleteLayoutButton.style.display = 'none';
-  deleteLayoutButton.addEventListener('click', deleteLayoutBoxClick);
-
-  const deleteTableButton = document.createElement('button');
-  deleteTableButton.id = 'contextMenuDeleteTableButton';
-  deleteTableButton.textContent = 'Delete Table';
-  deleteTableButton.style.display = 'none';
-  deleteTableButton.addEventListener('click', deleteLayoutDataTableClick);
-
-  innerDiv.appendChild(splitButton);
-  innerDiv.appendChild(mergeButton);
-  innerDiv.appendChild(deleteLayoutButton);
-  innerDiv.appendChild(deleteTableButton);
-
-  menuDiv.appendChild(innerDiv);
-
-  return menuDiv;
-};
-
-const mergeDataColumnsClick = () => {
-  hideContextMenu();
-  mergeDataColumns(canvasObj.selectedDataColumnArr);
-};
-
-const splitDataColumnClick = () => {
-  hideContextMenu();
-  const ptr = layerOverlay.getRelativePointerPosition();
-  if (!ptr) return;
-  splitDataColumn(canvasObj.selectedDataColumnArr[0], ptr.x);
-};
-
-const menuNode = createContextMenuHTML();
-document.body.appendChild(menuNode);
-
-const contextMenuMergeColumnButtonsElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeColumnButtons'));
-const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
-const contextMenuDeleteLayoutBoxButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutBoxButton'));
-const contextMenuDeleteTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteTableButton'));
-
-export const hideContextMenu = () => {
-  contextMenuMergeColumnButtonsElem.style.display = 'none';
-  contextMenuSplitColumnButtonElem.style.display = 'none';
-  contextMenuDeleteLayoutBoxButtonElem.style.display = 'none';
-  contextMenuDeleteTableButtonElem.style.display = 'none';
-  menuNode.style.display = 'none';
-};
-
-const style = document.createElement('style');
-
-// Add CSS rules to the style element
-style.textContent = `
-  #menu {
-    display: none;
-    position: absolute;
-    width: 140px;
-    background-color: white;
-    box-shadow: 0 0 5px grey;
-    border-radius: 3px;
-  }
-  #menu button {
-    width: 100%;
-    background-color: white;
-    border: none;
-    margin: 0;
-    padding: 10px;
-    text-wrap: nowrap;
-    text-align: left;
-  }
-  #menu button:hover {
-    background-color: lightgray;
-  }`;
-
-document.head.appendChild(style);
-
-stage.on('contextmenu', (e) => {
-  // prevent default behavior
-
-  if (e.target === stage) {
-    // if we are on empty place of the stage we will do nothing
-    return;
-  }
-
-  let enableMerge = false;
-  let enableSplit = false;
-  let enableDelete = false;
-  let enableDeleteTable = false;
-
-  // The "Merge Columns" button will be enabled if multiple adjacent columns are selected.
-  if (canvasObj.selectedDataColumnArr.length > 1 && checkDataColumnsAdjacent(canvasObj.selectedDataColumnArr)) enableMerge = true;
-  if (canvasObj.selectedDataColumnArr.length === 1) enableSplit = true;
-  if (canvasObj.selectedLayoutBoxArr.length > 0) enableDelete = true;
-  if (canvasObj.selectedDataColumnArr.length > 0 && canvasObj.selectedDataColumnArr.length === canvasObj.selectedDataColumnArr[0].konvaTable.columns.length) enableDeleteTable = true;
-
-  if (!(enableMerge || enableSplit || enableDelete || enableDeleteTable)) return;
-
-  if (enableMerge) {
-    contextMenuMergeColumnButtonsElem.style.display = 'initial';
-  }
-  if (enableSplit) {
-    contextMenuSplitColumnButtonElem.style.display = 'initial';
-  }
-  if (enableDelete) {
-    contextMenuDeleteLayoutBoxButtonElem.style.display = 'initial';
-  }
-  if (enableDeleteTable) {
-    contextMenuDeleteTableButtonElem.style.display = 'initial';
-  }
-
-  e.evt.preventDefault();
-
-  menuNode.style.display = 'initial';
-  const containerRect = stage.container().getBoundingClientRect();
-  menuNode.style.top = `${containerRect.top + stage.getPointerPosition().y + 4}px`;
-  menuNode.style.left = `${containerRect.left + stage.getPointerPosition().x + 4}px`;
-});
-
 const selectingRectangle = new Konva.Rect({
   fill: 'rgba(40,123,181,0.5)',
   visible: true,
@@ -205,37 +47,247 @@ const selectingRectangle = new Konva.Rect({
 
 layerText.add(selectingRectangle);
 
-export const canvasObj = {
-  /** @type {Array<InstanceType<typeof Konva.Rect> | InstanceType<typeof Konva.Transformer>>} */
-  controlArr: [],
-  /** @type {Array<InstanceType<typeof Konva.Rect>>} */
-  lineOutlineArr: [],
+/**
+ * Class for managing the selection of words, layout boxes, and data columns on the canvas.
+ * This is a class due to JSDoc type considerations. All methods and properties are static.
+ */
+class CanvasSelection {
   /** @type {Array<KonvaOcrWord>} */
-  selectedWordArr: [],
+  static _selectedWordArr = [];
+
   /** @type {Array<KonvaLayout>} */
-  layoutBoxArr: [],
-  /** @type {Array<import('./interfaceLayout.js').KonvaDataTable>} */
-  layoutDataTableArr: [],
-  /** @type {Array<KonvaLayout>} */
-  selectedLayoutBoxArr: [],
+  static _selectedRegionArr = [];
+
   /** @type {Array<import('./interfaceLayout.js').KonvaDataColumn>} */
-  selectedDataColumnArr: [],
+  static _selectedDataColumnArr = [];
+
+  static getKonvaWords = () => CanvasSelection._selectedWordArr;
+
+  static getKonvaRegions = () => CanvasSelection._selectedRegionArr;
+
+  static getKonvaDataColumns = () => CanvasSelection._selectedDataColumnArr;
+
+  static getKonvaWordsCopy = () => CanvasSelection._selectedWordArr.slice();
+
+  static getKonvaRegionsCopy = () => CanvasSelection._selectedRegionArr.slice();
+
+  static getKonvaDataColumnsCopy = () => CanvasSelection._selectedDataColumnArr.slice();
+
+  static getKonvaLayoutBoxes = () => [...CanvasSelection._selectedRegionArr, ...CanvasSelection._selectedDataColumnArr];
+
+  /**
+   * Gets the distinct data tables associated with the selected data columuns.
+   * @returns {Array<import('./interfaceLayout.js').KonvaDataTable>}
+   */
+  static getKonvaDataTables = () => {
+    const selectedDataTableIdArr = [...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.table.id))];
+    // eslint-disable-next-line no-use-before-define
+    return ScribeCanvas._layoutDataTableArr.filter((x) => selectedDataTableIdArr.includes(x.layoutDataTable.id)).sort((a, b) => {
+      const boxA = calcTableBbox(a.layoutDataTable);
+      const boxB = calcTableBbox(b.layoutDataTable);
+      return boxA.left - boxB.left;
+    });
+  };
+
+  /**
+   * Gets the distinct data tables associated with the selected data columuns.
+   */
+  static getDataTables = () => {
+    const selectedDataTableIdArr = [...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.table.id))];
+    // eslint-disable-next-line no-use-before-define
+    return ScribeCanvas._layoutDataTableArr.filter((x) => selectedDataTableIdArr.includes(x.layoutDataTable.id)).sort((a, b) => {
+      const boxA = calcTableBbox(a.layoutDataTable);
+      const boxB = calcTableBbox(b.layoutDataTable);
+      return boxA.left - boxB.left;
+    }).map((x) => x.layoutDataTable);
+  };
+
+  /**
+   * Add word or array of words to the current selection.
+   * Ignores words that are already selected.
+   * @param {KonvaOcrWord|Array<KonvaOcrWord>} words
+   */
+  static addWords = (words) => {
+    if (!Array.isArray(words)) words = [words];
+    words.forEach((wordI) => {
+      if (!CanvasSelection._selectedWordArr.map((x) => x.word.id).includes(wordI.word.id)) {
+        CanvasSelection._selectedWordArr.push(wordI);
+      }
+    });
+  };
+
+  /**
+   * Add layout boxes, including both regions and data columns, to the current selection.
+   * Ignores boxes that are already selected.
+   * @param {Array<import('./interfaceLayout.js').KonvaLayout>|import('./interfaceLayout.js').KonvaLayout|
+   * Array<import('./interfaceLayout.js').KonvaLayout>|import('./interfaceLayout.js').KonvaLayout} konvaLayoutBoxes
+   */
+  static addKonvaLayoutBoxes = (konvaLayoutBoxes) => {
+    if (!Array.isArray(konvaLayoutBoxes)) konvaLayoutBoxes = [konvaLayoutBoxes];
+    konvaLayoutBoxes.forEach((konvaLayoutBox) => {
+      if (konvaLayoutBox instanceof KonvaDataColumn) {
+        if (!CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.id).includes(konvaLayoutBox.layoutBox.id)) {
+          CanvasSelection._selectedDataColumnArr.push(konvaLayoutBox);
+        }
+      } else if (!CanvasSelection._selectedRegionArr.map((x) => x.layoutBox.id).includes(konvaLayoutBox.layoutBox.id)) {
+        CanvasSelection._selectedRegionArr.push(konvaLayoutBox);
+      }
+    });
+    // Other code assumes that these arrays are sorted left to right.
+    CanvasSelection._selectedDataColumnArr.sort((a, b) => a.layoutBox.coords.left - b.layoutBox.coords.left);
+    CanvasSelection._selectedRegionArr.sort((a, b) => a.layoutBox.coords.left - b.layoutBox.coords.left);
+  };
+
+  /**
+ *
+ * @param {Array<string>} layoutBoxIdArr
+ */
+  static selectLayoutBoxesById = (layoutBoxIdArr) => {
+    // eslint-disable-next-line no-use-before-define
+    const konvaLayoutBoxes = ScribeCanvas._layoutRegionArr.filter((x) => layoutBoxIdArr.includes(x.layoutBox.id));
+
+    // eslint-disable-next-line no-use-before-define
+    ScribeCanvas._layoutDataTableArr.forEach((table) => {
+      table.columns.forEach((column) => {
+        if (layoutBoxIdArr.includes(column.layoutBox.id)) konvaLayoutBoxes.push(column);
+      });
+    });
+
+    CanvasSelection.selectLayoutBoxes(konvaLayoutBoxes);
+  };
+
+  /**
+ *
+ * @param {Array<KonvaLayout>} konvaLayoutBoxes
+ */
+  static selectLayoutBoxes = (konvaLayoutBoxes) => {
+    // eslint-disable-next-line no-use-before-define
+    const selectedLayoutBoxes = ScribeCanvas.CanvasSelection.getKonvaRegions();
+    // eslint-disable-next-line no-use-before-define
+    const selectedDataColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
+
+    // eslint-disable-next-line no-use-before-define
+    ScribeCanvas.CanvasSelection.addKonvaLayoutBoxes(konvaLayoutBoxes);
+
+    // Boxes can only be resized one at a time
+    if (konvaLayoutBoxes.length === 1) KonvaLayout.addControls(konvaLayoutBoxes[0]);
+
+    selectedDataColumns.forEach((shape) => (shape.select()));
+    selectedLayoutBoxes.forEach((shape) => (shape.select()));
+  };
+
+  /**
+   * Get arrays of distinct font families and font sizes from the selected words.
+   */
+  static getWordProperties = () => {
+    const fontFamilyArr = Array.from(new Set(CanvasSelection._selectedWordArr.map((x) => (x.fontFamilyLookup))));
+    const fontSizeArr = Array.from(new Set(CanvasSelection._selectedWordArr.map((x) => (x.fontSize))));
+    return { fontFamilyArr, fontSizeArr };
+  };
+
+  /**
+   * Get arrays of distinct layout box properties from the selected layout boxes.
+   * Includes both layout boxes and data columns.
+   */
+  static getLayoutBoxProperties = () => {
+    const selectedWordsAll = CanvasSelection.getKonvaLayoutBoxes();
+    const inclusionRuleArr = Array.from(new Set(selectedWordsAll.map((x) => (x.layoutBox.inclusionRule))));
+    const inclusionLevelArr = Array.from(new Set(selectedWordsAll.map((x) => (x.layoutBox.inclusionLevel))));
+    return { inclusionRuleArr, inclusionLevelArr };
+  };
+
+  static deselectAllWords = () => {
+    CanvasSelection._selectedWordArr.forEach((shape) => (shape.deselect()));
+    CanvasSelection._selectedWordArr.length = 0;
+  };
+
+  static deselectAllRegions = () => {
+    CanvasSelection._selectedRegionArr.forEach((shape) => (shape.deselect()));
+    CanvasSelection._selectedRegionArr.length = 0;
+  };
+
+  static deselectAllDataColumns = () => {
+    CanvasSelection._selectedDataColumnArr.forEach((shape) => (shape.deselect()));
+    CanvasSelection._selectedDataColumnArr.length = 0;
+  };
+
+  static deselectAll = () => {
+    CanvasSelection.deselectAllWords();
+    CanvasSelection.deselectAllRegions();
+    CanvasSelection.deselectAllDataColumns();
+  };
+
+  /**
+   *
+   * @param {string|Array<string>} ids
+   */
+  static deselectDataColumnsByIds = (ids) => {
+    if (!Array.isArray(ids)) ids = [ids];
+    for (let j = 0; j < CanvasSelection._selectedDataColumnArr.length; j++) {
+      if (ids.includes(CanvasSelection._selectedDataColumnArr[j].layoutBox.id)) {
+        CanvasSelection._selectedDataColumnArr.splice(j, 1);
+        j--;
+      }
+    }
+  };
+}
+
+/**
+ * Class for managing the selection of words, layout boxes, and data columns on the canvas.
+ * This is a class due to JSDoc type considerations. All methods and properties are static.
+ */
+export class ScribeCanvas {
+  /** @type {Array<InstanceType<typeof Konva.Rect> | InstanceType<typeof Konva.Transformer>>} */
+  static _controlArr = [];
+
+  /** @type {Array<KonvaOcrWord>} */
+  static _wordArr = [];
+
+  /** @type {Array<InstanceType<typeof Konva.Rect>>} */
+  static _lineOutlineArr = [];
+
+  /** @type {Array<KonvaLayout>} */
+  static _layoutRegionArr = [];
+
+  /** @type {Array<import('./interfaceLayout.js').KonvaDataTable>} */
+  static _layoutDataTableArr = [];
+
   /** @type {?HTMLSpanElement} */
-  input: null,
+  static input = null;
+
   /** @type {?Function} */
-  inputRemove: null,
-  selectingRectangle,
-  selecting: false,
+  static inputRemove = null;
+
+  static selectingRectangle = selectingRectangle;
+
+  /** @type {?KonvaOcrWord} */
+  static contextMenuWord = null;
+
+  /**
+   * Contains the x and y coordinates of the last right-click event.
+   * This is required for "right click" functions that are position-dependent,
+   * as the cursor moves between the initial right click and selecting the option.
+   */
+  static contextMenuPointer = { x: 0, y: 0 };
+
+  static selecting = false;
+
+  static CanvasSelection = CanvasSelection;
+
   /** @type {bbox} */
-  bbox: {
+  static bbox = {
     top: 0, left: 0, right: 0, bottom: 0,
-  },
+  };
+
   /** @type {('select'|'addWord'|'recognizeWord'|'recognizeArea'|'printCoords'|'addLayoutBoxOrder'|'addLayoutBoxExclude'|'addLayoutBoxDataTable')} */
-  mode: 'select',
-  isTouchScreen: navigator?.maxTouchPoints > 0,
-  drag: {
+  static mode = 'select';
+
+  static isTouchScreen = navigator?.maxTouchPoints > 0;
+
+  static drag = {
     isPinching: false,
     isDragging: false,
+    isResizingColumns: false,
     dragDeltaTotal: 0,
     lastX: 0,
     lastY: 0,
@@ -243,61 +295,101 @@ export const canvasObj = {
     lastCenter: null,
     /** @type {?number} */
     lastDist: null,
-  },
+  };
 
-};
+  static getKonvaWords = () => ScribeCanvas._wordArr;
 
-export const deselectAllWords = () => {
-  canvasObj.selectedWordArr.forEach((shape) => (shape.deselect()));
-  canvasObj.selectedWordArr.length = 0;
-};
+  static getKonvaRegions = () => ScribeCanvas._layoutRegionArr;
 
-export const deselectAllLayoutBoxes = () => {
-  canvasObj.selectedLayoutBoxArr.forEach((shape) => (shape.deselect()));
-  canvasObj.selectedLayoutBoxArr.length = 0;
-};
+  static getKonvaDataTables = () => ScribeCanvas._layoutDataTableArr;
 
-export const deselectAllDataColumns = () => {
-  canvasObj.selectedDataColumnArr.forEach((shape) => (shape.deselect()));
-  canvasObj.selectedDataColumnArr.length = 0;
-};
+  /**
+   * Get all layout boxes, including both regions and data columns.
+   * Returns copy.
+   */
+  static getKonvaLayoutBoxes = () => {
+    const layoutBoxes = ScribeCanvas._layoutRegionArr.slice();
+    ScribeCanvas._layoutDataTableArr.forEach((x) => {
+      layoutBoxes.push(...x.columns);
+    });
+    return layoutBoxes;
+  };
 
-export const deselectAll = () => {
-  deselectAllWords();
-  deselectAllLayoutBoxes();
-  deselectAllDataColumns();
-};
+  /**
+   *
+   * @param {KonvaOcrWord} word
+   */
+  static addWord = (word) => {
+    ScribeCanvas._wordArr.push(word);
+    layerText.add(word);
+  };
 
-/**
- *
- * @param {boolean} [deselect=true] - Deselect all words, layout boxes, and data columns.
- */
-export const destroyControls = (deselect = true) => {
-  globalThis.collapseRangeCollapse.hide();
-  globalThis.collapseSetLayoutBoxTableCollapse.hide();
-  canvasObj.controlArr.forEach((control) => control.destroy());
-  canvasObj.controlArr.length = 0;
+  /**
+   *
+   * @param {KonvaLayout} region
+   */
+  static addRegion = (region) => {
+    ScribeCanvas._layoutRegionArr.push(region);
+    layerOverlay.add(region);
+    if (region.label) layerOverlay.add(region.label);
+  };
 
-  if (deselect) deselectAll();
+  /**
+   *
+   * @param {boolean} [deselect=true] - Deselect all words, layout boxes, and data columns.
+   */
+  static destroyControls = (deselect = true) => {
+    globalThis.collapseRangeCollapse.hide();
+    ScribeCanvas._controlArr.forEach((control) => control.destroy());
+    ScribeCanvas._controlArr.length = 0;
 
-  if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
-};
+    if (deselect) ScribeCanvas.CanvasSelection.deselectAll();
 
-export const destroyLineOutlines = () => {
-  canvasObj.lineOutlineArr.forEach((x) => x.destroy());
-  canvasObj.lineOutlineArr.length = 0;
-};
+    if (ScribeCanvas.input && ScribeCanvas.input.parentElement && ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
+  };
 
-export const destroyLayoutBoxes = () => {
-  canvasObj.layoutBoxArr.forEach((x) => x.destroy());
-  canvasObj.layoutBoxArr.length = 0;
-  destroyLayoutDataTables();
-};
+  static destroyLineOutlines = () => {
+    ScribeCanvas._lineOutlineArr.forEach((x) => x.destroy());
+    ScribeCanvas._lineOutlineArr.length = 0;
+  };
 
-export const destroyLayoutDataTables = () => {
-  canvasObj.layoutDataTableArr.forEach((x) => x.destroy());
-  canvasObj.layoutDataTableArr.length = 0;
-};
+  static destroyLayoutDataTables = () => {
+    ScribeCanvas._layoutDataTableArr.forEach((x) => x.destroy());
+    ScribeCanvas._layoutDataTableArr.length = 0;
+    ScribeCanvas.CanvasSelection.deselectAllDataColumns();
+  };
+
+  static destroyRegions = () => {
+    ScribeCanvas._layoutRegionArr.forEach((x) => x.destroy());
+    ScribeCanvas._layoutRegionArr.length = 0;
+    ScribeCanvas.destroyLayoutDataTables();
+    ScribeCanvas.CanvasSelection.deselectAllRegions();
+  };
+
+  static destroyWords = () => {
+    // Any time words are destroyed, controls must be destroyed as well.
+    // If this does not happen controls will have references to destroyed words, which causes errors to be thrown.
+    ScribeCanvas.destroyControls();
+    ScribeCanvas._wordArr.forEach((obj) => obj.destroy());
+    ScribeCanvas.destroyLineOutlines();
+    ScribeCanvas._wordArr.length = 0;
+  };
+
+  /**
+   *
+   * @param {string|Array<string>} ids
+   */
+  static destroyLayoutDataTablesById = (ids) => {
+    if (!Array.isArray(ids)) ids = [ids];
+    for (let j = 0; j < ScribeCanvas._layoutDataTableArr.length; j++) {
+      if (ids.includes(ScribeCanvas._layoutDataTableArr[j].layoutDataTable.id)) {
+        ScribeCanvas._layoutDataTableArr[j].destroy();
+        ScribeCanvas._layoutDataTableArr.splice(j, 1);
+        j--;
+      }
+    }
+  };
+}
 
 /**
  * Update word textbox on canvas following changes.
@@ -354,8 +446,8 @@ export async function updateWordCanvas(wordI) {
  * @param {OcrWord} word
  */
 export function getWordFillOpacity(word) {
-  const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
-  const confThreshMed = confThreshMedElem.value !== '' ? parseInt(confThreshMedElem.value) : 75;
+  const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
+  const confThreshMed = elem.info.confThreshMed.value !== '' ? parseInt(elem.info.confThreshMed.value) : 75;
 
   let fillColorHex;
   if (word.conf > confThreshHigh) {
@@ -366,7 +458,7 @@ export function getWordFillOpacity(word) {
     fillColorHex = '#ff0000';
   }
 
-  const displayMode = displayModeElem.value;
+  const displayMode = elem.view.displayMode.value;
 
   const fillColorHexMatch = word.matchTruth ? '#00ff7b' : '#ff0000';
 
@@ -380,10 +472,10 @@ export function getWordFillOpacity(word) {
     opacity = 1;
     fill = 'black';
   } else if (displayMode === 'eval') {
-    opacity = parseFloat(rangeOpacityElem.value || '80') / 100;
+    opacity = parseFloat(elem.view.rangeOpacity.value || '80') / 100;
     fill = fillColorHexMatch;
   } else {
-    opacity = parseFloat(rangeOpacityElem.value || '80') / 100;
+    opacity = parseFloat(elem.view.rangeOpacity.value || '80') / 100;
     fill = fillColorHex;
   }
 
@@ -414,12 +506,12 @@ export class KonvaIText extends Konva.Shape {
     outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', dynamicWidth = false, editTextCallback,
   }) {
     const {
-      visualWidth, charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr,
+      charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr,
     } = calcWordMetrics(word);
 
     const charSpacingFinal = !dynamicWidth ? charSpacing : 0;
 
-    const scaleX = word.dropcap ? ((word.bbox.right - word.bbox.left) / visualWidth) : 1;
+    // const scaleX = word.dropcap ? ((word.bbox.right - word.bbox.left) / visualWidth) : 1;
 
     const advanceArrTotal = [];
     for (let i = 0; i < advanceArr.length; i++) {
@@ -542,10 +634,12 @@ export class KonvaIText extends Konva.Shape {
   }
 
   /**
-   * Position and show the input for editing.
+   * Get the index of the letter that the cursor is closest to.
+   * This function should be used when selecting a letter to edit;
+   * when actively editing, `getInputCursorIndex` should be used instead.
    * @param {KonvaIText} itext
    */
-  static addTextInput = (itext) => {
+  static getCursorIndex = (itext) => {
     const pointerCoordsRel = layerText.getRelativePointerPosition();
     let letterIndex = 0;
     let leftI = itext.x() - itext.leftSideBearing;
@@ -562,14 +656,21 @@ export class KonvaIText extends Konva.Shape {
       letterIndex++;
       leftI += itext.advanceArrTotal[i];
     }
+    return letterIndex;
+  };
 
-    if (canvasObj.input && canvasObj.input.parentElement && canvasObj.inputRemove) canvasObj.inputRemove();
+  /**
+   * Position and show the input for editing.
+   * @param {KonvaIText} itext
+   */
+  static addTextInput = (itext) => {
+    const letterIndex = KonvaIText.getCursorIndex(itext);
 
-    if (canvasObj.input) {
-      debugger;
-    }
+    if (ScribeCanvas.input && ScribeCanvas.input.parentElement && ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
 
-    canvasObj.input = document.createElement('span');
+    const inputElem = document.createElement('span');
+
+    ScribeCanvas.input = inputElem;
 
     const text = itext.charArr.join('');
 
@@ -593,46 +694,50 @@ export class KonvaIText extends Konva.Shape {
 
     const fontSizeHTMLSmallCaps = itext.fontSize * scale * 0.8;
 
-    canvasObj.input.style.position = 'absolute';
-    canvasObj.input.style.left = `${x1}px`;
-    canvasObj.input.style.top = `${y1 - metrics.fontBoundingBoxAscent + fontSizeHTML * 0.6}px`; // Align with baseline
-    canvasObj.input.style.fontSize = `${fontSizeHTML}px`;
-    canvasObj.input.style.fontFamily = itext.fontFaceName;
+    inputElem.style.position = 'absolute';
+    inputElem.style.left = `${x1}px`;
+    inputElem.style.top = `${y1 - metrics.fontBoundingBoxAscent + fontSizeHTML * 0.6}px`; // Align with baseline
+    inputElem.style.fontSize = `${fontSizeHTML}px`;
+    inputElem.style.fontFamily = itext.fontFaceName;
 
     // We cannot make the text uppercase in the input field, as this would result in the text being saved as uppercase.
     // Additionally, while there is a small-caps CSS property, it does not allow for customizing the size of the small caps.
     // Therefore, we handle small caps by making all text print as uppercase using the `text-transform` CSS property,
     // and then wrapping each letter in a span with a smaller font size.
     if (itext.fontStyle === 'smallCaps') {
-      canvasObj.input.style.textTransform = 'uppercase';
-      canvasObj.input.innerHTML = text.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
+      inputElem.style.textTransform = 'uppercase';
+      inputElem.innerHTML = text.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
     } else {
-      canvasObj.input.textContent = text;
+      inputElem.textContent = text;
     }
 
-    canvasObj.input.style.letterSpacing = `${charSpacingHTML}px`;
-    canvasObj.input.style.color = itext.fill();
-    canvasObj.input.style.opacity = String(itext.opacity());
-    canvasObj.input.style.fontStyle = itext.fontFaceStyle;
-    canvasObj.input.style.fontWeight = itext.fontFaceWeight;
+    inputElem.style.letterSpacing = `${charSpacingHTML}px`;
+    inputElem.style.color = itext.fill();
+    inputElem.style.opacity = String(itext.opacity());
+    inputElem.style.fontStyle = itext.fontFaceStyle;
+    inputElem.style.fontWeight = itext.fontFaceWeight;
     // Line height must match the height of the font bounding box for the font metrics to be accurate.
-    canvasObj.input.style.lineHeight = `${metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent}px`;
-    canvasObj.input.contentEditable = 'true';
+    inputElem.style.lineHeight = `${metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent}px`;
+    inputElem.contentEditable = 'true';
 
     // Prevent line breaks and hide overflow
-    canvasObj.input.style.whiteSpace = 'nowrap';
-    // canvasObj.input.style.overflow = 'hidden';
+    inputElem.style.whiteSpace = 'nowrap';
 
     if (itext.fontStyle === 'smallCaps') {
-      canvasObj.input.oninput = () => {
-        const index = getCursorIndex();
-        canvasObj.input.innerHTML = canvasObj.input.textContent.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
+      inputElem.oninput = () => {
+        const index = getInputCursorIndex();
+        const textContent = inputElem.textContent || '';
+        inputElem.innerHTML = textContent.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
         setCursor(index);
       };
     }
 
-    canvasObj.inputRemove = () => {
-      const textNew = ocr.replaceLigatures(canvasObj.input?.textContent || '').trim();
+    ScribeCanvas.inputRemove = () => {
+      if (!ScribeCanvas.input) return;
+
+      let textNew = ocr.replaceLigatures(ScribeCanvas.input.textContent || '').trim();
+
+      if (elem.edit.smartQuotes.value) textNew = replaceSmartQuotes(textNew);
 
       // Words are not allowed to be empty
       if (textNew) {
@@ -640,45 +745,53 @@ export class KonvaIText extends Konva.Shape {
         itext.editTextCallback(itext);
       }
       updateWordCanvas(itext);
-      canvasObj.input.remove();
-      canvasObj.input = null;
-      canvasObj.inputRemove = null;
+      ScribeCanvas.input.remove();
+      ScribeCanvas.input = null;
+      ScribeCanvas.inputRemove = null;
     };
 
     // Update the Konva Text node after editing
-    canvasObj.input.addEventListener('blur', () => (canvasObj.inputRemove));
+    ScribeCanvas.input.addEventListener('blur', () => (ScribeCanvas.inputRemove));
 
-    document.body.appendChild(canvasObj.input);
+    document.body.appendChild(ScribeCanvas.input);
 
-    canvasObj.input.focus();
+    ScribeCanvas.input.focus();
 
     /**
      * Returns the cursor position relative to the start of the text box, including all text nodes.
      * @returns {number}
      */
-    const getCursorIndex = () => {
+    const getInputCursorIndex = () => {
       const sel = /** @type {Selection} */ (window.getSelection());
-      let nodePrev = sel.anchorNode?.parentElement.className === 'input-sub' ? sel.anchorNode?.parentElement.previousSibling : sel.anchorNode?.previousSibling;
+      // The achor node may be either (1) a text element or (2) a `<span>` element that contains a text element.
+      const anchor = /** @type {HTMLElement} */ (sel.anchorNode);
+      let nodePrev = anchor?.parentElement?.className === 'input-sub' ? anchor?.parentElement.previousElementSibling : anchor?.previousElementSibling;
       let nodePrevText = nodePrev?.nodeType === 3 ? nodePrev : nodePrev?.childNodes[0];
 
       let index = sel.anchorOffset;
-      while (nodePrevText) {
-        index += nodePrev.textContent?.length || 0;
-        nodePrev = nodePrev.className === 'input-sub' ? nodePrev.previousSibling : nodePrev?.previousSibling;
+      while (nodePrevText && nodePrev) {
+        index += nodePrevText.textContent?.length || 0;
+        nodePrev = nodePrev.className === 'input-sub' ? nodePrev.previousElementSibling : nodePrev?.previousElementSibling;
         nodePrevText = nodePrev?.nodeType === 3 ? nodePrev : nodePrev?.childNodes[0];
       }
-      // console.log(`Cursor index: ${index} (from ${sel.anchorOffset})`);
       return index;
     };
 
+    /**
+     * Set cursor position to `index` within the input.
+     * @param {number} index
+     */
     const setCursor = (index) => {
-    // Set the cursor to the correct position
+      if (!ScribeCanvas.input) {
+        console.error('Input element not found');
+        return;
+      }
       const range = document.createRange();
       const sel = /** @type {Selection} */ (window.getSelection());
 
       let letterI = 0;
-      for (let i = 0; i < canvasObj.input.childNodes.length; i++) {
-        const node = canvasObj.input.childNodes[i];
+      for (let i = 0; i < ScribeCanvas.input.childNodes.length; i++) {
+        const node = ScribeCanvas.input.childNodes[i];
         const nodeLen = node.textContent?.length || 0;
         if (letterI + nodeLen >= index) {
           const textNode = node.nodeType === 3 ? node : node.childNodes[0];
@@ -764,42 +877,41 @@ export class KonvaOcrWord extends KonvaIText {
   }
 
   /**
-   * Update the UI to reflect the properties of the word(s) in `canvasObj.selectedWordArr`.
-   * This should be called when any word is selected, after adding them to `canvasObj.selectedWordArr`.
+   * Update the UI to reflect the properties of selected words.
+   * This should be called when any word is selected, after adding them to the selection.
    */
   static updateUI = () => {
-    const wordFirst = canvasObj.selectedWordArr[0];
+    const wordFirst = ScribeCanvas.CanvasSelection.getKonvaWords()[0];
 
     if (!wordFirst) return;
 
-    const fontFamilySelectedArr = Array.from(new Set(canvasObj.selectedWordArr.map((x) => (x.fontFamilyLookup))));
-    const fontSizeSelectedArr = Array.from(new Set(canvasObj.selectedWordArr.map((x) => (x.fontSize))));
+    const { fontFamilyArr, fontSizeArr } = ScribeCanvas.CanvasSelection.getWordProperties();
 
-    if (fontFamilySelectedArr.length === 1) {
-      wordFontElem.value = String(wordFirst.fontFamilyLookup);
+    if (fontFamilyArr.length === 1) {
+      elem.edit.wordFont.value = String(wordFirst.fontFamilyLookup);
     } else {
-      wordFontElem.value = '';
+      elem.edit.wordFont.value = '';
     }
 
-    if (fontSizeSelectedArr.length === 1) {
-      fontSizeElem.value = String(wordFirst.fontSize);
+    if (fontSizeArr.length === 1) {
+      elem.edit.fontSize.value = String(wordFirst.fontSize);
     } else {
-      fontSizeElem.value = '';
+      elem.edit.fontSize.value = '';
     }
 
-    if (wordFirst.word.sup !== styleSuperElem.classList.contains('active')) {
+    if (wordFirst.word.sup !== elem.edit.styleSuper.classList.contains('active')) {
       styleSuperButton.toggle();
     }
     const italic = wordFirst.fontStyle === 'italic';
-    if (italic !== styleItalicElem.classList.contains('active')) {
+    if (italic !== elem.edit.styleItalic.classList.contains('active')) {
       styleItalicButton.toggle();
     }
     const bold = wordFirst.fontStyle === 'bold';
-    if (bold !== styleBoldElem.classList.contains('active')) {
+    if (bold !== elem.edit.styleBold.classList.contains('active')) {
       styleBoldButton.toggle();
     }
     const smallCaps = wordFirst.fontStyle === 'smallCaps';
-    if (smallCaps !== styleSmallCapsElem.classList.contains('active')) {
+    if (smallCaps !== elem.edit.styleSmallCaps.classList.contains('active')) {
       styleSmallCapsButton.toggle();
     }
   };
@@ -813,621 +925,12 @@ export class KonvaOcrWord extends KonvaIText {
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
     });
-    canvasObj.controlArr.push(trans);
+    ScribeCanvas._controlArr.push(trans);
     layerText.add(trans);
 
     trans.nodes([itext]);
   };
 }
-
-const trans = new Konva.Transformer({
-  enabledAnchors: ['middle-left', 'middle-right'],
-  rotateEnabled: false,
-});
-layerText.add(trans);
-
-/**
- *
- * @param {Object} box
- * @param {number} box.width
- * @param {number} box.height
- * @param {number} box.x
- * @param {number} box.y
- */
-function selectWords(box) {
-  const shapes = getCanvasWords();
-
-  const existingSelectedWordsId = canvasObj.selectedWordArr.map((x) => x.word.id);
-  const newSelectedWords = shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()) && !existingSelectedWordsId.includes(shape.word.id));
-
-  canvasObj.selectedWordArr.push(...newSelectedWords);
-
-  if (canvasObj.selectedWordArr.length > 1) {
-    canvasObj.selectedWordArr.forEach((shape) => (shape.select()));
-  } else if (canvasObj.selectedWordArr.length === 1) {
-    KonvaOcrWord.addControls(canvasObj.selectedWordArr[0]);
-    KonvaOcrWord.updateUI();
-  }
-}
-
-let clearSelectionStart = false;
-
-stage.on('mousedown touchstart', (e) => {
-  hideContextMenu();
-
-  // Left click only
-  if (e.evt.button !== 0) return;
-
-  clearSelectionStart = e.target instanceof Konva.Stage || e.target instanceof Konva.Image;
-
-  if (canvasObj.isTouchScreen && canvasObj.mode === 'select') return;
-
-  // Move selection rectangle to top.
-  selectingRectangle.zIndex(layerText.children.length - 1);
-
-  e.evt.preventDefault();
-  const startCoords = layerText.getRelativePointerPosition() || { x: 0, y: 0 };
-  canvasObj.bbox.left = startCoords.x;
-  canvasObj.bbox.top = startCoords.y;
-  canvasObj.bbox.right = startCoords.x;
-  canvasObj.bbox.bottom = startCoords.y;
-
-  selectingRectangle.width(0);
-  selectingRectangle.height(0);
-  canvasObj.selecting = true;
-});
-
-stage.on('mousemove touchmove', (e) => {
-  // do nothing if we didn't start selection
-  if (!canvasObj.selecting) {
-    return;
-  }
-  e.evt.preventDefault();
-  const endCoords = layerText.getRelativePointerPosition();
-  if (!endCoords) return;
-
-  canvasObj.bbox.right = endCoords.x;
-  canvasObj.bbox.bottom = endCoords.y;
-
-  selectingRectangle.setAttrs({
-    visible: true,
-    x: Math.min(canvasObj.bbox.left, canvasObj.bbox.right),
-    y: Math.min(canvasObj.bbox.top, canvasObj.bbox.bottom),
-    width: Math.abs(canvasObj.bbox.right - canvasObj.bbox.left),
-    height: Math.abs(canvasObj.bbox.bottom - canvasObj.bbox.top),
-  });
-
-  layerText.batchDraw();
-});
-
-stage.on('mouseup touchend', (event) => {
-  // For dragging layout boxes, other events are needed to stop the drag.
-  if (!globalThis.layoutMode) {
-    event.evt.preventDefault();
-    event.evt.stopPropagation();
-  }
-
-  // Delete any current selections if either (1) this is a new selection or (2) nothing is being clicked.
-  // Clicks must pass this check on both start and end.
-  // This prevents accidentally clearing a selection when the user is trying to highlight specific letters, but the mouse up happens over another word.
-  if (clearSelectionStart && (canvasObj.selecting || event.target instanceof Konva.Stage || event.target instanceof Konva.Image)) destroyControls();
-
-  canvasObj.selecting = false;
-
-  // Return early if this was a drag or pinch rather than a selection.
-  // `isDragging` will be true even for a touch event, so a minimum distance moved is required to differentiate between a click and a drag.
-  if (event.evt.button === 1 || (canvasObj.drag.isDragging && canvasObj.drag.dragDeltaTotal > 10) || canvasObj.drag.isPinching) {
-    stopDragPinch(event);
-    return;
-  }
-  // `stopDragPinch` runs regardless of whether this actually is a drag/pinch, since `isDragging` can be enabled for taps.
-  stopDragPinch(event);
-
-  // Exit early if the user could be attempting to merge multiple columns.
-  if (event.evt.button === 2) {
-    const ptr = stage.getPointerPosition();
-    if (!ptr) return;
-    const box = {
-      x: ptr.x, y: ptr.y, width: 1, height: 1,
-    };
-    const layoutBoxes = canvasObj.selectedDataColumnArr.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
-    if (layoutBoxes.length > 0) return;
-  }
-
-  // Handle the case where no rectangle is drawn (i.e. a click event), or the rectangle is is extremely small.
-  // Clicks are handled in the same function as rectangle selections as using separate events lead to issues when multiple events were triggered.
-  if (!selectingRectangle.visible() || (selectingRectangle.width() < 5 && selectingRectangle.height() < 5)) {
-    const ptr = stage.getPointerPosition();
-    if (!ptr) return;
-    const box = {
-      x: ptr.x, y: ptr.y, width: 1, height: 1,
-    };
-    if (canvasObj.mode === 'select' && !globalThis.layoutMode) {
-      destroyControls(!event.evt.ctrlKey);
-      selectWords(box);
-      KonvaOcrWord.updateUI();
-      layerText.batchDraw();
-    } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
-      destroyControls(!event.evt.ctrlKey);
-      selectLayoutBoxesArea(box);
-      KonvaLayout.updateUI();
-      layerOverlay.batchDraw();
-    }
-    return;
-  }
-
-  // update visibility in timeout, so we can check it in click event
-  selectingRectangle.visible(false);
-
-  if (canvasObj.mode === 'select' && !globalThis.layoutMode) {
-    destroyControls(!event.evt.ctrlKey);
-    const box = selectingRectangle.getClientRect();
-    selectWords(box);
-    KonvaOcrWord.updateUI();
-  } else if (canvasObj.mode === 'select' && globalThis.layoutMode) {
-    destroyControls(!event.evt.ctrlKey);
-    const box = selectingRectangle.getClientRect();
-    selectLayoutBoxesArea(box);
-    KonvaLayout.updateUI();
-  } else if (canvasObj.mode === 'addWord') {
-    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    addWordManual(box);
-  } else if (canvasObj.mode === 'recognizeWord') {
-    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    recognizeArea(box, true, false);
-  } else if (canvasObj.mode === 'recognizeArea') {
-    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    recognizeArea(box, false, false);
-  } else if (canvasObj.mode === 'printCoords') {
-    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    recognizeArea(box, false, true);
-  } else if (canvasObj.mode === 'addLayoutBoxOrder') {
-    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    addLayoutBoxClick(box, 'order');
-  } else if (canvasObj.mode === 'addLayoutBoxExclude') {
-    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    addLayoutBoxClick(box, 'exclude');
-  } else if (canvasObj.mode === 'addLayoutBoxDataTable') {
-    const box = selectingRectangle.getClientRect({ relativeTo: layerText });
-    addLayoutDataTableClick(box);
-  }
-
-  canvasObj.mode = 'select';
-
-  layerText.batchDraw();
-});
-
-/**
- * Check if the wheel event was from a track pad by applying a series of heuristics.
- * This function should be generally reliable, although it is inherently heuristic-based,
- * so should be refined over time as more edge cases are encountered.
- * @param {WheelEvent} event
- */
-const checkTrackPad = (event) => {
-  // DeltaY is generally 100 or 120 for mice.
-  if ([100, 120].includes(event.deltaY)) return false;
-  // DeltaY will be multiplied by the zoom level.
-  // While the user should not be zoomed in, this is accounted for here as a safeguard.
-  // The `window.devicePixelRatio` value is generally the zoom level.
-  // The known exceptions are:
-  // For high-density (e.g. Retina) displays, `window.devicePixelRatio` is 2, but the zoom level is 1.
-  // For Safari, this is bugged and `window.devicePixelRatio` does not scale with zooming.
-  // https://bugs.webkit.org/show_bug.cgi?id=124862
-  if ([100, 120].includes(Math.abs(Math.round(event.deltaY * window.devicePixelRatio * 1e5) / 1e5))) return false;
-
-  // If delta is an integer, it is likely from a mouse.
-  if (Math.round(event.deltaY) === event.deltaY) return false;
-
-  // If none of the above conditions were met, it is likely from a track pad.
-  return true;
-};
-
-// Function to handle wheel event
-/**
- * Handles the wheel event to scroll the layer vertically.
- * @param {WheelEvent} event - The wheel event from the user's mouse.
- */
-const handleWheel = (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-
-  if (event.ctrlKey) { // Zoom in or out
-    // Track pads report precise zoom values (many digits after the decimal) while mouses only move in fixed (integer) intervals.
-    const trackPadMode = checkTrackPad(event);
-
-    let delta = event.deltaY;
-
-    // If `deltaMode` is `1` (less common), units are in lines rather than pixels.
-    if (event.deltaMode === 1) delta *= 10;
-
-    // Zoom by a greater amount for track pads.
-    // Without this code, zooming would be extremely slow.
-    if (trackPadMode) {
-      delta *= 7;
-      // Cap at the equivalent of ~6 scrolls of a scroll wheel.
-      delta = Math.min(600, Math.max(-720, delta));
-    }
-
-    let scaleBy = 0.999 ** delta;
-    if (scaleBy > 1.1) scaleBy = 1.1;
-    if (scaleBy < 0.9) scaleBy = 0.9;
-
-    zoomAllLayers(scaleBy, stage.getPointerPosition());
-    destroyControls();
-  } else { // Scroll vertically
-    destroyControls();
-    panAllLayers({ deltaX: event.deltaX * -1, deltaY: event.deltaY * -1 });
-  }
-};
-
-/**
- *
- * @param {InstanceType<typeof Konva.Layer>} layer
- * @returns {{x: number, y: number}}
- */
-const getLayerCenter = (layer) => {
-  const layerWidth = layer.width();
-  const layerHeight = layer.height();
-
-  // Calculate the center point of the layer before any transformations
-  const centerPoint = {
-    x: layerWidth / 2,
-    y: layerHeight / 2,
-  };
-
-  // Get the absolute transformation matrix for the layer
-  const transform = layer.getAbsoluteTransform();
-
-  // Apply the transformation to the center point
-  const transformedCenter = transform.point(centerPoint);
-
-  return transformedCenter;
-};
-
-/**
- *
- * @param {InstanceType<typeof Konva.Layer>} layer
- * @param {number} scaleBy
- * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
- *    If `null` (default), the center of the layer is used.
- */
-const zoomLayer = (layer, scaleBy, center = null) => {
-  const oldScale = layer.scaleX();
-  center = center || getLayerCenter(layer);
-
-  const mousePointTo = {
-    x: (center.x - layer.x()) / oldScale,
-    y: (center.y - layer.y()) / oldScale,
-  };
-
-  const newScale = oldScale * scaleBy;
-
-  layer.scaleX(newScale);
-  layer.scaleY(newScale);
-
-  const newPos = {
-    x: center.x - mousePointTo.x * newScale,
-    y: center.y - mousePointTo.y * newScale,
-  };
-
-  layer.position(newPos);
-  layer.batchDraw();
-};
-
-/**
- *
- * @param {number} scaleBy
- * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
- *    If `null` (default), the center of the layer is used.
- */
-const zoomAllLayers = (scaleBy, center = null) => {
-  zoomLayer(layerText, scaleBy, center);
-  zoomLayer(layerBackground, scaleBy, center);
-  zoomLayer(layerOverlay, scaleBy, center);
-};
-
-/**
- *
- * @param {Object} coords
- * @param {number} [coords.deltaX=0]
- * @param {number} [coords.deltaY=0]
- */
-const panAllLayers = ({ deltaX = 0, deltaY = 0 }) => {
-  layerText.x(layerText.x() + deltaX);
-  layerText.y(layerText.y() + deltaY);
-  layerBackground.x(layerBackground.x() + deltaX);
-  layerBackground.y(layerBackground.y() + deltaY);
-  layerOverlay.x(layerOverlay.x() + deltaX);
-  layerOverlay.y(layerOverlay.y() + deltaY);
-
-  layerText.batchDraw();
-  layerBackground.batchDraw();
-  layerOverlay.batchDraw();
-};
-
-// Listen for wheel events on the stage
-stage.on('wheel', (event) => {
-  handleWheel(event.evt);
-});
-
-/**
- * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
- * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
- * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
- */
-
-/**
- * Initiates dragging if the middle mouse button is pressed.
- * @param {KonvaMouseEvent} event
- */
-const startDrag = (event) => {
-  canvasObj.drag.isDragging = true;
-  canvasObj.drag.lastX = event.evt.x;
-  canvasObj.drag.lastY = event.evt.y;
-  event.evt.preventDefault();
-};
-
-function getCenter(p1, p2) {
-  return {
-    x: (p1.x + p2.x) / 2,
-    y: (p1.y + p2.y) / 2,
-  };
-}
-
-function getDistance(p1, p2) {
-  return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
-}
-
-/**
- * Initiates dragging if the middle mouse button is pressed.
- * @param {KonvaTouchEvent} event
- */
-const startDragTouch = (event) => {
-  canvasObj.drag.isDragging = true;
-  canvasObj.drag.lastX = event.evt.touches[0].clientX;
-  canvasObj.drag.lastY = event.evt.touches[0].clientY;
-  event.evt.preventDefault();
-};
-
-/**
- * Updates the layer's position based on mouse movement.
- * @param {KonvaMouseEvent} event
- */
-const executeDrag = (event) => {
-  if (canvasObj.drag.isDragging) {
-    const deltaX = event.evt.x - canvasObj.drag.lastX;
-    const deltaY = event.evt.y - canvasObj.drag.lastY;
-
-    if (Math.round(deltaX) === 0 && Math.round(deltaY) === 0) return;
-
-    // This is an imprecise heuristic, so not bothering to calculate distance properly.
-    canvasObj.drag.dragDeltaTotal += Math.abs(deltaX);
-    canvasObj.drag.dragDeltaTotal += Math.abs(deltaY);
-
-    canvasObj.drag.lastX = event.evt.x;
-    canvasObj.drag.lastY = event.evt.y;
-
-    panAllLayers({ deltaX, deltaY });
-  }
-};
-
-/**
- * @param {KonvaTouchEvent} event
- */
-const executeDragTouch = (event) => {
-  if (canvasObj.drag.isDragging) {
-    const deltaX = event.evt.touches[0].clientX - canvasObj.drag.lastX;
-    const deltaY = event.evt.touches[0].clientY - canvasObj.drag.lastY;
-    canvasObj.drag.lastX = event.evt.touches[0].clientX;
-    canvasObj.drag.lastY = event.evt.touches[0].clientY;
-
-    panAllLayers({ deltaX, deltaY });
-  }
-};
-
-/**
- * @param {KonvaTouchEvent} event
- */
-const executePinchTouch = (event) => {
-  const touch1 = event.evt.touches[0];
-  const touch2 = event.evt.touches[1];
-  if (!touch1 || !touch2) return;
-  canvasObj.drag.isPinching = true;
-  const p1 = {
-    x: touch1.clientX,
-    y: touch1.clientY,
-  };
-  const p2 = {
-    x: touch2.clientX,
-    y: touch2.clientY,
-  };
-
-  const center = getCenter(p1, p2);
-  const dist = getDistance(p1, p2);
-
-  if (!canvasObj.drag.lastDist || !canvasObj.drag.lastCenter) {
-    canvasObj.drag.lastCenter = center;
-    canvasObj.drag.lastDist = dist;
-    return;
-  }
-
-  zoomAllLayers(dist / canvasObj.drag.lastDist, center);
-  canvasObj.drag.lastDist = dist;
-};
-
-/**
- * Stops dragging when the mouse button is released.
- * @param {KonvaMouseEvent|KonvaTouchEvent} event
- */
-const stopDragPinch = (event) => {
-  canvasObj.drag.isDragging = false;
-  canvasObj.drag.isPinching = false;
-  canvasObj.drag.dragDeltaTotal = 0;
-  canvasObj.drag.lastCenter = null;
-  canvasObj.drag.lastDist = null;
-};
-
-// Event listeners for mouse interactions
-stage.on('mousedown', (event) => {
-  if (event.evt.button === 1) { // Middle mouse button
-    startDrag(event);
-  }
-});
-stage.on('mousemove', executeDrag);
-
-stage.on('touchstart', (event) => {
-  if (canvasObj.mode === 'select') {
-    if (event.evt.touches[1]) {
-      executePinchTouch(event);
-    } else {
-      startDragTouch(event);
-    }
-  }
-});
-
-stage.on('touchmove', (event) => {
-  if (event.evt.touches[1]) {
-    executePinchTouch(event);
-  } else if (canvasObj.drag.isDragging) {
-    executeDragTouch(event);
-  }
-});
-
-/**
- * Adjusts the layer's scale based on key press combinations for zooming in and out.
- * @param {KeyboardEvent} event - The key down event.
- */
-const handleZoom = (event) => {
-  if (event.ctrlKey) {
-    if (['+', '='].includes(event.key)) {
-      zoomAllLayers(1.1, getLayerCenter(layerText));
-    } else if (['-', '_'].includes(event.key)) {
-      zoomAllLayers(0.9, getLayerCenter(layerText));
-    } else {
-      return; // Ignore other keys
-    }
-
-    layerText.batchDraw();
-    event.preventDefault(); // Prevent the default action to avoid browser zoom
-    event.stopPropagation();
-  }
-};
-
-document.addEventListener('keydown', handleZoom);
-
-zoomInElem.addEventListener('click', () => {
-  zoomAllLayers(1.1, getLayerCenter(layerText));
-});
-
-zoomOutElem.addEventListener('click', () => {
-  zoomAllLayers(0.9, getLayerCenter(layerText));
-});
-
-/**
- * @returns {Array<KonvaOcrWord>}
- */
-export const getCanvasWords = () => layerText.children.filter((obj) => obj instanceof KonvaOcrWord);
-
-/**
- * @returns {Array<KonvaLayout>}
- */
-export const getCanvasLayoutBoxes = () => layerOverlay.children.filter((obj) => obj instanceof KonvaLayout);
-
-export const destroyWords = () => {
-  // Any time words are destroyed, controls must be destroyed as well.
-  // If this does not happen controls will have references to destroyed words, which causes errors to be thrown.
-  destroyControls();
-
-  getCanvasWords().forEach((obj) => obj.destroy());
-
-  destroyLineOutlines();
-};
-
-const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
-
-let widthHeightInitial = true;
-/**
- *
- * @param {dims} imgDims - Dimensions of image
- */
-export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false) => {
-  const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
-
-  // Re-set width/height, in case the size of the window changed since originally set.
-  stage.height(totalHeight);
-  stage.width(document.documentElement.clientWidth);
-
-  // The first time this function is run, the canvas is centered and zoomed to fit the image.
-  // After that, whatever the user does with the canvas is preserved.
-  if (widthHeightInitial) {
-    widthHeightInitial = false;
-    const interfaceHeight = 100;
-    const bottomMarginHeight = 50;
-    const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
-
-    const zoom = targetHeight / imgDims.height;
-
-    layerText.scaleX(zoom);
-    layerText.scaleY(zoom);
-    layerBackground.scaleX(zoom);
-    layerBackground.scaleY(zoom);
-    layerOverlay.scaleX(zoom);
-    layerOverlay.scaleY(zoom);
-
-    layerText.x(((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2));
-    layerText.y(interfaceHeight);
-    layerBackground.x(((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2));
-    layerBackground.y(interfaceHeight);
-    layerOverlay.x(((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2));
-    layerOverlay.y(interfaceHeight);
-  } else {
-    const left = layerText.x();
-    const top = layerText.y();
-    const scale = layerText.scaleX();
-    const stageWidth = stage.width();
-    const stageHeight = stage.height();
-
-    // Nudge the document into the viewport, using the lesser of:
-    // (1) the shift required to put 50% of the document into view, or
-    // (2) the shift required to fill 50% of the viewport.
-    // Both conditions are necessary for this to work as expected at all zoom levels.
-    if (left < imgDims.width * scale * -0.5
-    && left < (stageWidth / 2 - (imgDims.width * scale))) {
-      const newX = Math.min(imgDims.width * scale * -0.5, stageWidth / 2 - (imgDims.width * scale));
-      layerText.x(newX);
-      layerBackground.x(newX);
-      layerOverlay.x(newX);
-    } else if (left > stageWidth - (imgDims.width * scale * 0.5)
-    && left > stageWidth / 2) {
-      const newX = Math.max(stageWidth - (imgDims.width * scale * 0.5), stageWidth / 2);
-      layerText.x(newX);
-      layerBackground.x(newX);
-      layerOverlay.x(newX);
-    }
-
-    if (top < imgDims.height * scale * -0.5
-      && top < (stageHeight / 2 - (imgDims.height * scale))) {
-      const newY = Math.min(imgDims.height * scale * -0.5, stageHeight / 2 - (imgDims.height * scale));
-      layerText.y(newY);
-      layerBackground.y(newY);
-      layerOverlay.y(newY);
-    } else if (top > stageHeight - (imgDims.height * scale * 0.5)
-      && top > stageHeight / 2) {
-      const newY = Math.max(stageHeight - (imgDims.height * scale * 0.5), stageHeight / 2);
-      layerText.y(newY);
-      layerBackground.y(newY);
-      layerOverlay.y(newY);
-    }
-  }
-
-  if (enableConflictsViewer) {
-    const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
-
-    debugCanvasParentDivElem.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll;z-index:10`);
-  } else {
-    showHideElem(debugCanvasParentDivElem, false);
-  }
-};
 
 /**
  *
@@ -1439,7 +942,7 @@ export function renderPage(page) {
   const angle = pageMetricsArr[cp.n].angle || 0;
 
   // Layout mode features assume that auto-rotate is enabled.
-  const enableRotation = (autoRotateCheckboxElem.checked || globalThis.layoutMode) && Math.abs(angle ?? 0) > 0.05;
+  const enableRotation = (elem.view.autoRotateCheckbox.checked || globalThis.layoutMode) && Math.abs(angle ?? 0) > 0.05;
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
@@ -1449,7 +952,7 @@ export function renderPage(page) {
 
     const angleAdjLine = enableRotation ? ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
 
-    if (outlineLinesElem.checked) {
+    if (elem.view.outlineLines.checked) {
       const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
       const height1 = linebox.bottom - linebox.top - heightAdj;
       const height2 = lineObj.words[0] ? lineObj.words[0].bbox.bottom - lineObj.words[0].bbox.top : 0;
@@ -1466,7 +969,7 @@ export function renderPage(page) {
         draggable: false,
       });
 
-      canvasObj.lineOutlineArr.push(lineRect);
+      ScribeCanvas._lineOutlineArr.push(lineRect);
 
       layerText.add(lineRect);
     }
@@ -1478,11 +981,11 @@ export function renderPage(page) {
 
       const wordDropCap = wordObj.dropcap;
 
-      const confThreshHigh = confThreshHighElem.value !== '' ? parseInt(confThreshHighElem.value) : 85;
+      const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
 
-      const displayMode = displayModeElem.value;
+      const displayMode = elem.view.displayMode.value;
 
-      const outlineWord = outlineWordsElem.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
+      const outlineWord = elem.view.outlineWords.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
 
       const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
@@ -1508,8 +1011,7 @@ export function renderPage(page) {
         fillBox: matchIdArr.includes(wordObj.id),
       });
 
-      // Add the text node to the given layer
-      layerText.add(wordCanvas);
+      ScribeCanvas.addWord(wordCanvas);
     }
   }
 
@@ -1517,5 +1019,5 @@ export function renderPage(page) {
 }
 
 export {
-  stage, layerText, layerBackground, layerOverlay,
+  layerBackground, layerOverlay, layerText, stage,
 };

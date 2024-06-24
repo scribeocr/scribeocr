@@ -1,11 +1,11 @@
 // Disable linter rule.  Many async functions in this files draw on the canvas (a side effect) so need to be run one at a time.
 /* eslint-disable no-await-in-loop */
 
-import { getRandomAlphanum } from '../miscUtils.js';
 import ocr from '../objects/ocrObjects.js';
-import { calcLineFontSize } from '../fontUtils.js';
-import { getImageBitmap } from '../imageUtils.js';
-import { drawWordRender, drawWordActual } from './renderWordCanvas.js';
+import { calcLineFontSize } from '../utils/fontUtils.js';
+import { getImageBitmap } from '../utils/imageUtils.js';
+import { getRandomAlphanum } from '../utils/miscUtils.js';
+import { drawWordActual, drawWordRender } from './renderWordCanvas.js';
 
 import { fontAll } from '../containers/fontContainer.js';
 // import { CompDebug } from '../objects/imageObjects.js';

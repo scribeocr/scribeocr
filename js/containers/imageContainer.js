@@ -6,15 +6,17 @@ import { initMuPDFWorker } from '../../mupdf/mupdf-async.js';
 
 import Tesseract from '../../tess/tesseract.esm.min.js';
 
-import { getPngDimensions, getJpegDimensions, getImageBitmap } from '../imageUtils.js';
+import { getImageBitmap, getJpegDimensions, getPngDimensions } from '../utils/imageUtils.js';
 
-import { pageMetricsArr } from './miscContainer.js';
-import {
-  FontContainerFont, loadOpentype, fontAll,
-} from './fontContainer.js';
 import { setUploadFontsWorker } from '../fontContainerMain.js';
+import {
+  FontContainerFont,
+  fontAll,
+  loadOpentype,
+} from './fontContainer.js';
+import { pageMetricsArr } from './miscContainer.js';
 
-import { determineSansSerif } from '../miscUtils.js';
+import { determineSansSerif } from '../utils/miscUtils.js';
 
 function range(min, max) {
   const result = [];
@@ -424,14 +426,16 @@ class ImageCache {
     this.#cleanBitmapCache(curr);
 
     for (let i = 0; i <= this.cacheRenderPages; i++) {
-      if (curr - i >= 0) {
+      // Check if the image exists in `this.native` before attempting to render it (not just that it should exist).
+      // When importing files, this function may be read while `this.native` is still being populated.
+      if (curr - i >= 0 && this.native[curr - i]) {
         if (binary) {
           resArr.push(this.getBinaryBitmap(curr - i));
         } else {
           resArr.push(this.getNativeBitmap(curr - i));
         }
       }
-      if (curr + i < this.pageCount) {
+      if (curr + i < this.pageCount && this.native[curr + i]) {
         if (binary) {
           resArr.push(this.getBinaryBitmap(curr + i));
         } else {

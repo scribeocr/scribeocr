@@ -2,6 +2,18 @@
 // Various utility functions used in other files.
 
 /**
+ *
+ * @param {Array<bbox>} bboxArr
+ * @returns
+ */
+export const calcBboxUnion = (bboxArr) => ({
+  left: Math.min(...bboxArr.map((x) => x.left)),
+  top: Math.min(...bboxArr.map((x) => x.top)),
+  right: Math.max(...bboxArr.map((x) => x.right)),
+  bottom: Math.max(...bboxArr.map((x) => x.bottom)),
+});
+
+/**
  * Generates a random integer.
  *
  * @param {number} min - The minimum value (inclusive).
@@ -144,7 +156,7 @@ export async function readOcrFile(file) {
  *                           or rejects with an error if reading or decompression fails.
  */
 async function readTextFileGz(file) {
-  const pako = await import('../lib/pako.esm.min.js');
+  const pako = await import('../../lib/pako.esm.min.js');
   return new Promise(async (resolve, reject) => {
     const zip1 = await file.arrayBuffer();
     const zip2 = await pako.inflate(zip1, { to: 'string' });
@@ -352,4 +364,13 @@ export const showHideElem = (elem, show = true) => {
   if (!show) styleNew += ';display:none;';
 
   elem?.setAttribute('style', styleNew);
+};
+
+export const replaceSmartQuotes = (text) => {
+  if (!/['"]/.test(text)) return text;
+  return text.replace(/(^|[-–—])'/, '$1‘')
+    .replace(/(^|[-–—])"/, '$1“')
+    .replace(/'(?=$|[-–—])/, '’')
+    .replace(/"(?=$|[-–—])/, '”')
+    .replace(/([a-z])'(?=[a-z]$)/i, '$1’');
 };
