@@ -136,6 +136,8 @@ export function renderText(hocrCurrent, minpage = 0, maxpage = -1, removeLineBre
             fontStyle = '<w:i/>';
           } else if (wordObj.style === 'smallCaps') {
             fontStyle = '<w:smallCaps/>';
+          } else if (wordObj.style === 'bold') {
+            fontStyle = '<w:b/>';
           }
 
           if (newLine || fontStyle !== fontStylePrev || (h === 0 && g === 0 && i === 0)) {

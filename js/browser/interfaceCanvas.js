@@ -870,9 +870,9 @@ export class KonvaOcrWord extends KonvaIText {
     }
 
     if (fontSizeArr.length === 1) {
-      elem.edit.wordFont.value = String(wordFirst.fontSize);
+      elem.edit.fontSize.value = String(wordFirst.fontSize);
     } else {
-      elem.edit.wordFont.value = '';
+      elem.edit.fontSize.value = '';
     }
 
     if (wordFirst.word.sup !== elem.edit.styleSuper.classList.contains('active')) {
