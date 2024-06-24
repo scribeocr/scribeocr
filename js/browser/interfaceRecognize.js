@@ -1,6 +1,5 @@
 /* eslint-disable import/no-cycle */
 
-import { Collapse } from '../../lib/bootstrap.esm.bundle.min.js';
 import {
   cp,
   initOCRVersion,
@@ -75,19 +74,6 @@ export function getLangText() {
   return langArr;
 }
 
-// This differs from hideProgress in that (1) the hide is animated rather than instant and (2) the collapse is hidden regardless
-// of whether loading is complete.
-function hideProgress2(id) {
-  const progressCollapse = document.getElementById(id);
-  if (progressCollapse.getAttribute('class') === 'collapse show') {
-    (new Collapse(progressCollapse)).hide();
-
-    // The collapsing animation needs to end before this can be hidden
-  } else if (progressCollapse.getAttribute('class') === 'collapsing') {
-    setTimeout(() => hideProgress2(id), 500);
-  }
-}
-
 export async function recognizeAllClick() {
   await globalThis.generalScheduler.ready;
   if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
@@ -119,7 +105,7 @@ export async function recognizeAllClick() {
     // If the progress bar finishes earlier, in addition to being misleading to users,
     // the automated browser tests wait until the progress bar fills up to conclude
     // the recognition step was successful.
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount + 1, 0, true);
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount + 1, 0);
     const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
@@ -134,7 +120,7 @@ export async function recognizeAllClick() {
     }
   } else if (oemMode === 'combined') {
     globalThis.loadCount = 0;
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount * 2 + 1, 0, true);
+    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount * 2 + 1, 0);
 
     const time2a = Date.now();
     await recognizeAllPagesBrowser(true, true, true);
@@ -291,8 +277,6 @@ export async function recognizeAllClick() {
   }
 
   globalThis.convertPageActiveProgress.increment();
-
-  hideProgress2('recognize-recognize-progress-collapse');
 
   renderPageQueue(cp.n);
 

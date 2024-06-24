@@ -539,7 +539,7 @@ pageNumElem.addEventListener('keyup', (event) => {
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
 elem.download.reflowCheckbox.addEventListener('click', () => {
   if (elem.download.reflowCheckbox.checked) {
-    elem.download.reflowCheckbox.disabled = false;
+    elem.download.pageBreaksCheckbox.disabled = false;
   } else {
     elem.download.pageBreaksCheckbox.disabled = true;
     elem.download.pageBreaksCheckbox.checked = true;
@@ -549,7 +549,7 @@ elem.download.reflowCheckbox.addEventListener('click', () => {
 // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
 elem.download.docxReflowCheckbox.addEventListener('click', () => {
   if (elem.download.docxReflowCheckbox.checked) {
-    elem.download.docxReflowCheckbox.disabled = false;
+    elem.download.docxPageBreaksCheckbox.disabled = false;
   } else {
     elem.download.docxPageBreaksCheckbox.disabled = true;
     elem.download.docxPageBreaksCheckbox.checked = true;
@@ -840,10 +840,9 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
  * @param {boolean} alwaysUpdateUI - Always update the UI every time the value increments.
  *    If this is default, the bar is only visually updated for the every 5 values (plus the first and last).
  *    This avoids stutters when the value is incremented quickly, so should be enabled when loading is expected to be quick.
- * @param {boolean} autoHide - Automatically hide loading bar when it reaches 100%
  * @returns
  */
-export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false, autoHide = false) {
+export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI = false) {
   const progressCollapse = document.getElementById(id);
 
   if (!progressCollapse) throw new Error(`Progress bar with ID ${id} not found.`);
@@ -871,10 +870,9 @@ export function initializeProgress(id, maxValue, initValue = 0, alwaysUpdateUI =
         this.elem.setAttribute('style', `width: ${Math.max(this.value / maxValue * 100, 1)}%`);
         await sleep(0);
       }
-      if (autoHide && this.value >= this.maxValue) {
-      // Wait for a second to hide.
-      // This is better visually, as the user has time to note that the load finished.
-      // Additionally, hiding sometimes fails entirely with no delay, if the previous animation has not yet finished.
+      // Automatically hide loading bar when it reaches 100%, after a short delay.
+      // In addition to the delay being better visually, if it does not exist, hiding sometimes fails entirely if the previous animation is still in progress.
+      if (this.value >= this.maxValue) {
         setTimeout(() => progressCollapseObj.hide(), 1000);
       }
     },
@@ -1167,7 +1165,7 @@ async function importOCRFilesSupp() {
   }
 
   globalThis.loadCount = 0;
-  globalThis.convertPageActiveProgress = initializeProgress('import-eval-progress-collapse', pageCountHOCR, 0, false, true);
+  globalThis.convertPageActiveProgress = initializeProgress('import-eval-progress-collapse', pageCountHOCR, 0, false);
 
   toggleEditButtons(false);
 
@@ -1320,7 +1318,7 @@ async function importFiles(curFiles) {
     progressMax = 1;
   }
 
-  globalThis.convertPageActiveProgress = initializeProgress('import-progress-collapse', progressMax, 0, false, true);
+  globalThis.convertPageActiveProgress = initializeProgress('import-progress-collapse', progressMax, 0, false);
 
   let pageCount;
   let pageCountImage;
@@ -1695,11 +1693,14 @@ export async function renderPageQueue(n) {
 
 let working = false;
 
-// Function for navigating UI to arbitrary page.  Invoked by all UI elements that change page.
+/**
+ * Render page `n` in the UI.
+ * @param {number} n
+ * @returns
+ */
 export async function displayPage(n) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered.
-  if (isNaN(n) || n < 0 || n > (globalThis.pageCount - 1) || working) {
-    console.log('Exiting from displayPage early.');
+  if (Number.isNaN(n) || n < 0 || n > (globalThis.pageCount - 1) || working) {
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
     pageNumElem.value = (cp.n + 1).toString();
     return;
