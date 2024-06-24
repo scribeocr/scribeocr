@@ -1,5 +1,5 @@
 import ocr from './objects/ocrObjects.js';
-import { getRandomAlphanum } from './miscUtils.js';
+import { getRandomAlphanum } from './utils/miscUtils.js';
 
 /**
  * Returns the proportion of boxA's area contained in boxB

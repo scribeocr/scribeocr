@@ -1,4 +1,4 @@
-import { calcBboxUnion } from '../miscUtils.js';
+import { calcBboxUnion } from '../utils/miscUtils.js';
 
 /**
  * @param {number} n

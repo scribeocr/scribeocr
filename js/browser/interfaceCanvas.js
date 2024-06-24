@@ -5,9 +5,10 @@ import Konva from '../../lib/konva/index.js';
 import { cp, search } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
-import { addLigatures, calcWordMetrics } from '../fontUtils.js';
 import { calcTableBbox } from '../objects/layoutObjects.js';
 import ocr from '../objects/ocrObjects.js';
+import { addLigatures, calcWordMetrics } from '../utils/fontUtils.js';
+import { replaceSmartQuotes } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
   KonvaDataColumn,
@@ -258,6 +259,16 @@ export class ScribeCanvas {
   static inputRemove = null;
 
   static selectingRectangle = selectingRectangle;
+
+  /** @type {?KonvaOcrWord} */
+  static contextMenuWord = null;
+
+  /**
+   * Contains the x and y coordinates of the last right-click event.
+   * This is required for "right click" functions that are position-dependent,
+   * as the cursor moves between the initial right click and selecting the option.
+   */
+  static contextMenuPointer = { x: 0, y: 0 };
 
   static selecting = false;
 
@@ -623,10 +634,12 @@ export class KonvaIText extends Konva.Shape {
   }
 
   /**
-   * Position and show the input for editing.
+   * Get the index of the letter that the cursor is closest to.
+   * This function should be used when selecting a letter to edit;
+   * when actively editing, `getInputCursorIndex` should be used instead.
    * @param {KonvaIText} itext
    */
-  static addTextInput = (itext) => {
+  static getCursorIndex = (itext) => {
     const pointerCoordsRel = layerText.getRelativePointerPosition();
     let letterIndex = 0;
     let leftI = itext.x() - itext.leftSideBearing;
@@ -643,6 +656,15 @@ export class KonvaIText extends Konva.Shape {
       letterIndex++;
       leftI += itext.advanceArrTotal[i];
     }
+    return letterIndex;
+  };
+
+  /**
+   * Position and show the input for editing.
+   * @param {KonvaIText} itext
+   */
+  static addTextInput = (itext) => {
+    const letterIndex = KonvaIText.getCursorIndex(itext);
 
     if (ScribeCanvas.input && ScribeCanvas.input.parentElement && ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
 
@@ -703,7 +725,7 @@ export class KonvaIText extends Konva.Shape {
 
     if (itext.fontStyle === 'smallCaps') {
       inputElem.oninput = () => {
-        const index = getCursorIndex();
+        const index = getInputCursorIndex();
         const textContent = inputElem.textContent || '';
         inputElem.innerHTML = textContent.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
         setCursor(index);
@@ -713,7 +735,9 @@ export class KonvaIText extends Konva.Shape {
     ScribeCanvas.inputRemove = () => {
       if (!ScribeCanvas.input) return;
 
-      const textNew = ocr.replaceLigatures(ScribeCanvas.input.textContent || '').trim();
+      let textNew = ocr.replaceLigatures(ScribeCanvas.input.textContent || '').trim();
+
+      if (elem.edit.smartQuotes.value) textNew = replaceSmartQuotes(textNew);
 
       // Words are not allowed to be empty
       if (textNew) {
@@ -737,7 +761,7 @@ export class KonvaIText extends Konva.Shape {
      * Returns the cursor position relative to the start of the text box, including all text nodes.
      * @returns {number}
      */
-    const getCursorIndex = () => {
+    const getInputCursorIndex = () => {
       const sel = /** @type {Selection} */ (window.getSelection());
       // The achor node may be either (1) a text element or (2) a `<span>` element that contains a text element.
       const anchor = /** @type {HTMLElement} */ (sel.anchorNode);

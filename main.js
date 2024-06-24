@@ -55,7 +55,7 @@ import {
   occurrences,
   replaceObjectProperties, showHideElem,
   sleep,
-} from './js/miscUtils.js';
+} from './js/utils/miscUtils.js';
 
 // Functions for various UI tabs
 import { getDisplayMode, selectDisplayMode, setWordColorOpacity } from './js/browser/interfaceView.js';

@@ -1,4 +1,4 @@
-import { calcBboxUnion, getRandomAlphanum } from '../miscUtils.js';
+import { calcBboxUnion, getRandomAlphanum } from '../utils/miscUtils.js';
 
 /**
  * Class representing a layout box.

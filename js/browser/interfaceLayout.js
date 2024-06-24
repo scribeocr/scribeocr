@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 import Konva from '../../lib/konva/index.js';
 
-import { getRandomAlphanum, showHideElem } from '../miscUtils.js';
+import { getRandomAlphanum, showHideElem } from '../utils/miscUtils.js';
 
 import { cp, displayPage } from '../../main.js';
 
@@ -24,7 +24,7 @@ import {
   layerOverlay, updateWordCanvas,
 } from './interfaceCanvas.js';
 
-import { extractSingleTableContent } from '../exportWriteTabular.js';
+import { extractSingleTableContent } from '../export/exportWriteTabular.js';
 import { elem } from './elems.js';
 
 const dataPreviewElem = /** @type {HTMLElement} */ (document.getElementById('dataPreview'));
@@ -1138,7 +1138,7 @@ export async function updateDataPreview() {
   }
   if (addPageNumberColumnMode) extraCols.push(String(cp.n + 1));
 
-  const { extractTableContent, createCells, extractSingleTableContent } = (await import('../exportWriteTabular.js'));
+  const { extractTableContent, createCells, extractSingleTableContent } = (await import('../export/exportWriteTabular.js'));
 
   const tableWordObj = extractTableContent(ocrAll.active[cp.n], layoutDataTableAll[cp.n]);
 

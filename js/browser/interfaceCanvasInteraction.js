@@ -1,13 +1,16 @@
 /* eslint-disable import/no-cycle */
 import { Konva } from '../../lib/konva/_FullInternals.js';
-import { cp } from '../../main.js';
+import { cp, renderPageQueue } from '../../main.js';
 import { layoutAll } from '../containers/miscContainer.js';
-import { showHideElem } from '../miscUtils.js';
+import { showHideElem } from '../utils/miscUtils.js';
+import { mergeOcrWords, splitOcrWord } from '../utils/ocrUtils.js';
 import {
-  KonvaOcrWord, ScribeCanvas, layerBackground, layerOverlay, layerText, stage,
+  KonvaOcrWord,
+  ScribeCanvas, layerBackground, layerOverlay, layerText, stage,
 } from './interfaceCanvas.js';
 import { addWordManual, recognizeArea } from './interfaceEdit.js';
 import {
+  KonvaDataColumn,
   KonvaLayout,
   addLayoutBoxClick,
   addLayoutDataTableClick,
@@ -20,11 +23,23 @@ const createContextMenuHTML = () => {
 
   const innerDiv = document.createElement('div');
 
-  const splitButton = document.createElement('button');
-  splitButton.id = 'contextMenuSplitColumnButton';
-  splitButton.textContent = 'Split Column';
-  splitButton.style.display = 'none';
-  splitButton.addEventListener('click', splitDataColumnClick);
+  const splitWordButton = document.createElement('button');
+  splitWordButton.id = 'contextMenuSplitWordButton';
+  splitWordButton.textContent = 'Split Word';
+  splitWordButton.style.display = 'none';
+  splitWordButton.addEventListener('click', splitWordClick);
+
+  const mergeWordsButton = document.createElement('button');
+  mergeWordsButton.id = 'contextMenuMergeWordsButton';
+  mergeWordsButton.textContent = 'Merge Words';
+  mergeWordsButton.style.display = 'none';
+  mergeWordsButton.addEventListener('click', mergeWordsClick);
+
+  const splitColumnButton = document.createElement('button');
+  splitColumnButton.id = 'contextMenuSplitColumnButton';
+  splitColumnButton.textContent = 'Split Column';
+  splitColumnButton.style.display = 'none';
+  splitColumnButton.addEventListener('click', splitDataColumnClick);
 
   const mergeButton = document.createElement('button');
   mergeButton.id = 'contextMenuMergeColumnsButton';
@@ -56,7 +71,9 @@ const createContextMenuHTML = () => {
   splitTableButton.style.display = 'none';
   splitTableButton.addEventListener('click', splitDataTableClick);
 
-  innerDiv.appendChild(splitButton);
+  innerDiv.appendChild(splitWordButton);
+  innerDiv.appendChild(mergeWordsButton);
+  innerDiv.appendChild(splitColumnButton);
   innerDiv.appendChild(mergeButton);
   innerDiv.appendChild(deleteLayoutButton);
   innerDiv.appendChild(deleteTableButton);
@@ -66,6 +83,52 @@ const createContextMenuHTML = () => {
   menuDiv.appendChild(innerDiv);
 
   return menuDiv;
+};
+
+/**
+ *
+ * @param {Array<KonvaOcrWord>} words
+ * @returns
+ */
+const checkWordsAdjacent = (words) => {
+  const sortedWords = words.slice().sort((a, b) => a.word.bbox.left - b.word.bbox.left);
+  const lineWords = words[0].word.line.words;
+  lineWords.sort((a, b) => a.bbox.left - b.bbox.left);
+
+  const firstIndex = lineWords.findIndex((x) => x.id === sortedWords[0].word.id);
+  const lastIndex = lineWords.findIndex((x) => x.id === sortedWords[sortedWords.length - 1].word.id);
+  return lastIndex - firstIndex === sortedWords.length - 1;
+};
+
+const splitWordClick = () => {
+  hideContextMenu();
+
+  const konvaWord = ScribeCanvas.contextMenuWord;
+
+  if (!konvaWord) return;
+
+  const splitIndex = KonvaOcrWord.getCursorIndex(konvaWord);
+  const { wordA, wordB } = splitOcrWord(konvaWord.word, splitIndex);
+
+  const wordIndex = konvaWord.word.line.words.findIndex((x) => x.id === konvaWord.word.id);
+
+  konvaWord.word.line.words.splice(wordIndex, 1, wordA, wordB);
+
+  renderPageQueue(cp.n);
+};
+
+const mergeWordsClick = () => {
+  hideContextMenu();
+
+  const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+  if (selectedWords.length < 2 || !checkWordsAdjacent(selectedWords)) return;
+  const newWord = mergeOcrWords(selectedWords.map((x) => x.word));
+  const lineWords = selectedWords[0].word.line.words;
+  lineWords.sort((a, b) => a.bbox.left - b.bbox.left);
+  const firstIndex = lineWords.findIndex((x) => x.id === selectedWords[0].word.id);
+  lineWords.splice(firstIndex, selectedWords.length, newWord);
+
+  renderPageQueue(cp.n);
 };
 
 const deleteLayoutDataTableClick = () => {
@@ -103,10 +166,10 @@ const mergeDataTablesClick = () => {
 
 const splitDataColumnClick = () => {
   hideContextMenu();
-  const ptr = layerOverlay.getRelativePointerPosition();
-  if (!ptr) return;
+  // const ptr = layerOverlay.getRelativePointerPosition();
+  // if (!ptr) return;
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
-  splitDataColumn(selectedColumns[0], ptr.x);
+  splitDataColumn(selectedColumns[0], ScribeCanvas.contextMenuPointer.x);
   ScribeCanvas.destroyControls();
 };
 
@@ -119,6 +182,8 @@ const splitDataTableClick = () => {
 const menuNode = createContextMenuHTML();
 document.body.appendChild(menuNode);
 
+const contextMenuSplitWordButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitWordButton'));
+const contextMenuMergeWordsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeWordsButton'));
 const contextMenuMergeColumnsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeColumnsButton'));
 const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
 const contextMenuDeleteLayoutBoxButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutBoxButton'));
@@ -127,6 +192,8 @@ const contextMenuMergeTablesButtonElem = /** @type {HTMLButtonElement} */(docume
 const contextMenuSplitTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitTableButton'));
 
 export const hideContextMenu = () => {
+  contextMenuMergeWordsButtonElem.style.display = 'none';
+  contextMenuSplitWordButtonElem.style.display = 'none';
   contextMenuMergeColumnsButtonElem.style.display = 'none';
   contextMenuSplitColumnButtonElem.style.display = 'none';
   contextMenuDeleteLayoutBoxButtonElem.style.display = 'none';
@@ -167,13 +234,34 @@ stage.on('contextmenu', (e) => {
   // prevent default behavior
 
   const pointer = stage.getPointerPosition();
+  const pointerRelative = layerOverlay.getRelativePointerPosition();
 
+  if (!pointer || !pointerRelative) return;
+
+  const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
   const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
 
-  if (e.target === stage || (selectedColumns.length === 0 && selectedRegions.length === 0 || !pointer)) {
+  if (e.target === stage || (selectedColumns.length === 0 && selectedRegions.length === 0 && selectedWords.length === 0)) {
     // if we are on empty place of the stage we will do nothing
     return;
+  }
+
+  ScribeCanvas.contextMenuPointer = pointerRelative;
+
+  let enableSplitWord = false;
+  let enableMergeWords = false;
+  if (!globalThis.layoutMode && e.target instanceof KonvaOcrWord) {
+    if (selectedWords.length < 2) {
+      const cursorIndex = KonvaOcrWord.getCursorIndex(e.target);
+      if (cursorIndex > 0 && cursorIndex < e.target.word.text.length) {
+        ScribeCanvas.contextMenuWord = e.target;
+        enableSplitWord = true;
+      }
+    } else {
+      const adjacentWords = checkWordsAdjacent(selectedWords);
+      if (adjacentWords) enableMergeWords = true;
+    }
   }
 
   const selectedTables = ScribeCanvas.CanvasSelection.getDataTables();
@@ -195,8 +283,14 @@ stage.on('contextmenu', (e) => {
     if (selectedColumns.length > 0 && selectedColumns.length === selectedColumns[0].konvaTable.columns.length) enableDeleteTable = true;
   } else if (selectedTables.length > 1 && checkDataTablesAdjacent(selectedTables)) enableMergeTables = true;
 
-  if (!(enableMergeColumns || enableSplit || enableDelete || enableDeleteTable || enableMergeTables || enableSplitTable)) return;
+  if (!(enableMergeColumns || enableSplit || enableDelete || enableDeleteTable || enableMergeTables || enableSplitTable || enableSplitWord || enableMergeWords)) return;
 
+  if (enableMergeWords) {
+    contextMenuMergeWordsButtonElem.style.display = 'initial';
+  }
+  if (enableSplitWord) {
+    contextMenuSplitWordButtonElem.style.display = 'initial';
+  }
   if (enableMergeColumns) {
     contextMenuMergeColumnsButtonElem.style.display = 'initial';
   }
@@ -330,16 +424,22 @@ stage.on('mouseup touchend', (event) => {
   // `stopDragPinch` runs regardless of whether this actually is a drag/pinch, since `isDragging` can be enabled for taps.
   stopDragPinch(event);
 
-  // Exit early if the user could be attempting to merge multiple columns.
+  // Exit early if the right mouse button was clicked on a selected column or word.
   if (event.evt.button === 2) {
-    const ptr = stage.getPointerPosition();
-    if (!ptr) return;
-    const box = {
-      x: ptr.x, y: ptr.y, width: 1, height: 1,
-    };
-    const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
-    const layoutBoxes = selectedColumns.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
-    if (layoutBoxes.length > 0) return;
+    const selectedColumnIds = ScribeCanvas.CanvasSelection.getKonvaDataColumns().map((x) => x.layoutBox.id);
+    const selectedWordIds = ScribeCanvas.CanvasSelection.getKonvaWords().map((x) => x.word.id);
+
+    if (event.target instanceof KonvaDataColumn && selectedColumnIds.includes(event.target.layoutBox.id)) return;
+    if (event.target instanceof KonvaOcrWord && selectedWordIds.includes(event.target.word.id)) return;
+
+    // const ptr = stage.getPointerPosition();
+    // if (!ptr) return;
+    // const box = {
+    //   x: ptr.x, y: ptr.y, width: 1, height: 1,
+    // };
+    // const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
+    // const layoutBoxes = selectedColumns.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
+    // if (layoutBoxes.length > 0) return;
   }
 
   // Handle the case where no rectangle is drawn (i.e. a click event), or the rectangle is is extremely small.

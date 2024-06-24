@@ -74,6 +74,8 @@ class edit {
   static editBaseline = /** @type {HTMLInputElement} */(document.getElementById('editBaseline'));
 
   static rangeBaseline = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
+
+  static smartQuotes = /** @type {HTMLInputElement} */(document.getElementById('smartQuotes'));
 }
 
 class layout {

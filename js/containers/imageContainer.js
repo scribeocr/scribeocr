@@ -6,7 +6,7 @@ import { initMuPDFWorker } from '../../mupdf/mupdf-async.js';
 
 import Tesseract from '../../tess/tesseract.esm.min.js';
 
-import { getImageBitmap, getJpegDimensions, getPngDimensions } from '../imageUtils.js';
+import { getImageBitmap, getJpegDimensions, getPngDimensions } from '../utils/imageUtils.js';
 
 import { setUploadFontsWorker } from '../fontContainerMain.js';
 import {
@@ -16,7 +16,7 @@ import {
 } from './fontContainer.js';
 import { pageMetricsArr } from './miscContainer.js';
 
-import { determineSansSerif } from '../miscUtils.js';
+import { determineSansSerif } from '../utils/miscUtils.js';
 
 function range(min, max) {
   const result = [];

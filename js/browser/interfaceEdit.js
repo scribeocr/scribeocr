@@ -12,10 +12,10 @@ import { fontAll } from '../containers/fontContainer.js';
 import { imageCache } from '../containers/imageContainer.js';
 import { debugImg, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 import coords from '../coordinates.js';
-import { getRandomAlphanum } from '../miscUtils.js';
 import { combineData } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
 import { recognizePage } from '../recognizeConvert.js';
+import { getRandomAlphanum } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
   KonvaOcrWord, ScribeCanvas,

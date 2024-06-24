@@ -1,5 +1,5 @@
 // import { updateDataProgress } from "../main.js";
-import { readOcrFile } from './miscUtils.js';
+import { readOcrFile } from './utils/miscUtils.js';
 
 /**
  * Import raw OCR data from files.

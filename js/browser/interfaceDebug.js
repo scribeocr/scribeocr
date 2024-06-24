@@ -6,10 +6,10 @@ import {
   fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
 } from '../containers/miscContainer.js';
 import { drawDebugImages } from '../debug.js';
-import { imageStrToBlob } from '../imageUtils.js';
-import { saveAs } from '../miscUtils.js';
 import { calcOverlap } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
+import { imageStrToBlob } from '../utils/imageUtils.js';
+import { saveAs } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
   ScribeCanvas,

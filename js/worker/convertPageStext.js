@@ -4,7 +4,7 @@ import {
   mean50,
   round6,
   unescapeXml,
-} from '../miscUtils.js';
+} from '../utils/miscUtils.js';
 
 import { LayoutDataTablePage } from '../objects/layoutObjects.js';
 

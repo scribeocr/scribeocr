@@ -7,16 +7,16 @@ import {
   layoutAll,
   ocrAll, pageMetricsArr,
 } from '../containers/miscContainer.js';
-import { renderHOCRBrowser } from '../exportRenderHOCRBrowser.js';
-import { renderText } from '../exportRenderText.js';
+import { renderHOCRBrowser } from '../export/exportRenderHOCRBrowser.js';
+import { renderText } from '../export/exportRenderText.js';
+import { reorderHOCR } from '../modifyOCR.js';
 import {
   saveAs,
   sleep,
-} from '../miscUtils.js';
-import { reorderHOCR } from '../modifyOCR.js';
+} from '../utils/miscUtils.js';
 import { getDisplayMode } from './interfaceView.js';
 
-import { hocrToPDF } from '../exportPDF.js';
+import { hocrToPDF } from '../export/exportPDF.js';
 import { elem } from './elems.js';
 
 const humanReadablePDFElem = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
@@ -367,14 +367,14 @@ export async function handleDownload() {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
     // Less common export formats are loaded dynamically to reduce initial load time.
-    const writeDocx = (await import('../exportWriteDocx.js')).writeDocx;
+    const writeDocx = (await import('../export/exportWriteDocx.js')).writeDocx;
     writeDocx(hocrDownload, minValue, maxValue);
     downloadProgress.increment();
   } else if (downloadType === 'xlsx') {
     const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
     await sleep(0);
     // Less common export formats are loaded dynamically to reduce initial load time.
-    const writeXlsx = (await import('../exportWriteTabular.js')).writeXlsx;
+    const writeXlsx = (await import('../export/exportWriteTabular.js')).writeXlsx;
     writeXlsx(hocrDownload, minValue, maxValue);
     downloadProgress.increment();
   }

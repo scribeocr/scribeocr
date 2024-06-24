@@ -8,7 +8,7 @@
 
 // Node.js case
 import opentype from '../../lib/opentype.module.min.js';
-import { determineSansSerif } from '../miscUtils.js';
+import { determineSansSerif } from '../utils/miscUtils.js';
 
 if (typeof process === 'object') {
   // @ts-ignore
