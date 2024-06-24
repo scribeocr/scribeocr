@@ -408,12 +408,20 @@ stage.on('mouseup touchend', (event) => {
     event.evt.stopPropagation();
   }
 
+  const editingWord = !!ScribeCanvas.input;
+
   // Delete any current selections if either (1) this is a new selection or (2) nothing is being clicked.
   // Clicks must pass this check on both start and end.
   // This prevents accidentally clearing a selection when the user is trying to highlight specific letters, but the mouse up happens over another word.
   if (clearSelectionStart && (ScribeCanvas.selecting || event.target instanceof Konva.Stage || event.target instanceof Konva.Image)) ScribeCanvas.destroyControls();
 
   ScribeCanvas.selecting = false;
+
+  // If a word is being edited, the only action allowed is clicking outside the word to deselect it.
+  if (editingWord) {
+    layerText.batchDraw();
+    return;
+  }
 
   // Return early if this was a drag or pinch rather than a selection.
   // `isDragging` will be true even for a touch event, so a minimum distance moved is required to differentiate between a click and a drag.
@@ -431,15 +439,6 @@ stage.on('mouseup touchend', (event) => {
 
     if (event.target instanceof KonvaDataColumn && selectedColumnIds.includes(event.target.layoutBox.id)) return;
     if (event.target instanceof KonvaOcrWord && selectedWordIds.includes(event.target.word.id)) return;
-
-    // const ptr = stage.getPointerPosition();
-    // if (!ptr) return;
-    // const box = {
-    //   x: ptr.x, y: ptr.y, width: 1, height: 1,
-    // };
-    // const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
-    // const layoutBoxes = selectedColumns.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
-    // if (layoutBoxes.length > 0) return;
   }
 
   // Handle the case where no rectangle is drawn (i.e. a click event), or the rectangle is is extremely small.
