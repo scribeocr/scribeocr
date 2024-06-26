@@ -1,6 +1,7 @@
 import ocr from '../objects/ocrObjects.js';
 
 import {
+  calcLang,
   mean50,
   round6,
   unescapeXml,
@@ -21,6 +22,9 @@ export async function convertPageStext({ ocrStr, n }) {
   const pageDims = { height: parseInt(pageDimsMatch[2]), width: parseInt(pageDimsMatch[1]) };
 
   const pageObj = new ocr.OcrPage(n, pageDims);
+
+  /** @type {Set<string>} */
+  const langSet = new Set();
 
   /**
      * @param {string} xmlLine
@@ -167,23 +171,55 @@ export async function convertPageStext({ ocrStr, n }) {
       const wordText = unescapeXml(text[i].join(''));
 
       if (wordText.trim() === '') continue;
+
+      const wordLang = calcLang(wordText);
+      langSet.add(wordLang);
+
+      const wordID = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
       const bboxesI = bboxes[i];
+
+      /** @type {Array<OcrChar>} */
+      const charObjArr = [];
+
+      for (let j = 0; j < text[i].length; j++) {
+        const letter = unescapeXml(text[i][j]);
+
+        const bbox = bboxesI[j];
+
+        // For Chinese, every "character" in the .hocr should be its own word.
+        // Tesseract LSTM already does this, however Tesseract Legacy combines entire lines into the same "word",
+        // which makes good alignment impossible.
+        if (wordLang === 'chi_sim') {
+          const wordObj = new ocr.OcrWord(lineObj, letter, bbox, `${wordID}_${j}`);
+          wordObj.conf = 100;
+          wordObj.lang = wordLang;
+          wordObj.visualCoords = false;
+
+          lineObj.words.push(wordObj);
+          lettersKept++;
+        } else {
+          const charObj = new ocr.OcrChar(letter, bbox);
+          charObjArr.push(charObj);
+        }
+      }
+
+      if (wordLang === 'chi_sim') continue;
 
       const bboxesILeft = Math.min(...bboxesI.map((x) => x.left));
       const bboxesIRight = Math.max(...bboxesI.map((x) => x.right));
       const bboxesITop = Math.min(...bboxesI.map((x) => x.top));
       const bboxesIBottom = Math.max(...bboxesI.map((x) => x.bottom));
 
-      const id = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
-
       const bbox = {
         left: bboxesILeft, top: bboxesITop, right: bboxesIRight, bottom: bboxesIBottom,
       };
 
-      const wordObj = new ocr.OcrWord(lineObj, wordText, bbox, id);
+      const wordObj = new ocr.OcrWord(lineObj, wordText, bbox, wordID);
       wordObj.size = fontSize;
 
-      wordObj.chars = bboxesI.map((x, ind) => new ocr.OcrChar(text[i][ind], x));
+      wordObj.lang = wordLang;
+
+      wordObj.chars = charObjArr;
 
       // In stext, the coordinates are based on font bounding boxes, not where pixels start/end.
       wordObj.visualCoords = false;
@@ -242,11 +278,6 @@ export async function convertPageStext({ ocrStr, n }) {
   const angleOut = Math.asin(angleRiseMedian) * (180 / Math.PI);
 
   pageObj.angle = angleOut;
-
-  // TODO: Get other languages working with stext.
-  /** @type {Set<string>} */
-  const langSet = new Set();
-  langSet.add('eng');
 
   return { pageObj, dataTables: new LayoutDataTablePage(), langSet };
 }

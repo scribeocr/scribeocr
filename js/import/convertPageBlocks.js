@@ -100,7 +100,7 @@ export async function convertPageBlocks({
                 left: symbol.bbox.x0, top: symbol.bbox.y0, right: symbol.bbox.x1, bottom: symbol.bbox.y1,
               };
 
-              const wordObj = new ocr.OcrWord(lineObj, symbol.text, symbolbox, `${id}_${j}`);
+              const wordObj = new ocr.OcrWord(lineObj, symbol.text, symbolbox, `${id}_${m}`);
               wordObj.conf = symbol.confidence;
               wordObj.lang = wordLang;
 

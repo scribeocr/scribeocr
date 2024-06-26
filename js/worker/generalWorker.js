@@ -2,16 +2,21 @@
 
 // import tess from "../../tess/tesseract.js/src/worker-script/browser/index.js";
 
-import { convertPageHocr } from './convertPageHocr.js';
-import { convertPageAbbyy } from './convertPageAbbyy.js';
-import { convertPageStext } from './convertPageStext.js';
-import { convertPageBlocks } from './convertPageBlocks.js';
+import { convertPageAbbyy } from '../import/convertPageAbbyy.js';
+import { convertPageBlocks } from '../import/convertPageBlocks.js';
+import { convertPageHocr } from '../import/convertPageHocr.js';
+import { convertPageStext } from '../import/convertPageStext.js';
 
-import { optimizeFont } from './optimizeFontModule.js';
-import { loadFontsFromSource, fontAll } from '../containers/fontContainer.js';
+import { fontAll, loadFontsFromSource } from '../containers/fontContainer.js';
 import {
-  evalPageFont, evalPage, evalWords, compareHOCR, nudgePageFontSize, nudgePageBaseline,
+  compareHOCR,
+  evalPage,
+  evalPageFont,
+  evalWords,
+  nudgePageBaseline,
+  nudgePageFontSize,
 } from './compareOCRModule.js';
+import { optimizeFont } from './optimizeFontModule.js';
 
 // import Tesseract from "../../tess/tesseract.esm.min.js";
 const browserMode = typeof process === 'undefined';

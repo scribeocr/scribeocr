@@ -89,6 +89,10 @@ export function sleep(ms) {
  * @return {String}
  */
 export function unescapeXml(string) {
+  // The prefix &#x indicates the character is encoded as hexidecimal.
+  const hex = string.match(/&#x([0-9a-f]+);/)?.[1];
+  if (hex) return String.fromCharCode(parseInt(hex, 16));
+
   return string.replace(/&amp;/, '&')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
@@ -96,33 +100,34 @@ export function unescapeXml(string) {
     .replace(/&gt;/g, '>')
     .replace(/&gt;/g, '>')
     .replace(/&#39;/g, "'")
-    .replace(/&#34;/g, '"')
-    .replace(/&#x2013;/g, '–')
-    .replace(/&#x2014;/g, '—')
-    .replace(/&#x8211;/g, '–')
-    .replace(/&#x201c;/g, '“')
-    .replace(/&#x201d;/g, '”')
-    .replace(/&#x2018;/g, '‘')
-    .replace(/&#x2019;/g, '’')
-    .replace(/&#xa7;/g, '§')
-    // Soft hyphen
-    .replace(/&#xad;/g, '-')
-    // Minus sign
-    .replace(/&#x2212;/g, '−')
-    .replace(/&#x2026;/g, '…')
+    .replace(/&#34;/g, '"');
+}
 
-    .replace(/&#xd7;/g, '×')
+// TODO: There may be duplicated approaches between `calcLang` and `getTextScript`.
+// Consider whether a unified approach can be taken across the stext and hocr parsers.
+/**
+ * Calculates the language of a string.
+ * The only return values are 'chi_sim' and 'eng', with 'chi_sim' being returned if any character is in the range of CJK Unified Ideographs.
+ * @param {string} str -
+ */
+export function calcLang(str) {
+  for (const char of str) {
+    const code = char.charCodeAt(0);
 
-    .replace(/&#xae;/g, '®')
-    .replace(/&#xa9;/g, '©')
+    if (code >= 0 && code <= 127) continue;
 
-    .replace(/&#x2022;/g, '•')
-    .replace(/&#xe9;/g, 'é')
+    if ((code >= 0x4E00 && code <= 0x9FFF) // CJK Unified Ideographs
+    || (code >= 0x3400 && code <= 0x4DBF) // CJK Unified Ideographs Extension A
+    || (code >= 0x20000 && code <= 0x2A6DF) // CJK Unified Ideographs Extension B
+    || (code >= 0x2A700 && code <= 0x2B73F) // CJK Unified Ideographs Extension C
+    || (code >= 0x2B740 && code <= 0x2B81F) // CJK Unified Ideographs Extension D
+    || (code >= 0x2B820 && code <= 0x2CEAF) // CJK Unified Ideographs Extension E
+    || (code >= 0xF900 && code <= 0xFAFF) // CJK Compatibility Ideographs
+    || (code >= 0x2F800 && code <= 0x2FA1F) // CJK Compatibility Ideographs Supplement
+    ) return ('chi_sim');
+  }
 
-    .replace(/&#xb6;/g, '¶')
-    .replace(/&#x2020;/g, '†')
-
-    .replace(/&#xa8;/g, '¨');
+  return 'eng';
 }
 
 // Reads OCR files, which may be compressed as .gz or uncompressed

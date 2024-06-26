@@ -529,7 +529,10 @@ export class KonvaIText extends Konva.Shape {
     let width = dynamicWidth ? advanceArrTotal.reduce((a, b) => a + b, 0) : word.bbox.right - word.bbox.left;
 
     // Subtract the side bearings from the width if they are not excluded from the `ocrWord` coordinates.
-    if (!dynamicWidth && !word.visualCoords) width -= (leftSideBearing + rightSideBearing);
+    if (!dynamicWidth && !word.visualCoords) {
+      width -= (leftSideBearing + rightSideBearing);
+      width = Math.max(width, 7);
+    }
 
     super({
       x,
@@ -544,6 +547,7 @@ export class KonvaIText extends Konva.Shape {
        * @param {InstanceType<typeof Konva.Context>} context
        * @param {KonvaIText} shape
        */
+      // @ts-ignore
       sceneFunc: (context, shape) => {
         context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize}px ${shape.fontFaceName}`;
         context.textBaseline = 'alphabetic';
@@ -589,7 +593,11 @@ export class KonvaIText extends Konva.Shape {
           context.fillRect(0, 0, shape.width(), shape.height());
         }
       },
-
+      /**
+       * @param {InstanceType<typeof Konva.Context>} context
+       * @param {KonvaIText} shape
+       */
+      // @ts-ignore
       hitFunc: (context, shape) => {
         context.beginPath();
         context.rect(0, 0, shape.width(), shape.height());

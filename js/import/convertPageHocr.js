@@ -190,6 +190,7 @@ export async function convertPageHocr({
         }
       }
 
+      /** @type {Array<OcrChar>} */
       const charObjArr = [];
 
       for (let j = 0; j < letterArr.length; j++) {

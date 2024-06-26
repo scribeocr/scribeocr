@@ -12,7 +12,7 @@ import {
   pageMetricsArr,
 } from '../containers/miscContainer.js';
 import ocr from '../objects/ocrObjects.js';
-import { calcLineFontSize } from '../utils/fontUtils.js';
+import { calcLineFontSize, calcWordMetrics } from '../utils/fontUtils.js';
 import {
   ScribeCanvas,
   layerBackground, layerOverlay,
@@ -53,6 +53,7 @@ const getCharMetrics = (char) => {
 // Expose functions in global object for debugging purposes.
 export const df = {
   calcLineFontSize,
+  calcWordMetrics,
   ScribeCanvas,
   fontAll,
   fontMetricsObj,
