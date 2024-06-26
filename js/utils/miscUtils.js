@@ -89,9 +89,7 @@ export function sleep(ms) {
  * @return {String}
  */
 export function unescapeXml(string) {
-  // The prefix &#x indicates the character is encoded as hexidecimal.
-  const hex = string.match(/&#x([0-9a-f]+);/)?.[1];
-  if (hex) return String.fromCharCode(parseInt(hex, 16));
+  const replaceFunc = (match, p1) => String.fromCharCode(parseInt(p1, 16));
 
   return string.replace(/&amp;/, '&')
     .replace(/&quot;/g, '"')
@@ -100,7 +98,9 @@ export function unescapeXml(string) {
     .replace(/&gt;/g, '>')
     .replace(/&gt;/g, '>')
     .replace(/&#39;/g, "'")
-    .replace(/&#34;/g, '"');
+    .replace(/&#34;/g, '"')
+    // The prefix &#x indicates the character is encoded as hexidecimal.
+    .replace(/&#x([0-9a-f]+);/g, replaceFunc);
 }
 
 // TODO: There may be duplicated approaches between `calcLang` and `getTextScript`.
