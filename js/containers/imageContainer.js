@@ -426,16 +426,14 @@ class ImageCache {
     this.#cleanBitmapCache(curr);
 
     for (let i = 0; i <= this.cacheRenderPages; i++) {
-      // Check if the image exists in `this.native` before attempting to render it (not just that it should exist).
-      // When importing files, this function may be read while `this.native` is still being populated.
-      if (curr - i >= 0 && this.native[curr - i]) {
+      if (curr - i >= 0) {
         if (binary) {
           resArr.push(this.getBinaryBitmap(curr - i));
         } else {
           resArr.push(this.getNativeBitmap(curr - i));
         }
       }
-      if (curr + i < this.pageCount && this.native[curr + i]) {
+      if (curr + i < this.pageCount) {
         if (binary) {
           resArr.push(this.getBinaryBitmap(curr + i));
         } else {

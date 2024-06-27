@@ -1485,11 +1485,25 @@ async function importFiles(curFiles) {
     // While this is not optimal for performance, images are required for comparison functions,
     // so switching to running async would require either (1) waiting for enough images to load before before continuing to the next step
     // or (2) switching imageAll["nativeSrcStr"], as a whole, to store promises that can be waited for.
-      const imgPromise = new Promise((resolve, reject) => {
+      imageCache.nativeSrc[i] = new Promise((resolve, reject) => {
         const reader = new FileReader();
 
-        reader.onloadend = () => {
-          resolve(reader.result);
+        // Using MIME sniffing might be slightly more accurate than using the file extension,
+        // however for now the file extension is used to ensure equivalent behavior between Node.js and browser versions.
+        const format = imageFilesAll[i].name.match(/jpe?g$/i) ? 'jpeg' : 'png';
+
+        reader.onloadend = async () => {
+          const imgWrapper = new ImageWrapper(i, reader.result, format, 'native', false, false);
+          const imageDims = await imageUtils.getDims(imgWrapper);
+          pageMetricsArr[i] = new PageMetrics(imageDims);
+          if (i === 0) displayPage(0);
+          globalThis.convertPageActiveProgress.increment();
+          resolve(imgWrapper);
+
+          if (!xmlModeImport && globalThis.convertPageActiveProgress.value === globalThis.convertPageActiveProgress.maxValue) {
+            elem.download.download.disabled = false;
+            globalThis.state.downloadReady = true;
+          }
         };
 
         reader.onerror = (error) => {
@@ -1498,30 +1512,6 @@ async function importFiles(curFiles) {
 
         reader.readAsDataURL(imageFilesAll[i]);
       });
-
-      const imgSrc = await imgPromise;
-
-      // Using MIME sniffing might be slightly more accurate than using the file extension,
-      // however for now the file extension is used to ensure equivalent behavior between Node.js and browser versions.
-      const format = imageFilesAll[i].name.match(/jpe?g$/i) ? 'jpeg' : 'png';
-
-      const imgWrapper = new ImageWrapper(i, imgSrc, format, 'native', false, false);
-
-      const imageDims = await imageUtils.getDims(imgWrapper);
-
-      imageCache.nativeSrc[i] = imgWrapper;
-
-      pageMetricsArr[i] = new PageMetrics(imageDims);
-      globalThis.convertPageActiveProgress.increment();
-
-      if (i === 0) displayPage(0);
-
-      // Enable downloads now for image imports if no HOCR data exists
-      // TODO: PDF downloads are currently broken when images but not OCR text exists
-      if (!xmlModeImport && globalThis.convertPageActiveProgress.value === globalThis.convertPageActiveProgress.maxValue) {
-        elem.download.download.disabled = false;
-        globalThis.state.downloadReady = true;
-      }
     }
   }
 
