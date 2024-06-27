@@ -223,7 +223,7 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
 
   // If there are no statistics to use for optimization, create "optimized" font by simply copying the raw font without modification.
   // This should only occur when `multiFontMode` is true, but a document contains no sans words or no serif words.
-  if (!fontMetricsObj[fontMetricsType]) {
+  if (!fontMetricsObj[fontMetricsType] || !fontMetricsObj[fontMetricsType][fontFamily.normal.style]) {
     const opentypeFontArr = await Promise.all([loadOpentype(scrNormal, null), loadOpentype(scrItalic, null), loadOpentype(scrBold, null)]);
     const normalOptFont = new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, scrNormal, true, opentypeFontArr[0]);
     const italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, scrItalic, true, opentypeFontArr[1]);
@@ -241,11 +241,18 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
     });
 
   const metricsItalic = fontMetricsObj[fontMetricsType][fontFamily.italic.style];
-  const italicOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style })
-    .then(async (x) => {
-      const font = await loadOpentype(x.fontData, x.kerningPairs);
-      return new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, x.fontData, true, font);
-    });
+  /** @type {FontContainerFont|Promise<FontContainerFont>} */
+  let italicOptFont;
+  if (metricsItalic) {
+    italicOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style })
+      .then(async (x) => {
+        const font = await loadOpentype(x.fontData, x.kerningPairs);
+        return new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, x.fontData, true, font);
+      });
+  } else {
+    const font = await loadOpentype(scrItalic, null);
+    italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, scrItalic, true, font);
+  }
 
   // Bold fonts are not optimized, as we currently have no accurate way to determine if characters are bold within OCR, so do not have bold metrics.
   const boldOptFont = loadOpentype(scrBold, null).then((opentypeFont) => new FontContainerFont(fontFamily.bold.family, fontFamily.bold.style, scrBold, true, opentypeFont));
