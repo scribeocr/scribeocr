@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "Node",
+        "target": "esnext",
+        "jsx": "react",
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        // Enabling "noImplicitAny" is annoying as it requires a lot of type annotations, however it appears to be required to avoid basic errors.
+        // Without this setting, `1[0]` would be allowed, but with it, it is not.
+        // "noImplicitAny": true,
+        "checkJs": true,
+        // "moduleDetection": "force",
+        "maxNodeModuleJsDepth": 20,
+        "allowSyntheticDefaultImports": true,
+    },
+    "exclude": [
+        "**/*.wasm.js",
+    ],
+}

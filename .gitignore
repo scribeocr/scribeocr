@@ -7,7 +7,6 @@ cypress/videos
 browserstack.json
 log
 results
-jsconfig.json
 **/screenshots
 /test-results/
 /playwright-report/
