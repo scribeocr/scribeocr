@@ -35,6 +35,8 @@ import { LayoutDataTablePage, LayoutPage } from '../js/objects/layoutObjects.js'
 
 import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 
+import { convertToCSV } from '../js/export/exportDebugCsv.js';
+
 const writeFile = util.promisify(fs.writeFile);
 
 globalThis.Worker = Worker;
@@ -133,6 +135,8 @@ globalThis.visInstructions = [];
 async function main(func, params) {
   const output = {};
 
+  const debugComp = false;
+
   // const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
   // if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
 
@@ -158,7 +162,9 @@ async function main(func, params) {
   }
 
   const backgroundArg = params.pdfFile;
+  const backgroundArgStem = backgroundArg ? path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '') : undefined;
   const outputDir = params.outputDir || '.';
+  let csvStr = '';
 
   if (outputDir) fs.mkdirSync(outputDir, { recursive: true });
 
@@ -392,6 +398,7 @@ async function main(func, params) {
         tessWorker,
         editConf: robustConfMode,
         debugLabel: debugMode ? 'abc' : undefined, // Setting any value for `debugLabel` causes the debugging images to be saved.
+        debugWordsOutput: debugComp,
       };
 
       const imgBinary = await imageCache.getBinary(i);
@@ -408,6 +415,18 @@ async function main(func, params) {
         pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
+
+      if (debugComp && res.debugWords) {
+        let csvStrI = convertToCSV(res.debugWords);
+
+        // Remove header row if this is not the first page.
+        if (i > 0) {
+          const firstNewlineIndex = csvStrI.indexOf('\n');
+          if (firstNewlineIndex !== -1) csvStrI = csvStrI.slice(firstNewlineIndex + 1);
+        }
+
+        csvStr += convertToCSV(res.debugWords);
+      }
 
       if (debugMode) compLogs.Combined[i] = res.debugLog;
 
@@ -482,6 +501,11 @@ async function main(func, params) {
     const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, `${outputSuffix}.pdf`)}`;
 
     await writeFile(outputPath, content);
+  }
+
+  if (debugComp) {
+    const outputPath = `${__dirname}/../../dev/debug/${backgroundArgStem}_debug.csv`;
+    fs.writeFileSync(outputPath, csvStr);
   }
 
   // Delete temp directory with fonts

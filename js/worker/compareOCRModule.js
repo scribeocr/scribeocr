@@ -481,6 +481,7 @@ async function penalizeWord(wordObjs) {
  * @param {boolean} [params.options.ignoreCap]
  * @param {number} [params.options.confThreshHigh]
  * @param {number} [params.options.confThreshMed]
+ * @param {boolean} [params.options.debugWordsOutput] - If `true`, an array of words with match status is returned. This is useful for determining what words is responsible for a test failure.
  */
 export async function compareHOCR({
   pageA, pageB, binaryImage, pageMetricsObj, options = {},
@@ -502,6 +503,7 @@ export async function compareHOCR({
   const ignoreCap = options?.ignoreCap === undefined ? false : options?.ignoreCap;
   const confThreshHigh = options?.confThreshHigh === undefined ? 85 : options?.confThreshHigh;
   const confThreshMed = options?.confThreshMed === undefined ? 75 : options?.confThreshMed;
+  const debugWordsOutput = options?.debugWordsOutput === undefined ? false : options?.debugWordsOutput;
 
   if (supplementComp && !(tessScheduler || tessWorker)) console.log('`supplementComp` enabled, but no scheduler was provided. This step will be skipped.');
 
@@ -527,6 +529,11 @@ export async function compareHOCR({
 
   let debugLog = '';
   const debugImg = [];
+
+  /**
+   * @type {Array<{id: string, text: string, match: boolean, conf: number}>|undefined}
+   */
+  let debugWords;
 
   if (debugLabel) debugLog += `Comparing page ${String(n)}\n`;
 
@@ -883,6 +890,13 @@ export async function compareHOCR({
     };
   }
 
+  if (debugWordsOutput) {
+    const wordsA = ocr.getPageWords(pageAInt);
+    debugWords = wordsA.map((x) => ({
+      id: x.id, text: x.text, match: hocrACorrect[x.id] || 0, conf: x.conf,
+    }));
+  }
+
   // Note: These metrics leave open the door for some fringe edge cases.
   // For example,
 
@@ -955,7 +969,7 @@ export async function compareHOCR({
   if (imageUpscaled) ocr.scalePage(pageAInt, 0.5);
 
   return {
-    page: pageAInt, metrics: metricsRet, debugLog, debugImg,
+    page: pageAInt, metrics: metricsRet, debugWords, debugLog, debugImg,
   };
 }
 
