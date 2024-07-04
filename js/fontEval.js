@@ -1,7 +1,7 @@
-import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js';
-import { optimizeFontContainerAll, fontAll } from './containers/fontContainer.js';
-import { fontMetricsObj, pageMetricsArr } from './containers/miscContainer.js';
+import { fontAll, optimizeFontContainerAll } from './containers/fontContainer.js';
 import { imageCache } from './containers/imageContainer.js';
+import { fontMetricsObj, pageMetricsArr } from './containers/miscContainer.js';
+import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js';
 
 /**
  *

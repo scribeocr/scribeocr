@@ -5,9 +5,12 @@ import { layoutAll } from '../containers/miscContainer.js';
 import { showHideElem } from '../utils/miscUtils.js';
 import { mergeOcrWords, splitOcrWord } from '../utils/ocrUtils.js';
 import {
-  KonvaOcrWord, cp,
+  KonvaOcrWord,
   ScribeCanvas,
-  layerBackground, calcControlStrokeWidth, layerOverlay, layerText, stage,
+  calcControlStrokeWidth,
+  cp,
+  layerBackground,
+  layerOverlay, layerText, stage,
 } from './interfaceCanvas.js';
 import { addWordManual, recognizeArea } from './interfaceEdit.js';
 import {

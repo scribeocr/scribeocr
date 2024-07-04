@@ -19,8 +19,9 @@ import {
 import ocr from '../objects/ocrObjects.js';
 
 import {
-  KonvaIText, ScribeCanvas, cp,
+  KonvaIText, ScribeCanvas,
   calcControlStrokeWidth,
+  cp,
   getWordFillOpacity,
   layerOverlay, updateWordCanvas,
 } from './interfaceCanvas.js';

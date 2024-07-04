@@ -14,8 +14,8 @@ import { loadChiSimFont } from '../fontContainerMain.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { elem } from './elems.js';
-import { toggleEditButtons } from './interfaceEdit.js';
 import { cp } from './interfaceCanvas.js';
+import { toggleEditButtons } from './interfaceEdit.js';
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));

@@ -6,8 +6,8 @@ import { imageCache } from '../containers/imageContainer.js';
 import { inputDataModes, pageMetricsArr } from '../containers/miscContainer.js';
 import { elem } from './elems.js';
 import {
-  cp,
   ScribeCanvas,
+  cp,
   getWordFillOpacity,
   layerBackground,
   layerOverlay,

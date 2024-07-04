@@ -1,8 +1,8 @@
 // Code for adding visualization to OCR output
 
 import fs from 'fs';
-import Worker from 'web-worker';
 import { createRequire } from 'module';
+import Worker from 'web-worker';
 import { initMuPDFWorker } from '../mupdf/mupdf-async.js';
 
 globalThis.Worker = Worker;

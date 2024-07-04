@@ -11,8 +11,8 @@ import { imageStrToBlob } from '../utils/imageUtils.js';
 import { saveAs } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
-  cp,
   ScribeCanvas,
+  cp,
   layerText,
   stage,
 } from './interfaceCanvas.js';
