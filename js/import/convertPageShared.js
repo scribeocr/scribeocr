@@ -46,8 +46,9 @@ export function pass2(pageObj, rotateAngle) {
         continue;
       }
 
-      // Word contains multiple capital letters, no lowercase letters, and is not already identified as small caps.
-      if (!/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text) && wordObj.smallCaps && wordObj.chars) {
+      // Detect words that were not identified as small caps but the engine, but likely are.
+      // Word contains multiple capital letters, no lowercase letters, and has character-level data.
+      if (!/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text) && wordObj.chars) {
         // Filter to only include letters
         const filterArr = wordObj.text.split('').map((x) => /[a-z]/i.test(x));
         const charArrSub = wordObj.chars.filter((x, y) => filterArr[y]);

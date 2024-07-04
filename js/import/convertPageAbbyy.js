@@ -142,10 +142,10 @@ export async function convertPageAbbyy({ ocrStr, n }) {
       text = text.fill('');
       let styleArr = Array(wordStrArr.length);
       styleArr = styleArr.fill('normal');
-      const smallCapsArr = Array(wordStrArr.length);
-      smallCapsArr.fill(false);
-      const wordSusp = Array(wordStrArr.length);
-      wordSusp.fill(false);
+      /**@type {Array<boolean>} */
+      const smallCapsArr = Array(wordStrArr.length).fill(false);
+      /**@type {Array<boolean>} */
+      const wordSusp = Array(wordStrArr.length).fill(false);
 
       for (let i = 0; i < wordStrArr.length; i++) {
         const wordStr = wordStrArr[i];
@@ -171,8 +171,10 @@ export async function convertPageAbbyy({ ocrStr, n }) {
         } else if (i > 0) {
           if (styleArr[i - 1] === 'dropcap') {
             styleArr[i] = 'normal';
+            smallCapsArr[i] = false;
           } else {
             styleArr[i] = styleArr[i - 1];
+            smallCapsArr[i] = smallCapsArr[i - 1];
           }
         }
 
