@@ -18,3 +18,13 @@ The fonts included in the live site are standardized versions of the raw fonts f
    1. Example of using alternative glyphs using css
 1. `baseline_test.html`
    1. Example of placing text on a defined baseline using both Fabric.js and the base canvas API
+
+
+# File Sizes
+
+- Latin Base: 304K
+- Latin Base + Diacritics: 520K
+- Latin Base + Diacritics + Cyrillic: 652K
+- Latin Base + Cyrillic: 444K
+- Latin Base + Diacritics + Cyrillic + Greek: 748K
+- No Subset: 2.8M
