@@ -167,6 +167,11 @@ class info {
 
   // Advanced options.
   static addOverlayCheckbox = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
+
+  // Debug output.
+  static downloadDebugCsv = /** @type {HTMLDivElement} */(document.getElementById('downloadDebugCsv'));
+
+  static downloadSourcePDF = /** @type {HTMLDivElement} */(document.getElementById('downloadSourcePDF'));
 }
 
 export class elem {
