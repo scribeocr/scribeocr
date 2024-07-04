@@ -6,7 +6,8 @@ import { showHideElem } from '../utils/miscUtils.js';
 import { mergeOcrWords, splitOcrWord } from '../utils/ocrUtils.js';
 import {
   KonvaOcrWord,
-  ScribeCanvas, layerBackground, layerOverlay, layerText, stage,
+  ScribeCanvas,
+  layerBackground, layerOverlay, layerText, stage,
 } from './interfaceCanvas.js';
 import { addWordManual, recognizeArea } from './interfaceEdit.js';
 import {
@@ -351,7 +352,8 @@ function selectWords(box) {
   }
 }
 
-let clearSelectionStart = false;
+/** @type {import('../../lib/konva/Stage.js').Stage | import('../../lib/konva/Shape.js').Shape<import('../../lib/konva/Shape.js').ShapeConfig>} */
+let mouseDownTarget = stage;
 
 stage.on('mousedown touchstart', (e) => {
   hideContextMenu();
@@ -359,7 +361,7 @@ stage.on('mousedown touchstart', (e) => {
   // Left click only
   if (e.evt.button !== 0) return;
 
-  clearSelectionStart = e.target instanceof Konva.Stage || e.target instanceof Konva.Image;
+  mouseDownTarget = e.target;
 
   if (ScribeCanvas.isTouchScreen && ScribeCanvas.mode === 'select') return;
 
@@ -408,20 +410,28 @@ stage.on('mouseup touchend', (event) => {
     event.evt.stopPropagation();
   }
 
+  const mouseUpTarget = event.target;
+
   const editingWord = !!ScribeCanvas.input;
+
+  // If a word is being edited, the only action allowed is clicking outside the word to deselect it.
+  if (editingWord) {
+    if (mouseDownTarget === ScribeCanvas.inputWord || mouseUpTarget === ScribeCanvas.inputWord) {
+      ScribeCanvas.selecting = false;
+      return;
+    }
+    ScribeCanvas.destroyControls();
+    layerText.batchDraw();
 
   // Delete any current selections if either (1) this is a new selection or (2) nothing is being clicked.
   // Clicks must pass this check on both start and end.
   // This prevents accidentally clearing a selection when the user is trying to highlight specific letters, but the mouse up happens over another word.
-  if (clearSelectionStart && (ScribeCanvas.selecting || event.target instanceof Konva.Stage || event.target instanceof Konva.Image)) ScribeCanvas.destroyControls();
+  } else if ((mouseUpTarget instanceof Konva.Stage || mouseUpTarget instanceof Konva.Image)
+    && (ScribeCanvas.selecting || event.target instanceof Konva.Stage || event.target instanceof Konva.Image)) {
+    ScribeCanvas.destroyControls();
+  }
 
   ScribeCanvas.selecting = false;
-
-  // If a word is being edited, the only action allowed is clicking outside the word to deselect it.
-  if (editingWord) {
-    layerText.batchDraw();
-    return;
-  }
 
   // Return early if this was a drag or pinch rather than a selection.
   // `isDragging` will be true even for a touch event, so a minimum distance moved is required to differentiate between a click and a drag.
