@@ -327,7 +327,7 @@ stage.on('contextmenu', (e) => {
 const trans = new Konva.Transformer({
   enabledAnchors: ['middle-left', 'middle-right'],
   rotateEnabled: false,
-  borderStrokeWidth: 3,
+  borderStrokeWidth: 2,
 });
 layerText.add(trans);
 

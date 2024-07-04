@@ -602,7 +602,7 @@ export class KonvaIText extends Konva.Shape {
 
         if (shape.outline) {
           context.strokeStyle = 'black';
-          context.lineWidth = 3 / shape.getAbsoluteScale().x;
+          context.lineWidth = 2 / shape.getAbsoluteScale().x;
           context.beginPath();
           context.rect(0, 0, shape.width(), shape.height());
           context.stroke();
@@ -610,7 +610,7 @@ export class KonvaIText extends Konva.Shape {
 
         if (shape.selected) {
           context.strokeStyle = 'rgba(40,123,181,1)';
-          context.lineWidth = 3 / shape.getAbsoluteScale().x;
+          context.lineWidth = 2 / shape.getAbsoluteScale().x;
           context.beginPath();
           context.rect(0, 0, shape.width(), shape.height());
           context.stroke();
@@ -981,7 +981,7 @@ export class KonvaOcrWord extends KonvaIText {
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
       // This width is automatically scaled by Konva based on the zoom level.
-      borderStrokeWidth: 3,
+      borderStrokeWidth: 2,
     });
     ScribeCanvas._controlArr.push(trans);
     layerText.add(trans);

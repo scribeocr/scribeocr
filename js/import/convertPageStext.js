@@ -30,17 +30,16 @@ export async function convertPageStext({ ocrStr, n }) {
   /** @type {Set<string>} */
   const langSet = new Set();
 
-  function convertParStext(xmlPar, parNum, n = 1) {
+  function convertParStext(xmlPar, n = 1) {
     /** @type {Array<OcrLine>} */
     const parLineArr = [];
 
     /**
      * @param {string} xmlLine
-     * @param {number} lineNum
      * @param {number} n
      */
     // eslint-disable-next-line no-shadow
-    function convertLineStext(xmlLine, lineNum, n = 1) {
+    function convertLineStext(xmlLine, n = 1) {
     // Remove the <block> tag to avoid the regex matching it instead of the <line> tag.
     // We currently have no "block" level object, however this may be useful in the future.
       xmlLine = xmlLine.replace(/<block[^>]*?>/i, '');
@@ -187,7 +186,7 @@ export async function convertPageStext({ ocrStr, n }) {
         const wordLang = calcLang(wordText);
         langSet.add(wordLang);
 
-        const wordID = `word_${n + 1}_${lineNum + 1}_${i + 1}`;
+        const wordID = `word_${n + 1}_${pageObj.lines.length + 1}_${i + 1}`;
         const bboxesI = bboxes[i];
 
         /** @type {Array<OcrChar>} */
@@ -283,7 +282,7 @@ export async function convertPageStext({ ocrStr, n }) {
     const lineStrArr = xmlPar.split(/<\/line>/);
 
     for (let i = 0; i < lineStrArr.length; i++) {
-      const angle = convertLineStext(lineStrArr[i], i, n);
+      const angle = convertLineStext(lineStrArr[i], n);
       if (typeof angle === 'number' && !Number.isNaN(angle)) angleRisePage.push(angle);
     }
 
@@ -304,7 +303,7 @@ export async function convertPageStext({ ocrStr, n }) {
   const parStrArr = ocrStr.split(/<\/block>/);
 
   for (let i = 0; i < parStrArr.length; i++) {
-    convertParStext(parStrArr[i], i, n);
+    convertParStext(parStrArr[i], n);
   }
 
   const angleRiseMedian = mean50(angleRisePage) || 0;

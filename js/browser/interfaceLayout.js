@@ -390,7 +390,7 @@ export class KonvaLayout extends Konva.Rect {
     const trans = new Konva.Transformer({
       enabledAnchors,
       rotateEnabled: false,
-      borderStrokeWidth: 3,
+      borderStrokeWidth: 2,
     });
     ScribeCanvas._controlArr.push(trans);
     layerOverlay.add(trans);
