@@ -262,6 +262,9 @@ export class ScribeCanvas {
   /** @type {Array<InstanceType<typeof Konva.Rect>>} */
   static _lineOutlineArr = [];
 
+  /** @type {Array<InstanceType<typeof Konva.Rect>>} */
+  static _blockOutlineArr = [];
+
   /** @type {Array<KonvaLayout>} */
   static _layoutRegionArr = [];
 
@@ -270,6 +273,9 @@ export class ScribeCanvas {
 
   /** @type {?HTMLSpanElement} */
   static input = null;
+
+  /** @type {?KonvaIText} */
+  static inputWord = null;
 
   /** @type {?Function} */
   static inputRemove = null;
@@ -367,6 +373,11 @@ export class ScribeCanvas {
   static destroyLineOutlines = () => {
     ScribeCanvas._lineOutlineArr.forEach((x) => x.destroy());
     ScribeCanvas._lineOutlineArr.length = 0;
+  };
+
+  static destroyBlockOutlines = () => {
+    ScribeCanvas._blockOutlineArr.forEach((x) => x.destroy());
+    ScribeCanvas._blockOutlineArr.length = 0;
   };
 
   static destroyLayoutDataTables = () => {
@@ -694,6 +705,7 @@ export class KonvaIText extends Konva.Shape {
 
     const inputElem = document.createElement('span');
 
+    ScribeCanvas.inputWord = itext;
     ScribeCanvas.input = inputElem;
 
     const text = itext.charArr.join('');
@@ -787,6 +799,7 @@ export class KonvaIText extends Konva.Shape {
       ScribeCanvas.input.remove();
       ScribeCanvas.input = null;
       ScribeCanvas.inputRemove = null;
+      ScribeCanvas.inputWord = null;
     };
 
     // Update the Konva Text node after editing
@@ -983,6 +996,32 @@ export class KonvaOcrWord extends KonvaIText {
 
 /**
  *
+ * @param {bbox} box
+ * @param {number} angle
+ * @param {{x: number, y: number}} angleAdj
+ */
+const addBlockOutline = (box, angle, angleAdj) => {
+  const height = box.bottom - box.top;
+
+  const blockRect = new Konva.Rect({
+    x: box.left + angleAdj.x,
+    y: box.top + angleAdj.y,
+    width: box.right - box.left,
+    height,
+    rotation: angle,
+    stroke: 'rgba(0,0,255,0.75)',
+    strokeWidth: 1,
+    draggable: false,
+    listening: false,
+  });
+
+  layerText.add(blockRect);
+
+  ScribeCanvas._lineOutlineArr.push(blockRect);
+};
+
+/**
+ *
  * @param {OcrPage} page
  */
 export function renderPage(page) {
@@ -995,7 +1034,15 @@ export function renderPage(page) {
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-  for (const lineObj of page.lines) {
+  // assignParagraphs(page, cp.n);
+
+  // page.pars.forEach((par) => {
+  //   const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
+  //   addBlockOutline(par.bbox, angleArg, angleAdj);
+  // });
+
+  for (let i = 0; i < page.lines.length; i++) {
+    const lineObj = page.lines[i];
     const linebox = lineObj.bbox;
     const { baseline } = lineObj;
 
@@ -1016,6 +1063,7 @@ export function renderPage(page) {
         stroke: 'rgba(0,0,255,0.75)',
         strokeWidth: 1,
         draggable: false,
+        listening: false,
       });
 
       ScribeCanvas._lineOutlineArr.push(lineRect);

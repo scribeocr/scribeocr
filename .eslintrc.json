@@ -1,0 +1,87 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true,
+        "node": true,
+        "mocha": true,
+        "worker": true
+    },
+    "extends": "airbnb-base",
+    "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+    },
+    // "globals": {
+    //     "fabric": "writable"
+    // },
+    "rules": {
+        "max-len": [
+            "error",
+            200,
+            { "ignoreRegExpLiterals": true, "ignoreTemplateLiterals": true }
+        ],
+        // This rule results in code being deleted. 
+        "no-unreachable": "off",
+        // This edit allows for .js files (but not packages) to have an extension.
+        // This is necessary for code to run in both Node.js and the browser.
+        "import/extensions": ["error", "ignorePackages"],
+        // Disable rules intended to disable development tools in production. This project is still in development.
+        "no-console": "off",
+        "no-debugger": "off",
+        "no-constant-condition": "off",
+        "no-use-before-define": ["error", {
+            // Setting "functions" and "variables" to false should only impact the stylistic aspect of this rule.
+            // (A block-scoped variable used before declaration should still be flagged.)
+            "functions": false,
+            "classes": true,
+            "variables": false,
+            "allowNamedExports": false
+        }],
+        "prefer-const": ["error", {
+            "destructuring": "all"
+        }],
+            // This rule makes general sense as a best practice, however having it as an error flags too many functions that are fine as-is.
+        // For example, many string functions in the import code would need to be edited to copy the string to another variable before editing it,
+        // which would be a hassle to implement and probably decrease clarity.
+        "no-param-reassign": "off",
+        "no-mixed-operators": "off",
+        // This is purely aesthetic preference, and it is not worth the effort to edit.
+        "prefer-destructuring": "off",
+        "no-restricted-syntax": "off",
+        "function-paren-newline": "off",
+        "function-call-argument-newline": "off",
+
+        "max-classes-per-file": "off",
+
+        // Disable various subjective style rules
+        "no-plusplus": "off",
+        "radix": "off",
+        "no-continue": "off",
+        "no-underscore-dangle": "off",
+        "import/prefer-default-export": "off",
+        "no-return-assign": "off",
+        "no-useless-return": "off",
+        "no-nested-ternary": "off",
+        // The JSDoc `@type` tag only works for one declaration at a time.
+        // Therefore, the "one-var" and "one-var-declaration-per-line" rules should be left on.
+        // "one-var": "off",
+        // "one-var-declaration-per-line": "off", 
+
+        // This rule was depreciated
+        "no-return-await": "off",
+
+        // Allow certain boilerplate variables, even if unused.
+        // E.g. `const [key, value] of Object.entries(x)` is fine, even if `key` or `value` is not used.
+        "no-unused-vars":  ["error", { "argsIgnorePattern": "(^resolve$)|(^reject$)|(^event$)|(^e$)", "varsIgnorePattern": "(^key\\d?$)|(^value\\d?$)" }],
+
+        // This rule makes sense in theory, however the *vast majority* of code it flags in this project is correct as written.
+        // Either (1) all iterations of the loop are waiting on the same promise(s), so there would be no benefit to rewriting in a more complicated way, or
+        // (2) the functions need to be run in a particular order due to triggering some side effect (such as drawing to a canvas). 
+        "no-await-in-loop": "off",
+
+        // This enforces a rule that must be broken due to issues in JSDoc.
+        // JSDoc does not correctly export types when they are members of the default export,
+        // so the constructors must be exported individually as well.
+        "import/no-named-as-default-member": "off"
+    }
+}

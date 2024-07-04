@@ -16,6 +16,7 @@ import {
 } from '../utils/miscUtils.js';
 import { getDisplayMode } from './interfaceView.js';
 
+import { writeDebugCsv } from '../export/exportDebugCsv.js';
 import { hocrToPDF } from '../export/exportPDF.js';
 import { elem } from './elems.js';
 
@@ -24,9 +25,7 @@ const intermediatePDFElem = /** @type {HTMLInputElement} */(document.getElementB
 
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
 
-const downloadSourcePDFElem = /** @type {HTMLInputElement} */(document.getElementById('downloadSourcePDF'));
-
-downloadSourcePDFElem.addEventListener('click', async () => {
+elem.info.downloadSourcePDF.addEventListener('click', async () => {
   const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
   const w = muPDFScheduler.workers[0];
 
@@ -42,6 +41,15 @@ downloadSourcePDFElem.addEventListener('click', async () => {
   const pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.pdf`;
+  saveAs(pdfBlob, fileName);
+});
+
+elem.info.downloadDebugCsv.addEventListener('click', async () => {
+  const csvStr = writeDebugCsv(ocrAll.active);
+
+  const pdfBlob = new Blob([csvStr], { type: 'application/octet-stream' });
+
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.csv`;
   saveAs(pdfBlob, fileName);
 });
 

@@ -38,10 +38,16 @@ export async function convertPageBlocks({
   for (let i = 0; i < ocrBlocks.length; i++) {
     const block = ocrBlocks[i];
     for (let j = 0; j < block.paragraphs.length; j++) {
-      const paragraphs = block.paragraphs[j];
+      const paragraph = block.paragraphs[j];
 
-      for (let k = 0; k < paragraphs.lines.length; k++) {
-        const line = paragraphs.lines[k];
+      const parbox = {
+        left: paragraph.bbox.x0, top: paragraph.bbox.y0, right: paragraph.bbox.x1, bottom: paragraph.bbox.y1,
+      };
+
+      const parObj = new ocr.OcrPar(pageObj, parbox);
+
+      for (let k = 0; k < paragraph.lines.length; k++) {
+        const line = paragraph.lines[k];
 
         const linebox = {
           left: line.bbox.x0, top: line.bbox.y0, right: line.bbox.x1, bottom: line.bbox.y1,
@@ -61,6 +67,7 @@ export async function convertPageBlocks({
         const xHeight = line.rowAttributes.row_height - line.rowAttributes.descenders - line.rowAttributes.ascenders;
 
         const lineObj = new ocr.OcrLine(pageObj, linebox, baseline, ascHeight, xHeight);
+        lineObj.par = parObj;
 
         for (let l = 0; l < line.words.length; l++) {
           const word = line.words[l];
@@ -139,7 +146,13 @@ export async function convertPageBlocks({
           lineObj.words.push(wordObj);
         }
 
-        if (lineObj.words.length > 0) pageObj.lines.push(lineObj);
+        if (lineObj.words.length > 0) {
+          pageObj.lines.push(lineObj);
+          parObj.lines.push(lineObj);
+        }
+      }
+      if (parObj.lines.length > 0) {
+        pageObj.pars.push(parObj);
       }
     }
   }

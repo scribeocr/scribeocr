@@ -33,6 +33,7 @@ import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
 
 import { LayoutDataTablePage, LayoutPage } from '../js/objects/layoutObjects.js';
 
+import { writeDebugCsv } from '../js/export/exportDebugCsv.js';
 import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 
 const writeFile = util.promisify(fs.writeFile);
@@ -133,6 +134,8 @@ globalThis.visInstructions = [];
 async function main(func, params) {
   const output = {};
 
+  const debugComp = false;
+
   // const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
   // if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
 
@@ -158,6 +161,7 @@ async function main(func, params) {
   }
 
   const backgroundArg = params.pdfFile;
+  const backgroundArgStem = backgroundArg ? path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '') : undefined;
   const outputDir = params.outputDir || '.';
 
   if (outputDir) fs.mkdirSync(outputDir, { recursive: true });
@@ -482,6 +486,12 @@ async function main(func, params) {
     const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, `${outputSuffix}.pdf`)}`;
 
     await writeFile(outputPath, content);
+  }
+
+  if (debugComp) {
+    const csvStr = writeDebugCsv(ocrAll.active);
+    const outputPath = `${__dirname}/../../dev/debug/${backgroundArgStem}_debug.csv`;
+    fs.writeFileSync(outputPath, csvStr);
   }
 
   // Delete temp directory with fonts
