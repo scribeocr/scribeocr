@@ -6,7 +6,7 @@
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
 import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
-import { cp, displayPage, renderPageQueue } from '../../main.js';
+import { displayPage, renderPageQueue } from '../../main.js';
 import Tesseract from '../../tess/tesseract.esm.min.js';
 import { fontAll } from '../containers/fontContainer.js';
 import { imageCache } from '../containers/imageContainer.js';
@@ -18,7 +18,7 @@ import { recognizePage } from '../recognizeConvert.js';
 import { getRandomAlphanum } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
-  KonvaOcrWord, ScribeCanvas,
+  KonvaOcrWord, ScribeCanvas, cp,
   layerText, updateWordCanvas,
 } from './interfaceCanvas.js';
 
@@ -27,7 +27,7 @@ const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('i
 
 elem.edit.styleItalic.addEventListener('click', () => { changeWordFontStyle('italic'); });
 elem.edit.styleBold.addEventListener('click', () => { changeWordFontStyle('bold'); });
-elem.edit.styleSmallCaps.addEventListener('click', () => { changeWordFontStyle('smallCaps'); });
+elem.edit.styleSmallCaps.addEventListener('click', () => toggleSmallCapsWords(elem.edit.styleSmallCaps.classList.contains('active')));
 elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
 
 const styleItalicButton = new Button(elem.edit.styleItalic);
@@ -56,7 +56,7 @@ export function deleteSelectedWords() {
 
 /**
  *
- * @param {string} style
+ * @param {('normal'|'italic'|'bold')} style
  */
 export async function changeWordFontStyle(style) {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
@@ -65,7 +65,7 @@ export async function changeWordFontStyle(style) {
   if (ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
 
   // If first word style already matches target style, disable the style.
-  const enable = selectedObjects[0].fontStyle !== style;
+  const enable = selectedObjects[0].word.style !== style;
   const newStyle = enable ? style : 'normal';
 
   // For some reason the buttons can go out of sync, so this should prevent that.
@@ -75,9 +75,6 @@ export async function changeWordFontStyle(style) {
   if ((newStyle === 'bold') !== elem.edit.styleBold.classList.contains('active')) {
     styleBoldButton.toggle();
   }
-  if ((newStyle === 'smallCaps') !== elem.edit.styleSmallCaps.classList.contains('active')) {
-    styleSmallCapsButton.toggle();
-  }
 
   const selectedN = selectedObjects.length;
   for (let i = 0; i < selectedN; i++) {
@@ -85,7 +82,7 @@ export async function changeWordFontStyle(style) {
 
     wordI.word.style = newStyle;
 
-    wordI.fontStyle = newStyle;
+    // wordI.fontStyle = newStyle;
 
     const fontI = fontAll.getFont(wordI.fontFamilyLookup, newStyle);
 
@@ -97,6 +94,7 @@ export async function changeWordFontStyle(style) {
 
     await updateWordCanvas(wordI);
   }
+
   layerText.batchDraw();
 }
 
@@ -144,7 +142,7 @@ export async function changeWordFontFamily(fontName) {
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
 
-    const fontI = fontAll.getFont(fontName, wordI.fontStyle);
+    const fontI = fontAll.getFont(fontName, wordI.word.style);
 
     if (fontName === 'Default') {
       wordI.word.font = null;
@@ -157,7 +155,6 @@ export async function changeWordFontFamily(fontName) {
     wordI.fontFaceWeight = fontI.fontFaceWeight;
 
     wordI.fontFamilyLookup = fontI.family;
-    wordI.fontStyle = fontI.style;
 
     await updateWordCanvas(wordI);
   }
@@ -174,6 +171,24 @@ export function toggleSuperSelectedWords() {
   }
 
   renderPageQueue(cp.n);
+}
+
+/**
+ * 
+ * @param {boolean} enable 
+ * @returns 
+ */
+export async function toggleSmallCapsWords(enable) {
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
+  if (!selectedObjects || selectedObjects.length === 0) return;
+  const selectedN = selectedObjects.length;
+
+  for (let i = 0; i < selectedN; i++) {
+    const wordI = selectedObjects[i];
+    wordI.word.smallCaps = enable;
+    await updateWordCanvas(wordI);
+  }
+  layerText.batchDraw();
 }
 
 /** @type {Array<KonvaOcrWord>} */

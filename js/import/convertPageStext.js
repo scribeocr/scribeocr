@@ -72,6 +72,7 @@ export async function convertPageStext({ ocrStr, n }) {
       let baselineFirst = 0;
       let baselineLast = 0;
 
+
       /** @type {Array<Array<string>>} */
       const text = [];
       let currentStyle = 'normal';
@@ -79,6 +80,10 @@ export async function convertPageStext({ ocrStr, n }) {
       /** @type {Array<string>} */
       let styleArr = [];
       styleArr = styleArr.fill('normal');
+      /** @type {Array<boolean>} */
+      const smallCapsArr = [];
+      /** @type {Array<boolean>} */
+      const smallCapsAltArr = [];
 
       for (let i = 0; i < wordStrArr.length; i++) {
         const wordStr = wordStrArr[i];
@@ -110,16 +115,16 @@ export async function convertPageStext({ ocrStr, n }) {
               }
               currentSize = newSize || currentSize;
             }
+            
+            // The word is already initialized, so we need to change the last element of the style array.
+            // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
+            smallCapsAltArr[i] = smallCapsAlt;
+            smallCapsArr[i] = /small\W?cap/i.test(fontStr);
 
-            if (smallCapsAlt) {
-              currentStyle = 'smallCapsAlt';
+            if (/italic/i.test(fontStr)) {
               // The word is already initialized, so we need to change the last element of the style array.
               // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
-              styleArr[styleArr.length - 1] = 'smallCapsAlt';
-            } else if (/italic/i.test(fontStr)) {
               currentStyle = 'italic';
-            } else if (/small\W?cap/i.test(fontStr)) {
-              currentStyle = 'smallCaps';
             } else if (/bold/i.test(fontStr)) {
               currentStyle = 'bold';
             } else {
@@ -128,6 +133,7 @@ export async function convertPageStext({ ocrStr, n }) {
 
             continue;
           }
+
 
           if (!wordInit) {
             styleArr.push(currentStyle);
@@ -236,17 +242,19 @@ export async function convertPageStext({ ocrStr, n }) {
         // Confidence is set to 100 simply for ease of reading (to avoid all red text if the default was 0 confidence).
         wordObj.conf = 100;
 
-        if (styleArr[i] === 'smallCapsAlt' && !/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text)) {
-          wordObj.style = 'smallCaps';
+        if (smallCapsAltArr[i] && !/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text)) {
+          wordObj.smallCaps = true;
           wordObj.chars.slice(1).forEach((x) => {
             x.text = x.text.toLowerCase();
           });
           wordObj.text = wordObj.chars.map((x) => x.text).join('');
-        } else if (styleArr[i] === 'italic') {
+        } else if (smallCapsArr[i]) {
+          wordObj.smallCaps = true;
+        }
+        
+        if (styleArr[i] === 'italic') {
           wordObj.style = 'italic';
-        } else if (styleArr[i] === 'smallCaps') {
-          wordObj.style = 'smallCaps';
-        } else if (styleArr[i] === 'bold') {
+        } if (styleArr[i] === 'bold') {
           wordObj.style = 'bold';
         }
 

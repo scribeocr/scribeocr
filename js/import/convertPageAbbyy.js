@@ -142,8 +142,10 @@ export async function convertPageAbbyy({ ocrStr, n }) {
       text = text.fill('');
       let styleArr = Array(wordStrArr.length);
       styleArr = styleArr.fill('normal');
-      const wordSusp = Array(wordStrArr.length);
-      wordSusp.fill(false);
+      /**@type {Array<boolean>} */
+      const smallCapsArr = Array(wordStrArr.length).fill(false);
+      /**@type {Array<boolean>} */
+      const wordSusp = Array(wordStrArr.length).fill(false);
 
       for (let i = 0; i < wordStrArr.length; i++) {
         const wordStr = wordStrArr[i];
@@ -157,26 +159,30 @@ export async function convertPageAbbyy({ ocrStr, n }) {
           } else if (/italic=['"](1|true)/i.test(letterArr[0][1])) {
             styleArr[i] = 'italic';
             stylesLine.italic = true;
-          } else if (/smallcaps=['"](1|true)/i.test(letterArr[0][1])) {
-            styleArr[i] = 'smallCaps';
-            stylesLine.smallCaps = true;
           } else {
             styleArr[i] = 'normal';
             stylesLine.normal = true;
           }
+          
+          if (/smallcaps=['"](1|true)/i.test(letterArr[0][1])) {
+            smallCapsArr[i] = true;
+          }
+          
         } else if (i > 0) {
           if (styleArr[i - 1] === 'dropcap') {
             styleArr[i] = 'normal';
+            smallCapsArr[i] = false;
           } else {
             styleArr[i] = styleArr[i - 1];
+            smallCapsArr[i] = smallCapsArr[i - 1];
           }
         }
 
         // Abbyy will sometimes misidentify capital letters immediately following drop caps as small caps,
         // when they are only small in relation to the drop cap (rather than the main text).
         let dropCapFix = false;
-        if (dropCap && i === 1 && styleArr[i] === 'smallCaps') {
-          styleArr[i] = 'normal';
+        if (dropCap && i === 1 && smallCapsArr[i]) {
+          smallCapsArr[i] = false;
           dropCapFix = true;
         }
 
@@ -302,9 +308,9 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
         if (styleArr[i] === 'italic') {
           wordObj.style = 'italic';
-        } else if (styleArr[i] === 'smallCaps') {
-          wordObj.style = 'smallCaps';
-        }
+        } 
+        
+        wordObj.smallCaps = smallCapsArr[i];
 
         if (fontFamily !== 'Default') {
           wordObj.font = fontFamily;

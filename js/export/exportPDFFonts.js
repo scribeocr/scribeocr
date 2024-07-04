@@ -57,6 +57,7 @@ const generateFontFlags = (serif, italic, smallcap, symbolic) => { /* eslint-dis
  *
  * @param {opentype.Font} font - Opentype.js font object
  * @param {number} objIndex - Index for font descriptor PDF object
+ * @param {('normal'|'italic'|'bold')} style - Style of the font
  * @param {?number} embeddedObjIndex - Index for embedded font file PDF object.
  *  If not provided, the font will not be embedded in the PDF.
  * @returns {string} The font descriptor object string.
@@ -103,7 +104,7 @@ function createFontDescriptor(font, objIndex, style = 'normal', embeddedObjIndex
 
   // Symbolic is always set to false, even if the font contains glyphs outside the Adobe standard Latin character set.
   // This is because symbolic fonts are only used when embedded, and this does not appear to matter for embedded fonts.
-  objOut += `/Flags ${String(generateFontFlags(serif, style === 'italic', style === 'smallCaps', false))}`;
+  objOut += `/Flags ${String(generateFontFlags(serif, style === 'italic', false, false))}`;
 
   if (embeddedObjIndex === null || embeddedObjIndex === undefined) {
     objOut += '>>\nendobj\n\n';
@@ -123,6 +124,7 @@ function createFontDescriptor(font, objIndex, style = 'normal', embeddedObjIndex
  *
  * @param {opentype.Font} font - Opentype.js font object
  * @param {number} firstObjIndex - Index for the first PDF object
+ * @param {('normal'|'italic'|'bold')} style - Style of the font
  * @param {boolean} [isStandardFont=false] - Whether the font is a standard font.
  *  Standard fonts are not embedded in the PDF.
  * @returns {Array<string>}

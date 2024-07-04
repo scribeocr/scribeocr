@@ -173,7 +173,6 @@ export function FontContainerFont(family, style, src, opt, opentypeObj) {
   // they need to all have unique names.
   let fontFaceName = family;
   if (opt) fontFaceName += ' Opt';
-  if (style === 'smallCaps') fontFaceName += ' Small Caps';
 
   /** @type {string} */
   this.family = family;
@@ -396,17 +395,13 @@ class FontCont {
      * this method allows for special values 'Default', 'SansDefault', and 'SerifDefault' to be used.
      *
      * @param {('Default'|'SansDefault'|'SerifDefault'|string)} family - Font family name.
-     * @param {('normal'|'italic'|'smallCaps'|string)} [style='normal']
+     * @param {('normal'|'italic'|'bold'|string)} [style='normal']
      * @param {string} [lang='eng']
      * @param {('raw'|'opt'|'active'|'optInitial')} [container='active']
      * @returns {FontContainerFont}
      */
     this.getFont = (family, style = 'normal', lang = 'eng', container = 'active') => {
       const fontCont = this.getContainer(container);
-
-      // The normal, italic, and bold styles have their own font files.
-      // The smallCaps style is created from the normal font file, except replacing lowercase letters with capitals drawn smaller.
-      const styleLookup = style === 'smallCaps' ? 'normal' : style;
 
       if (lang === 'chi_sim') {
         if (!this.supp.chi_sim) throw new Error('chi_sim font does not exist.');
@@ -415,7 +410,7 @@ class FontCont {
 
       // Option 1: If we have access to the font, use it.
       // Option 2: If we do not have access to the font, but it closely resembles a built-in font, use the built-in font.
-      if (!fontCont?.[family]?.[styleLookup]) {
+      if (!fontCont?.[family]?.[style]) {
         if (/Times/i.test(family)) {
           family = 'NimbusRomNo9L';
         } else if (/Helvetica/i.test(family)) {
@@ -436,7 +431,7 @@ class FontCont {
       }
 
       // Option 3: If the font still is not identified, use the default sans/serif font.
-      if (!fontCont?.[family]?.[styleLookup]) {
+      if (!fontCont?.[family]?.[style]) {
         family = determineSansSerif(family);
       }
 
@@ -445,8 +440,8 @@ class FontCont {
 
       if (family === 'SerifDefault') family = this.serifDefaultName;
       if (family === 'SansDefault') family = this.sansDefaultName;
-      const fontRes = fontCont[family][styleLookup];
-      if (!fontRes) throw new Error(`Font container does not contain ${family} (${styleLookup}).`);
+      const fontRes = fontCont[family][style];
+      if (!fontRes) throw new Error(`Font container does not contain ${family} (${style}).`);
       return fontRes;
     };
 

@@ -117,10 +117,10 @@ export async function drawWordActual(ctx, words, imageBinaryBit, imgDims, angle,
    *    and should include kerning and character spacing.
    * @param {FontContainerFont} font
    * @param {number} size
-   * @param {string} style
+   * @param {boolean} smallCaps
    * @param {string} fillStyle
    */
-const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, size, style, fillStyle = 'black') => {
+const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, size, smallCaps, fillStyle = 'black') => {
   ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size}px ${font.fontFaceName}`;
   ctx.fillStyle = fillStyle;
   ctx.textBaseline = 'alphabetic';
@@ -129,7 +129,7 @@ const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, s
   for (let i = 0; i < charArr.length; i++) {
     let charI = charArr[i];
 
-    if (style === 'smallCaps') {
+    if (smallCaps) {
       if (charI === charI.toUpperCase()) {
         ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size}px ${font.fontFaceName}`;
       } else {
@@ -193,9 +193,9 @@ export const drawWordRender = async (ctx, word, offsetX = 0, cropY = 0, ctxView 
   let left = 1 + offsetX;
   if (word.visualCoords) left -= wordMetrics.leftSideBearing;
 
-  await printWordOnCanvas(ctx, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.style);
+  await printWordOnCanvas(ctx, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.smallCaps);
 
   if (ctxView) {
-    await printWordOnCanvas(ctxView, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.style, 'red');
+    await printWordOnCanvas(ctxView, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.smallCaps, 'red');
   }
 };

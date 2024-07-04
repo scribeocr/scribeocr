@@ -1,5 +1,8 @@
 import {
-  conf, check, evalInternal, overlay, recognize, debug,
+  check,
+  conf,
+  debug,
+  evalInternal, overlay, recognize,
 } from './main.js';
 
 export const confCLI = async (ocrFile) => {

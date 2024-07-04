@@ -301,11 +301,17 @@ export async function convertPageHocr({
 
       const styleStr = match.match(/style=['"]([^'"]+)/)?.[1];
 
+      let smallCaps = false;
+      /**@type {('normal'|'italic'|'bold')} */
       let fontStyle = 'normal';
       if (styleStr && /italic/i.test(styleStr)) {
         fontStyle = 'italic';
-      } else if (styleStr && /small-caps/i.test(styleStr)) {
-        fontStyle = 'smallCaps';
+      } else if (styleStr && /bold/i.test(styleStr)) {
+        fontStyle = 'bold';
+      } 
+      
+      if (styleStr && /small-caps/i.test(styleStr)) {
+        smallCaps = true;
       }
 
       const confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/)?.[1] || '0';
@@ -330,6 +336,8 @@ export async function convertPageHocr({
       }
 
       wordObj.sup = wordSup;
+
+      wordObj.smallCaps = smallCaps;
 
       wordObj.conf = wordConf;
 

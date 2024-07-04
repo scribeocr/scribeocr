@@ -79,6 +79,7 @@ import {
 } from './js/browser/interfaceLayout.js';
 
 import {
+  cp,
   layerOverlay,
   layerText,
   renderPage,
@@ -152,22 +153,6 @@ const fontAllRawReady = loadBuiltInFontsRaw().then((x) => {
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 tooltipTriggerList.forEach((tooltipTriggerEl) => new Tooltip(tooltipTriggerEl));
 
-/**
- * @typedef cp
- * @type {Object}
- * @property {Number} n - an ID.
- * @property {Object} backgroundOpts - an ID.
- * @property {Number} renderStatus - an ID.
- * @property {number} renderNum - an ID.
- */
-/** @type {cp} */
-export const cp = {
-  n: 0,
-  backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
-  renderStatus: 0,
-  renderNum: 0,
-};
-
 const zone = /** @type {HTMLInputElement} */ (document.getElementById('uploadDropZone'));
 
 const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
@@ -206,7 +191,13 @@ zone.addEventListener('drop', async (event) => {
   if (!event.dataTransfer) return;
   const items = await getAllFileEntries(event.dataTransfer.items);
 
-  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => { x.file(resolve, reject); })));
+  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => { 
+    if (x instanceof File) {
+      resolve(x);
+    } else {
+      x.file(resolve, reject);
+    }
+   })));
   const files = filesPromises.map((x) => x.value);
 
   if (files.length === 0) return;
@@ -1226,9 +1217,26 @@ async function importFiles(curFiles) {
     }
   }
 
-  if (unsupportedFilesAll.length > 0) {
-    const errorText = `Import includes unsupported file types: ${Object.keys(unsupportedExt).join(', ')}`;
+  imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+  hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+
+  if (pdfFilesAll.length === 0 && imageFilesAll.length === 0 && hocrFilesAll.length === 0) {
+    const errorText = 'No supported files found.';
     insertAlertMessage(errorText);
+    return;
+  } else if (unsupportedFilesAll.length > 0) {
+    const errorText = `Import includes unsupported file types: ${Object.keys(unsupportedExt).join(', ')}`;
+    insertAlertMessage(errorText, false);
+  } else if (pdfFilesAll.length > 0 && imageFilesAll.length > 0) {
+    const errorText = 'PDF and image files cannot be imported together. Only first PDF file will be imported.';
+    insertAlertMessage(errorText, false);
+    pdfFilesAll.length = 1;
+    imageFilesAll.length = 0;
+  } else if (pdfFilesAll.length > 1) {
+    const errorText = 'Multiple PDF files are not supported. Only first PDF file will be imported.';
+    insertAlertMessage(errorText, false);
+    pdfFilesAll.length = 1;
+    imageFilesAll.length = 0;
   }
 
   inputDataModes.pdfMode = pdfFilesAll.length === 1;
@@ -1290,9 +1298,6 @@ async function importFiles(curFiles) {
       elem.info.addOverlayCheckbox.disabled = true;
     }
   }
-
-  imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
-  hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
   // Set default download name
   let downloadFileName = pdfFilesAll.length > 0 ? pdfFilesAll[0].name : curFiles[0].name;

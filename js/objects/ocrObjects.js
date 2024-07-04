@@ -91,9 +91,11 @@ export function OcrWord(line, text, bbox, id) {
   this.sup = false;
   /** @type {boolean} */
   this.dropcap = false;
+  /** @type {boolean} */
+  this.smallCaps = false;
   /** @type {string} */
   this.text = text;
-  /** @type {string} */
+  /** @type {('normal'|'italic'|'bold')} */
   this.style = 'normal';
   /** @type {?string} */
   this.font = null;

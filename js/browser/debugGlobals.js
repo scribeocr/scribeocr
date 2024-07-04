@@ -13,6 +13,7 @@ import {
 } from '../containers/miscContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcLineFontSize, calcWordMetrics } from '../utils/fontUtils.js';
+import { elem } from './elems.js';
 import {
   ScribeCanvas,
   layerBackground, layerOverlay,
@@ -54,6 +55,7 @@ const getCharMetrics = (char) => {
 export const df = {
   calcLineFontSize,
   calcWordMetrics,
+  elem,
   ScribeCanvas,
   fontAll,
   fontMetricsObj,

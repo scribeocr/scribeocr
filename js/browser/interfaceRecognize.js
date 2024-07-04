@@ -1,7 +1,6 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  cp,
   initOCRVersion,
   initializeProgress,
   insertAlertMessage,
@@ -15,6 +14,7 @@ import { loadChiSimFont } from '../fontContainerMain.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { elem } from './elems.js';
+import { cp } from './interfaceCanvas.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));

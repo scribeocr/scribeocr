@@ -1,13 +1,16 @@
 /* eslint-disable import/no-cycle */
 import { Konva } from '../../lib/konva/_FullInternals.js';
-import { cp, renderPageQueue } from '../../main.js';
+import { renderPageQueue } from '../../main.js';
 import { layoutAll } from '../containers/miscContainer.js';
 import { showHideElem } from '../utils/miscUtils.js';
 import { mergeOcrWords, splitOcrWord } from '../utils/ocrUtils.js';
 import {
   KonvaOcrWord,
   ScribeCanvas,
-  layerBackground, layerOverlay, layerText, stage,
+  calcControlStrokeWidth,
+  cp,
+  layerBackground,
+  layerOverlay, layerText, stage,
 } from './interfaceCanvas.js';
 import { addWordManual, recognizeArea } from './interfaceEdit.js';
 import {
@@ -325,6 +328,7 @@ stage.on('contextmenu', (e) => {
 const trans = new Konva.Transformer({
   enabledAnchors: ['middle-left', 'middle-right'],
   rotateEnabled: false,
+  borderStrokeWidth: calcControlStrokeWidth(),
 });
 layerText.add(trans);
 

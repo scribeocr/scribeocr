@@ -2,12 +2,12 @@
 
 import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
 import Konva from '../../lib/konva/index.js';
-import { cp, search } from '../../main.js';
+import { search } from '../../main.js';
 import { fontAll } from '../containers/fontContainer.js';
 import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 import { calcTableBbox } from '../objects/layoutObjects.js';
 import ocr from '../objects/ocrObjects.js';
-import { addLigatures, calcWordMetrics } from '../utils/fontUtils.js';
+import { calcWordMetrics } from '../utils/fontUtils.js';
 import { replaceSmartQuotes } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
@@ -15,6 +15,22 @@ import {
   KonvaLayout,
   updateDataPreview,
 } from './interfaceLayout.js';
+
+/**
+ * @typedef cp
+ * @type {Object}
+ * @property {Number} n - an ID.
+ * @property {Object} backgroundOpts - an ID.
+ * @property {Number} renderStatus - an ID.
+ * @property {number} renderNum - an ID.
+ */
+/** @type {cp} */
+export const cp = {
+  n: 0,
+  backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
+  renderStatus: 0,
+  renderNum: 0,
+};
 
 const styleItalicButton = new Button(elem.edit.styleItalic);
 const styleBoldButton = new Button(elem.edit.styleBold);
@@ -409,15 +425,13 @@ export class ScribeCanvas {
  * @param {KonvaIText} wordI
  */
 export async function updateWordCanvas(wordI) {
-  const fontI = fontAll.getWordFont(wordI.word);
-  const fontIOpentype = fontI.opentype;
 
-  wordI.charArr = addLigatures(wordI.word.text, fontIOpentype);
-
-  // 1. Re-calculate left position given potentially new left bearing
+  // Re-calculate left position given potentially new left bearing
   const {
-    advanceArr, fontSize, kerningArr, charSpacing, leftSideBearing, rightSideBearing,
+    advanceArr, fontSize, kerningArr, charSpacing, charArr, leftSideBearing, rightSideBearing,
   } = calcWordMetrics(wordI.word);
+
+  wordI.charArr = charArr;
 
   const charSpacingFinal = !wordI.dynamicWidth ? charSpacing : 0;
 
@@ -446,6 +460,7 @@ export async function updateWordCanvas(wordI) {
   wordI.scaleX(1);
 
   wordI.fontSize = fontSize;
+  wordI.height(fontSize * 0.6);
   wordI.show();
 
   // Test `wordI.parent` to avoid race condition where `wordI` is destroyed before this function completes.
@@ -571,7 +586,7 @@ export class KonvaIText extends Konva.Shape {
         for (let i = 0; i < shape.charArr.length; i++) {
           let charI = shape.charArr[i];
 
-          if (shape.fontStyle === 'smallCaps') {
+          if (shape.word.smallCaps) {
             if (charI === charI.toUpperCase()) {
               context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize}px ${shape.fontFaceName}`;
             } else {
@@ -587,6 +602,7 @@ export class KonvaIText extends Konva.Shape {
 
         if (shape.outline) {
           context.strokeStyle = 'black';
+          context.lineWidth = calcControlStrokeWidth();
           context.beginPath();
           context.rect(0, 0, shape.width(), shape.height());
           context.stroke();
@@ -594,6 +610,7 @@ export class KonvaIText extends Konva.Shape {
 
         if (shape.selected) {
           context.strokeStyle = 'rgba(40,123,181,1)';
+          context.lineWidth = calcControlStrokeWidth();
           context.beginPath();
           context.rect(0, 0, shape.width(), shape.height());
           context.stroke();
@@ -632,7 +649,6 @@ export class KonvaIText extends Konva.Shape {
     this.fontFaceWeight = fontI.fontFaceWeight;
     this.fontFaceName = fontI.fontFaceName;
     this.fontFamilyLookup = fontI.family;
-    this.fontStyle = word.style;
     this.outline = outline;
     this.selected = selected;
     this.fillBox = fillBox;
@@ -720,13 +736,28 @@ export class KonvaIText extends Konva.Shape {
     inputElem.style.fontSize = `${fontSizeHTML}px`;
     inputElem.style.fontFamily = itext.fontFaceName;
 
+    /**
+     * 
+     * @param {string} text 
+     */
+    const makeSmallCapsDivs = (text) => {
+      const textDivs0 = text.match(/([a-z]+)|([^a-z]+)/g);
+      if (!textDivs0) return '';
+      const textDivs = textDivs0.map((x) => {
+        const lower = /[a-z]/.test(x);
+        const styleStr = lower ? `style="font-size:${fontSizeHTMLSmallCaps}px"` : "";
+        return `<span class="input-sub" ${styleStr}>${x}</span>`;
+      })
+      return textDivs.join('');
+    }
+
     // We cannot make the text uppercase in the input field, as this would result in the text being saved as uppercase.
     // Additionally, while there is a small-caps CSS property, it does not allow for customizing the size of the small caps.
     // Therefore, we handle small caps by making all text print as uppercase using the `text-transform` CSS property,
     // and then wrapping each letter in a span with a smaller font size.
-    if (itext.fontStyle === 'smallCaps') {
+    if (itext.word.smallCaps) {
       inputElem.style.textTransform = 'uppercase';
-      inputElem.innerHTML = text.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
+      inputElem.innerHTML = makeSmallCapsDivs(text);
     } else {
       inputElem.textContent = text;
     }
@@ -743,11 +774,11 @@ export class KonvaIText extends Konva.Shape {
     // Prevent line breaks and hide overflow
     inputElem.style.whiteSpace = 'nowrap';
 
-    if (itext.fontStyle === 'smallCaps') {
+    if (itext.word.smallCaps) {
       inputElem.oninput = () => {
         const index = getInputCursorIndex();
         const textContent = inputElem.textContent || '';
-        inputElem.innerHTML = textContent.replace(/[a-z]+/g, (matched) => `<span class="input-sub" style="font-size:${fontSizeHTMLSmallCaps}px">${matched}</span>`);
+        inputElem.innerHTML = makeSmallCapsDivs(textContent);
         setCursor(index);
       };
     }
@@ -773,6 +804,11 @@ export class KonvaIText extends Konva.Shape {
 
     // Update the Konva Text node after editing
     ScribeCanvas.input.addEventListener('blur', () => (ScribeCanvas.inputRemove));
+    ScribeCanvas.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        ScribeCanvas.inputRemove();
+      }
+    });
 
     document.body.appendChild(ScribeCanvas.input);
 
@@ -833,6 +869,11 @@ export class KonvaIText extends Konva.Shape {
     itext.hide();
     itext.draw();
   };
+}
+
+export const calcControlStrokeWidth = () => {
+  const height = pageMetricsArr[cp.n]?.dims.height || 1000;
+  return Math.max(1, Math.round(height / 1000));
 }
 
 export class KonvaOcrWord extends KonvaIText {
@@ -923,17 +964,16 @@ export class KonvaOcrWord extends KonvaIText {
     if (wordFirst.word.sup !== elem.edit.styleSuper.classList.contains('active')) {
       styleSuperButton.toggle();
     }
-    const italic = wordFirst.fontStyle === 'italic';
+    if (wordFirst.word.smallCaps !== elem.edit.styleSmallCaps.classList.contains('active')) {
+      styleSmallCapsButton.toggle();
+    }
+    const italic = wordFirst.word.style === 'italic';
     if (italic !== elem.edit.styleItalic.classList.contains('active')) {
       styleItalicButton.toggle();
     }
-    const bold = wordFirst.fontStyle === 'bold';
+    const bold = wordFirst.word.style === 'bold';
     if (bold !== elem.edit.styleBold.classList.contains('active')) {
       styleBoldButton.toggle();
-    }
-    const smallCaps = wordFirst.fontStyle === 'smallCaps';
-    if (smallCaps !== elem.edit.styleSmallCaps.classList.contains('active')) {
-      styleSmallCapsButton.toggle();
     }
   };
 
@@ -945,6 +985,7 @@ export class KonvaOcrWord extends KonvaIText {
     const trans = new Konva.Transformer({
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
+      borderStrokeWidth: calcControlStrokeWidth(),
     });
     ScribeCanvas._controlArr.push(trans);
     layerText.add(trans);
@@ -1075,5 +1116,6 @@ export function renderPage(page) {
 }
 
 export {
-  layerBackground, layerOverlay, layerText, stage,
+  layerBackground, layerOverlay, layerText, stage
 };
+

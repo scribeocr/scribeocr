@@ -41,13 +41,14 @@ export function pass2(pageObj, rotateAngle) {
     const titleCaseArr = [];
     for (const wordObj of lineObj.words) {
       // Skip words that are already identified as small caps, however they can be used to validate other words.
-      if (wordObj.style === 'smallCaps') {
+      if (wordObj.smallCaps) {
         smallCapsWordArr.push(wordObj);
         continue;
       }
 
-      // Word contains multiple capital letters, no lowercase letters, and is not already identified as small caps.
-      if (!/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text) && wordObj.style !== 'smallCaps' && wordObj.chars) {
+      // Detect words that were not identified as small caps but the engine, but likely are.
+      // Word contains multiple capital letters, no lowercase letters, and has character-level data.
+      if (!/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text) && wordObj.chars) {
         // Filter to only include letters
         const filterArr = wordObj.text.split('').map((x) => /[a-z]/i.test(x));
         const charArrSub = wordObj.chars.filter((x, y) => filterArr[y]);
@@ -84,7 +85,7 @@ export function pass2(pageObj, rotateAngle) {
 
       for (let k = 0; k < smallCapsWordArr.length; k++) {
         const wordObj = smallCapsWordArr[k];
-        wordObj.style = 'smallCaps';
+        wordObj.smallCaps = true;
         if (!wordObj.chars || !titleCaseTotal) continue;
 
         // If title case, convert all letters after the first to lowercase.

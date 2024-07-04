@@ -3,7 +3,7 @@ import Konva from '../../lib/konva/index.js';
 
 import { getRandomAlphanum, showHideElem } from '../utils/miscUtils.js';
 
-import { cp, displayPage } from '../../main.js';
+import { displayPage } from '../../main.js';
 
 import {
   LayoutDataColumn, LayoutDataTable, LayoutRegion, calcTableBbox,
@@ -20,6 +20,8 @@ import ocr from '../objects/ocrObjects.js';
 
 import {
   KonvaIText, ScribeCanvas,
+  calcControlStrokeWidth,
+  cp,
   getWordFillOpacity,
   layerOverlay, updateWordCanvas,
 } from './interfaceCanvas.js';
@@ -389,6 +391,7 @@ export class KonvaLayout extends Konva.Rect {
     const trans = new Konva.Transformer({
       enabledAnchors,
       rotateEnabled: false,
+      borderStrokeWidth: calcControlStrokeWidth(),
     });
     ScribeCanvas._controlArr.push(trans);
     layerOverlay.add(trans);

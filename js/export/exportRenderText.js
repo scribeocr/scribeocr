@@ -133,11 +133,13 @@ export function renderText(hocrCurrent, minpage = 0, maxpage = -1, removeLineBre
         if (docxMode) {
           let fontStyle = '';
           if (wordObj.style === 'italic') {
-            fontStyle = '<w:i/>';
-          } else if (wordObj.style === 'smallCaps') {
-            fontStyle = '<w:smallCaps/>';
+            fontStyle += '<w:i/>';
           } else if (wordObj.style === 'bold') {
-            fontStyle = '<w:b/>';
+            fontStyle += '<w:b/>';
+          }
+
+          if (wordObj.smallCaps) {
+            fontStyle += '<w:smallCaps/>';
           }
 
           if (newLine || fontStyle !== fontStylePrev || (h === 0 && g === 0 && i === 0)) {

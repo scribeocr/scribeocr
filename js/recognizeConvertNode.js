@@ -1,10 +1,11 @@
-import { recognizePage } from './recognizeConvert.js';
-import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { imageCache } from './containers/imageContainer.js';
 import {
-  layoutAll, ocrAll, pageMetricsArr, layoutDataTableAll,
+  layoutDataTableAll,
+  ocrAll, pageMetricsArr
 } from './containers/miscContainer.js';
 import { loadChiSimFont } from './fontContainerMain.js';
+import { PageMetrics } from './objects/pageMetricsObjects.js';
+import { recognizePage } from './recognizeConvert.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
   await globalThis.generalScheduler.ready;

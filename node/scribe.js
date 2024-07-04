@@ -1,7 +1,10 @@
 import { Command } from 'commander';
 
 import {
-  confCLI, checkCLI, evalInternalCLI, overlayCLI, recognizeCLI, debugCLI,
+  checkCLI,
+  confCLI,
+  debugCLI,
+  evalInternalCLI, overlayCLI, recognizeCLI,
 } from './cli.js';
 
 const program = new Command();

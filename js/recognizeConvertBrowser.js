@@ -1,16 +1,21 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  initOCRVersion, setCurrentHOCR, cp, insertAlertMessage, displayPage,
+  displayPage,
+  initOCRVersion,
+  insertAlertMessage,
+  setCurrentHOCR,
 } from '../main.js';
-import { recognizePage } from './recognizeConvert.js';
-import { PageMetrics } from './objects/pageMetricsObjects.js';
-import { checkCharWarn } from './fontStatistics.js';
+import { cp } from './browser/interfaceCanvas.js';
 import { imageCache } from './containers/imageContainer.js';
 import {
-  layoutAll, ocrAll, pageMetricsArr, inputDataModes, layoutDataTableAll,
+  inputDataModes, layoutDataTableAll,
+  ocrAll, pageMetricsArr
 } from './containers/miscContainer.js';
 import { loadChiSimFont } from './fontContainerMain.js';
+import { checkCharWarn } from './fontStatistics.js';
+import { PageMetrics } from './objects/pageMetricsObjects.js';
+import { recognizePage } from './recognizeConvert.js';
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
