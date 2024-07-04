@@ -602,7 +602,7 @@ export class KonvaIText extends Konva.Shape {
 
         if (shape.outline) {
           context.strokeStyle = 'black';
-          context.lineWidth = calcControlStrokeWidth();
+          context.lineWidth = 3 / shape.getAbsoluteScale().x;
           context.beginPath();
           context.rect(0, 0, shape.width(), shape.height());
           context.stroke();
@@ -610,7 +610,7 @@ export class KonvaIText extends Konva.Shape {
 
         if (shape.selected) {
           context.strokeStyle = 'rgba(40,123,181,1)';
-          context.lineWidth = calcControlStrokeWidth();
+          context.lineWidth = 3 / shape.getAbsoluteScale().x;
           context.beginPath();
           context.rect(0, 0, shape.width(), shape.height());
           context.stroke();
@@ -805,7 +805,7 @@ export class KonvaIText extends Konva.Shape {
     // Update the Konva Text node after editing
     ScribeCanvas.input.addEventListener('blur', () => (ScribeCanvas.inputRemove));
     ScribeCanvas.input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && ScribeCanvas.inputRemove) {
         ScribeCanvas.inputRemove();
       }
     });
@@ -869,11 +869,6 @@ export class KonvaIText extends Konva.Shape {
     itext.hide();
     itext.draw();
   };
-}
-
-export const calcControlStrokeWidth = () => {
-  const height = pageMetricsArr[cp.n]?.dims.height || 1000;
-  return Math.max(1, Math.round(height / 1000));
 }
 
 export class KonvaOcrWord extends KonvaIText {
@@ -985,7 +980,8 @@ export class KonvaOcrWord extends KonvaIText {
     const trans = new Konva.Transformer({
       enabledAnchors: ['middle-left', 'middle-right'],
       rotateEnabled: false,
-      borderStrokeWidth: calcControlStrokeWidth(),
+      // This width is automatically scaled by Konva based on the zoom level.
+      borderStrokeWidth: 3,
     });
     ScribeCanvas._controlArr.push(trans);
     layerText.add(trans);

@@ -7,7 +7,6 @@ import { mergeOcrWords, splitOcrWord } from '../utils/ocrUtils.js';
 import {
   KonvaOcrWord,
   ScribeCanvas,
-  calcControlStrokeWidth,
   cp,
   layerBackground,
   layerOverlay, layerText, stage,
@@ -328,7 +327,7 @@ stage.on('contextmenu', (e) => {
 const trans = new Konva.Transformer({
   enabledAnchors: ['middle-left', 'middle-right'],
   rotateEnabled: false,
-  borderStrokeWidth: calcControlStrokeWidth(),
+  borderStrokeWidth: 3,
 });
 layerText.add(trans);
 

@@ -20,7 +20,6 @@ import ocr from '../objects/ocrObjects.js';
 
 import {
   KonvaIText, ScribeCanvas,
-  calcControlStrokeWidth,
   cp,
   getWordFillOpacity,
   layerOverlay, updateWordCanvas,
@@ -391,7 +390,7 @@ export class KonvaLayout extends Konva.Rect {
     const trans = new Konva.Transformer({
       enabledAnchors,
       rotateEnabled: false,
-      borderStrokeWidth: calcControlStrokeWidth(),
+      borderStrokeWidth: 3,
     });
     ScribeCanvas._controlArr.push(trans);
     layerOverlay.add(trans);

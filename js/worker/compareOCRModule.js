@@ -1213,12 +1213,13 @@ export async function nudgePageBase({
  * @param {OcrPage} params.page
  * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
+ * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {boolean} params.view
  * @returns
  */
 export async function nudgePageFontSize({
-  page, binaryImage, imageRotated, pageMetricsObj, view = false,
+  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, view = false,
 }) {
   const func = async (lineJ, x) => {
     const fontSizeBase = calcLineFontSize(lineJ);
@@ -1227,7 +1228,7 @@ export async function nudgePageFontSize({
   };
 
   return await nudgePageBase({
-    page, binaryImage, imageRotated, pageMetricsObj, func, view,
+    page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func, view,
   });
 }
 
@@ -1236,18 +1237,19 @@ export async function nudgePageFontSize({
  * @param {OcrPage} params.page
  * @param {ImageBitmap} params.binaryImage
  * @param {boolean} params.imageRotated - Whether provided `binaryImage` has been rotated.
+ * @param {boolean} params.imageUpscaled - Whether provided `binaryImage` has been upscaled.
  * @param {PageMetrics} params.pageMetricsObj
  * @param {boolean} params.view
  * @returns
  */
 export async function nudgePageBaseline({
-  page, binaryImage, imageRotated, pageMetricsObj, view = false,
+  page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, view = false,
 }) {
   const func = async (lineJ, x) => {
     lineJ.baseline[1] += x;
   };
 
   return await nudgePageBase({
-    page, binaryImage, imageRotated, pageMetricsObj, func, view,
+    page, binaryImage, imageRotated, imageUpscaled, pageMetricsObj, func, view,
   });
 }
