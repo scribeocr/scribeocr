@@ -134,7 +134,7 @@ globalThis.visInstructions = [];
 async function main(func, params) {
   const output = {};
 
-  const debugComp = true;
+  const debugComp = false;
 
   // const hocrStrFirst = fs.readFileSync(params.ocrFile, 'utf8');
   // if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
