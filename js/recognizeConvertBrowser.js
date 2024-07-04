@@ -1,8 +1,9 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  initOCRVersion, setCurrentHOCR, cp, insertAlertMessage, displayPage,
+  initOCRVersion, setCurrentHOCR, insertAlertMessage, displayPage,
 } from '../main.js';
+import { cp } from './browser/interfaceCanvas.js';
 import { recognizePage } from './recognizeConvert.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { checkCharWarn } from './fontStatistics.js';

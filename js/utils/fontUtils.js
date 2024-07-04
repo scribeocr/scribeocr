@@ -95,12 +95,24 @@ function calcWordFontSizePrecise(wordArr, fontOpentype, nonLatin = false) {
 }
 
 /**
+ * Adds ligatures to text of `OcrWord` object. Returns an array of letters.
+ * @param {OcrWord} word
+ * @returns {Array<string>}
+*/
+export function addLigatures(word) {
+  if (word.smallCaps) return word.text.split('');
+  const fontI = fontAll.getWordFont(word);
+  const fontOpentype = fontI.opentype;
+  return addLigaturesText(word.text, fontOpentype);
+}
+
+/**
  * Adds ligatures if they exist in the font.
  *
  * @param {Array<string>|string} wordText
  * @param {opentype.Font} fontOpentype
  */
-export function addLigatures(wordText, fontOpentype) {
+function addLigaturesText(wordText, fontOpentype) {
   const wordTextArr = typeof wordText === 'string' ? wordText.split('') : wordText;
   const wordCharArrOut = [];
 
@@ -191,13 +203,13 @@ export function calcWordMetrics(word, angle = 0) {
 
   const fontSize = calcWordFontSize(word);
 
-  const charArr = addLigatures(word.text, fontOpentype);
+  const charArr = addLigatures(word);
 
-  const charArr2 = word.style === 'smallCaps' ? charArr.map((x) => (x.toUpperCase())) : charArr;
+  const charArr2 = word.smallCaps ? charArr.map((x) => (x.toUpperCase())) : charArr;
 
   const { advanceArr, kerningArr } = calcWordCharMetrics(charArr2, fontOpentype);
 
-  if (word.style === 'smallCaps') {
+  if (word.smallCaps) {
     for (let i = 0; i < charArr2.length; i++) {
       if (charArr2[i] !== charArr[i]) {
         advanceArr[i] *= 0.8;
@@ -216,8 +228,8 @@ export function calcWordMetrics(word, angle = 0) {
 
   let wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing || 0;
   let wordRightBearing = wordLastGlyphMetrics.rightSideBearing || 0;
-  if (word.style === 'smallCaps' && charArr2[0] !== charArr[0]) wordLeftBearing *= 0.8;
-  if (word.style === 'smallCaps' && charArr2[charArr2.length - 1] !== charArr[charArr2.length - 1]) wordRightBearing *= 0.8;
+  if (word.smallCaps && charArr2[0] !== charArr[0]) wordLeftBearing *= 0.8;
+  if (word.smallCaps && charArr2[charArr2.length - 1] !== charArr[charArr2.length - 1]) wordRightBearing *= 0.8;
 
   const wordWidth = word.visualCoords ? wordWidth1 - wordRightBearing - wordLeftBearing : wordWidth1;
   const wordWidthPx = wordWidth * (fontSize / fontOpentype.unitsPerEm);

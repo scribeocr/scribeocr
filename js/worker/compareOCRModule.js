@@ -806,10 +806,10 @@ export async function compareHOCR({
 
                       // Switch to small caps/non-small caps based on style of replacement word.
                       // This is not relevant for italics as the LSTM engine does not detect italics.
-                      if (wordB.style === 'smallCaps' && wordA.style !== 'smallCaps') {
-                        wordA.style = 'smallCaps';
-                      } else if (wordB.style !== 'smallCaps' && wordA.style === 'smallCaps') {
-                        wordA.style = 'normal';
+                      if (wordB.smallCaps && wordA.smallCaps) {
+                        wordA.smallCaps = true;
+                      } else if (wordB.smallCaps && wordA.smallCaps) {
+                        wordA.smallCaps = false;
                       }
                     } else {
                       const wordsBArrRep = wordsBArr.map((x) => ocr.cloneWord(x));

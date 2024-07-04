@@ -342,8 +342,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
     let wordFontSize = word0Metrics.fontSize;
 
     // Set font and font size
-    const fontStyle = word.style === 'smallCaps' ? 'normal' : word.style;
-    ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][fontStyle]);
+    ({ name: pdfFontCurrent, type: pdfFontTypeCurrent } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][word.style]);
 
     textContentObjStr += `${pdfFontCurrent} ${String(wordFontSize)} Tf\n`;
 
@@ -444,8 +443,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       }
 
       // const pdfFont = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFontFamily][word.style];
-      const fontStyle = word.style === 'smallCaps' ? 'normal' : word.style;
-      const { name: pdfFont, type: pdfFontType } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][fontStyle];
+      const { name: pdfFont, type: pdfFontType } = word.lang === 'chi_sim' ? pdfFonts.NotoSansSC.normal : pdfFonts[wordFont.family][word.style];
 
       const wordWidthAdj = (wordBox.right - wordBox.left) / cosAngle;
       const wordSpaceAdj = (wordBox.left - wordBoxLast.right) / cosAngle;
@@ -489,7 +487,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
 
       textContentObjStr += ' ] TJ\n';
 
-      const fontSize = word.style === 'smallCaps' && word.text[0] && word.text[0] !== word.text[0].toUpperCase() ? wordFontSize * 0.8 : wordFontSize;
+      const fontSize = word.smallCaps && word.text[0] && word.text[0] !== word.text[0].toUpperCase() ? wordFontSize * 0.8 : wordFontSize;
       if (pdfFont !== pdfFontCurrent || fontSize !== fontSizeLast) {
         textContentObjStr += `${pdfFont} ${String(fontSize)} Tf\n`;
         pdfFontCurrent = pdfFont;
@@ -516,8 +514,8 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       // Non-ASCII and special characters are encoded/escaped using winEncodingLookup
       for (let k = 0; k < charArr.length; k++) {
         const letterSrc = charArr[k];
-        const letter = word.style === 'smallCaps' ? charArr[k].toUpperCase() : charArr[k];
-        const fontSizeLetter = word.style === 'smallCaps' && letterSrc !== letter ? wordFontSize * 0.8 : wordFontSize;
+        const letter = word.smallCaps ? charArr[k].toUpperCase() : charArr[k];
+        const fontSizeLetter = word.smallCaps && letterSrc !== letter ? wordFontSize * 0.8 : wordFontSize;
 
         const letterEnc = pdfFontTypeCurrent === 0 ? wordFontOpentype.charToGlyphIndex(letter).toString(16).padStart(4, '0') : winEncodingLookup[letter];
         if (letterEnc) {

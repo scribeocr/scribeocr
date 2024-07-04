@@ -1,6 +1,5 @@
 /* eslint-disable import/no-cycle */
 
-import { cp } from '../../main.js';
 import { imageCache } from '../containers/imageContainer.js';
 import {
   fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
@@ -12,6 +11,7 @@ import { imageStrToBlob } from '../utils/imageUtils.js';
 import { saveAs } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
+  cp,
   ScribeCanvas,
   layerText,
   stage,

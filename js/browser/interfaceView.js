@@ -1,11 +1,12 @@
 /* eslint-disable import/no-cycle */
 
 import Konva from '../../lib/konva/index.js';
-import { cp, renderPageQueue } from '../../main.js';
+import { renderPageQueue } from '../../main.js';
 import { imageCache } from '../containers/imageContainer.js';
 import { inputDataModes, pageMetricsArr } from '../containers/miscContainer.js';
 import { elem } from './elems.js';
 import {
+  cp,
   ScribeCanvas,
   getWordFillOpacity,
   layerBackground,

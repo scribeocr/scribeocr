@@ -285,7 +285,7 @@ function createCellsSingle(ocrTableWords, extraCols = [], startRow = 0, xlsxMode
           let fontStyle;
           if (wordObj.style === 'italic') {
             fontStyle = '<i/>';
-          } else if (wordObj.style === 'smallCaps') {
+          } else if (wordObj.smallCaps) {
             fontStyle = '<smallCaps/>';
           } else {
             fontStyle = '';

@@ -1,7 +1,6 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  cp,
   initOCRVersion,
   initializeProgress,
   insertAlertMessage,
@@ -16,6 +15,7 @@ import { calcFontMetricsFromPages } from '../fontStatistics.js';
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { elem } from './elems.js';
 import { toggleEditButtons } from './interfaceEdit.js';
+import { cp } from './interfaceCanvas.js';
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));
