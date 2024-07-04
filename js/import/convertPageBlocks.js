@@ -3,7 +3,7 @@ import ocr from '../objects/ocrObjects.js';
 import { pass2, pass3 } from './convertPageShared.js';
 
 import { LayoutDataTablePage } from '../objects/layoutObjects.js';
-import { determineSansSerif, getTextScript } from '../utils/miscUtils.js';
+import { getTextScript } from '../utils/miscUtils.js';
 
 // TODO: Add rotation.
 
@@ -125,10 +125,9 @@ export async function convertPageBlocks({
           // See: https://github.com/naptha/tesseract.js/issues/907
           if (keepItalic && /italic/i.test(word.font_name)) wordObj.style = 'italic';
 
-          const fontFamily = determineSansSerif(word.font_name);
-          if (fontFamily !== 'Default') {
-            wordObj.font = fontFamily;
-          }
+          // Our fork of Tesseract Legacy should be able to recognize fonts, so this information is included.
+          // The generic HOCR importer does not include font information, as this is assumed to be unreliable.
+          wordObj.font = word.font_name;
 
           wordObj.chars = [];
           for (let m = 0; m < word.symbols.length; m++) {

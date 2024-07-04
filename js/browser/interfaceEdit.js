@@ -174,9 +174,9 @@ export function toggleSuperSelectedWords() {
 }
 
 /**
- * 
- * @param {boolean} enable 
- * @returns 
+ *
+ * @param {boolean} enable
+ * @returns
  */
 export async function toggleSmallCapsWords(enable) {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();

@@ -31,6 +31,9 @@ export async function convertPageAbbyy({ ocrStr, n }) {
   // Return early if character-level data is not detected.
   // Unlike Tesseract HOCR (which by default returns word-level data which we can still use), Abbyy XML returns line-level data that is not usable.
   const pageDimsStr = ocrStr.match(/<page width=['"](\d+)['"] height=['"](\d+)['"]/);
+
+  if (!pageDimsStr || !pageDimsStr[1] || !pageDimsStr[2]) throw new Error('Failed to parse page dimensions.');
+
   const pageDims = { height: parseInt(pageDimsStr[2]), width: parseInt(pageDimsStr[1]) };
 
   const pageObj = new ocr.OcrPage(n, pageDims);
@@ -77,7 +80,7 @@ export async function convertPageAbbyy({ ocrStr, n }) {
       }
 
       let lineBoxArr = xmlLine.match(abbyyLineBoxRegex);
-      if (lineBoxArr == null) { return (''); }
+      if (lineBoxArr == null) return;
       lineBoxArr = [...lineBoxArr].map((x) => parseInt(x));
 
       // Unlike Tesseract, Abbyy XML does not have a native "word" unit (it provides only lines and letters).
@@ -132,7 +135,7 @@ export async function convertPageAbbyy({ ocrStr, n }) {
         wordStrArr.push(wordStrArrI);
       }
 
-      if (wordStrArr.length === 0) return (['', 0]);
+      if (wordStrArr.length === 0) return;
 
       const bboxes = Array(wordStrArr.length);
       let text = Array(wordStrArr.length);
@@ -142,9 +145,9 @@ export async function convertPageAbbyy({ ocrStr, n }) {
       text = text.fill('');
       let styleArr = Array(wordStrArr.length);
       styleArr = styleArr.fill('normal');
-      /**@type {Array<boolean>} */
+      /** @type {Array<boolean>} */
       const smallCapsArr = Array(wordStrArr.length).fill(false);
-      /**@type {Array<boolean>} */
+      /** @type {Array<boolean>} */
       const wordSusp = Array(wordStrArr.length).fill(false);
 
       for (let i = 0; i < wordStrArr.length; i++) {
@@ -163,11 +166,10 @@ export async function convertPageAbbyy({ ocrStr, n }) {
             styleArr[i] = 'normal';
             stylesLine.normal = true;
           }
-          
+
           if (/smallcaps=['"](1|true)/i.test(letterArr[0][1])) {
             smallCapsArr[i] = true;
           }
-          
         } else if (i > 0) {
           if (styleArr[i - 1] === 'dropcap') {
             styleArr[i] = 'normal';
@@ -277,7 +279,7 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
       let lettersKept = 0;
       for (let i = 0; i < text.length; i++) {
-        if (text[i].trim() === '') { continue; }
+        if (text[i].trim() === '') continue;
         const bboxesI = bboxes[i];
 
         // Abbyy-specific fix:
@@ -308,8 +310,8 @@ export async function convertPageAbbyy({ ocrStr, n }) {
 
         if (styleArr[i] === 'italic') {
           wordObj.style = 'italic';
-        } 
-        
+        }
+
         wordObj.smallCaps = smallCapsArr[i];
 
         if (fontFamily !== 'Default') {
@@ -328,20 +330,20 @@ export async function convertPageAbbyy({ ocrStr, n }) {
       }
 
       // If there are no letters in the line, drop the entire line element
-      if (lettersKept === 0) return (['', 0]);
+      if (lettersKept === 0) return;
 
       pageObj.lines.push(lineObj);
       parLineArr.push(lineObj);
 
-      return (['non-empty value', baselineSlope]);
+      // eslint-disable-next-line consistent-return
+      return baselineSlope;
     }
 
     const lineStrArr = xmlPar.split(/<\/line>/);
 
     for (let i = 0; i < lineStrArr.length; i++) {
-      const lineInt = convertLineAbbyy(lineStrArr[i]);
-      if (lineInt[0] == '') continue;
-      angleRisePage.push(lineInt[1]);
+      const angle = convertLineAbbyy(lineStrArr[i]);
+      if (typeof angle === 'number' && !Number.isNaN(angle)) angleRisePage.push(angle);
     }
 
     if (parLineArr.length === 0) return;
@@ -437,7 +439,9 @@ function convertTableLayoutAbbyy(ocrStr) {
     // Abbyy sometimes provides column widths that are incorrect
     // If the column widths do not add up to the table width, the column widths are re-caculated from scratch.
     if (Math.abs(leftLast - tableCoords[2]) > 10) {
+      /** @type {Array<Array<number>>} */
       let colLeftArr = [];
+      /** @type {Array<Array<number>>} */
       let colRightArr = [];
 
       for (let j = 0; j < rows.length; j++) {

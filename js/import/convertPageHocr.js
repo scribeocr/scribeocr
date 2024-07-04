@@ -46,6 +46,8 @@ export async function convertPageHocr({
     }
   }
 
+  if (!pageDims) throw new Error('Failed to parse page dimensions.');
+
   const pageObj = new ocr.OcrPage(n, pageDims);
 
   // Test whether character-level data (class="ocrx_cinfo" in Tesseract) is present.
@@ -302,14 +304,14 @@ export async function convertPageHocr({
       const styleStr = match.match(/style=['"]([^'"]+)/)?.[1];
 
       let smallCaps = false;
-      /**@type {('normal'|'italic'|'bold')} */
+      /** @type {('normal'|'italic'|'bold')} */
       let fontStyle = 'normal';
       if (styleStr && /italic/i.test(styleStr)) {
         fontStyle = 'italic';
       } else if (styleStr && /bold/i.test(styleStr)) {
         fontStyle = 'bold';
-      } 
-      
+      }
+
       if (styleStr && /small-caps/i.test(styleStr)) {
         smallCaps = true;
       }

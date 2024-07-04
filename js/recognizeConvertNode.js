@@ -1,7 +1,7 @@
 import { imageCache } from './containers/imageContainer.js';
 import {
   layoutDataTableAll,
-  ocrAll, pageMetricsArr
+  ocrAll, pageMetricsArr,
 } from './containers/miscContainer.js';
 import { loadChiSimFont } from './fontContainerMain.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
@@ -21,7 +21,7 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
       const res1 = legacy && lstm ? await resArr[1] : undefined;
 
       if (res0.recognize.debugVis) {
-        const { ScrollView } = await import('../../scrollview-web/scrollview/ScrollView.js');
+        const { ScrollView } = await import('../scrollview-web/scrollview/ScrollView.js');
         const sv = new ScrollView();
         await sv.processVisStr(res0.recognize.debugVis);
         globalThis.visInstructions[x] = await sv.getAll(true);

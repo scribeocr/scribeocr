@@ -6,11 +6,12 @@ import {
   insertAlertMessage,
   setCurrentHOCR,
 } from '../main.js';
+import { elem } from './browser/elems.js';
 import { cp } from './browser/interfaceCanvas.js';
 import { imageCache } from './containers/imageContainer.js';
 import {
   inputDataModes, layoutDataTableAll,
-  ocrAll, pageMetricsArr
+  ocrAll, pageMetricsArr,
 } from './containers/miscContainer.js';
 import { loadChiSimFont } from './fontContainerMain.js';
 import { checkCharWarn } from './fontStatistics.js';
@@ -96,11 +97,9 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
     }));
   }
 
-  const enableUpscaleElem = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
-
   // Upscaling is enabled only for image data, and only if the user has explicitly enabled it.
   // For PDF data, if upscaling is desired, that should be handled by rendering the PDF at a higher resolution.
-  const upscale = inputDataModes.imageMode && enableUpscaleElem.checked;
+  const upscale = inputDataModes.imageMode && elem.recognize.enableUpscale.checked;
 
   const config = { upscale };
 
@@ -111,7 +110,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
       const res0 = await resArr[0];
 
       if (res0.recognize.debugVis) {
-        const { ScrollView } = await import('../../scrollview-web/scrollview/ScrollView.js');
+        const { ScrollView } = await import('../scrollview-web/scrollview/ScrollView.js');
         const sv = new ScrollView(true);
         await sv.processVisStr(res0.recognize.debugVis);
         globalThis.visInstructions[x] = await sv.getAll(true);

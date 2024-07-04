@@ -27,6 +27,8 @@ class recognize {
   static combineMode = /** @type {HTMLSelectElement} */(document.getElementById('combineMode'));
 
   static ocrQuality = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
+
+  static enableUpscale = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
 }
 
 class view {

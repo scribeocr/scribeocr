@@ -46,7 +46,7 @@ export async function convertPageStext({ ocrStr, n }) {
       xmlLine = xmlLine.replace(/<block[^>]*?>/i, '');
 
       const xmlLinePreChar = xmlLine.match(/^[\s\S]*?(?=<char)/)?.[0];
-      if (!xmlLinePreChar) { return (''); }
+      if (!xmlLinePreChar) return;
 
       const xmlLineFormatting = xmlLinePreChar?.match(/<font[^>]+/)?.[0];
       const fontName = xmlLineFormatting?.match(/name=['"]([^'"]*)/)?.[1];
@@ -64,14 +64,13 @@ export async function convertPageStext({ ocrStr, n }) {
       // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
       const wordStrArr = xmlLine.split(/(?:<char[^>]*?c=['"]\s+['"]\/>)/ig);
 
-      if (wordStrArr.length === 0) return (['', 0]);
+      if (wordStrArr.length === 0) return;
 
       /** @type {Array<Array<{left: number, top: number, right: number, bottom: number}>>} */
       const bboxes = [];
 
       let baselineFirst = 0;
       let baselineLast = 0;
-
 
       /** @type {Array<Array<string>>} */
       const text = [];
@@ -115,7 +114,7 @@ export async function convertPageStext({ ocrStr, n }) {
               }
               currentSize = newSize || currentSize;
             }
-            
+
             // The word is already initialized, so we need to change the last element of the style array.
             // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
             smallCapsAltArr[i] = smallCapsAlt;
@@ -133,7 +132,6 @@ export async function convertPageStext({ ocrStr, n }) {
 
             continue;
           }
-
 
           if (!wordInit) {
             styleArr.push(currentStyle);
@@ -158,7 +156,7 @@ export async function convertPageStext({ ocrStr, n }) {
 
       // Return if there are no letters in the line.
       // This commonly happens for "lines" that contain only space characters.
-      if (bboxes.length === 0) return (['', 0]);
+      if (bboxes.length === 0) return;
 
       const rise = baselineLast - baselineFirst;
       const run = bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].right - bboxes[0][0].left;
@@ -251,7 +249,7 @@ export async function convertPageStext({ ocrStr, n }) {
         } else if (smallCapsArr[i]) {
           wordObj.smallCaps = true;
         }
-        
+
         if (styleArr[i] === 'italic') {
           wordObj.style = 'italic';
         } if (styleArr[i] === 'bold') {
@@ -274,19 +272,19 @@ export async function convertPageStext({ ocrStr, n }) {
       }
 
       // If there are no letters in the line, drop the entire line element
-      if (lettersKept === 0) return (['', 0]);
+      if (lettersKept === 0) return;
 
       pageObj.lines.push(lineObj);
       parLineArr.push(lineObj);
-      return (['non-empty value', baselineSlope]);
+      // eslint-disable-next-line consistent-return
+      return baselineSlope;
     }
 
     const lineStrArr = xmlPar.split(/<\/line>/);
 
     for (let i = 0; i < lineStrArr.length; i++) {
-      const lineInt = convertLineStext(lineStrArr[i], i, n);
-      if (!lineInt[0]) continue;
-      angleRisePage.push(lineInt[1]);
+      const angle = convertLineStext(lineStrArr[i], i, n);
+      if (typeof angle === 'number' && !Number.isNaN(angle)) angleRisePage.push(angle);
     }
 
     if (parLineArr.length === 0) return;
