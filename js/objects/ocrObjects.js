@@ -15,6 +15,21 @@ export function OcrPage(n, dims) {
   this.dims = dims;
   /** @type {number} - Angle of page (degrees) */
   this.angle = 0;
+  /** @type {Array<OcrPar>} */
+  this.pars = [];
+  /** @type {Array<OcrLine>} */
+  this.lines = [];
+}
+
+/**
+ *
+ * @param {OcrPage} page
+ * @param {bbox} bbox
+ */
+export function OcrPar(page, bbox) {
+  this.page = page;
+  /** @type {bbox} */
+  this.bbox = bbox;
   /** @type {Array<OcrLine>} */
   this.lines = [];
 }
@@ -61,6 +76,8 @@ export function OcrLine(page, bbox, baseline, ascHeight = null, xHeight = null) 
   this.raw = null;
   /** @type {?{x: number, y: number}} */
   this._angleAdj = null;
+  /** @type {OcrPar} */
+  this.par = null;
 }
 
 /**
@@ -580,6 +597,7 @@ function getMatchingWordIds(text, ocrPage) {
 
 const ocr = {
   OcrPage,
+  OcrPar,
   OcrLine,
   OcrWord,
   OcrChar,

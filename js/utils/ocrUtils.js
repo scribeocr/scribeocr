@@ -1,6 +1,7 @@
-import ocr from '../objects/ocrObjects.js';
+import { pageMetricsArr } from '../containers/miscContainer.js';
+import ocr, { OcrPar } from '../objects/ocrObjects.js';
 import { calcWordMetrics } from './fontUtils.js';
-import { calcBboxUnion } from './miscUtils.js';
+import { calcBboxUnion, quantile } from './miscUtils.js';
 
 /**
  *
@@ -53,4 +54,120 @@ export function mergeOcrWords(words) {
   wordA.text = words.map((x) => x.text).join('');
   if (wordA.chars) wordA.chars = words.flatMap((x) => x.chars || []);
   return wordA;
+}
+
+/**
+ * Assigns paragraphs based on our own heuristics.
+ *
+ * @param {OcrPage} page
+ * @param {number} n
+ */
+export function assignParagraphs(page, n) {
+  let endsEarlyPrev = false;
+  let startsLatePrev = false;
+
+  let newLine = false;
+
+  const lineLeftArr = [];
+  const lineRightArr = [];
+  const lineWidthArr = [];
+  const lineSpaceArr = [];
+  /** @type {?number} */
+  let lineLeftMedian = null;
+  /** @type {?number} */
+  let lineRightMedian = null;
+  /** @type {?number} */
+  let lineWidthMedian = null;
+  /** @type {?number} */
+  let lineSpaceMedian = null;
+
+  const angle = (pageMetricsArr[n].angle || 0) * -1;
+
+  /** @type {?number} */
+  let y2Prev = null;
+
+  /** @type {Array<OcrPar>} */
+  const parArr = [];
+
+  for (let h = 0; h < page.lines.length; h++) {
+    const lineObj = page.lines[h];
+    if (!lineObj) continue;
+
+    const lineBox = lineObj.bbox;
+
+    if (y2Prev !== null) {
+      lineSpaceArr.push(lineBox.bottom - y2Prev);
+    }
+
+    const sinAngle = Math.sin(angle * (Math.PI / 180));
+    const cosAngle = Math.cos(angle * (Math.PI / 180));
+
+    const x1Rot = lineBox.left * cosAngle - sinAngle * lineBox.bottom;
+    const x2Rot = lineBox.right * cosAngle - sinAngle * lineBox.bottom;
+
+    lineLeftArr.push(x1Rot);
+    lineRightArr.push(x2Rot);
+
+    lineWidthArr.push(lineBox.right - lineBox.left);
+
+    y2Prev = lineBox.bottom;
+  }
+
+  lineLeftMedian = quantile(lineLeftArr, 0.5);
+
+  lineRightMedian = quantile(lineRightArr, 0.5);
+
+  lineWidthMedian = quantile(lineWidthArr, 0.5);
+
+  lineSpaceMedian = quantile(lineSpaceArr, 0.5);
+
+  for (let h = 0; h < page.lines.length; h++) {
+    // Flag lines that end early (with >=10% of the line empty)
+    const endsEarly = lineRightArr[h] < (lineRightMedian - lineWidthMedian * 0.1);
+    // Flag lines that start late (with >=20% of the line empty)
+    // This is intended to capture floating elements (such as titles and page numbers) and not lines that are indented.
+    const startsLate = lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.2);
+
+    // Add spaces or page breaks between lines
+    if (h > 0) {
+      newLine = false;
+      // Add a line break if the previous line ended early
+      if (endsEarlyPrev || startsLatePrev) {
+        newLine = true;
+
+        // Add a line break if there is blank space added between lines
+      } else if (lineSpaceMedian && lineSpaceArr[h - 1] > (2 * lineSpaceMedian)) {
+        newLine = true;
+
+        // Add a line break if this line is indented
+        // Requires (1) line to start to the right of the median line (by 2.5% of the median width) and
+        // (2) line to start to the right of the previous line and the next line.
+      } else if (lineLeftMedian && (h + 1) < page.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025)
+            && lineLeftArr[h] > lineLeftArr[h - 1] && lineLeftArr[h] > lineLeftArr[h + 1]) {
+        newLine = true;
+      }
+    } else {
+      newLine = true;
+    }
+
+    if (newLine) {
+      parArr.push(new OcrPar(page, {
+        left: 0, top: 0, right: 0, bottom: 0,
+      }));
+    }
+
+    parArr[parArr.length - 1].lines.push(page.lines[h]);
+
+    endsEarlyPrev = endsEarly;
+    startsLatePrev = startsLate;
+  }
+
+  parArr.forEach((parObj) => {
+    parObj.lines.forEach((lineObj) => {
+      lineObj.par = parObj;
+    });
+    parObj.bbox = calcBboxUnion(parObj.lines.map((x) => x.bbox));
+  });
+
+  page.pars = parArr;
 }
