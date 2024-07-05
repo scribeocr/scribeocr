@@ -23,10 +23,10 @@ do
         filename_without_extension="${filename%.*}"
         filename_proc=$filename_without_extension.woff
         file_proc_latin=$proc_fonts_dir/latin/$filename_proc
-        file_proc_cyrillic=$proc_fonts_dir/cyrillic/$filename_proc
+        file_proc_all=$proc_fonts_dir/all/$filename_proc
         file_temp1=$temp_dir/$filename_without_extension.1.otf
         file_temp2_latin=$temp_dir/$filename_without_extension.latin.otf
-        file_temp2_cyrillic=$temp_dir/$filename_without_extension.cyrillic.otf
+        file_temp2_all=$temp_dir/$filename_without_extension.all.otf
 
         ## If `all_fonts` option is 0, only fonts not already in the output directory are processed.
         # if [[ ! -e "$processed_fonts_dir/$filename" || "$all_fonts" = 1]]; then
@@ -37,25 +37,17 @@ do
             ## Subset font to contain only desired characters
             ## The --no-layout-closure option prevents ligatures from being automatically included when all the individual characters are
             hb-subset --no-layout-closure --output-file="$file_temp2_latin" --text="$LATINBASE$LATINEXT" "$file_temp1"
-            # hb-subset --no-layout-closure --output-file="$file_temp2_cyrillic" --text="$LATINBASE$LATINEXT$CYRILLIC$GREEK" "$file_temp1"
-            hb-subset --no-layout-closure --output-file="$file_temp2_cyrillic" --glyphs=* "$file_temp1"
+            hb-subset --no-layout-closure --output-file="$file_temp2_all" --text="$LATINBASE$LATINEXT$CYRILLIC$GREEK" "$file_temp1"
 
             ## For now, ligatures need to be included. 
             ## Ligatures are not removed when rendering to canvas, so if the font does not have them the metrics will not be correct.
             # hb-subset --output-file="$file_temp2" --text-file=dev/charSet.txt "$file_temp1"
-
             python dev/processFont.py "$file_temp2_latin" "$file_proc_latin"
-            python dev/processFont.py "$file_temp2_cyrillic" "$file_proc_cyrillic"
-
-            ## Step 2: Standardize font size
-            ## This makes all input fonts have the same ratio of x-height/em size, which simplifies calculations.
-            # node node/standardizeFontSize.js $file_proc $file_proc
-
-            ## Step 3: Run through FontForge to reduce file sizes.
-            ## FontForge produces much smaller files than Opentype.js--presumably it applies compression but Opentype.js does not.
-            # fontforge -lang=ff -c 'Open($1); Generate($2)' $file_proc $file_proc
+            python dev/processFont.py "$file_temp2_all" "$file_proc_all"
 
         fi
+    else
+        echo "File not found: $file"
     fi
 done < "dev/fontList.txt"
 

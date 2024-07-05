@@ -146,6 +146,11 @@ function addLigaturesText(wordText, fontOpentype) {
 }
 
 /**
+ * @type {Object<string, Set<string>>}
+ */
+export const missingGlyphs = {};
+
+/**
  * Calculates array of advance widths and kerning values for a word.
  * Numbers are in font units. Ligatures should have been added prior to this step.
  *
@@ -164,7 +169,11 @@ function calcWordCharMetrics(wordText, fontOpentype) {
     const charJ = wordTextArr[i + 1];
     const glyphI = fontOpentype.charToGlyph(charI);
     const fontName = fontOpentype.tables.name.postScriptName.en;
-    if (!glyphI || glyphI.name === '.notdef') console.log(`Character ${charI} is not defined in font ${fontName}`);
+    if (!glyphI || glyphI.name === '.notdef') {
+      if (!missingGlyphs[fontName]) missingGlyphs[fontName] = new Set();
+      missingGlyphs[fontName].add(charI);
+      console.log(`Character ${charI} is not defined in font ${fontName}`);
+    }
     advanceArr.push(glyphI.advanceWidth);
 
     if (charJ) {

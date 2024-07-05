@@ -1,7 +1,7 @@
 #!/bin/bash
 
-input_directory="fonts"
-output_directory="fonts_ttf"
+input_directory="fonts/all"
+output_directory="fonts/all_ttf"
 
 ## Hard-code the date to 0 to ensure that the output is deterministic.
 ## If this is not set, the output will be different each time the script is run even if nothing changes,

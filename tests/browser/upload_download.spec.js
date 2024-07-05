@@ -2,8 +2,8 @@
 /* eslint-disable func-names */
 
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { By } from 'selenium-webdriver';
+import { fileURLToPath } from 'url';
 import { createDriver } from '../scripts/helpers.js';
 
 globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));

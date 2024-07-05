@@ -38,9 +38,6 @@ def check_characters_in_font(char_file_path, font_file_path):
 
     return missing_chars, fontname
 
-# Example usage
-# char_file_path = 'charSet.txt'
-# font_file_path = '/path/to/your/fontfile.ttf'  # Update this path to your font file
 missing_chars, fontname = check_characters_in_font(char_file_path, font_file_path)
 
 if missing_chars:

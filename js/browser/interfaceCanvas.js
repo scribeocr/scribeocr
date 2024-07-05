@@ -425,7 +425,6 @@ export class ScribeCanvas {
  * @param {KonvaIText} wordI
  */
 export async function updateWordCanvas(wordI) {
-
   // Re-calculate left position given potentially new left bearing
   const {
     advanceArr, fontSize, kerningArr, charSpacing, charArr, leftSideBearing, rightSideBearing,
@@ -737,19 +736,19 @@ export class KonvaIText extends Konva.Shape {
     inputElem.style.fontFamily = itext.fontFaceName;
 
     /**
-     * 
-     * @param {string} text 
+     *
+     * @param {string} text
      */
     const makeSmallCapsDivs = (text) => {
       const textDivs0 = text.match(/([a-z]+)|([^a-z]+)/g);
       if (!textDivs0) return '';
       const textDivs = textDivs0.map((x) => {
         const lower = /[a-z]/.test(x);
-        const styleStr = lower ? `style="font-size:${fontSizeHTMLSmallCaps}px"` : "";
+        const styleStr = lower ? `style="font-size:${fontSizeHTMLSmallCaps}px"` : '';
         return `<span class="input-sub" ${styleStr}>${x}</span>`;
-      })
+      });
       return textDivs.join('');
-    }
+    };
 
     // We cannot make the text uppercase in the input field, as this would result in the text being saved as uppercase.
     // Additionally, while there is a small-caps CSS property, it does not allow for customizing the size of the small caps.
@@ -1112,6 +1111,5 @@ export function renderPage(page) {
 }
 
 export {
-  layerBackground, layerOverlay, layerText, stage
+  layerBackground, layerOverlay, layerText, stage,
 };
-

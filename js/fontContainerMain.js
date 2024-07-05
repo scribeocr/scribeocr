@@ -24,8 +24,8 @@ const getFontAbsPath = (src) => {
   // Alternative .ttf versions of the fonts are used for Node.js, as `node-canvas` does not currently (reliably) support .woff files.
   // See https://github.com/Automattic/node-canvas/issues/1737
   if (typeof process === 'object') {
-    const srcTtf = src.replace(/\.\w{1,5}$/i, '.ttf');
-    return relToAbsPath(`../fonts_ttf/${srcTtf}`);
+    const srcStem = src.replace(/.*\//, '').replace(/\.\w{1,5}$/i, '');
+    return relToAbsPath(`../fonts/all_ttf/${srcStem}.ttf`);
   }
 
   return relToAbsPath(`../../fonts/${src}`);
@@ -66,27 +66,28 @@ async function fontPathToArrayBufferAll(fileNameObj) {
 
 /**
  * Load all raw (unoptimized) fonts.  This function is where font file names are hard-coded.
+ * @param {('latin'|'all')} [glyphSet='latin']
  * @returns {Promise<import('./containers/fontContainer.js').FontContainer>}
  */
-export async function loadBuiltInFontsRaw() {
+export async function loadBuiltInFontsRaw(glyphSet = 'latin') {
   const srcPathObj = {
     Carlito: {
-      normal: 'Carlito-Regular.woff', italic: 'Carlito-Italic.woff', bold: 'Carlito-Bold.woff',
+      normal: `${glyphSet}/Carlito-Regular.woff`, italic: `${glyphSet}/Carlito-Italic.woff`, bold: `${glyphSet}/Carlito-Bold.woff`,
     },
     Century: {
-      normal: 'C059-Roman.woff', italic: 'C059-Italic.woff', bold: 'C059-Bold.woff',
+      normal: `${glyphSet}/C059-Roman.woff`, italic: `${glyphSet}/C059-Italic.woff`, bold: `${glyphSet}/C059-Bold.woff`,
     },
     Garamond: {
-      normal: 'EBGaramond-Regular.woff', italic: 'EBGaramond-Italic.woff', bold: 'EBGaramond-Bold.woff',
+      normal: `${glyphSet}/EBGaramond-Regular.woff`, italic: `${glyphSet}/EBGaramond-Italic.woff`, bold: `${glyphSet}/EBGaramond-Bold.woff`,
     },
     Palatino: {
-      normal: 'P052-Roman.woff', italic: 'P052-Italic.woff', bold: 'P052-Bold.woff',
+      normal: `${glyphSet}/P052-Roman.woff`, italic: `${glyphSet}/P052-Italic.woff`, bold: `${glyphSet}/P052-Bold.woff`,
     },
     NimbusRomNo9L: {
-      normal: 'NimbusRomNo9L-Reg.woff', italic: 'NimbusRomNo9L-RegIta.woff', bold: 'NimbusRomNo9L-Med.woff',
+      normal: `${glyphSet}/NimbusRoman-Regular.woff`, italic: `${glyphSet}/NimbusRoman-Italic.woff`, bold: `${glyphSet}/NimbusRoman-Bold.woff`,
     },
     NimbusSans: {
-      normal: 'NimbusSanL-Reg.woff', italic: 'NimbusSanL-RegIta.woff', bold: 'NimbusSanL-Bol.woff',
+      normal: `${glyphSet}/NimbusSans-Regular.woff`, italic: `${glyphSet}/NimbusSans-Italic.woff`, bold: `${glyphSet}/NimbusSans-Bold.woff`,
     },
   };
 

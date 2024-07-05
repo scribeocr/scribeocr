@@ -145,7 +145,7 @@ elem.info.debugEvalLine.addEventListener('click', evalSelectedLine);
 
 const fontAllRawReady = loadBuiltInFontsRaw().then((x) => {
   fontAll.raw = x;
-  if (!fontAll.active) fontAll.active = fontAll.raw;
+  fontAll.active = fontAll.raw;
 });
 
 // Opt-in to bootstrap tooltip feature
@@ -191,13 +191,13 @@ zone.addEventListener('drop', async (event) => {
   if (!event.dataTransfer) return;
   const items = await getAllFileEntries(event.dataTransfer.items);
 
-  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => { 
+  const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => {
     if (x instanceof File) {
       resolve(x);
     } else {
       x.file(resolve, reject);
     }
-   })));
+  })));
   const files = filesPromises.map((x) => x.value);
 
   if (files.length === 0) return;
@@ -1224,7 +1224,7 @@ async function importFiles(curFiles) {
     const errorText = 'No supported files found.';
     insertAlertMessage(errorText);
     return;
-  } else if (unsupportedFilesAll.length > 0) {
+  } if (unsupportedFilesAll.length > 0) {
     const errorText = `Import includes unsupported file types: ${Object.keys(unsupportedExt).join(', ')}`;
     insertAlertMessage(errorText, false);
   } else if (pdfFilesAll.length > 0 && imageFilesAll.length > 0) {

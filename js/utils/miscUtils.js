@@ -293,11 +293,10 @@ export function replaceObjectProperties(obj, obj2 = {}) {
   Object.assign(obj, obj2);
 }
 
-// Sans/serif lookup for common font families
-// Should be added to if additional fonts are encountered
+// Sans/serif lookup for common font families. These should not include spaces or underscores--multi-word font names should be concatenated.
 // Fonts that should not be added (both Sans and Serif variants):
 // DejaVu
-const serifFonts = ['SerifDefault', 'Baskerville', 'Book', 'C059', 'Cambria', 'Century', 'Courier', 'Garamond', 'Georgia', 'Minion', 'P052', 'Palatino', 'Times'];
+const serifFonts = ['SerifDefault', 'Baskerville', 'Book', 'C059', 'Cambria', 'Century', 'Courier', 'Garamond', 'Georgia', 'LucidaBright', 'Minion', 'P052', 'Palatino', 'Times'];
 const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Myriad', 'Tahoma', 'Trebuchet', 'Verdana'];
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x, y) => `${x}|${y}`), 'i');
@@ -313,6 +312,9 @@ const unidentifiedFonts = new Set();
  * @returns {('SansDefault'|'SerifDefault'|'Default')}
  */
 export function determineSansSerif(fontName) {
+  // Remove underscores and spaces from the font name.
+  fontName = fontName?.replaceAll(/[_\s]/gi, '');
+
   /** @type {('SansDefault'|'SerifDefault'|'Default')} */
   let fontFamily = 'Default';
   // Font support is currently limited to 1 font for Sans and 1 font for Serif.

@@ -12,7 +12,7 @@ import {
   pageMetricsArr,
 } from '../containers/miscContainer.js';
 import ocr from '../objects/ocrObjects.js';
-import { calcLineFontSize, calcWordMetrics } from '../utils/fontUtils.js';
+import { calcLineFontSize, calcWordMetrics, missingGlyphs } from '../utils/fontUtils.js';
 import { elem } from './elems.js';
 import {
   ScribeCanvas,
@@ -59,12 +59,13 @@ export const df = {
   ScribeCanvas,
   fontAll,
   fontMetricsObj,
+  getCharMetrics,
   imageCache,
   stage,
   layerText,
   layerBackground,
   layerOverlay,
-  getCharMetrics,
+  missingGlyphs,
   pageMetricsArr,
   ocr,
   ocrAll,
