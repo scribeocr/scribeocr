@@ -780,6 +780,14 @@ export class KonvaIText extends Konva.Shape {
         inputElem.innerHTML = makeSmallCapsDivs(textContent);
         setCursor(index);
       };
+    } else {
+      // When users copy/paste text, formatting is often copied as well.
+      // For example, copying contents of a low-conf word into a high-conf word will also copy the red color.
+      // This code removes any formatting from the pasted text.
+      inputElem.oninput = () => {
+        // eslint-disable-next-line no-self-assign
+        inputElem.textContent = inputElem.textContent;
+      };
     }
 
     ScribeCanvas.inputRemove = () => {
