@@ -90,10 +90,12 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     pdfFonts.NotoSansSC = {};
     const font = fontAll.supp.chi_sim.opentype;
 
+    const objectThis = objectI;
+
     const charArr = ocr.getDistinctChars(hocrArr);
     fontChiSimExport = await subsetFont(font, charArr);
 
-    const fontObjArr = createEmbeddedFontType0(fontChiSimExport, objectI);
+    const fontObjArr = createEmbeddedFontType0(fontChiSimExport, objectThis);
     for (let j = 0; j < fontObjArr.length; j++) {
       pdfFontObjStrArr.push(fontObjArr[j]);
     }
@@ -101,7 +103,8 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
 
     pdfFonts.NotoSansSC.normal = { type: 0, name: `/F${String(fontI)}` };
 
-    pdfFontsStr += `/F${String(fontI)} ${String(objectI)} 0 R\n`;
+    pdfFontsStr += `/F${String(fontI)} ${String(objectThis)} 0 R\n`;
+    fontI++;
   }
 
   // Add resource dictionary
