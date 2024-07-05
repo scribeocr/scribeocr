@@ -125,6 +125,12 @@ export function calcLang(str) {
     || (code >= 0xF900 && code <= 0xFAFF) // CJK Compatibility Ideographs
     || (code >= 0x2F800 && code <= 0x2FA1F) // CJK Compatibility Ideographs Supplement
     ) return ('chi_sim');
+
+    if ((code >= 0x0400 && code <= 0x04FF)
+    || (code >= 0x0500 && code <= 0x052F)
+    || code === 0x1C80
+    || code === 0x1C81
+    ) return ('rus');
   }
 
   return 'eng';

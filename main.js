@@ -24,7 +24,6 @@ import { fontAll, optimizeFontContainerAll } from './js/containers/fontContainer
 import {
   enableDisableFontOpt,
   loadBuiltInFontsRaw,
-  setBuiltInFontsWorker,
   setDefaultFontAuto,
 } from './js/fontContainerMain.js';
 import { runFontOptimization } from './js/fontEval.js';
@@ -143,10 +142,7 @@ elem.info.debugDownloadImage.addEventListener('click', downloadCurrentImage);
 
 elem.info.debugEvalLine.addEventListener('click', evalSelectedLine);
 
-const fontAllRawReady = loadBuiltInFontsRaw().then((x) => {
-  fontAll.raw = x;
-  fontAll.active = fontAll.raw;
-});
+const fontAllRawReady = loadBuiltInFontsRaw();
 
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
@@ -1736,6 +1732,11 @@ export async function initGeneralScheduler() {
   globalThis.generalScheduler = await Tesseract.createScheduler();
   globalThis.generalScheduler.workers = new Array(workerN);
 
+  let resReadyLoadFonts;
+  globalThis.generalScheduler.readyLoadFonts = new Promise((resolve, reject) => {
+    resReadyLoadFonts = resolve;
+  });
+
   let resReady;
   globalThis.generalScheduler.ready = new Promise((resolve, reject) => {
     resReady = resolve;
@@ -1759,9 +1760,11 @@ export async function initGeneralScheduler() {
 
   globalThis.gs = new GeneralScheduler(globalThis.generalScheduler);
 
+  // @ts-ignore
+  resReadyLoadFonts(true);
+
   // Send raw fonts to workers after they have loaded in the main thread.
   await fontAllRawReady;
-  await setBuiltInFontsWorker(globalThis.generalScheduler);
 
   // @ts-ignore
   resReady(true);

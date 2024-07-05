@@ -66,10 +66,15 @@ async function fontPathToArrayBufferAll(fileNameObj) {
 
 /**
  * Load all raw (unoptimized) fonts.  This function is where font file names are hard-coded.
- * @param {('latin'|'all')} [glyphSet='latin']
- * @returns {Promise<import('./containers/fontContainer.js').FontContainer>}
+ * @param {('latin'|'all')} [glyphSet='latin'] - The set of glyphs to load.  'latin' includes only Latin characters, while 'all' includes Latin, Greek, and Cyrillic characters.
+ *    This parameter does not matter for Node.js, which loads a `.ttf` version of the `all` set, regardless of this option.
  */
 export async function loadBuiltInFontsRaw(glyphSet = 'latin') {
+  // Return early if the font set is already loaded, or a superset of the requested set is loaded.
+  if (fontAll.glyphSet === glyphSet || fontAll.glyphSet === 'all' && glyphSet === 'latin') return;
+
+  fontAll.glyphSet = glyphSet;
+
   const srcPathObj = {
     Carlito: {
       normal: `${glyphSet}/Carlito-Regular.woff`, italic: `${glyphSet}/Carlito-Italic.woff`, bold: `${glyphSet}/Carlito-Bold.woff`,
@@ -93,7 +98,15 @@ export async function loadBuiltInFontsRaw(glyphSet = 'latin') {
 
   const srcObj = await fontPathToArrayBufferAll(srcPathObj);
 
-  return /** @type {Promise<import('./containers/fontContainer.js').FontContainer>} */(loadFontsFromSource(srcObj));
+  fontAll.raw = await /** @type {Promise<import('./containers/fontContainer.js').FontContainer>} */(loadFontsFromSource(srcObj));
+  if (!fontAll.active || (!fontAll.active.NimbusSans.normal.opt && !fontAll.active.NimbusRomNo9L.normal.opt)) fontAll.active = fontAll.raw;
+
+  if (typeof process === 'undefined') {
+    await globalThis.generalScheduler.readyLoadFonts;
+    await setBuiltInFontsWorker(globalThis.generalScheduler, true);
+  }
+
+  return;
 }
 
 let chiReadyRes;

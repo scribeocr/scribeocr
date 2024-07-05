@@ -377,6 +377,9 @@ class FontCont {
     this.defaultFontName = 'SerifDefault';
     this.serifDefaultName = 'NimbusRomNo9L';
     this.sansDefaultName = 'NimbusSans';
+
+    /** @type {?('latin'|'all')} */
+    this.glyphSet = null;
     /**
      * Get raw/opt/active font, and throw exception if it does not exist.
      * This method only exists for type inference purposes, as raw/opt/active may be accessed directly, but may be `null`.

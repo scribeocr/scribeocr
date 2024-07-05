@@ -8,10 +8,9 @@ import {
   runFontOptimizationBrowser, setCurrentHOCR,
   setOemLabel,
 } from '../../main.js';
-import { fontAll } from '../containers/fontContainer.js';
 import { imageCache } from '../containers/imageContainer.js';
 import { debugImg, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
-import { loadBuiltInFontsRaw, loadChiSimFont, setBuiltInFontsWorker } from '../fontContainerMain.js';
+import { loadBuiltInFontsRaw, loadChiSimFont } from '../fontContainerMain.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { elem } from './elems.js';
@@ -98,13 +97,7 @@ export async function recognizeAllClick() {
   // Chinese requires loading a separate font.
   if (langArr.includes('chi_sim')) fontPromiseArr.push(loadChiSimFont());
   // Greek and Cyrillic require loading a version of the base fonts that include these characters.
-  if (langArr.includes('rus') || langArr.includes('ell')) {
-    fontPromiseArr.push(loadBuiltInFontsRaw('all').then((x) => {
-      fontAll.raw = x;
-      fontAll.active = fontAll.raw;
-      return setBuiltInFontsWorker(globalThis.generalScheduler, true);
-    }));
-  }
+  if (langArr.includes('rus') || langArr.includes('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
   await Promise.all(fontPromiseArr);
 
   // Whether user uploaded data will be compared against in addition to both Tesseract engines

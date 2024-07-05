@@ -338,7 +338,8 @@ export const calcLineFontSize = (line) => {
   // This method is always used for non-Latin scripts, as the ascender/descender metrics make little sense in that context.
   if ((line.words.length <= 3 && line.words[0].chars && line.words[0].chars.length > 0) || nonLatin) {
     const fontSizeCalc = calcWordFontSizePrecise(line.words, fontOpentype, nonLatin);
-    if (fontSizeCalc) {
+    // `fontSizeCalc` has been negative under fringe conditions, so check for that.
+    if (fontSizeCalc && fontSizeCalc > 0) {
       line._sizeCalc = fontSizeCalc;
       return line._sizeCalc;
     }

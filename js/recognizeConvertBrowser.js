@@ -13,7 +13,7 @@ import {
   inputDataModes, layoutDataTableAll,
   ocrAll, pageMetricsArr,
 } from './containers/miscContainer.js';
-import { loadChiSimFont } from './fontContainerMain.js';
+import { loadBuiltInFontsRaw, loadChiSimFont } from './fontContainerMain.js';
 import { checkCharWarn } from './fontStatistics.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { recognizePage } from './recognizeConvert.js';
@@ -168,7 +168,10 @@ export async function convertPageCallbackBrowser({
 }, n, mainData, engineName) {
   if (engineName) ocrAll[engineName][n] = pageObj;
 
-  if (langSet.has('chi_sim')) await loadChiSimFont();
+  const fontPromiseArr = [];
+  if (langSet.has('chi_sim')) fontPromiseArr.push(loadChiSimFont());
+  if (langSet.has('rus') || langSet.has('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
+  await Promise.all(fontPromiseArr);
 
   if (['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName)) ocrAll['Tesseract Latest'][n] = pageObj;
 

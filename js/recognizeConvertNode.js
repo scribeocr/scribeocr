@@ -3,7 +3,7 @@ import {
   layoutDataTableAll,
   ocrAll, pageMetricsArr,
 } from './containers/miscContainer.js';
-import { loadChiSimFont } from './fontContainerMain.js';
+import { loadBuiltInFontsRaw, loadChiSimFont } from './fontContainerMain.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { recognizePage } from './recognizeConvert.js';
 
@@ -48,7 +48,10 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
 export async function convertPageCallbackNode({
   pageObj, dataTables, warn, langSet,
 }, n, mainData, engineName) {
-  if (langSet.has('chi_sim')) await loadChiSimFont();
+  const fontPromiseArr = [];
+  if (langSet.has('chi_sim')) fontPromiseArr.push(loadChiSimFont());
+  if (langSet.has('rus') || langSet.has('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
+  await Promise.all(fontPromiseArr);
 
   if (engineName) ocrAll[engineName][n] = pageObj;
 

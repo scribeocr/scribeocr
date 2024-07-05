@@ -109,10 +109,7 @@ async function writeDebugImages(ctx, compDebugArrArr, filePath) {
   fs.writeFileSync(filePath, buffer0);
 }
 
-await loadBuiltInFontsRaw().then((x) => {
-  fontAll.raw = x;
-  if (!fontAll.active) fontAll.active = fontAll.raw;
-});
+await loadBuiltInFontsRaw();
 
 globalThis.convertPageWarn = [];
 
