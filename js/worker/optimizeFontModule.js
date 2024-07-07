@@ -1,6 +1,6 @@
 import { quantile } from '../utils/miscUtils.js';
 
-import opentype from '../../lib/opentype.module.min.js';
+import opentype from '../../lib/opentype.module.js';
 
 // Defining "window" is needed due to bad browser/node detection in Opentype.js
 // Can hopefully remove in future version

@@ -7,7 +7,7 @@
 // globalThis.require = createRequire(import.meta.url);
 
 // Node.js case
-import opentype from '../../lib/opentype.module.min.js';
+import opentype from '../../lib/opentype.module.js';
 import { determineSansSerif } from '../utils/miscUtils.js';
 
 if (typeof process === 'object') {

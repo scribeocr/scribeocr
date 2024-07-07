@@ -23,8 +23,8 @@ declare global {
         bold: string | ArrayBuffer | null;
     };
 
-    type opentypeFont = import("../lib/opentype.module.min.js").Font;
-    type opentypeGlyph = import("../lib/opentype.module.min.js").Glyph;
+    type opentypeFont = import("../lib/opentype.module.js").Font;
+    type opentypeGlyph = import("../lib/opentype.module.js").Glyph;
     type GeneralScheduler = import("./generalWorkerMain.js").GeneralScheduler;
 
     type dims = {

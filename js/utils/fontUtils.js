@@ -5,7 +5,7 @@ import { fontAll } from '../containers/fontContainer.js';
 import { getPrevLine } from '../objects/ocrObjects.js';
 import { quantile } from './miscUtils.js';
 
-import opentype from '../../lib/opentype.module.min.js';
+import opentype from '../../lib/opentype.module.js';
 
 /**
  *

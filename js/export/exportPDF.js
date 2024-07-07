@@ -520,7 +520,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
         const letter = word.smallCaps ? charArr[k].toUpperCase() : charArr[k];
         const fontSizeLetter = word.smallCaps && letterSrc !== letter ? wordFontSize * 0.8 : wordFontSize;
 
-        const letterEnc = pdfFontTypeCurrent === 0 ? wordFontOpentype.charToGlyphIndex(letter).toString(16).padStart(4, '0') : winEncodingLookup[letter];
+        const letterEnc = pdfFontTypeCurrent === 0 ? wordFontOpentype.charToGlyphIndex(letter)?.toString(16).padStart(4, '0') : winEncodingLookup[letter];
         if (letterEnc) {
           let kern = (kerningArr[k] || 0) * (-1000 / fontSizeLetter);
 
