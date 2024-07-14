@@ -7,7 +7,7 @@ import {
 
 import { createEmbeddedFontType0, createEmbeddedFontType1 } from './exportPDFFonts.js';
 
-import { pageMetricsArr } from '../containers/miscContainer.js';
+import { pageMetricsArr } from '../containers/dataContainer.js';
 import ocr from '../objects/ocrObjects.js';
 
 // Creates 3 PDF objects necessary to embed font.

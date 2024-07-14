@@ -1,7 +1,3 @@
-// await import("../../tess/worker.min.js")
-
-// import tess from "../../tess/tesseract.js/src/worker-script/browser/index.js";
-
 import { convertPageAbbyy } from '../import/convertPageAbbyy.js';
 import { convertPageBlocks } from '../import/convertPageBlocks.js';
 import { convertPageHocr } from '../import/convertPageHocr.js';
@@ -9,7 +5,7 @@ import { convertPageStext } from '../import/convertPageStext.js';
 
 import { fontAll, loadFontsFromSource } from '../containers/fontContainer.js';
 import {
-  compareHOCR,
+  compareOCR,
   evalPage,
   evalPageFont,
   evalWords,
@@ -278,20 +274,13 @@ async function setFontActiveWorker({ opt, sansDefaultName, serifDefaultName }) {
   if (serifDefaultName) fontAll.serifDefaultName = serifDefaultName;
 }
 
-globalThis.globalSettings = {
-  simdSupport: false,
-  defaultFont: 'SerifDefault',
-  defaultFontSans: 'NimbusSanL',
-  defaultFontSerif: 'NimbusRomNo9L',
-};
-
 async function setDefaultFontNameWorker({ defaultFontName }) {
   fontAll.defaultFontName = defaultFontName;
 }
 
-async function compareHOCRWrap(args) {
+async function compareOCRWrap(args) {
   args.options.tessWorker = worker;
-  return await compareHOCR(args);
+  return await compareOCR(args);
 }
 
 postMessage({ data: 'ready', id: 0 });
@@ -321,7 +310,7 @@ addEventListener('message', async (e) => {
     evalPageFont,
     evalPage,
     evalWords,
-    compareHOCR: compareHOCRWrap,
+    compareOCR: compareOCRWrap,
     nudgePageFontSize,
     nudgePageBaseline,
 

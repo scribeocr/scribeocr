@@ -482,7 +482,7 @@ async function penalizeWord(wordObjs) {
  * @param {number} [params.options.confThreshHigh]
  * @param {number} [params.options.confThreshMed]
  */
-export async function compareHOCR({
+export async function compareOCR({
   pageA, pageB, binaryImage, pageMetricsObj, options = {},
 }) {
   const binaryImageBit = binaryImage.imageBitmap || await getImageBitmap(binaryImage.src);
@@ -521,14 +521,7 @@ export async function compareHOCR({
     imgDims.height *= 2;
   }
 
-  const { n } = pageA;
-
-  const verboseLogs = false;
-
-  let debugLog = '';
   const debugImg = [];
-
-  if (debugLabel) debugLog += `Comparing page ${String(n)}\n`;
 
   const hocrAOverlap = {};
   const hocrBOverlap = {};
@@ -590,7 +583,6 @@ export async function compareHOCR({
             wordA.matchTruth = true;
             if (mode === 'comb') wordA.conf = 100;
             hocrACorrect[wordA.id] = 1;
-            if (verboseLogs) debugLog += `Marking word as matching due to no non-punctuation characters: ${wordA.id} (${wordA.text})\n`;
           }
 
           const wordBoxA = wordA.bbox;
@@ -640,7 +632,6 @@ export async function compareHOCR({
 
               // Mark `wordA` as having been compared
               wordA.compTruth = true;
-              if (verboseLogs) debugLog += `Word ${wordA.id} (${wordA.text}) overlaps with word ${wordB.id} (${wordB.text})\n`;
 
               let wordTextA = ocr.replaceLigatures(wordA.text);
               let wordTextB = ocr.replaceLigatures(wordB.text);
@@ -663,7 +654,6 @@ export async function compareHOCR({
 
               // TODO: Account for cases without 1-to-1 mapping between bounding boxes
               if (wordTextA === wordTextB) {
-                if (verboseLogs) debugLog += `Word ${wordA.id} (${wordA.text}) matches word ${wordB.id} (${wordB.text})\n`;
                 wordA.compTruth = true;
                 wordA.matchTruth = true;
                 if (mode === 'comb') wordA.conf = 100;
@@ -715,7 +705,6 @@ export async function compareHOCR({
                 // This should filter off cases where 2+ words in one dataset match to 1 word in another
                 // TODO: Account for cases without 1-to-1 mapping between bounding boxes
                 if (!oneToOne && !twoToOne) {
-                  if (debugLabel) debugLog += `Skipping words due to low overlap: ${wordTextA} [Legacy] ${wordTextB} [LSTM]\n`;
                   continue;
                 }
 
@@ -747,9 +736,6 @@ export async function compareHOCR({
                     debugObj.errorAdjB = hocrBError;
 
                     debugImg.push(debugObj);
-
-                    debugLog += `Legacy Word: ${wordA.text} [Error: ${String(hocrAError)}]\n`;
-                    debugLog += `LSTM Word: ${wordB.text} [Error: ${String(hocrBError)}]\n`;
                   }
                 } else if (twoToOne) {
                   const evalRes = await evalWords({
@@ -785,19 +771,14 @@ export async function compareHOCR({
                     debugObj.errorAdjB = hocrBError;
 
                     debugImg.push(debugObj);
-
-                    debugLog += `Legacy Word: ${wordsAArr.map((x) => x.text).join(' ')} [Error: ${String(hocrAError)}]\n`;
-                    debugLog += `LSTM Word: ${wordsBArr.map((x) => x.text).join(' ')} [Error: ${String(hocrBError)}]\n`;
                   }
                 }
 
                 if (hocrBError < hocrAError) {
                   const skip = ['eg', 'ie'].includes(wordA.text.replace(/\W/g, ''));
-                  if (skip) debugLog += 'Skipping word replacement\n';
 
                   if (!skip) {
                     if (oneToOne) {
-                      debugLog += `Replacing word ${wordA.text} with word ${wordB.text}\n`;
                       wordA.text = wordB.text;
 
                       // Erase character-level data rather than replacing it, as the LSTM data is not expected to be accurate.
@@ -864,7 +845,6 @@ export async function compareHOCR({
           const res = await checkWords([word], binaryImageBit, imageRotated, pageMetricsObj, {
             ignorePunct, tessScheduler, tessWorker, view: false,
           });
-          debugLog += res.debugLog;
           word.matchTruth = res.match;
           word.conf = word.matchTruth ? 100 : 0;
         }
@@ -879,7 +859,7 @@ export async function compareHOCR({
     if (imageUpscaled) ocr.scalePage(pageAInt, 0.5);
 
     return {
-      page: pageAInt, metrics: null, debugLog, debugImg,
+      page: pageAInt, metrics: null, debugImg,
     };
   }
 
@@ -955,7 +935,7 @@ export async function compareHOCR({
   if (imageUpscaled) ocr.scalePage(pageAInt, 0.5);
 
   return {
-    page: pageAInt, metrics: metricsRet, debugLog, debugImg,
+    page: pageAInt, metrics: metricsRet, debugImg,
   };
 }
 
@@ -1013,9 +993,7 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
     wordTextB = wordTextB.toLowerCase();
   }
 
-  const debugLog = `Supp comparison: ${String(wordTextA === wordTextB)} [${wordTextA} vs. ${wordTextB}] for ${wordsA[0].id} (page ${String(wordsA[0].line.page.n + 1)})\n`;
-
-  return { match: wordTextA === wordTextB, debugLog };
+  return { match: wordTextA === wordTextB };
 }
 
 /**

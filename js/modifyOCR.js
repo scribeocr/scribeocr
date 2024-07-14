@@ -214,7 +214,7 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
  * @param {boolean} applyExclude
  * @param {boolean} editInPlace
  */
-export function reorderHOCR(page, layoutObj, applyExclude = true, editInPlace = false) {
+export function reorderOcrPage(page, layoutObj, applyExclude = true, editInPlace = false) {
   const pageInt = editInPlace ? page : structuredClone(page);
 
   if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return pageInt;

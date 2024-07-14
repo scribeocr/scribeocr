@@ -3,21 +3,22 @@
 // This file adds various functions to a global object named `df` so they can be easily run from the console.
 // This object should never be referenced in code--the functions should be imported instead.
 
-import { fontAll } from '../containers/fontContainer.js';
-import { imageCache } from '../containers/imageContainer.js';
 import {
   fontMetricsObj,
-  layoutAll, layoutDataTableAll,
+  LayoutDataTables,
+  LayoutRegions,
   ocrAll,
   pageMetricsArr,
-} from '../containers/miscContainer.js';
+} from '../containers/dataContainer.js';
+import { fontAll } from '../containers/fontContainer.js';
+import { imageCache } from '../containers/imageContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcLineFontSize, calcWordMetrics, missingGlyphs } from '../utils/fontUtils.js';
 import { elem } from './elems.js';
 import {
-  ScribeCanvas,
   layerBackground, layerOverlay,
   layerText,
+  ScribeCanvas,
   stage,
 } from './interfaceCanvas.js';
 
@@ -69,6 +70,6 @@ export const df = {
   pageMetricsArr,
   ocr,
   ocrAll,
-  layoutAll,
-  layoutDataTableAll,
+  LayoutRegions,
+  LayoutDataTables,
 };

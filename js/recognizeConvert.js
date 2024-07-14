@@ -1,5 +1,5 @@
+import { pageMetricsArr } from './containers/dataContainer.js';
 import { imageCache, ImageWrapper } from './containers/imageContainer.js';
-import { pageMetricsArr } from './containers/miscContainer.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -117,7 +117,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
 
   // parseDebugInfo(res0.recognize.debug);
 
-  if (!angleKnown) pageMetricsArr[n].angle = res0.recognize.rotateRadians * (180 / Math.PI) * -1;
+  if (!angleKnown) pageMetricsArr[n].angle = (res0.recognize.rotateRadians || 0) * (180 / Math.PI) * -1;
 
   // An image is rotated if either the source was rotated or rotation was applied by Tesseract.
   const isRotated = Boolean(res0.recognize.rotateRadians || 0) || nativeN.rotated;

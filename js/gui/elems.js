@@ -3,6 +3,8 @@
 // If an object is used with `noImplicitAny` disabled, using elements that do not exist will not throw an error.
 // If `noImplicitAny` is enabled, an enormous number of errors will be thrown elsewhere in the codebase.
 
+import { Collapse } from '../../lib/bootstrap.esm.bundle.min.js';
+
 class nav {
   static next = /** @type {HTMLInputElement} */(document.getElementById('next'));
 
@@ -24,11 +26,36 @@ class nav {
 }
 
 class recognize {
+  static recognizeAll = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
+
   static combineMode = /** @type {HTMLSelectElement} */(document.getElementById('combineMode'));
 
   static ocrQuality = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 
   static enableUpscale = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
+
+  // OEM options
+  static oemLabelText = /** @type {HTMLInputElement} */(document.getElementById('oemLabelText'));
+
+  static oemLabelOptionLstm = /** @type {HTMLInputElement} */(document.getElementById('oemLabelOptionLstm'));
+
+  static oemLabelOptionLegacy = /** @type {HTMLInputElement} */(document.getElementById('oemLabelOptionLegacy'));
+
+  static oemLabelOptionCombined = /** @type {HTMLInputElement} */(document.getElementById('oemLabelOptionCombined'));
+
+  // PSM options
+  static psmLabelText = /** @type {HTMLInputElement} */(document.getElementById('psmLabelText'));
+
+  static psmLabelOption3 = /** @type {HTMLInputElement} */(document.getElementById('psmLabelOption3'));
+
+  static psmLabelOption4 = /** @type {HTMLInputElement} */(document.getElementById('psmLabelOption4'));
+
+  // Build options
+  static buildLabelText = /** @type {HTMLInputElement} */(document.getElementById('buildLabelText'));
+
+  static buildLabelOptionDefault = /** @type {HTMLInputElement} */(document.getElementById('buildLabelOptionDefault'));
+
+  static buildLabelOptionVanilla = /** @type {HTMLInputElement} */(document.getElementById('buildLabelOptionVanilla'));
 }
 
 class view {
@@ -66,6 +93,8 @@ class edit {
   static styleSuper = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
   // Add/remove words
+  static addWord = /** @type {HTMLInputElement} */(document.getElementById('addWord'));
+
   static deleteWord = /** @type {HTMLInputElement} */(document.getElementById('deleteWord'));
 
   static recognizeWord = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
@@ -76,6 +105,10 @@ class edit {
   static editBaseline = /** @type {HTMLInputElement} */(document.getElementById('editBaseline'));
 
   static rangeBaseline = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
+
+  static collapseRangeBaseline = /** @type {HTMLDivElement} */(document.getElementById('collapseRangeBaseline'));
+
+  static collapseRangeBaselineBS = new Collapse(edit.collapseRangeBaseline, { toggle: false });
 
   static smartQuotes = /** @type {HTMLInputElement} */(document.getElementById('smartQuotes'));
 }
@@ -141,6 +174,16 @@ class download {
   static docxOptions = /** @type {HTMLElement} */(document.getElementById('docxOptions'));
 
   static xlsxOptions = /** @type {HTMLElement} */(document.getElementById('xlsxOptions'));
+
+  static formatLabelOptionPDF = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPDF'));
+
+  static formatLabelOptionHOCR = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHOCR'));
+
+  static formatLabelOptionText = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionText'));
+
+  static formatLabelOptionDocx = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionDocx'));
+
+  static formatLabelOptionXlsx = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionXlsx'));
 }
 
 class info {

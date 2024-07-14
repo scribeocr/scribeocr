@@ -1,6 +1,6 @@
-import { elem } from '../browser/elems.js';
+import { fontMetricsObj, LayoutDataTables, LayoutRegions } from '../containers/dataContainer.js';
 import { fontAll } from '../containers/fontContainer.js';
-import { fontMetricsObj, layoutAll, layoutDataTableAll } from '../containers/miscContainer.js';
+import { elem } from '../gui/elems.js';
 import { saveAs } from '../utils/miscUtils.js';
 import { renderHOCR } from './exportRenderHOCR.js';
 
@@ -16,8 +16,8 @@ export function renderHOCRBrowser(ocrData, minpage, maxpage) {
     'sans-font': fontAll.sansDefaultName,
     'serif-font': fontAll.serifDefaultName,
     'enable-opt': !elem.view.optimizeFont.disabled,
-    layout: layoutAll,
-    'layout-data-table': layoutDataTableAll,
+    layout: LayoutRegions.pages,
+    'layout-data-table': LayoutDataTables.pages,
   };
 
   const hocrOut = renderHOCR(ocrData, minpage, maxpage, meta);

@@ -1,9 +1,12 @@
 /* eslint-disable import/no-cycle */
 
-import { imageCache } from '../containers/imageContainer.js';
 import {
-  fontMetricsObj, layoutAll, ocrAll, pageMetricsArr,
-} from '../containers/miscContainer.js';
+  debugImg,
+  fontMetricsObj, LayoutRegions,
+  ocrAll, pageMetricsArr,
+} from '../containers/dataContainer.js';
+import { imageCache } from '../containers/imageContainer.js';
+import { gs } from '../containers/schedulerContainer.js';
 import { drawDebugImages } from '../debug.js';
 import { calcOverlap } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
@@ -11,9 +14,9 @@ import { imageStrToBlob } from '../utils/imageUtils.js';
 import { saveAs } from '../utils/miscUtils.js';
 import { elem } from './elems.js';
 import {
-  ScribeCanvas,
   cp,
   layerText,
+  ScribeCanvas,
   stage,
 } from './interfaceCanvas.js';
 import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
@@ -28,6 +31,23 @@ export function printSelectedWords(printOCR = true) {
       console.log(selectedObjects[i]);
     }
   }
+}
+
+const ctxDebug = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('g')).getContext('2d'));
+
+export async function showDebugImages() {
+  /** @type {Array<Array<CompDebugBrowser>>} */
+  const compDebugArrArr = [];
+
+  const compDebugArr1 = debugImg?.['Tesseract Combined']?.[cp.n];
+  const compDebugArr2 = debugImg?.Combined?.[cp.n];
+  const compDebugArr3 = debugImg?.recognizeArea?.[cp.n];
+
+  if (compDebugArr1 && compDebugArr1.length > 0) compDebugArrArr.push(compDebugArr1);
+  if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);
+  if (compDebugArr3 && compDebugArr3.length > 0) compDebugArrArr.push(compDebugArr3);
+
+  if (compDebugArrArr.length > 0) await drawDebugImages({ ctx: ctxDebug, compDebugArrArr, context: 'browser' });
 }
 
 export async function evalSelectedLine() {
@@ -50,7 +70,7 @@ export async function evalSelectedLine() {
     imgDims.height *= 2;
   }
 
-  const res = await globalThis.gs?.evalWords({
+  const res = await gs.schedulerInner.evalWords({
     wordsA: lineObj.words,
     binaryImage: imageBinary.src,
     angle: imgAngle,
@@ -58,7 +78,7 @@ export async function evalSelectedLine() {
     options: { view: true },
   });
 
-  await drawDebugImages({ ctx: globalThis.ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
+  await drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
 
   setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, true);
 }
@@ -106,7 +126,7 @@ globalThis.downloadAllImages = downloadAllImages;
 
 export function getExcludedText() {
   for (let i = 0; i <= ocrAll.active.length; i++) {
-    const textArr = getExcludedTextPage(ocrAll.active[i], layoutAll[i]);
+    const textArr = getExcludedTextPage(ocrAll.active[i], LayoutRegions.pages[i]);
 
     if (textArr.length > 0) {
       textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));

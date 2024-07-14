@@ -1,7 +1,8 @@
-import { fontAll, optimizeFontContainerAll } from './containers/fontContainer.js';
+import { fontMetricsObj, pageMetricsArr } from './containers/dataContainer.js';
+import { fontAll } from './containers/fontContainer.js';
 import { imageCache } from './containers/imageContainer.js';
-import { fontMetricsObj, pageMetricsArr } from './containers/miscContainer.js';
-import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js';
+import { gs } from './containers/schedulerContainer.js';
+import { enableDisableFontOpt, optimizeFontContainerAll, setDefaultFontAuto } from './fontContainerMain.js';
 
 /**
  *
@@ -10,7 +11,7 @@ import { enableDisableFontOpt, setDefaultFontAuto } from './fontContainerMain.js
  * @param {number} n - Number of words to compare
  */
 export async function evalPageFonts(font, pageArr, n = 500) {
-  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
+  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
 
   const browserMode = typeof process === 'undefined';
 
@@ -36,7 +37,7 @@ export async function evalPageFonts(font, pageArr, n = 500) {
       });
       // Browser case
     } else {
-      res = await globalThis.gs.evalPageFont({
+      res = await gs.scheduler.evalPageFont({
         font: font.normal.family,
         page: pageArr[i],
         binaryImage: imageI,
@@ -178,15 +179,11 @@ export async function runFontOptimization(ocrArr) {
 
     const evalRaw = await evaluateFonts(ocrArr.slice(0, pageNum));
 
-    if (globalThis.df) globalThis.df.evalRaw = evalRaw;
-
     if (calculateOpt && Object.keys(fontAll.optInitial).length > 0) {
       // Enable optimized fonts
       await enableDisableFontOpt(true, true, true);
 
       const evalOpt = await evaluateFonts(ocrArr.slice(0, pageNum));
-
-      if (globalThis.df) globalThis.df.evalOpt = evalOpt;
 
       // The default font for both the optimized and unoptimized versions are set to the same font.
       // This ensures that switching on/off "font optimization" does not change the font, which would be confusing.

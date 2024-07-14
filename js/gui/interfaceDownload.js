@@ -1,24 +1,25 @@
 /* eslint-disable import/no-cycle */
 
-import { initializeProgress, insertAlertMessage } from '../../main.js';
-import { imageCache } from '../containers/imageContainer.js';
 import {
-  inputDataModes,
-  layoutAll,
+  LayoutRegions,
   ocrAll, pageMetricsArr,
-} from '../containers/miscContainer.js';
+} from '../containers/dataContainer.js';
+import { imageCache } from '../containers/imageContainer.js';
 import { renderHOCRBrowser } from '../export/exportRenderHOCRBrowser.js';
 import { renderText } from '../export/exportRenderText.js';
-import { reorderHOCR } from '../modifyOCR.js';
+import { reorderOcrPage } from '../modifyOCR.js';
 import {
   saveAs,
   sleep,
 } from '../utils/miscUtils.js';
 import { getDisplayMode } from './interfaceView.js';
 
+import { inputData, state } from '../containers/app.js';
 import { writeDebugCsv } from '../export/exportDebugCsv.js';
 import { hocrToPDF } from '../export/exportPDF.js';
 import { elem } from './elems.js';
+import { ProgressBars } from './utils/progressBars.js';
+import { insertAlertMessage } from './utils/warningMessages.js';
 
 const humanReadablePDFElem = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
 const intermediatePDFElem = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
@@ -127,7 +128,7 @@ export function setFormatLabel(x) {
 }
 
 export function updatePdfPagesLabel() {
-  const pageCount = globalThis.pageCount;
+  const pageCount = state.pageCount;
 
   let minValue = parseInt(elem.download.pdfPageMin.value);
   let maxValue = parseInt(elem.download.pdfPageMax.value);
@@ -160,7 +161,7 @@ export async function handleDownload() {
   const downloadType = elem.download.formatLabelText.textContent?.toLowerCase();
 
   // If recognition is currently running, wait for it to finish.
-  await globalThis.state.recognizeAllPromise;
+  await state.recognizeAllPromise;
 
   const minValue = parseInt(elem.download.pdfPageMin.value) - 1;
   const maxValue = parseInt(elem.download.pdfPageMax.value) - 1;
@@ -171,7 +172,7 @@ export async function handleDownload() {
   if (downloadType !== 'hocr' && elem.info.enableLayout.checked) {
     // Reorder HOCR elements according to layout boxes
     for (let i = 0; i < ocrAll.active.length; i++) {
-      hocrDownload.push(reorderHOCR(ocrAll.active[i], layoutAll[i]));
+      hocrDownload.push(reorderOcrPage(ocrAll.active[i], LayoutRegions.pages[i]));
     }
   } else {
     hocrDownload = ocrAll.active;
@@ -196,10 +197,10 @@ export async function handleDownload() {
     // For proof or ocr mode the text layer needs to be combined with a background layer
     if (elem.view.displayMode.value !== 'ebook') {
       const steps = elem.info.addOverlayCheckbox.checked ? 2 : 3;
-      const downloadProgress = initializeProgress('generate-download-progress-collapse', (maxValue + 1) * steps);
+      ProgressBars.download.show((maxValue + 1) * steps);
       await sleep(0);
 
-      const insertInputPDF = inputDataModes.pdfMode && elem.info.addOverlayCheckbox.checked;
+      const insertInputPDF = inputData.pdfMode && elem.info.addOverlayCheckbox.checked;
 
       const rotateBackground = !insertInputPDF && elem.view.autoRotateCheckbox.checked;
 
@@ -211,10 +212,10 @@ export async function handleDownload() {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images.
-      // The `maxpage` argument must be set manually to `globalThis.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
+      // The `maxpage` argument must be set manually to `state.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
       // In all other cases, this should be equivalent to using the default argument of `-1` (which results in `hocrDownload.length` being used).
-      const pdfStr = await hocrToPDF(hocrDownload, 0, globalThis.pageCount - 1, getDisplayMode(), rotateText, rotateBackground,
-        { width: -1, height: -1 }, downloadProgress, confThreshHigh, confThreshMed, parseFloat(elem.view.rangeOpacity.value || '80') / 100);
+      const pdfStr = await hocrToPDF(hocrDownload, 0, state.pageCount - 1, getDisplayMode(), rotateText, rotateBackground,
+        { width: -1, height: -1 }, ProgressBars.download, confThreshHigh, confThreshMed, parseFloat(elem.view.rangeOpacity.value || '80') / 100);
 
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
@@ -222,7 +223,7 @@ export async function handleDownload() {
       if (intermediatePDFElem.checked) {
         pdfBlob = new Blob([pdfEnc], { type: 'application/octet-stream' });
         // Fill up progress bar to 100%
-        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+        for (let i = ProgressBars.download.value; i < ProgressBars.download.maxValue; i++) ProgressBars.download.increment();
         saveAs(pdfBlob, fileName);
         elem.download.download.disabled = false;
         elem.download.download.addEventListener('click', handleDownload);
@@ -257,7 +258,7 @@ export async function handleDownload() {
           });
 
           // Fill up progress bar to 100%
-          for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+          ProgressBars.download.fill();
         } catch (error) {
           console.error('Failed to insert contents into input PDF, creating new PDF from rendered images instead.');
           console.error(error);
@@ -266,7 +267,7 @@ export async function handleDownload() {
       }
 
       // If the input is a series of images, those images need to be inserted into a new pdf
-      if (!insertInputPDF && (inputDataModes.pdfMode || inputDataModes.imageMode) || insertInputFailed) {
+      if (!insertInputPDF && (inputData.pdfMode || inputData.imageMode) || insertInputFailed) {
         const colorMode = /** @type {('color'|'gray'|'binary')} */ (elem.view.colorMode.value);
 
         const props = { rotated: rotateBackground, upscaled: false, colorMode };
@@ -274,10 +275,10 @@ export async function handleDownload() {
 
         // An image could be rendered if either (1) binary is selected or (2) the input data is a PDF.
         // Otherwise, the images uploaded by the user are used.
-        const renderImage = binary || inputDataModes.pdfMode;
+        const renderImage = binary || inputData.pdfMode;
 
         // Pre-render to benefit from parallel processing, since the loop below is synchronous.
-        if (renderImage) await imageCache.preRenderRange(minValue, maxValue, binary, props, downloadProgress);
+        if (renderImage) await imageCache.preRenderRange(minValue, maxValue, binary, props, ProgressBars.download);
 
         await w.overlayTextImageStart({ humanReadable: humanReadablePDFElem.checked });
         for (let i = minValue; i < maxValue + 1; i++) {
@@ -285,7 +286,7 @@ export async function handleDownload() {
           let image;
           if (binary) {
             image = await imageCache.getBinary(i, props);
-          } else if (inputDataModes.pdfMode) {
+          } else if (inputData.pdfMode) {
             image = await imageCache.getNative(i, props);
           } else {
             image = await imageCache.nativeSrc[i];
@@ -299,12 +300,12 @@ export async function handleDownload() {
           await w.overlayTextImageAddPage({
             doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle: angleImagePdf,
           });
-          downloadProgress.increment();
+          ProgressBars.download.increment();
         }
         content = await w.overlayTextImageEnd();
 
         // Fill up progress bar to 100%
-        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+        ProgressBars.download.fill();
 
         // Otherwise, there is only OCR data and not image data.
       } else if (!insertInputPDF) {
@@ -313,15 +314,15 @@ export async function handleDownload() {
         });
 
         // Fill up progress bar to 100%
-        for (let i = downloadProgress.value; i < downloadProgress.maxValue; i++) downloadProgress.increment();
+        ProgressBars.download.fill();
       }
 
       pdfBlob = new Blob([content], { type: 'application/octet-stream' });
     } else {
-      const downloadProgress = initializeProgress('generate-download-progress-collapse', maxValue + 1);
+      ProgressBars.download.show(maxValue + 1);
       await sleep(0);
 
-      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, getDisplayMode(), false, true, dimsLimit, downloadProgress, confThreshHigh, confThreshMed,
+      const pdfStr = await hocrToPDF(hocrDownload, minValue, maxValue, getDisplayMode(), false, true, dimsLimit, ProgressBars.download, confThreshHigh, confThreshMed,
         parseFloat(elem.view.rangeOpacity.value || '80') / 100);
 
       // The PDF is still run through muPDF, even thought in eBook mode no background layer is added.
@@ -353,12 +354,12 @@ export async function handleDownload() {
     }
     saveAs(pdfBlob, fileName);
   } else if (downloadType === 'hocr') {
-    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
+    ProgressBars.download.show(1);
     await sleep(0);
     renderHOCRBrowser(ocrAll.active, minValue, maxValue);
-    downloadProgress.increment();
+    ProgressBars.download.increment();
   } else if (downloadType === 'text') {
-    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
+    ProgressBars.download.show(1);
     await sleep(0);
 
     const removeLineBreaks = elem.download.reflowCheckbox.checked;
@@ -370,21 +371,21 @@ export async function handleDownload() {
     const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.txt`;
 
     saveAs(textBlob, fileName);
-    downloadProgress.increment();
+    ProgressBars.download.increment();
   } else if (downloadType === 'docx') {
-    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
+    ProgressBars.download.show(1);
     await sleep(0);
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeDocx = (await import('../export/exportWriteDocx.js')).writeDocx;
-    writeDocx(hocrDownload, minValue, maxValue);
-    downloadProgress.increment();
+    await writeDocx(hocrDownload, minValue, maxValue);
+    ProgressBars.download.increment();
   } else if (downloadType === 'xlsx') {
-    const downloadProgress = initializeProgress('generate-download-progress-collapse', 1);
+    ProgressBars.download.show(1);
     await sleep(0);
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeXlsx = (await import('../export/exportWriteTabular.js')).writeXlsx;
-    writeXlsx(hocrDownload, minValue, maxValue);
-    downloadProgress.increment();
+    await writeXlsx(hocrDownload, minValue, maxValue);
+    ProgressBars.download.increment();
   }
 
   elem.download.download.disabled = false;

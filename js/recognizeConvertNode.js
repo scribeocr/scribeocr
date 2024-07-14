@@ -1,22 +1,25 @@
-import { imageCache } from './containers/imageContainer.js';
+import { state } from './containers/app.js';
 import {
-  layoutDataTableAll,
+  LayoutDataTables,
   ocrAll, pageMetricsArr,
-} from './containers/miscContainer.js';
+  visInstructions,
+} from './containers/dataContainer.js';
+import { imageCache } from './containers/imageContainer.js';
+import { gs } from './containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw, loadChiSimFont } from './fontContainerMain.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { recognizePage } from './recognizeConvert.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
-  await globalThis.generalScheduler.ready;
-
   const inputPages = [...Array(imageCache.pageCount).keys()];
   const promiseArr = [];
 
   if (!inputPages || inputPages.length === 0) throw new Error('No pages to recognize');
 
+  const scheduler = await gs.getScheduler();
+
   for (const x of inputPages) {
-    promiseArr.push(recognizePage(globalThis.gs, x, legacy, lstm, false, {}, debug).then(async (resArr) => {
+    promiseArr.push(recognizePage(scheduler, x, legacy, lstm, false, {}, debug).then(async (resArr) => {
       const res0 = await resArr[0];
       const res1 = legacy && lstm ? await resArr[1] : undefined;
 
@@ -24,7 +27,7 @@ export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData
         const { ScrollView } = await import('../scrollview-web/scrollview/ScrollView.js');
         const sv = new ScrollView();
         await sv.processVisStr(res0.recognize.debugVis);
-        globalThis.visInstructions[x] = await sv.getAll(true);
+        visInstructions[x] = await sv.getAll(true);
       }
 
       if (res0.convert.legacy) await convertPageCallbackNode(res0.convert.legacy, x, mainData, 'Tesseract Legacy');
@@ -57,7 +60,7 @@ export async function convertPageCallbackNode({
 
   // If this is flagged as the "main" data, then save the stats.
   if (mainData) {
-    globalThis.convertPageWarn[n] = warn;
+    state.convertPageWarn[n] = warn;
 
     // The page metrics object may have been initialized earlier through some other method (e.g. using PDF info).
     if (!pageMetricsArr[n]) {
@@ -68,7 +71,7 @@ export async function convertPageCallbackNode({
   }
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(layoutDataTableAll[n].tables).length === 0) layoutDataTableAll[n] = dataTables;
+  if (Object.keys(LayoutDataTables.pages[n].tables).length === 0) LayoutDataTables.pages[n] = dataTables;
 }
 
 /**
@@ -93,9 +96,9 @@ async function convertOCRPageNode(ocrRaw, n, mainData, format, engineName) {
     func = 'convertPageBlocks';
   }
 
-  await globalThis.generalScheduler.ready;
+  await gs.schedulerReady;
 
-  const res = await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n });
+  const res = await gs.schedulerInner.addJob(func, { ocrStr: ocrRaw, n });
 
   await convertPageCallbackNode(res, n, mainData, engineName);
 }

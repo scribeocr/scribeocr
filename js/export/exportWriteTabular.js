@@ -4,8 +4,9 @@ import ocr from '../objects/ocrObjects.js';
 
 import { saveAs } from '../utils/miscUtils.js';
 
-import { elem } from '../browser/elems.js';
-import { inputDataModes, layoutDataTableAll } from '../containers/miscContainer.js';
+import { inputData } from '../containers/app.js';
+import { LayoutDataTables } from '../containers/dataContainer.js';
+import { elem } from '../gui/elems.js';
 
 /**
  * @param {ReturnType<extractTableContent>} tableWordObj
@@ -340,7 +341,7 @@ function createCellsSingle(ocrTableWords, extraCols = [], startRow = 0, xlsxMode
  * @param {number} maxpage
  */
 export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
-  const { xlsxStrings, sheetStart, sheetEnd } = await import('../xlsxFiles.js');
+  const { xlsxStrings, sheetStart, sheetEnd } = await import('./resources/xlsxFiles.js');
   const { BlobWriter, TextReader, ZipWriter } = await import('../../lib/zip.js/index.js');
 
   if (maxpage === -1) maxpage = ocrPageArr.length - 1;
@@ -357,15 +358,15 @@ export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
     /** @type {Array<string>} */
     const extraCols = [];
     if (addFilenameMode) {
-      if (inputDataModes.pdfMode) {
-        extraCols.push(globalThis.inputFileNames[0]);
+      if (inputData.pdfMode) {
+        extraCols.push(inputData.inputFileNames[0]);
       } else {
-        extraCols.push(globalThis.inputFileNames[i]);
+        extraCols.push(inputData.inputFileNames[i]);
       }
     }
     if (addPageNumberColumnMode) extraCols.push(String(i + 1));
 
-    const tableWordObj = extractTableContent(ocrPageArr[i], layoutDataTableAll[i]);
+    const tableWordObj = extractTableContent(ocrPageArr[i], LayoutDataTables.pages[i]);
     const cellsObj = createCells(tableWordObj, extraCols, rowCount);
     rowCount += cellsObj.rows;
     sheetContent += cellsObj.content;

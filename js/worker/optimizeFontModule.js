@@ -197,38 +197,6 @@ export async function optimizeFont({
     return { fontData: workingFont.toArrayBuffer(), kerningPairs: workingFont.kerningPairs };
   }
 
-  // TODO: Adapt glyph substitution to work with new Nimbus fonts
-  // if (style == "normal" && fontMetricsObj.variants?.sans_g && /sans/i.test(workingFont.names.fontFamily.en)) {
-  //   const glyphI = workingFont.charToGlyph("g");
-  //   glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_g_single);
-  //   scaleGlyph(glyphI, workingFont.unitsPerEm / 2000);
-  // }
-  // if (style == "normal" && fontMetricsObj.variants?.sans_1 && /sans/i.test(workingFont.names.fontFamily.en)) {
-  //   const glyphI = workingFont.charToGlyph("1");
-  //   glyphI.path = JSON.parse(globalThis.glyphAlts.sans_normal_1_base);
-  //   scaleGlyph(glyphI, workingFont.unitsPerEm / 2000);
-  // }
-  // if (style == "italic" && fontMetricsObj.variants?.serif_italic_y && /libre/i.test(workingFont.names.fontFamily.en)) {
-  //   const glyphI = workingFont.charToGlyph("y");
-  //   glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_y_min);
-  // }
-  // if (style == "italic" && fontMetricsObj.variants?.serif_open_k && /libre/i.test(workingFont.names.fontFamily.en)) {
-  //   const glyphI = workingFont.charToGlyph("k");
-  //   glyphI.path = JSON.parse(globalThis.glyphAlts.serif_italic_k_open);
-  // }
-  // if (style == "italic" && fontMetricsObj.variants?.serif_pointy_vw && /libre/i.test(workingFont.names.fontFamily.en)) {
-  //   const glyphI1 = workingFont.charToGlyph("v");
-  //   glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_v_pointed);
-  //   const glyphI2 = workingFont.charToGlyph("w");
-  //   glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_w_pointed);
-  // }
-  // if (style == "italic" && fontMetricsObj.variants?.serif_stem_sans_pq && /libre/i.test(workingFont.names.fontFamily.en)) {
-  //   const glyphI1 = workingFont.charToGlyph("p");
-  //   glyphI1.path = JSON.parse(globalThis.glyphAlts.serif_italic_p_sans_stem);
-  //   const glyphI2 = workingFont.charToGlyph("q");
-  //   glyphI2.path = JSON.parse(globalThis.glyphAlts.serif_italic_q_sans_stem);
-  // }
-
   oGlyph = workingFont.charToGlyph('o').getMetrics();
   xHeight = oGlyph.yMax - oGlyph.yMin;
 

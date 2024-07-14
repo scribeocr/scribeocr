@@ -1,5 +1,5 @@
 // import { updateDataProgress } from "../main.js";
-import { readOcrFile } from './utils/miscUtils.js';
+import { readOcrFile } from '../utils/miscUtils.js';
 
 /**
  * Import raw OCR data from files.
@@ -27,9 +27,9 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
   let hocrRaw;
   /** @type  {?Object.<string, FontMetricsFamily>} */
   let fontMetricsObj;
-  /** @type{?Array<import('./objects/layoutObjects.js').LayoutPage>} */
+  /** @type{?Array<import('../objects/layoutObjects.js').LayoutPage>} */
   let layoutObj = null;
-  /** @type{?Array<import('./objects/layoutObjects.js').LayoutDataTablePage>} */
+  /** @type{?Array<import('../objects/layoutObjects.js').LayoutDataTablePage>} */
   let layoutDataTableObj = null;
   let defaultFont;
   let enableOpt;
@@ -107,10 +107,10 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
       }
 
       const layoutStr = getMeta('layout');
-      if (layoutStr) layoutObj = /** @type{Array<import('./objects/layoutObjects.js').LayoutPage>} */ (JSON.parse(layoutStr));
+      if (layoutStr) layoutObj = /** @type{Array<import('../objects/layoutObjects.js').LayoutPage>} */ (JSON.parse(layoutStr));
 
       const layoutDataTableStr = getMeta('layout-data-table');
-      if (layoutDataTableStr) layoutDataTableObj = /** @type{Array<import('./objects/layoutObjects.js').LayoutDataTablePage>} */ (JSON.parse(layoutDataTableStr));
+      if (layoutDataTableStr) layoutDataTableObj = /** @type{Array<import('../objects/layoutObjects.js').LayoutDataTablePage>} */ (JSON.parse(layoutDataTableStr));
 
       const enableOptStr = getMeta('enable-opt');
       if (enableOptStr) enableOpt = enableOptStr;

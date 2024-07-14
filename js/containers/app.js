@@ -1,23 +1,35 @@
-// This file contains various objects that are imported by other modules.
-// Everything here is essentially a global variable; none of them are technically "containers".
+export class opt {
+  static vanillaMode = false;
 
-/** @type {Object.<string, FontMetricsFamily>} */
-export const fontMetricsObj = {};
+  static langs = ['eng'];
+}
 
-/** @type {Array<import('../objects/layoutObjects.js').LayoutPage>} */
-export const layoutAll = [];
+export class state {
+  static pageRendering = Promise.resolve(true);
 
-/** @type {Array<import('../objects/layoutObjects.js').LayoutDataTablePage>} */
-export const layoutDataTableAll = [];
+  static renderIt = 0;
 
-/** @type {Object<string, Array<import('../objects/ocrObjects.js').OcrPage>>} */
-export const ocrAll = { active: [] };
+  /** @type {?Function} */
+  static promiseResolve = null;
 
-/** @type {Array<PageMetrics>} */
-export const pageMetricsArr = [];
+  static recognizeAllPromise = Promise.resolve(true);
+
+  static downloadReady = false;
+
+  static canvasDimsN = -1;
+
+  static layoutMode = false;
+
+  static pageCount = 0;
+
+  static loadCount = 0;
+
+  /** @type {Array<Object<string, string>>} */
+  static convertPageWarn = [];
+}
 
 /**
- * @typedef inputDataModes
+ * @typedef inputData
  * @type {object}
  * @property {Boolean[]} xmlMode - true if OCR data exists (whether from upload or built-in engine)
  * @property {Boolean} pdfMode - true if user uploaded pdf
@@ -25,9 +37,10 @@ export const pageMetricsArr = [];
  * @property {Boolean} resumeMode - true if user re-uploaded HOCR data created by Scribe OCR
  * @property {Boolean} extractTextMode - true if stext is extracted from a PDF (rather than text layer uploaded seprately)
  * @property {Boolean} evalMode - true if ground truth data is uploaded
+ * @property {String[]} inputFileNames - array of file names for image or PDF uploads
  */
-/** @type {inputDataModes} */
-export const inputDataModes = {
+/** @type {inputData} */
+export const inputData = {
   // true if OCR data exists (whether from upload or built-in engine)
   xmlMode: [],
   // true if user uploaded pdf
@@ -40,9 +53,5 @@ export const inputDataModes = {
   extractTextMode: false,
   // true if ground truth data is uploaded
   evalMode: false,
+  inputFileNames: [],
 };
-
-/**
- * @type {{[key: string]: Array<Array<CompDebugBrowser>> | undefined}}
- */
-export const debugImg = {};

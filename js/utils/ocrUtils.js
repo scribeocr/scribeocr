@@ -1,4 +1,3 @@
-import { pageMetricsArr } from '../containers/miscContainer.js';
 import ocr, { OcrPar } from '../objects/ocrObjects.js';
 import { calcWordMetrics } from './fontUtils.js';
 import { calcBboxUnion, quantile } from './miscUtils.js';
@@ -60,9 +59,9 @@ export function mergeOcrWords(words) {
  * Assigns paragraphs based on our own heuristics.
  *
  * @param {OcrPage} page
- * @param {number} n
+ * @param {number} angle
  */
-export function assignParagraphs(page, n) {
+export function assignParagraphs(page, angle) {
   let endsEarlyPrev = false;
   let startsLatePrev = false;
 
@@ -80,8 +79,6 @@ export function assignParagraphs(page, n) {
   let lineWidthMedian = null;
   /** @type {?number} */
   let lineSpaceMedian = null;
-
-  const angle = (pageMetricsArr[n].angle || 0) * -1;
 
   /** @type {?number} */
   let y2Prev = null;

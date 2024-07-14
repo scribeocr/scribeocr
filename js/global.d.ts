@@ -1,15 +1,42 @@
 declare global {
+
+    // OCR objects
     type OcrPage = import("./objects/ocrObjects.js").OcrPage;
     type OcrLine = import("./objects/ocrObjects.js").OcrLine;
     type OcrWord = import("./objects/ocrObjects.js").OcrWord;
     type OcrChar = import("./objects/ocrObjects.js").OcrChar;
 
+    // Font objects
     type FontMetricsFont = import("./objects/fontMetricsObjects.js").FontMetricsFont;
     type FontMetricsRawFamily = import("./objects/fontMetricsObjects.js").FontMetricsRawFamily;
     type FontMetricsFamily = import("./objects/fontMetricsObjects.js").FontMetricsFamily;
     type FontMetricsRawFont = import("./objects/fontMetricsObjects.js").FontMetricsRawFont;
     type FontContainerFont = import("./containers/fontContainer.js").FontContainerFont;
     type FontContainerFamily = import("./containers/fontContainer.js").FontContainerFamily;
+
+    type FontContainerFamilyBuiltIn = {
+        normal: FontContainerFont;
+        italic: FontContainerFont;
+        bold: FontContainerFont;
+    };
+
+    type FontContainerFamilyUpload = {
+        normal: FontContainerFont | null;
+        italic: FontContainerFont | null;
+        bold: FontContainerFont | null;
+    };
+
+    type FontContainerFamily = FontContainerFamilyBuiltIn | FontContainerFamilyUpload;
+
+    type FontContainer = {
+        Carlito: FontContainerFamilyBuiltIn;
+        Century: FontContainerFamilyBuiltIn;
+        Garamond: FontContainerFamilyBuiltIn;
+        Palatino: FontContainerFamilyBuiltIn;
+        NimbusRomNo9L: FontContainerFamilyBuiltIn;
+        NimbusSans: FontContainerFamilyBuiltIn;
+        [key: string]: FontContainerFamily;
+    };
 
     type fontSrcBuiltIn = {
         normal: string | ArrayBuffer;
@@ -85,6 +112,15 @@ declare global {
         errorAdjA: number | null; // Adjusted error of "A" words. Null until calculated.
         errorAdjB: number | null; // Adjusted error of "B" words. Null until calculated.
     };
+
+    type ProgressBar = import("./gui/utils/progressBars.js").ProgressBar;
+
+    // Layout objects
+    type LayoutPage = import("./objects/layoutObjects.js").LayoutPage;
+    type LayoutDataTablePage = import("./objects/layoutObjects.js").LayoutDataTablePage;
+    type LayoutDataTable = import("./objects/layoutObjects.js").LayoutDataTable;
+    type LayoutDataColumn = import("./objects/layoutObjects.js").LayoutDataColumn;
+    type LayoutRegion = import("./objects/layoutObjects.js").LayoutRegion;
 
 }
 

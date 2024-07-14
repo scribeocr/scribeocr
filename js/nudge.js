@@ -1,6 +1,7 @@
-import { showDebugImages } from '../main.js';
+import { debugImg, ocrAll, pageMetricsArr } from './containers/dataContainer.js';
 import { imageCache } from './containers/imageContainer.js';
-import { debugImg, ocrAll, pageMetricsArr } from './containers/miscContainer.js';
+import { gs } from './containers/schedulerContainer.js';
+import { showDebugImages } from './gui/interfaceDebug.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images
@@ -16,7 +17,7 @@ export async function evalOverlapDocument() {
 
     const imgBinary = await imageCache.getBinary(i);
 
-    promiseArr.push(globalThis.gs.evalPage({
+    promiseArr.push(gs.schedulerInner.evalPage({
       page: ocrPageI,
       binaryImage: imgBinary,
       pageMetricsObj: pageMetricsArr[i],
@@ -34,8 +35,6 @@ export async function evalOverlapDocument() {
 
   return metricSum / wordsTotal;
 }
-
-globalThis.evalOverlapDocument = evalOverlapDocument;
 
 // TODO: The canvas should be updated after this function is run if run on the current page.
 // The core logic should not happen within this function, as that would prevent it from running in Node.js.
@@ -56,7 +55,7 @@ export async function nudgeDoc(func, view = false) {
 
     const imgBinary = await imageCache.getBinary(i);
 
-    promiseArr.push(globalThis.generalScheduler.addJob(func, {
+    promiseArr.push(gs.schedulerInner.addJob(func, {
       page: ocrPageI, binaryImage: imgBinary, pageMetricsObj: pageMetricsArr[i], view,
     }).then((res) => {
       ocrAll.active[i] = res.data.page;
@@ -77,7 +76,3 @@ export async function nudgeDoc(func, view = false) {
 
 export const nudgeDocFontSize = (view = false) => nudgeDoc('nudgePageFontSize', view);
 export const nudgeDocBaseline = (view = false) => nudgeDoc('nudgePageBaseline', view);
-
-globalThis.nudgeDocFontSize = nudgeDocFontSize;
-
-globalThis.nudgeDocBaseline = nudgeDocBaseline;

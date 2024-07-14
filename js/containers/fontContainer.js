@@ -34,20 +34,18 @@ export function relToAbsPath(fileName) {
 }
 
 /**
-   *
-   * @param {string|ArrayBuffer} src
-   */
-const getFontAbsPath = (src) => { // eslint-disable-line no-shadow
-  // Do not edit `src` if it is already an ArrayBuffer rather than a path.
-  if (typeof (src) !== 'string') return src;
+ *
+ * @param {string} src
+ */
+export const getFontAbsPath = (src) => { // eslint-disable-line no-shadow
   // Do not edit `src` if it is already an absolute URL
   if (/^(\/|http)/i.test(src)) return src;
 
   // Alternative .ttf versions of the fonts are used for Node.js, as `node-canvas` does not currently (reliably) support .woff files.
   // See https://github.com/Automattic/node-canvas/issues/1737
   if (typeof process === 'object') {
-    const srcTtf = src.replace(/\.\w{1,5}$/i, '.ttf');
-    return relToAbsPath(`../../fonts_ttf/${srcTtf}`);
+    const srcStem = src.replace(/.*\//, '').replace(/\.\w{1,5}$/i, '');
+    return relToAbsPath(`../../fonts/all_ttf/${srcStem}.ttf`);
   }
 
   return relToAbsPath(`../../fonts/${src}`);
@@ -143,7 +141,7 @@ export function loadFontFace(fontFamily, fontStyle, fontWeight, src) {
  *
  */
 export async function loadFont(family, style, type, src, opt) {
-  const srcAbs = getFontAbsPath(src);
+  const srcAbs = typeof src === 'string' ? getFontAbsPath(src) : src;
   const fontObj = await loadOpentype(srcAbs);
   return new FontContainerFont(family, style, srcAbs, opt, fontObj);
 }
@@ -198,94 +196,6 @@ export function FontContainerFont(family, style, src, opt, opentypeObj) {
 
 /**
  *
- * @param {FontContainerFamilyBuiltIn} fontFamily
- * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
- */
-export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
-  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
-
-  // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
-  // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font.
-  const multiFontMode = checkMultiFontMode(fontMetricsObj);
-  let fontMetricsType = 'Default';
-  if (multiFontMode) {
-    if (fontFamily.normal.type === 'sans') {
-      fontMetricsType = 'SansDefault';
-    } else {
-      fontMetricsType = 'SerifDefault';
-    }
-  }
-
-  const scrNormal = getFontAbsPath(fontFamily.normal.src);
-  const scrItalic = getFontAbsPath(fontFamily.italic.src);
-  const scrBold = getFontAbsPath(fontFamily.bold.src);
-
-  // If there are no statistics to use for optimization, create "optimized" font by simply copying the raw font without modification.
-  // This should only occur when `multiFontMode` is true, but a document contains no sans words or no serif words.
-  if (!fontMetricsObj[fontMetricsType] || !fontMetricsObj[fontMetricsType][fontFamily.normal.style]) {
-    const opentypeFontArr = await Promise.all([loadOpentype(scrNormal, null), loadOpentype(scrItalic, null), loadOpentype(scrBold, null)]);
-    const normalOptFont = new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, scrNormal, true, opentypeFontArr[0]);
-    const italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, scrItalic, true, opentypeFontArr[1]);
-    const boldOptFont = new FontContainerFont(fontFamily.bold.family, fontFamily.bold.style, scrBold, true, opentypeFontArr[2]);
-    return {
-      normal: await normalOptFont, italic: await italicOptFont, bold: await boldOptFont,
-    };
-  }
-
-  const metricsNormal = fontMetricsObj[fontMetricsType][fontFamily.normal.style];
-  const normalOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.normal.src, fontMetricsObj: metricsNormal, style: fontFamily.normal.style })
-    .then(async (x) => {
-      const font = await loadOpentype(x.fontData, x.kerningPairs);
-      return new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, x.fontData, true, font);
-    });
-
-  const metricsItalic = fontMetricsObj[fontMetricsType][fontFamily.italic.style];
-  /** @type {FontContainerFont|Promise<FontContainerFont>} */
-  let italicOptFont;
-  if (metricsItalic) {
-    italicOptFont = globalThis.gs.optimizeFont({ fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style })
-      .then(async (x) => {
-        const font = await loadOpentype(x.fontData, x.kerningPairs);
-        return new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, x.fontData, true, font);
-      });
-  } else {
-    const font = await loadOpentype(scrItalic, null);
-    italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, scrItalic, true, font);
-  }
-
-  // Bold fonts are not optimized, as we currently have no accurate way to determine if characters are bold within OCR, so do not have bold metrics.
-  const boldOptFont = loadOpentype(scrBold, null).then((opentypeFont) => new FontContainerFont(fontFamily.bold.family, fontFamily.bold.style, scrBold, true, opentypeFont));
-
-  return {
-    normal: await normalOptFont, italic: await italicOptFont, bold: await boldOptFont,
-  };
-}
-
-/**
- * @typedef {Object} FontContainerFamilyBuiltIn
- * @property {FontContainerFont} normal
- * @property {FontContainerFont} italic
- * @property {FontContainerFont} bold
- */
-
-/**
- * @typedef {Object} FontContainerFamilyUpload
- * @property {?FontContainerFont} normal
- * @property {?FontContainerFont} italic
- * @property {?FontContainerFont} bold
- */
-
-/**
- * @typedef {(FontContainerFamilyBuiltIn|FontContainerFamilyUpload)} FontContainerFamily
- */
-
-/**
- * @typedef {{Carlito: FontContainerFamilyBuiltIn, Century: FontContainerFamilyBuiltIn, Garamond: FontContainerFamilyBuiltIn,
- * Palatino: FontContainerFamilyBuiltIn, NimbusRomNo9L: FontContainerFamilyBuiltIn, NimbusSans: FontContainerFamilyBuiltIn, [key:string]: FontContainerFamily}} FontContainer
- */
-
-/**
- *
  * @param {string} family
  * @param {fontSrcBuiltIn|fontSrcUpload} src
  * @param {boolean} opt
@@ -296,12 +206,12 @@ export async function loadFontContainerFamily(family, src, opt = false) {
   };
 
   const loadType = (type) => new Promise((resolve) => {
-    const srcType = src[type];
+    const srcType = /** @type {string | ArrayBuffer | null} */ (src[type]);
     if (!srcType) {
       resolve(false);
       return;
     }
-    const scrNormal = getFontAbsPath(srcType);
+    const scrNormal = typeof srcType === 'string' ? getFontAbsPath(srcType) : srcType;
     loadOpentype(scrNormal).then((font) => {
       res[type] = new FontContainerFont(family, type, srcType, opt, font);
       resolve(true);
@@ -330,29 +240,6 @@ export async function loadFontsFromSource(srcObj, opt = false) {
     fontObj[key] = await value;
   }
   return fontObj;
-}
-
-/**
- * Optimize all fonts.
- * @param {Object<string, FontContainerFamilyBuiltIn>} fontPrivate
- * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
- */
-export async function optimizeFontContainerAll(fontPrivate, fontMetricsObj) {
-  const carlitoObj = await optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj);
-  const centuryObj = await optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj);
-  const garamondObj = await optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj);
-  const palatinoObj = await optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj);
-  const nimbusRomNo9LObj = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj);
-  const nimbusSansObj = await optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj);
-
-  return {
-    Carlito: await carlitoObj,
-    Century: await centuryObj,
-    Garamond: await garamondObj,
-    Palatino: await palatinoObj,
-    NimbusRomNo9L: await nimbusRomNo9LObj,
-    NimbusSans: await nimbusSansObj,
-  };
 }
 
 // FontCont must contain no font data when initialized, and no data should be defined in this file.

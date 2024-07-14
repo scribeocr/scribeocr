@@ -1,35 +1,13 @@
 import {
   checkMultiFontMode,
   fontAll,
+  FontContainerFont,
+  getFontAbsPath,
   loadFont,
   loadFontsFromSource,
+  loadOpentype,
 } from './containers/fontContainer.js';
-
-/**
- * @param {string} fileName
- */
-export function relToAbsPath(fileName) {
-  const url = new URL(fileName, import.meta.url);
-  return url.protocol === 'file:' ? url.host + url.pathname : url.href;
-}
-
-/**
- *
- * @param {string} src
- */
-const getFontAbsPath = (src) => {
-  // Do not edit `src` if it is already an absolute URL
-  if (/^(\/|http)/i.test(src)) return src;
-
-  // Alternative .ttf versions of the fonts are used for Node.js, as `node-canvas` does not currently (reliably) support .woff files.
-  // See https://github.com/Automattic/node-canvas/issues/1737
-  if (typeof process === 'object') {
-    const srcStem = src.replace(/.*\//, '').replace(/\.\w{1,5}$/i, '');
-    return relToAbsPath(`../fonts/all_ttf/${srcStem}.ttf`);
-  }
-
-  return relToAbsPath(`../../fonts/${src}`);
-};
+import { gs } from './containers/schedulerContainer.js';
 
 /**
  *
@@ -43,8 +21,8 @@ async function fontPathToArrayBuffer(fileName) {
     const res = await fetch(absPath);
     return res.arrayBuffer();
   }
-  const fs = await import('fs');
-  const res = fs.readFileSync(absPath);
+  const { readFileSync } = await import('node:fs');
+  const res = readFileSync(absPath);
   return res.buffer;
 }
 
@@ -98,12 +76,12 @@ export async function loadBuiltInFontsRaw(glyphSet = 'latin') {
 
   const srcObj = await fontPathToArrayBufferAll(srcPathObj);
 
-  fontAll.raw = await /** @type {Promise<import('./containers/fontContainer.js').FontContainer>} */(loadFontsFromSource(srcObj));
+  fontAll.raw = await /** @type {FontContainer} */(/** @type {any} */(loadFontsFromSource(srcObj)));
   if (!fontAll.active || (!fontAll.active.NimbusSans.normal.opt && !fontAll.active.NimbusRomNo9L.normal.opt)) fontAll.active = fontAll.raw;
 
   if (typeof process === 'undefined') {
-    await globalThis.generalScheduler.readyLoadFonts;
-    await setBuiltInFontsWorker(globalThis.generalScheduler, true);
+    await gs.schedulerReadyLoadFonts;
+    await setBuiltInFontsWorker(gs.schedulerInner, true);
   }
 
   return;
@@ -150,7 +128,7 @@ export async function enableDisableFontOpt(enable, useInitial = false, forceWork
 
   // Enable/disable optimized font in workers
   if (browserMode) {
-    await setBuiltInFontsWorker(globalThis.generalScheduler, forceWorkerUpdate);
+    await setBuiltInFontsWorker(gs.schedulerInner, forceWorkerUpdate);
   } else {
     // const { setFontAll } = await import('./worker/compareOCRModule.js');
     // setFontAll(fontAll);
@@ -294,10 +272,98 @@ export function setDefaultFontAuto(fontMetricsObj) {
     fontAll.defaultFontName = 'SansDefault';
   }
 
-  if (globalThis.generalScheduler) {
-    for (let i = 0; i < globalThis.generalScheduler.workers.length; i++) {
-      const worker = globalThis.generalScheduler.workers[i];
+  if (gs.schedulerInner) {
+    for (let i = 0; i < gs.schedulerInner.workers.length; i++) {
+      const worker = gs.schedulerInner.workers[i];
       worker.setDefaultFontNameWorker({ defaultFontName: fontAll.defaultFontName });
     }
   }
+}
+
+/**
+ *
+ * @param {FontContainerFamilyBuiltIn} fontFamily
+ * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
+ */
+export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
+  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
+
+  // When we have metrics for individual fonts families, those are used to optimize the appropriate fonts.
+  // Otherwise, the "default" metric is applied to whatever font the user has selected as the default font.
+  const multiFontMode = checkMultiFontMode(fontMetricsObj);
+  let fontMetricsType = 'Default';
+  if (multiFontMode) {
+    if (fontFamily.normal.type === 'sans') {
+      fontMetricsType = 'SansDefault';
+    } else {
+      fontMetricsType = 'SerifDefault';
+    }
+  }
+
+  const scrNormal = typeof fontFamily.normal.src === 'string' ? getFontAbsPath(fontFamily.normal.src) : fontFamily.normal.src;
+  const scrItalic = typeof fontFamily.italic.src === 'string' ? getFontAbsPath(fontFamily.italic.src) : fontFamily.italic.src;
+  const scrBold = typeof fontFamily.bold.src === 'string' ? getFontAbsPath(fontFamily.bold.src) : fontFamily.bold.src;
+
+  // If there are no statistics to use for optimization, create "optimized" font by simply copying the raw font without modification.
+  // This should only occur when `multiFontMode` is true, but a document contains no sans words or no serif words.
+  if (!fontMetricsObj[fontMetricsType] || !fontMetricsObj[fontMetricsType][fontFamily.normal.style]) {
+    const opentypeFontArr = await Promise.all([loadOpentype(scrNormal, null), loadOpentype(scrItalic, null), loadOpentype(scrBold, null)]);
+    const normalOptFont = new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, scrNormal, true, opentypeFontArr[0]);
+    const italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, scrItalic, true, opentypeFontArr[1]);
+    const boldOptFont = new FontContainerFont(fontFamily.bold.family, fontFamily.bold.style, scrBold, true, opentypeFontArr[2]);
+    return {
+      normal: await normalOptFont, italic: await italicOptFont, bold: await boldOptFont,
+    };
+  }
+
+  const metricsNormal = fontMetricsObj[fontMetricsType][fontFamily.normal.style];
+  const normalOptFont = gs.scheduler.optimizeFont({ fontData: fontFamily.normal.src, fontMetricsObj: metricsNormal, style: fontFamily.normal.style })
+    .then(async (x) => {
+      const font = await loadOpentype(x.fontData, x.kerningPairs);
+      return new FontContainerFont(fontFamily.normal.family, fontFamily.normal.style, x.fontData, true, font);
+    });
+
+  const metricsItalic = fontMetricsObj[fontMetricsType][fontFamily.italic.style];
+  /** @type {FontContainerFont|Promise<FontContainerFont>} */
+  let italicOptFont;
+  if (metricsItalic) {
+    italicOptFont = gs.scheduler.optimizeFont({ fontData: fontFamily.italic.src, fontMetricsObj: metricsItalic, style: fontFamily.italic.style })
+      .then(async (x) => {
+        const font = await loadOpentype(x.fontData, x.kerningPairs);
+        return new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, x.fontData, true, font);
+      });
+  } else {
+    const font = await loadOpentype(scrItalic, null);
+    italicOptFont = new FontContainerFont(fontFamily.italic.family, fontFamily.italic.style, scrItalic, true, font);
+  }
+
+  // Bold fonts are not optimized, as we currently have no accurate way to determine if characters are bold within OCR, so do not have bold metrics.
+  const boldOptFont = loadOpentype(scrBold, null).then((opentypeFont) => new FontContainerFont(fontFamily.bold.family, fontFamily.bold.style, scrBold, true, opentypeFont));
+
+  return {
+    normal: await normalOptFont, italic: await italicOptFont, bold: await boldOptFont,
+  };
+}
+
+/**
+ * Optimize all fonts.
+ * @param {Object<string, FontContainerFamilyBuiltIn>} fontPrivate
+ * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
+ */
+export async function optimizeFontContainerAll(fontPrivate, fontMetricsObj) {
+  const carlitoObj = await optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj);
+  const centuryObj = await optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj);
+  const garamondObj = await optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj);
+  const palatinoObj = await optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj);
+  const nimbusRomNo9LObj = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj);
+  const nimbusSansObj = await optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj);
+
+  return {
+    Carlito: await carlitoObj,
+    Century: await centuryObj,
+    Garamond: await garamondObj,
+    Palatino: await palatinoObj,
+    NimbusRomNo9L: await nimbusRomNo9LObj,
+    NimbusSans: await nimbusSansObj,
+  };
 }

@@ -3,18 +3,22 @@
 import {
   displayPage,
   initOCRVersion,
-  insertAlertMessage,
   setCurrentHOCR,
 } from '../main.js';
-import { elem } from './browser/elems.js';
-import { cp } from './browser/interfaceCanvas.js';
-import { imageCache } from './containers/imageContainer.js';
+import { inputData, opt, state } from './containers/app.js';
 import {
-  inputDataModes, layoutDataTableAll,
+  LayoutDataTables,
   ocrAll, pageMetricsArr,
-} from './containers/miscContainer.js';
+  visInstructions,
+} from './containers/dataContainer.js';
+import { imageCache } from './containers/imageContainer.js';
+import { gs } from './containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw, loadChiSimFont } from './fontContainerMain.js';
-import { checkCharWarn } from './fontStatistics.js';
+import { initTesseractInWorkers } from './generalWorkerMain.js';
+import { elem } from './gui/elems.js';
+import { cp } from './gui/interfaceCanvas.js';
+import { ProgressBars } from './gui/utils/progressBars.js';
+import { checkCharWarn } from './gui/utils/warningMessages.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { recognizePage } from './recognizeConvert.js';
 
@@ -26,8 +30,8 @@ const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementB
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
 async function addVisInstructionsUI() {
   const { combineOrderedArrays } = await import('../scrollview-web/util/combine.js');
-  if (!globalThis.visInstructions || globalThis.visInstructions.length === 0) return;
-  const visNamesAll = globalThis.visInstructions.map((x) => Object.keys(x));
+  if (!visInstructions || visInstructions.length === 0) return;
+  const visNamesAll = visInstructions.map((x) => Object.keys(x));
   if (visNamesAll.length === 0) return;
   const visNames = visNamesAll.reduce(combineOrderedArrays);
 
@@ -36,15 +40,12 @@ async function addVisInstructionsUI() {
   showDebugLegendElem.disabled = false;
   selectDebugVisElem.disabled = false;
   visNames.forEach((x) => {
-    const opt = document.createElement('option');
-    opt.value = x;
-    opt.innerHTML = x;
-    selectDebugVisElem.appendChild(opt);
+    const optElem = document.createElement('option');
+    optElem.value = x;
+    optElem.innerHTML = x;
+    selectDebugVisElem.appendChild(optElem);
   });
 }
-
-/** @type {Array<Awaited<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>>} */
-globalThis.visInstructions = [];
 
 /**
  *
@@ -55,7 +56,7 @@ globalThis.visInstructions = [];
 export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false) {
   // Render all PDF pages to PNG if needed
   // This step should not create binarized images as they will be created by Tesseract during recognition.
-  if (inputDataModes.pdfMode) await imageCache.preRenderRange(0, imageCache.pageCount - 1, false);
+  if (inputData.pdfMode) await imageCache.preRenderRange(0, imageCache.pageCount - 1, false);
 
   if (legacy) {
     const oemText = 'Tesseract Legacy';
@@ -75,7 +76,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   initOCRVersion('Tesseract Latest');
   setCurrentHOCR('Tesseract Latest');
 
-  await globalThis.initTesseractInWorkers(false);
+  await initTesseractInWorkers({ anyOk: false, vanillaMode: opt.vanillaMode, langs: opt.langs });
 
   // If Legacy and LSTM are both requested, LSTM completion is tracked by a second array of promises (`promisesB`).
   // In this case, `convertPageCallbackBrowser` can be run after the Legacy recognition is finished,
@@ -99,21 +100,23 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
 
   // Upscaling is enabled only for image data, and only if the user has explicitly enabled it.
   // For PDF data, if upscaling is desired, that should be handled by rendering the PDF at a higher resolution.
-  const upscale = inputDataModes.imageMode && elem.recognize.enableUpscale.checked;
+  const upscale = inputData.imageMode && elem.recognize.enableUpscale.checked;
 
   const config = { upscale };
 
   const debugVis = showDebugVisElem.checked;
 
+  const scheduler = await gs.getScheduler();
+
   for (const x of inputPages) {
-    recognizePage(globalThis.gs, x, legacy, lstm, false, config, debugVis).then(async (resArr) => {
+    recognizePage(scheduler, x, legacy, lstm, false, config, debugVis).then(async (resArr) => {
       const res0 = await resArr[0];
 
       if (res0.recognize.debugVis) {
         const { ScrollView } = await import('../scrollview-web/scrollview/ScrollView.js');
         const sv = new ScrollView(true);
         await sv.processVisStr(res0.recognize.debugVis);
-        globalThis.visInstructions[x] = await sv.getAll(true);
+        visInstructions[x] = await sv.getAll(true);
       }
 
       if (legacy) {
@@ -139,7 +142,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   if (debugVis) addVisInstructionsUI();
 
   if (mainData) {
-    await checkCharWarn(globalThis.convertPageWarn, insertAlertMessage);
+    await checkCharWarn(state.convertPageWarn);
   }
 
   if (legacy && lstm) await Promise.all(promisesB);
@@ -177,7 +180,7 @@ export async function convertPageCallbackBrowser({
 
   // If this is flagged as the "main" data, then save the stats.
   if (mainData) {
-    globalThis.convertPageWarn[n] = warn;
+    state.convertPageWarn[n] = warn;
 
     // The page metrics object may have been initialized earlier through some other method (e.g. using PDF info).
     if (!pageMetricsArr[n]) {
@@ -187,10 +190,10 @@ export async function convertPageCallbackBrowser({
     pageMetricsArr[n].angle = pageObj.angle;
   }
 
-  inputDataModes.xmlMode[n] = true;
+  inputData.xmlMode[n] = true;
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(layoutDataTableAll[n].tables).length === 0) layoutDataTableAll[n] = dataTables;
+  if (Object.keys(LayoutDataTables.pages[n].tables).length === 0) LayoutDataTables.pages[n] = dataTables;
 
   // If this is the page the user has open, render it to the canvas
   const oemActive = document.getElementById('displayLabelText')?.innerHTML;
@@ -201,7 +204,7 @@ export async function convertPageCallbackBrowser({
 
   if (n === cp.n && displayOCR) displayPage(cp.n);
 
-  globalThis.convertPageActiveProgress.increment();
+  ProgressBars.active.increment();
 }
 
 /**
@@ -227,9 +230,9 @@ async function convertOCRPageBrowser(ocrRaw, n, mainData, format, engineName, sc
     func = 'convertPageBlocks';
   }
 
-  await globalThis.generalScheduler.ready;
+  await gs.schedulerReady;
 
-  const res = await globalThis.generalScheduler.addJob(func, { ocrStr: ocrRaw, n, scribeMode });
+  const res = await gs.schedulerInner.addJob(func, { ocrStr: ocrRaw, n, scribeMode });
 
   await convertPageCallbackBrowser(res, n, mainData, engineName);
 }

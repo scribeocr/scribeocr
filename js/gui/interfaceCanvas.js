@@ -3,8 +3,9 @@
 import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
 import Konva from '../../lib/konva/index.js';
 import { search } from '../../main.js';
+import { state } from '../containers/app.js';
+import { ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
 import { fontAll } from '../containers/fontContainer.js';
-import { ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
 import { calcTableBbox } from '../objects/layoutObjects.js';
 import ocr from '../objects/ocrObjects.js';
 import { calcWordMetrics } from '../utils/fontUtils.js';
@@ -361,7 +362,7 @@ export class ScribeCanvas {
    * @param {boolean} [deselect=true] - Deselect all words, layout boxes, and data columns.
    */
   static destroyControls = (deselect = true) => {
-    globalThis.collapseRangeCollapse.hide();
+    elem.edit.collapseRangeBaselineBS.hide();
     ScribeCanvas._controlArr.forEach((control) => control.destroy());
     ScribeCanvas._controlArr.length = 0;
 
@@ -909,7 +910,7 @@ export class KonvaOcrWord extends KonvaIText {
       editTextCallback: () => {},
     });
 
-    this.listening(!globalThis.layoutMode);
+    this.listening(!state.layoutMode);
 
     this.lastX = this.x();
     this.lastWidth = this.width();
@@ -1033,11 +1034,11 @@ export function renderPage(page) {
   const angle = pageMetricsArr[cp.n].angle || 0;
 
   // Layout mode features assume that auto-rotate is enabled.
-  const enableRotation = (elem.view.autoRotateCheckbox.checked || globalThis.layoutMode) && Math.abs(angle ?? 0) > 0.05;
+  const enableRotation = (elem.view.autoRotateCheckbox.checked || state.layoutMode) && Math.abs(angle ?? 0) > 0.05;
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-  // assignParagraphs(page, cp.n);
+  // assignParagraphs(page, angle);
 
   // page.pars.forEach((par) => {
   //   const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };

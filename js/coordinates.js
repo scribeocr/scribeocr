@@ -3,8 +3,8 @@
 // Image Coordinate Space: coordinate space of a particular image
 // Canvas Coordinate Space: coordinate space of canvas, used for user interactions
 
+import { pageMetricsArr } from './containers/dataContainer.js';
 import { imageCache } from './containers/imageContainer.js';
-import { pageMetricsArr } from './containers/miscContainer.js';
 
 /**
  * @typedef {Object} BoundingBox

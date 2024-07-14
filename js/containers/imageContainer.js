@@ -9,14 +9,16 @@ import Tesseract from '../../tess/tesseract.esm.min.js';
 import { getImageBitmap, getJpegDimensions, getPngDimensions } from '../utils/imageUtils.js';
 
 import { setUploadFontsWorker } from '../fontContainerMain.js';
+import { ocrAllRaw, pageMetricsArr } from './dataContainer.js';
 import {
   FontContainerFont,
   fontAll,
   loadOpentype,
 } from './fontContainer.js';
-import { pageMetricsArr } from './miscContainer.js';
 
+import { initTesseractInWorkers } from '../generalWorkerMain.js';
 import { determineSansSerif } from '../utils/miscUtils.js';
+import { gs } from './schedulerContainer.js';
 
 function range(min, max) {
   const result = [];
@@ -272,10 +274,12 @@ class ImageCache {
     // If no preference is specified for upscaling, default to false.
     const upscaleArg = props?.upscaled || false;
 
+    const scheduler = await gs.getScheduler();
+
     const resPromise = (async () => {
     // Wait for non-rotated version before replacing with promise
-      if (typeof process === 'undefined') await globalThis.initTesseractInWorkers(true);
-      return gs.recognize({
+      if (typeof process === 'undefined') await initTesseractInWorkers({ anyOk: false });
+      return scheduler.recognize({
         image: inputImage.src,
         options: { rotateRadians: angleArg, upscale: upscaleArg },
         output: {
@@ -391,7 +395,7 @@ class ImageCache {
    * @param {number} max - Max page to render.
    * @param {boolean} binary - Whether to render binary images.
    * @param {?ImagePropertiesRequest} [props=null]
-   * @param {Object|null} [progress=null] - A progress tracking object, which should have an `increment` method.
+   * @param {?ProgressBar} [progress=null] - A progress tracking object, which should have an `increment` method.
    */
   preRenderRange = async (min, max, binary, props = null, progress = null) => {
     const pagesArr = range(min, max);
@@ -558,16 +562,16 @@ class ImageCache {
             }
           }
 
-          await setUploadFontsWorker(globalThis.generalScheduler);
+          await setUploadFontsWorker(gs.schedulerInner);
         });
       }
 
       if (extractStext) {
-        globalThis.hocrCurrentRaw = Array(this.pageCount);
+        ocrAllRaw.active = Array(this.pageCount);
         const resArr = pageDPI.map(async (x, i) => {
           // While using `pageTextJSON` would save some parsing, unfortunately that format only includes line-level granularity.
           // The XML format is the only built-in mupdf format that includes character-level granularity.
-          globalThis.hocrCurrentRaw[i] = await muPDFScheduler.pageTextXML({ page: i + 1, dpi: x });
+          ocrAllRaw.active[i] = await muPDFScheduler.pageTextXML({ page: i + 1, dpi: x });
         });
         await Promise.all(resArr);
       }

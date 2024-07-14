@@ -2,8 +2,9 @@
 
 import Konva from '../../lib/konva/index.js';
 import { renderPageQueue } from '../../main.js';
+import { inputData, state } from '../containers/app.js';
+import { pageMetricsArr, visInstructions } from '../containers/dataContainer.js';
 import { imageCache } from '../containers/imageContainer.js';
-import { inputDataModes, pageMetricsArr } from '../containers/miscContainer.js';
 import { elem } from './elems.js';
 import {
   ScribeCanvas,
@@ -81,7 +82,7 @@ export const selectDisplayMode = async (x) => {
   const pageDims = pageMetricsArr[cp.n].dims;
 
   // Include a background image if appropriate
-  if (['invis', 'proof', 'eval'].includes(x) && (inputDataModes.imageMode || inputDataModes.pdfMode)) {
+  if (['invis', 'proof', 'eval'].includes(x) && (inputData.imageMode || inputData.pdfMode)) {
     cp.backgroundOpts.originX = 'center';
     cp.backgroundOpts.originY = 'center';
 
@@ -91,10 +92,10 @@ export const selectDisplayMode = async (x) => {
 
     let rotation = 0;
     // Case where rotation is requested and the image has not already been rotated
-    if ((elem.view.autoRotateCheckbox.checked || globalThis.layoutMode) && !backgroundImage.rotated) {
+    if ((elem.view.autoRotateCheckbox.checked || state.layoutMode) && !backgroundImage.rotated) {
       rotation = (pageMetricsArr[cp.n].angle || 0) * -1;
     // Case where rotation is not requested and the image has already been rotated
-    } else if (!(elem.view.autoRotateCheckbox.checked || globalThis.layoutMode) && backgroundImage.rotated) {
+    } else if (!(elem.view.autoRotateCheckbox.checked || state.layoutMode) && backgroundImage.rotated) {
       rotation = pageMetricsArr[cp.n].angle || 0;
     }
 
@@ -121,8 +122,8 @@ export const selectDisplayMode = async (x) => {
     layerBackground.destroyChildren();
   }
 
-  if (showDebugVisElem.checked && selectDebugVisElem.value !== 'None' && globalThis.visInstructions[cp.n][selectDebugVisElem.value]) {
-    const image = globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvas;
+  if (showDebugVisElem.checked && selectDebugVisElem.value !== 'None' && visInstructions[cp.n][selectDebugVisElem.value]) {
+    const image = visInstructions[cp.n][selectDebugVisElem.value].canvas;
     const overlayImageKonva = new Konva.Image({
       image,
       scaleX: pageDims.width / image.width,
@@ -136,7 +137,7 @@ export const selectDisplayMode = async (x) => {
     layerOverlay.destroyChildren();
     layerOverlay.add(overlayImageKonva);
 
-    const offscreenCanvasLegend = globalThis.visInstructions[cp.n][selectDebugVisElem.value].canvasLegend;
+    const offscreenCanvasLegend = visInstructions[cp.n][selectDebugVisElem.value].canvasLegend;
     if (offscreenCanvasLegend) {
       ctxLegend.canvas.width = offscreenCanvasLegend.width;
       ctxLegend.canvas.height = offscreenCanvasLegend.height;
@@ -148,16 +149,16 @@ export const selectDisplayMode = async (x) => {
     layerOverlay.destroyChildren();
   }
 
-  if (globalThis.layoutMode) {
+  if (state.layoutMode) {
     renderLayoutBoxes();
   }
 
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
-  if (globalThis.state.canvasDimsN !== cp.n) {
+  if (state.canvasDimsN !== cp.n) {
     setCanvasWidthHeightZoom(pageMetricsArr[cp.n].dims, showConflictsElem.checked);
 
-    globalThis.state.canvasDimsN = cp.n;
+    state.canvasDimsN = cp.n;
   // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,
   // so we only need to call it here if the zoom is not changed.
   }

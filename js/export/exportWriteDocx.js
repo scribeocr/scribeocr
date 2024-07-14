@@ -1,5 +1,5 @@
-import { elem } from '../browser/elems.js';
-import { documentEnd, documentStart, docxStrings } from '../docxFiles.js';
+import { elem } from '../gui/elems.js';
+import { documentEnd, documentStart, docxStrings } from './resources/docxFiles.js';
 
 import { renderText } from './exportRenderText.js';
 

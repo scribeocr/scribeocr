@@ -2,20 +2,21 @@
 
 import {
   initOCRVersion,
-  initializeProgress,
-  insertAlertMessage,
   renderPageQueue,
   runFontOptimizationBrowser, setCurrentHOCR,
-  setOemLabel,
 } from '../../main.js';
+import { opt, state } from '../containers/app.js';
+import { debugImg, ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
 import { imageCache } from '../containers/imageContainer.js';
-import { debugImg, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
+import { gs } from '../containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw, loadChiSimFont } from '../fontContainerMain.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
 import { recognizeAllPagesBrowser } from '../recognizeConvertBrowser.js';
 import { elem } from './elems.js';
 import { cp } from './interfaceCanvas.js';
 import { toggleEditButtons } from './interfaceEdit.js';
+import { ProgressBars } from './utils/progressBars.js';
+import { insertAlertMessage } from './utils/warningMessages.js';
 
 const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));
@@ -24,7 +25,7 @@ const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById(
 const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
 
 const langLabelElem = /** @type {HTMLDivElement} */(document.getElementById('langLabel'));
-langLabelElem.addEventListener('click', getLangText);
+langLabelElem.addEventListener('click', setLangOpt);
 
 const langLabelTextElem = /** @type {HTMLDivElement} */(document.getElementById('langLabelText'));
 
@@ -33,6 +34,54 @@ const collapseLangElem = /** @type {HTMLDivElement} */(document.getElementById('
 const langChoiceElemArr = Array.from(collapseLangElem.querySelectorAll('.form-check-input'));
 
 const langChoices = langChoiceElemArr.map((element) => element.id);
+
+elem.recognize.oemLabelOptionLstm.addEventListener('click', () => { setOemLabel('lstm'); });
+elem.recognize.oemLabelOptionLegacy.addEventListener('click', () => { setOemLabel('legacy'); });
+elem.recognize.oemLabelOptionCombined.addEventListener('click', () => { setOemLabel('combined'); });
+
+elem.recognize.psmLabelOption3.addEventListener('click', () => { setPsmLabel('3'); });
+elem.recognize.psmLabelOption4.addEventListener('click', () => { setPsmLabel('4'); });
+
+elem.recognize.buildLabelOptionDefault.addEventListener('click', () => {
+  setBuildLabel('default');
+  opt.vanillaMode = false;
+});
+elem.recognize.buildLabelOptionVanilla.addEventListener('click', () => {
+  setBuildLabel('vanilla');
+  opt.vanillaMode = true;
+});
+
+function setOemLabel(x) {
+  if (x.toLowerCase() === 'lstm') {
+    elem.recognize.oemLabelText.innerHTML = 'LSTM';
+  } else if (x.toLowerCase() === 'legacy') {
+    elem.recognize.oemLabelText.innerHTML = 'Legacy';
+  } else if (x.toLowerCase() === 'combined') {
+    elem.recognize.oemLabelText.innerHTML = 'Combined';
+  }
+}
+
+/**
+ *
+ * @param {string} x
+ */
+function setPsmLabel(x) {
+  if (x === '3') {
+    elem.recognize.psmLabelText.innerHTML = 'Automatic';
+  } else if (x === '4') {
+    elem.recognize.psmLabelText.innerHTML = 'Single Column';
+  } else if (x === '8') {
+    elem.recognize.psmLabelText.innerHTML = 'Single Word';
+  }
+}
+
+function setBuildLabel(x) {
+  if (x.toLowerCase() === 'default') {
+    elem.recognize.buildLabelText.innerHTML = 'Scribe';
+  } else if (x.toLowerCase() === 'vanilla') {
+    elem.recognize.buildLabelText.innerHTML = 'Vanilla';
+  }
+}
 
 const langAlertElem = insertAlertMessage('Only enable languages known to be in the source document. Enabling many languages decreases performance.', false, 'alertRecognizeDiv', false);
 export const enableDisablelangAlertElem = () => {
@@ -48,7 +97,7 @@ export const enableDisablelangAlertElem = () => {
 
 collapseLangElem.addEventListener('click', enableDisablelangAlertElem);
 
-export function getLangText() {
+export function setLangOpt() {
   const langArr = [];
   langChoices.forEach((x) => {
     const langCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById(x));
@@ -71,12 +120,14 @@ export function getLangText() {
   // TODO: If too many language are selected, the user should be warned that this can cause issues.
   // If this is not explicit, I could see a user selecting every option "just in case".
 
-  return langArr;
+  opt.langs = langArr;
+
+  return;
 }
 
 export async function recognizeAllClick() {
-  await globalThis.generalScheduler.ready;
-  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
+  await gs.schedulerReady;
+  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
 
   const debugMode = true;
 
@@ -91,13 +142,11 @@ export async function recognizeAllClick() {
     setOemLabel('legacy');
   }
 
-  const langArr = getLangText();
-
   const fontPromiseArr = [];
   // Chinese requires loading a separate font.
-  if (langArr.includes('chi_sim')) fontPromiseArr.push(loadChiSimFont());
+  if (opt.langs.includes('chi_sim')) fontPromiseArr.push(loadChiSimFont());
   // Greek and Cyrillic require loading a version of the base fonts that include these characters.
-  if (langArr.includes('rus') || langArr.includes('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
+  if (opt.langs.includes('rus') || opt.langs.includes('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
   await Promise.all(fontPromiseArr);
 
   // Whether user uploaded data will be compared against in addition to both Tesseract engines
@@ -110,7 +159,7 @@ export async function recognizeAllClick() {
     // If the progress bar finishes earlier, in addition to being misleading to users,
     // the automated browser tests wait until the progress bar fills up to conclude
     // the recognition step was successful.
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount + 1, 0);
+    ProgressBars.recognize.show(imageCache.pageCount + 1);
     const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
@@ -124,8 +173,8 @@ export async function recognizeAllClick() {
       await runFontOptimizationBrowser(ocrAll['Tesseract Legacy']);
     }
   } else if (oemMode === 'combined') {
-    globalThis.loadCount = 0;
-    globalThis.convertPageActiveProgress = initializeProgress('recognize-recognize-progress-collapse', imageCache.pageCount * 2 + 1, 0);
+    state.loadCount = 0;
+    ProgressBars.recognize.show(imageCache.pageCount * 2 + 1);
 
     const time2a = Date.now();
     await recognizeAllPagesBrowser(true, true, true);
@@ -160,7 +209,7 @@ export async function recognizeAllClick() {
 
     initOCRVersion('Tesseract Combined Temp');
     for (let i = 0; i < imageCache.pageCount; i++) {
-      /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
+      /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
       const compOptions1 = {
         mode: 'comb',
         evalConflicts: false,
@@ -169,7 +218,7 @@ export async function recognizeAllClick() {
 
       const imgBinary = await imageCache.getBinary(i);
 
-      const res1 = await globalThis.gs.compareHOCR({
+      const res1 = await gs.scheduler.compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],
         pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
@@ -192,7 +241,7 @@ export async function recognizeAllClick() {
     for (let i = 0; i < imageCache.pageCount; i++) {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
-      /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
+      /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         debugLabel: tessCombinedLabel,
@@ -205,16 +254,13 @@ export async function recognizeAllClick() {
 
       const imgBinary = await imageCache.getBinary(i);
 
-      const res = await globalThis.gs.compareHOCR({
+      const res = await gs.scheduler.compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],
         pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
         pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
-
-      if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-      globalThis.debugLog += res.debugLog;
 
       debugImg[tessCombinedLabel][i] = res.debugImg;
 
@@ -223,7 +269,7 @@ export async function recognizeAllClick() {
       // If the user uploaded data, compare to that as we
       if (userUploadMode) {
         if (elem.recognize.combineMode.value === 'conf') {
-          /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
+          /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
           const compOptions2 = {
             debugLabel: 'Combined',
             supplementComp: true,
@@ -234,7 +280,7 @@ export async function recognizeAllClick() {
             editConf: true,
           };
 
-          const res2 = await globalThis.gs.compareHOCR({
+          const res2 = await gs.scheduler.compareOCR({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinary,
@@ -242,14 +288,11 @@ export async function recognizeAllClick() {
             options: compOptions2,
           });
 
-          if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-          globalThis.debugLog += res2.debugLog;
-
           debugImg.Combined[i] = res2.debugImg;
 
           ocrAll.Combined[i] = res2.page;
         } else {
-          /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
+          /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
           const compOptions2 = {
             mode: 'comb',
             debugLabel: 'Combined',
@@ -260,16 +303,13 @@ export async function recognizeAllClick() {
             confThreshMed: parseInt(elem.info.confThreshMed.value),
           };
 
-          const res2 = await globalThis.gs.compareHOCR({
+          const res2 = await gs.scheduler.compareOCR({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinary,
             pageMetricsObj: pageMetricsArr[i],
             options: compOptions2,
           });
-
-          if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-          globalThis.debugLog += res2.debugLog;
 
           debugImg.Combined[i] = res2.debugImg;
 
@@ -281,7 +321,7 @@ export async function recognizeAllClick() {
     if (debugMode) console.log(`Comparison runtime: ${time3b - time3a} ms`);
   }
 
-  globalThis.convertPageActiveProgress.increment();
+  ProgressBars.active.increment();
 
   renderPageQueue(cp.n);
 

@@ -2,7 +2,6 @@
 // Functions to calculate font metrics and generate new fonts.
 
 import {
-  determineSansSerif,
   quantile,
   replaceObjectProperties,
   round6,
@@ -10,53 +9,9 @@ import {
 
 import { FontMetricsFamily, FontMetricsFont, FontMetricsRawFamily } from './objects/fontMetricsObjects.js';
 
-import { fontMetricsObj } from './containers/miscContainer.js';
+import { fontMetricsObj } from './containers/dataContainer.js';
 
 // import { glyphAlts } from "../fonts/glyphs.js";
-
-/** @type {Array<Object.<string, string>>} */
-globalThis.convertPageWarn = [];
-
-/**
- * Display warning/error message to user if missing character-level data.
- *
- * @param {Array<Object.<string, string>>} warnArr - Array of objects containing warning/error messages from convertPage
- * @param {function(string, boolean=): void} errorFunc - Function used to throw warning/error message.
- */
-export function checkCharWarn(warnArr, errorFunc) {
-  // TODO: Figure out what happens if there is one blank page with no identified characters (as that would presumably trigger an error and/or warning on the page level).
-  // Make sure the program still works in that case for both Tesseract and Abbyy.
-
-  const charErrorCt = warnArr.filter((x) => x?.char === 'char_error').length;
-  const charWarnCt = warnArr.filter((x) => x?.char === 'char_warning').length;
-  const charGoodCt = warnArr.length - charErrorCt - charWarnCt;
-
-  const browserMode = typeof process === 'undefined';
-
-  // The UI warning/error messages cannot be thrown within this function,
-  // as that would make this file break when imported into contexts that do not have the main UI.
-  if (charGoodCt === 0 && charErrorCt > 0) {
-    if (browserMode) {
-      const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
-      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-      errorFunc(errorHTML);
-    } else {
-      const errorText = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
-      See: https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why`;
-      errorFunc(errorText);
-    }
-  } if (charGoodCt === 0 && charWarnCt > 0) {
-    if (browserMode) {
-      const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. 
-      <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-      errorFunc(warningHTML, false);
-    } else {
-      const errorText = `No character-level OCR data detected. Font optimization features will be disabled. 
-      See: https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why`;
-      errorFunc(errorText, false);
-    }
-  }
-}
 
 /**
  * Combine page-level character statistics to calculate overall font metrics.
@@ -70,7 +25,7 @@ export function calcFontMetricsFromPages(pageArr) {
   const fontMetricsRawObj = pageFontMetricsArr.reduce((x, y) => unionFontMetricsRawObj(x, y));
 
   /** @type {Object.<string, FontMetricsFamily>} */
-  let fontMetricsOut = {};
+  const fontMetricsOut = {};
 
   for (const [family, obj] of Object.entries(fontMetricsRawObj)) {
     fontMetricsOut[family] = new FontMetricsFamily();
@@ -79,8 +34,6 @@ export function calcFontMetricsFromPages(pageArr) {
       fontMetricsOut[family].obs += fontMetricsOut[family][style].obs;
     }
   }
-
-  fontMetricsOut = identifyFontVariants(globalThis.fontScores, fontMetricsOut);
 
   if (Object.keys(fontMetricsOut).length > 0) replaceObjectProperties(fontMetricsObj, fontMetricsOut);
 }
@@ -208,33 +161,6 @@ function calculateFontMetrics(fontMetricsRawFontObj) {
   }
 
   return (fontMetricOut);
-}
-
-// This function is not currently used.
-function parseDebugInfo(debugTxt) {
-  if (!globalThis.fontScores) globalThis.fontScores = { SerifDefault: {}, SansDefault: {}, Default: {} };
-
-  const fontLines = debugTxt.match(/Modal Font.+/g);
-
-  if (!fontLines) return;
-
-  // Filter statement added as this regex fails for some lines where the "letter" has multiple characters (possibly non-ASCII punctuation)
-  const fontArr = fontLines.map((x) => x.match(/Modal Font: ([^;]+?); Letter: (.); Font: ([^;]+?); Score: (\d+)/)).filter((x) => x?.length === 5);
-
-  for (let i = 0; i < fontArr.length; i++) {
-    const modalFont = fontArr[i][1];
-    const char = fontArr[i][2];
-    const font = fontArr[i][3];
-    const score = parseInt(fontArr[i][4]);
-    const modalFontFamily = determineSansSerif(modalFont);
-    const style = /italic/i.test(modalFont) ? 'italic' : 'normal';
-
-    if (!globalThis.fontScores[modalFontFamily][style]) globalThis.fontScores[modalFontFamily][style] = {};
-    if (!globalThis.fontScores[modalFontFamily][style][char]) globalThis.fontScores[modalFontFamily][style][char] = {};
-    if (!globalThis.fontScores[modalFontFamily][style][char][font]) globalThis.fontScores[modalFontFamily][style][char][font] = 0;
-
-    globalThis.fontScores[modalFontFamily][style][char][font] += score;
-  }
 }
 
 function calcTopFont(fontScoresChar) {

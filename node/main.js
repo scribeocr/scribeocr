@@ -10,31 +10,38 @@ import Worker from 'web-worker';
 // This needs to be run first, and the comments prevent VSCode from moving it.
 import { runFirst } from './runFirst.js';
 // Leave this comment and import here.
-import { ImageWrapper, imageCache, imageUtils } from '../js/containers/imageContainer.js';
+import { imageCache, imageUtils, ImageWrapper } from '../js/containers/imageContainer.js';
 import { renderHOCR } from '../js/export/exportRenderHOCR.js';
 import { runFontOptimization } from '../js/fontEval.js';
-import { GeneralScheduler, initGeneralWorker } from '../js/generalWorkerMain.js';
 
-import { importOCRFiles } from '../js/importOCR.js';
+import { importOCRFiles } from '../js/import/importOCR.js';
 import ocr from '../js/objects/ocrObjects.js';
 import { PageMetrics } from '../js/objects/pageMetricsObjects.js';
 import { convertOCRAllNode, recognizeAllPagesNode } from '../js/recognizeConvertNode.js';
 import { reduceEvalMetrics } from '../js/utils/miscUtils.js';
-import { compareHOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
+import { compareOCR, tmpUnique } from '../js/worker/compareOCRModule.js';
 
 import { drawDebugImages } from '../js/debug.js';
 import { hocrToPDF } from '../js/export/exportPDF.js';
 
-import { fontAll } from '../js/containers/fontContainer.js';
 import {
-  fontMetricsObj, layoutAll, layoutDataTableAll, ocrAll, pageMetricsArr,
-} from '../js/containers/miscContainer.js';
+  fontMetricsObj,
+  LayoutDataTables,
+  LayoutRegions,
+  ocrAll, ocrAllRaw, pageMetricsArr,
+  visInstructions,
+} from '../js/containers/dataContainer.js';
+import { fontAll } from '../js/containers/fontContainer.js';
 import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
 
 import { LayoutDataTablePage, LayoutPage } from '../js/objects/layoutObjects.js';
 
+import { clearData } from '../js/clear.js';
+import { state } from '../js/containers/app.js';
+import { gs } from '../js/containers/schedulerContainer.js';
 import { writeDebugCsv } from '../js/export/exportDebugCsv.js';
 import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
+import { initGeneralScheduler, initTesseractInWorkers } from '../js/generalWorkerMain.js';
 
 const writeFile = util.promisify(fs.writeFile);
 
@@ -74,7 +81,7 @@ function dumpHOCRAll(fileName) {
     'sans-font': fontAll.sansDefaultName,
     'serif-font': fontAll.serifDefaultName,
     'enable-opt': enableOpt,
-    layout: layoutAll,
+    layout: LayoutRegions.pages,
   };
 
   for (const [key, value] of Object.entries(ocrAll)) {
@@ -82,18 +89,6 @@ function dumpHOCRAll(fileName) {
     const hocrOut = renderHOCR(value, 0, value.length - 1, meta);
     const outputPath = `${debugDir}/${path.basename(fileName).replace(/\.\w{1,5}$/i, '')}_${key}.hocr`;
     fs.writeFileSync(outputPath, hocrOut);
-  }
-}
-
-/**
- *
- * @param {string} fileName - File name of input file, which is edited to create output path.
- */
-function dumpDebugLogAll(fileName) {
-  for (const [key, value] of Object.entries(compLogs)) {
-    const debugStr = value.join('\n\n');
-    const outputPath = `${debugDir}/${path.basename(fileName).replace(/\.\w{1,5}$/i, '')}_complog_${key}.txt`;
-    fs.writeFileSync(outputPath, debugStr);
   }
 }
 
@@ -109,13 +104,6 @@ async function writeDebugImages(ctx, compDebugArrArr, filePath) {
   fs.writeFileSync(filePath, buffer0);
 }
 
-await loadBuiltInFontsRaw();
-
-globalThis.convertPageWarn = [];
-
-/** @type {Array<Awaited<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>>} */
-globalThis.visInstructions = [];
-
 /**
  * @param {string} func
  * @param {Object} params
@@ -129,6 +117,11 @@ globalThis.visInstructions = [];
  *
  */
 async function main(func, params) {
+  await initGeneralScheduler();
+  await initTesseractInWorkers({});
+  const resReadyFontAllRaw = gs.setFontAllRawReady();
+  await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
+
   const output = {};
 
   const debugComp = false;
@@ -137,20 +130,28 @@ async function main(func, params) {
   // if (!hocrStrFirst) throw new Error(`Could not read file: ${params.ocrFile}`);
 
   let existingLayout = false;
+  let existingLayoutDataTable = false;
 
   /** @type {("hocr" | "abbyy" | "stext")} */
   let ocrFormat = 'hocr';
   if (['conf', 'check', 'eval', 'overlay'].includes(func)) {
     if (params.ocrFile) {
       const ocrData = await importOCRFiles([params.ocrFile]);
-      globalThis.hocrCurrentRaw = ocrData.hocrRaw;
+      ocrAllRaw.active = ocrData.hocrRaw;
       if (ocrData.abbyyMode) ocrFormat = 'abbyy';
 
       if (ocrData.layoutObj) {
         for (let i = 0; i < ocrData.layoutObj.length; i++) {
-          layoutAll[i] = ocrData.layoutObj[i];
+          LayoutRegions.pages[i] = ocrData.layoutObj[i];
         }
         existingLayout = true;
+      }
+
+      if (ocrData.layoutDataTableObj) {
+        for (let i = 0; i < ocrData.layoutDataTableObj.length; i++) {
+          LayoutDataTables.pages[i] = ocrData.layoutDataTableObj[i];
+        }
+        existingLayoutDataTable = true;
       }
     } else {
       throw new Error(`OCR file required for function ${func} but not provided.`);
@@ -170,7 +171,7 @@ async function main(func, params) {
   const robustConfMode = func === 'check' || params.robustConfMode || false;
   const printConf = func === 'check' || func === 'conf' || params.printConf || false;
 
-  const pageCountHOCR = globalThis.hocrCurrentRaw ? globalThis.hocrCurrentRaw.length : 0;
+  const pageCountHOCR = ocrAllRaw.active ? ocrAllRaw.active.length : 0;
 
   let fileData;
   let mupdfWorker;
@@ -192,7 +193,7 @@ async function main(func, params) {
 
       imageCache.nativeSrc[0] = imgWrapper;
 
-      if (!globalThis.hocrCurrentRaw) {
+      if (!ocrAllRaw.active || ocrAllRaw.active.length === 0) {
         const imageDims = await imageUtils.getDims(imgWrapper);
         pageMetricsArr[0] = new PageMetrics(imageDims);
       }
@@ -203,42 +204,37 @@ async function main(func, params) {
   // if (pageCountHOCR !== pageCountImage) {
   //   console.log(`Detected ${pageCountHOCR} pages in OCR but ${pageCountImage} images.`);
   // }
-  const pageCount = pageCountImage ?? pageCountHOCR;
+  state.pageCount = pageCountImage ?? pageCountHOCR;
 
   if (!existingLayout) {
-    for (let i = 0; i < pageCount; i++) {
-      layoutAll[i] = new LayoutPage();
-      layoutDataTableAll[i] = new LayoutDataTablePage();
+    for (let i = 0; i < state.pageCount; i++) {
+      LayoutRegions.pages[i] = new LayoutPage();
+      LayoutDataTables.pages[i] = new LayoutDataTablePage();
     }
   }
 
-  ocrAll.active = Array(pageCount);
-  ocrAll['User Upload'] = Array(pageCount);
-  ocrAll['Tesseract Legacy'] = Array(pageCount);
-  ocrAll['Tesseract LSTM'] = Array(pageCount);
-  ocrAll['Tesseract Combined Temp'] = Array(pageCount);
-  ocrAll['Tesseract Combined'] = Array(pageCount);
-  ocrAll.Combined = Array(pageCount);
+  if (!existingLayoutDataTable) {
+    for (let i = 0; i < state.pageCount; i++) {
+      LayoutDataTables.pages[i] = new LayoutDataTablePage();
+    }
+  }
+
+  ocrAll.active = Array(state.pageCount);
+  ocrAll['User Upload'] = Array(state.pageCount);
+  ocrAll['Tesseract Legacy'] = Array(state.pageCount);
+  ocrAll['Tesseract LSTM'] = Array(state.pageCount);
+  ocrAll['Tesseract Combined Temp'] = Array(state.pageCount);
+  ocrAll['Tesseract Combined'] = Array(state.pageCount);
+  ocrAll.Combined = Array(state.pageCount);
 
   ocrAll.active = ocrAll['User Upload'];
 
   /** @type {Array<EvalMetrics>} */
   const evalMetricsArr = [];
 
-  const workerN = 1;
-  globalThis.generalScheduler = await Tesseract.createScheduler();
-  globalThis.generalScheduler.workers = new Array(workerN);
-  for (let i = 0; i < workerN; i++) {
-    const w = await initGeneralWorker();
-    await w.reinitialize({ langs: ['eng'], vanillaMode: false });
-    w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
-    globalThis.generalScheduler.addWorker(w);
-    globalThis.generalScheduler.workers[i] = w;
+  if (ocrAllRaw.active && ocrAllRaw.active.length > 0) {
+    await convertOCRAllNode(ocrAllRaw.active, true, ocrFormat, 'User Upload');
   }
-
-  globalThis.gs = new GeneralScheduler(globalThis.generalScheduler);
-
-  if (globalThis.hocrCurrentRaw) await convertOCRAllNode(globalThis.hocrCurrentRaw, true, ocrFormat, 'User Upload');
 
   if (func === 'conf' || (printConf && !robustConfMode)) {
     let wordsTotal = 0;
@@ -254,20 +250,21 @@ async function main(func, params) {
     console.log(`Confidence: ${wordsHighConf / wordsTotal}`);
 
     if (func === 'conf') {
-      globalThis.generalScheduler.terminate();
+      await gs.clear();
+      clearData();
       return output;
     }
   }
 
   // There is currently no Node.js implementation of default font selection, as this is written around drawing in the canvas API.
   // Evaluate default fonts using up to 5 pages.
-  const fontEvalPageN = Math.min(pageCount, 5);
+  const fontEvalPageN = Math.min(state.pageCount, 5);
 
   const tessWorker = await Tesseract.createWorker();
 
   // All pages are rendered for `robustConfMode`, otherwise images are only needed for font evaluation.
   const runRecognition = robustConfMode || func === 'eval' || func === 'debug';
-  const renderPageN = runRecognition ? pageCount : fontEvalPageN;
+  const renderPageN = runRecognition ? state.pageCount : fontEvalPageN;
 
   if (backgroundPDF) await imageCache.preRenderRange(0, renderPageN - 1, false);
 
@@ -276,11 +273,11 @@ async function main(func, params) {
   if (!runRecognition) await imageCache.preRenderRange(0, renderPageN - 1, true);
 
   if (func === 'debug' && backgroundArg) {
-    const writeCanvasNodeAll = (await import('../../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
+    const writeCanvasNodeAll = (await import('../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
 
     await recognizeAllPagesNode(false, false, false, true);
 
-    globalThis.visInstructions.forEach((x) => {
+    visInstructions.forEach((x) => {
       /** @type {typeof x} */
       const visFilter = {};
       for (const key of Object.keys(x)) {
@@ -288,14 +285,14 @@ async function main(func, params) {
           visFilter[key] = x[key];
         }
       }
-      const pageNumSuffix = globalThis.visInstructions.length > 1 ? `_${x}` : '';
+      const pageNumSuffix = visInstructions.length > 1 ? `_${x}` : '';
       const outputBase = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '')}${pageNumSuffix}`;
       writeCanvasNodeAll(visFilter, outputBase);
     });
     // Terminate all workers
     await tessWorker.terminate();
-    await globalThis.generalScheduler.terminate();
-    imageCache.clear();
+    await gs.clear();
+    clearData();
 
     return output;
   }
@@ -304,7 +301,7 @@ async function main(func, params) {
   // (2) Use Tesseract Legacy font data when (1) recognition is being run anyway and (2) no font metrics data exists already.
   if (robustConfMode || func === 'eval' || func === 'recognize') {
     // Render all pages since all pages are being recognized.
-    await imageCache.preRenderRange(0, pageCount - 1, false);
+    await imageCache.preRenderRange(0, state.pageCount - 1, false);
 
     const time2a = Date.now();
     await recognizeAllPagesNode(true, true, true);
@@ -318,7 +315,7 @@ async function main(func, params) {
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < imageCache.pageCount; i++) {
-      /** @type {Parameters<compareHOCR>[0]['options']} */
+      /** @type {Parameters<compareOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         evalConflicts: false,
@@ -326,7 +323,7 @@ async function main(func, params) {
 
       const imgBinary = await imageCache.getBinary(i);
 
-      const res = await compareHOCR({
+      const res = await compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],
         pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
@@ -346,7 +343,7 @@ async function main(func, params) {
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
     for (let i = 0; i < imageCache.pageCount; i++) {
-      /** @type {Parameters<compareHOCR>[0]['options']} */
+      /** @type {Parameters<compareOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         ignoreCap: true,
@@ -356,16 +353,13 @@ async function main(func, params) {
 
       const imgBinary = await imageCache.getBinary(i);
 
-      const res = await compareHOCR({
+      const res = await compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],
         pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
         pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
-
-      if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-      globalThis.debugLog += res.debugLog;
 
       if (debugMode && res.debugImg.length > 0) {
         const filePath = `${__dirname}/../../dev/debug/legacy_lstm_comp_${i}.png`;
@@ -384,7 +378,7 @@ async function main(func, params) {
   if (robustConfMode || func === 'eval') {
     if (debugMode) compLogs.Combined = [];
     for (let i = 0; i < imageCache.pageCount; i++) {
-      /** @type {Parameters<compareHOCR>[0]['options']} */
+      /** @type {Parameters<compareOCR>[0]['options']} */
       const compOptions = {
         mode: 'stats',
         supplementComp: true,
@@ -402,15 +396,13 @@ async function main(func, params) {
       const pageA = func === 'eval' ? ocrAll['Tesseract Combined'][i] : ocrAll['User Upload'][i];
       const pageB = func === 'eval' ? ocrAll['User Upload'][i] : ocrAll['Tesseract Combined'][i];
 
-      const res = await compareHOCR({
+      const res = await compareOCR({
         pageA,
         pageB,
         binaryImage: imgBinary,
         pageMetricsObj: pageMetricsArr[i],
         options: compOptions,
       });
-
-      if (debugMode) compLogs.Combined[i] = res.debugLog;
 
       ocrAll.Combined[i] = res.page;
 
@@ -430,7 +422,6 @@ async function main(func, params) {
 
   if (debugMode && backgroundArg) {
     dumpHOCRAll(backgroundArg);
-    dumpDebugLogAll(backgroundArg);
   }
 
   if (func === 'overlay' && backgroundArg) {
@@ -496,8 +487,8 @@ async function main(func, params) {
 
   // Terminate all workers
   await tessWorker.terminate();
-  await globalThis.generalScheduler.terminate();
-  imageCache.clear();
+  await gs.clear();
+  clearData();
 
   return output;
 }

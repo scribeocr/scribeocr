@@ -8,9 +8,10 @@
 import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
 import { displayPage, renderPageQueue } from '../../main.js';
 import Tesseract from '../../tess/tesseract.esm.min.js';
+import { debugImg, ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
 import { fontAll } from '../containers/fontContainer.js';
 import { imageCache } from '../containers/imageContainer.js';
-import { debugImg, ocrAll, pageMetricsArr } from '../containers/miscContainer.js';
+import { gs } from '../containers/schedulerContainer.js';
 import coords from '../coordinates.js';
 import { combineData } from '../modifyOCR.js';
 import ocr from '../objects/ocrObjects.js';
@@ -200,7 +201,7 @@ export function adjustBaseline() {
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   // Only open if a word is selected.
-  globalThis.collapseRangeCollapse.toggle();
+  elem.edit.collapseRangeBaselineBS.toggle();
 
   elem.edit.rangeBaseline.value = String(baselineRange + selectedObjects[0].baselineAdj);
 
@@ -418,8 +419,8 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
   const n = cp.n;
 
-  if (!globalThis.gs) throw new Error('GeneralScheduler must be defined before this function can run.');
-  const res0 = await recognizePage(globalThis.gs, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
+  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
+  const res0 = await recognizePage(gs.scheduler, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
 
   const resLegacy = await res0[0];
   const resLSTM = await res0[1];
@@ -441,7 +442,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     }
   }
 
-  /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareHOCR']>[0]['options']} */
+  /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
   const compOptions = {
     mode: 'comb',
     debugLabel,
@@ -454,16 +455,13 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   const imgBinary = await imageCache.getBinary(n);
 
-  const res = await globalThis.gs.compareHOCR({
+  const res = await gs.scheduler.compareOCR({
     pageA: pageObjLegacy,
     pageB: pageObjLSTM,
     binaryImage: imgBinary,
     pageMetricsObj: pageMetricsArr[n],
     options: compOptions,
   });
-
-  if (globalThis.debugLog === undefined) globalThis.debugLog = '';
-  globalThis.debugLog += res.debugLog;
 
   debugImg[debugLabel][n].push(...res.debugImg);
 

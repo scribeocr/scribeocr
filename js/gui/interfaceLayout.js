@@ -10,11 +10,10 @@ import {
 } from '../objects/layoutObjects.js';
 
 import {
-  inputDataModes,
-  layoutAll,
-  layoutDataTableAll,
+  LayoutDataTables,
+  LayoutRegions,
   ocrAll,
-} from '../containers/miscContainer.js';
+} from '../containers/dataContainer.js';
 
 import ocr from '../objects/ocrObjects.js';
 
@@ -25,6 +24,7 @@ import {
   layerOverlay, updateWordCanvas,
 } from './interfaceCanvas.js';
 
+import { inputData } from '../containers/app.js';
 import { extractSingleTableContent } from '../export/exportWriteTabular.js';
 import { elem } from './elems.js';
 
@@ -69,10 +69,10 @@ export function addLayoutDataTableClick({
 
   dataTable.boxes[0] = layoutBox;
 
-  layoutDataTableAll[cp.n].tables.push(dataTable);
+  LayoutDataTables.pages[cp.n].tables.push(dataTable);
 
-  layoutAll[cp.n].default = false;
-  layoutDataTableAll[cp.n].default = false;
+  LayoutRegions.pages[cp.n].default = false;
+  LayoutDataTables.pages[cp.n].default = false;
 
   renderLayoutDataTable(dataTable);
 }
@@ -91,7 +91,7 @@ export function addLayoutBoxClick({
   layoutBoxTypeElem.textContent = { order: 'Order', exclude: 'Exclude' }[type];
 
   // Maximum priority for boxes that already exist
-  const maxPriority = Math.max(...Object.values(layoutAll[cp.n].boxes).map((box) => box.order), -1);
+  const maxPriority = Math.max(...Object.values(LayoutRegions.pages[cp.n].boxes).map((box) => box.order), -1);
 
   const bbox = {
     left: x, top: y, right: x + width, bottom: y + height,
@@ -99,7 +99,7 @@ export function addLayoutBoxClick({
 
   const region = new LayoutRegion(maxPriority + 1, bbox, type);
 
-  layoutAll[cp.n].boxes[region.id] = region;
+  LayoutRegions.pages[cp.n].boxes[region.id] = region;
 
   renderLayoutBoxes();
 }
@@ -112,29 +112,29 @@ export function toggleSelectableWords(selectable = true) {
 }
 
 export function setDefaultLayoutClick() {
-  globalThis.defaultLayout = structuredClone(layoutAll[cp.n].boxes);
-  for (let i = 0; i < layoutAll.length; i++) {
-    if (layoutAll[i].default) {
-      layoutAll[i].boxes = structuredClone(globalThis.defaultLayout);
+  LayoutRegions.defaultRegions = structuredClone(LayoutRegions.pages[cp.n].boxes);
+  for (let i = 0; i < LayoutRegions.pages.length; i++) {
+    if (LayoutRegions.pages[i].default) {
+      LayoutRegions.pages[i].boxes = structuredClone(LayoutRegions.defaultRegions);
     }
   }
   setDefaultLayoutDataTableClick();
 }
 
 export function setDefaultLayoutDataTableClick() {
-  globalThis.defaultLayoutDataTable = structuredClone(layoutDataTableAll[cp.n].tables);
-  for (let i = 0; i < layoutDataTableAll.length; i++) {
-    if (layoutDataTableAll[i].default) {
-      layoutDataTableAll[i].tables = structuredClone(globalThis.defaultLayoutDataTable);
+  LayoutDataTables.defaultTables = structuredClone(LayoutDataTables.pages[cp.n].tables);
+  for (let i = 0; i < LayoutDataTables.pages.length; i++) {
+    if (LayoutDataTables.pages[i].default) {
+      LayoutDataTables.pages[i].tables = structuredClone(LayoutDataTables.defaultTables);
     }
   }
 }
 
 export function revertLayoutClick() {
-  layoutAll[cp.n].default = true;
-  layoutAll[cp.n].boxes = structuredClone(globalThis.defaultLayout);
-  layoutDataTableAll[cp.n].default = true;
-  layoutDataTableAll[cp.n].tables = structuredClone(globalThis.defaultLayoutDataTable);
+  LayoutRegions.pages[cp.n].default = true;
+  LayoutRegions.pages[cp.n].boxes = structuredClone(LayoutRegions.defaultRegions);
+  LayoutDataTables.pages[cp.n].default = true;
+  LayoutDataTables.pages[cp.n].tables = structuredClone(LayoutDataTables.defaultTables);
 
   displayPage(cp.n);
   updateDataPreview();
@@ -410,8 +410,8 @@ export class KonvaLayout extends Konva.Rect {
     konvaLayout.layoutBox.coords = {
       left: konvaLayout.x(), top: konvaLayout.y(), right, bottom,
     };
-    layoutAll[cp.n].default = false;
-    layoutDataTableAll[cp.n].default = false;
+    LayoutRegions.pages[cp.n].default = false;
+    LayoutDataTables.pages[cp.n].default = false;
     updateDataPreview();
   }
 
@@ -535,7 +535,7 @@ export class KonvaDataColSep extends Konva.Line {
 
 export function renderLayoutBoxes() {
   ScribeCanvas.destroyRegions();
-  Object.values(layoutAll[cp.n].boxes).forEach((box) => {
+  Object.values(LayoutRegions.pages[cp.n].boxes).forEach((box) => {
     const konvaLayout = new KonvaLayout(box);
     ScribeCanvas.addRegion(konvaLayout);
   });
@@ -572,11 +572,11 @@ export class KonvaDataColumn extends KonvaLayout {
       const colIndexI = this.layoutBox.table.boxes.findIndex((x) => x.id === this.layoutBox.id);
       this.layoutBox.table.boxes.splice(colIndexI, 1);
       this.destroy();
-      layoutAll[cp.n].default = false;
-      layoutDataTableAll[cp.n].default = false;
+      LayoutRegions.pages[cp.n].default = false;
+      LayoutDataTables.pages[cp.n].default = false;
       if (this.layoutBox.table.boxes.length === 0) {
-        const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === this.layoutBox.table.id);
-        layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
+        const tableIndex = LayoutDataTables.pages[cp.n].tables.findIndex((x) => x.id === this.layoutBox.table.id);
+        LayoutDataTables.pages[cp.n].tables.splice(tableIndex, 1);
         this.konvaTable.destroy();
       }
     };
@@ -667,11 +667,11 @@ export class KonvaDataTable {
      * Delete the table, both from the layout data and from the canvas.
     */
     this.delete = () => {
-      const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === this.layoutDataTable.id);
-      layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
+      const tableIndex = LayoutDataTables.pages[cp.n].tables.findIndex((x) => x.id === this.layoutDataTable.id);
+      LayoutDataTables.pages[cp.n].tables.splice(tableIndex, 1);
       this.destroy();
-      layoutAll[cp.n].default = false;
-      layoutDataTableAll[cp.n].default = false;
+      LayoutRegions.pages[cp.n].default = false;
+      LayoutDataTables.pages[cp.n].default = false;
     };
 
     this.tableRect.addEventListener('transform', () => {
@@ -891,9 +891,9 @@ function renderLayoutDataTable(layoutDataTable) {
 }
 
 export function renderLayoutDataTables() {
-  if (!layoutDataTableAll[cp.n].tables) return;
+  if (!LayoutDataTables.pages[cp.n].tables) return;
   ScribeCanvas.destroyLayoutDataTables();
-  Object.values(layoutDataTableAll[cp.n].tables).forEach((table) => {
+  Object.values(LayoutDataTables.pages[cp.n].tables).forEach((table) => {
     renderLayoutDataTable(table);
   });
 
@@ -933,8 +933,8 @@ const getAdjacentTables = (table) => {
   const tableYMid = (tableBox.top + tableBox.bottom) / 2;
 
   // Filter to tables that have vertial overlap, and sort by horizontal position.
-  const tablesBoxesAll = layoutDataTableAll[cp.n].tables.map((x) => calcTableBbox(x));
-  const tables = layoutDataTableAll[cp.n].tables.filter((x, i) => tablesBoxesAll[i].top < tableYMid && tablesBoxesAll[i].bottom > tableYMid).sort((a, b) => {
+  const tablesBoxesAll = LayoutDataTables.pages[cp.n].tables.map((x) => calcTableBbox(x));
+  const tables = LayoutDataTables.pages[cp.n].tables.filter((x, i) => tablesBoxesAll[i].top < tableYMid && tablesBoxesAll[i].bottom > tableYMid).sort((a, b) => {
     const boxA = calcTableBbox(a);
     const boxB = calcTableBbox(b);
     return boxA.left - boxB.left;
@@ -1008,11 +1008,11 @@ export const mergeDataTables = (tables) => {
       x.table = tableFirst;
       tableFirst.boxes.push(x);
     });
-    const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === tables[i].id);
-    layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
+    const tableIndex = LayoutDataTables.pages[cp.n].tables.findIndex((x) => x.id === tables[i].id);
+    LayoutDataTables.pages[cp.n].tables.splice(tableIndex, 1);
   }
-  layoutAll[cp.n].default = false;
-  layoutDataTableAll[cp.n].default = false;
+  LayoutRegions.pages[cp.n].default = false;
+  LayoutDataTables.pages[cp.n].default = false;
 
   cleanLayoutDataColumns(tableFirst);
 
@@ -1074,8 +1074,8 @@ export const splitDataTable = (columns) => {
 
   // Remove old table
   const tableExisting = layoutDataColumns1[0].table;
-  const tableIndex = layoutDataTableAll[cp.n].tables.findIndex((x) => x.id === tableExisting.id);
-  layoutDataTableAll[cp.n].tables.splice(tableIndex, 1);
+  const tableIndex = LayoutDataTables.pages[cp.n].tables.findIndex((x) => x.id === tableExisting.id);
+  LayoutDataTables.pages[cp.n].tables.splice(tableIndex, 1);
 
   [layoutDataColumns0, layoutDataColumns1, layoutDataColumns2].forEach((layoutDataColumns) => {
     if (layoutDataColumns.length === 0) return;
@@ -1087,11 +1087,11 @@ export const splitDataTable = (columns) => {
       table.boxes.push(layoutDataColumn);
     });
 
-    layoutDataTableAll[cp.n].tables.push(table);
+    LayoutDataTables.pages[cp.n].tables.push(table);
   });
 
-  layoutAll[cp.n].default = false;
-  layoutDataTableAll[cp.n].default = false;
+  LayoutRegions.pages[cp.n].default = false;
+  LayoutDataTables.pages[cp.n].default = false;
 
   renderLayoutDataTables();
 };
@@ -1119,7 +1119,7 @@ export async function updateDataPreview() {
   // No HTML preview pane currently exists.
   return;
 
-  if (!globalThis.inputFileNames || !ocrAll.active[cp.n]) return;
+  if (!inputData.inputFileNames || !ocrAll.active[cp.n]) return;
 
   const showDataPreview = elem.info.enableXlsxExport.checked;
 
@@ -1132,20 +1132,20 @@ export async function updateDataPreview() {
 
   const extraCols = [];
   if (addFilenameMode) {
-    if (inputDataModes.pdfMode) {
-      extraCols.push(globalThis.inputFileNames[0]);
+    if (inputData.pdfMode) {
+      extraCols.push(inputData.inputFileNames[0]);
     } else {
-      extraCols.push(globalThis.inputFileNames[cp.n]);
+      extraCols.push(inputData.inputFileNames[cp.n]);
     }
   }
   if (addPageNumberColumnMode) extraCols.push(String(cp.n + 1));
 
   const { extractTableContent, createCells, extractSingleTableContent } = (await import('../export/exportWriteTabular.js'));
 
-  const tableWordObj = extractTableContent(ocrAll.active[cp.n], layoutDataTableAll[cp.n]);
+  const tableWordObj = extractTableContent(ocrAll.active[cp.n], LayoutDataTables.pages[cp.n]);
 
   for (const [key, value] of Object.entries(tableWordObj)) {
-    const boxes = Object.values(layoutAll[cp.n].boxes).filter((x) => String(x.table) === key);
+    const boxes = Object.values(LayoutRegions.pages[cp.n].boxes).filter((x) => String(x.table) === key);
     const tableLeft = Math.min(...boxes.map((x) => x.coords.left));
     const tableRight = Math.max(...boxes.map((x) => x.coords.right));
 

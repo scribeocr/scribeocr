@@ -625,5 +625,3 @@ const ocr = {
 };
 
 export default ocr;
-// Making global for debugging purposes.  This should not be relied upon in code.
-// globalThis.ocr = ocr;
