@@ -34,6 +34,7 @@ elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
 
 elem.edit.ligatures.addEventListener('change', () => {
   opt.ligatures = elem.edit.ligatures.checked;
+  renderPageQueue(cp.n);
 });
 
 const styleItalicButton = new Button(elem.edit.styleItalic);

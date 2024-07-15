@@ -6,6 +6,7 @@ import { getPrevLine } from '../objects/ocrObjects.js';
 import { quantile } from './miscUtils.js';
 
 import opentype from '../../lib/opentype.module.js';
+import { opt } from '../containers/app.js';
 
 /**
  *
@@ -100,7 +101,7 @@ function calcWordFontSizePrecise(wordArr, fontOpentype, nonLatin = false) {
  * @returns {Array<string>}
 */
 export function addLigatures(word) {
-  if (word.smallCaps) return word.text.split('');
+  if (word.smallCaps || !opt.ligatures) return word.text.split('');
   const fontI = fontAll.getWordFont(word);
   const fontOpentype = fontI.opentype;
   return addLigaturesText(word.text, fontOpentype);

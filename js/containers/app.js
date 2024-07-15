@@ -3,7 +3,7 @@ export class opt {
 
   static langs = ['eng'];
 
-  static ligatures = false;
+  static ligatures = true;
 }
 
 export class state {
