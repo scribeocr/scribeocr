@@ -4,7 +4,7 @@
 // Canvas Coordinate Space: coordinate space of canvas, used for user interactions
 
 import { pageMetricsArr } from './containers/dataContainer.js';
-import { imageCache } from './containers/imageContainer.js';
+import { ImageCache } from './containers/imageContainer.js';
 
 /**
  * @typedef {Object} BoundingBox
@@ -87,7 +87,7 @@ function canvasToImage(canvasCoords, imageRotated, canvasRotated, n, angle = 0) 
  * @returns {Promise<BoundingBox>} Bounding box in image coordinates.
  */
 async function ocrToImage(ocrCoords, n, binary = false) {
-  const imageN = binary ? await imageCache.getBinary(n) : await imageCache.getNative(n);
+  const imageN = binary ? await ImageCache.getBinary(n) : await ImageCache.getNative(n);
 
   // If the image was never rotated or upscaled, then the xml and image coordinates are the same
   if (!imageN.rotated && !imageN.upscaled) {

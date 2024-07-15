@@ -8,9 +8,10 @@
 import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
 import { displayPage, renderPageQueue } from '../../main.js';
 import Tesseract from '../../tess/tesseract.esm.min.js';
+import { opt } from '../containers/app.js';
 import { debugImg, ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
 import { fontAll } from '../containers/fontContainer.js';
-import { imageCache } from '../containers/imageContainer.js';
+import { ImageCache } from '../containers/imageContainer.js';
 import { gs } from '../containers/schedulerContainer.js';
 import coords from '../coordinates.js';
 import { combineData } from '../modifyOCR.js';
@@ -30,6 +31,10 @@ elem.edit.styleItalic.addEventListener('click', () => { changeWordFontStyle('ita
 elem.edit.styleBold.addEventListener('click', () => { changeWordFontStyle('bold'); });
 elem.edit.styleSmallCaps.addEventListener('click', () => toggleSmallCapsWords(elem.edit.styleSmallCaps.classList.contains('active')));
 elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
+
+elem.edit.ligatures.addEventListener('change', () => {
+  opt.ligatures = elem.edit.ligatures.checked;
+});
 
 const styleItalicButton = new Button(elem.edit.styleItalic);
 const styleBoldButton = new Button(elem.edit.styleBold);
@@ -436,8 +441,8 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   const debugLabel = 'recognizeArea';
 
   if (debugLabel && !debugImg[debugLabel]) {
-    debugImg[debugLabel] = new Array(imageCache.pageCount);
-    for (let i = 0; i < imageCache.pageCount; i++) {
+    debugImg[debugLabel] = new Array(ImageCache.pageCount);
+    for (let i = 0; i < ImageCache.pageCount; i++) {
       debugImg[debugLabel][i] = [];
     }
   }
@@ -453,7 +458,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     legacyLSTMComb: true,
   };
 
-  const imgBinary = await imageCache.getBinary(n);
+  const imgBinary = await ImageCache.getBinary(n);
 
   const res = await gs.scheduler.compareOCR({
     pageA: pageObjLegacy,

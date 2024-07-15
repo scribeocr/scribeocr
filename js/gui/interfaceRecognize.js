@@ -7,7 +7,7 @@ import {
 } from '../../main.js';
 import { opt, state } from '../containers/app.js';
 import { debugImg, ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
-import { imageCache } from '../containers/imageContainer.js';
+import { ImageCache } from '../containers/imageContainer.js';
 import { gs } from '../containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw, loadChiSimFont } from '../fontContainerMain.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
@@ -159,7 +159,7 @@ export async function recognizeAllClick() {
     // If the progress bar finishes earlier, in addition to being misleading to users,
     // the automated browser tests wait until the progress bar fills up to conclude
     // the recognition step was successful.
-    ProgressBars.recognize.show(imageCache.pageCount + 1);
+    ProgressBars.recognize.show(ImageCache.pageCount + 1);
     const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
@@ -174,7 +174,7 @@ export async function recognizeAllClick() {
     }
   } else if (oemMode === 'combined') {
     state.loadCount = 0;
-    ProgressBars.recognize.show(imageCache.pageCount * 2 + 1);
+    ProgressBars.recognize.show(ImageCache.pageCount * 2 + 1);
 
     const time2a = Date.now();
     await recognizeAllPagesBrowser(true, true, true);
@@ -182,8 +182,8 @@ export async function recognizeAllClick() {
     if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
     if (debugMode) {
-      debugImg.Combined = new Array(imageCache.pageCount);
-      for (let i = 0; i < imageCache.pageCount; i++) {
+      debugImg.Combined = new Array(ImageCache.pageCount);
+      for (let i = 0; i < ImageCache.pageCount; i++) {
         debugImg.Combined[i] = [];
       }
     }
@@ -192,8 +192,8 @@ export async function recognizeAllClick() {
       initOCRVersion('Tesseract Combined');
       setCurrentHOCR('Tesseract Combined');
       if (debugMode) {
-        debugImg['Tesseract Combined'] = new Array(imageCache.pageCount);
-        for (let i = 0; i < imageCache.pageCount; i++) {
+        debugImg['Tesseract Combined'] = new Array(ImageCache.pageCount);
+        for (let i = 0; i < ImageCache.pageCount; i++) {
           debugImg['Tesseract Combined'][i] = [];
         }
       }
@@ -208,7 +208,7 @@ export async function recognizeAllClick() {
     // with the more accurate (on average) text data from LSTM.
 
     initOCRVersion('Tesseract Combined Temp');
-    for (let i = 0; i < imageCache.pageCount; i++) {
+    for (let i = 0; i < ImageCache.pageCount; i++) {
       /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
       const compOptions1 = {
         mode: 'comb',
@@ -216,7 +216,7 @@ export async function recognizeAllClick() {
         legacyLSTMComb: true,
       };
 
-      const imgBinary = await imageCache.getBinary(i);
+      const imgBinary = await ImageCache.getBinary(i);
 
       const res1 = await gs.scheduler.compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],
@@ -230,15 +230,15 @@ export async function recognizeAllClick() {
     }
 
     // Evaluate default fonts using up to 5 pages.
-    const pageNum = Math.min(imageCache.pageCount - 1, 5);
-    await imageCache.preRenderRange(0, pageNum, true);
+    const pageNum = Math.min(ImageCache.pageCount - 1, 5);
+    await ImageCache.preRenderRange(0, pageNum, true);
     calcFontMetricsFromPages(ocrAll['Tesseract Combined Temp']);
     await runFontOptimizationBrowser(ocrAll['Tesseract Combined Temp']);
     initOCRVersion('Combined');
     setCurrentHOCR('Combined');
 
     const time3a = Date.now();
-    for (let i = 0; i < imageCache.pageCount; i++) {
+    for (let i = 0; i < ImageCache.pageCount; i++) {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
       /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
@@ -252,7 +252,7 @@ export async function recognizeAllClick() {
         legacyLSTMComb: true,
       };
 
-      const imgBinary = await imageCache.getBinary(i);
+      const imgBinary = await ImageCache.getBinary(i);
 
       const res = await gs.scheduler.compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],

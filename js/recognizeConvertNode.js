@@ -4,14 +4,14 @@ import {
   ocrAll, pageMetricsArr,
   visInstructions,
 } from './containers/dataContainer.js';
-import { imageCache } from './containers/imageContainer.js';
+import { ImageCache } from './containers/imageContainer.js';
 import { gs } from './containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw, loadChiSimFont } from './fontContainerMain.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
 import { recognizePage } from './recognizeConvert.js';
 
 export async function recognizeAllPagesNode(legacy = true, lstm = true, mainData = false, debug = false) {
-  const inputPages = [...Array(imageCache.pageCount).keys()];
+  const inputPages = [...Array(ImageCache.pageCount).keys()];
   const promiseArr = [];
 
   if (!inputPages || inputPages.length === 0) throw new Error('No pages to recognize');

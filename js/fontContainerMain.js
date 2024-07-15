@@ -351,19 +351,21 @@ export async function optimizeFontContainerFamily(fontFamily, fontMetricsObj) {
  * @param {Object.<string, FontMetricsFamily>} fontMetricsObj
  */
 export async function optimizeFontContainerAll(fontPrivate, fontMetricsObj) {
-  const carlitoObj = await optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj);
-  const centuryObj = await optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj);
-  const garamondObj = await optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj);
-  const palatinoObj = await optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj);
-  const nimbusRomNo9LObj = await optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj);
-  const nimbusSansObj = await optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj);
+  const carlitoPromise = optimizeFontContainerFamily(fontPrivate.Carlito, fontMetricsObj);
+  const centuryPromise = optimizeFontContainerFamily(fontPrivate.Century, fontMetricsObj);
+  const garamondPromise = optimizeFontContainerFamily(fontPrivate.Garamond, fontMetricsObj);
+  const palatinoPromise = optimizeFontContainerFamily(fontPrivate.Palatino, fontMetricsObj);
+  const nimbusRomNo9LPromise = optimizeFontContainerFamily(fontPrivate.NimbusRomNo9L, fontMetricsObj);
+  const nimbusSansPromise = optimizeFontContainerFamily(fontPrivate.NimbusSans, fontMetricsObj);
+
+  const results = await Promise.all([carlitoPromise, centuryPromise, garamondPromise, palatinoPromise, nimbusRomNo9LPromise, nimbusSansPromise]);
 
   return {
-    Carlito: await carlitoObj,
-    Century: await centuryObj,
-    Garamond: await garamondObj,
-    Palatino: await palatinoObj,
-    NimbusRomNo9L: await nimbusRomNo9LObj,
-    NimbusSans: await nimbusSansObj,
+    Carlito: results[0],
+    Century: results[1],
+    Garamond: results[2],
+    Palatino: results[3],
+    NimbusRomNo9L: results[4],
+    NimbusSans: results[5],
   };
 }

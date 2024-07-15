@@ -1,6 +1,6 @@
 import { fontMetricsObj, pageMetricsArr } from './containers/dataContainer.js';
 import { fontAll } from './containers/fontContainer.js';
-import { imageCache } from './containers/imageContainer.js';
+import { ImageCache } from './containers/imageContainer.js';
 import { gs } from './containers/schedulerContainer.js';
 import { enableDisableFontOpt, optimizeFontContainerAll, setDefaultFontAuto } from './fontContainerMain.js';
 
@@ -21,7 +21,7 @@ export async function evalPageFonts(font, pageArr, n = 500) {
   for (let i = 0; i < pageArr.length; i++) {
     if (wordsTotal > n) break;
 
-    const imageI = await imageCache.getBinary(i);
+    const imageI = await ImageCache.getBinary(i);
 
     // The Node.js canvas package does not currently support worke threads
     // https://github.com/Automattic/node-canvas/issues/1394
@@ -158,15 +158,15 @@ export async function runFontOptimization(ocrArr) {
     // This behavior exists so that data can be loaded from previous sessions without changing the appearance of the document.
     // Arguably, in cases where a user uploads raw OCR data and no images, using the raw font is more prudent than an unvalidated optimized font.
     // If this ever comes up in actual usage and is a problem, then the behavior can be changed for that specific case.
-    if (!imageCache.inputModes.image && !imageCache.inputModes.pdf) {
+    if (!ImageCache.inputModes.image && !ImageCache.inputModes.pdf) {
       fontAll.opt = { ...fontAll.optInitial };
     }
   }
 
   // If image data exists, select the correct font by comparing to the image.
-  if (imageCache.inputModes.image || imageCache.inputModes.pdf) {
+  if (ImageCache.inputModes.image || ImageCache.inputModes.pdf) {
     // Evaluate default fonts using up to 5 pages.
-    const pageNum = Math.min(imageCache.pageCount, 5);
+    const pageNum = Math.min(ImageCache.pageCount, 5);
 
     // Set raw font in workers
     await enableDisableFontOpt(false);

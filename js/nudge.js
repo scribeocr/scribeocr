@@ -1,11 +1,11 @@
 import { debugImg, ocrAll, pageMetricsArr } from './containers/dataContainer.js';
-import { imageCache } from './containers/imageContainer.js';
+import { ImageCache } from './containers/imageContainer.js';
 import { gs } from './containers/schedulerContainer.js';
 import { showDebugImages } from './gui/interfaceDebug.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images
-  await imageCache.preRenderRange(0, imageCache.pageCount - 1, true);
+  await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, true);
 
   let metricSum = 0;
   let wordsTotal = 0;
@@ -15,7 +15,7 @@ export async function evalOverlapDocument() {
   for (let i = 0; i < ocrAll.active.length; i++) {
     const ocrPageI = ocrAll.active[i];
 
-    const imgBinary = await imageCache.getBinary(i);
+    const imgBinary = await ImageCache.getBinary(i);
 
     promiseArr.push(gs.schedulerInner.evalPage({
       page: ocrPageI,
@@ -41,7 +41,7 @@ export async function evalOverlapDocument() {
 // Should probably be either a callback or browser-only wrapper function.
 export async function nudgeDoc(func, view = false) {
   // Render binarized versions of images
-  await imageCache.preRenderRange(0, imageCache.pageCount - 1, true);
+  await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, true);
 
   let improveCt = 0;
   let totalCt = 0;
@@ -53,7 +53,7 @@ export async function nudgeDoc(func, view = false) {
   for (let i = 0; i < ocrAll.active.length; i++) {
     const ocrPageI = ocrAll.active[i];
 
-    const imgBinary = await imageCache.getBinary(i);
+    const imgBinary = await ImageCache.getBinary(i);
 
     promiseArr.push(gs.schedulerInner.addJob(func, {
       page: ocrPageI, binaryImage: imgBinary, pageMetricsObj: pageMetricsArr[i], view,

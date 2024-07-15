@@ -2,6 +2,8 @@ export class opt {
   static vanillaMode = false;
 
   static langs = ['eng'];
+
+  static ligatures = false;
 }
 
 export class state {

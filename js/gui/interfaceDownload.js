@@ -4,7 +4,6 @@ import {
   LayoutRegions,
   ocrAll, pageMetricsArr,
 } from '../containers/dataContainer.js';
-import { imageCache } from '../containers/imageContainer.js';
 import { renderHOCRBrowser } from '../export/exportRenderHOCRBrowser.js';
 import { renderText } from '../export/exportRenderText.js';
 import { reorderOcrPage } from '../modifyOCR.js';
@@ -15,6 +14,7 @@ import {
 import { getDisplayMode } from './interfaceView.js';
 
 import { inputData, state } from '../containers/app.js';
+import { ImageCache } from '../containers/imageContainer.js';
 import { writeDebugCsv } from '../export/exportDebugCsv.js';
 import { hocrToPDF } from '../export/exportPDF.js';
 import { elem } from './elems.js';
@@ -27,7 +27,7 @@ const intermediatePDFElem = /** @type {HTMLInputElement} */(document.getElementB
 const standardizeCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('standardizeCheckbox'));
 
 elem.info.downloadSourcePDF.addEventListener('click', async () => {
-  const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
+  const muPDFScheduler = await ImageCache.getMuPDFScheduler(1);
   const w = muPDFScheduler.workers[0];
 
   if (!w.pdfDoc) {
@@ -232,7 +232,7 @@ export async function handleDownload() {
 
       // Create a new scheduler if one does not yet exist.
       // This would be the case for image uploads.
-      const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
+      const muPDFScheduler = await ImageCache.getMuPDFScheduler(1);
       const w = muPDFScheduler.workers[0];
       // const fileData = await pdfOverlayBlob.arrayBuffer();
       // The file name is only used to detect the ".pdf" extension
@@ -278,18 +278,18 @@ export async function handleDownload() {
         const renderImage = binary || inputData.pdfMode;
 
         // Pre-render to benefit from parallel processing, since the loop below is synchronous.
-        if (renderImage) await imageCache.preRenderRange(minValue, maxValue, binary, props, ProgressBars.download);
+        if (renderImage) await ImageCache.preRenderRange(minValue, maxValue, binary, props, ProgressBars.download);
 
         await w.overlayTextImageStart({ humanReadable: humanReadablePDFElem.checked });
         for (let i = minValue; i < maxValue + 1; i++) {
           /** @type {import('../containers/imageContainer.js').ImageWrapper} */
           let image;
           if (binary) {
-            image = await imageCache.getBinary(i, props);
+            image = await ImageCache.getBinary(i, props);
           } else if (inputData.pdfMode) {
-            image = await imageCache.getNative(i, props);
+            image = await ImageCache.getNative(i, props);
           } else {
-            image = await imageCache.nativeSrc[i];
+            image = await ImageCache.nativeSrc[i];
           }
 
           // Angle the PDF viewer is instructed to rotated the image by.
@@ -339,7 +339,7 @@ export async function handleDownload() {
       if (intermediatePDFElem.checked) {
         pdfBlob = new Blob([pdfEnc], { type: 'application/octet-stream' });
       } else {
-        const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
+        const muPDFScheduler = await ImageCache.getMuPDFScheduler(1);
         const w = muPDFScheduler.workers[0];
 
         // The file name is only used to detect the ".pdf" extension

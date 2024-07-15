@@ -12,7 +12,7 @@ import Konva from './lib/konva/index.js';
 
 import { importOCRFiles } from './js/import/importOCR.js';
 
-import { imageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
+import { ImageCache, imageUtils, ImageWrapper } from './js/containers/imageContainer.js';
 
 import { recognizeAllClick } from './js/gui/interfaceRecognize.js';
 
@@ -256,7 +256,7 @@ elem.nav.zoomOut.addEventListener('click', () => {
 });
 
 elem.view.colorMode.addEventListener('change', () => {
-  imageCache.colorModeDefault = elem.view.colorMode.value;
+  ImageCache.colorModeDefault = elem.view.colorMode.value;
   renderPageQueue(cp.n);
 });
 
@@ -770,10 +770,10 @@ async function compareGroundTruthClick(n) {
   // Compare all pages if this has not been done already
   if (!loadMode && JSON.stringify(evalStatsConfig) !== JSON.stringify(evalStatsConfigNew) || evalStats.length === 0) {
   // Render binarized versions of images
-    await imageCache.preRenderRange(0, imageCache.pageCount - 1, true);
+    await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, true);
 
-    for (let i = 0; i < imageCache.pageCount; i++) {
-      const imgBinary = await imageCache.getBinary(n);
+    for (let i = 0; i < ImageCache.pageCount; i++) {
+      const imgBinary = await ImageCache.getBinary(n);
 
       const res = await gs.scheduler.compareOCR({
         pageA: ocrAll.active[i],
@@ -793,7 +793,7 @@ async function compareGroundTruthClick(n) {
     evalStatsConfig = evalStatsConfigNew;
   }
 
-  const imgBinary = await imageCache.getBinary(n);
+  const imgBinary = await ImageCache.getBinary(n);
 
   const res = await gs.scheduler.compareOCR({
     pageA: ocrAll.active[n],
@@ -949,8 +949,8 @@ async function importOCRFilesSupp() {
   }
 
   // If both OCR data and image data are present, confirm they have the same number of pages
-  if (imageCache.pageCount !== pageCountHOCR) {
-    const warningHTML = `Page mismatch detected. Image data has ${imageCache.pageCount} pages while OCR data has ${pageCountHOCR} pages.`;
+  if (ImageCache.pageCount !== pageCountHOCR) {
+    const warningHTML = `Page mismatch detected. Image data has ${ImageCache.pageCount} pages while OCR data has ${pageCountHOCR} pages.`;
     insertAlertMessage(warningHTML, false);
   }
 
@@ -1040,7 +1040,7 @@ async function importFiles(curFiles) {
 
   inputData.pdfMode = pdfFilesAll.length === 1;
   inputData.imageMode = !!(imageFilesAll.length > 0 && !inputData.pdfMode);
-  imageCache.inputModes.image = !!(imageFilesAll.length > 0 && !inputData.pdfMode);
+  ImageCache.inputModes.image = !!(imageFilesAll.length > 0 && !inputData.pdfMode);
 
   const xmlModeImport = hocrFilesAll.length > 0;
 
@@ -1104,7 +1104,7 @@ async function importFiles(curFiles) {
   downloadFileName += '.pdf';
   elem.download.downloadFileName.value = downloadFileName;
 
-  // The loading bar should be initialized before anything significant runs (e.g. `imageCache.openMainPDF` to provide some visual feedback).
+  // The loading bar should be initialized before anything significant runs (e.g. `ImageCache.openMainPDF` to provide some visual feedback).
   // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   let progressMax = 0;
@@ -1133,14 +1133,14 @@ async function importFiles(curFiles) {
     const skipText = omitNativeTextCheckboxElem.checked;
 
     // Start loading mupdf workers as soon as possible, without waiting for `pdfFile.arrayBuffer` (which can take a while).
-    imageCache.getMuPDFScheduler();
+    ImageCache.getMuPDFScheduler();
 
     const pdfFileData = await pdfFile.arrayBuffer();
 
     // If no XML data is provided, page sizes are calculated using muPDF alone
-    await imageCache.openMainPDF(pdfFileData, skipText, !xmlModeImport, stextModeExtract);
+    await ImageCache.openMainPDF(pdfFileData, skipText, !xmlModeImport, stextModeExtract);
 
-    pageCountImage = imageCache.pageCount;
+    pageCountImage = ImageCache.pageCount;
   } else if (inputData.imageMode) {
     inputData.inputFileNames = imageFilesAll.map((x) => x.name);
     pageCountImage = imageFilesAll.length;
@@ -1282,13 +1282,13 @@ async function importFiles(curFiles) {
   state.loadCount = 0;
 
   if (inputData.imageMode) {
-    imageCache.pageCount = state.pageCount;
+    ImageCache.pageCount = state.pageCount;
     for (let i = 0; i < state.pageCount; i++) {
     // Currently, images are loaded once at a time.
     // While this is not optimal for performance, images are required for comparison functions,
     // so switching to running async would require either (1) waiting for enough images to load before before continuing to the next step
     // or (2) switching imageAll["nativeSrcStr"], as a whole, to store promises that can be waited for.
-      imageCache.nativeSrc[i] = new Promise((resolve, reject) => {
+      ImageCache.nativeSrc[i] = new Promise((resolve, reject) => {
         const reader = new FileReader();
 
         // Using MIME sniffing might be slightly more accurate than using the file extension,
@@ -1448,7 +1448,7 @@ export async function displayPage(n) {
   if (showConflictsElem.checked) showDebugImages();
 
   // Render background images ahead and behind current page to reduce delay when switching pages
-  if (inputData.pdfMode || inputData.imageMode) imageCache.preRenderAheadBehindBrowser(n, elem.view.colorMode.value === 'binary');
+  if (inputData.pdfMode || inputData.imageMode) ImageCache.preRenderAheadBehindBrowser(n, elem.view.colorMode.value === 'binary');
 
   working = false;
 }

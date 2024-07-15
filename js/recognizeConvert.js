@@ -1,5 +1,5 @@
 import { pageMetricsArr } from './containers/dataContainer.js';
-import { imageCache, ImageWrapper } from './containers/imageContainer.js';
+import { ImageCache, ImageWrapper } from './containers/imageContainer.js';
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -22,7 +22,7 @@ export const calcRecognizeRotateArgs = async (n, areaMode) => {
   // Whether the page angle is already known (or needs to be detected)
   const angleKnown = typeof (angle) === 'number';
 
-  const nativeN = await imageCache.getNative(n);
+  const nativeN = await ImageCache.getNative(n);
 
   // Calculate additional rotation to apply to page.  Rotation should not be applied if page has already been rotated.
   const rotateDegrees = rotate && angle && Math.abs(angle || 0) > 0.05 && !nativeN.rotated ? angle * -1 : 0;
@@ -33,7 +33,7 @@ export const calcRecognizeRotateArgs = async (n, areaMode) => {
 
   // Images are not saved when using "recognize area" as these intermediate images are cropped.
   if (!areaMode) {
-    const binaryN = await imageCache.binary[n];
+    const binaryN = await ImageCache.binary[n];
     // Images are saved if either (1) we do not have any such image at present or (2) the current version is not rotated but the user has the "auto rotate" option enabled.
     if (autoRotate && !nativeN.rotated[n] && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveNativeImage = true;
     if (!binaryN || autoRotate && !binaryN.rotated && (!angleKnown || Math.abs(rotateRadians) > angleThresh)) saveBinaryImageArg = true;
@@ -64,7 +64,7 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
     angleThresh, angleKnown, rotateRadians, saveNativeImage, saveBinaryImageArg,
   } = await calcRecognizeRotateArgs(n, areaMode);
 
-  const nativeN = await imageCache.getNative(n);
+  const nativeN = await ImageCache.getNative(n);
 
   if (!nativeN) throw new Error(`No image source found for page ${n}`);
 
@@ -127,12 +127,12 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
   const significantRotation = Math.abs(res0.recognize.rotateRadians || 0) > angleThresh;
 
   const upscale = tessOptions.upscale || false;
-  if (saveBinaryImageArg && res0.recognize.imageBinary && (significantRotation || !imageCache.binary[n])) {
-    imageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'png', 'binary', isRotated, upscale);
+  if (saveBinaryImageArg && res0.recognize.imageBinary && (significantRotation || !ImageCache.binary[n])) {
+    ImageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'png', 'binary', isRotated, upscale);
   }
 
   if (saveNativeImage && res0.recognize.imageColor && significantRotation) {
-    imageCache.native[n] = new ImageWrapper(n, res0.recognize.imageColor, 'png', 'native', isRotated, upscale);
+    ImageCache.native[n] = new ImageWrapper(n, res0.recognize.imageColor, 'png', 'native', isRotated, upscale);
   }
 
   return resArr;

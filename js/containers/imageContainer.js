@@ -49,7 +49,7 @@ const getDims = async (img) => {
  * When an existing image has an unwanted tranformation, it is re-rendered from the original source,
  * rather than attempting to unrotate/downscale/etc. the transformed image.
  *
- * @param {ImageWrapper} img
+ * @param {(ImageWrapper|ImageProperties)} img
  * @param {?ImagePropertiesRequest|ImageWrapper} [props]
  * @returns
  */
@@ -64,7 +64,7 @@ const requiresUndo = (img, props) => {
 
 /**
  * Whether the image properties are compatible with the requested properties.
- * @param {ImageWrapper} img
+ * @param {ImageWrapper|ImageProperties} img
  * @param {?ImagePropertiesRequest|ImageWrapper} [props]
  */
 const compatible = (img, props) => {
@@ -156,6 +156,14 @@ export class ImageWrapper {
 }
 
 /**
+ * @typedef {Object} ImageProperties
+ * @property {boolean} [rotated]
+ * @property {boolean} [upscaled]
+ * @property {('color'|'gray'|'binary')} [colorMode]
+ * @property {number} n
+ */
+
+/**
  * @typedef {Object} ImagePropertiesRequest
  * @property {?boolean} [rotated]
  * @property {?boolean} [upscaled]
@@ -166,25 +174,78 @@ export class ImageWrapper {
 // Alternatively, if it is sent between threads, use it reather than making a new one.
 // Actually, definitely do that last option.
 
-class ImageCache {
-  constructor() {
-    /** @type {Array<ImageWrapper|Promise<ImageWrapper>>} */
-    this.nativeSrc = [];
-    /** @type {Array<ImageWrapper|Promise<ImageWrapper>>} */
-    this.native = [];
-    /** @type {Array<ImageWrapper|Promise<ImageWrapper>>} */
-    this.binary = [];
-    /** @type {?Promise<MuPDFScheduler>} */
-    this.muPDFScheduler = null;
-    this.pageCount = 0;
-    this.inputModes = {
-      pdf: false,
-      image: false,
+export class ImageCache {
+  /** @type {Array<ImageWrapper|Promise<ImageWrapper>>} */
+  static nativeSrc = [];
+
+  /** @type {Array<ImageWrapper|Promise<ImageWrapper>>} */
+  static native = [];
+
+  /** @type {Array<ImageWrapper|Promise<ImageWrapper>>} */
+  static binary = [];
+
+  // These arrays store the properties of the images.
+  // While they are redundant with the properties stored in the ImageWrapper objects,
+  // they still need to exist to determine whether the image needs to be re-rendered.
+  // The imagewrappers are stored as promises, and needing to await them would break things without further changes.
+  // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await#control_flow_effects_of_await
+  /** @type {Array<ImageProperties>} */
+  static nativeProps = [];
+
+  /** @type {Array<ImageProperties>} */
+  static binaryProps = [];
+
+  /**
+   * @param {ImagePropertiesRequest} props
+   * @param {ImageWrapper} inputImage
+   * @param {number} n - Page number
+   * @param {boolean} [binary=false]
+   * @returns {ImageProperties}
+   */
+  static fillPropsDefault = (props, inputImage, n, binary = false) => {
+    /** @type {"binary" | "color" | "gray"} */
+    let colorMode = 'binary';
+    if (!binary) {
+      const color = props?.colorMode === 'color' || !props?.colorMode && ImageCache.colorModeDefault === 'color';
+      colorMode = color ? 'color' : 'gray';
+    }
+
+    // const color = props?.colorMode === 'color' || !props?.colorMode && ImageCache.colorModeDefault === 'color';
+    // const colorMode = color ? 'color' : 'gray';
+
+    let pageAngle = pageMetricsArr[n].angle || 0;
+    if (Math.abs(pageAngle) < 0.05) pageAngle = 0;
+
+    // If no preference is specified for rotation, default to true.
+    const rotate = props?.rotated !== false && inputImage.rotated === false;
+    const angleArg = rotate ? pageAngle * (Math.PI / 180) * -1 : 0;
+
+    // If no preference is specified for upscaling, default to false.
+    const upscaleArg = props?.upscaled || false;
+
+    const isRotated = Boolean(angleArg) || inputImage.rotated;
+    const isUpscaled = upscaleArg || inputImage.upscaled;
+
+    return {
+      rotated: isRotated, upscaled: isUpscaled, colorMode, n,
     };
-    this.colorModeDefault = 'gray';
-    this.cacheRenderPages = 3;
-    this.cacheDeletePages = 5;
-  }
+  };
+
+  /** @type {?Promise<MuPDFScheduler>} */
+  static muPDFScheduler = null;
+
+  static pageCount = 0;
+
+  static inputModes = {
+    pdf: false,
+    image: false,
+  };
+
+  static colorModeDefault = 'gray';
+
+  static cacheRenderPages = 3;
+
+  static cacheDeletePages = 5;
 
   // The bitmap images are only created as needed, due to the enormous amount of memory they use.
   // Additionally, they cannot be stored as promises, as the ImageWrapper object needs to be able to be sent between threads.
@@ -192,10 +253,10 @@ class ImageCache {
   // These promises will be pending while the bitmap is being created, and will resolve to true once the bitmap is created.
 
   /** @type {Array<?Promise<boolean>>} */
-  #nativeBitmapPromises = [];
+  static #nativeBitmapPromises = [];
 
   /** @type {Array<?Promise<boolean>>} */
-  #binaryBitmapPromises = [];
+  static #binaryBitmapPromises = [];
 
   /**
    * Initializes the MuPDF scheduler.
@@ -204,7 +265,7 @@ class ImageCache {
    * @param {number} numWorkers
    * @returns
    */
-  #initMuPDFScheduler = async (numWorkers = 3) => {
+  static #initMuPDFScheduler = async (numWorkers = 3) => {
     const scheduler = await Tesseract.createScheduler();
     const workersPromiseArr = range(1, numWorkers).map(async () => {
       const w = await initMuPDFWorker();
@@ -223,8 +284,8 @@ class ImageCache {
    * @param {ArrayBuffer} fileData
    * @returns
    */
-  #loadFileMuPDFScheduler = async (fileData) => {
-    const scheduler = await this.getMuPDFScheduler();
+  static #loadFileMuPDFScheduler = async (fileData) => {
+    const scheduler = await ImageCache.getMuPDFScheduler();
 
     const workersPromiseArr = range(0, scheduler.workers.length - 1).map(async (x) => {
       const w = scheduler.workers[x];
@@ -238,32 +299,29 @@ class ImageCache {
     await Promise.all(workersPromiseArr);
   };
 
-  #renderImage = async (n, color = false) => {
-    if (this.inputModes.image) {
-      this.native[n] = this.nativeSrc[n];
-    } else if (this.inputModes.pdf) {
+  static #renderImage = async (n, color = false) => {
+    if (ImageCache.inputModes.image) {
+      return ImageCache.nativeSrc[n];
+    } if (ImageCache.inputModes.pdf) {
       const pageMetrics = pageMetricsArr[n];
-
       const targetWidth = pageMetrics.dims.width;
       const dpi = 300 * (targetWidth / pdfDims300Arr[n].width);
-      const muPDFScheduler = await this.getMuPDFScheduler();
-      this.native[n] = muPDFScheduler.drawPageAsPNG({
+      const muPDFScheduler = await ImageCache.getMuPDFScheduler();
+      return muPDFScheduler.drawPageAsPNG({
         page: n + 1, dpi, color, skipText: skipTextMode,
       }).then((res) => new ImageWrapper(n, res, 'png', color ? 'color' : 'gray'));
     }
-    await this.native[n];
+    throw new Error('No input mode set');
   };
 
   /**
-   *
+   * @param {ImageWrapper} inputImage
    * @param {number} n - Page number
    * @param {?ImagePropertiesRequest} [props] - Image properties needed.
    *  Image properties should only be defined if needed, as they can require the image to be re-rendered.
    * @param {boolean} [saveNativeImage=true] - Whether the native image should be saved.
    */
-  transformImage = async (n, props, saveNativeImage = true) => {
-    const inputImage = await Promise.resolve(this.native[n]);
-
+  static transformImage = async (inputImage, n, props, saveNativeImage = true) => {
     let pageAngle = pageMetricsArr[n].angle || 0;
     if (Math.abs(pageAngle) < 0.05) pageAngle = 0;
 
@@ -290,15 +348,70 @@ class ImageCache {
 
     const isRotated = Boolean(angleArg) || inputImage.rotated;
 
+    /** @type {?Promise<ImageWrapper>} */
+    let native = null;
     if (saveNativeImage) {
-      this.native[n] = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageColor)), 'png', inputImage.colorMode, isRotated, upscaleArg));
+      native = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageColor)), 'png', inputImage.colorMode, isRotated, upscaleArg));
     }
 
-    this.binary[n] = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageBinary)), 'png', 'binary', isRotated, upscaleArg));
+    const binary = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageBinary)), 'png', 'binary', isRotated, upscaleArg));
 
-    if (saveNativeImage) await this.native[n];
-    await this.binary[n];
+    return { native, binary };
   };
+
+  /**
+   * @param {number} n - Page number
+   * @param {?ImagePropertiesRequest} [props] - Image properties needed.
+   *  Image properties should only be defined if needed, as they can require the image to be re-rendered.
+   * @param {boolean} [nativeOnly=true]
+   */
+  static getImages = (n, props, nativeOnly = true) => {
+    const newNative = !ImageCache.native[n] || !imageUtils.compatible(ImageCache.nativeProps[n], props);
+    const newBinary = !nativeOnly && (!ImageCache.binary[n] || !imageUtils.compatible(ImageCache.binaryProps[n], props));
+
+    if (newNative || newBinary) {
+      const renderRaw = !ImageCache.native[n] || imageUtils.requiresUndo(ImageCache.nativeProps[n], props);
+      const propsRaw = {
+        colorMode: ImageCache.colorModeDefault, rotated: false, upscaled: false, n,
+      };
+      const renderTransform = newBinary || !imageUtils.compatible(propsRaw, props);
+
+      const propsNew = renderRaw ? propsRaw : JSON.parse(JSON.stringify(ImageCache.nativeProps[n]));
+      propsNew.colorMode = props?.colorMode || propsNew.colorMode;
+      propsNew.rotated = props?.rotated ?? propsNew.rotated;
+      propsNew.upscaled = props?.upscaled ?? propsNew.upscaled;
+      const propsNewBinary = JSON.parse(JSON.stringify(propsNew));
+      propsNewBinary.colorMode = 'binary';
+
+      const inputNative = ImageCache.native[n];
+      ImageCache.nativeProps[n] = propsNew;
+      ImageCache.binaryProps[n] = propsNewBinary;
+      const res = (async () => {
+        /** @type {?ImageWrapper} */
+        let img1;
+        if (renderRaw) {
+          const color = props?.colorMode === 'color' || !props?.colorMode && ImageCache.colorModeDefault === 'color';
+          img1 = await ImageCache.#renderImage(n, color);
+        } else {
+          img1 = await inputNative;
+        }
+        if (renderTransform) {
+          return ImageCache.transformImage(img1, n, props, true);
+        }
+        console.assert(nativeOnly, 'Binary should not be null when binary is needed');
+        return { native: img1, binary: null };
+      })();
+
+      if (renderRaw) ImageCache.native[n] = res.then((r) => r.native);
+      if (renderTransform) ImageCache.binary[n] = res.then((r) => r.binary);
+    }
+
+    return { native: ImageCache.native[n], binary: ImageCache.binary[n] };
+  };
+
+  static getNative = async (n, props) => ImageCache.getImages(n, props, true).native;
+
+  static getBinary = async (n, props) => ImageCache.getImages(n, props, false).binary;
 
   /**
    *
@@ -306,37 +419,13 @@ class ImageCache {
    * @param {?ImagePropertiesRequest} [props] - Image properties needed.
    *  Image properties should only be defined if needed, as they can require the image to be re-rendered.
    */
-  getNative = async (n, props) => {
-    let nativeN = await this.native[n];
-    if (!nativeN || !imageUtils.compatible(nativeN, props)) {
-      // The image is rendered if either (1) it has never been loaded in the first place, or
-      // (2) the current image is transformed and this needs to be undone.
-      if (!nativeN || imageUtils.requiresUndo(nativeN, props)) {
-        const color = props?.colorMode === 'color' || !props?.colorMode && this.colorModeDefault === 'color';
-        await this.#renderImage(n, color);
-        nativeN = await this.native[n];
-      }
-      if (!imageUtils.compatible(nativeN, props)) {
-        await this.transformImage(n, props, true);
-        nativeN = await this.native[n];
-      }
-    }
-    return nativeN;
-  };
-
-  /**
-   *
-   * @param {number} n - Page number
-   * @param {?ImagePropertiesRequest} [props] - Image properties needed.
-   *  Image properties should only be defined if needed, as they can require the image to be re-rendered.
-   */
-  getNativeBitmap = async (n, props) => {
-    const nativeN = await this.getNative(n, props);
-    if (this.#nativeBitmapPromises[n]) await this.#nativeBitmapPromises[n];
+  static getNativeBitmap = async (n, props) => {
+    const nativeN = await ImageCache.getNative(n, props);
+    if (ImageCache.#nativeBitmapPromises[n]) await ImageCache.#nativeBitmapPromises[n];
     if (!nativeN.imageBitmap) {
       const bitmapPromise = getImageBitmap(nativeN.src);
 
-      this.#nativeBitmapPromises[n] = bitmapPromise.then(() => (true));
+      ImageCache.#nativeBitmapPromises[n] = bitmapPromise.then(() => (true));
       nativeN.imageBitmap = await bitmapPromise;
     }
     return nativeN.imageBitmap;
@@ -348,39 +437,13 @@ class ImageCache {
    * @param {?ImagePropertiesRequest} [props] - Image properties needed.
    *  Image properties should only be defined if needed, as they can require the image to be re-rendered.
    */
-  getBinary = async (n, props) => {
-    let nativeN = await this.native[n];
-    let binaryN = await this.binary[n];
-    if (!binaryN || !imageUtils.compatible(binaryN, props)) {
-      // The image is rendered if either (1) it has never been loaded in the first place, or
-      // (2) the current image is transformed and this needs to be undone.
-      const propsNative = { ...props };
-      propsNative.colorMode = null;
-      if (!nativeN || !imageUtils.requiresUndo(nativeN, propsNative)) {
-        const color = props?.colorMode === 'color' || !props?.colorMode && this.colorModeDefault === 'color';
-        await this.#renderImage(n, color);
-        nativeN = await this.native[n];
-      }
-
-      await this.transformImage(n, props, false);
-      binaryN = await this.binary[n];
-    }
-    return binaryN;
-  };
-
-  /**
-   *
-   * @param {number} n - Page number
-   * @param {?ImagePropertiesRequest} [props] - Image properties needed.
-   *  Image properties should only be defined if needed, as they can require the image to be re-rendered.
-   */
-  getBinaryBitmap = async (n, props) => {
-    const binaryN = await this.getBinary(n, props);
-    if (this.#binaryBitmapPromises[n]) await this.#binaryBitmapPromises[n];
+  static getBinaryBitmap = async (n, props) => {
+    const binaryN = await ImageCache.getBinary(n, props);
+    if (ImageCache.#binaryBitmapPromises[n]) await ImageCache.#binaryBitmapPromises[n];
     if (!binaryN.imageBitmap) {
       const bitmapPromise = getImageBitmap(binaryN.src);
 
-      this.#binaryBitmapPromises[n] = bitmapPromise.then(() => (true));
+      ImageCache.#binaryBitmapPromises[n] = bitmapPromise.then(() => (true));
       binaryN.imageBitmap = await bitmapPromise;
     }
     return binaryN.imageBitmap;
@@ -397,14 +460,14 @@ class ImageCache {
    * @param {?ImagePropertiesRequest} [props=null]
    * @param {?ProgressBar} [progress=null] - A progress tracking object, which should have an `increment` method.
    */
-  preRenderRange = async (min, max, binary, props = null, progress = null) => {
+  static preRenderRange = async (min, max, binary, props = null, progress = null) => {
     const pagesArr = range(min, max);
     if (binary) {
-      await Promise.all(pagesArr.map((n) => this.getBinary(n, props).then(() => {
+      await Promise.all(pagesArr.map((n) => ImageCache.getBinary(n, props).then(() => {
         if (progress) progress.increment();
       })));
     } else {
-      await Promise.all(pagesArr.map((n) => this.getNative(n, props).then(() => {
+      await Promise.all(pagesArr.map((n) => ImageCache.getNative(n, props).then(() => {
         if (progress) progress.increment();
       })));
     }
@@ -418,30 +481,30 @@ class ImageCache {
    * @param {number} curr
    * @param {boolean} binary
    */
-  preRenderAheadBehindBrowser = async (curr, binary = false) => {
+  static preRenderAheadBehindBrowser = async (curr, binary = false) => {
     const resArr = [];
     if (binary) {
-      resArr.push(this.getBinaryBitmap(curr));
+      resArr.push(ImageCache.getBinaryBitmap(curr));
     } else {
-      resArr.push(this.getNativeBitmap(curr));
+      resArr.push(ImageCache.getNativeBitmap(curr));
     }
 
     // Delete images that are sufficiently far away from the current page to save memory.
-    this.#cleanBitmapCache(curr);
+    ImageCache.#cleanBitmapCache(curr);
 
-    for (let i = 0; i <= this.cacheRenderPages; i++) {
+    for (let i = 0; i <= ImageCache.cacheRenderPages; i++) {
       if (curr - i >= 0) {
         if (binary) {
-          resArr.push(this.getBinaryBitmap(curr - i));
+          resArr.push(ImageCache.getBinaryBitmap(curr - i));
         } else {
-          resArr.push(this.getNativeBitmap(curr - i));
+          resArr.push(ImageCache.getNativeBitmap(curr - i));
         }
       }
-      if (curr + i < this.pageCount) {
+      if (curr + i < ImageCache.pageCount) {
         if (binary) {
-          resArr.push(this.getBinaryBitmap(curr + i));
+          resArr.push(ImageCache.getBinaryBitmap(curr + i));
         } else {
-          resArr.push(this.getNativeBitmap(curr + i));
+          resArr.push(ImageCache.getNativeBitmap(curr + i));
         }
       }
     }
@@ -449,17 +512,17 @@ class ImageCache {
     await Promise.all(resArr);
   };
 
-  #cleanBitmapCache = (curr) => {
+  static #cleanBitmapCache = (curr) => {
     // Delete images that are sufficiently far away from the current page to save memory.
-    for (let i = 0; i < imageCache.pageCount; i++) {
-      if (Math.abs(curr - i) > this.cacheDeletePages) {
-        if (imageCache.native[i]) {
-          Promise.resolve(imageCache.native[i]).then((img) => {
+    for (let i = 0; i < ImageCache.pageCount; i++) {
+      if (Math.abs(curr - i) > ImageCache.cacheDeletePages) {
+        if (ImageCache.native[i]) {
+          Promise.resolve(ImageCache.native[i]).then((img) => {
             img.imageBitmap = null;
           });
         }
-        if (imageCache.binary[i]) {
-          Promise.resolve(imageCache.binary[i]).then((img) => {
+        if (ImageCache.binary[i]) {
+          Promise.resolve(ImageCache.binary[i]).then((img) => {
             img.imageBitmap = null;
           });
         }
@@ -467,18 +530,18 @@ class ImageCache {
     }
   };
 
-  clear = async () => {
-    this.nativeSrc = [];
-    this.native = [];
-    this.binary = [];
-    if (this.muPDFScheduler) {
-      const muPDFScheduler = await this.muPDFScheduler;
+  static clear = async () => {
+    ImageCache.nativeSrc = [];
+    ImageCache.native = [];
+    ImageCache.binary = [];
+    if (ImageCache.muPDFScheduler) {
+      const muPDFScheduler = await ImageCache.muPDFScheduler;
       muPDFScheduler.scheduler.terminate();
-      this.muPDFScheduler = null;
+      ImageCache.muPDFScheduler = null;
     }
-    this.inputModes.image = false;
-    this.inputModes.pdf = false;
-    this.pageCount = 0;
+    ImageCache.inputModes.image = false;
+    ImageCache.inputModes.pdf = false;
+    ImageCache.pageCount = 0;
   };
 
   /**
@@ -486,10 +549,10 @@ class ImageCache {
    * @param {number} [numWorkers=3] - Number of workers to create.
    * @returns
    */
-  getMuPDFScheduler = async (numWorkers = 3) => {
-    if (this.muPDFScheduler) return this.muPDFScheduler;
-    this.muPDFScheduler = this.#initMuPDFScheduler(numWorkers);
-    return this.muPDFScheduler;
+  static getMuPDFScheduler = async (numWorkers = 3) => {
+    if (ImageCache.muPDFScheduler) return ImageCache.muPDFScheduler;
+    ImageCache.muPDFScheduler = ImageCache.#initMuPDFScheduler(numWorkers);
+    return ImageCache.muPDFScheduler;
   };
 
   /**
@@ -500,12 +563,14 @@ class ImageCache {
    *  This should be `true` when no OCR data is uploaded alongside the PDF.
    * @param {Boolean} [setPageMetrics=false]
    */
-  openMainPDF = async (fileData, skipText = false, setPageMetrics = false, extractStext = false) => {
-    const muPDFScheduler = await this.getMuPDFScheduler(3);
+  static openMainPDF = async (fileData, skipText = false, setPageMetrics = false, extractStext = false) => {
+    const muPDFScheduler = await ImageCache.getMuPDFScheduler(3);
 
-    await this.#loadFileMuPDFScheduler(fileData);
+    console.log('Running ImageCache.#loadFileMuPDFScheduler');
+    await ImageCache.#loadFileMuPDFScheduler(fileData);
+    console.log('Done running ImageCache.#loadFileMuPDFScheduler');
 
-    this.pageCount = await muPDFScheduler.workers[0].countPages();
+    ImageCache.pageCount = await muPDFScheduler.workers[0].countPages();
 
     const pageDims1 = await muPDFScheduler.workers[0].pageSizes([300]);
 
@@ -513,7 +578,7 @@ class ImageCache {
       pdfDims300Arr.push({ width: x[0], height: x[1] });
     });
 
-    this.inputModes.pdf = true;
+    ImageCache.inputModes.pdf = true;
     skipTextMode = skipText;
     if (setPageMetrics) {
     // For reasons that are unclear, a small number of pages have been rendered into massive files
@@ -529,7 +594,7 @@ class ImageCache {
       // WIP: Extract fonts embedded in PDFs.
       if (false) {
         muPDFScheduler.extractAllFonts().then(async (x) => {
-          globalThis.fontArr = [];
+          globalImageCache.fontArr = [];
           for (let i = 0; i < x.length; i++) {
             const src = x[i].buffer;
             const fontObj = await loadOpentype(src);
@@ -567,7 +632,7 @@ class ImageCache {
       }
 
       if (extractStext) {
-        ocrAllRaw.active = Array(this.pageCount);
+        ocrAllRaw.active = Array(ImageCache.pageCount);
         const resArr = pageDPI.map(async (x, i) => {
           // While using `pageTextJSON` would save some parsing, unfortunately that format only includes line-level granularity.
           // The XML format is the only built-in mupdf format that includes character-level granularity.
@@ -578,5 +643,3 @@ class ImageCache {
     }
   };
 }
-
-export const imageCache = new ImageCache();

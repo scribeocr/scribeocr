@@ -7,7 +7,7 @@ import {
   ocrAllRaw,
   pageMetricsArr,
 } from './containers/dataContainer.js';
-import { imageCache } from './containers/imageContainer.js';
+import { ImageCache } from './containers/imageContainer.js';
 import { replaceObjectProperties } from './utils/miscUtils.js';
 
 export async function clearData() {
@@ -19,5 +19,5 @@ export async function clearData() {
   LayoutDataTables.pages.length = 0;
   pageMetricsArr.length = 0;
   state.convertPageWarn = [];
-  imageCache.clear();
+  ImageCache.clear();
 }

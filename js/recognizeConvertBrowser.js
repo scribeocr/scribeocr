@@ -11,7 +11,7 @@ import {
   ocrAll, pageMetricsArr,
   visInstructions,
 } from './containers/dataContainer.js';
-import { imageCache } from './containers/imageContainer.js';
+import { ImageCache } from './containers/imageContainer.js';
 import { gs } from './containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw, loadChiSimFont } from './fontContainerMain.js';
 import { initTesseractInWorkers } from './generalWorkerMain.js';
@@ -56,7 +56,7 @@ async function addVisInstructionsUI() {
 export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainData = false) {
   // Render all PDF pages to PNG if needed
   // This step should not create binarized images as they will be created by Tesseract during recognition.
-  if (inputData.pdfMode) await imageCache.preRenderRange(0, imageCache.pageCount - 1, false);
+  if (inputData.pdfMode) await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, false);
 
   if (legacy) {
     const oemText = 'Tesseract Legacy';
@@ -83,7 +83,7 @@ export async function recognizeAllPagesBrowser(legacy = true, lstm = true, mainD
   // however this function only returns after all recognition is completed.
   // This provides no performance benefit in absolute terms, however halves the amount of time the user has to wait
   // before seeing the initial recognition results.
-  const inputPages = [...Array(imageCache.pageCount).keys()];
+  const inputPages = [...Array(ImageCache.pageCount).keys()];
   const promisesA = [];
   const resolvesA = [];
   const promisesB = [];

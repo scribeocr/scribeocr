@@ -111,6 +111,8 @@ class edit {
   static collapseRangeBaselineBS = new Collapse(edit.collapseRangeBaseline, { toggle: false });
 
   static smartQuotes = /** @type {HTMLInputElement} */(document.getElementById('smartQuotes'));
+
+  static ligatures = /** @type {HTMLInputElement} */(document.getElementById('ligatures'));
 }
 
 class layout {

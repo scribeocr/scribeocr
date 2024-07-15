@@ -10,7 +10,7 @@ import Worker from 'web-worker';
 // This needs to be run first, and the comments prevent VSCode from moving it.
 import { runFirst } from './runFirst.js';
 // Leave this comment and import here.
-import { imageCache, imageUtils, ImageWrapper } from '../js/containers/imageContainer.js';
+import { ImageCache, imageUtils, ImageWrapper } from '../js/containers/imageContainer.js';
 import { renderHOCR } from '../js/export/exportRenderHOCR.js';
 import { runFontOptimization } from '../js/fontEval.js';
 
@@ -180,18 +180,18 @@ async function main(func, params) {
     fileData = await fs.readFileSync(backgroundArg);
 
     if (backgroundPDF) {
-      await imageCache.openMainPDF(fileData, false, !params.ocrFile);
-      pageCountImage = imageCache.pageCount;
+      await ImageCache.openMainPDF(fileData, false, !params.ocrFile);
+      pageCountImage = ImageCache.pageCount;
     } else {
-      imageCache.inputModes.image = true;
-      imageCache.pageCount = 1;
+      ImageCache.inputModes.image = true;
+      ImageCache.pageCount = 1;
 
       pageCountImage = 1;
       const format = backgroundArg.match(/jpe?g$/i) ? 'jpeg' : 'png';
 
       const imgWrapper = new ImageWrapper(0, `data:image/${format};base64,${fileData.toString('base64')}`, format, 'native', false, false);
 
-      imageCache.nativeSrc[0] = imgWrapper;
+      ImageCache.nativeSrc[0] = imgWrapper;
 
       if (!ocrAllRaw.active || ocrAllRaw.active.length === 0) {
         const imageDims = await imageUtils.getDims(imgWrapper);
@@ -266,11 +266,11 @@ async function main(func, params) {
   const runRecognition = robustConfMode || func === 'eval' || func === 'debug';
   const renderPageN = runRecognition ? state.pageCount : fontEvalPageN;
 
-  if (backgroundPDF) await imageCache.preRenderRange(0, renderPageN - 1, false);
+  if (backgroundPDF) await ImageCache.preRenderRange(0, renderPageN - 1, false);
 
   // If recognition is not being run, binarize and rotate the images now.
   // If recognition is being run, this will happen at that step.
-  if (!runRecognition) await imageCache.preRenderRange(0, renderPageN - 1, true);
+  if (!runRecognition) await ImageCache.preRenderRange(0, renderPageN - 1, true);
 
   if (func === 'debug' && backgroundArg) {
     const writeCanvasNodeAll = (await import('../scrollview-web/src/ScrollViewNode.js')).writeCanvasNodeAll;
@@ -301,7 +301,7 @@ async function main(func, params) {
   // (2) Use Tesseract Legacy font data when (1) recognition is being run anyway and (2) no font metrics data exists already.
   if (robustConfMode || func === 'eval' || func === 'recognize') {
     // Render all pages since all pages are being recognized.
-    await imageCache.preRenderRange(0, state.pageCount - 1, false);
+    await ImageCache.preRenderRange(0, state.pageCount - 1, false);
 
     const time2a = Date.now();
     await recognizeAllPagesNode(true, true, true);
@@ -314,14 +314,14 @@ async function main(func, params) {
     if (func === 'eval' || func === 'recognize') ocrAll.active = ocrAll['Tesseract Legacy'];
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < imageCache.pageCount; i++) {
+    for (let i = 0; i < ImageCache.pageCount; i++) {
       /** @type {Parameters<compareOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         evalConflicts: false,
       };
 
-      const imgBinary = await imageCache.getBinary(i);
+      const imgBinary = await ImageCache.getBinary(i);
 
       const res = await compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],
@@ -342,7 +342,7 @@ async function main(func, params) {
     output.text = '';
 
     // Combine Tesseract Legacy and Tesseract LSTM into "Tesseract Combined"
-    for (let i = 0; i < imageCache.pageCount; i++) {
+    for (let i = 0; i < ImageCache.pageCount; i++) {
       /** @type {Parameters<compareOCR>[0]['options']} */
       const compOptions = {
         mode: 'comb',
@@ -351,7 +351,7 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : undefined, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgBinary = await imageCache.getBinary(i);
+      const imgBinary = await ImageCache.getBinary(i);
 
       const res = await compareOCR({
         pageA: ocrAll['Tesseract Legacy'][i],
@@ -377,7 +377,7 @@ async function main(func, params) {
 
   if (robustConfMode || func === 'eval') {
     if (debugMode) compLogs.Combined = [];
-    for (let i = 0; i < imageCache.pageCount; i++) {
+    for (let i = 0; i < ImageCache.pageCount; i++) {
       /** @type {Parameters<compareOCR>[0]['options']} */
       const compOptions = {
         mode: 'stats',
@@ -389,7 +389,7 @@ async function main(func, params) {
         debugLabel: debugMode ? 'abc' : undefined, // Setting any value for `debugLabel` causes the debugging images to be saved.
       };
 
-      const imgBinary = await imageCache.getBinary(i);
+      const imgBinary = await ImageCache.getBinary(i);
 
       // In "check" mode, the provided OCR is being compared against OCR from the built-in engine.
       // In "eval" mode, the OCR from the built-in engine is compared against provided ground truth OCR data.
@@ -430,7 +430,7 @@ async function main(func, params) {
     const enc = new TextEncoder();
     const pdfEnc = enc.encode(pdfStr);
 
-    const muPDFScheduler = await imageCache.getMuPDFScheduler(1);
+    const muPDFScheduler = await ImageCache.getMuPDFScheduler(1);
     mupdfWorker = muPDFScheduler.workers[0];
 
     const pdfOverlay = await mupdfWorker.openDocument(pdfEnc.buffer, 'document.pdf');

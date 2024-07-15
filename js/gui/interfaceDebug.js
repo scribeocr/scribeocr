@@ -5,7 +5,7 @@ import {
   fontMetricsObj, LayoutRegions,
   ocrAll, pageMetricsArr,
 } from '../containers/dataContainer.js';
-import { imageCache } from '../containers/imageContainer.js';
+import { ImageCache } from '../containers/imageContainer.js';
 import { gs } from '../containers/schedulerContainer.js';
 import { drawDebugImages } from '../debug.js';
 import { calcOverlap } from '../modifyOCR.js';
@@ -56,7 +56,7 @@ export async function evalSelectedLine() {
 
   const word0 = selectedObjects[0].word;
 
-  const imageBinary = await imageCache.getBinary(cp.n);
+  const imageBinary = await ImageCache.getBinary(cp.n);
 
   const pageMetricsObj = pageMetricsArr[cp.n];
 
@@ -101,7 +101,7 @@ export async function downloadCanvas() {
 }
 
 export async function downloadImage(n) {
-  const image = elem.view.colorMode.value === 'binary' ? await imageCache.getBinary(n) : await imageCache.getNative(n);
+  const image = elem.view.colorMode.value === 'binary' ? await ImageCache.getBinary(n) : await ImageCache.getNative(n);
   const filenameBase = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}`;
 
   const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
@@ -115,7 +115,7 @@ export async function downloadCurrentImage() {
 
 export async function downloadAllImages() {
   const binary = elem.view.colorMode.value === 'binary';
-  for (let i = 0; i < imageCache.pageCount; i++) {
+  for (let i = 0; i < ImageCache.pageCount; i++) {
     await downloadImage(i);
     // Not all files will be downloaded without a delay between downloads
     await new Promise((r) => setTimeout(r, 200));

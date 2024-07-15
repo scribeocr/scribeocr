@@ -4,7 +4,7 @@ import Konva from '../../lib/konva/index.js';
 import { renderPageQueue } from '../../main.js';
 import { inputData, state } from '../containers/app.js';
 import { pageMetricsArr, visInstructions } from '../containers/dataContainer.js';
-import { imageCache } from '../containers/imageContainer.js';
+import { ImageCache } from '../containers/imageContainer.js';
 import { elem } from './elems.js';
 import {
   ScribeCanvas,
@@ -86,10 +86,8 @@ export const selectDisplayMode = async (x) => {
     cp.backgroundOpts.originX = 'center';
     cp.backgroundOpts.originY = 'center';
 
-    const backgroundImage = elem.view.colorMode.value === 'binary' ? await imageCache.getBinary(cp.n) : await imageCache.getNative(cp.n);
-
-    const image = elem.view.colorMode.value === 'binary' ? await imageCache.getBinaryBitmap(cp.n) : await imageCache.getNativeBitmap(cp.n);
-
+    const backgroundImage = elem.view.colorMode.value === 'binary' ? await ImageCache.getBinary(cp.n) : await ImageCache.getNative(cp.n);
+    const image = elem.view.colorMode.value === 'binary' ? await ImageCache.getBinaryBitmap(cp.n) : await ImageCache.getNativeBitmap(cp.n);
     let rotation = 0;
     // Case where rotation is requested and the image has not already been rotated
     if ((elem.view.autoRotateCheckbox.checked || state.layoutMode) && !backgroundImage.rotated) {
