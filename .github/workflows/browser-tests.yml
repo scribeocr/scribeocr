@@ -28,7 +28,7 @@ jobs:
       - name: Pr2
         run: hostname -I
       - run: npm ci
-      - run: npm run test:browser
+      - run: npm run test:gui
         env:
           BROWSER: ${{ matrix.browser }}
           SELENIUM: selenium
@@ -36,4 +36,4 @@ jobs:
         if: always()
         with:
           name: ${{ matrix.browser }}
-          path: tests/browser/screenshots/
+          path: tests/gui/screenshots/
