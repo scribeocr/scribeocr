@@ -18,6 +18,7 @@ import {
 
 import { initTesseractInWorkers } from '../generalWorkerMain.js';
 import { determineSansSerif } from '../utils/miscUtils.js';
+import { opt } from './app.js';
 import { gs } from './schedulerContainer.js';
 
 function range(min, max) {
@@ -206,12 +207,9 @@ export class ImageCache {
     /** @type {"binary" | "color" | "gray"} */
     let colorMode = 'binary';
     if (!binary) {
-      const color = props?.colorMode === 'color' || !props?.colorMode && ImageCache.colorModeDefault === 'color';
+      const color = props?.colorMode === 'color' || !props?.colorMode && opt.colorMode === 'color';
       colorMode = color ? 'color' : 'gray';
     }
-
-    // const color = props?.colorMode === 'color' || !props?.colorMode && ImageCache.colorModeDefault === 'color';
-    // const colorMode = color ? 'color' : 'gray';
 
     let pageAngle = pageMetricsArr[n].angle || 0;
     if (Math.abs(pageAngle) < 0.05) pageAngle = 0;
@@ -233,6 +231,8 @@ export class ImageCache {
 
   /** @type {?Promise<MuPDFScheduler>} */
   static muPDFScheduler = null;
+
+  static loadCount = 0;
 
   static pageCount = 0;
 
@@ -372,7 +372,7 @@ export class ImageCache {
     if (newNative || newBinary) {
       const renderRaw = !ImageCache.native[n] || imageUtils.requiresUndo(ImageCache.nativeProps[n], props);
       const propsRaw = {
-        colorMode: ImageCache.colorModeDefault, rotated: false, upscaled: false, n,
+        colorMode: opt.colorMode, rotated: false, upscaled: false, n,
       };
       const renderTransform = newBinary || !imageUtils.compatible(propsRaw, props);
 
@@ -390,7 +390,7 @@ export class ImageCache {
         /** @type {?ImageWrapper} */
         let img1;
         if (renderRaw) {
-          const color = props?.colorMode === 'color' || !props?.colorMode && ImageCache.colorModeDefault === 'color';
+          const color = props?.colorMode === 'color' || !props?.colorMode && opt.colorMode === 'color';
           img1 = await ImageCache.#renderImage(n, color);
         } else {
           img1 = await inputNative;
@@ -500,7 +500,7 @@ export class ImageCache {
           resArr.push(ImageCache.getNativeBitmap(curr - i));
         }
       }
-      if (curr + i < ImageCache.pageCount) {
+      if (curr + i < ImageCache.loadCount) {
         if (binary) {
           resArr.push(ImageCache.getBinaryBitmap(curr + i));
         } else {
@@ -566,9 +566,7 @@ export class ImageCache {
   static openMainPDF = async (fileData, skipText = false, setPageMetrics = false, extractStext = false) => {
     const muPDFScheduler = await ImageCache.getMuPDFScheduler(3);
 
-    console.log('Running ImageCache.#loadFileMuPDFScheduler');
     await ImageCache.#loadFileMuPDFScheduler(fileData);
-    console.log('Done running ImageCache.#loadFileMuPDFScheduler');
 
     ImageCache.pageCount = await muPDFScheduler.workers[0].countPages();
 

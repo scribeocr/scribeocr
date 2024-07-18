@@ -5,27 +5,26 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
-import { displayPage, renderPageQueue } from '../../main.js';
-import Tesseract from '../../tess/tesseract.esm.min.js';
-import { opt } from '../containers/app.js';
-import { debugImg, ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
-import { fontAll } from '../containers/fontContainer.js';
-import { ImageCache } from '../containers/imageContainer.js';
-import { gs } from '../containers/schedulerContainer.js';
-import coords from '../coordinates.js';
-import { combineData } from '../modifyOCR.js';
-import ocr from '../objects/ocrObjects.js';
-import { recognizePage } from '../recognizeConvert.js';
-import { getRandomAlphanum } from '../utils/miscUtils.js';
+import { opt, state } from '../js/containers/app.js';
+import { debugImg, ocrAll, pageMetricsArr } from '../js/containers/dataContainer.js';
+import { fontAll } from '../js/containers/fontContainer.js';
+import { ImageCache } from '../js/containers/imageContainer.js';
+import { gs } from '../js/containers/schedulerContainer.js';
+import coords from '../js/coordinates.js';
+import { combineData } from '../js/modifyOCR.js';
+import ocr from '../js/objects/ocrObjects.js';
+import { recognizePage } from '../js/recognizeConvert.js';
+import { getRandomAlphanum } from '../js/utils/miscUtils.js';
+import { Button } from '../lib/bootstrap.esm.bundle.min.js';
+import { displayPage, renderPageQueue } from '../main.js';
+import Tesseract from '../tess/tesseract.esm.min.js';
 import { elem } from './elems.js';
 import {
-  KonvaOcrWord, ScribeCanvas, cp,
-  layerText, updateWordCanvas,
+  KonvaOcrWord,
+  layerText,
+  ScribeCanvas,
+  updateWordCanvas,
 } from './interfaceCanvas.js';
-
-const ignorePunctElem = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
-const ignoreCapElem = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
 
 elem.edit.styleItalic.addEventListener('click', () => { changeWordFontStyle('italic'); });
 elem.edit.styleBold.addEventListener('click', () => { changeWordFontStyle('bold'); });
@@ -34,7 +33,7 @@ elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
 
 elem.edit.ligatures.addEventListener('change', () => {
   opt.ligatures = elem.edit.ligatures.checked;
-  renderPageQueue(cp.n);
+  renderPageQueue(state.cp.n);
 });
 
 const styleItalicButton = new Button(elem.edit.styleItalic);
@@ -51,14 +50,14 @@ export function deleteSelectedWords() {
     selectedIds.push(wordIDI);
     selectedObjects[i].destroy();
   }
-  ocr.deletePageWords(ocrAll.active[cp.n], selectedIds);
+  ocr.deletePageWords(ocrAll.active[state.cp.n], selectedIds);
 
   ScribeCanvas.destroyControls();
 
   layerText.batchDraw();
 
   // Re-render the page if the user has selected the option to outline lines to update the line boxes.
-  if (elem.view.outlineLines.checked) renderPageQueue(cp.n);
+  if (elem.view.outlineLines.checked) renderPageQueue(state.cp.n);
 }
 
 /**
@@ -177,7 +176,7 @@ export function toggleSuperSelectedWords() {
     wordI.word.sup = !wordI.word.sup;
   }
 
-  renderPageQueue(cp.n);
+  renderPageQueue(state.cp.n);
 }
 
 /**
@@ -291,10 +290,10 @@ export async function addWordManual({
   let sinAngle = 0;
   let shiftX = 0;
   let shiftY = 0;
-  if (elem.view.autoRotateCheckbox.checked && Math.abs(pageMetricsArr[cp.n].angle ?? 0) > 0.05) {
-    const rotateAngle = pageMetricsArr[cp.n].angle || 0;
+  if (opt.autoRotate && Math.abs(pageMetricsArr[state.cp.n].angle ?? 0) > 0.05) {
+    const rotateAngle = pageMetricsArr[state.cp.n].angle || 0;
 
-    const pageDims = pageMetricsArr[cp.n].dims;
+    const pageDims = pageMetricsArr[state.cp.n].dims;
 
     sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
     const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
@@ -322,7 +321,7 @@ export async function addWordManual({
     left: rectLeftHOCR, top: rectTopHOCR, right: rectRightHOCR, bottom: rectBottomHOCR,
   };
 
-  const pageObj = new ocr.OcrPage(cp.n, ocrAll.active[cp.n].dims);
+  const pageObj = new ocr.OcrPage(state.cp.n, ocrAll.active[state.cp.n].dims);
   // Create a temporary line to hold the word until it gets combined.
   // This should not be used after `combineData` is run as it is not the final line.
   const lineObjTemp = new ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
@@ -333,16 +332,16 @@ export async function addWordManual({
   wordObj.conf = 100;
   lineObjTemp.words = [wordObj];
 
-  combineData(pageObj, ocrAll.active[cp.n], pageMetricsArr[cp.n], true, false);
+  combineData(pageObj, ocrAll.active[state.cp.n], pageMetricsArr[state.cp.n], true, false);
 
   // Get line word was added to in main data.
   // This will have different metrics from `lineObj` when the line was combined into an existing line.
-  const wordObjNew = ocr.getPageWord(ocrAll.active[cp.n], wordIDNew);
+  const wordObjNew = ocr.getPageWord(ocrAll.active[state.cp.n], wordIDNew);
 
   if (!wordObjNew) throw new Error('Failed to add word to page.');
 
-  const angle = pageMetricsArr[cp.n].angle || 0;
-  const enableRotation = elem.view.autoRotateCheckbox.checked && Math.abs(angle ?? 0) > 0.05;
+  const angle = pageMetricsArr[state.cp.n].angle || 0;
+  const enableRotation = opt.autoRotate && Math.abs(angle ?? 0) > 0.05;
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
   const angleAdjLine = enableRotation ? ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
@@ -403,10 +402,9 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
   const imageRotated = true;
-  const canvasRotated = elem.view.autoRotateCheckbox.checked;
-  const angle = pageMetricsArr[cp.n].angle || 0;
+  const angle = pageMetricsArr[state.cp.n].angle || 0;
 
-  const imageCoords = coords.canvasToImage(canvasCoords, imageRotated, canvasRotated, cp.n, angle);
+  const imageCoords = coords.canvasToImage(canvasCoords, imageRotated, opt.autoRotate, state.cp.n, angle);
 
   if (printCoordsOnly) {
     const debugCoords = {
@@ -414,8 +412,8 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
       top: imageCoords.top,
       right: imageCoords.left + imageCoords.width,
       bottom: imageCoords.top + imageCoords.height,
-      topInv: pageMetricsArr[cp.n].dims.height - imageCoords.top,
-      bottomInv: pageMetricsArr[cp.n].dims.height - (imageCoords.top + imageCoords.height),
+      topInv: pageMetricsArr[state.cp.n].dims.height - imageCoords.top,
+      bottomInv: pageMetricsArr[state.cp.n].dims.height - (imageCoords.top + imageCoords.height),
     };
     console.log(debugCoords);
     return;
@@ -423,7 +421,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   // When a user is manually selecting words to recognize, they are assumed to be in the same block.
   const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
-  const n = cp.n;
+  const n = state.cp.n;
 
   if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
   const res0 = await recognizePage(gs.scheduler, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
@@ -448,12 +446,12 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     }
   }
 
-  /** @type {Parameters<import('../generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
+  /** @type {Parameters<import('../js/generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
   const compOptions = {
     mode: 'comb',
     debugLabel,
-    ignoreCap: ignoreCapElem.checked,
-    ignorePunct: ignorePunctElem.checked,
+    ignoreCap: elem.evaluate.ignoreCap.checked,
+    ignorePunct: elem.evaluate.ignorePunct.checked,
     confThreshHigh: parseInt(elem.info.confThreshHigh.value),
     confThreshMed: parseInt(elem.info.confThreshMed.value),
     legacyLSTMComb: true,
@@ -473,5 +471,5 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   combineData(res.page, ocrAll.active[n], pageMetricsArr[n]);
 
-  if (n === cp.n) displayPage(cp.n);
+  if (n === state.cp.n) displayPage(state.cp.n);
 }

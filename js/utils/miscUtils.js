@@ -145,10 +145,9 @@ export function calcLang(str) {
  * @returns {Promise<string>} - Contents of file
  */
 export async function readOcrFile(file) {
-  const browserMode = typeof process === 'undefined';
-  if (!browserMode) {
-    const fs = await import('fs');
-    return fs.readFileSync(file, 'utf8');
+  if (typeof process !== 'undefined') {
+    // @ts-ignore
+    return file.fileData.toString();
   }
 
   if (typeof file === 'string') {
@@ -239,19 +238,25 @@ export function occurrences(string, subString, allowOverlapping, caseSensitive =
   return n;
 }
 
-// Modified version of code found in FileSaver.js
-
 /**
  * Saves a Blob or a string URL as a file to the user's computer.
  * Modified version of code found in FileSaver.js.
  *
  * @global
- * @param {Blob} blob - The Blob object to save as a file.
- * @param {string} name - File name.
+ * @param {string|ArrayBuffer} content
+ * @param {string} fileName - File name.
  */
-export const saveAs = function (blob, name) {
+export const saveAs = async (content, fileName) => {
+  if (typeof process !== 'undefined') {
+    const { promises: fsPromises } = await import('fs');
+    await fsPromises.writeFile(fileName, content);
+    return;
+  }
+
+  const blob = new Blob([content], { type: 'application/octet-stream' });
+
   const a = document.createElement('a');
-  a.download = name;
+  a.download = fileName;
   a.href = globalThis.URL.createObjectURL(blob);
   a.dispatchEvent(new MouseEvent('click', {
     bubbles: true,
@@ -303,7 +308,7 @@ export function replaceObjectProperties(obj, obj2 = {}) {
 // Fonts that should not be added (both Sans and Serif variants):
 // DejaVu
 const serifFonts = ['SerifDefault', 'Baskerville', 'Book', 'C059', 'Cambria', 'Century', 'Courier', 'Garamond', 'Georgia', 'LucidaBright', 'Minion', 'P052', 'Palatino', 'Times'];
-const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Myriad', 'Tahoma', 'Trebuchet', 'Verdana'];
+const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Candara', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Myriad', 'Tahoma', 'Trebuchet', 'Verdana'];
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x, y) => `${x}|${y}`), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x, y) => `${x}|${y}`), 'i');

@@ -1,6 +1,26 @@
+import { opt } from '../containers/app.js';
 import ocr, { OcrPar } from '../objects/ocrObjects.js';
 import { calcWordMetrics } from './fontUtils.js';
 import { calcBboxUnion, quantile } from './miscUtils.js';
+
+/**
+ *
+ * @param {Array<OcrPage>} pages
+ * @returns
+ */
+export const calcConf = (pages) => {
+  let wordsTotal = 0;
+  let wordsHighConf = 0;
+  for (let i = 0; i < pages.length; i++) {
+    const words = ocr.getPageWords(pages[i]);
+    for (let j = 0; j < words.length; j++) {
+      const word = words[j];
+      wordsTotal += 1;
+      if (word.conf > opt.confThreshHigh) wordsHighConf += 1;
+    }
+  }
+  return { total: wordsTotal, highConf: wordsHighConf };
+};
 
 /**
  *

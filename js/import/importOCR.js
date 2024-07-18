@@ -5,15 +5,15 @@ import { readOcrFile } from '../utils/miscUtils.js';
  * Import raw OCR data from files.
  * Currently supports .hocr (used by Tesseract), Abbyy .xml, and stext (an intermediate data format used by mupdf).
  *
- * @param {File[]} hocrFilesAll - Array of OCR files
+ * @param {File[]} ocrFilesAll - Array of OCR files
  * @param {boolean} extractSuppData - Whether to extract font metrics and layout data (if it exists).
  */
 
-export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
-  hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+export async function importOCRFiles(ocrFilesAll, extractSuppData = true) {
+  ocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
   // In the case of 1 HOCR file
-  const singleHOCRMode = hocrFilesAll.length === 1;
+  const singleHOCRMode = ocrFilesAll.length === 1;
 
   let hocrStrStart = '';
   let hocrStrEnd = '';
@@ -37,7 +37,7 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
   let serifFont;
 
   if (singleHOCRMode) {
-    const hocrStrAll = await readOcrFile(hocrFilesAll[0]);
+    const hocrStrAll = await readOcrFile(ocrFilesAll[0]);
 
     // Check whether input is Abbyy XML
     const node2 = hocrStrAll.match(/>([^>]+)/)[1];
@@ -64,16 +64,16 @@ export async function importOCRFiles(hocrFilesAll, extractSuppData = true) {
       hocrRaw[i] = hocrStrStart + hocrArrPages[i] + hocrStrEnd;
     }
   } else {
-    pageCountHOCR = hocrFilesAll.length;
+    pageCountHOCR = ocrFilesAll.length;
     hocrRaw = Array(pageCountHOCR);
 
     // Check whether input is Abbyy XML using the first file
-    const hocrStrFirst = await readOcrFile(hocrFilesAll[0]);
+    const hocrStrFirst = await readOcrFile(ocrFilesAll[0]);
     const node2 = hocrStrFirst.match(/>([^>]+)/)[1];
     abbyyMode = !!/abbyy/i.test(node2);
 
     for (let i = 0; i < pageCountHOCR; i++) {
-      const hocrFile = hocrFilesAll[i];
+      const hocrFile = ocrFilesAll[i];
       hocrRaw[i] = await readOcrFile(hocrFile);
     }
   }

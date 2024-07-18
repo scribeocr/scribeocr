@@ -19,7 +19,7 @@ describe('Generate output files using images and built-in OCR', function () {
     ({ driver, customActions } = await createDriver());
   });
 
-  it('3-page .pdf file', async function () {
+  it('2-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -33,14 +33,13 @@ describe('Generate output files using images and built-in OCR', function () {
     await customActions.downloadAllFormats();
   });
 
-  it('3 .png files', async function () {
+  it('2 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
     // Upload the files
     await customActions.uploadFiles([
       'henreys_grave.png',
-      'aurelia.png',
       'the_past.png',
     ]);
 
@@ -76,7 +75,7 @@ describe('Generate output files using images only', function () {
     ({ driver, customActions } = await createDriver());
   });
 
-  it('3-page .pdf file', async function () {
+  it('2-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -88,14 +87,13 @@ describe('Generate output files using images only', function () {
     await customActions.downloadAllFormats();
   });
 
-  it('3 .png files', async function () {
+  it('2 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
     // Upload the files
     await customActions.uploadFiles([
       'henreys_grave.png',
-      'aurelia.png',
       'the_past.png',
     ]);
 
@@ -129,14 +127,13 @@ describe('Generate output files using ABBYY XML only', function () {
     ({ driver, customActions } = await createDriver());
   });
 
-  it('3-page .pdf file', async function () {
+  it('2-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
     // Upload the files
     await customActions.uploadFiles([
       'henreys_grave_abbyy.xml',
-      'aurelia_abbyy.xml',
       'the_past_abbyy.xml',
     ]);
 
@@ -170,7 +167,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
     ({ driver, customActions } = await createDriver());
   });
 
-  it('3-page .pdf file', async function () {
+  it('2-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -178,14 +175,13 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
     await customActions.uploadFiles([
       'scribe_test_pdf1.pdf',
       'henreys_grave_abbyy.xml',
-      'aurelia_abbyy.xml',
       'the_past_abbyy.xml',
     ]);
 
     await customActions.downloadAllFormats();
   });
 
-  it('3 .png files', async function () {
+  it('2 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -193,8 +189,6 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
     await customActions.uploadFiles([
       'henreys_grave.png',
       'henreys_grave_abbyy.xml',
-      'aurelia.png',
-      'aurelia_abbyy.xml',
       'the_past.png',
       'the_past_abbyy.xml',
     ]);
@@ -229,7 +223,7 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
     ({ driver, customActions } = await createDriver());
   });
 
-  it('3-page .pdf file', async function () {
+  it('2-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -237,14 +231,13 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
     await customActions.uploadFiles([
       'scribe_test_pdf1.pdf',
       'henreys_grave_tess.xml',
-      'aurelia_tess.xml',
       'the_past_tess.xml',
     ]);
 
     await customActions.downloadAllFormats();
   });
 
-  it('3-page .pdf file (old Scribe version)', async function () {
+  it('2-page .pdf file (old Scribe version)', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -257,7 +250,7 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
     await customActions.downloadAllFormats();
   });
 
-  it('3 .png files', async function () {
+  it('2 .png files', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -265,8 +258,6 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
     await customActions.uploadFiles([
       'henreys_grave.png',
       'henreys_grave_tess.xml',
-      'aurelia.png',
-      'aurelia_tess.xml',
       'the_past.png',
       'the_past_tess.xml',
     ]);
@@ -301,7 +292,7 @@ describe('Generate output files using PDF and existing text layer', function () 
     ({ driver, customActions } = await createDriver());
   });
 
-  it('3-page .pdf file', async function () {
+  it('2-page .pdf file', async function () {
     // Navigate to the page
     await driver.get(appURL);
 

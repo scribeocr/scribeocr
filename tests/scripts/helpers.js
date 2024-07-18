@@ -31,9 +31,12 @@ class CustomSeleniumActions {
   }
 
   async recognize() {
-    // Click on the 'Download' tab
+    // Click on the 'Recognize' tab
     await this.driver.findElement(By.id('nav-recognize-tab')).click();
-    await this.driver.findElement(By.id('recognizeAll')).click();
+
+    const recognizeAllElem = await this.driver.findElement(By.id('recognizeAll'));
+    await this.driver.wait(until.elementIsEnabled(recognizeAllElem), 10000);
+    await recognizeAllElem.click();
 
     // Wait for recognize progress bar to fill up
     const progressBar = await this.driver.findElement(By.css('#recognize-recognize-progress-collapse .progress-bar'));

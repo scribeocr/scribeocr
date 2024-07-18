@@ -4,6 +4,55 @@ export class opt {
   static langs = ['eng'];
 
   static ligatures = true;
+
+  static omitNativeText = false;
+
+  static extractText = false;
+
+  static enableOpt = false;
+
+  static enableUpscale = false;
+
+  static ignorePunct = false;
+
+  static ignoreCap = false;
+
+  static ignoreExtra = false;
+
+  static confThreshHigh = 85;
+
+  static confThreshMed = 75;
+
+  /** @type {'conf'|'data'} */
+  static combineMode = 'data';
+
+  static addOverlay = true;
+
+  static standardizePageSize = false;
+
+  static humanReadablePDF = false;
+
+  static intermediatePDF = false;
+
+  static reflow = false;
+
+  static pageBreaks = true;
+
+  /** @type {("invis"|"ebook"|"eval"|"proof")} */
+  static displayMode = 'proof';
+
+  /** @type {('color'|'gray'|'binary')} */
+  static colorMode = 'color';
+
+  static overlayOpacity = 80;
+
+  static autoRotate = true;
+
+  static enableLayout = false;
+
+  static xlsxFilenameColumn = true;
+
+  static xlsxPageNumberColumn = true;
 }
 
 export class state {
@@ -24,10 +73,29 @@ export class state {
 
   static pageCount = 0;
 
-  static loadCount = 0;
-
   /** @type {Array<Object<string, string>>} */
   static convertPageWarn = [];
+
+  static downloadFileName = '';
+
+  /** @type {?ProgressBar} */
+  static progress = null;
+
+  /** @type {?Function} */
+  static display = null;
+
+  static warningHandler = (x) => console.warn(x);
+
+  static errorHandler = (x) => console.error(x);
+
+  static debugVis = false;
+
+  static cp = {
+    n: 0,
+    backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
+    renderStatus: 0,
+    renderNum: 0,
+  };
 }
 
 /**

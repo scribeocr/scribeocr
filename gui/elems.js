@@ -3,12 +3,14 @@
 // If an object is used with `noImplicitAny` disabled, using elements that do not exist will not throw an error.
 // If `noImplicitAny` is enabled, an enormous number of errors will be thrown elsewhere in the codebase.
 
-import { Collapse } from '../../lib/bootstrap.esm.bundle.min.js';
+import { Collapse } from '../lib/bootstrap.esm.bundle.min.js';
 
 class nav {
   static next = /** @type {HTMLInputElement} */(document.getElementById('next'));
 
   static prev = /** @type {HTMLInputElement} */(document.getElementById('prev'));
+
+  static pageNum = /** @type {HTMLInputElement} */(document.getElementById('pageNum'));
 
   static pageCount = /** @type {HTMLInputElement} */(document.getElementById('pageCount'));
 
@@ -56,6 +58,25 @@ class recognize {
   static buildLabelOptionDefault = /** @type {HTMLInputElement} */(document.getElementById('buildLabelOptionDefault'));
 
   static buildLabelOptionVanilla = /** @type {HTMLInputElement} */(document.getElementById('buildLabelOptionVanilla'));
+
+  // Misc options
+  static combineModeOptions = /** @type {HTMLInputElement} */(document.getElementById('combineModeOptions'));
+}
+
+class evaluate {
+  static ignorePunct = /** @type {HTMLInputElement} */(document.getElementById('ignorePunct'));
+
+  static ignoreCap = /** @type {HTMLInputElement} */(document.getElementById('ignoreCap'));
+
+  static ignoreExtra = /** @type {HTMLInputElement} */(document.getElementById('ignoreExtra'));
+
+  static displayLabelOptions = /** @type {HTMLInputElement} */(document.getElementById('displayLabelOptions'));
+
+  static displayLabelText = /** @type {HTMLInputElement} */(document.getElementById('displayLabelText'));
+
+  static createGroundTruth = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
+
+  static uploadOCRButton = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRButton'));
 }
 
 class view {
@@ -63,7 +84,7 @@ class view {
 
   static colorMode = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
-  static autoRotateCheckbox = /** @type {HTMLInputElement} */(document.getElementById('autoRotateCheckbox'));
+  static autoRotate = /** @type {HTMLInputElement} */(document.getElementById('autoRotate'));
 
   static optimizeFont = /** @type {HTMLInputElement} */(document.getElementById('optimizeFont'));
 
@@ -71,7 +92,7 @@ class view {
 
   static outlineWords = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
 
-  static rangeOpacity = /** @type {HTMLInputElement} */(document.getElementById('rangeOpacity'));
+  static overlayOpacity = /** @type {HTMLInputElement} */(document.getElementById('overlayOpacity'));
 }
 
 class edit {
@@ -98,6 +119,8 @@ class edit {
   static deleteWord = /** @type {HTMLInputElement} */(document.getElementById('deleteWord'));
 
   static recognizeWord = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
+
+  static recognizeArea = /** @type {HTMLInputElement} */(document.getElementById('recognizeArea'));
 
   static recognizeWordDropdown = /** @type {HTMLInputElement} */(document.getElementById('recognizeWordDropdown'));
 
@@ -153,6 +176,11 @@ class download {
   static pdfPageMin = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMin'));
 
   static pdfPageMax = /** @type {HTMLInputElement} */(document.getElementById('pdfPageMax'));
+
+  // PDF export options
+  static addOverlayCheckbox = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
+
+  static standardizePageSize = /** @type {HTMLInputElement} */(document.getElementById('standardizePageSize'));
 
   // Text export options
   static reflowCheckbox = /** @type {HTMLInputElement} */(document.getElementById('reflowCheckbox'));
@@ -213,18 +241,26 @@ class info {
   static dataTableOptions = /** @type {HTMLDivElement} */(document.getElementById('dataTableOptions'));
 
   // Advanced options.
-  static addOverlayCheckbox = /** @type {HTMLInputElement} */(document.getElementById('addOverlayCheckbox'));
+  static extractTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('extractTextCheckbox'));
+
+  static omitNativeTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
 
   // Debug output.
   static downloadDebugCsv = /** @type {HTMLDivElement} */(document.getElementById('downloadDebugCsv'));
 
   static downloadSourcePDF = /** @type {HTMLDivElement} */(document.getElementById('downloadSourcePDF'));
+
+  static humanReadablePDF = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
+
+  static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
 }
 
 export class elem {
   static nav = nav;
 
   static recognize = recognize;
+
+  static evaluate = evaluate;
 
   static view = view;
 

@@ -1,5 +1,5 @@
-import { Collapse } from '../../../lib/bootstrap.esm.bundle.min.js';
-import { sleep } from '../../utils/miscUtils.js';
+import { sleep } from '../../js/utils/miscUtils.js';
+import { Collapse } from '../../lib/bootstrap.esm.bundle.min.js';
 
 export class ProgressBar {
   /**

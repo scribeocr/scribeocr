@@ -53,9 +53,9 @@ export async function convertPageStext({ ocrStr, n }) {
 
       console.assert(fontSizeStr, 'Font size not found in stext.');
 
-      const fontSize = fontSizeStr ? parseFloat(fontSizeStr) : 10;
+      const fontSizeLine = fontSizeStr ? parseFloat(fontSizeStr) : 10;
 
-      const fontFamily = fontName?.replace(/-.+/g, '') || 'Default';
+      const fontFamilyLine = fontName?.replace(/-.+/g, '') || 'Default';
 
       const lineBoxArr = [...xmlLinePreChar.matchAll(/bbox(?:es)?=['"](\s*[\d.-]+)(\s*[\d.-]+)?(\s*[\d.-]+)?(\s*[\d.-]+)?/g)][0].slice(1, 5).map((x) => Math.max(parseFloat(x), 0));
 
@@ -82,9 +82,16 @@ export async function convertPageStext({ ocrStr, n }) {
       const smallCapsArr = [];
       /** @type {Array<boolean>} */
       const smallCapsAltArr = [];
+      /** @type {Array<string>} */
+      const fontFamilyArr = [];
+      /** @type {Array<number>} */
+      const fontSizeArr = [];
 
       for (let i = 0; i < wordStrArr.length; i++) {
         const wordStr = wordStrArr[i];
+
+        fontFamilyArr[i] = fontFamilyArr[i - 1] || fontFamilyLine || 'Default';
+        fontSizeArr[i] = fontSizeArr[i - 1] || fontSizeLine || 10;
 
         // Fonts can be changed at any point in the word string.
         // Sometimes the font is changed before a space character, and othertimes it is changed after the space character.
@@ -101,18 +108,23 @@ export async function convertPageStext({ ocrStr, n }) {
         for (let j = 0; j < letterOrFontArr.length; j++) {
           const fontStr = letterOrFontArr[j][1];
           if (fontStr) {
-          // While small caps can be printed using special "small caps" fonts, they can also be printed using a regular font with a size change.
-          // This block of code detects small caps printed in title case by checking for a decrease in font size after the first letter.
+            const fontNameStrI = fontStr?.match(/name=['"]([^'"]*)/)?.[1];
+            const fontSizeStrI = fontStr?.match(/size=['"]([^'"]*)/)?.[1];
+
+            // While small caps can be printed using special "small caps" fonts, they can also be printed using a regular font with a size change.
+            // This block of code detects small caps printed in title case by checking for a decrease in font size after the first letter.
             let smallCapsAlt = false;
-            const sizeStr = fontStr?.match(/size=['"]([^'"]*)/)?.[1];
-            if (sizeStr) {
-              const newSize = parseFloat(sizeStr);
+            if (fontSizeStrI) {
+              const newSize = parseFloat(fontSizeStrI);
               const secondLetter = wordInit && bboxes[bboxes.length - 1].length === 1;
               if (secondLetter && newSize < currentSize && currentSize > 0) {
                 smallCapsAlt = true;
               }
               currentSize = newSize || currentSize;
             }
+
+            fontFamilyArr[i] = fontNameStrI || (fontFamilyArr[i - 1] || fontFamilyLine || 'Default');
+            fontSizeArr[i] = currentSize || (fontSizeArr[i - 1] || fontSizeLine || 10);
 
             // The word is already initialized, so we need to change the last element of the style array.
             // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
@@ -173,7 +185,7 @@ export async function convertPageStext({ ocrStr, n }) {
       const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
 
       // This is only a rough estimate, however since `size` is set on individual words, this value should not matter.
-      const letterHeightOut = fontSize * 0.6;
+      const letterHeightOut = fontSizeLine * 0.6;
 
       const lineObj = new ocr.OcrLine(pageObj, lineBbox, baselineOut, letterHeightOut, null);
 
@@ -226,7 +238,7 @@ export async function convertPageStext({ ocrStr, n }) {
         };
 
         const wordObj = new ocr.OcrWord(lineObj, wordText, bbox, wordID);
-        wordObj.size = fontSize;
+        wordObj.size = fontSizeArr[i];
 
         wordObj.lang = wordLang;
 
@@ -255,9 +267,9 @@ export async function convertPageStext({ ocrStr, n }) {
           wordObj.style = 'bold';
         }
 
-        if (fontFamily !== 'Default') {
-          wordObj.font = fontFamily;
-        }
+        wordObj.raw = wordStrArr[i];
+
+        wordObj.font = fontFamilyArr[i];
 
         if (styleArr[i] === 'sup') {
           wordObj.sup = true;

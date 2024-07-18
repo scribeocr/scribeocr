@@ -1,26 +1,27 @@
-import { elem } from '../gui/elems.js';
 import { documentEnd, documentStart, docxStrings } from './resources/docxFiles.js';
 
 import { renderText } from './exportRenderText.js';
 
+import { opt } from '../containers/app.js';
 import { saveAs } from '../utils/miscUtils.js';
 
 /**
  * Create a Word document from an array of ocrPage objects.
  *
  * @param {Array<OcrPage>} hocrCurrent -
+ * @param {string} fileName
  * @param {number} minpage - The first page to include in the document.
  * @param {number} maxpage - The last page to include in the document.
  */
-export async function writeDocx(hocrCurrent, minpage = 0, maxpage = -1) {
-  const { BlobWriter, TextReader, ZipWriter } = await import('../../lib/zip.js/index.js');
+export async function writeDocx(hocrCurrent, fileName, minpage = 0, maxpage = -1) {
+  const { Uint8ArrayWriter, TextReader, ZipWriter } = await import('../../lib/zip.js/index.js');
 
   if (maxpage === -1) maxpage = hocrCurrent.length - 1;
 
-  const removeLineBreaks = elem.download.docxReflowCheckbox.checked;
-  const breaksBetweenPages = elem.download.docxPageBreaksCheckbox.checked;
+  const removeLineBreaks = opt.reflow;
+  const breaksBetweenPages = opt.reflow;
 
-  const zipFileWriter = new BlobWriter();
+  const zipFileWriter = new Uint8ArrayWriter();
   const zipWriter = new ZipWriter(zipFileWriter);
 
   const textReader = new TextReader(documentStart + renderText(hocrCurrent, minpage, maxpage, removeLineBreaks, breaksBetweenPages, true) + documentEnd);
@@ -33,9 +34,7 @@ export async function writeDocx(hocrCurrent, minpage = 0, maxpage = -1) {
 
   await zipWriter.close();
 
-  const zipFileBlob = await zipFileWriter.getData();
+  const zipFileData = await zipFileWriter.getData();
 
-  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.docx`;
-
-  saveAs(zipFileBlob, fileName);
+  saveAs(zipFileData, fileName);
 }

@@ -6,7 +6,7 @@ import opentype from '../../lib/opentype.module.js';
 // Can hopefully remove in future version
 if (typeof process === 'object') {
   await import('../../node/require.js');
-} else if (globalThis.document === undefined) {
+} else if (globalThis.window === undefined) {
   globalThis.window = {};
 }
 

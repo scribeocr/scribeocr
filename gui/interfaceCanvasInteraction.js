@@ -1,14 +1,13 @@
 /* eslint-disable import/no-cycle */
-import { Konva } from '../../lib/konva/_FullInternals.js';
-import { renderPageQueue } from '../../main.js';
-import { state } from '../containers/app.js';
-import { LayoutRegions } from '../containers/dataContainer.js';
-import { showHideElem } from '../utils/miscUtils.js';
-import { mergeOcrWords, splitOcrWord } from '../utils/ocrUtils.js';
+import { state } from '../js/containers/app.js';
+import { LayoutRegions } from '../js/containers/dataContainer.js';
+import { showHideElem } from '../js/utils/miscUtils.js';
+import { mergeOcrWords, splitOcrWord } from '../js/utils/ocrUtils.js';
+import { Konva } from '../lib/konva/_FullInternals.js';
+import { renderPageQueue } from '../main.js';
 import {
   KonvaOcrWord,
   ScribeCanvas,
-  cp,
   layerBackground,
   layerOverlay, layerText, stage,
 } from './interfaceCanvas.js';
@@ -118,7 +117,7 @@ const splitWordClick = () => {
 
   konvaWord.word.line.words.splice(wordIndex, 1, wordA, wordB);
 
-  renderPageQueue(cp.n);
+  renderPageQueue(state.cp.n);
 };
 
 const mergeWordsClick = () => {
@@ -132,7 +131,7 @@ const mergeWordsClick = () => {
   const firstIndex = lineWords.findIndex((x) => x.id === selectedWords[0].word.id);
   lineWords.splice(firstIndex, selectedWords.length, newWord);
 
-  renderPageQueue(cp.n);
+  renderPageQueue(state.cp.n);
 };
 
 const deleteLayoutDataTableClick = () => {
@@ -149,7 +148,7 @@ const deleteLayoutBoxClick = () => {
   hideContextMenu();
   const selectedLayoutBoxes = ScribeCanvas.CanvasSelection.getKonvaLayoutBoxes();
   selectedLayoutBoxes.forEach((obj) => {
-    delete LayoutRegions.pages[cp.n].boxes[obj.layoutBox.id];
+    delete LayoutRegions.pages[state.cp.n].boxes[obj.layoutBox.id];
     obj.destroy();
   });
   ScribeCanvas.destroyControls();
@@ -356,7 +355,7 @@ function selectWords(box) {
   }
 }
 
-/** @type {import('../../lib/konva/Stage.js').Stage | import('../../lib/konva/Shape.js').Shape<import('../../lib/konva/Shape.js').ShapeConfig>} */
+/** @type {import('../lib/konva/Stage.js').Stage | import('../lib/konva/Shape.js').Shape<import('../lib/konva/Shape.js').ShapeConfig>} */
 let mouseDownTarget = stage;
 
 stage.on('mousedown touchstart', (e) => {
@@ -672,9 +671,9 @@ stage.on('wheel', (event) => {
 });
 
 /**
- * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
- * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
- * @typedef {import('../../lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
+ * @typedef {import('../lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
+ * @typedef {import('../lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
+ * @typedef {import('../lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
  */
 
 /**

@@ -30,7 +30,7 @@ export const ocrAllRaw = { active: [] };
 export const pageMetricsArr = [];
 
 /**
- * @type {{[key: string]: Array<Array<CompDebugBrowser>> | undefined}}
+ * @type {{[key: string]: Array<Array<CompDebugBrowser|CompDebugNode>> | undefined}}
  */
 export const debugImg = {};
 

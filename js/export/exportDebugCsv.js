@@ -4,6 +4,7 @@
 // which are used to export tables from the input document, rather than list out all words.
 
 import ocr from '../objects/ocrObjects.js';
+import { saveAs } from '../utils/miscUtils.js';
 
 /**
  * Escapes special characters in CSV fields.
@@ -39,9 +40,10 @@ export const convertToCSV = (data) => {
 /**
  *
  * @param {Array<OcrPage>} pages
+ * @param {string} fileName
  * @returns
  */
-export const writeDebugCsv = (pages) => {
+export const writeDebugCsv = (pages, fileName) => {
   let csvStr = '';
 
   for (let i = 0; i < pages.length; i++) {
@@ -64,5 +66,5 @@ export const writeDebugCsv = (pages) => {
     csvStr += csvStrI;
   }
 
-  return csvStr;
+  saveAs(csvStr, fileName);
 };

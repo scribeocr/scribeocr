@@ -413,7 +413,7 @@
                         disabled>-</button>
                       <input type="text"
                         class="form-control btn-sm col-12 col-xl-3 col-md-4 order-last order-md-1 mt-2 mt-md-0"
-                        id="fontSize" size="1" style="flex:unset;width:35%" disabled>
+                        id="fontSize" size="1" style="flex:unset;width:35%" autocomplete="off" disabled>
                       <button class="col col-md-3 col-xl-2 btn btn-secondary btn-sm order-2" id="fontPlus"
                         disabled>+</button>
                     </div>
@@ -897,7 +897,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                               <!-- <label for="downloadFormat">OCR Name</label> -->
                               <div class="input-group">
                                 <span class="input-group-text btn-sm" id="basic-addon1" style="width:40%">Name</span>
-                                <input type="text" id="uploadOCRName" class="form-control btn-sm">
+                                <input type="text" id="uploadOCRName" class="form-control btn-sm" autocomplete="off">
                               </div>
                               <div class="input-group" style="padding-top:0.4rem">
                                 <input type="file" id="uploadOCRFile" class="form-control btn-sm" label="Import Files"
@@ -1097,7 +1097,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                   <div class="col col-lg-3">
                     <label>Options</label>
                     <div class="form-check form-switch">
-                      <label><input class="form-check-input" type="checkbox" id="autoRotateCheckbox" checked>
+                      <label><input class="form-check-input" type="checkbox" id="autoRotate" checked>
                         Auto-Rotate
                         Image</label><br>
                       <label><input class="form-check-input" type="checkbox" id="optimizeFont" checked> Optimize
@@ -1156,7 +1156,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                     </div>
                     <div class="collapse" id="collapseRangeOpacity">
                       <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
-                        <input type="range" class="form-range" id="rangeOpacity" max="100" value="80">
+                        <input type="range" class="form-range" id="overlayOpacity" max="100" value="80">
                       </div>
                     </div>
                   </div>
@@ -1175,7 +1175,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                   <div class="col col-lg-3 px-1 px-sm-2">
                     <label for="downloadFormat">File Name</label>
                     <div class="input-group">
-                      <input type="text" id="downloadFileName" class="form-control btn-sm">
+                      <input type="text" id="downloadFileName" class="form-control btn-sm" autocomplete="off">
                     </div>
 
                     <div style="padding-top:0.4rem;">
@@ -1239,11 +1239,11 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                         <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
                           <div class="row" style="--bs-gutter-x:0">
                             <div class="col-5">
-                              <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%">
+                              <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%" autocomplete="off">
                             </div>
                             <div class="col-2" style="text-align:center">-</div>
                             <div class="col-5">
-                              <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%">
+                              <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%" autocomplete="off">
                             </div>
                           </div>
                         </div>
@@ -1255,7 +1255,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                       <label>PDF Options</label>
                       <div class="form-check form-switch">
                         <!-- <label><input class="form-check-input" type="checkbox" id="binaryCheckbox"> Use Binary Images</label><br> -->
-                        <label><input class="form-check-input" type="checkbox" id="standardizeCheckbox"> Standardize
+                        <label><input class="form-check-input" type="checkbox" id="standardizePageSize"> Standardize
                           Page
                           Size</label>
                         <label><input class="form-check-input" type="checkbox" id="addOverlayCheckbox" disabled> Add
@@ -1504,7 +1504,7 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                               style="width:100%;text-align:left">Canvas Object</button>
                           </div>
                         </div>
-                        <label>Download Current Image</label>
+                        <label>Download Debug Output</label>
                         <div class="row">
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugDownloadImage"
@@ -1513,6 +1513,16 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugDownloadCanvas"
                               style="width:100%;text-align:left">Canvas</button>
+                          </div>
+                        </div>
+                        <div class="row">
+                          <div class="col">
+                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadSourcePDF"
+                            style="width:100%;text-align:left">Source PDF</button>
+                          </div>
+                          <div class="col">
+                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadDebugCsv"
+                            style="width:100%;text-align:left">Debug CSV</button>
                           </div>
                         </div>
                         <label>Misc</label>
@@ -1524,18 +1534,6 @@ Combine Data: In addition to updating confidence estimates, user-provided data m
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintCoords"
                             style="width:100%;text-align:left">Print Coords</button>  
-                          </div>
-                        </div>
-                        <div class="row">
-                          <div class="col">
-                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadSourcePDF"
-                            style="width:100%;text-align:left">Download Source PDF</button>
-                          </div>
-                        </div>
-                        <div class="row">
-                          <div class="col">
-                            <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadDebugCsv"
-                            style="width:100%;text-align:left">Download Debug CSV</button>
                           </div>
                         </div>
                       </div>

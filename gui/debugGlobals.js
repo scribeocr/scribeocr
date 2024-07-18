@@ -3,18 +3,20 @@
 // This file adds various functions to a global object named `df` so they can be easily run from the console.
 // This object should never be referenced in code--the functions should be imported instead.
 
-import { opt, state } from '../containers/app.js';
+import { opt, state } from '../js/containers/app.js';
 import {
   fontMetricsObj,
   LayoutDataTables,
   LayoutRegions,
   ocrAll,
+  ocrAllRaw,
   pageMetricsArr,
-} from '../containers/dataContainer.js';
-import { fontAll } from '../containers/fontContainer.js';
-import { ImageCache } from '../containers/imageContainer.js';
-import ocr from '../objects/ocrObjects.js';
-import { calcLineFontSize, calcWordMetrics, missingGlyphs } from '../utils/fontUtils.js';
+} from '../js/containers/dataContainer.js';
+import { fontAll } from '../js/containers/fontContainer.js';
+import { ImageCache } from '../js/containers/imageContainer.js';
+import ocr from '../js/objects/ocrObjects.js';
+import { calcLineFontSize, calcWordMetrics, missingGlyphs } from '../js/utils/fontUtils.js';
+import { calcConf } from '../js/utils/ocrUtils.js';
 import { elem } from './elems.js';
 import {
   layerBackground, layerOverlay,
@@ -22,6 +24,7 @@ import {
   ScribeCanvas,
   stage,
 } from './interfaceCanvas.js';
+import { downloadAllImages } from './interfaceDebug.js';
 
 /**
  *
@@ -55,8 +58,10 @@ const getCharMetrics = (char) => {
 
 // Expose functions in global object for debugging purposes.
 export const df = {
+  calcConf,
   calcLineFontSize,
   calcWordMetrics,
+  downloadAllImages,
   elem,
   fontAll,
   fontMetricsObj,
@@ -70,6 +75,7 @@ export const df = {
   missingGlyphs,
   ocr,
   ocrAll,
+  ocrAllRaw,
   opt,
   pageMetricsArr,
   ScribeCanvas,

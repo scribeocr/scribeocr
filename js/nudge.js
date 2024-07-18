@@ -1,7 +1,6 @@
 import { debugImg, ocrAll, pageMetricsArr } from './containers/dataContainer.js';
 import { ImageCache } from './containers/imageContainer.js';
 import { gs } from './containers/schedulerContainer.js';
-import { showDebugImages } from './gui/interfaceDebug.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images
@@ -66,8 +65,6 @@ export async function nudgeDoc(func, view = false) {
   }
 
   await Promise.all(promiseArr);
-
-  if (view) showDebugImages();
 
   console.log(improveCt / totalCt);
 

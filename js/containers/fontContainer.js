@@ -3,9 +3,6 @@
 // To make sure what the user sees on the canvas matches the final pdf output,
 // all fonts should have an identical OpenType.js and FontFace version.
 
-// import { createRequire } from "../node_modules";
-// globalThis.require = createRequire(import.meta.url);
-
 // Node.js case
 import opentype from '../../lib/opentype.module.js';
 import { determineSansSerif } from '../utils/miscUtils.js';
@@ -19,11 +16,13 @@ if (typeof process === 'object') {
   const { fileURLToPath } = await import('url');
   const { dirname } = await import('path');
   globalThis.__dirname = dirname(fileURLToPath(import.meta.url));
-  // Browser worker case
-} else if (globalThis.document === undefined) {
-  // @ts-ignore
-  globalThis.window = {};
 }
+
+// Browser worker case
+// else if (globalThis.window === undefined) {
+//   // @ts-ignore
+//   globalThis.window = {};
+// }
 
 /**
  * @param {string} fileName

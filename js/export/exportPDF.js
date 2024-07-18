@@ -7,6 +7,7 @@ import {
 
 import { createEmbeddedFontType0, createEmbeddedFontType1 } from './exportPDFFonts.js';
 
+import { state } from '../containers/app.js';
 import { pageMetricsArr } from '../containers/dataContainer.js';
 import ocr from '../objects/ocrObjects.js';
 
@@ -24,7 +25,6 @@ import ocr from '../objects/ocrObjects.js';
  * @param {boolean} rotateText -
  * @param {boolean} rotateBackground -
  * @param {dims} dimsLimit -
- * @param {?any} progress -
  * @param {number} confThreshHigh -
  * @param {number} confThreshMed -
  * @param {number} [proofOpacity=0.8] -
@@ -32,7 +32,7 @@ import ocr from '../objects/ocrObjects.js';
  * A valid PDF will be created if an empty array is provided for `hocrArr`, as long as `maxpage` is set manually.
  */
 export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = 'ebook', rotateText = false, rotateBackground = false,
-  dimsLimit = { width: -1, height: -1 }, progress = null, confThreshHigh = 85, confThreshMed = 75, proofOpacity = 0.8) {
+  dimsLimit = { width: -1, height: -1 }, confThreshHigh = 85, confThreshMed = 75, proofOpacity = 0.8) {
   // TODO: Currently, all fonts are added to the PDF, and mupdf removes the unused fonts.
   // It would likely be more performant to only add the fonts that are actually used up front.
   const exportFontObj = fontAll.getContainer('active');
@@ -149,7 +149,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     // This assumes the "page" is always the last object returned by `ocrPageToPDF`.
     pageIndexArr.push(objectI - 1);
 
-    if (progress) progress.increment();
+    if (state.progress) state.progress.increment();
   }
 
   /** @type {Array<string>} */

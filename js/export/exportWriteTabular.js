@@ -4,9 +4,8 @@ import ocr from '../objects/ocrObjects.js';
 
 import { saveAs } from '../utils/miscUtils.js';
 
-import { inputData } from '../containers/app.js';
+import { inputData, opt } from '../containers/app.js';
 import { LayoutDataTables } from '../containers/dataContainer.js';
-import { elem } from '../gui/elems.js';
 
 /**
  * @param {ReturnType<extractTableContent>} tableWordObj
@@ -337,19 +336,17 @@ function createCellsSingle(ocrTableWords, extraCols = [], startRow = 0, xlsxMode
 /**
  *
  * @param {Array<OcrPage>} ocrPageArr
+ * @param {string} fileName
  * @param {number} minpage
  * @param {number} maxpage
  */
-export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
+export async function writeXlsx(ocrPageArr, fileName, minpage = 0, maxpage = -1) {
   const { xlsxStrings, sheetStart, sheetEnd } = await import('./resources/xlsxFiles.js');
-  const { BlobWriter, TextReader, ZipWriter } = await import('../../lib/zip.js/index.js');
+  const { Uint8ArrayWriter, TextReader, ZipWriter } = await import('../../lib/zip.js/index.js');
 
   if (maxpage === -1) maxpage = ocrPageArr.length - 1;
 
-  const addFilenameMode = elem.download.xlsxFilenameColumn.checked;
-  const addPageNumberColumnMode = elem.download.xlsxPageNumberColumn.checked;
-
-  const zipFileWriter = new BlobWriter();
+  const zipFileWriter = new Uint8ArrayWriter();
   const zipWriter = new ZipWriter(zipFileWriter);
 
   let sheetContent = sheetStart;
@@ -357,14 +354,14 @@ export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
   for (let i = minpage; i <= maxpage; i++) {
     /** @type {Array<string>} */
     const extraCols = [];
-    if (addFilenameMode) {
+    if (opt.xlsxFilenameColumn) {
       if (inputData.pdfMode) {
         extraCols.push(inputData.inputFileNames[0]);
       } else {
         extraCols.push(inputData.inputFileNames[i]);
       }
     }
-    if (addPageNumberColumnMode) extraCols.push(String(i + 1));
+    if (opt.xlsxPageNumberColumn) extraCols.push(String(i + 1));
 
     const tableWordObj = extractTableContent(ocrPageArr[i], LayoutDataTables.pages[i]);
     const cellsObj = createCells(tableWordObj, extraCols, rowCount);
@@ -383,9 +380,7 @@ export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
 
   await zipWriter.close();
 
-  const zipFileBlob = await zipFileWriter.getData();
+  const zipFileData = await zipFileWriter.getData();
 
-  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.xlsx`;
-
-  saveAs(zipFileBlob, fileName);
+  saveAs(zipFileData, fileName);
 }

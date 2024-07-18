@@ -113,7 +113,7 @@ declare global {
         errorAdjB: number | null; // Adjusted error of "B" words. Null until calculated.
     };
 
-    type ProgressBar = import("./gui/utils/progressBars.js").ProgressBar;
+    type ProgressBar = import("../gui/utils/progressBars.js").ProgressBar;
 
     // Layout objects
     type LayoutPage = import("./objects/layoutObjects.js").LayoutPage;

@@ -1,4 +1,8 @@
-import { pageMetricsArr } from '../containers/dataContainer.js';
+import { opt } from '../containers/app.js';
+import {
+  fontMetricsObj, LayoutDataTables, LayoutRegions, pageMetricsArr,
+} from '../containers/dataContainer.js';
+import { fontAll } from '../containers/fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import { round6 } from '../utils/miscUtils.js';
 
@@ -7,9 +11,18 @@ import { round6 } from '../utils/miscUtils.js';
  * @param {Array<OcrPage>} ocrData
  * @param {number} minValue
  * @param {number} maxValue
- * @param {Object} meta
  */
-export function renderHOCR(ocrData, minValue, maxValue, meta) {
+export function renderHOCR(ocrData, minValue, maxValue) {
+  const meta = {
+    'font-metrics': fontMetricsObj,
+    'default-font': fontAll.defaultFontName,
+    'sans-font': fontAll.sansDefaultName,
+    'serif-font': fontAll.serifDefaultName,
+    'enable-opt': opt.enableOpt,
+    layout: LayoutRegions.pages,
+    'layout-data-table': LayoutDataTables.pages,
+  };
+
   let hocrOut = String.raw`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">

@@ -1,37 +1,20 @@
 /* eslint-disable import/no-cycle */
 
-import { Button } from '../../lib/bootstrap.esm.bundle.min.js';
-import Konva from '../../lib/konva/index.js';
-import { search } from '../../main.js';
-import { state } from '../containers/app.js';
-import { ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
-import { fontAll } from '../containers/fontContainer.js';
-import { calcTableBbox } from '../objects/layoutObjects.js';
-import ocr from '../objects/ocrObjects.js';
-import { calcWordMetrics } from '../utils/fontUtils.js';
-import { replaceSmartQuotes } from '../utils/miscUtils.js';
+import { opt, state } from '../js/containers/app.js';
+import { ocrAll, pageMetricsArr } from '../js/containers/dataContainer.js';
+import { fontAll } from '../js/containers/fontContainer.js';
+import { calcTableBbox } from '../js/objects/layoutObjects.js';
+import ocr from '../js/objects/ocrObjects.js';
+import { calcWordMetrics } from '../js/utils/fontUtils.js';
+import { replaceSmartQuotes } from '../js/utils/miscUtils.js';
+import { Button } from '../lib/bootstrap.esm.bundle.min.js';
+import Konva from '../lib/konva/index.js';
+import { search } from '../main.js';
 import { elem } from './elems.js';
 import {
   KonvaDataColumn,
   KonvaLayout,
-  updateDataPreview,
 } from './interfaceLayout.js';
-
-/**
- * @typedef cp
- * @type {Object}
- * @property {Number} n - an ID.
- * @property {Object} backgroundOpts - an ID.
- * @property {Number} renderStatus - an ID.
- * @property {number} renderNum - an ID.
- */
-/** @type {cp} */
-export const cp = {
-  n: 0,
-  backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
-  renderStatus: 0,
-  renderNum: 0,
-};
 
 const styleItalicButton = new Button(elem.edit.styleItalic);
 const styleBoldButton = new Button(elem.edit.styleBold);
@@ -498,10 +481,10 @@ export function getWordFillOpacity(word) {
     opacity = 1;
     fill = 'black';
   } else if (displayMode === 'eval') {
-    opacity = parseFloat(elem.view.rangeOpacity.value || '80') / 100;
+    opacity = opt.overlayOpacity / 100;
     fill = fillColorHexMatch;
   } else {
-    opacity = parseFloat(elem.view.rangeOpacity.value || '80') / 100;
+    opacity = opt.overlayOpacity / 100;
     fill = fillColorHex;
   }
 
@@ -516,7 +499,7 @@ export class KonvaIText extends Konva.Shape {
    * @param {Object} options
    * @param {number} options.x
    * @param {number} options.yActual
-   * @param {import('../objects/ocrObjects.js').OcrWord} options.word
+   * @param {import('../js/objects/ocrObjects.js').OcrWord} options.word
    * @param {number} [options.rotation=0]
    * @param {boolean} [options.outline=false]
    * @param {boolean} [options.selected=false]
@@ -1029,21 +1012,23 @@ const addBlockOutline = (box, angle, angleAdj) => {
  * @param {OcrPage} page
  */
 export function renderPage(page) {
-  const matchIdArr = ocr.getMatchingWordIds(search.search, ocrAll.active[cp.n]);
+  const matchIdArr = ocr.getMatchingWordIds(search.search, ocrAll.active[state.cp.n]);
 
-  const angle = pageMetricsArr[cp.n].angle || 0;
+  const angle = pageMetricsArr[state.cp.n].angle || 0;
 
   // Layout mode features assume that auto-rotate is enabled.
-  const enableRotation = (elem.view.autoRotateCheckbox.checked || state.layoutMode) && Math.abs(angle ?? 0) > 0.05;
+  const enableRotation = (opt.autoRotate || state.layoutMode) && Math.abs(angle ?? 0) > 0.05;
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
   // assignParagraphs(page, angle);
 
-  // page.pars.forEach((par) => {
-  //   const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
-  //   addBlockOutline(par.bbox, angleArg, angleAdj);
-  // });
+  // if (page) {
+  //   page.pars.forEach((par) => {
+  //     const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
+  //     addBlockOutline(par.bbox, angleArg, angleAdj);
+  //   });
+  // }
 
   for (let i = 0; i < page.lines.length; i++) {
     const lineObj = page.lines[i];
@@ -1115,8 +1100,6 @@ export function renderPage(page) {
       ScribeCanvas.addWord(wordCanvas);
     }
   }
-
-  updateDataPreview();
 }
 
 export {
