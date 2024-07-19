@@ -116,9 +116,10 @@ export async function recognizeAllClick() {
   state.progress = ProgressBars.recognize;
 
   // User can select engine directly using advanced options, or indirectly using basic options.
+  /** @type {"legacy" | "lstm" | "combined"} */
   let oemMode;
   if (enableAdvancedRecognitionElem.checked) {
-    oemMode = oemLabelTextElem.innerHTML.toLowerCase();
+    oemMode = /** @type {"legacy" | "lstm" | "combined"} */(oemLabelTextElem.innerHTML.toLowerCase());
   } else if (elem.recognize.ocrQuality.value === '1') {
     oemMode = 'combined';
   } else {

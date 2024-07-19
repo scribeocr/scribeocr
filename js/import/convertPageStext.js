@@ -62,6 +62,8 @@ export async function convertPageStext({ ocrStr, n }) {
       // Unlike Tesseract, stext does not have a native "word" unit (it provides only lines and letters).
       // Therefore, lines are split into words on either (1) a space character or (2) a change in formatting.
       const wordStrArr = xmlLine.split(/(?:<char[^>]*?c=['"]\s+['"]\/>)/ig);
+      // If the last element is a closing font tag, remove it.
+      if (wordStrArr[wordStrArr.length - 1] && wordStrArr[wordStrArr.length - 1].trim() === '</font>') wordStrArr.pop();
 
       if (wordStrArr.length === 0) return;
 
@@ -70,28 +72,39 @@ export async function convertPageStext({ ocrStr, n }) {
 
       let baselineFirst = 0;
       let baselineLast = 0;
+      let baselineCurrent = 0;
 
       /** @type {Array<Array<string>>} */
       const text = [];
       let currentStyle = 'normal';
       let currentSize = 0;
       /** @type {Array<string>} */
-      let styleArr = [];
-      styleArr = styleArr.fill('normal');
+      const styleArr = [];
       /** @type {Array<boolean>} */
       const smallCapsArr = [];
       /** @type {Array<boolean>} */
       const smallCapsAltArr = [];
+      /** @type {Array<boolean>} */
+      const smallCapsAltTitleCaseArr = [];
       /** @type {Array<string>} */
       const fontFamilyArr = [];
       /** @type {Array<number>} */
       const fontSizeArr = [];
+      /** @type {Array<boolean>} */
+      const superArr = [];
 
       for (let i = 0; i < wordStrArr.length; i++) {
         const wordStr = wordStrArr[i];
 
-        fontFamilyArr[i] = fontFamilyArr[i - 1] || fontFamilyLine || 'Default';
-        fontSizeArr[i] = fontSizeArr[i - 1] || fontSizeLine || 10;
+        let textWordArr = [];
+        let bboxesWordArr = [];
+        let fontFamily = fontFamilyArr[fontFamilyArr.length - 1] || fontFamilyLine || 'Default';
+        let fontSize = fontSizeArr[fontSizeArr.length - 1] || fontSizeLine || 10;
+        let smallCaps;
+        let smallCapsAlt;
+        let smallCapsAltTitleCase;
+        let superWord = false;
+        let styleWord = 'normal';
 
         // Fonts can be changed at any point in the word string.
         // Sometimes the font is changed before a space character, and othertimes it is changed after the space character.
@@ -113,23 +126,59 @@ export async function convertPageStext({ ocrStr, n }) {
 
             // While small caps can be printed using special "small caps" fonts, they can also be printed using a regular font with a size change.
             // This block of code detects small caps printed in title case by checking for a decrease in font size after the first letter.
-            let smallCapsAlt = false;
+            // TODO: This logic currently fails when:
+            // (1) Runs of small caps include punctuation, which is printed at the full size (and therefore is counted as a size increase ending small caps).
+            // (2) Runs of small caps that start with lower-case letters, which do not conform to the expectation that runs of small caps start with a capital letter.
             if (fontSizeStrI) {
               const newSize = parseFloat(fontSizeStrI);
-              const secondLetter = wordInit && bboxes[bboxes.length - 1].length === 1;
-              if (secondLetter && newSize < currentSize && currentSize > 0) {
+              const secondLetter = wordInit && bboxesWordArr.length === 1;
+              const baselineNextLetter = parseFloat(letterOrFontArr[j + 1]?.[6]);
+              const fontSizeMin = Math.min(newSize, currentSize);
+              const baselineDelta = (baselineNextLetter - baselineCurrent) / fontSizeMin;
+              const sizeDelta = (newSize - currentSize) / fontSizeMin;
+              if (secondLetter && newSize < currentSize && currentSize > 0 && baselineNextLetter && Math.abs(baselineDelta) < 0.1) {
                 smallCapsAlt = true;
+                smallCapsAltTitleCase = true;
+              } else if (Number.isFinite(baselineDelta) && Number.isFinite(sizeDelta)
+              && ((baselineDelta < -0.2 && sizeDelta < -0.2) || (i === 0 && baselineDelta > 0.2 && sizeDelta > 0.2))) {
+                if (textWordArr.length > 0) {
+                  text.push(textWordArr);
+                  bboxes.push(bboxesWordArr);
+                  styleArr.push(styleWord);
+                  fontFamilyArr.push(fontFamily);
+                  fontSizeArr.push(fontSize);
+                  smallCapsAltArr.push(smallCapsAlt);
+                  smallCapsArr.push(smallCaps);
+                  smallCapsAltTitleCaseArr.push(smallCapsAltTitleCase);
+                  superArr.push(sizeDelta > 0);
+
+                  textWordArr = [];
+                  bboxesWordArr = [];
+                  fontFamily = fontFamilyArr[fontFamilyArr.length - 1] || fontFamilyLine || 'Default';
+                  fontSize = fontSizeArr[fontSizeArr.length - 1] || fontSizeLine || 10;
+                  styleWord = 'normal';
+                }
+
+                if (sizeDelta > 0) currentSize = newSize || currentSize;
+                superWord = sizeDelta < 0;
+              } else {
+                // An increase in font size ends any small caps sequence.
+                // A threshold is necessary because stext data has been observed to have small variations without a clear reason.
+                // eslint-disable-next-line no-lonely-if
+                if (Math.abs(sizeDelta) > 0.05) {
+                  currentSize = newSize || currentSize;
+                  smallCapsAlt = false;
+                  superWord = false;
+                }
               }
-              currentSize = newSize || currentSize;
             }
 
-            fontFamilyArr[i] = fontNameStrI || (fontFamilyArr[i - 1] || fontFamilyLine || 'Default');
-            fontSizeArr[i] = currentSize || (fontSizeArr[i - 1] || fontSizeLine || 10);
+            fontFamily = fontNameStrI || (fontFamilyArr[fontFamilyArr.length - 1] || fontFamilyLine || 'Default');
+            fontSize = currentSize || (fontSizeArr[fontSizeArr.length - 1] || fontSizeLine || 10);
 
-            // The word is already initialized, so we need to change the last element of the style array.
             // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
-            smallCapsAltArr[i] = smallCapsAlt;
-            smallCapsArr[i] = /small\W?cap/i.test(fontStr);
+            smallCapsAlt = smallCapsAlt ?? smallCapsAltArr[smallCapsAltArr.length - 1];
+            smallCaps = /small\W?cap/i.test(fontStr);
 
             if (/italic/i.test(fontStr)) {
               // The word is already initialized, so we need to change the last element of the style array.
@@ -142,27 +191,56 @@ export async function convertPageStext({ ocrStr, n }) {
             }
 
             continue;
+          } else {
+            baselineCurrent = parseFloat(letterOrFontArr[j][6]);
           }
 
           if (!wordInit) {
-            styleArr.push(currentStyle);
-            bboxes.push([]);
-            text.push([]);
+            styleWord = currentStyle;
             wordInit = true;
           }
 
-          bboxes[bboxes.length - 1].push({
+          // The first or last characters may be above the normal baseline, to the max of the first/last 3 characters is used to calculate slope.
+          if (baselineFirst === 0) {
+            baselineFirst = parseFloat(letterOrFontArr[j][6]);
+          } else if (j <= 3) {
+            baselineFirst = Math.max(baselineFirst, parseFloat(letterOrFontArr[j][6]));
+          }
+
+          // Is there ever a case where the last "word" does not have a character?
+          // If so, a fallback should be added.
+          if (i === wordStrArr.length - 1) {
+            if (baselineLast === 0) {
+              baselineLast = parseFloat(letterOrFontArr[j][6]);
+            } else {
+              baselineLast = Math.max(baselineFirst, parseFloat(letterOrFontArr[j][6]));
+            }
+          }
+
+          // Small caps created by reducing font size can carry forward across multiple words.
+          smallCapsAlt = smallCapsAlt ?? smallCapsAltArr[smallCapsAltArr.length - 1];
+
+          textWordArr.push(letterOrFontArr[j][7]);
+
+          bboxesWordArr.push({
             left: Math.round(parseFloat(letterOrFontArr[j][2])),
             top: Math.round(parseFloat(letterOrFontArr[j][3])),
             right: Math.round(parseFloat(letterOrFontArr[j][4])),
             bottom: Math.round(parseFloat(letterOrFontArr[j][5])),
           });
-
-          if (baselineFirst === 0) baselineFirst = parseFloat(letterOrFontArr[j][6]);
-          baselineLast = parseFloat(letterOrFontArr[j][6]);
-
-          text[text.length - 1].push(letterOrFontArr[j][7]);
         }
+
+        if (textWordArr.length === 0) continue;
+
+        text.push(textWordArr);
+        bboxes.push(bboxesWordArr);
+        styleArr.push(styleWord);
+        fontFamilyArr.push(fontFamily);
+        fontSizeArr.push(fontSize);
+        smallCapsAltArr.push(smallCapsAlt);
+        smallCapsArr.push(smallCaps);
+        smallCapsAltTitleCaseArr.push(smallCapsAltTitleCase);
+        superArr.push(superWord);
       }
 
       // Return if there are no letters in the line.
@@ -253,9 +331,15 @@ export async function convertPageStext({ ocrStr, n }) {
 
         if (smallCapsAltArr[i] && !/[a-z]/.test(wordObj.text) && /[A-Z].?[A-Z]/.test(wordObj.text)) {
           wordObj.smallCaps = true;
-          wordObj.chars.slice(1).forEach((x) => {
-            x.text = x.text.toLowerCase();
-          });
+          if (smallCapsAltTitleCaseArr[i]) {
+            wordObj.chars.slice(1).forEach((x) => {
+              x.text = x.text.toLowerCase();
+            });
+          } else {
+            wordObj.chars.forEach((x) => {
+              x.text = x.text.toLowerCase();
+            });
+          }
           wordObj.text = wordObj.chars.map((x) => x.text).join('');
         } else if (smallCapsArr[i]) {
           wordObj.smallCaps = true;
@@ -270,6 +354,8 @@ export async function convertPageStext({ ocrStr, n }) {
         wordObj.raw = wordStrArr[i];
 
         wordObj.font = fontFamilyArr[i];
+
+        wordObj.sup = superArr[i];
 
         if (styleArr[i] === 'sup') {
           wordObj.sup = true;

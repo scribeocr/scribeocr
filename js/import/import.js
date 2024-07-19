@@ -48,11 +48,16 @@ const importImageFile = async (file) => new Promise((resolve, reject) => {
 
 /**
  *
- * @param {Array<File>|FileList} curFiles
+ * @param {Array<File>|FileList|Array<string>} curFiles
  * @returns
  */
 export async function importFiles(curFiles) {
   if (!curFiles || curFiles.length === 0) return;
+
+  if (typeof process !== 'undefined') {
+    const { wrapFilesNode } = await import('./nodeAdapter.js');
+    curFiles = wrapFilesNode(curFiles);
+  }
 
   state.downloadReady = false;
   ImageCache.loadCount = 0;
@@ -310,8 +315,8 @@ export async function importFiles(curFiles) {
 
     // Process HOCR using web worker, reading from file first if that has not been done already
     await convertOCRAll(ocrAllRaw.active, true, format, oemName, scribeMode).then(async () => {
-      // Skip this step if optimization info was already restored from a previous session.
-      if (!existingOpt) {
+      // Skip this step if optimization info was already restored from a previous session, or if using stext (which is character-level but not visually accurate).
+      if (!existingOpt && !stextMode) {
         await checkCharWarn(state.convertPageWarn);
         calcFontMetricsFromPages(ocrAll.active);
         opt.enableOpt = await runFontOptimization(ocrAll.active);

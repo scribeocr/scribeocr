@@ -24,6 +24,8 @@
 // import Worker from 'web-worker';
 
 export async function initMuPDFWorker() {
+  // Define `Worker` in Node.js version.
+  const Worker = globalThis.Worker || (await import('web-worker')).default;
   const mupdf = {};
   const url = new URL('./mupdf-worker.js', import.meta.url).href;
   const worker = new Worker(url, { type: 'module' });

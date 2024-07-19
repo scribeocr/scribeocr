@@ -63,7 +63,7 @@ export class state {
   /** @type {?Function} */
   static promiseResolve = null;
 
-  static recognizeAllPromise = Promise.resolve(true);
+  static recognizeAllPromise = Promise.resolve();
 
   static downloadReady = false;
 

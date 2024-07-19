@@ -19,5 +19,5 @@ export async function clearData() {
   LayoutDataTables.pages.length = 0;
   pageMetricsArr.length = 0;
   state.convertPageWarn = [];
-  ImageCache.clear();
+  await ImageCache.clear();
 }

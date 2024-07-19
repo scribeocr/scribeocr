@@ -148,7 +148,7 @@ elem.info.intermediatePDF.addEventListener('click', () => {
 });
 
 elem.view.displayMode.addEventListener('change', () => {
-  opt.displayMode = elem.view.displayMode.value;
+  opt.displayMode = /** @type {"invis" | "ebook" | "eval" | "proof"} */(elem.view.displayMode.value);
   if (elem.view.displayMode.value === 'eval') {
     renderPageQueue(state.cp.n);
   } else {
@@ -274,7 +274,7 @@ elem.nav.zoomOut.addEventListener('click', () => {
 });
 
 elem.view.colorMode.addEventListener('change', () => {
-  opt.colorMode = elem.view.colorMode.value;
+  opt.colorMode = /** @type {"color" | "gray" | "binary"} */ (elem.view.colorMode.value);
   renderPageQueue(state.cp.n);
 });
 
@@ -595,7 +595,7 @@ export const addColorModeUI = () => {
 };
 
 elem.recognize.combineMode.addEventListener('change', () => {
-  opt.combineMode = elem.recognize.combineMode.value;
+  opt.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.combineMode.value);
 });
 
 state.progress = ProgressBars.import;
@@ -605,7 +605,7 @@ const importFilesGUI = async (files) => {
   state.progress = ProgressBars.import;
   await importFiles(files);
 
-  displayPage(0);
+  displayPage(state.cp.n);
 
   elem.nav.pageNum.value = '1';
   elem.nav.pageCount.textContent = String(state.pageCount);

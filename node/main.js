@@ -3,11 +3,6 @@
 
 import fs from 'fs';
 import path from 'path';
-import Worker from 'web-worker';
-// Leave this comment and import here.
-// This needs to be run first, and the comments prevent VSCode from moving it.
-import { runFirst } from './runFirst.js';
-// Leave this comment and import here.
 import { runFontOptimization } from '../js/fontEval.js';
 
 import ocr from '../js/objects/ocrObjects.js';
@@ -30,11 +25,6 @@ import { initGeneralScheduler, initTesseractInWorkers } from '../js/generalWorke
 import { importFiles } from '../js/import/import.js';
 import { recognizeAll } from '../js/recognizeConvert.js';
 import { calcConf } from '../js/utils/ocrUtils.js';
-
-globalThis.Worker = Worker;
-
-// Leave this line to prevent VSCode from removing the `runFirst` import.
-globalThis.runFirst = runFirst;
 
 // When `debugMode` is enabled:
 // (1) Comparison images are saved as .png files.
@@ -65,29 +55,6 @@ async function writeDebugImages(ctx, compDebugArrArr, filePath) {
 }
 
 /**
- * Class representing a simplified version of the File interface for Node.js.
- */
-class FileNode {
-  /**
-   * Creates an instance of the File class.
-   * @param {string} filePath - The path to the file.
-   */
-  constructor(filePath) {
-    this.filePath = filePath;
-    this.name = path.basename(filePath);
-    this.fileData = fs.readFileSync(filePath);
-  }
-
-  /**
-   * Returns an ArrayBuffer with the file's contents.
-   * @returns {Promise<ArrayBuffer>} A promise that resolves with the file's contents as an ArrayBuffer.
-   */
-  async arrayBuffer() {
-    return this.fileData.buffer.slice(this.fileData.byteOffset, this.fileData.byteOffset + this.fileData.byteLength);
-  }
-}
-
-/**
  * @param {string} func
  * @param {Object} params
  * @param {string} [params.pdfFile]
@@ -114,12 +81,9 @@ async function main(func, params) {
 
   const debugComp = false;
 
-  const pdfFileObj = params.pdfFile ? new FileNode(params.pdfFile) : null;
-  const ocrFileObj = params.ocrFile ? new FileNode(params.ocrFile) : null;
-
   const files = [];
-  if (pdfFileObj) files.push(pdfFileObj);
-  if (ocrFileObj) files.push(ocrFileObj);
+  if (params.pdfFile) files.push(params.pdfFile);
+  if (params.ocrFile) files.push(params.ocrFile);
   await importFiles(files);
 
   const backgroundArg = params.pdfFile;

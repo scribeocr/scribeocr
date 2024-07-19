@@ -128,21 +128,21 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
     if (match) {
       const { words } = match;
 
-      for (let i = 0; i < wordsNew.length; i++) {
-        const wordNew = wordsNew[i];
+      for (let j = 0; j < wordsNew.length; j++) {
+        const wordNew = wordsNew[j];
         wordNew.line = match;
         const wordBoxNew = wordNew.bbox;
 
         // Identify closest word on existing line
         let word; let wordBox; let
           wordIndex;
-        let j = 0;
+        let k = 0;
         do {
-          wordIndex = j;
-          word = words[j];
+          wordIndex = k;
+          word = words[k];
           wordBox = word.bbox;
-          j += 1;
-        } while (wordBox.right < wordBoxNew.left && j < words.length);
+          k += 1;
+        } while (wordBox.right < wordBoxNew.left && k < words.length);
 
         // Replace id (which is likely duplicative) with unique id
         if (editWordIds) wordNew.id = word.id + getRandomAlphanum(3);
@@ -168,8 +168,8 @@ export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = fals
       // Recalculate bounding box for line
       ocr.updateLineBbox(match);
     } else {
-      for (let i = 0; i < wordsNew.length; i++) {
-        const wordNew = wordsNew[i];
+      for (let j = 0; j < wordsNew.length; j++) {
+        const wordNew = wordsNew[j];
 
         // Replace id (which is likely duplicative) with unique id
         if (editWordIds) wordNew.id += getRandomAlphanum(3);

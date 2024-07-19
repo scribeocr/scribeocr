@@ -1,0 +1,1413 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<document xmlns="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml" version="1.0" producer="ABBYY FineReader Engine 12" languages="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml">
+<page width="2481" height="3508" resolution="300">
+<block blockType="Text" blockName="" l="1135" t="120" r="2281" b="173"><region><rect l="1135" t="120" r="2281" b="173"/></region>
+<text>
+<par lineSpacing="1150">
+<line baseline="157" l="1137" t="126" r="2273" b="167"><formatting lang="EnglishUnitedStates" ff="Arial" fs="10">
+<charParams l="1137" t="129" r="1180" b="160">社</charParams>
+<charParams l="1179" t="129" r="1213" b="160">區</charParams>
+<charParams l="1227" t="132" r="1255" b="160">防</charParams>
+<charParams l="1262" t="129" r="1299" b="160">疫</charParams>
+<charParams l="1311" t="127" r="1336" b="160">表</charParams>
+<charParams l="1346" t="127" r="1377" b="156">單</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10">
+<charParams l="1390" t="147" r="1401" b="150">-</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="10">
+<charParams l="1401" t="128" r="1436" b="167">指</charParams>
+<charParams l="1452" t="129" r="1486" b="162">定</charParams>
+<charParams l="1485" t="126" r="1528" b="163">處</charParams>
+<charParams l="1526" t="130" r="1568" b="158">所</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10">
+<charParams l="1571" t="129" r="1582" b="166">（</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="10">
+<charParams l="1582" t="130" r="1616" b="166">居</charParams>
+<charParams l="1632" t="127" r="1667" b="164">家</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10">
+<charParams l="1667" t="129" r="1678" b="166">）</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="10">
+<charParams l="1679" t="131" r="1717" b="164">隔</charParams>
+<charParams l="1724" t="128" r="1763" b="165">離</charParams>
+<charParams l="1762" t="130" r="1797" b="161">通</charParams>
+<charParams l="1804" t="129" r="1847" b="154">知</charParams>
+<charParams l="1846" t="126" r="1877" b="166">書</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10">
+<charParams l="1891" t="147" r="1901" b="150">-</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10" color="255">
+<charParams l="1907" t="129" r="1918" b="157">1</charParams>
+<charParams l="1927" t="129" r="1938" b="157">1</charParams>
+<charParams l="1943" t="129" r="1961" b="157">2</charParams>
+<charParams l="1963" t="129" r="1975" b="158">/</charParams>
+<charParams l="1976" t="129" r="1994" b="158">0</charParams>
+<charParams l="2001" t="129" r="2012" b="157">1</charParams>
+<charParams l="2017" t="129" r="2029" b="158">/</charParams>
+<charParams l="2030" t="129" r="2048" b="158">0</charParams>
+<charParams l="2054" t="129" r="2065" b="157">1</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="10">
+<charParams l="2079" t="130" r="2120" b="159">版</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10">
+<charParams l="2124" t="129" r="2135" b="166">（</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="10">
+<charParams l="2134" t="128" r="2168" b="162">電</charParams>
+<charParams l="2181" t="130" r="2207" b="153">子</charParams>
+<charParams l="2218" t="130" r="2258" b="159">版</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10">
+<charParams l="2262" t="129" r="2273" b="166">）</charParams></formatting></line></par>
+</text>
+</block>
+<block blockType="Text" blockName="" l="289" t="160" r="755" b="220"><region><rect l="289" t="160" r="755" b="220"/></region>
+<text>
+<par align="Justified" startIndent="1400" lineSpacing="1380">
+<line baseline="203" l="290" t="166" r="749" b="214"><formatting lang="EnglishUnitedStates" ff="Arial" fs="12">
+<charParams l="290" t="169" r="338" b="206">編</charParams>
+<charParams l="340" t="168" r="390" b="209">號</charParams>
+<charParams l="396" t="166" r="411" b="211">(</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="417" t="170" r="450" b="203">R</charParams>
+<charParams l="451" t="180" r="470" b="204">e</charParams>
+<charParams l="473" t="169" r="489" b="203">f</charParams>
+<charParams l="490" t="180" r="509" b="204">e</charParams>
+<charParams l="510" t="180" r="527" b="203">r</charParams>
+<charParams l="529" t="180" r="547" b="204">e</charParams>
+<charParams l="549" t="180" r="573" b="203">n</charParams>
+<charParams l="576" t="180" r="595" b="204">c</charParams>
+<charParams l="598" t="180" r="617" b="204">e</charParams>
+<charParams l="618" t="170" r="629" b="204"> </charParams>
+<charParams l="630" t="170" r="666" b="204">N</charParams>
+<charParams l="669" t="180" r="690" b="204">o</charParams>
+<charParams l="696" t="199" r="701" b="204">.</charParams>
+<charParams l="706" t="169" r="719" b="214">)</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="12">
+<charParams l="743" t="173" r="749" b="198">：</charParams></formatting></line></par>
+</text>
+</block>
+<block blockType="Text" blockName="" l="429" t="265" r="2105" b="341"><region><rect l="429" t="265" r="2105" b="341"/></region>
+<text>
+<par align="Center" lineSpacing="1840">
+<line baseline="323" l="432" t="272" r="2102" b="337"><formatting lang="EnglishUnitedStates" ff="Arial" fs="16" bold="1">
+<charParams l="432" t="276" r="501" b="333">嚴</charParams>
+<charParams l="499" t="275" r="554" b="330">重</charParams>
+<charParams l="571" t="276" r="628" b="333">特</charParams>
+<charParams l="635" t="274" r="698" b="326">殊</charParams>
+<charParams l="699" t="273" r="754" b="324">傳</charParams>
+<charParams l="766" t="275" r="822" b="332">染</charParams>
+<charParams l="839" t="277" r="899" b="333">性</charParams>
+<charParams l="899" t="275" r="955" b="316">肺</charParams>
+<charParams l="983" t="275" r="1024" b="330">炎</charParams>
+<charParams l="1033" t="275" r="1087" b="337">指</charParams>
+<charParams l="1114" t="277" r="1168" b="330">定</charParams>
+<charParams l="1166" t="272" r="1235" b="332">處</charParams>
+<charParams l="1233" t="279" r="1299" b="325">所</charParams>
+<charParams l="1300" t="280" r="1361" b="334">隔</charParams>
+<charParams l="1371" t="276" r="1434" b="335">離</charParams>
+<charParams l="1433" t="278" r="1489" b="329">通</charParams>
+<charParams l="1500" t="277" r="1568" b="318">知</charParams>
+<charParams l="1567" t="273" r="1616" b="337">書</charParams>
+<charParams l="1633" t="281" r="1675" b="315">及</charParams>
+<charParams l="1700" t="276" r="1762" b="330">提</charParams>
+<charParams l="1767" t="275" r="1821" b="337">審</charParams>
+<charParams l="1833" t="275" r="1895" b="333">權</charParams>
+<charParams l="1900" t="276" r="1960" b="337">利</charParams>
+<charParams l="1967" t="276" r="2018" b="334">告</charParams>
+<charParams l="2034" t="277" r="2102" b="318">知</charParams></formatting></line></par>
+</text>
+</block>
+<block blockType="Text" blockName="" l="312" t="418" r="2225" b="597"><region><rect l="312" t="418" r="2225" b="597"/></region>
+<text>
+<par align="Center" lineSpacing="2592">
+<line baseline="469" l="318" t="424" r="2217" b="483"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="16" bold="1">
+<charParams l="318" t="424" r="359" b="470">C</charParams>
+<charParams l="366" t="424" r="412" b="470">O</charParams>
+<charParams l="415" t="425" r="462" b="470">V</charParams>
+<charParams l="464" t="425" r="487" b="469">I</charParams>
+<charParams l="490" t="425" r="534" b="469">D</charParams>
+<charParams l="539" t="450" r="558" b="457">-</charParams>
+<charParams l="563" t="424" r="587" b="469">1</charParams>
+<charParams l="595" t="424" r="623" b="470">9</charParams>
+<charParams l="624" t="424" r="642" b="470"> </charParams>
+<charParams l="643" t="425" r="688" b="469">D</charParams>
+<charParams l="693" t="438" r="719" b="470">e</charParams>
+<charParams l="723" t="438" r="744" b="470">s</charParams>
+<charParams l="747" t="424" r="764" b="469">i</charParams>
+<charParams l="767" t="438" r="797" b="483">g</charParams>
+<charParams l="801" t="438" r="834" b="469">n</charParams>
+<charParams l="838" t="438" r="868" b="470">a</charParams>
+<charParams l="870" t="428" r="890" b="470">t</charParams>
+<charParams l="894" t="438" r="919" b="470">e</charParams>
+<charParams l="923" t="425" r="956" b="470">d</charParams>
+<charParams l="957" t="425" r="974" b="470"> </charParams>
+<charParams l="975" t="425" r="1023" b="469">R</charParams>
+<charParams l="1025" t="438" r="1050" b="470">e</charParams>
+<charParams l="1054" t="438" r="1075" b="470">s</charParams>
+<charParams l="1079" t="424" r="1095" b="469">i</charParams>
+<charParams l="1099" t="425" r="1132" b="470">d</charParams>
+<charParams l="1136" t="438" r="1162" b="470">e</charParams>
+<charParams l="1165" t="438" r="1198" b="469">n</charParams>
+<charParams l="1203" t="438" r="1228" b="470">c</charParams>
+<charParams l="1232" t="438" r="1258" b="470">e</charParams>
+<charParams l="1259" t="425" r="1277" b="470"> </charParams>
+<charParams l="1278" t="425" r="1301" b="469">I</charParams>
+<charParams l="1305" t="438" r="1326" b="470">s</charParams>
+<charParams l="1331" t="438" r="1359" b="470">o</charParams>
+<charParams l="1363" t="425" r="1379" b="469">l</charParams>
+<charParams l="1383" t="438" r="1412" b="470">a</charParams>
+<charParams l="1415" t="428" r="1435" b="470">t</charParams>
+<charParams l="1437" t="424" r="1454" b="469">i</charParams>
+<charParams l="1457" t="438" r="1485" b="470">o</charParams>
+<charParams l="1490" t="438" r="1523" b="469">n</charParams>
+<charParams l="1524" t="424" r="1543" b="482"> </charParams>
+<charParams l="1544" t="424" r="1562" b="482">(</charParams>
+<charParams l="1565" t="425" r="1614" b="469">H</charParams>
+<charParams l="1617" t="438" r="1646" b="470">o</charParams>
+<charParams l="1651" t="438" r="1702" b="469">m</charParams>
+<charParams l="1706" t="438" r="1732" b="470">e</charParams>
+<charParams l="1733" t="425" r="1750" b="470"> </charParams>
+<charParams l="1751" t="425" r="1774" b="469">I</charParams>
+<charParams l="1778" t="438" r="1799" b="470">s</charParams>
+<charParams l="1805" t="438" r="1833" b="470">o</charParams>
+<charParams l="1837" t="425" r="1854" b="469">l</charParams>
+<charParams l="1857" t="438" r="1886" b="470">a</charParams>
+<charParams l="1889" t="428" r="1909" b="470">t</charParams>
+<charParams l="1911" t="424" r="1928" b="469">i</charParams>
+<charParams l="1931" t="438" r="1959" b="470">o</charParams>
+<charParams l="1964" t="438" r="1997" b="469">n</charParams>
+<charParams l="1999" t="424" r="2018" b="482">)</charParams>
+<charParams l="2019" t="424" r="2037" b="482"> </charParams>
+<charParams l="2038" t="425" r="2084" b="470">N</charParams>
+<charParams l="2088" t="438" r="2116" b="470">o</charParams>
+<charParams l="2120" t="428" r="2140" b="470">t</charParams>
+<charParams l="2142" t="424" r="2159" b="469">i</charParams>
+<charParams l="2162" t="438" r="2188" b="470">c</charParams>
+<charParams l="2192" t="438" r="2217" b="470">e</charParams></formatting></line>
+<line baseline="577" l="602" t="532" r="1934" b="591"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="16" bold="1">
+<charParams l="602" t="546" r="631" b="578">a</charParams>
+<charParams l="635" t="546" r="668" b="577">n</charParams>
+<charParams l="672" t="533" r="705" b="578">d</charParams>
+<charParams l="706" t="533" r="723" b="578"> </charParams>
+<charParams l="724" t="533" r="772" b="577">R</charParams>
+<charParams l="772" t="532" r="789" b="577">i</charParams>
+<charParams l="792" t="546" r="822" b="591">g</charParams>
+<charParams l="825" t="533" r="858" b="577">h</charParams>
+<charParams l="861" t="536" r="881" b="578">t</charParams>
+<charParams l="882" t="536" r="899" b="578"> </charParams>
+<charParams l="900" t="536" r="920" b="578">t</charParams>
+<charParams l="923" t="546" r="952" b="578">o</charParams>
+<charParams l="953" t="533" r="972" b="578"> </charParams>
+<charParams l="973" t="533" r="1009" b="577">P</charParams>
+<charParams l="1014" t="546" r="1039" b="578">e</charParams>
+<charParams l="1043" t="536" r="1063" b="578">t</charParams>
+<charParams l="1065" t="532" r="1081" b="577">i</charParams>
+<charParams l="1083" t="536" r="1103" b="578">t</charParams>
+<charParams l="1106" t="532" r="1122" b="577">i</charParams>
+<charParams l="1125" t="546" r="1154" b="578">o</charParams>
+<charParams l="1158" t="546" r="1191" b="577">n</charParams>
+<charParams l="1192" t="532" r="1211" b="577"> </charParams>
+<charParams l="1212" t="532" r="1233" b="577">f</charParams>
+<charParams l="1234" t="546" r="1263" b="578">o</charParams>
+<charParams l="1268" t="546" r="1294" b="577">r</charParams>
+<charParams l="1295" t="533" r="1312" b="577"> </charParams>
+<charParams l="1313" t="533" r="1362" b="577">H</charParams>
+<charParams l="1366" t="546" r="1395" b="578">a</charParams>
+<charParams l="1398" t="533" r="1431" b="578">b</charParams>
+<charParams l="1436" t="546" r="1461" b="578">e</charParams>
+<charParams l="1466" t="546" r="1495" b="578">a</charParams>
+<charParams l="1499" t="546" r="1520" b="578">s</charParams>
+<charParams l="1521" t="532" r="1540" b="578"> </charParams>
+<charParams l="1541" t="532" r="1583" b="578">C</charParams>
+<charParams l="1590" t="546" r="1618" b="578">o</charParams>
+<charParams l="1623" t="546" r="1649" b="577">r</charParams>
+<charParams l="1652" t="546" r="1684" b="591">p</charParams>
+<charParams l="1689" t="547" r="1722" b="578">u</charParams>
+<charParams l="1727" t="546" r="1748" b="578">s</charParams>
+<charParams l="1749" t="533" r="1767" b="578"> </charParams>
+<charParams l="1768" t="533" r="1815" b="577">R</charParams>
+<charParams l="1817" t="546" r="1843" b="578">e</charParams>
+<charParams l="1846" t="533" r="1862" b="577">l</charParams>
+<charParams l="1864" t="532" r="1880" b="577">i</charParams>
+<charParams l="1884" t="546" r="1909" b="578">e</charParams>
+<charParams l="1913" t="532" r="1934" b="577">f</charParams></formatting></line></par>
+</text>
+</block>
+<block blockType="Table" blockName="" l="231" t="599" r="2305" b="1007"><region><rect l="231" t="599" r="2305" b="1007"/></region>
+<row>
+<cell width="1095" height="236">
+<text>
+<par lineSpacing="1800">
+<line baseline="661" l="258" t="620" r="405" b="669"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="258" t="622" r="315" b="664">姓</charParams>
+<charParams l="313" t="620" r="362" b="669">名</charParams>
+<charParams l="397" t="626" r="405" b="655">：</charParams></formatting></line>
+<line baseline="736" l="254" t="697" r="392" b="737"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="254" t="697" r="297" b="737">N</charParams>
+<charParams l="299" t="709" r="323" b="737">a</charParams>
+<charParams l="324" t="709" r="369" b="736">m</charParams>
+<charParams l="370" t="709" r="392" b="737">e</charParams></formatting></line></par>
+</text></cell>
+<cell width="979" height="236">
+<text>
+<par lineSpacing="1620">
+<line baseline="661" l="1357" t="617" r="1864" b="671"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1357" t="617" r="1397" b="653">身</charParams>
+<charParams l="1413" t="620" r="1453" b="657">分</charParams>
+<charParams l="1464" t="621" r="1523" b="671">證</charParams>
+<charParams l="1523" t="619" r="1581" b="667">號</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1582" t="620" r="1599" b="662">/</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1597" t="618" r="1652" b="671">護</charParams>
+<charParams l="1655" t="623" r="1705" b="668">照</charParams>
+<charParams l="1714" t="619" r="1772" b="667">號</charParams>
+<charParams l="1772" t="623" r="1822" b="667">碼</charParams>
+<charParams l="1856" t="626" r="1864" b="655">：</charParams></formatting></line></par>
+<par lineSpacing="1610">
+<line baseline="736" l="1350" t="695" r="2006" b="749"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1350" t="696" r="1385" b="737">C</charParams>
+<charParams l="1389" t="695" r="1402" b="736">i</charParams>
+<charParams l="1404" t="701" r="1420" b="737">t</charParams>
+<charParams l="1421" t="695" r="1435" b="736">i</charParams>
+<charParams l="1437" t="710" r="1461" b="736">z</charParams>
+<charParams l="1464" t="709" r="1486" b="737">e</charParams>
+<charParams l="1488" t="709" r="1517" b="736">n</charParams>
+<charParams l="1518" t="697" r="1532" b="736"> </charParams>
+<charParams l="1533" t="697" r="1550" b="736">I</charParams>
+<charParams l="1552" t="697" r="1591" b="736">D</charParams>
+<charParams l="1592" t="697" r="1606" b="737"> </charParams>
+<charParams l="1607" t="697" r="1649" b="737">N</charParams>
+<charParams l="1652" t="709" r="1677" b="737">o</charParams>
+<charParams l="1683" t="731" r="1690" b="737">.</charParams>
+<charParams l="1691" t="695" r="1707" b="737"> </charParams>
+<charParams l="1708" t="695" r="1724" b="737">/</charParams>
+<charParams l="1725" t="697" r="1755" b="736">P</charParams>
+<charParams l="1759" t="709" r="1782" b="737">a</charParams>
+<charParams l="1785" t="709" r="1803" b="737">s</charParams>
+<charParams l="1808" t="709" r="1826" b="737">s</charParams>
+<charParams l="1828" t="709" r="1855" b="749">p</charParams>
+<charParams l="1859" t="709" r="1884" b="737">o</charParams>
+<charParams l="1887" t="709" r="1906" b="736">r</charParams>
+<charParams l="1906" t="701" r="1922" b="737">t</charParams>
+<charParams l="1923" t="697" r="1935" b="737"> </charParams>
+<charParams l="1936" t="697" r="1978" b="737">N</charParams>
+<charParams l="1980" t="709" r="2006" b="737">o</charParams></formatting></line></par>
+</text></cell></row>
+<row>
+<cell bottomBorder="White" width="1095" height="73">
+<text>
+<par lineSpacing="1610">
+<line baseline="896" l="254" t="854" r="521" b="907"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="254" t="854" r="307" b="904">聯</charParams>
+<charParams l="313" t="857" r="367" b="907">絡</charParams>
+<charParams l="371" t="854" r="418" b="902">電</charParams>
+<charParams l="430" t="858" r="485" b="906">話</charParams>
+<charParams l="514" t="861" r="521" b="890">：</charParams></formatting></line></par>
+</text></cell>
+<cell bottomBorder="White" width="979" height="73">
+<text>
+<par lineSpacing="1720">
+<line baseline="896" l="1347" t="854" r="1497" b="900"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1347" t="854" r="1389" b="896">地</charParams>
+<charParams l="1410" t="860" r="1461" b="900">址</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="15">
+<charParams l="1491" t="861" r="1497" b="889">︰</charParams></formatting></line></par>
+</text></cell></row>
+<row>
+<cell topBorder="White" width="1095" height="99">
+<text>
+<par lineSpacing="1610">
+<line baseline="971" l="257" t="932" r="361" b="971"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="257" t="932" r="289" b="971">T</charParams>
+<charParams l="292" t="932" r="325" b="971">E</charParams>
+<charParams l="327" t="932" r="361" b="971">L</charParams></formatting></line></par>
+</text></cell>
+<cell topBorder="White" width="979" height="99">
+<text>
+<par lineSpacing="1610">
+<line baseline="971" l="1349" t="930" r="1537" b="972"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1349" t="931" r="1390" b="971">A</charParams>
+<charParams l="1392" t="930" r="1420" b="972">d</charParams>
+<charParams l="1422" t="930" r="1449" b="972">d</charParams>
+<charParams l="1450" t="944" r="1469" b="971">r</charParams>
+<charParams l="1471" t="944" r="1493" b="972">e</charParams>
+<charParams l="1497" t="944" r="1515" b="972">s</charParams>
+<charParams l="1520" t="944" r="1537" b="972">s</charParams></formatting></line></par>
+</text></cell></row>
+</block>
+<block blockType="Text" blockName="" l="257" t="1043" r="2281" b="1275"><region><rect l="257" t="1043" r="2281" b="1275"/></region>
+<text>
+<par align="Justified" lineSpacing="1992">
+<line baseline="1093" l="259" t="1049" r="2249" b="1105"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="259" t="1054" r="309" b="1092">依</charParams>
+<charParams l="318" t="1049" r="366" b="1093">傳</charParams>
+<charParams l="376" t="1050" r="425" b="1101">染</charParams>
+<charParams l="439" t="1054" r="486" b="1105">病</charParams>
+<charParams l="501" t="1057" r="541" b="1097">防</charParams>
+<charParams l="551" t="1052" r="603" b="1100">治</charParams>
+<charParams l="616" t="1052" r="655" b="1096">法</charParams>
+<charParams l="668" t="1049" r="713" b="1095">第</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="743" t="1053" r="769" b="1093">4</charParams>
+<charParams l="772" t="1053" r="798" b="1093">4</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="814" t="1051" r="867" b="1100">條</charParams>
+<charParams l="873" t="1049" r="918" b="1095">第</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="954" t="1053" r="969" b="1093">1</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="990" t="1053" r="1041" b="1097">項</charParams>
+<charParams l="1049" t="1053" r="1106" b="1095">規</charParams>
+<charParams l="1120" t="1052" r="1168" b="1099">定</charParams>
+<charParams l="1192" t="1068" r="1199" b="1082">，</charParams>
+<charParams l="1224" t="1050" r="1265" b="1098">為</charParams>
+<charParams l="1296" t="1057" r="1314" b="1087">了</charParams>
+<charParams l="1340" t="1052" r="1398" b="1098">保</charParams>
+<charParams l="1399" t="1050" r="1453" b="1102">護</charParams>
+<charParams l="1457" t="1050" r="1507" b="1098">您</charParams>
+<charParams l="1515" t="1053" r="1574" b="1105">和</charParams>
+<charParams l="1574" t="1053" r="1631" b="1098">親</charParams>
+<charParams l="1632" t="1051" r="1681" b="1090">友</charParams>
+<charParams l="1690" t="1056" r="1727" b="1086">及</charParams>
+<charParams l="1760" t="1053" r="1789" b="1084">大</charParams>
+<charParams l="1807" t="1052" r="1864" b="1091">眾</charParams>
+<charParams l="1865" t="1053" r="1926" b="1091">的</charParams>
+<charParams l="1924" t="1053" r="1978" b="1098">健</charParams>
+<charParams l="1988" t="1050" r="2028" b="1097">康</charParams>
+<charParams l="2045" t="1050" r="2089" b="1099">與</charParams>
+<charParams l="2103" t="1053" r="2143" b="1094">安</charParams>
+<charParams l="2168" t="1054" r="2206" b="1098">全</charParams>
+<charParams l="2241" t="1068" r="2249" b="1082">，</charParams></formatting></line>
+<line baseline="1176" l="259" t="1132" r="2264" b="1189"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="259" t="1135" r="320" b="1189">請</charParams>
+<charParams l="318" t="1134" r="367" b="1181">您</charParams>
+<charParams l="381" t="1137" r="429" b="1176">於</charParams>
+<charParams l="430" t="1133" r="527" b="1176"> </charParams>
+<charParams l="528" t="1133" r="566" b="1173">年</charParams>
+<charParams l="567" t="1133" r="666" b="1173"> </charParams>
+<charParams l="667" t="1138" r="699" b="1163">月</charParams>
+<charParams l="700" t="1138" r="812" b="1182"> </charParams>
+<charParams l="813" t="1142" r="849" b="1182">日</charParams>
+<charParams l="878" t="1139" r="915" b="1180">至</charParams>
+<charParams l="916" t="1133" r="1023" b="1180"> </charParams>
+<charParams l="1024" t="1133" r="1062" b="1173">年</charParams>
+<charParams l="1063" t="1133" r="1162" b="1173"> </charParams>
+<charParams l="1163" t="1138" r="1195" b="1163">月</charParams>
+<charParams l="1196" t="1138" r="1308" b="1182"> </charParams>
+<charParams l="1309" t="1142" r="1345" b="1182">日</charParams>
+<charParams l="1372" t="1135" r="1415" b="1180">期</charParams>
+<charParams l="1426" t="1135" r="1476" b="1177">間</charParams>
+<charParams l="1485" t="1137" r="1540" b="1183">進</charParams>
+<charParams l="1543" t="1136" r="1592" b="1180">行</charParams>
+<charParams l="1602" t="1134" r="1650" b="1189">指</charParams>
+<charParams l="1673" t="1136" r="1720" b="1182">定</charParams>
+<charParams l="1718" t="1132" r="1778" b="1184">處</charParams>
+<charParams l="1776" t="1137" r="1834" b="1178">所</charParams>
+<charParams l="1835" t="1139" r="1889" b="1186">隔</charParams>
+<charParams l="1898" t="1135" r="1953" b="1187">離</charParams>
+<charParams l="1964" t="1151" r="1972" b="1166">，</charParams>
+<charParams l="1982" t="1134" r="2016" b="1189">有</charParams>
+<charParams l="2040" t="1135" r="2087" b="1182">關</charParams>
+<charParams l="2099" t="1139" r="2153" b="1186">隔</charParams>
+<charParams l="2162" t="1135" r="2217" b="1187">離</charParams>
+<charParams l="2215" t="1142" r="2264" b="1178">之</charParams></formatting></line>
+<line baseline="1259" l="259" t="1215" r="876" b="1272"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="259" t="1217" r="314" b="1267">應</charParams>
+<charParams l="318" t="1215" r="367" b="1272">遵</charParams>
+<charParams l="387" t="1218" r="420" b="1253">守</charParams>
+<charParams l="435" t="1222" r="471" b="1252">及</charParams>
+<charParams l="499" t="1222" r="548" b="1263">注</charParams>
+<charParams l="551" t="1216" r="600" b="1267">意</charParams>
+<charParams l="610" t="1215" r="656" b="1263">事</charParams>
+<charParams l="668" t="1220" r="718" b="1264">項</charParams>
+<charParams l="726" t="1220" r="785" b="1259">如</charParams>
+<charParams l="784" t="1223" r="827" b="1245">下</charParams>
+<charParams l="869" t="1224" r="876" b="1253">：</charParams></formatting></line></par>
+</text>
+</block>
+<block blockType="Text" blockName="" l="254" t="1320" r="2282" b="3335"><region><rect l="254" t="1320" r="2282" b="3335"/></region>
+<text>
+<par align="Justified" lineSpacing="2000">
+<line baseline="1361" l="260" t="1326" r="2274" b="1372"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="260" t="1327" r="296" b="1361">A</charParams>
+<charParams l="298" t="1338" r="317" b="1362">c</charParams>
+<charParams l="320" t="1338" r="339" b="1362">c</charParams>
+<charParams l="342" t="1338" r="363" b="1362">o</charParams>
+<charParams l="365" t="1338" r="382" b="1361">r</charParams>
+<charParams l="383" t="1326" r="407" b="1362">d</charParams>
+<charParams l="408" t="1326" r="419" b="1361">i</charParams>
+<charParams l="421" t="1338" r="445" b="1361">n</charParams>
+<charParams l="448" t="1338" r="470" b="1372">g</charParams>
+<charParams l="471" t="1331" r="484" b="1372"> </charParams>
+<charParams l="485" t="1331" r="498" b="1362">t</charParams>
+<charParams l="500" t="1338" r="522" b="1362">o</charParams>
+<charParams l="523" t="1328" r="537" b="1362"> </charParams>
+<charParams l="538" t="1328" r="563" b="1361">P</charParams>
+<charParams l="567" t="1338" r="587" b="1362">a</charParams>
+<charParams l="588" t="1338" r="604" b="1361">r</charParams>
+<charParams l="606" t="1338" r="626" b="1362">a</charParams>
+<charParams l="628" t="1338" r="650" b="1372">g</charParams>
+<charParams l="651" t="1338" r="668" b="1361">r</charParams>
+<charParams l="669" t="1338" r="690" b="1362">a</charParams>
+<charParams l="689" t="1338" r="713" b="1372">p</charParams>
+<charParams l="715" t="1326" r="739" b="1361">h</charParams>
+<charParams l="740" t="1326" r="759" b="1361"> </charParams>
+<charParams l="760" t="1327" r="773" b="1361">1</charParams>
+<charParams l="781" t="1356" r="789" b="1370">,</charParams>
+<charParams l="790" t="1327" r="801" b="1370"> </charParams>
+<charParams l="802" t="1327" r="837" b="1361">A</charParams>
+<charParams l="838" t="1338" r="855" b="1361">r</charParams>
+<charParams l="855" t="1331" r="868" b="1362">t</charParams>
+<charParams l="870" t="1326" r="881" b="1361">i</charParams>
+<charParams l="884" t="1338" r="903" b="1362">c</charParams>
+<charParams l="906" t="1326" r="917" b="1361">l</charParams>
+<charParams l="920" t="1338" r="939" b="1362">e</charParams>
+<charParams l="940" t="1327" r="954" b="1362"> </charParams>
+<charParams l="955" t="1327" r="977" b="1361">4</charParams>
+<charParams l="980" t="1327" r="1003" b="1361">4</charParams>
+<charParams l="1004" t="1327" r="1019" b="1362"> </charParams>
+<charParams l="1020" t="1338" r="1042" b="1362">o</charParams>
+<charParams l="1046" t="1327" r="1061" b="1361">f</charParams>
+<charParams l="1062" t="1327" r="1074" b="1362"> </charParams>
+<charParams l="1075" t="1331" r="1088" b="1362">t</charParams>
+<charParams l="1088" t="1326" r="1113" b="1361">h</charParams>
+<charParams l="1115" t="1338" r="1134" b="1362">e</charParams>
+<charParams l="1135" t="1327" r="1150" b="1362"> </charParams>
+<charParams l="1151" t="1327" r="1181" b="1362">C</charParams>
+<charParams l="1184" t="1338" r="1206" b="1362">o</charParams>
+<charParams l="1208" t="1338" r="1246" b="1361">m</charParams>
+<charParams l="1247" t="1338" r="1285" b="1361">m</charParams>
+<charParams l="1285" t="1339" r="1310" b="1362">u</charParams>
+<charParams l="1310" t="1338" r="1335" b="1361">n</charParams>
+<charParams l="1337" t="1326" r="1348" b="1361">i</charParams>
+<charParams l="1351" t="1338" r="1370" b="1362">c</charParams>
+<charParams l="1373" t="1338" r="1393" b="1362">a</charParams>
+<charParams l="1393" t="1326" r="1416" b="1362">b</charParams>
+<charParams l="1420" t="1326" r="1431" b="1361">l</charParams>
+<charParams l="1434" t="1338" r="1453" b="1362">e</charParams>
+<charParams l="1454" t="1328" r="1468" b="1362"> </charParams>
+<charParams l="1469" t="1328" r="1502" b="1361">D</charParams>
+<charParams l="1506" t="1326" r="1517" b="1361">i</charParams>
+<charParams l="1520" t="1338" r="1536" b="1362">s</charParams>
+<charParams l="1539" t="1338" r="1558" b="1362">e</charParams>
+<charParams l="1561" t="1338" r="1582" b="1362">a</charParams>
+<charParams l="1584" t="1338" r="1599" b="1362">s</charParams>
+<charParams l="1603" t="1338" r="1622" b="1362">e</charParams>
+<charParams l="1623" t="1327" r="1638" b="1362"> </charParams>
+<charParams l="1639" t="1327" r="1669" b="1362">C</charParams>
+<charParams l="1672" t="1338" r="1694" b="1362">o</charParams>
+<charParams l="1696" t="1338" r="1720" b="1361">n</charParams>
+<charParams l="1721" t="1331" r="1734" b="1362">t</charParams>
+<charParams l="1735" t="1338" r="1751" b="1361">r</charParams>
+<charParams l="1753" t="1338" r="1774" b="1362">o</charParams>
+<charParams l="1777" t="1326" r="1789" b="1361">l</charParams>
+<charParams l="1790" t="1326" r="1800" b="1361"> </charParams>
+<charParams l="1801" t="1327" r="1836" b="1361">A</charParams>
+<charParams l="1838" t="1338" r="1857" b="1362">c</charParams>
+<charParams l="1859" t="1331" r="1872" b="1362">t</charParams>
+<charParams l="1875" t="1356" r="1882" b="1370">,</charParams>
+<charParams l="1883" t="1326" r="1900" b="1370"> </charParams>
+<charParams l="1901" t="1326" r="1912" b="1361">i</charParams>
+<charParams l="1914" t="1338" r="1938" b="1361">n</charParams>
+<charParams l="1939" t="1338" r="1953" b="1362"> </charParams>
+<charParams l="1954" t="1338" r="1976" b="1362">o</charParams>
+<charParams l="1978" t="1338" r="1994" b="1361">r</charParams>
+<charParams l="1996" t="1326" r="2019" b="1362">d</charParams>
+<charParams l="2021" t="1338" r="2040" b="1362">e</charParams>
+<charParams l="2041" t="1338" r="2058" b="1361">r</charParams>
+<charParams l="2059" t="1331" r="2071" b="1362"> </charParams>
+<charParams l="2072" t="1331" r="2085" b="1362">t</charParams>
+<charParams l="2087" t="1338" r="2108" b="1362">o</charParams>
+<charParams l="2109" t="1338" r="2123" b="1372"> </charParams>
+<charParams l="2124" t="1338" r="2148" b="1372">p</charParams>
+<charParams l="2150" t="1338" r="2166" b="1361">r</charParams>
+<charParams l="2168" t="1338" r="2187" b="1362">e</charParams>
+<charParams l="2188" t="1339" r="2212" b="1362">v</charParams>
+<charParams l="2215" t="1338" r="2234" b="1362">e</charParams>
+<charParams l="2235" t="1338" r="2260" b="1361">n</charParams>
+<charParams l="2261" t="1331" r="2274" b="1362">t</charParams></formatting></line>
+<line baseline="1445" l="261" t="1410" r="2271" b="1455"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="261" t="1415" r="274" b="1445">t</charParams>
+<charParams l="274" t="1410" r="299" b="1445">h</charParams>
+<charParams l="301" t="1422" r="320" b="1445">e</charParams>
+<charParams l="321" t="1422" r="337" b="1445"> </charParams>
+<charParams l="338" t="1422" r="354" b="1445">s</charParams>
+<charParams l="355" t="1422" r="379" b="1455">p</charParams>
+<charParams l="381" t="1422" r="397" b="1445">r</charParams>
+<charParams l="399" t="1422" r="418" b="1445">e</charParams>
+<charParams l="421" t="1422" r="442" b="1445">a</charParams>
+<charParams l="443" t="1410" r="467" b="1445">d</charParams>
+<charParams l="468" t="1410" r="482" b="1445"> </charParams>
+<charParams l="483" t="1422" r="505" b="1445">o</charParams>
+<charParams l="508" t="1410" r="524" b="1445">f</charParams>
+<charParams l="525" t="1410" r="537" b="1445"> </charParams>
+<charParams l="538" t="1415" r="552" b="1445">t</charParams>
+<charParams l="552" t="1410" r="576" b="1445">h</charParams>
+<charParams l="579" t="1422" r="598" b="1445">e</charParams>
+<charParams l="599" t="1410" r="615" b="1445"> </charParams>
+<charParams l="616" t="1410" r="639" b="1445">d</charParams>
+<charParams l="641" t="1410" r="652" b="1445">i</charParams>
+<charParams l="656" t="1422" r="671" b="1445">s</charParams>
+<charParams l="675" t="1422" r="693" b="1445">e</charParams>
+<charParams l="697" t="1422" r="717" b="1445">a</charParams>
+<charParams l="719" t="1422" r="735" b="1445">s</charParams>
+<charParams l="739" t="1422" r="758" b="1445">e</charParams>
+<charParams l="759" t="1422" r="775" b="1445"> </charParams>
+<charParams l="776" t="1422" r="796" b="1445">a</charParams>
+<charParams l="796" t="1422" r="821" b="1445">n</charParams>
+<charParams l="823" t="1410" r="846" b="1445">d</charParams>
+<charParams l="847" t="1410" r="860" b="1455"> </charParams>
+<charParams l="861" t="1422" r="884" b="1455">p</charParams>
+<charParams l="886" t="1422" r="903" b="1445">r</charParams>
+<charParams l="904" t="1422" r="926" b="1445">o</charParams>
+<charParams l="928" t="1415" r="942" b="1445">t</charParams>
+<charParams l="944" t="1422" r="963" b="1445">e</charParams>
+<charParams l="966" t="1422" r="985" b="1445">c</charParams>
+<charParams l="987" t="1415" r="1000" b="1445">t</charParams>
+<charParams l="1001" t="1415" r="1014" b="1445"> </charParams>
+<charParams l="1015" t="1415" r="1029" b="1445">t</charParams>
+<charParams l="1029" t="1410" r="1054" b="1445">h</charParams>
+<charParams l="1056" t="1422" r="1075" b="1445">e</charParams>
+<charParams l="1076" t="1410" r="1091" b="1445"> </charParams>
+<charParams l="1092" t="1410" r="1116" b="1445">h</charParams>
+<charParams l="1118" t="1422" r="1137" b="1445">e</charParams>
+<charParams l="1140" t="1422" r="1160" b="1445">a</charParams>
+<charParams l="1162" t="1410" r="1173" b="1445">l</charParams>
+<charParams l="1175" t="1415" r="1188" b="1445">t</charParams>
+<charParams l="1189" t="1410" r="1213" b="1445">h</charParams>
+<charParams l="1214" t="1410" r="1230" b="1445"> </charParams>
+<charParams l="1231" t="1422" r="1251" b="1445">a</charParams>
+<charParams l="1252" t="1422" r="1276" b="1445">n</charParams>
+<charParams l="1278" t="1410" r="1301" b="1445">d</charParams>
+<charParams l="1302" t="1410" r="1318" b="1445"> </charParams>
+<charParams l="1319" t="1422" r="1334" b="1445">s</charParams>
+<charParams l="1337" t="1422" r="1358" b="1445">a</charParams>
+<charParams l="1360" t="1410" r="1375" b="1445">f</charParams>
+<charParams l="1376" t="1422" r="1395" b="1445">e</charParams>
+<charParams l="1397" t="1415" r="1410" b="1445">t</charParams>
+<charParams l="1411" t="1422" r="1436" b="1455">y</charParams>
+<charParams l="1437" t="1422" r="1451" b="1455"> </charParams>
+<charParams l="1452" t="1422" r="1473" b="1445">o</charParams>
+<charParams l="1477" t="1410" r="1493" b="1445">f</charParams>
+<charParams l="1494" t="1410" r="1507" b="1455"> </charParams>
+<charParams l="1508" t="1422" r="1533" b="1455">y</charParams>
+<charParams l="1534" t="1422" r="1555" b="1445">o</charParams>
+<charParams l="1557" t="1422" r="1582" b="1445">u</charParams>
+<charParams l="1582" t="1422" r="1599" b="1445">r</charParams>
+<charParams l="1600" t="1410" r="1615" b="1445"> </charParams>
+<charParams l="1616" t="1410" r="1632" b="1445">f</charParams>
+<charParams l="1631" t="1422" r="1648" b="1445">r</charParams>
+<charParams l="1648" t="1410" r="1660" b="1445">i</charParams>
+<charParams l="1663" t="1422" r="1682" b="1445">e</charParams>
+<charParams l="1683" t="1422" r="1708" b="1445">n</charParams>
+<charParams l="1710" t="1410" r="1733" b="1445">d</charParams>
+<charParams l="1735" t="1422" r="1751" b="1445">s</charParams>
+<charParams l="1756" t="1440" r="1763" b="1453">,</charParams>
+<charParams l="1764" t="1410" r="1781" b="1453"> </charParams>
+<charParams l="1782" t="1410" r="1798" b="1445">f</charParams>
+<charParams l="1799" t="1422" r="1819" b="1445">a</charParams>
+<charParams l="1819" t="1422" r="1857" b="1445">m</charParams>
+<charParams l="1859" t="1410" r="1870" b="1445">i</charParams>
+<charParams l="1873" t="1410" r="1885" b="1445">l</charParams>
+<charParams l="1886" t="1422" r="1911" b="1455">y</charParams>
+<charParams l="1912" t="1422" r="1925" b="1455"> </charParams>
+<charParams l="1926" t="1422" r="1964" b="1445">m</charParams>
+<charParams l="1966" t="1422" r="1985" b="1445">e</charParams>
+<charParams l="1987" t="1422" r="2025" b="1445">m</charParams>
+<charParams l="2025" t="1410" r="2049" b="1445">b</charParams>
+<charParams l="2052" t="1422" r="2071" b="1445">e</charParams>
+<charParams l="2073" t="1422" r="2090" b="1445">r</charParams>
+<charParams l="2092" t="1422" r="2107" b="1445">s</charParams>
+<charParams l="2108" t="1422" r="2125" b="1445"> </charParams>
+<charParams l="2126" t="1422" r="2146" b="1445">a</charParams>
+<charParams l="2146" t="1422" r="2171" b="1445">n</charParams>
+<charParams l="2173" t="1410" r="2196" b="1445">d</charParams>
+<charParams l="2197" t="1410" r="2210" b="1445"> </charParams>
+<charParams l="2211" t="1415" r="2225" b="1445">t</charParams>
+<charParams l="2225" t="1410" r="2250" b="1445">h</charParams>
+<charParams l="2252" t="1422" r="2271" b="1445">e</charParams></formatting></line>
+<line baseline="1528" l="260" t="1493" r="2273" b="1539"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="260" t="1505" r="283" b="1539">p</charParams>
+<charParams l="285" t="1506" r="310" b="1529">u</charParams>
+<charParams l="310" t="1493" r="333" b="1529">b</charParams>
+<charParams l="337" t="1493" r="348" b="1528">l</charParams>
+<charParams l="350" t="1493" r="362" b="1528">i</charParams>
+<charParams l="365" t="1505" r="384" b="1529">c</charParams>
+<charParams l="388" t="1523" r="395" b="1537">,</charParams>
+<charParams l="396" t="1505" r="409" b="1539"> </charParams>
+<charParams l="410" t="1505" r="434" b="1539">p</charParams>
+<charParams l="437" t="1493" r="448" b="1528">l</charParams>
+<charParams l="451" t="1505" r="470" b="1529">e</charParams>
+<charParams l="473" t="1505" r="494" b="1529">a</charParams>
+<charParams l="496" t="1505" r="511" b="1529">s</charParams>
+<charParams l="515" t="1505" r="534" b="1529">e</charParams>
+<charParams l="535" t="1505" r="549" b="1529"> </charParams>
+<charParams l="550" t="1505" r="569" b="1529">c</charParams>
+<charParams l="572" t="1505" r="593" b="1529">o</charParams>
+<charParams l="595" t="1505" r="634" b="1528">m</charParams>
+<charParams l="634" t="1505" r="657" b="1539">p</charParams>
+<charParams l="660" t="1493" r="672" b="1528">l</charParams>
+<charParams l="674" t="1506" r="698" b="1539">y</charParams>
+<charParams l="699" t="1506" r="710" b="1539"> </charParams>
+<charParams l="711" t="1506" r="746" b="1529">w</charParams>
+<charParams l="748" t="1493" r="759" b="1528">i</charParams>
+<charParams l="761" t="1498" r="775" b="1529">t</charParams>
+<charParams l="775" t="1493" r="799" b="1528">h</charParams>
+<charParams l="800" t="1493" r="812" b="1529"> </charParams>
+<charParams l="813" t="1498" r="827" b="1529">t</charParams>
+<charParams l="827" t="1493" r="851" b="1528">h</charParams>
+<charParams l="854" t="1505" r="872" b="1529">e</charParams>
+<charParams l="873" t="1494" r="888" b="1529"> </charParams>
+<charParams l="889" t="1494" r="904" b="1528">f</charParams>
+<charParams l="905" t="1505" r="927" b="1529">o</charParams>
+<charParams l="930" t="1493" r="941" b="1528">l</charParams>
+<charParams l="944" t="1493" r="955" b="1528">l</charParams>
+<charParams l="958" t="1505" r="979" b="1529">o</charParams>
+<charParams l="981" t="1506" r="1017" b="1529">w</charParams>
+<charParams l="1019" t="1493" r="1030" b="1528">i</charParams>
+<charParams l="1031" t="1505" r="1056" b="1528">n</charParams>
+<charParams l="1058" t="1505" r="1080" b="1539">g</charParams>
+<charParams l="1081" t="1505" r="1093" b="1539"> </charParams>
+<charParams l="1094" t="1505" r="1111" b="1528">r</charParams>
+<charParams l="1112" t="1505" r="1131" b="1529">e</charParams>
+<charParams l="1134" t="1505" r="1156" b="1539">g</charParams>
+<charParams l="1157" t="1506" r="1182" b="1529">u</charParams>
+<charParams l="1183" t="1493" r="1195" b="1528">l</charParams>
+<charParams l="1198" t="1505" r="1218" b="1529">a</charParams>
+<charParams l="1219" t="1498" r="1232" b="1529">t</charParams>
+<charParams l="1233" t="1493" r="1245" b="1528">i</charParams>
+<charParams l="1248" t="1505" r="1269" b="1529">o</charParams>
+<charParams l="1271" t="1505" r="1296" b="1528">n</charParams>
+<charParams l="1298" t="1505" r="1314" b="1529">s</charParams>
+<charParams l="1315" t="1505" r="1328" b="1529"> </charParams>
+<charParams l="1329" t="1505" r="1345" b="1528">r</charParams>
+<charParams l="1347" t="1505" r="1366" b="1529">e</charParams>
+<charParams l="1368" t="1505" r="1391" b="1539">g</charParams>
+<charParams l="1394" t="1505" r="1414" b="1529">a</charParams>
+<charParams l="1414" t="1505" r="1431" b="1528">r</charParams>
+<charParams l="1432" t="1493" r="1456" b="1529">d</charParams>
+<charParams l="1457" t="1493" r="1468" b="1528">i</charParams>
+<charParams l="1470" t="1505" r="1494" b="1528">n</charParams>
+<charParams l="1496" t="1505" r="1519" b="1539">g</charParams>
+<charParams l="1520" t="1493" r="1534" b="1539"> </charParams>
+<charParams l="1535" t="1493" r="1558" b="1529">d</charParams>
+<charParams l="1560" t="1505" r="1579" b="1529">e</charParams>
+<charParams l="1583" t="1505" r="1598" b="1529">s</charParams>
+<charParams l="1601" t="1493" r="1612" b="1528">i</charParams>
+<charParams l="1615" t="1505" r="1638" b="1539">g</charParams>
+<charParams l="1639" t="1505" r="1663" b="1528">n</charParams>
+<charParams l="1666" t="1505" r="1686" b="1529">a</charParams>
+<charParams l="1686" t="1498" r="1700" b="1529">t</charParams>
+<charParams l="1701" t="1505" r="1720" b="1529">e</charParams>
+<charParams l="1724" t="1493" r="1747" b="1529">d</charParams>
+<charParams l="1748" t="1493" r="1759" b="1529"> </charParams>
+<charParams l="1760" t="1505" r="1777" b="1528">r</charParams>
+<charParams l="1779" t="1505" r="1798" b="1529">e</charParams>
+<charParams l="1801" t="1505" r="1817" b="1529">s</charParams>
+<charParams l="1820" t="1493" r="1831" b="1528">i</charParams>
+<charParams l="1834" t="1493" r="1857" b="1529">d</charParams>
+<charParams l="1859" t="1505" r="1878" b="1529">e</charParams>
+<charParams l="1880" t="1505" r="1904" b="1528">n</charParams>
+<charParams l="1906" t="1505" r="1925" b="1529">c</charParams>
+<charParams l="1928" t="1505" r="1947" b="1529">e</charParams>
+<charParams l="1948" t="1493" r="1962" b="1529"> </charParams>
+<charParams l="1963" t="1493" r="1974" b="1528">i</charParams>
+<charParams l="1978" t="1505" r="1993" b="1529">s</charParams>
+<charParams l="1996" t="1505" r="2018" b="1529">o</charParams>
+<charParams l="2021" t="1493" r="2033" b="1528">l</charParams>
+<charParams l="2036" t="1505" r="2056" b="1529">a</charParams>
+<charParams l="2056" t="1498" r="2070" b="1529">t</charParams>
+<charParams l="2071" t="1493" r="2082" b="1528">i</charParams>
+<charParams l="2086" t="1505" r="2107" b="1529">o</charParams>
+<charParams l="2109" t="1505" r="2134" b="1528">n</charParams>
+<charParams l="2135" t="1493" r="2148" b="1539"> </charParams>
+<charParams l="2149" t="1493" r="2162" b="1539">（</charParams>
+<charParams l="2164" t="1493" r="2188" b="1528">h</charParams>
+<charParams l="2190" t="1505" r="2212" b="1529">o</charParams>
+<charParams l="2214" t="1505" r="2252" b="1528">m</charParams>
+<charParams l="2254" t="1505" r="2273" b="1529">e</charParams></formatting></line>
+<line baseline="1611" l="262" t="1576" r="2274" b="1622"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="262" t="1576" r="273" b="1611">i</charParams>
+<charParams l="276" t="1588" r="292" b="1612">s</charParams>
+<charParams l="295" t="1588" r="317" b="1612">o</charParams>
+<charParams l="320" t="1576" r="331" b="1611">l</charParams>
+<charParams l="334" t="1588" r="355" b="1612">a</charParams>
+<charParams l="355" t="1581" r="369" b="1612">t</charParams>
+<charParams l="370" t="1576" r="381" b="1611">i</charParams>
+<charParams l="384" t="1588" r="406" b="1612">o</charParams>
+<charParams l="408" t="1588" r="432" b="1611">n</charParams>
+<charParams l="434" t="1576" r="447" b="1622">）</charParams>
+<charParams l="448" t="1576" r="499" b="1622"> </charParams>
+<charParams l="500" t="1576" r="524" b="1612">d</charParams>
+<charParams l="524" t="1589" r="549" b="1612">u</charParams>
+<charParams l="549" t="1588" r="566" b="1611">r</charParams>
+<charParams l="567" t="1576" r="578" b="1611">i</charParams>
+<charParams l="579" t="1588" r="604" b="1611">n</charParams>
+<charParams l="606" t="1588" r="628" b="1622">g</charParams>
+<charParams l="629" t="1581" r="678" b="1622"> </charParams>
+<charParams l="679" t="1581" r="692" b="1612">t</charParams>
+<charParams l="693" t="1576" r="717" b="1611">h</charParams>
+<charParams l="719" t="1588" r="738" b="1612">e</charParams>
+<charParams l="739" t="1588" r="788" b="1622"> </charParams>
+<charParams l="789" t="1588" r="813" b="1622">p</charParams>
+<charParams l="816" t="1588" r="835" b="1612">e</charParams>
+<charParams l="837" t="1588" r="853" b="1611">r</charParams>
+<charParams l="855" t="1576" r="866" b="1611">i</charParams>
+<charParams l="869" t="1588" r="890" b="1612">o</charParams>
+<charParams l="894" t="1576" r="917" b="1612">d</charParams>
+<charParams l="918" t="1576" r="968" b="1612"> </charParams>
+<charParams l="969" t="1577" r="985" b="1611">f</charParams>
+<charParams l="984" t="1588" r="1001" b="1611">r</charParams>
+<charParams l="1002" t="1588" r="1023" b="1612">o</charParams>
+<charParams l="1025" t="1588" r="1064" b="1611">m</charParams>
+<charParams l="1065" t="1588" r="1112" b="1622"> </charParams>
+<charParams l="1113" t="1620" r="1239" b="1622" isTab="1" tabLeaderCount="5">_</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12" underline="1">
+<charParams l="1239" t="1576" r="1253" b="1612">/</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="1252" t="1620" r="1278" b="1622">_</charParams>
+<charParams l="1277" t="1620" r="1303" b="1622">_</charParams>
+<charParams l="1302" t="1620" r="1328" b="1622">_</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12" underline="1">
+<charParams l="1328" t="1576" r="1342" b="1612">/</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="1341" t="1620" r="1367" b="1622">_</charParams>
+<charParams l="1366" t="1620" r="1392" b="1622">_</charParams>
+<charParams l="1391" t="1620" r="1417" b="1622">_</charParams>
+<charParams l="1418" t="1576" r="1467" b="1622"> </charParams>
+<charParams l="1468" t="1576" r="1482" b="1622">（</charParams>
+<charParams l="1483" t="1578" r="1518" b="1611">Y</charParams>
+<charParams l="1519" t="1578" r="1554" b="1611">Y</charParams>
+<charParams l="1555" t="1578" r="1590" b="1611">Y</charParams>
+<charParams l="1591" t="1578" r="1626" b="1611">Y</charParams>
+<charParams l="1627" t="1576" r="1641" b="1612">/</charParams>
+<charParams l="1642" t="1578" r="1684" b="1611">M</charParams>
+<charParams l="1686" t="1578" r="1729" b="1611">M</charParams>
+<charParams l="1730" t="1576" r="1744" b="1612">/</charParams>
+<charParams l="1745" t="1578" r="1778" b="1611">D</charParams>
+<charParams l="1781" t="1578" r="1814" b="1611">D</charParams>
+<charParams l="1817" t="1576" r="1831" b="1622">）</charParams>
+<charParams l="1832" t="1576" r="1882" b="1622"> </charParams>
+<charParams l="1883" t="1581" r="1896" b="1612">t</charParams>
+<charParams l="1898" t="1588" r="1919" b="1612">o</charParams>
+<charParams l="1920" t="1588" r="1969" b="1622"> </charParams>
+<charParams l="1970" t="1620" r="2096" b="1622" isTab="1" tabLeaderCount="5">_</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12" underline="1">
+<charParams l="2096" t="1576" r="2110" b="1612">/</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="2109" t="1620" r="2135" b="1622">_</charParams>
+<charParams l="2134" t="1620" r="2160" b="1622">_</charParams>
+<charParams l="2159" t="1620" r="2185" b="1622">_</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12" underline="1">
+<charParams l="2185" t="1576" r="2198" b="1612">/</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="2198" t="1620" r="2224" b="1622">_</charParams>
+<charParams l="2223" t="1620" r="2249" b="1622">_</charParams>
+<charParams l="2249" t="1620" r="2274" b="1622">_</charParams></formatting></line></par>
+<par align="Justified" lineSpacing="2000">
+<line baseline="1695" l="262" t="1660" r="636" b="1705"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="12">
+<charParams l="262" t="1660" r="276" b="1705">（</charParams>
+<charParams l="277" t="1662" r="312" b="1695">Y</charParams>
+<charParams l="313" t="1662" r="348" b="1695">Y</charParams>
+<charParams l="349" t="1662" r="384" b="1695">Y</charParams>
+<charParams l="385" t="1662" r="420" b="1695">Y</charParams>
+<charParams l="421" t="1660" r="435" b="1695">/</charParams>
+<charParams l="435" t="1662" r="478" b="1695">M</charParams>
+<charParams l="480" t="1662" r="522" b="1695">M</charParams>
+<charParams l="524" t="1660" r="538" b="1695">/</charParams>
+<charParams l="538" t="1662" r="572" b="1695">D</charParams>
+<charParams l="575" t="1662" r="608" b="1695">D</charParams>
+<charParams l="611" t="1660" r="624" b="1705">）</charParams>
+<charParams l="630" t="1672" r="636" b="1695">:</charParams></formatting></line></par>
+<par lineSpacing="2102">
+<line baseline="1829" l="266" t="1784" r="661" b="1841"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14" bold="1">
+<charParams l="266" t="1809" r="294" b="1814">一</charParams>
+<charParams l="341" t="1805" r="354" b="1817">、</charParams>
+<charParams l="376" t="1787" r="431" b="1837">應</charParams>
+<charParams l="435" t="1784" r="484" b="1841">遵</charParams>
+<charParams l="504" t="1788" r="537" b="1823">守</charParams>
+<charParams l="552" t="1784" r="598" b="1832">事</charParams>
+<charParams l="610" t="1789" r="661" b="1833">項</charParams></formatting></line></par>
+<par align="Justified" leftIndent="5600" startIndent="-4200" lineSpacing="2102">
+<line baseline="1919" l="319" t="1874" r="2263" b="1931"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="319" t="1874" r="337" b="1928">（</charParams>
+<charParams l="354" t="1899" r="382" b="1904">一</charParams>
+<charParams l="418" t="1874" r="436" b="1928">）</charParams>
+<charParams l="466" t="1878" r="514" b="1927">留</charParams>
+<charParams l="525" t="1877" r="584" b="1924">在</charParams>
+<charParams l="595" t="1876" r="644" b="1928">家</charParams>
+<charParams l="642" t="1876" r="675" b="1908">中</charParams>
+<charParams l="729" t="1874" r="747" b="1928">（</charParams>
+<charParams l="758" t="1877" r="804" b="1920">或</charParams>
+<charParams l="816" t="1877" r="876" b="1927">嚴</charParams>
+<charParams l="874" t="1877" r="923" b="1925">重</charParams>
+<charParams l="937" t="1877" r="988" b="1927">特</charParams>
+<charParams l="993" t="1876" r="1048" b="1921">殊</charParams>
+<charParams l="1049" t="1875" r="1098" b="1919">傳</charParams>
+<charParams l="1108" t="1876" r="1157" b="1927">染</charParams>
+<charParams l="1171" t="1879" r="1225" b="1928">性</charParams>
+<charParams l="1224" t="1877" r="1274" b="1912">肺</charParams>
+<charParams l="1298" t="1877" r="1334" b="1925">炎</charParams>
+<charParams l="1341" t="1876" r="1374" b="1908">中</charParams>
+<charParams l="1399" t="1878" r="1443" b="1918">央</charParams>
+<charParams l="1464" t="1876" r="1510" b="1922">流</charParams>
+<charParams l="1516" t="1879" r="1565" b="1923">行</charParams>
+<charParams l="1574" t="1878" r="1626" b="1922">疫</charParams>
+<charParams l="1632" t="1875" r="1690" b="1927">情</charParams>
+<charParams l="1691" t="1877" r="1739" b="1931">指</charParams>
+<charParams l="1749" t="1877" r="1808" b="1925">揮</charParams>
+<charParams l="1807" t="1876" r="1840" b="1908">中</charParams>
+<charParams l="1873" t="1888" r="1912" b="1911">心</charParams>
+<charParams l="1946" t="1895" r="1960" b="1907">、</charParams>
+<charParams l="1981" t="1877" r="2023" b="1919">地</charParams>
+<charParams l="2048" t="1879" r="2079" b="1906">方</charParams>
+<charParams l="2103" t="1878" r="2155" b="1921">政</charParams>
+<charParams l="2157" t="1877" r="2217" b="1931">府</charParams>
+<charParams l="2215" t="1877" r="2263" b="1931">指</charParams></formatting></line>
+<line baseline="2006" l="479" t="1962" r="2263" b="2019"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="479" t="1966" r="527" b="2012">定</charParams>
+<charParams l="525" t="1963" r="577" b="2019">範</charParams>
+<charParams l="583" t="1965" r="636" b="2013">圍</charParams>
+<charParams l="642" t="1968" r="682" b="2015">內</charParams>
+<charParams l="712" t="1962" r="730" b="2015">）</charParams>
+<charParams l="784" t="1981" r="792" b="1996">，</charParams>
+<charParams l="825" t="1962" r="867" b="2017">禁</charParams>
+<charParams l="880" t="1967" r="917" b="2011">止</charParams>
+<charParams l="932" t="1964" r="978" b="1999">外</charParams>
+<charParams l="1005" t="1964" r="1038" b="2009">出</charParams>
+<charParams l="1076" t="1981" r="1083" b="1996">，</charParams>
+<charParams l="1117" t="1966" r="1154" b="1997">亦</charParams>
+<charParams l="1166" t="1971" r="1203" b="2002">不</charParams>
+<charParams l="1224" t="1965" r="1274" b="2009">得</charParams>
+<charParams l="1296" t="1964" r="1329" b="2009">出</charParams>
+<charParams l="1341" t="1966" r="1392" b="2011">境</charParams>
+<charParams l="1399" t="1964" r="1445" b="2008">或</charParams>
+<charParams l="1471" t="1964" r="1504" b="2009">出</charParams>
+<charParams l="1516" t="1967" r="1569" b="2014">國</charParams>
+<charParams l="1597" t="1982" r="1610" b="1995">。</charParams>
+<charParams l="1632" t="1964" r="1689" b="2017">若</charParams>
+<charParams l="1691" t="1967" r="1741" b="2012">遇</charParams>
+<charParams l="1756" t="1966" r="1793" b="2012">生</charParams>
+<charParams l="1807" t="1962" r="1857" b="2010">命</charParams>
+<charParams l="1889" t="1983" r="1902" b="1994">、</charParams>
+<charParams l="1933" t="1962" r="1973" b="1998">身</charParams>
+<charParams l="1982" t="1964" r="2035" b="2013">體</charParams>
+<charParams l="2049" t="1962" r="2087" b="2007">等</charParams>
+<charParams l="2099" t="1972" r="2148" b="2008">之</charParams>
+<charParams l="2157" t="1965" r="2206" b="2019">緊</charParams>
+<charParams l="2224" t="1963" r="2263" b="2013">急</charParams></formatting></line>
+<line baseline="2094" l="474" t="2048" r="2270" b="2106"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="474" t="2051" r="510" b="2104">危</charParams>
+<charParams l="525" t="2052" r="584" b="2104">難</charParams>
+<charParams l="613" t="2049" r="631" b="2103">（</charParams>
+<charParams l="641" t="2055" r="701" b="2094">如</charParams>
+<charParams l="725" t="2058" r="732" b="2087">：</charParams>
+<charParams l="771" t="2053" r="804" b="2088">火</charParams>
+<charParams l="830" t="2053" r="866" b="2101">災</charParams>
+<charParams l="897" t="2070" r="911" b="2082">、</charParams>
+<charParams l="932" t="2052" r="974" b="2094">地</charParams>
+<charParams l="999" t="2050" r="1047" b="2106">震</charParams>
+<charParams l="1049" t="2052" r="1096" b="2095">或</charParams>
+<charParams l="1113" t="2052" r="1151" b="2105">需</charParams>
+<charParams l="1166" t="2052" r="1214" b="2106">緊</charParams>
+<charParams l="1233" t="2051" r="1272" b="2100">急</charParams>
+<charParams l="1283" t="2051" r="1328" b="2087">外</charParams>
+<charParams l="1354" t="2052" r="1388" b="2097">出</charParams>
+<charParams l="1399" t="2055" r="1457" b="2106">就</charParams>
+<charParams l="1457" t="2048" r="1506" b="2106">醫</charParams>
+<charParams l="1525" t="2050" r="1562" b="2094">等</charParams>
+<charParams l="1586" t="2049" r="1605" b="2103">）</charParams>
+<charParams l="1643" t="2058" r="1671" b="2092">而</charParams>
+<charParams l="1704" t="2052" r="1737" b="2097">出</charParams>
+<charParams l="1753" t="2055" r="1802" b="2093">於</charParams>
+<charParams l="1807" t="2059" r="1844" b="2090">不</charParams>
+<charParams l="1865" t="2053" r="1915" b="2097">得</charParams>
+<charParams l="1924" t="2058" r="1958" b="2080">已</charParams>
+<charParams l="1982" t="2055" r="2040" b="2095">所</charParams>
+<charParams l="2041" t="2051" r="2082" b="2100">為</charParams>
+<charParams l="2103" t="2052" r="2158" b="2105">離</charParams>
+<charParams l="2157" t="2054" r="2203" b="2095">開</charParams>
+<charParams l="2216" t="2056" r="2270" b="2103">隔</charParams></formatting></line>
+<line baseline="2181" l="470" t="2136" r="2275" b="2194"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="470" t="2140" r="526" b="2192">離</charParams>
+<charParams l="525" t="2137" r="585" b="2189">處</charParams>
+<charParams l="583" t="2142" r="641" b="2183">所</charParams>
+<charParams l="642" t="2147" r="691" b="2183">之</charParams>
+<charParams l="700" t="2139" r="750" b="2194">適</charParams>
+<charParams l="758" t="2138" r="802" b="2192">當</charParams>
+<charParams l="817" t="2142" r="866" b="2185">行</charParams>
+<charParams l="875" t="2138" r="916" b="2187">為</charParams>
+<charParams l="959" t="2156" r="967" b="2171">，</charParams>
+<charParams l="991" t="2146" r="1028" b="2177">不</charParams>
+<charParams l="1057" t="2143" r="1082" b="2176">予</charParams>
+<charParams l="1107" t="2137" r="1168" b="2189">處</charParams>
+<charParams l="1166" t="2140" r="1215" b="2194">罰</charParams>
+<charParams l="1250" t="2146" r="1257" b="2181">；</charParams>
+<charParams l="1282" t="2140" r="1337" b="2191">惟</charParams>
+<charParams l="1345" t="2140" r="1400" b="2192">離</charParams>
+<charParams l="1399" t="2141" r="1444" b="2183">開</charParams>
+<charParams l="1457" t="2138" r="1512" b="2187">時</charParams>
+<charParams l="1516" t="2139" r="1571" b="2190">應</charParams>
+<charParams l="1574" t="2141" r="1626" b="2186">佩</charParams>
+<charParams l="1632" t="2139" r="1681" b="2192">戴</charParams>
+<charParams l="1691" t="2149" r="1731" b="2176">口</charParams>
+<charParams l="1749" t="2140" r="1794" b="2194">罩</charParams>
+<charParams l="1834" t="2156" r="1841" b="2171">，</charParams>
+<charParams l="1870" t="2140" r="1913" b="2186">並</charParams>
+<charParams l="1924" t="2139" r="1979" b="2194">儘</charParams>
+<charParams l="1982" t="2140" r="2031" b="2189">速</charParams>
+<charParams l="2041" t="2139" r="2094" b="2189">聯</charParams>
+<charParams l="2099" t="2136" r="2158" b="2194">繫</charParams>
+<charParams l="2157" t="2142" r="2215" b="2183">所</charParams>
+<charParams l="2216" t="2139" r="2275" b="2187">在</charParams></formatting></line>
+<line baseline="2269" l="466" t="2227" r="1567" b="2281"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="466" t="2227" r="508" b="2269">地</charParams>
+<charParams l="533" t="2229" r="563" b="2256">方</charParams>
+<charParams l="587" t="2228" r="639" b="2271">政</charParams>
+<charParams l="642" t="2227" r="702" b="2281">府</charParams>
+<charParams l="700" t="2227" r="747" b="2270">或</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="781" t="2229" r="796" b="2269">1</charParams>
+<charParams l="806" t="2229" r="830" b="2270">9</charParams>
+<charParams l="833" t="2229" r="859" b="2269">2</charParams>
+<charParams l="862" t="2229" r="888" b="2269">2</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="916" t="2244" r="923" b="2259">，</charParams>
+<charParams l="952" t="2228" r="996" b="2274">並</charParams>
+<charParams l="1006" t="2230" r="1056" b="2268">依</charParams>
+<charParams l="1065" t="2227" r="1106" b="2269">地</charParams>
+<charParams l="1132" t="2229" r="1162" b="2256">方</charParams>
+<charParams l="1185" t="2228" r="1237" b="2271">政</charParams>
+<charParams l="1240" t="2227" r="1300" b="2281">府</charParams>
+<charParams l="1298" t="2227" r="1346" b="2281">指</charParams>
+<charParams l="1363" t="2232" r="1400" b="2272">示</charParams>
+<charParams l="1417" t="2230" r="1475" b="2277">辦</charParams>
+<charParams l="1473" t="2231" r="1530" b="2271">理</charParams>
+<charParams l="1555" t="2245" r="1567" b="2257">。</charParams></formatting></line></par>
+<par align="Justified" leftIndent="5600" startIndent="-4200" lineSpacing="2102">
+<line baseline="2356" l="319" t="2312" r="2270" b="2369"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="319" t="2312" r="337" b="2365">（</charParams>
+<charParams l="352" t="2326" r="384" b="2354">二</charParams>
+<charParams l="418" t="2312" r="436" b="2365">）</charParams>
+<charParams l="466" t="2314" r="523" b="2367">若</charParams>
+<charParams l="525" t="2315" r="575" b="2362">選</charParams>
+<charParams l="583" t="2316" r="633" b="2363">擇</charParams>
+<charParams l="642" t="2314" r="676" b="2366">自</charParams>
+<charParams l="700" t="2316" r="745" b="2350">宅</charParams>
+<charParams l="758" t="2314" r="804" b="2358">或</charParams>
+<charParams l="817" t="2316" r="874" b="2361">親</charParams>
+<charParams l="875" t="2315" r="923" b="2354">友</charParams>
+<charParams l="933" t="2317" r="989" b="2359">住</charParams>
+<charParams l="991" t="2317" r="1049" b="2358">所</charParams>
+<charParams l="1050" t="2319" r="1104" b="2366">隔</charParams>
+<charParams l="1112" t="2315" r="1168" b="2367">離</charParams>
+<charParams l="1166" t="2313" r="1213" b="2369">者</charParams>
+<charParams l="1250" t="2331" r="1258" b="2346">，</charParams>
+<charParams l="1281" t="2319" r="1328" b="2358">同</charParams>
+<charParams l="1340" t="2316" r="1384" b="2343">戶</charParams>
+<charParams l="1398" t="2319" r="1445" b="2358">同</charParams>
+<charParams l="1456" t="2317" r="1513" b="2359">住</charParams>
+<charParams l="1515" t="2313" r="1563" b="2369">者</charParams>
+<charParams l="1574" t="2322" r="1610" b="2362">日</charParams>
+<charParams l="1632" t="2312" r="1676" b="2362">常</charParams>
+<charParams l="1698" t="2316" r="1735" b="2362">生</charParams>
+<charParams l="1749" t="2318" r="1800" b="2364">活</charParams>
+<charParams l="1807" t="2316" r="1856" b="2352">仍</charParams>
+<charParams l="1870" t="2315" r="1908" b="2367">需</charParams>
+<charParams l="1927" t="2315" r="1975" b="2364">採</charParams>
+<charParams l="1982" t="2318" r="2037" b="2353">取</charParams>
+<charParams l="2040" t="2314" r="2091" b="2369">適</charParams>
+<charParams l="2098" t="2313" r="2142" b="2367">當</charParams>
+<charParams l="2165" t="2320" r="2205" b="2360">防</charParams>
+<charParams l="2215" t="2313" r="2270" b="2366">護</charParams></formatting></line>
+<line baseline="2444" l="466" t="2398" r="2261" b="2457"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="466" t="2403" r="513" b="2457">措</charParams>
+<charParams l="525" t="2404" r="578" b="2440">施</charParams>
+<charParams l="609" t="2419" r="617" b="2434">，</charParams>
+<charParams l="641" t="2402" r="679" b="2439">包</charParams>
+<charParams l="700" t="2403" r="753" b="2454">括</charParams>
+<charParams l="758" t="2400" r="814" b="2457">落</charParams>
+<charParams l="816" t="2400" r="859" b="2452">實</charParams>
+<charParams l="875" t="2403" r="926" b="2449">佩</charParams>
+<charParams l="933" t="2401" r="981" b="2454">戴</charParams>
+<charParams l="991" t="2398" r="1040" b="2457">醫</charParams>
+<charParams l="1050" t="2407" r="1087" b="2432">用</charParams>
+<charParams l="1108" t="2412" r="1149" b="2438">口</charParams>
+<charParams l="1166" t="2403" r="1211" b="2456">罩</charParams>
+<charParams l="1248" t="2420" r="1261" b="2432">、</charParams>
+<charParams l="1283" t="2399" r="1332" b="2457">遵</charParams>
+<charParams l="1352" t="2403" r="1385" b="2438">守</charParams>
+<charParams l="1399" t="2404" r="1449" b="2435">呼</charParams>
+<charParams l="1458" t="2409" r="1511" b="2439">吸</charParams>
+<charParams l="1516" t="2402" r="1565" b="2457">道</charParams>
+<charParams l="1575" t="2400" r="1635" b="2452">衛</charParams>
+<charParams l="1640" t="2403" r="1677" b="2450">生</charParams>
+<charParams l="1714" t="2420" r="1727" b="2432">、</charParams>
+<charParams l="1749" t="2402" r="1801" b="2450">勤</charParams>
+<charParams l="1813" t="2402" r="1862" b="2447">洗</charParams>
+<charParams l="1874" t="2402" r="1911" b="2430">手</charParams>
+<charParams l="1932" t="2409" r="1970" b="2442">以</charParams>
+<charParams l="1983" t="2406" r="2031" b="2441">加</charParams>
+<charParams l="2041" t="2403" r="2091" b="2450">強</charParams>
+<charParams l="2099" t="2402" r="2150" b="2457">執</charParams>
+<charParams l="2158" t="2404" r="2207" b="2448">行</charParams>
+<charParams l="2224" t="2402" r="2261" b="2430">手</charParams></formatting></line>
+<line baseline="2531" l="466" t="2488" r="2270" b="2544"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="466" t="2491" r="518" b="2538">部</charParams>
+<charParams l="525" t="2488" r="585" b="2539">衛</charParams>
+<charParams l="590" t="2491" r="628" b="2537">生</charParams>
+<charParams l="664" t="2508" r="678" b="2520">、</charParams>
+<charParams l="700" t="2491" r="757" b="2537">保</charParams>
+<charParams l="761" t="2489" r="810" b="2538">持</charParams>
+<charParams l="816" t="2489" r="868" b="2532">良</charParams>
+<charParams l="879" t="2492" r="927" b="2530">好</charParams>
+<charParams l="933" t="2488" r="993" b="2539">衛</charParams>
+<charParams l="998" t="2491" r="1036" b="2537">生</charParams>
+<charParams l="1050" t="2490" r="1090" b="2539">習</charParams>
+<charParams l="1108" t="2491" r="1155" b="2544">慣</charParams>
+<charParams l="1166" t="2495" r="1203" b="2525">及</charParams>
+<charParams l="1225" t="2491" r="1282" b="2533">維</charParams>
+<charParams l="1286" t="2489" r="1335" b="2538">持</charParams>
+<charParams l="1341" t="2491" r="1400" b="2535">社</charParams>
+<charParams l="1410" t="2492" r="1444" b="2529">交</charParams>
+<charParams l="1462" t="2491" r="1502" b="2533">安</charParams>
+<charParams l="1527" t="2492" r="1565" b="2536">全</charParams>
+<charParams l="1574" t="2496" r="1633" b="2536">距</charParams>
+<charParams l="1637" t="2490" r="1692" b="2542">離</charParams>
+<charParams l="1717" t="2506" r="1725" b="2521">，</charParams>
+<charParams l="1754" t="2496" r="1785" b="2534">且</charParams>
+<charParams l="1807" t="2497" r="1844" b="2528">不</charParams>
+<charParams l="1865" t="2495" r="1908" b="2526">可</charParams>
+<charParams l="1931" t="2490" r="1968" b="2534">共</charParams>
+<charParams l="1982" t="2488" r="2027" b="2531">食</charParams>
+<charParams l="2064" t="2507" r="2076" b="2520">。</charParams>
+<charParams l="2099" t="2490" r="2160" b="2544">請</charParams>
+<charParams l="2162" t="2493" r="2210" b="2531">於</charParams>
+<charParams l="2216" t="2494" r="2270" b="2541">隔</charParams></formatting></line>
+<line baseline="2619" l="470" t="2571" r="2271" b="2632"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="470" t="2578" r="526" b="2630">離</charParams>
+<charParams l="528" t="2578" r="572" b="2623">期</charParams>
+<charParams l="583" t="2578" r="633" b="2620">間</charParams>
+<charParams l="667" t="2594" r="675" b="2609">，</charParams>
+<charParams l="703" t="2571" r="741" b="2612">每</charParams>
+<charParams l="758" t="2584" r="793" b="2625">日</charParams>
+<charParams l="816" t="2576" r="865" b="2627">量</charParams>
+<charParams l="875" t="2576" r="928" b="2626">體</charParams>
+<charParams l="933" t="2581" r="985" b="2625">溫</charParams>
+<charParams l="998" t="2599" r="1026" b="2604">一</charParams>
+<charParams l="1055" t="2578" r="1098" b="2618">次</charParams>
+<charParams l="1134" t="2594" r="1142" b="2609">，</charParams>
+<charParams l="1166" t="2577" r="1201" b="2629">自</charParams>
+<charParams l="1232" t="2581" r="1270" b="2621">主</charParams>
+<charParams l="1283" t="2577" r="1343" b="2629">詳</charParams>
+<charParams l="1341" t="2575" r="1384" b="2627">實</charParams>
+<charParams l="1399" t="2582" r="1453" b="2629">記</charParams>
+<charParams l="1460" t="2578" r="1518" b="2622">錄</charParams>
+<charParams l="1516" t="2576" r="1569" b="2626">體</charParams>
+<charParams l="1575" t="2581" r="1627" b="2625">溫</charParams>
+<charParams l="1633" t="2582" r="1669" b="2612">及</charParams>
+<charParams l="1691" t="2579" r="1746" b="2624">健</charParams>
+<charParams l="1756" t="2576" r="1796" b="2623">康</charParams>
+<charParams l="1808" t="2578" r="1858" b="2627">狀</charParams>
+<charParams l="1866" t="2583" r="1921" b="2622">況</charParams>
+<charParams l="1950" t="2594" r="1958" b="2609">，</charParams>
+<charParams l="1987" t="2578" r="2030" b="2624">並</charParams>
+<charParams l="2041" t="2583" r="2094" b="2632">配</charParams>
+<charParams l="2099" t="2576" r="2143" b="2628">合</charParams>
+<charParams l="2157" t="2577" r="2211" b="2625">提</charParams>
+<charParams l="2216" t="2579" r="2271" b="2620">供</charParams></formatting></line>
+<line baseline="2706" l="474" t="2663" r="2270" b="2719"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="474" t="2665" r="511" b="2693">手</charParams>
+<charParams l="531" t="2664" r="578" b="2716">機</charParams>
+<charParams l="583" t="2666" r="629" b="2708">門</charParams>
+<charParams l="642" t="2665" r="700" b="2713">號</charParams>
+<charParams l="726" t="2681" r="734" b="2696">，</charParams>
+<charParams l="766" t="2671" r="804" b="2705">以</charParams>
+<charParams l="824" t="2665" r="861" b="2693">手</charParams>
+<charParams l="880" t="2664" r="928" b="2716">機</charParams>
+<charParams l="932" t="2666" r="978" b="2708">門</charParams>
+<charParams l="991" t="2665" r="1049" b="2713">號</charParams>
+<charParams l="1049" t="2667" r="1105" b="2713">進</charParams>
+<charParams l="1108" t="2667" r="1157" b="2711">行</charParams>
+<charParams l="1166" t="2665" r="1215" b="2710">個</charParams>
+<charParams l="1241" t="2669" r="1263" b="2695">人</charParams>
+<charParams l="1283" t="2668" r="1334" b="2714">活</charParams>
+<charParams l="1341" t="2665" r="1391" b="2710">動</charParams>
+<charParams l="1399" t="2663" r="1451" b="2719">範</charParams>
+<charParams l="1457" t="2665" r="1510" b="2713">圍</charParams>
+<charParams l="1516" t="2672" r="1565" b="2708">之</charParams>
+<charParams l="1574" t="2665" r="1621" b="2713">電</charParams>
+<charParams l="1638" t="2667" r="1675" b="2700">子</charParams>
+<charParams l="1691" t="2666" r="1736" b="2717">監</charParams>
+<charParams l="1749" t="2664" r="1807" b="2719">督</charParams>
+<charParams l="1831" t="2682" r="1843" b="2695">。</charParams>
+<charParams l="1865" t="2669" r="1919" b="2716">隔</charParams>
+<charParams l="1928" t="2665" r="1983" b="2717">離</charParams>
+<charParams l="1982" t="2672" r="2031" b="2708">之</charParams>
+<charParams l="2040" t="2665" r="2089" b="2710">個</charParams>
+<charParams l="2115" t="2669" r="2138" b="2695">人</charParams>
+<charParams l="2157" t="2663" r="2207" b="2719">資</charParams>
+<charParams l="2220" t="2665" r="2270" b="2715">料</charParams></formatting></line>
+<line baseline="2794" l="466" t="2750" r="1931" b="2807"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="466" t="2756" r="517" b="2802">沿</charParams>
+<charParams l="525" t="2757" r="561" b="2782">用</charParams>
+<charParams l="589" t="2757" r="627" b="2798">至</charParams>
+<charParams l="642" t="2756" r="696" b="2803">隔</charParams>
+<charParams l="704" t="2753" r="759" b="2805">離</charParams>
+<charParams l="758" t="2752" r="804" b="2795">或</charParams>
+<charParams l="817" t="2752" r="852" b="2804">自</charParams>
+<charParams l="883" t="2756" r="920" b="2796">主</charParams>
+<charParams l="933" t="2754" r="987" b="2799">健</charParams>
+<charParams l="998" t="2751" r="1037" b="2798">康</charParams>
+<charParams l="1050" t="2750" r="1094" b="2807">管</charParams>
+<charParams l="1108" t="2756" r="1166" b="2796">理</charParams>
+<charParams l="1170" t="2753" r="1213" b="2798">期</charParams>
+<charParams l="1225" t="2752" r="1275" b="2798">滿</charParams>
+<charParams l="1309" t="2769" r="1317" b="2784">，</charParams>
+<charParams l="1346" t="2753" r="1389" b="2799">並</charParams>
+<charParams l="1404" t="2755" r="1452" b="2793">於</charParams>
+<charParams l="1458" t="2753" r="1512" b="2804">結</charParams>
+<charParams l="1516" t="2751" r="1567" b="2800">束</charParams>
+<charParams l="1575" t="2751" r="1622" b="2798">後</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1650" t="2754" r="1676" b="2794">2</charParams>
+<charParams l="1681" t="2754" r="1704" b="2795">8</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1730" t="2759" r="1760" b="2787">天</charParams>
+<charParams l="1779" t="2752" r="1832" b="2796">銷</charParams>
+<charParams l="1837" t="2754" r="1894" b="2799">毀</charParams>
+<charParams l="1919" t="2770" r="1931" b="2782">。</charParams></formatting></line></par>
+<par align="Justified" leftIndent="5600" startIndent="-4200" lineSpacing="2102">
+<line baseline="2881" l="319" t="2835" r="2263" b="2894"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="319" t="2837" r="337" b="2891">（</charParams>
+<charParams l="352" t="2848" r="389" b="2883">三</charParams>
+<charParams l="418" t="2837" r="436" b="2891">）</charParams>
+<charParams l="466" t="2843" r="526" b="2881">如</charParams>
+<charParams l="529" t="2843" r="583" b="2893">經</charParams>
+<charParams l="588" t="2841" r="627" b="2883">安</charParams>
+<charParams l="644" t="2841" r="693" b="2889">排</charParams>
+<charParams l="708" t="2842" r="754" b="2892">收</charParams>
+<charParams l="758" t="2841" r="810" b="2889">治</charParams>
+<charParams l="817" t="2839" r="876" b="2887">在</charParams>
+<charParams l="875" t="2840" r="923" b="2894">指</charParams>
+<charParams l="945" t="2841" r="993" b="2887">定</charParams>
+<charParams l="991" t="2837" r="1052" b="2889">處</charParams>
+<charParams l="1050" t="2843" r="1107" b="2883">所</charParams>
+<charParams l="1138" t="2837" r="1156" b="2891">（</charParams>
+<charParams l="1166" t="2843" r="1214" b="2893">居</charParams>
+<charParams l="1236" t="2839" r="1284" b="2891">家</charParams>
+<charParams l="1295" t="2837" r="1313" b="2891">）</charParams>
+<charParams l="1340" t="2840" r="1387" b="2883">或</charParams>
+<charParams l="1408" t="2838" r="1445" b="2882">等</charParams>
+<charParams l="1457" t="2841" r="1506" b="2889">候</charParams>
+<charParams l="1520" t="2841" r="1560" b="2883">安</charParams>
+<charParams l="1576" t="2841" r="1625" b="2889">排</charParams>
+<charParams l="1632" t="2843" r="1690" b="2894">就</charParams>
+<charParams l="1690" t="2835" r="1739" b="2894">醫</charParams>
+<charParams l="1753" t="2840" r="1796" b="2886">期</charParams>
+<charParams l="1807" t="2840" r="1857" b="2883">間</charParams>
+<charParams l="1891" t="2856" r="1899" b="2871">，</charParams>
+<charParams l="1923" t="2840" r="1984" b="2894">請</charParams>
+<charParams l="1981" t="2839" r="2031" b="2886">您</charParams>
+<charParams l="2040" t="2839" r="2099" b="2889">隨</charParams>
+<charParams l="2098" t="2838" r="2153" b="2887">時</charParams>
+<charParams l="2162" t="2844" r="2212" b="2885">注</charParams>
+<charParams l="2215" t="2838" r="2263" b="2889">意</charParams></formatting></line>
+<line baseline="2969" l="466" t="2924" r="2273" b="2982"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="466" t="2927" r="501" b="2979">自</charParams>
+<charParams l="534" t="2925" r="574" b="2961">身</charParams>
+<charParams l="583" t="2929" r="638" b="2974">健</charParams>
+<charParams l="648" t="2926" r="688" b="2973">康</charParams>
+<charParams l="700" t="2928" r="750" b="2977">狀</charParams>
+<charParams l="758" t="2933" r="814" b="2972">況</charParams>
+<charParams l="842" t="2944" r="850" b="2959">，</charParams>
+<charParams l="874" t="2927" r="931" b="2979">若</charParams>
+<charParams l="932" t="2926" r="966" b="2982">有</charParams>
+<charParams l="1004" t="2927" r="1038" b="2972">出</charParams>
+<charParams l="1049" t="2931" r="1106" b="2971">現</charParams>
+<charParams l="1111" t="2930" r="1161" b="2978">症</charParams>
+<charParams l="1166" t="2928" r="1216" b="2977">狀</charParams>
+<charParams l="1224" t="2925" r="1279" b="2974">時</charParams>
+<charParams l="1309" t="2944" r="1316" b="2959">，</charParams>
+<charParams l="1340" t="2932" r="1383" b="2963">可</charParams>
+<charParams l="1398" t="2927" r="1451" b="2976">聯</charParams>
+<charParams l="1457" t="2924" r="1516" b="2982">繫</charParams>
+<charParams l="1515" t="2930" r="1573" b="2970">所</charParams>
+<charParams l="1574" t="2928" r="1632" b="2982">轄</charParams>
+<charParams l="1632" t="2925" r="1692" b="2977">衛</charParams>
+<charParams l="1698" t="2928" r="1735" b="2975">生</charParams>
+<charParams l="1749" t="2931" r="1794" b="2977">局</charParams>
+<charParams l="1807" t="2931" r="1854" b="2980">居</charParams>
+<charParams l="1877" t="2926" r="1925" b="2978">家</charParams>
+<charParams l="1923" t="2931" r="1973" b="2976">照</charParams>
+<charParams l="1982" t="2926" r="2036" b="2979">護</charParams>
+<charParams l="2040" t="2932" r="2098" b="2971">服</charParams>
+<charParams l="2102" t="2927" r="2156" b="2971">務</charParams>
+<charParams l="2157" t="2925" r="2201" b="2969">專</charParams>
+<charParams l="2215" t="2926" r="2273" b="2973">線</charParams></formatting></line>
+<line baseline="3056" l="466" t="3010" r="2257" b="3069"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="466" t="3015" r="513" b="3058">或</charParams>
+<charParams l="525" t="3015" r="573" b="3069">指</charParams>
+<charParams l="596" t="3016" r="644" b="3062">定</charParams>
+<charParams l="642" t="3018" r="689" b="3068">居</charParams>
+<charParams l="711" t="3014" r="760" b="3066">家</charParams>
+<charParams l="758" t="3010" r="807" b="3069">醫</charParams>
+<charParams l="817" t="3015" r="866" b="3068">療</charParams>
+<charParams l="875" t="3018" r="925" b="3063">照</charParams>
+<charParams l="933" t="3013" r="987" b="3066">護</charParams>
+<charParams l="991" t="3015" r="1043" b="3063">團</charParams>
+<charParams l="1058" t="3014" r="1102" b="3065">隊</charParams>
+<charParams l="1134" t="3031" r="1142" b="3046">，</charParams>
+<charParams l="1166" t="3013" r="1209" b="3067">當</charParams>
+<charParams l="1238" t="3015" r="1271" b="3059">出</charParams>
+<charParams l="1282" t="3019" r="1339" b="3058">現</charParams>
+<charParams l="1341" t="3020" r="1383" b="3042">下</charParams>
+<charParams l="1401" t="3016" r="1451" b="3064">列</charParams>
+<charParams l="1457" t="3013" r="1514" b="3069">警</charParams>
+<charParams l="1522" t="3019" r="1560" b="3059">示</charParams>
+<charParams l="1578" t="3018" r="1628" b="3065">症</charParams>
+<charParams l="1632" t="3016" r="1682" b="3065">狀</charParams>
+<charParams l="1691" t="3013" r="1745" b="3062">時</charParams>
+<charParams l="1775" t="3031" r="1783" b="3046">，</charParams>
+<charParams l="1807" t="3015" r="1867" b="3069">請</charParams>
+<charParams l="1871" t="3019" r="1908" b="3058">立</charParams>
+<charParams l="1923" t="3017" r="1977" b="3049">即</charParams>
+<charParams l="1982" t="3017" r="2031" b="3062">通</charParams>
+<charParams l="2040" t="3016" r="2100" b="3052">知</charParams>
+<charParams l="2098" t="3018" r="2156" b="3058">所</charParams>
+<charParams l="2156" t="3014" r="2216" b="3062">在</charParams>
+<charParams l="2215" t="3015" r="2257" b="3056">地</charParams></formatting></line>
+<line baseline="3144" l="470" t="3098" r="2252" b="3157"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="470" t="3103" r="522" b="3146">政</charParams>
+<charParams l="525" t="3103" r="585" b="3157">府</charParams>
+<charParams l="583" t="3101" r="644" b="3152">衛</charParams>
+<charParams l="649" t="3104" r="686" b="3150">生</charParams>
+<charParams l="700" t="3107" r="745" b="3152">局</charParams>
+<charParams l="758" t="3102" r="804" b="3145">或</charParams>
+<charParams l="817" t="3104" r="877" b="3151">撥</charParams>
+<charParams l="880" t="3104" r="928" b="3152">打</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="952" t="3104" r="967" b="3144">1</charParams>
+<charParams l="981" t="3104" r="996" b="3144">1</charParams>
+<charParams l="1005" t="3104" r="1030" b="3145">9</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1042" t="3105" r="1100" b="3157">就</charParams>
+<charParams l="1100" t="3098" r="1149" b="3157">醫</charParams>
+<charParams l="1171" t="3119" r="1178" b="3134">，</charParams>
+<charParams l="1197" t="3109" r="1235" b="3142">以</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1265" t="3104" r="1280" b="3144">1</charParams>
+<charParams l="1294" t="3104" r="1309" b="3144">1</charParams>
+<charParams l="1319" t="3104" r="1343" b="3145">9</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1359" t="3104" r="1412" b="3152">救</charParams>
+<charParams l="1413" t="3101" r="1468" b="3154">護</charParams>
+<charParams l="1471" t="3100" r="1511" b="3141">車</charParams>
+<charParams l="1530" t="3101" r="1571" b="3150">為</charParams>
+<charParams l="1588" t="3105" r="1634" b="3147">原</charParams>
+<charParams l="1647" t="3103" r="1698" b="3150">則</charParams>
+<charParams l="1705" t="3102" r="1751" b="3145">或</charParams>
+<charParams l="1763" t="3102" r="1811" b="3157">指</charParams>
+<charParams l="1828" t="3107" r="1866" b="3147">示</charParams>
+<charParams l="1880" t="3110" r="1929" b="3146">之</charParams>
+<charParams l="1946" t="3108" r="1986" b="3148">防</charParams>
+<charParams l="1996" t="3103" r="2048" b="3148">疫</charParams>
+<charParams l="2055" t="3103" r="2107" b="3153">計</charParams>
+<charParams l="2113" t="3106" r="2174" b="3148">程</charParams>
+<charParams l="2171" t="3100" r="2211" b="3141">車</charParams>
+<charParams l="2239" t="3120" r="2252" b="3132">、</charParams></formatting></line>
+<line baseline="3232" l="466" t="3186" r="2094" b="3244"><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="466" t="3194" r="513" b="3233">同</charParams>
+<charParams l="525" t="3192" r="582" b="3234">住</charParams>
+<charParams l="583" t="3192" r="641" b="3237">親</charParams>
+<charParams l="642" t="3190" r="690" b="3229">友</charParams>
+<charParams l="703" t="3191" r="757" b="3238">接</charParams>
+<charParams l="758" t="3191" r="808" b="3238">送</charParams>
+<charParams l="817" t="3190" r="863" b="3233">或</charParams>
+<charParams l="875" t="3190" r="909" b="3241">自</charParams>
+<charParams l="933" t="3192" r="981" b="3236">行</charParams>
+<charParams l="991" t="3189" r="1037" b="3229">前</charParams>
+<charParams l="1050" t="3191" r="1108" b="3237">往</charParams>
+<charParams l="1138" t="3187" r="1156" b="3241">（</charParams>
+<charParams l="1166" t="3193" r="1226" b="3232">如</charParams>
+<charParams l="1231" t="3190" r="1270" b="3240">步</charParams>
+<charParams l="1283" t="3192" r="1332" b="3236">行</charParams>
+<charParams l="1365" t="3208" r="1378" b="3220">、</charParams>
+<charParams l="1399" t="3190" r="1434" b="3241">自</charParams>
+<charParams l="1458" t="3192" r="1507" b="3236">行</charParams>
+<charParams l="1516" t="3186" r="1563" b="3244">駕</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1576" t="3191" r="1592" b="3232">/</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1591" t="3189" r="1643" b="3235">騎</charParams>
+<charParams l="1649" t="3187" r="1689" b="3228">車</charParams>
+<charParams l="1719" t="3187" r="1738" b="3241">）</charParams>
+<charParams l="1775" t="3188" r="1812" b="3232">等</charParams>
+<charParams l="1833" t="3192" r="1863" b="3219">方</charParams>
+<charParams l="1890" t="3188" r="1929" b="3238">式</charParams>
+<charParams l="1941" t="3189" r="1983" b="3237">為</charParams>
+<charParams l="1999" t="3189" r="2052" b="3244">輔</charParams>
+<charParams l="2081" t="3207" r="2094" b="3220">。</charParams></formatting></line></par>
+<par leftIndent="5600" lineSpacing="2102">
+<line baseline="3319" l="485" t="3274" r="1873" b="3330"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="485" t="3279" r="500" b="3319">1</charParams>
+<charParams l="512" t="3313" r="518" b="3320">.</charParams>
+<charParams l="519" t="3277" r="583" b="3330"> </charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="584" t="3277" r="626" b="3330">無</charParams>
+<charParams l="636" t="3277" r="684" b="3325">發</charParams>
+<charParams l="699" t="3276" r="754" b="3323">燒</charParams>
+<charParams l="783" t="3274" r="801" b="3328">（</charParams>
+<charParams l="811" t="3276" r="864" b="3326">體</charParams>
+<charParams l="869" t="3281" r="921" b="3325">溫</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="930" t="3286" r="961" b="3314">＜</charParams>
+<charParams l="964" t="3279" r="986" b="3320">3</charParams>
+<charParams l="994" t="3279" r="1017" b="3320">8</charParams>
+<charParams l="1022" t="3279" r="1078" b="3320">℃</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1090" t="3274" r="1108" b="3328">）</charParams>
+<charParams l="1137" t="3285" r="1186" b="3321">之</charParams>
+<charParams l="1195" t="3275" r="1253" b="3328">情</charParams>
+<charParams l="1258" t="3278" r="1308" b="3330">形</charParams>
+<charParams l="1312" t="3283" r="1355" b="3305">下</charParams>
+<charParams l="1397" t="3294" r="1404" b="3309">，</charParams>
+<charParams l="1436" t="3289" r="1476" b="3311">心</charParams>
+<charParams l="1487" t="3280" r="1541" b="3324">跳</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1547" t="3286" r="1578" b="3314">＞</charParams>
+<charParams l="1586" t="3279" r="1601" b="3319">1</charParams>
+<charParams l="1610" t="3279" r="1635" b="3320">0</charParams>
+<charParams l="1639" t="3279" r="1664" b="3320">0</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1685" t="3278" r="1728" b="3318">次</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="14">
+<charParams l="1739" t="3278" r="1756" b="3320">/</charParams></formatting><formatting lang="EnglishUnitedStates" ff="Arial" fs="14">
+<charParams l="1761" t="3277" r="1802" b="3314">分</charParams>
+<charParams l="1813" t="3279" r="1873" b="3325">鐘</charParams></formatting></line></par>
+</text>
+</block>
+<block blockType="Text" blockName="" l="1257" t="3347" r="1280" b="3388"><region><rect l="1257" t="3347" r="1280" b="3388"/></region>
+<text>
+<par lineSpacing="1150">
+<line baseline="3382" l="1262" t="3353" r="1272" b="3382"><formatting lang="EnglishUnitedStates" ff="Times New Roman" fs="10">
+<charParams l="1262" t="3353" r="1272" b="3382">1</charParams></formatting></line></par>
+</text>
+</block>
+<block blockType="SeparatorsBox" blockName="" l="231" t="599" r="2305" b="1007"><region><rect l="231" t="599" r="2305" b="601"/><rect l="231" t="601" r="2305" b="1005"/><rect l="231" t="1005" r="2305" b="1007"/></region>
+<separatorsBox>
+<separator type="Black" thickness="2"><start x="231" y="600"/><end x="2305" y="600"/>
+</separator>
+<separator type="Black" thickness="2"><start x="231" y="1006"/><end x="2305" y="1006"/>
+</separator>
+<separator type="Black" thickness="3"><start x="232" y="599"/><end x="232" y="1007"/>
+</separator>
+<separator type="Black" thickness="3"><start x="2303" y="599"/><end x="2303" y="1007"/>
+</separator>
+</separatorsBox>
+</block>
+<block blockType="SeparatorsBox" blockName="" l="259" t="134" r="1083" b="232"><region><rect l="259" t="134" r="1083" b="136"/><rect l="259" t="136" r="1083" b="230"/><rect l="259" t="230" r="1083" b="232"/></region>
+<separatorsBox>
+<separator type="Black" thickness="2"><start x="259" y="135"/><end x="1083" y="135"/>
+</separator>
+<separator type="Black" thickness="2"><start x="259" y="231"/><end x="1083" y="231"/>
+</separator>
+<separator type="Black" thickness="2"><start x="260" y="134"/><end x="260" y="232"/>
+</separator>
+<separator type="Black" thickness="2"><start x="1082" y="134"/><end x="1082" y="232"/>
+</separator>
+</separatorsBox>
+</block>
+<block blockType="Separator" blockName="" l="231" t="834" r="2305" b="836"><region><rect l="231" t="834" r="2305" b="836"/></region>
+<separator type="Black" thickness="2"><start x="231" y="835"/><end x="2305" y="835"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="435" t="1183" r="523" b="1186"><region><rect l="435" t="1183" r="523" b="1186"/></region>
+<separator type="Black" thickness="3"><start x="435" y="1184"/><end x="523" y="1184"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="582" t="1183" r="669" b="1186"><region><rect l="582" t="1183" r="669" b="1186"/></region>
+<separator type="Black" thickness="3"><start x="582" y="1184"/><end x="669" y="1184"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="727" t="1183" r="815" b="1186"><region><rect l="727" t="1183" r="815" b="1186"/></region>
+<separator type="Black" thickness="3"><start x="727" y="1184"/><end x="815" y="1184"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="932" t="1183" r="1020" b="1186"><region><rect l="932" t="1183" r="1020" b="1186"/></region>
+<separator type="Black" thickness="3"><start x="932" y="1184"/><end x="1020" y="1184"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="1078" t="1183" r="1165" b="1186"><region><rect l="1078" t="1183" r="1165" b="1186"/></region>
+<separator type="Black" thickness="3"><start x="1078" y="1184"/><end x="1165" y="1184"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="1224" t="1183" r="1312" b="1186"><region><rect l="1224" t="1183" r="1312" b="1186"/></region>
+<separator type="Black" thickness="3"><start x="1224" y="1184"/><end x="1312" y="1184"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="1114" t="1619" r="1418" b="1622"><region><rect l="1114" t="1619" r="1418" b="1622"/></region>
+<separator type="Black" thickness="3"><start x="1114" y="1620"/><end x="1418" y="1620"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="1972" t="1619" r="2276" b="1622"><region><rect l="1972" t="1619" r="2276" b="1622"/></region>
+<separator type="Black" thickness="3"><start x="1972" y="1620"/><end x="2276" y="1620"/>
+</separator>
+</block>
+<block blockType="Separator" blockName="" l="1325" t="599" r="1328" b="1007"><region><rect l="1325" t="599" r="1328" b="1007"/></region>
+<separator type="Black" thickness="3"><start x="1326" y="599"/><end x="1326" y="1007"/>
+</separator>
+</block>
+</page>
+</document>

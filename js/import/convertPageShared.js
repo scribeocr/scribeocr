@@ -80,7 +80,7 @@ export function pass2(pageObj, rotateAngle) {
       }
     }
 
-    if (smallCapsWordArr.length >= 3) {
+    if (smallCapsWordArr.length >= 2) {
       const titleCaseTotal = titleCaseArr.reduce((x, y) => Number(x) + Number(y), 0);
 
       for (let k = 0; k < smallCapsWordArr.length; k++) {

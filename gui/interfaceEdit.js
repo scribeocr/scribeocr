@@ -17,7 +17,6 @@ import { recognizePage } from '../js/recognizeConvert.js';
 import { getRandomAlphanum } from '../js/utils/miscUtils.js';
 import { Button } from '../lib/bootstrap.esm.bundle.min.js';
 import { displayPage, renderPageQueue } from '../main.js';
-import Tesseract from '../tess/tesseract.esm.min.js';
 import { elem } from './elems.js';
 import {
   KonvaOcrWord,
@@ -420,7 +419,9 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   }
 
   // When a user is manually selecting words to recognize, they are assumed to be in the same block.
-  const psm = wordMode ? Tesseract.PSM.SINGLE_WORD : Tesseract.PSM.SINGLE_BLOCK;
+  // SINGLE_BLOCK: '6',
+  // SINGLE_WORD: '8',
+  const psm = wordMode ? '8' : '6';
   const n = state.cp.n;
 
   if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');

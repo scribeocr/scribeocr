@@ -44,6 +44,8 @@ export const getFontAbsPath = (src) => { // eslint-disable-line no-shadow
   // See https://github.com/Automattic/node-canvas/issues/1737
   if (typeof process === 'object') {
     const srcStem = src.replace(/.*\//, '').replace(/\.\w{1,5}$/i, '');
+    // The NotoSansSC font used for Chinese characters is shared between the browser and Node.js.
+    if (/NotoSansSC/i.test(srcStem)) return relToAbsPath(`../../fonts/${src}`);
     return relToAbsPath(`../../fonts/all_ttf/${srcStem}.ttf`);
   }
 

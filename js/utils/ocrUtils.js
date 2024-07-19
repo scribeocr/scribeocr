@@ -152,8 +152,10 @@ export function assignParagraphs(page, angle) {
       if (endsEarlyPrev || startsLatePrev) {
         newLine = true;
 
-        // Add a line break if there is blank space added between lines
-      } else if (lineSpaceMedian && lineSpaceArr[h - 1] > (2 * lineSpaceMedian)) {
+      // Split paragraph if either:
+      // (1) There is an abnormally large amount of space between lines (>=2x the median space) or
+      // (2) The space between lines is negative, indicating the next line is part of a different column.
+      } else if (lineSpaceMedian && lineSpaceArr[h - 1] > (1.5 * lineSpaceMedian) || lineSpaceArr[h - 1] < 0) {
         newLine = true;
 
         // Add a line break if this line is indented

@@ -4,8 +4,6 @@ import {
 
 import { initMuPDFWorker } from '../../mupdf/mupdf-async.js';
 
-import Tesseract from '../../tess/tesseract.esm.min.js';
-
 import { getImageBitmap, getJpegDimensions, getPngDimensions } from '../utils/imageUtils.js';
 
 import { setUploadFontsWorker } from '../fontContainerMain.js';
@@ -125,12 +123,6 @@ export class MuPDFScheduler {
   }
 }
 
-/**
- * The dimensions that each page would be, if it was rendered at 300 DPI.
- * @type {Array<dims>}
- */
-const pdfDims300Arr = [];
-
 export class ImageWrapper {
   /**
    * @param {number} n - Page number
@@ -236,6 +228,12 @@ export class ImageCache {
 
   static pageCount = 0;
 
+  /**
+ * The dimensions that each page would be, if it was rendered at 300 DPI.
+ * @type {Array<dims>}
+ */
+  static pdfDims300Arr = [];
+
   static inputModes = {
     pdf: false,
     image: false,
@@ -266,6 +264,7 @@ export class ImageCache {
    * @returns
    */
   static #initMuPDFScheduler = async (numWorkers = 3) => {
+    const Tesseract = typeof process === 'undefined' ? (await import('../../tess/tesseract.esm.min.js')).default : await import('tesseract.js');
     const scheduler = await Tesseract.createScheduler();
     const workersPromiseArr = range(1, numWorkers).map(async () => {
       const w = await initMuPDFWorker();
@@ -305,7 +304,7 @@ export class ImageCache {
     } if (ImageCache.inputModes.pdf) {
       const pageMetrics = pageMetricsArr[n];
       const targetWidth = pageMetrics.dims.width;
-      const dpi = 300 * (targetWidth / pdfDims300Arr[n].width);
+      const dpi = 300 * (targetWidth / ImageCache.pdfDims300Arr[n].width);
       const muPDFScheduler = await ImageCache.getMuPDFScheduler();
       return muPDFScheduler.drawPageAsPNG({
         page: n + 1, dpi, color, skipText: skipTextMode,
@@ -536,12 +535,13 @@ export class ImageCache {
     ImageCache.binary = [];
     if (ImageCache.muPDFScheduler) {
       const muPDFScheduler = await ImageCache.muPDFScheduler;
-      muPDFScheduler.scheduler.terminate();
+      await muPDFScheduler.scheduler.terminate();
       ImageCache.muPDFScheduler = null;
     }
     ImageCache.inputModes.image = false;
     ImageCache.inputModes.pdf = false;
     ImageCache.pageCount = 0;
+    ImageCache.pdfDims300Arr.length = 0;
   };
 
   /**
@@ -572,8 +572,9 @@ export class ImageCache {
 
     const pageDims1 = await muPDFScheduler.workers[0].pageSizes([300]);
 
+    ImageCache.pdfDims300Arr.length = 0;
     pageDims1.forEach((x) => {
-      pdfDims300Arr.push({ width: x[0], height: x[1] });
+      ImageCache.pdfDims300Arr.push({ width: x[0], height: x[1] });
     });
 
     ImageCache.inputModes.pdf = true;
@@ -581,10 +582,10 @@ export class ImageCache {
     if (setPageMetrics) {
     // For reasons that are unclear, a small number of pages have been rendered into massive files
     // so a hard-cap on resolution must be imposed.
-      const pageDPI = pdfDims300Arr.map((x) => 300 * 2000 / x.width, 2000);
+      const pageDPI = ImageCache.pdfDims300Arr.map((x) => 300 * 2000 / x.width, 2000);
 
       // In addition to capping the resolution, also switch the width/height
-      pdfDims300Arr.forEach((x, i) => {
+      ImageCache.pdfDims300Arr.forEach((x, i) => {
         const pageDims = { width: Math.round(x.width * pageDPI[i] / 300), height: Math.round(x.height * pageDPI[i] / 300) };
         pageMetricsArr[i] = new PageMetrics(pageDims);
       });
