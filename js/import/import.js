@@ -48,7 +48,8 @@ const importImageFile = async (file) => new Promise((resolve, reject) => {
     return;
   }
 
-  if (file instanceof File) {
+  // The `typeof process` condition is necessary to avoid error in Node.js versions <20, where `File` is not defined.
+  if (typeof process === 'undefined' && file instanceof File) {
     const reader = new FileReader();
 
     reader.onloadend = async () => {

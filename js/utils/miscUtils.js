@@ -153,7 +153,8 @@ export async function readOcrFile(file) {
   // Any string is assumed to be the file contents.
   if (typeof file === 'string') return file;
 
-  if (file instanceof File) {
+  // The `typeof process` condition is necessary to avoid error in Node.js versions <20, where `File` is not defined.
+  if (typeof process === 'undefined' && file instanceof File) {
     if (/\.gz$/i.test(file.name)) {
       return (readTextFileGz(file));
     }

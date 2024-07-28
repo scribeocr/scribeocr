@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
+// Note: Node.js 20 added a File class in the `buffer` module in Node.js 20.0.0,
+// so this class can eventually be replaced with that.
+
 /**
  * Class representing a simplified version of the File interface for Node.js.
  */
