@@ -638,8 +638,8 @@ const importFilesGUI = async (files) => {
   }
 
   if (opt.enableOpt) {
-    elem.view.optimizeFont.disabled = true;
-    elem.view.optimizeFont.checked = false;
+    elem.view.optimizeFont.disabled = false;
+    elem.view.optimizeFont.checked = true;
   }
 };
 

@@ -2,6 +2,7 @@
 // Functions to calculate font metrics and generate new fonts.
 
 import {
+  determineSansSerif,
   quantile,
   replaceObjectProperties,
   round6,
@@ -242,7 +243,7 @@ function calcFontMetricsPage(pageObj) {
 
   for (const lineObj of pageObj.lines) {
     for (const wordObj of lineObj.words) {
-      const wordFontFamily = wordObj.font || 'Default';
+      const wordFontFamily = determineSansSerif(wordObj.font) || 'Default';
 
       // This condition should not occur, however has in the past due to parsing bugs.  Skipping to avoid entire program crashing if this occurs.
       if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;

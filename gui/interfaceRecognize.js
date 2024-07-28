@@ -129,6 +129,11 @@ export async function recognizeAllClick() {
 
   await recognizeAll(oemMode);
 
+  if (opt.enableOpt) {
+    elem.view.optimizeFont.disabled = false;
+    elem.view.optimizeFont.checked = true;
+  }
+
   updateOcrVersionGUI();
   toggleEditConfUI(false);
   toggleEditButtons(false);
