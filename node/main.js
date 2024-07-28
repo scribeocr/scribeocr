@@ -22,7 +22,7 @@ import { handleDownload } from '../js/export/export.js';
 import { writeDebugCsv } from '../js/export/exportDebugCsv.js';
 import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 import { initGeneralScheduler, initTesseractInWorkers } from '../js/generalWorkerMain.js';
-import { importFiles } from '../js/import/import.js';
+import { importFilesAll } from '../js/import/import.js';
 import { recognizeAll } from '../js/recognizeConvert.js';
 import { calcConf } from '../js/utils/ocrUtils.js';
 
@@ -84,7 +84,7 @@ async function main(func, params) {
   const files = [];
   if (params.pdfFile) files.push(params.pdfFile);
   if (params.ocrFile) files.push(params.ocrFile);
-  await importFiles(files);
+  await importFilesAll(files);
 
   const backgroundArg = params.pdfFile;
   const backgroundArgStem = backgroundArg ? path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '') : undefined;

@@ -8,7 +8,7 @@ import { ocrAll } from '../../js/containers/dataContainer.js';
 import { gs } from '../../js/containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw } from '../../js/fontContainerMain.js';
 import { initGeneralScheduler } from '../../js/generalWorkerMain.js';
-import { importFiles } from '../../js/import/import.js';
+import { importFilesAll } from '../../js/import/import.js';
 
 globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,7 +16,7 @@ describe('Check stext import function.', () => {
   before(async () => {
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFiles([path.join(__dirname, '../assets/econometrica_example.pdf')]);
+    await importFilesAll([path.join(__dirname, '../assets/econometrica_example.pdf')]);
   });
 
   it('Should correctly import small caps printed using font size adjustments', async () => {
@@ -50,7 +50,7 @@ describe('Check Tesseract import function.', () => {
     await initGeneralScheduler();
     const resReadyFontAllRaw = gs.setFontAllRawReady();
     await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
-    await importFiles([path.join(__dirname, '../assets/econometrica_example_tess.hocr')]);
+    await importFilesAll([path.join(__dirname, '../assets/econometrica_example_tess.hocr')]);
   });
 
   it('Should correctly import small caps printed using font size adjustments', async () => {
@@ -74,7 +74,7 @@ describe('Check Abbyy XML import function.', () => {
     await initGeneralScheduler();
     const resReadyFontAllRaw = gs.setFontAllRawReady();
     await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
-    await importFiles([path.join(__dirname, '../assets/econometrica_example_abbyy.xml')]);
+    await importFilesAll([path.join(__dirname, '../assets/econometrica_example_abbyy.xml')]);
   });
 
   it('Should correctly import smallcaps attribute', async () => {
@@ -107,7 +107,7 @@ describe('Check stext import function language support.', () => {
   before(async () => {
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFiles([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
+    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
   });
 
   it('Should import Chinese characters', async () => {
@@ -127,7 +127,7 @@ describe('Check Tesseract import function language support.', () => {
     await initGeneralScheduler();
     const resReadyFontAllRaw = gs.setFontAllRawReady();
     await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
-    await importFiles([path.join(__dirname, '../assets/chi_eng_mixed_sample_tess.hocr')]);
+    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample_tess.hocr')]);
   });
 
   it('Should import Chinese characters', async () => {
@@ -146,13 +146,13 @@ describe('Check cleanup functions allow for resetting module.', () => {
   it('Check that cleanup functions work properly', async () => {
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFiles([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
+    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
     await gs.schedulerInner.terminate();
     await gs.clear();
     await clearData();
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFiles([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
+    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
   }).timeout(10000);
 
   after(async () => {

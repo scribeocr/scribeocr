@@ -141,21 +141,31 @@ export function calcLang(str) {
 /**
  * Reads an OCR file, which may be compressed as .gz or uncompressed.
  *
- * @param {File|string} file - OCR file to read
+ * @param {File|FileNode|string|ArrayBuffer} file - OCR file to read
  * @returns {Promise<string>} - Contents of file
  */
 export async function readOcrFile(file) {
+  if (file instanceof ArrayBuffer) {
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(file);
+  }
+
+  // Any string is assumed to be the file contents.
+  if (typeof file === 'string') return file;
+
+  if (file instanceof File) {
+    if (/\.gz$/i.test(file.name)) {
+      return (readTextFileGz(file));
+    }
+    return (readTextFile(file));
+  }
+
   if (typeof process !== 'undefined') {
+    if (!file?.fileData?.toString) throw new Error('Invalid input. Must be a FileNode, ArrayBuffer, or string.');
     // @ts-ignore
     return file.fileData.toString();
   }
-
-  if (typeof file === 'string') {
-    return Promise.resolve(file);
-  } if (/\.gz$/i.test(file.name)) {
-    return (readTextFileGz(file));
-  }
-  return (readTextFile(file));
+  throw new Error('Invalid input. Must be a File, ArrayBuffer, or string.');
 }
 
 /**

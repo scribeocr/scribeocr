@@ -21,43 +21,89 @@ import { replaceObjectProperties } from '../utils/miscUtils.js';
 import { importOCRFiles } from './importOCR.js';
 
 /**
+ * Automatically detects the image type (jpeg or png).
+ * @param {Uint8Array} image
+ * @returns {('jpeg'|'png')}
+ */
+const detectImageFormat = (image) => {
+  if (image[0] === 0xFF && image[1] === 0xD8) {
+    return 'jpeg';
+  } if (image[0] === 0x89 && image[1] === 0x50) {
+    return 'png';
+  }
+  throw new Error('Unsupported image type');
+};
+
+/**
  *
- * @param {File} file
+ * @param {File|FileNode|ArrayBuffer} file
  * @returns {Promise<string>}
  */
 const importImageFile = async (file) => new Promise((resolve, reject) => {
+  if (file instanceof ArrayBuffer) {
+    const imageUint8 = new Uint8Array(file);
+    const format = detectImageFormat(imageUint8);
+    const binary = String.fromCharCode(...imageUint8);
+    resolve(`data:image/${format};base64,${btoa(binary)}`);
+    return;
+  }
+
+  if (file instanceof File) {
+    const reader = new FileReader();
+
+    reader.onloadend = async () => {
+      resolve(/** @type {string} */(reader.result));
+    };
+
+    reader.onerror = (error) => {
+      reject(error);
+    };
+
+    reader.readAsDataURL(file);
+    return;
+  }
+
   if (typeof process !== 'undefined') {
+    if (!file?.name) reject(new Error('Invalid input. Must be a FileNode or ArrayBuffer.'));
     const format = file.name.match(/jpe?g$/i) ? 'jpeg' : 'png';
     // @ts-ignore
     resolve(`data:image/${format};base64,${file.fileData.toString('base64')}`);
     return;
   }
 
-  const reader = new FileReader();
-
-  reader.onloadend = async () => {
-    resolve(/** @type {string} */(reader.result));
-  };
-
-  reader.onerror = (error) => {
-    reject(error);
-  };
-
-  reader.readAsDataURL(file);
+  reject(new Error('Invalid input. Must be a File or ArrayBuffer.'));
 });
 
 /**
- *
- * @param {Array<File>|FileList|Array<string>} curFiles
+ * Standardize file-like inputs between platforms.
+ * If run in the browser, the input is returned as-is.
+ * If using Node.js, file paths are converted into `FileNode` objects,
+ * which have properties and methods similar to the browser `File` interface.
+ * @param {Array<File>|FileList|Array<string>} files
+ * @returns {Promise<Array<File>|FileList|Array<FileNode>>}
+ */
+export async function standardizeFiles(files) {
+  if (typeof files[0] === 'string') {
+    if (typeof process !== 'undefined') {
+      const { wrapFilesNode } = await import('./nodeAdapter.js');
+      return wrapFilesNode(/** @type {Array<string>} */(files));
+    }
+    throw new Error('File paths are only supported in Node.js');
+  }
+
+  return /** @type {Array<File>|FileList} */ (files);
+}
+
+/**
+ * Sorts single array of files into pdf, image, ocr, and unsupported files.
+ * Used for browser interface, where files of multiple types may be uploaded using the same input.
+ * @param {Array<File>|FileList|Array<string>} files
  * @returns
  */
-export async function importFiles(curFiles) {
-  if (!curFiles || curFiles.length === 0) return;
+export async function importFilesAll(files) {
+  if (!files || files.length === 0) return;
 
-  if (typeof process !== 'undefined') {
-    const { wrapFilesNode } = await import('./nodeAdapter.js');
-    curFiles = wrapFilesNode(curFiles);
-  }
+  const curFiles = await standardizeFiles(files);
 
   state.downloadReady = false;
   ImageCache.loadCount = 0;
@@ -65,13 +111,13 @@ export async function importFiles(curFiles) {
   pageMetricsArr.length = 0;
 
   // Sort files into (1) HOCR files, (2) image files, or (3) unsupported using extension.
-  /** @type {Array<File>} */
+  /** @type {Array<File|FileNode>} */
   const imageFilesAll = [];
-  /** @type {Array<File>} */
+  /** @type {Array<File|FileNode>} */
   const hocrFilesAll = [];
-  /** @type {Array<File>} */
+  /** @type {Array<File|FileNode>} */
   const pdfFilesAll = [];
-  /** @type {Array<File>} */
+  /** @type {Array<File|FileNode>} */
   const unsupportedFilesAll = [];
   const unsupportedExt = {};
   for (let i = 0; i < curFiles.length; i++) {
@@ -95,37 +141,16 @@ export async function importFiles(curFiles) {
     }
   }
 
-  imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
-  hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
-
-  if (pdfFilesAll.length === 0 && imageFilesAll.length === 0 && hocrFilesAll.length === 0) {
-    const errorText = 'No supported files found.';
-    state.errorHandler(errorText);
-    return;
-  } if (unsupportedFilesAll.length > 0) {
+  if (unsupportedFilesAll.length > 0) {
     const errorText = `Import includes unsupported file types: ${Object.keys(unsupportedExt).join(', ')}`;
     state.warningHandler(errorText);
-  } else if (pdfFilesAll.length > 0 && imageFilesAll.length > 0) {
-    const errorText = 'PDF and image files cannot be imported together. Only first PDF file will be imported.';
-    state.warningHandler(errorText);
-    pdfFilesAll.length = 1;
-    imageFilesAll.length = 0;
-  } else if (pdfFilesAll.length > 1) {
-    const errorText = 'Multiple PDF files are not supported. Only first PDF file will be imported.';
-    state.warningHandler(errorText);
-    pdfFilesAll.length = 1;
-    imageFilesAll.length = 0;
   }
 
-  inputData.pdfMode = pdfFilesAll.length === 1;
-  inputData.imageMode = !!(imageFilesAll.length > 0 && !inputData.pdfMode);
-  ImageCache.inputModes.image = !!(imageFilesAll.length > 0 && !inputData.pdfMode);
-
-  const xmlModeImport = hocrFilesAll.length > 0;
-
-  // Extract text from PDF document
-  // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
-  inputData.extractTextMode = opt.extractText && inputData.pdfMode && !xmlModeImport;
+  if (pdfFilesAll[0]) {
+    inputData.inputFileNames = [pdfFilesAll[0].name];
+  } else {
+    inputData.inputFileNames = imageFilesAll.map((x) => x.name);
+  }
 
   // Set default download name
   let downloadFileName = pdfFilesAll.length > 0 ? pdfFilesAll[0].name : curFiles[0].name;
@@ -133,12 +158,53 @@ export async function importFiles(curFiles) {
   downloadFileName += '.pdf';
   state.downloadFileName = downloadFileName;
 
+  imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+  hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+
+  await importFiles({ pdfFiles: pdfFilesAll, imageFiles: imageFilesAll, hocrFiles: hocrFilesAll });
+}
+
+/**
+ *
+ * @param {Object} param
+ * @param {Array<File|FileNode|ArrayBuffer>} param.pdfFiles
+ * @param {Array<File|FileNode|ArrayBuffer>} param.imageFiles
+ * @param {Array<File|FileNode|ArrayBuffer>} param.hocrFiles
+ * @returns
+ */
+export async function importFiles({ pdfFiles, imageFiles, hocrFiles }) {
+  if (pdfFiles.length === 0 && imageFiles.length === 0 && hocrFiles.length === 0) {
+    const errorText = 'No supported files found.';
+    state.errorHandler(errorText);
+    return;
+  } if (pdfFiles.length > 0 && imageFiles.length > 0) {
+    const errorText = 'PDF and image files cannot be imported together. Only first PDF file will be imported.';
+    state.warningHandler(errorText);
+    pdfFiles.length = 1;
+    imageFiles.length = 0;
+  } else if (pdfFiles.length > 1) {
+    const errorText = 'Multiple PDF files are not supported. Only first PDF file will be imported.';
+    state.warningHandler(errorText);
+    pdfFiles.length = 1;
+    imageFiles.length = 0;
+  }
+
+  inputData.pdfMode = pdfFiles.length === 1;
+  inputData.imageMode = !!(imageFiles.length > 0 && !inputData.pdfMode);
+  ImageCache.inputModes.image = !!(imageFiles.length > 0 && !inputData.pdfMode);
+
+  const xmlModeImport = hocrFiles.length > 0;
+
+  // Extract text from PDF document
+  // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
+  inputData.extractTextMode = opt.extractText && inputData.pdfMode && !xmlModeImport;
+
   // The loading bar should be initialized before anything significant runs (e.g. `ImageCache.openMainPDF` to provide some visual feedback).
   // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   let progressMax = 0;
-  if (inputData.imageMode) progressMax += imageFilesAll.length;
-  if (xmlModeImport) progressMax += hocrFilesAll.length;
+  if (inputData.imageMode) progressMax += imageFiles.length;
+  if (xmlModeImport) progressMax += hocrFiles.length;
 
   // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
   // Therefore, a dummy loading bar with a max of 1 is created even when progress is not meaningfully tracked.
@@ -156,13 +222,12 @@ export async function importFiles(curFiles) {
   let scribeMode = false;
 
   if (inputData.pdfMode) {
-    const pdfFile = pdfFilesAll[0];
-    inputData.inputFileNames = [pdfFile.name];
+    const pdfFile = pdfFiles[0];
 
     // Start loading mupdf workers as soon as possible, without waiting for `pdfFile.arrayBuffer` (which can take a while).
     ImageCache.getMuPDFScheduler();
 
-    const pdfFileData = await pdfFile.arrayBuffer();
+    const pdfFileData = pdfFile instanceof ArrayBuffer ? pdfFile : await pdfFile.arrayBuffer();
 
     // If no XML data is provided, page sizes are calculated using muPDF alone
     await ImageCache.openMainPDF(pdfFileData, opt.omitNativeText, !xmlModeImport, inputData.extractTextMode);
@@ -170,8 +235,7 @@ export async function importFiles(curFiles) {
     pageCountImage = ImageCache.pageCount;
     ImageCache.loadCount = ImageCache.pageCount;
   } else if (inputData.imageMode) {
-    inputData.inputFileNames = imageFilesAll.map((x) => x.name);
-    pageCountImage = imageFilesAll.length;
+    pageCountImage = imageFiles.length;
   }
 
   let existingLayout = false;
@@ -187,7 +251,7 @@ export async function importFiles(curFiles) {
 
     let stextModeImport;
     if (xmlModeImport) {
-      const ocrData = await importOCRFiles(Array.from(hocrFilesAll), true);
+      const ocrData = await importOCRFiles(Array.from(hocrFiles));
 
       ocrAllRaw.active = ocrData.hocrRaw;
       // Subset OCR data to avoid uncaught error that occurs when there are more pages of OCR data than image data.
@@ -294,9 +358,8 @@ export async function importFiles(curFiles) {
   if (inputData.imageMode) {
     ImageCache.pageCount = state.pageCount;
     for (let i = 0; i < state.pageCount; i++) {
-      ImageCache.nativeSrc[i] = await importImageFile(imageFilesAll[i]).then(async (imgStr) => {
-        const format = imageFilesAll[i].name.match(/jpe?g$/i) ? 'jpeg' : 'png';
-        const imgWrapper = new ImageWrapper(i, imgStr, format, 'native', false, false);
+      ImageCache.nativeSrc[i] = await importImageFile(imageFiles[i]).then(async (imgStr) => {
+        const imgWrapper = new ImageWrapper(i, imgStr, 'native', false, false);
         const imageDims = await imageUtils.getDims(imgWrapper);
         pageMetricsArr[i] = new PageMetrics(imageDims);
         return imgWrapper;

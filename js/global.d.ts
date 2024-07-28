@@ -115,6 +115,8 @@ declare global {
 
     type ProgressBar = import("../gui/utils/progressBars.js").ProgressBar;
 
+    type FileNode = import("./import/nodeAdapter.js").FileNode;
+
     // Layout objects
     type LayoutPage = import("./objects/layoutObjects.js").LayoutPage;
     type LayoutDataTablePage = import("./objects/layoutObjects.js").LayoutDataTablePage;

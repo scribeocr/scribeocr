@@ -5,13 +5,10 @@ import { readOcrFile } from '../utils/miscUtils.js';
  * Import raw OCR data from files.
  * Currently supports .hocr (used by Tesseract), Abbyy .xml, and stext (an intermediate data format used by mupdf).
  *
- * @param {File[]} ocrFilesAll - Array of OCR files
- * @param {boolean} extractSuppData - Whether to extract font metrics and layout data (if it exists).
+ * @param {Array<File|FileNode|ArrayBuffer>} ocrFilesAll - Array of OCR files
  */
 
-export async function importOCRFiles(ocrFilesAll, extractSuppData = true) {
-  ocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
-
+export async function importOCRFiles(ocrFilesAll) {
   // In the case of 1 HOCR file
   const singleHOCRMode = ocrFilesAll.length === 1;
 

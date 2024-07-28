@@ -4,7 +4,7 @@ import path from 'path';
 /**
  * Class representing a simplified version of the File interface for Node.js.
  */
-class FileNode {
+export class FileNode {
   /**
      * Creates an instance of the File class.
      * @param {string} filePath - The path to the file.
@@ -24,4 +24,9 @@ class FileNode {
   }
 }
 
+/**
+ *
+ * @param {Array<string>} files
+ * @returns
+ */
 export const wrapFilesNode = (files) => files.map((file) => (new FileNode(file)));

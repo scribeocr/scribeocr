@@ -126,8 +126,7 @@ export class MuPDFScheduler {
 export class ImageWrapper {
   /**
    * @param {number} n - Page number
-   * @param {string} imageStr - Base-64 encoded image string.
-   * @param {('jpeg'|'png')} format - Image format ("jpeg" or "png").
+   * @param {string} imageStr - Base-64 encoded image string. Should start with "data:image/png" or "data:image/jpeg".
    * @param {string} colorMode - Color mode ("color", "gray", or "binary").
    * @param {boolean} rotated - Whether image has been rotated.
    * @param {boolean} upscaled - Whether image has been upscaled.
@@ -135,10 +134,12 @@ export class ImageWrapper {
    * All properties of this object must be serializable, as ImageWrapper objects are sent between threads.
    * This means that no promises can be used.
    */
-  constructor(n, imageStr, format, colorMode, rotated = false, upscaled = false) {
+  constructor(n, imageStr, colorMode, rotated = false, upscaled = false) {
     this.n = n;
     this.src = imageStr;
-    this.format = format;
+    const format0 = imageStr.match(/^data:image\/(png|jpeg)/)?.[1];
+    if (!format0 || !['png', 'jpeg'].includes(format0)) throw new Error(`Invalid image format: ${format0}`);
+    this.format = format0;
     this._dims = null;
     this.rotated = rotated;
     this.upscaled = upscaled;
@@ -308,7 +309,7 @@ export class ImageCache {
       const muPDFScheduler = await ImageCache.getMuPDFScheduler();
       return muPDFScheduler.drawPageAsPNG({
         page: n + 1, dpi, color, skipText: skipTextMode,
-      }).then((res) => new ImageWrapper(n, res, 'png', color ? 'color' : 'gray'));
+      }).then((res) => new ImageWrapper(n, res, color ? 'color' : 'gray'));
     }
     throw new Error('No input mode set');
   };
@@ -350,10 +351,10 @@ export class ImageCache {
     /** @type {?Promise<ImageWrapper>} */
     let native = null;
     if (saveNativeImage) {
-      native = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageColor)), 'png', inputImage.colorMode, isRotated, upscaleArg));
+      native = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageColor)), inputImage.colorMode, isRotated, upscaleArg));
     }
 
-    const binary = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageBinary)), 'png', 'binary', isRotated, upscaleArg));
+    const binary = resPromise.then(async (res) => new ImageWrapper(n, /** @type {string} */(/** @type {unknown} */(res.imageBinary)), 'binary', isRotated, upscaleArg));
 
     return { native, binary };
   };

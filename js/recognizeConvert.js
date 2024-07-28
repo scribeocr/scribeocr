@@ -139,11 +139,11 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
 
   const upscale = tessOptions.upscale || false;
   if (saveBinaryImageArg && res0.recognize.imageBinary && (significantRotation || !ImageCache.binary[n])) {
-    ImageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'png', 'binary', isRotated, upscale);
+    ImageCache.binary[n] = new ImageWrapper(n, res0.recognize.imageBinary, 'binary', isRotated, upscale);
   }
 
   if (saveNativeImage && res0.recognize.imageColor && significantRotation) {
-    ImageCache.native[n] = new ImageWrapper(n, res0.recognize.imageColor, 'png', 'native', isRotated, upscale);
+    ImageCache.native[n] = new ImageWrapper(n, res0.recognize.imageColor, 'native', isRotated, upscale);
   }
 
   return resArr;

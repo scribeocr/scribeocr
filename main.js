@@ -94,7 +94,7 @@ import { clearData } from './js/clear.js';
 import { inputData, opt, state } from './js/containers/app.js';
 import { gs } from './js/containers/schedulerContainer.js';
 import { initGeneralScheduler } from './js/generalWorkerMain.js';
-import { importFiles } from './js/import/import.js';
+import { importFilesAll } from './js/import/import.js';
 import { convertOCRAll } from './js/recognizeConvert.js';
 
 globalThis.df = df;
@@ -603,7 +603,7 @@ state.display = displayPage;
 
 const importFilesGUI = async (files) => {
   state.progress = ProgressBars.import;
-  await importFiles(files);
+  await importFilesAll(files);
 
   displayPage(state.cp.n);
 
@@ -927,13 +927,16 @@ clearFiles();
 async function importOCRFilesSupp() {
   // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
   const ocrName = uploadOCRNameElem.value;
-  const hocrFilesAll = uploadOCRFileElem.files;
 
-  if (!hocrFilesAll || hocrFilesAll.length === 0) return;
+  if (!uploadOCRFileElem.files || uploadOCRFileElem.files.length === 0) return;
+
+  const ocrFilesAll = Array.from(uploadOCRFileElem.files);
+
+  ocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
   elem.evaluate.displayLabelText.disabled = true;
 
-  const ocrData = await importOCRFiles(Array.from(hocrFilesAll), false);
+  const ocrData = await importOCRFiles(ocrFilesAll);
 
   const pageCountHOCR = ocrData.hocrRaw.length;
 
