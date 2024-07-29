@@ -6,7 +6,7 @@
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
 import { opt, state } from '../js/containers/app.js';
-import { debugImg, ocrAll, pageMetricsArr } from '../js/containers/dataContainer.js';
+import { DebugData, ocrAll, pageMetricsArr } from '../js/containers/dataContainer.js';
 import { fontAll } from '../js/containers/fontContainer.js';
 import { ImageCache } from '../js/containers/imageContainer.js';
 import { gs } from '../js/containers/schedulerContainer.js';
@@ -440,10 +440,10 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   const debugLabel = 'recognizeArea';
 
-  if (debugLabel && !debugImg[debugLabel]) {
-    debugImg[debugLabel] = new Array(ImageCache.pageCount);
+  if (debugLabel && !DebugData.debugImg[debugLabel]) {
+    DebugData.debugImg[debugLabel] = new Array(ImageCache.pageCount);
     for (let i = 0; i < ImageCache.pageCount; i++) {
-      debugImg[debugLabel][i] = [];
+      DebugData.debugImg[debugLabel][i] = [];
     }
   }
 
@@ -468,7 +468,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     options: compOptions,
   });
 
-  debugImg[debugLabel][n].push(...res.debugImg);
+  DebugData.debugImg[debugLabel][n].push(...res.debugImg);
 
   combineData(res.page, ocrAll.active[n], pageMetricsArr[n]);
 

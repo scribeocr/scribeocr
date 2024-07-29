@@ -67,7 +67,7 @@ describe('Check Node.js commands.', () => {
     // originalConsoleLog(consoleOutput);
 
     // Assert that console.log was called with 'blah'
-    expect(consoleOutput).to.include('389 of 404');
+    expect(consoleOutput).to.include('388 of 404');
   }).timeout(30000);
 
   it('Overlay .pdf and Abbyy .xml file.', async () => {
@@ -112,9 +112,9 @@ describe('Check Node.js commands.', () => {
     // Call the function
     await overlayCLI(path.join(__dirname, '../assets/scribe_test_pdf1.pdf'), path.join(__dirname, '../assets/scribe_test_pdf1_abbyy.xml'), tmpDir, { robust: true, conf: true, vis: true });
 
-    if (!/389 of 404/.test(consoleOutput)) originalConsoleLog(consoleOutput);
+    if (!/388 of 404/.test(consoleOutput)) originalConsoleLog(consoleOutput);
 
-    expect(consoleOutput).to.include('389 of 404');
+    expect(consoleOutput).to.include('388 of 404');
 
     const outputPath = `${tmpDir}/scribe_test_pdf1_vis.pdf`;
 

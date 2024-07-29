@@ -383,5 +383,9 @@ export async function optimizeFont({
 
   workingFont.kerningPairs = calculateKerningPairs(workingFont, fontMetricsObj, xHeight, style);
 
+  // Append suffix to avoid naming conflict with raw font.
+  // This is necessary for the Node.js version due to quirks with node-canvas.
+  workingFont.tables.name.postScriptName.en = `${workingFont.tables.name.postScriptName.en.replaceAll(/\s+/g, '')}-Opt`;
+
   return { fontData: workingFont.toArrayBuffer(), kerningPairs: workingFont.kerningPairs };
 }

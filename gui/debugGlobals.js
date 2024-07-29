@@ -5,6 +5,7 @@
 
 import { opt, state } from '../js/containers/app.js';
 import {
+  DebugData,
   fontMetricsObj,
   LayoutDataTables,
   LayoutRegions,
@@ -61,6 +62,7 @@ export const df = {
   calcConf,
   calcLineFontSize,
   calcWordMetrics,
+  DebugData,
   downloadAllImages,
   elem,
   fontAll,

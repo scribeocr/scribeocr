@@ -1,4 +1,4 @@
-import { debugImg, ocrAll, pageMetricsArr } from './containers/dataContainer.js';
+import { DebugData, ocrAll, pageMetricsArr } from './containers/dataContainer.js';
 import { ImageCache } from './containers/imageContainer.js';
 import { gs } from './containers/schedulerContainer.js';
 
@@ -47,7 +47,7 @@ export async function nudgeDoc(func, view = false) {
 
   const promiseArr = [];
 
-  debugImg.nudge = new Array(ocrAll.active.length);
+  DebugData.debugImg.nudge = new Array(ocrAll.active.length);
 
   for (let i = 0; i < ocrAll.active.length; i++) {
     const ocrPageI = ocrAll.active[i];
@@ -60,7 +60,7 @@ export async function nudgeDoc(func, view = false) {
       ocrAll.active[i] = res.data.page;
       improveCt += res.data.improveCt;
       totalCt += res.data.totalCt;
-      if (res.data.debug) debugImg.nudge[i] = res.data.debug;
+      if (res.data.debug) DebugData.debugImg.nudge[i] = res.data.debug;
     }));
   }
 

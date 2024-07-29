@@ -46,9 +46,9 @@ export const overlayCLI = async (pdfFile, ocrFile, outputDir, options) => {
   process.exitCode = 0;
 };
 
-export const recognizeCLI = async (pdfFile) => {
-  const res = await recognize(pdfFile);
-  console.log(res.text);
+export const recognizeCLI = async (pdfFile, options) => {
+  options.overlayMode = options.vis ? 'proof' : 'invis';
+  await recognize(pdfFile, options);
   process.exitCode = 0;
 };
 

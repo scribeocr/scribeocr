@@ -6,11 +6,11 @@ import path from 'path';
 import { runFontOptimization } from '../js/fontEval.js';
 
 import ocr from '../js/objects/ocrObjects.js';
-import { tmpUnique } from '../js/worker/compareOCRModule.js';
 
 import { drawDebugImages } from '../js/debug.js';
 
 import {
+  DebugData,
   ocrAll,
 } from '../js/containers/dataContainer.js';
 import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
@@ -25,12 +25,15 @@ import { initGeneralScheduler, initTesseractInWorkers } from '../js/generalWorke
 import { importFilesAll } from '../js/import/import.js';
 import { recognizeAll } from '../js/recognizeConvert.js';
 import { calcConf } from '../js/utils/ocrUtils.js';
+import { tmpUnique } from '../js/worker/compareOCRModule.js';
 
 // When `debugMode` is enabled:
 // (1) Comparison images are saved as .png files.
 // (2) Comparison logs are saved as .txt files.
 // (3) All OCR data is dumped as .hocr files.
 const debugMode = false;
+
+opt.saveDebugImages = debugMode;
 
 /** @type {import('canvas').CanvasRenderingContext2D} */
 let ctxDebug;
@@ -52,6 +55,19 @@ async function writeDebugImages(ctx, compDebugArrArr, filePath) {
   await drawDebugImages({ ctx, compDebugArrArr, context: 'node' });
   const buffer0 = ctx.canvas.toBuffer('image/png');
   fs.writeFileSync(filePath, buffer0);
+}
+
+async function dumpDebugImagesAll() {
+  if (!DebugData.debugImg.Combined || DebugData.debugImg.Combined.length === 0) {
+    console.log('No debug images to dump.');
+    console.log(DebugData.debugImg);
+    return;
+  }
+
+  for (let i = 0; i < DebugData.debugImg.Combined.length; i++) {
+    const filePath = `${debugDir}legacy_lstm_comp_${i}.png`;
+    await writeDebugImages(ctxDebug, [DebugData.debugImg.Combined[i]], filePath);
+  }
 }
 
 /**
@@ -115,7 +131,7 @@ async function main(func, params) {
     }
   }
 
-  if (func === 'overlay' && backgroundArg) {
+  if (['overlay', 'recognize'].includes(func) && backgroundArg) {
     let outputSuffix = '';
     if (opt.displayMode === 'proof') {
       outputSuffix = '_vis';
@@ -135,6 +151,8 @@ async function main(func, params) {
     const outputPath = `${__dirname}/../../dev/debug/${backgroundArgStem}_debug.csv`;
     writeDebugCsv(ocrAll.active, outputPath);
   }
+
+  if (debugMode) dumpDebugImagesAll();
 
   // Delete temp directory with fonts
   await tmpUnique.delete();
@@ -186,9 +204,11 @@ export const overlay = async (pdfFile, ocrFile, outputDir, options) => (main('ov
 /**
  *
  * @param {string} pdfFile - Path to PDF file.
+ * @param {Object} options
+ * @param {"eval" | "ebook" | "proof" | "invis"} [options.overlayMode]
  * @returns
  */
-export const recognize = async (pdfFile) => (main('recognize', { pdfFile }));
+export const recognize = async (pdfFile, options) => (main('recognize', { pdfFile, overlayMode: options?.overlayMode || 'invis' }));
 
 /**
  *

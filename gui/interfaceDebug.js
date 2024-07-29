@@ -2,9 +2,9 @@
 
 import { opt, state } from '../js/containers/app.js';
 import {
-  debugImg,
+  DebugData,
   fontMetricsObj, LayoutRegions,
-  ocrAll, pageMetricsArr,
+  ocrAll, pageMetricsArr
 } from '../js/containers/dataContainer.js';
 import { ImageCache } from '../js/containers/imageContainer.js';
 import { gs } from '../js/containers/schedulerContainer.js';
@@ -39,9 +39,9 @@ export async function showDebugImages() {
   /** @type {Array<Array<CompDebugBrowser>>} */
   const compDebugArrArr = [];
 
-  const compDebugArr1 = debugImg?.['Tesseract Combined']?.[state.cp.n];
-  const compDebugArr2 = debugImg?.Combined?.[state.cp.n];
-  const compDebugArr3 = debugImg?.recognizeArea?.[state.cp.n];
+  const compDebugArr1 = DebugData.debugImg?.['Tesseract Combined']?.[state.cp.n];
+  const compDebugArr2 = DebugData.debugImg?.Combined?.[state.cp.n];
+  const compDebugArr3 = DebugData.debugImg?.recognizeArea?.[state.cp.n];
 
   if (compDebugArr1 && compDebugArr1.length > 0) compDebugArrArr.push(compDebugArr1);
   if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);

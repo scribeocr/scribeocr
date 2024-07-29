@@ -43,7 +43,8 @@ program
 program
   .command('recognize')
   .argument('<pdf_file>', 'Input PDF file.')
-  .description('Calculate confidence metric for OCR data using existing confidence info in the provided data.')
+  .description('Recognize text in PDF file using internal OCR engine.')
+  .option('-v, --vis', 'Print OCR text visibly over provided PDF file with colors coded by confidence.')
   .action(recognizeCLI);
 
 program

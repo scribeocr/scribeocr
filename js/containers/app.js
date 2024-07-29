@@ -53,6 +53,8 @@ export class opt {
   static xlsxFilenameColumn = true;
 
   static xlsxPageNumberColumn = true;
+
+  static saveDebugImages = false;
 }
 
 export class state {

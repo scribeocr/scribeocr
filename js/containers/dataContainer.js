@@ -30,9 +30,20 @@ export const ocrAllRaw = { active: [] };
 export const pageMetricsArr = [];
 
 /**
- * @type {{[key: string]: Array<Array<CompDebugBrowser|CompDebugNode>> | undefined}}
+ * Class that stores various debug data.
+ * Although this object contains useful information, it should not be referenced directly in code,
+ * except for debugging features.
  */
-export const debugImg = {};
+export class DebugData {
+  /** @type {{[key: string]: Array<Array<CompDebugBrowser|CompDebugNode>> | undefined}} */
+  static debugImg = {};
+
+  /** @type {?Awaited<ReturnType<import('../fontEval.js').evaluateFonts>>} */
+  static evalRaw;
+
+  /** @type {?Awaited<ReturnType<import('../fontEval.js').evaluateFonts>>} */
+  static evalOpt;
+}
 
 /** @type {Array<EvalMetrics>} */
 export const evalStats = [];

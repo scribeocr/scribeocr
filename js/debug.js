@@ -26,8 +26,8 @@ export async function drawDebugImages(args) {
   let canvasHeight = 5;
   let canvasWidth = 200;
 
-  compDebugArrArr.forEach((a) => canvasHeight += a.map((x) => x.dims.height + 25).reduce((x, y) => x + y));
-  compDebugArrArr.forEach((a) => canvasWidth = Math.max(a.map((x) => x.dims.width * 3 + 30).reduce((x, y) => Math.max(x, y)), canvasWidth));
+  compDebugArrArr.forEach((a) => canvasHeight += a.map((x) => x.dims.height + 25).reduce((x, y) => x + y, canvasHeight));
+  compDebugArrArr.forEach((a) => canvasWidth = Math.max(a.map((x) => x.dims.width * 3 + 30).reduce((x, y) => Math.max(x, y), canvasWidth), canvasWidth));
 
   ctx.canvas.height = canvasHeight;
   ctx.canvas.width = canvasWidth;

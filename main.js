@@ -103,6 +103,8 @@ globalThis.d = () => {
   debugger;
 };
 
+opt.saveDebugImages = true;
+
 initGeneralScheduler();
 
 // Disable mouse wheel + control to zoom by the browser.

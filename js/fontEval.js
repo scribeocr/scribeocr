@@ -1,4 +1,4 @@
-import { fontMetricsObj, pageMetricsArr } from './containers/dataContainer.js';
+import { DebugData, fontMetricsObj, pageMetricsArr } from './containers/dataContainer.js';
 import { fontAll } from './containers/fontContainer.js';
 import { ImageCache } from './containers/imageContainer.js';
 import { gs } from './containers/schedulerContainer.js';
@@ -49,7 +49,7 @@ export async function evalPageFonts(font, pageArr, n = 500) {
     wordsTotal += res.wordsTotal;
   }
 
-  return metricTotal;
+  return { wordsTotal, metricTotal };
 }
 
 /**
@@ -66,36 +66,55 @@ export async function evaluateFonts(pageArr) {
   let sansMetrics;
   let serifMetrics;
   if (typeof process === 'undefined') {
-    const carlitoMetricPromise = evalPageFonts(fontActive.Carlito, pageArr);
-    const nimbusSansMetricPromise = evalPageFonts(fontActive.NimbusSans, pageArr);
+    const fontMetricsPromises = {
+      carlito: evalPageFonts(fontActive.Carlito, pageArr),
+      nimbusSans: evalPageFonts(fontActive.NimbusSans, pageArr),
+      century: evalPageFonts(fontActive.Century, pageArr),
+      palatino: evalPageFonts(fontActive.Palatino, pageArr),
+      garamond: evalPageFonts(fontActive.Garamond, pageArr),
+      nimbusRomNo9L: evalPageFonts(fontActive.NimbusRomNo9L, pageArr),
+    };
 
-    const centuryMetricPromise = evalPageFonts(fontActive.Century, pageArr);
-    const palatinoMetricPromise = evalPageFonts(fontActive.Palatino, pageArr);
-    const garamondMetricPromise = evalPageFonts(fontActive.Garamond, pageArr);
-    const nimbusRomNo9LMetricPromise = evalPageFonts(fontActive.NimbusRomNo9L, pageArr);
+    const fontMetrics = {
+      carlito: await fontMetricsPromises.carlito,
+      nimbusSans: await fontMetricsPromises.nimbusSans,
+      century: await fontMetricsPromises.century,
+      palatino: await fontMetricsPromises.palatino,
+      garamond: await fontMetricsPromises.garamond,
+      nimbusRomNo9L: await fontMetricsPromises.nimbusRomNo9L,
+    };
 
     sansMetrics = {
-      Carlito: await carlitoMetricPromise,
-      NimbusSans: await nimbusSansMetricPromise,
+      Carlito: fontMetrics.carlito.metricTotal / fontMetrics.carlito.wordsTotal,
+      NimbusSans: fontMetrics.nimbusSans.metricTotal / fontMetrics.nimbusSans.wordsTotal,
     };
 
     serifMetrics = {
-      Century: await centuryMetricPromise,
-      Palatino: await palatinoMetricPromise,
-      Garamond: await garamondMetricPromise,
-      NimbusRomNo9L: await nimbusRomNo9LMetricPromise,
+      Century: fontMetrics.century.metricTotal / fontMetrics.century.wordsTotal,
+      Palatino: fontMetrics.palatino.metricTotal / fontMetrics.palatino.wordsTotal,
+      Garamond: fontMetrics.garamond.metricTotal / fontMetrics.garamond.wordsTotal,
+      NimbusRomNo9L: fontMetrics.nimbusRomNo9L.metricTotal / fontMetrics.nimbusRomNo9L.wordsTotal,
     };
   } else {
-    sansMetrics = {
+    const fontMetrics = {
       Carlito: await evalPageFonts(fontActive.Carlito, pageArr),
       NimbusSans: await evalPageFonts(fontActive.NimbusSans, pageArr),
-    };
-
-    serifMetrics = {
       Century: await evalPageFonts(fontActive.Century, pageArr),
       Palatino: await evalPageFonts(fontActive.Palatino, pageArr),
       Garamond: await evalPageFonts(fontActive.Garamond, pageArr),
       NimbusRomNo9L: await evalPageFonts(fontActive.NimbusRomNo9L, pageArr),
+    };
+
+    sansMetrics = {
+      Carlito: fontMetrics.Carlito.metricTotal / fontMetrics.Carlito.wordsTotal,
+      NimbusSans: fontMetrics.NimbusSans.metricTotal / fontMetrics.NimbusSans.wordsTotal,
+    };
+
+    serifMetrics = {
+      Century: fontMetrics.Century.metricTotal / fontMetrics.Century.wordsTotal,
+      Palatino: fontMetrics.Palatino.metricTotal / fontMetrics.Palatino.wordsTotal,
+      Garamond: fontMetrics.Garamond.metricTotal / fontMetrics.Garamond.wordsTotal,
+      NimbusRomNo9L: fontMetrics.NimbusRomNo9L.metricTotal / fontMetrics.NimbusRomNo9L.wordsTotal,
     };
   }
 
@@ -161,6 +180,8 @@ export async function runFontOptimization(ocrArr) {
     if (!ImageCache.inputModes.image && !ImageCache.inputModes.pdf) {
       fontAll.opt = { ...fontAll.optInitial };
     }
+  } else {
+    console.warn('No font metrics found. Skipping font optimization.');
   }
 
   // If image data exists, select the correct font by comparing to the image.
@@ -179,11 +200,15 @@ export async function runFontOptimization(ocrArr) {
 
     const evalRaw = await evaluateFonts(ocrArr.slice(0, pageNum));
 
+    DebugData.evalRaw = evalRaw;
+
     if (calculateOpt && Object.keys(fontAll.optInitial).length > 0) {
       // Enable optimized fonts
       await enableDisableFontOpt(true, true, true);
 
       const evalOpt = await evaluateFonts(ocrArr.slice(0, pageNum));
+
+      DebugData.evalOpt = evalOpt;
 
       // The default font for both the optimized and unoptimized versions are set to the same font.
       // This ensures that switching on/off "font optimization" does not change the font, which would be confusing.

@@ -1,6 +1,6 @@
 import { inputData, opt, state } from './containers/app.js';
 import {
-  debugImg,
+  DebugData,
   evalStats,
   LayoutDataTables, ocrAll, pageMetricsArr, visInstructions,
 } from './containers/dataContainer.js';
@@ -407,8 +407,6 @@ export async function recognizeAll(oemMode) {
   await gs.schedulerReady;
   if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
 
-  const debugMode = typeof process === 'undefined';
-
   const fontPromiseArr = [];
   // Chinese requires loading a separate font.
   if (opt.langs.includes('chi_sim')) fontPromiseArr.push(loadChiSimFont());
@@ -434,7 +432,7 @@ export async function recognizeAll(oemMode) {
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
     await recognizeAllPages(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR));
     const time2b = Date.now();
-    if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
+    if (typeof process === 'undefined') console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
     // Metrics from the LSTM model are so inaccurate they are not worth using.
     if (oemMode === 'legacy') {
@@ -451,12 +449,12 @@ export async function recognizeAll(oemMode) {
     const time2a = Date.now();
     await recognizeAllPages(true, true, true);
     const time2b = Date.now();
-    if (debugMode) console.log(`Tesseract runtime: ${time2b - time2a} ms`);
+    if (typeof process === 'undefined') console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
-    if (debugMode) {
-      debugImg.Combined = new Array(ImageCache.pageCount);
+    if (opt.saveDebugImages) {
+      DebugData.debugImg.Combined = new Array(ImageCache.pageCount);
       for (let i = 0; i < ImageCache.pageCount; i++) {
-        debugImg.Combined[i] = [];
+        DebugData.debugImg.Combined[i] = [];
       }
     }
 
@@ -465,10 +463,10 @@ export async function recognizeAll(oemMode) {
       if (!ocrAll[oemText]) ocrAll[oemText] = Array(state.pageCount);
       ocrAll.active = ocrAll[oemText];
 
-      if (debugMode) {
-        debugImg['Tesseract Combined'] = new Array(ImageCache.pageCount);
+      if (opt.saveDebugImages) {
+        DebugData.debugImg['Tesseract Combined'] = new Array(ImageCache.pageCount);
         for (let i = 0; i < ImageCache.pageCount; i++) {
-          debugImg['Tesseract Combined'][i] = [];
+          DebugData.debugImg['Tesseract Combined'][i] = [];
         }
       }
     }
@@ -537,7 +535,7 @@ export async function recognizeAll(oemMode) {
         options: compOptions,
       });
 
-      if (debugImg[tessCombinedLabel]) debugImg[tessCombinedLabel][i] = res.debugImg;
+      if (DebugData.debugImg[tessCombinedLabel]) DebugData.debugImg[tessCombinedLabel][i] = res.debugImg;
 
       ocrAll[tessCombinedLabel][i] = res.page;
 
@@ -566,7 +564,7 @@ export async function recognizeAll(oemMode) {
             options: compOptions2,
           });
 
-          if (debugImg.Combined) debugImg.Combined[i] = res2.debugImg;
+          if (DebugData.debugImg.Combined) DebugData.debugImg.Combined[i] = res2.debugImg;
 
           ocrAll.Combined[i] = res2.page;
         } else {
@@ -592,14 +590,14 @@ export async function recognizeAll(oemMode) {
             options: compOptions2,
           });
 
-          if (debugImg.Combined) debugImg.Combined[i] = res2.debugImg;
+          if (DebugData.debugImg.Combined) DebugData.debugImg.Combined[i] = res2.debugImg;
 
           ocrAll.Combined[i] = res2.page;
         }
       }
     }
     const time3b = Date.now();
-    if (debugMode) console.log(`Comparison runtime: ${time3b - time3a} ms`);
+    if (typeof process === 'undefined') console.log(`Comparison runtime: ${time3b - time3a} ms`);
   }
 
   if (state.progress) state.progress.increment();

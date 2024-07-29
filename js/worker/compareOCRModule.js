@@ -108,11 +108,11 @@ export const initCanvasNode = async () => {
       await writeFile2(fontPathTmp, Buffer.from(fontObj.src));
       // console.log(`Writing font to: ${fontPathTmp}`);
 
-      registerFont(fontPathTmp, { family: fontObj.fontFaceName, style: fontObj.fontFaceStyle });
+      registerFont(fontPathTmp, { family: fontObj.fontFaceName, style: fontObj.fontFaceStyle, weight: fontObj.fontFaceWeight });
 
       // unlinkSync(fontPathTmp);
     } else {
-      registerFont(fontObj.src, { family: fontObj.fontFaceName, style: fontObj.fontFaceStyle });
+      registerFont(fontObj.src, { family: fontObj.fontFaceName, style: fontObj.fontFaceStyle, weight: fontObj.fontFaceWeight });
     }
   };
 
@@ -125,8 +125,9 @@ export const initCanvasNode = async () => {
     }
   }
 
-  if (fontAll.opt) {
-    for (const [key1, value1] of Object.entries(fontAll.opt)) {
+  // This function is used before font optimization is complete, so `fontAll.opt` does not exist yet.
+  if (fontAll.optInitial) {
+    for (const [key1, value1] of Object.entries(fontAll.optInitial)) {
       if (['Default', 'SansDefault', 'SerifDefault'].includes(key1)) continue;
       for (const [key2, value2] of Object.entries(value1)) {
         await registerFontObj(value2);
