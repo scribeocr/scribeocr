@@ -7,6 +7,7 @@ import { calcTableBbox } from '../js/objects/layoutObjects.js';
 import ocr from '../js/objects/ocrObjects.js';
 import { calcWordMetrics } from '../js/utils/fontUtils.js';
 import { replaceSmartQuotes } from '../js/utils/miscUtils.js';
+import { assignParagraphs } from '../js/utils/ocrUtils.js';
 import { Button } from '../lib/bootstrap.esm.bundle.min.js';
 import Konva from '../lib/konva/index.js';
 import { search } from '../main.js';
@@ -1021,14 +1022,14 @@ export function renderPage(page) {
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-  // assignParagraphs(page, angle);
+  if (elem.view.outlinePars.checked && page) {
+    assignParagraphs(page, angle);
 
-  // if (page) {
-  //   page.pars.forEach((par) => {
-  //     const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
-  //     addBlockOutline(par.bbox, angleArg, angleAdj);
-  //   });
-  // }
+    page.pars.forEach((par) => {
+      const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
+      addBlockOutline(par.bbox, angleArg, angleAdj);
+    });
+  }
 
   for (let i = 0; i < page.lines.length; i++) {
     const lineObj = page.lines[i];

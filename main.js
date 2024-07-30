@@ -391,6 +391,7 @@ elem.view.autoRotate.addEventListener('click', () => {
 
 elem.view.outlineWords.addEventListener('click', () => { renderPageQueue(state.cp.n); });
 elem.view.outlineLines.addEventListener('click', () => { renderPageQueue(state.cp.n); });
+elem.view.outlinePars.addEventListener('click', () => { renderPageQueue(state.cp.n); });
 
 elem.evaluate.displayLabelOptions.addEventListener('click', (e) => {
   // The elements this event are intended for are the individual elements of the list (not `displayLabelOptionsElem`),

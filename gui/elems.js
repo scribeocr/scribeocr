@@ -92,6 +92,8 @@ class view {
 
   static outlineWords = /** @type {HTMLInputElement} */(document.getElementById('outlineWords'));
 
+  static outlinePars = /** @type {HTMLInputElement} */(document.getElementById('outlinePars'));
+
   static overlayOpacity = /** @type {HTMLInputElement} */(document.getElementById('overlayOpacity'));
 }
 
