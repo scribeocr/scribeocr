@@ -34,6 +34,6 @@ jobs:
       run: npm install
 
     - name: Run Karma tests
-      run: npm test
+      run: npm test:general:browser
       env:
         KARMA_BROWSER: ${{ matrix.browser }}
