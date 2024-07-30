@@ -22,7 +22,5 @@ export async function clearData() {
   await ImageCache.clear();
   // Clear optimized font data and reset fontAll to raw data.
   replaceObjectProperties(fontMetricsObj);
-  fontAll.active = fontAll.raw;
-  fontAll.optInitial = null;
-  fontAll.opt = null;
+  fontAll.clear();
 }

@@ -180,8 +180,6 @@ export async function runFontOptimization(ocrArr) {
     if (!ImageCache.inputModes.image && !ImageCache.inputModes.pdf) {
       fontAll.opt = { ...fontAll.optInitial };
     }
-  } else {
-    console.warn('No font metrics found. Skipping font optimization.');
   }
 
   // If image data exists, select the correct font by comparing to the image.

@@ -135,9 +135,6 @@ export async function enableDisableFontOpt(enable, useInitial = false, forceWork
   }
 }
 
-let loadedBuiltInRaw = false;
-let loadedBuiltInOpt = false;
-
 /**
  *
  * @param {*} scheduler
@@ -148,7 +145,7 @@ export async function setBuiltInFontsWorker(scheduler, force = false) {
 
   const opt = fontAll.active.Carlito.normal.opt || fontAll.active.NimbusRomNo9L.normal.opt;
 
-  const loadedBuiltIn = (!opt && loadedBuiltInRaw) || (opt && loadedBuiltInOpt);
+  const loadedBuiltIn = (!opt && fontAll.loadedBuiltInRawWorker) || (opt && fontAll.loadedBuiltInOptWorker);
 
   // If the active font data is not already loaded, load it now.
   // This assumes that only one version of the raw/optimized fonts ever exist--
@@ -198,9 +195,9 @@ export async function setBuiltInFontsWorker(scheduler, force = false) {
 
     // Theoretically this should be changed to use promises to avoid the race condition when `setBuiltInFontsWorker` is called multiple times quickly and `loadFontsWorker` is still running.
     if (opt) {
-      loadedBuiltInOpt = true;
+      fontAll.loadedBuiltInOptWorker = true;
     } else {
-      loadedBuiltInRaw = true;
+      fontAll.loadedBuiltInRawWorker = true;
     }
   }
 

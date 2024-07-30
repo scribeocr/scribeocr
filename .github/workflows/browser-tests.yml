@@ -1,39 +1,29 @@
-name: Browser Tests
+name: Browser CI
 
 on: [push, pull_request]
 
 jobs:
-  run-selenium-tests:
+  build:
+
     runs-on: ubuntu-latest
 
-    container:
-      image: node:19
-      
     strategy:
-      fail-fast: false
       matrix:
-        browser: ['chrome', 'firefox']
-
-    services:
-      selenium:
-        image: selenium/standalone-${{ matrix.browser }}
-        options: --shm-size=2gb --add-host=host.docker.internal:host-gateway
+        browser: ['ChromeHeadless', 'FirefoxHeadless']
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '19'
-          cache: 'npm'
-      - name: Pr2
-        run: hostname -I
-      - run: npm ci
-      - run: npm run test:gui
-        env:
-          BROWSER: ${{ matrix.browser }}
-          SELENIUM: selenium
-      - uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: ${{ matrix.browser }}
-          path: tests/gui/screenshots/
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run Karma tests
+      run: npm test
+      env:
+        KARMA_BROWSER: ${{ matrix.browser }}

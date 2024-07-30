@@ -77,7 +77,7 @@ const importImageFile = async (file) => new Promise((resolve, reject) => {
 
 /**
  * Standardize file-like inputs between platforms.
- * If run in the browser, the input is returned as-is.
+ * If run in the browser, URLs are fetched and converted to `File` objects.
  * If using Node.js, file paths are converted into `FileNode` objects,
  * which have properties and methods similar to the browser `File` interface.
  * @param {Array<File>|FileList|Array<string>} files
@@ -89,7 +89,26 @@ export async function standardizeFiles(files) {
       const { wrapFilesNode } = await import('./nodeAdapter.js');
       return wrapFilesNode(/** @type {Array<string>} */(files));
     }
-    throw new Error('File paths are only supported in Node.js');
+
+    // Fetch all URLs and convert the responses to Blobs
+    const blobPromises = files.map((url) => fetch(url).then((response) => {
+      if (!response.ok) {
+        console.log(response);
+        throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+      }
+      return response.blob().then((blob) => ({ blob, url }));
+    }));
+
+    // Wait for all fetches to complete
+    const blobsAndUrls = await Promise.all(blobPromises);
+
+    // Extract file name from URL and convert Blobs to File objects
+    return blobsAndUrls.map(({ blob, url }) => {
+      const fileName = url.split('/').pop();
+      // A valid filename is necessary, as the import function uses the filename.
+      if (!fileName) throw new Error(`Failed to extract file name from URL: ${url}`);
+      return new File([blob], fileName, { type: blob.type });
+    });
   }
 
   return /** @type {Array<File>|FileList} */ (files);

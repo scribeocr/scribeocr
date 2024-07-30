@@ -266,6 +266,9 @@ class FontCont {
     this.serifDefaultName = 'NimbusRomNo9L';
     this.sansDefaultName = 'NimbusSans';
 
+    this.loadedBuiltInRawWorker = false;
+    this.loadedBuiltInOptWorker = false;
+
     /** @type {?('latin'|'all')} */
     this.glyphSet = null;
     /**
@@ -344,6 +347,14 @@ class FontCont {
     this.getWordFont = (word, container = 'active') => {
       const wordFontFamily = word.font || fontAll.defaultFontName;
       return this.getFont(wordFontFamily, word.style, word.lang, container);
+    };
+
+    this.clear = () => {
+      this.active = this.raw;
+      this.optInitial = null;
+      this.opt = null;
+      this.loadedBuiltInRawWorker = false;
+      this.loadedBuiltInOptWorker = false;
     };
   }
 }

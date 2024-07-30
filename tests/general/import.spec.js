@@ -1,7 +1,5 @@
-import { assert } from 'chai';
-import { after, it } from 'mocha';
-import path from 'path';
-import { fileURLToPath } from 'url';
+// Relative imports are required to run in browser.
+/* eslint-disable import/no-relative-packages */
 import { clearData } from '../../js/clear.js';
 import { opt } from '../../js/containers/app.js';
 import { ocrAll } from '../../js/containers/dataContainer.js';
@@ -9,14 +7,20 @@ import { gs } from '../../js/containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw } from '../../js/fontContainerMain.js';
 import { initGeneralScheduler } from '../../js/generalWorkerMain.js';
 import { importFilesAll } from '../../js/import/import.js';
+import { assert } from '../../node_modules/chai/chai.js';
+// import mocha from '../../node_modules/mocha/mocha.js';
+import { ASSETS_PATH_KARMA } from '../constants.js';
 
-globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));
+// Using arrow functions breaks references to `this`.
+/* eslint-disable prefer-arrow-callback */
+/* eslint-disable func-names */
 
-describe('Check stext import function.', () => {
+describe('Check stext import function.', function () {
+  this.timeout(10000);
   before(async () => {
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFilesAll([path.join(__dirname, '../assets/econometrica_example.pdf')]);
+    await importFilesAll([`${ASSETS_PATH_KARMA}/econometrica_example.pdf`]);
   });
 
   it('Should correctly import small caps printed using font size adjustments', async () => {
@@ -45,12 +49,13 @@ describe('Check stext import function.', () => {
   });
 }).timeout(120000);
 
-describe('Check Tesseract import function.', () => {
+describe('Check Tesseract import function.', function () {
+  this.timeout(10000);
   before(async () => {
     await initGeneralScheduler();
     const resReadyFontAllRaw = gs.setFontAllRawReady();
     await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
-    await importFilesAll([path.join(__dirname, '../assets/econometrica_example_tess.hocr')]);
+    await importFilesAll([`${ASSETS_PATH_KARMA}/econometrica_example_tess.hocr`]);
   });
 
   it('Should correctly import small caps printed using font size adjustments', async () => {
@@ -69,12 +74,13 @@ describe('Check Tesseract import function.', () => {
   });
 }).timeout(120000);
 
-describe('Check Abbyy XML import function.', () => {
+describe('Check Abbyy XML import function.', function () {
+  this.timeout(10000);
   before(async () => {
     await initGeneralScheduler();
     const resReadyFontAllRaw = gs.setFontAllRawReady();
     await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
-    await importFilesAll([path.join(__dirname, '../assets/econometrica_example_abbyy.xml')]);
+    await importFilesAll([`${ASSETS_PATH_KARMA}/econometrica_example_abbyy.xml`]);
   });
 
   it('Should correctly import smallcaps attribute', async () => {
@@ -103,11 +109,12 @@ describe('Check Abbyy XML import function.', () => {
   });
 }).timeout(120000);
 
-describe('Check stext import function language support.', () => {
+describe('Check stext import function language support.', function () {
+  this.timeout(10000);
   before(async () => {
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
+    await importFilesAll([`${ASSETS_PATH_KARMA}/chi_eng_mixed_sample.pdf`]);
   });
 
   it('Should import Chinese characters', async () => {
@@ -122,12 +129,13 @@ describe('Check stext import function language support.', () => {
   });
 }).timeout(120000);
 
-describe('Check Tesseract import function language support.', () => {
+describe('Check Tesseract import function language support.', function () {
+  this.timeout(10000);
   before(async () => {
     await initGeneralScheduler();
     const resReadyFontAllRaw = gs.setFontAllRawReady();
     await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
-    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample_tess.hocr')]);
+    await importFilesAll([`${ASSETS_PATH_KARMA}/chi_eng_mixed_sample_tess.hocr`]);
   });
 
   it('Should import Chinese characters', async () => {
@@ -142,17 +150,18 @@ describe('Check Tesseract import function language support.', () => {
   });
 }).timeout(120000);
 
-describe('Check cleanup functions allow for resetting module.', () => {
+describe('Check cleanup functions allow for resetting module.', function () {
+  this.timeout(10000);
   it('Check that cleanup functions work properly', async () => {
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
+    await importFilesAll([`${ASSETS_PATH_KARMA}/chi_eng_mixed_sample.pdf`]);
     await gs.schedulerInner.terminate();
     await gs.clear();
     await clearData();
     await initGeneralScheduler();
     opt.extractText = true;
-    await importFilesAll([path.join(__dirname, '../assets/chi_eng_mixed_sample.pdf')]);
+    await importFilesAll([`${ASSETS_PATH_KARMA}/chi_eng_mixed_sample.pdf`]);
   }).timeout(10000);
 
   after(async () => {

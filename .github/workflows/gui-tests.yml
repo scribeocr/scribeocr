@@ -1,0 +1,39 @@
+name: GUI Tests
+
+on: [push, pull_request]
+
+jobs:
+  run-selenium-tests:
+    runs-on: ubuntu-latest
+
+    container:
+      image: node:19
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ['chrome', 'firefox']
+
+    services:
+      selenium:
+        image: selenium/standalone-${{ matrix.browser }}
+        options: --shm-size=2gb --add-host=host.docker.internal:host-gateway
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '19'
+          cache: 'npm'
+      - name: Pr2
+        run: hostname -I
+      - run: npm ci
+      - run: npm run test:gui
+        env:
+          BROWSER: ${{ matrix.browser }}
+          SELENIUM: selenium
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: ${{ matrix.browser }}
+          path: tests/gui/screenshots/

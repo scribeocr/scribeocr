@@ -233,32 +233,8 @@ zone.addEventListener('drop', async (event) => {
  * @param {Array<string>} urls
  */
 globalThis.fetchAndImportFiles = async (urls) => {
-  // Ensure that the input is an array of strings
-  if (!Array.isArray(urls) || !urls.every((url) => typeof url === 'string')) {
-    throw new Error('Input must be an array of strings');
-  }
-
-  // Fetch all URLs and convert the responses to Blobs
-  const blobPromises = urls.map((url) => fetch(url).then((response) => {
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-    }
-    return response.blob().then((blob) => ({ blob, url }));
-  }));
-
-  // Wait for all fetches to complete
-  const blobsAndUrls = await Promise.all(blobPromises);
-
-  // Extract file name from URL and convert Blobs to File objects
-  const files = blobsAndUrls.map(({ blob, url }) => {
-    const fileName = url.split('/').pop();
-    // A valid filename is necessary, as the import function uses the filename.
-    if (!fileName) throw new Error(`Failed to extract file name from URL: ${url}`);
-    return new File([blob], fileName, { type: blob.type });
-  });
-
   // Call the existing importFiles function with the file array
-  importFilesGUI(files);
+  importFilesGUI(urls);
 
   zone.setAttribute('style', 'display:none');
 };

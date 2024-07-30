@@ -60,13 +60,13 @@ let oemCurrent = 2;
 let langArrCurrent = ['eng'];
 
 let vanillaMode_ = false;
-const corePath = vanillaMode_ ? '/tess/core_vanilla/' : '/tess/core/';
+const corePath = vanillaMode_ ? '../tess/core_vanilla/' : '../tess/core/';
 
 // Custom build is currently only used for browser version, while the Node.js version uses the published npm package.
 // If recognition capabilities are ever added for the Node.js version, then we should use the same build for consistency. .
 const tessConfig = browserMode ? {
   corePath,
-  workerPath: '/tess/worker.min.js',
+  workerPath: '../../tess/worker.min.js',
   // langPath: '/tess/tessdata_dist',
   legacyCore: true,
   legacyLang: true,
@@ -101,7 +101,7 @@ const reinitialize = async ({ langs, oem, vanillaMode }) => {
   // The worker only needs to be created from scratch if the build of Tesseract being used changes,
   // or if it was never created in the first place.
   if (changeVanilla || !worker) {
-    tessConfig.corePath = vanillaMode_ ? '/tess/core_vanilla/' : '/tess/core/';
+    tessConfig.corePath = vanillaMode_ ? '../tess/core_vanilla/' : '../tess/core/';
     if (worker) await worker.terminate();
     worker = await Tesseract.createWorker(langArrCurrent, oemCurrent, tessConfig, initConfigs);
   } else {
