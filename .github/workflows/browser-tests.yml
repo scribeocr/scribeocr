@@ -20,20 +20,10 @@ jobs:
       with:
         node-version: '20'
 
-    - name: Install Chrome
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-
-    - name: Install Firefox
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y firefox
-
     - name: Install dependencies
       run: npm install
 
     - name: Run Karma tests
-      run: npm test:general:browser
+      run: npm run test:general:browser
       env:
         KARMA_BROWSER: ${{ matrix.browser }}
