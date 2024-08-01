@@ -72,6 +72,7 @@ export async function convertPageStext({ ocrStr, n }) {
 
       let baselineFirst = 0;
       let baselineLast = 0;
+      let baselineLastFallback = 0;
       let baselineCurrent = 0;
 
       /** @type {Array<Array<string>>} */
@@ -207,8 +208,6 @@ export async function convertPageStext({ ocrStr, n }) {
             baselineFirst = Math.max(baselineFirst, parseFloat(letterOrFontArr[j][6]));
           }
 
-          // Is there ever a case where the last "word" does not have a character?
-          // If so, a fallback should be added.
           if (i === wordStrArr.length - 1) {
             if (baselineLast === 0) {
               baselineLast = parseFloat(letterOrFontArr[j][6]);
@@ -216,6 +215,9 @@ export async function convertPageStext({ ocrStr, n }) {
               baselineLast = Math.max(baselineFirst, parseFloat(letterOrFontArr[j][6]));
             }
           }
+          // Store a fallback value in case `baselineLast` is never set.
+          // This can happen if the last "word" has no letters.
+          baselineLastFallback = parseFloat(letterOrFontArr[j][6]);
 
           // Small caps created by reducing font size can carry forward across multiple words.
           smallCapsAlt = smallCapsAlt ?? smallCapsAltArr[smallCapsAltArr.length - 1];
@@ -247,6 +249,8 @@ export async function convertPageStext({ ocrStr, n }) {
       // This commonly happens for "lines" that contain only space characters.
       if (bboxes.length === 0) return;
 
+      baselineLast = baselineLast || baselineLastFallback;
+
       const rise = baselineLast - baselineFirst;
       const run = bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].right - bboxes[0][0].left;
 
@@ -266,6 +270,8 @@ export async function convertPageStext({ ocrStr, n }) {
       const letterHeightOut = fontSizeLine * 0.6;
 
       const lineObj = new ocr.OcrLine(pageObj, lineBbox, baselineOut, letterHeightOut, null);
+
+      lineObj.raw = xmlLine;
 
       let lettersKept = 0;
       for (let i = 0; i < text.length; i++) {
