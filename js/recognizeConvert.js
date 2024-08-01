@@ -245,10 +245,9 @@ export async function convertPageCallback({
   if (mainData) {
     state.convertPageWarn[n] = warn;
 
-    // The page metrics object may have been initialized earlier through some other method (e.g. using PDF info).
-    if (!pageMetricsArr[n]) {
-      pageMetricsArr[n] = new PageMetrics(pageObj.dims);
-    }
+    // The main OCR data is always preferred for setting page metrics.
+    // This matters when the user uploads their own data, as the images are expected to be rendered at the same resolution as the OCR data.
+    if (pageObj.dims.height && pageObj.dims.width) pageMetricsArr[n] = new PageMetrics(pageObj.dims);
 
     pageMetricsArr[n].angle = pageObj.angle;
   }

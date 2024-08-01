@@ -250,7 +250,7 @@ export async function importFiles({ pdfFiles, imageFiles, hocrFiles }) {
     const pdfFileData = pdfFile instanceof ArrayBuffer ? pdfFile : await pdfFile.arrayBuffer();
 
     // If no XML data is provided, page sizes are calculated using muPDF alone
-    await ImageCache.openMainPDF(pdfFileData, opt.omitNativeText, !xmlModeImport, inputData.extractTextMode);
+    await ImageCache.openMainPDF(pdfFileData, opt.omitNativeText, inputData.extractTextMode);
 
     pageCountImage = ImageCache.pageCount;
     ImageCache.loadCount = ImageCache.pageCount;
@@ -366,11 +366,8 @@ export async function importFiles({ pdfFiles, imageFiles, hocrFiles }) {
   }
 
   inputData.xmlMode = new Array(state.pageCount);
-  if (xmlModeImport || inputData.extractTextMode) {
-    inputData.xmlMode.fill(true);
-  } else {
-    inputData.xmlMode.fill(false);
-  }
+
+  inputData.xmlMode.fill(false);
 
   // Render first page for PDF only
   if (inputData.pdfMode && !xmlModeImport && state.display) state.display(0);

@@ -32,6 +32,12 @@ export function OcrPar(page, bbox) {
   this.bbox = bbox;
   /** @type {Array<OcrLine>} */
   this.lines = [];
+  /**
+   * Reason for paragraph break.
+   * Used for debugging purposes.
+   * @type {string}
+   */
+  this.reason = '';
 }
 
 /**

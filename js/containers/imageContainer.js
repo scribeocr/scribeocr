@@ -15,17 +15,9 @@ import {
 } from './fontContainer.js';
 
 import { initTesseractInWorkers } from '../generalWorkerMain.js';
-import { determineSansSerif } from '../utils/miscUtils.js';
+import { determineSansSerif, range } from '../utils/miscUtils.js';
 import { opt } from './app.js';
 import { gs } from './schedulerContainer.js';
-
-function range(min, max) {
-  const result = [];
-  for (let i = min; i <= max; i++) {
-    result.push(i);
-  }
-  return result;
-}
 
 /**
  *
@@ -560,11 +552,9 @@ export class ImageCache {
    *
    * @param {ArrayBuffer} fileData
    * @param {Boolean} [skipText=false] - Whether to skip native text when rendering PDF to image.
-   * @param {Boolean} [setPageMetrics=false] - Whether global page metrics should be set using PDF.
-   *  This should be `true` when no OCR data is uploaded alongside the PDF.
-   * @param {Boolean} [setPageMetrics=false]
+   * @param {Boolean} [extractStext=false]
    */
-  static openMainPDF = async (fileData, skipText = false, setPageMetrics = false, extractStext = false) => {
+  static openMainPDF = async (fileData, skipText = false, extractStext = false) => {
     const muPDFScheduler = await ImageCache.getMuPDFScheduler(3);
 
     await ImageCache.#loadFileMuPDFScheduler(fileData);
@@ -580,66 +570,71 @@ export class ImageCache {
 
     ImageCache.inputModes.pdf = true;
     skipTextMode = skipText;
-    if (setPageMetrics) {
+
+    // Set page metrics based on PDF dimensions.
+    // This is always run, even though it is overwritten almost immediately by OCR data when it is uploaded.
+    // This is done to ensure that the page metrics are always set (which is necessary to prevent a crash),
+    // even if (due to some edge case) metrics cannot be parsed from the OCR data for all pages.
+    // For example, this was encountered using Archive.org data where the page counts of the PDFs and OCR data did not match perfectly.
+
     // For reasons that are unclear, a small number of pages have been rendered into massive files
     // so a hard-cap on resolution must be imposed.
-      const pageDPI = ImageCache.pdfDims300Arr.map((x) => 300 * 2000 / x.width, 2000);
+    const pageDPI = ImageCache.pdfDims300Arr.map((x) => 300 * 2000 / x.width, 2000);
 
-      // In addition to capping the resolution, also switch the width/height
-      ImageCache.pdfDims300Arr.forEach((x, i) => {
-        const pageDims = { width: Math.round(x.width * pageDPI[i] / 300), height: Math.round(x.height * pageDPI[i] / 300) };
-        pageMetricsArr[i] = new PageMetrics(pageDims);
-      });
+    // In addition to capping the resolution, also switch the width/height
+    ImageCache.pdfDims300Arr.forEach((x, i) => {
+      const pageDims = { width: Math.round(x.width * pageDPI[i] / 300), height: Math.round(x.height * pageDPI[i] / 300) };
+      pageMetricsArr[i] = new PageMetrics(pageDims);
+    });
 
-      // WIP: Extract fonts embedded in PDFs.
-      if (false) {
-        muPDFScheduler.extractAllFonts().then(async (x) => {
-          globalImageCache.fontArr = [];
-          for (let i = 0; i < x.length; i++) {
-            const src = x[i].buffer;
-            const fontObj = await loadOpentype(src);
-            const fontNameEmbedded = fontObj.names.postScriptName.en;
-            const fontFamilyEmbedded = fontObj.names?.fontFamily?.en || fontNameEmbedded.replace(/-\w+$/, '');
+    // WIP: Extract fonts embedded in PDFs.
+    if (false) {
+      muPDFScheduler.extractAllFonts().then(async (x) => {
+        globalImageCache.fontArr = [];
+        for (let i = 0; i < x.length; i++) {
+          const src = x[i].buffer;
+          const fontObj = await loadOpentype(src);
+          const fontNameEmbedded = fontObj.names.postScriptName.en;
+          const fontFamilyEmbedded = fontObj.names?.fontFamily?.en || fontNameEmbedded.replace(/-\w+$/, '');
 
-            // Skip bold and bold-italic fonts for now.
-            if (fontNameEmbedded.match(/bold/i)) continue;
+          // Skip bold and bold-italic fonts for now.
+          if (fontNameEmbedded.match(/bold/i)) continue;
 
-            let fontStyle = 'normal';
-            if (fontNameEmbedded.match(/italic/i)) {
-              fontStyle = 'italic';
-            } else if (fontNameEmbedded.match(/bold/i)) {
+          let fontStyle = 'normal';
+          if (fontNameEmbedded.match(/italic/i)) {
+            fontStyle = 'italic';
+          } else if (fontNameEmbedded.match(/bold/i)) {
             // Bold fonts should be enabled at some later point.
             // While we previously found that we were unable to detect bold fonts reliably,
             // when importing from PDFs, we do not need to guess.
             // fontStyle = 'bold';
-            }
-            const type = determineSansSerif(fontFamilyEmbedded) === 'SansDefault' ? 'sans' : 'serif';
+          }
+          const type = determineSansSerif(fontFamilyEmbedded) === 'SansDefault' ? 'sans' : 'serif';
 
-            // mupdf replaces spaces with underscores in font names.
-            const fontName = fontFamilyEmbedded.replace(/[^+]+\+/g, '').replace(/\s/g, '_');
+          // mupdf replaces spaces with underscores in font names.
+          const fontName = fontFamilyEmbedded.replace(/[^+]+\+/g, '').replace(/\s/g, '_');
 
-            if (!fontAll.raw[fontName]) {
-              fontAll.raw[fontName] = {};
-            }
-
-            if (!fontAll.raw[fontName][fontStyle]) {
-              fontAll.raw[fontName][fontStyle] = new FontContainerFont(fontName, fontStyle, src, false, fontObj);
-            }
+          if (!fontAll.raw[fontName]) {
+            fontAll.raw[fontName] = {};
           }
 
-          await setUploadFontsWorker(gs.schedulerInner);
-        });
-      }
+          if (!fontAll.raw[fontName][fontStyle]) {
+            fontAll.raw[fontName][fontStyle] = new FontContainerFont(fontName, fontStyle, src, false, fontObj);
+          }
+        }
 
-      if (extractStext) {
-        ocrAllRaw.active = Array(ImageCache.pageCount);
-        const resArr = pageDPI.map(async (x, i) => {
-          // While using `pageTextJSON` would save some parsing, unfortunately that format only includes line-level granularity.
-          // The XML format is the only built-in mupdf format that includes character-level granularity.
-          ocrAllRaw.active[i] = await muPDFScheduler.pageTextXML({ page: i + 1, dpi: x });
-        });
-        await Promise.all(resArr);
-      }
+        await setUploadFontsWorker(gs.schedulerInner);
+      });
+    }
+
+    if (extractStext) {
+      ocrAllRaw.active = Array(ImageCache.pageCount);
+      const resArr = pageDPI.map(async (x, i) => {
+        // While using `pageTextJSON` would save some parsing, unfortunately that format only includes line-level granularity.
+        // The XML format is the only built-in mupdf format that includes character-level granularity.
+        ocrAllRaw.active[i] = await muPDFScheduler.pageTextXML({ page: i + 1, dpi: x });
+      });
+      await Promise.all(resArr);
     }
   };
 }

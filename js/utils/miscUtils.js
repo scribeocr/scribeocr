@@ -319,7 +319,7 @@ export function replaceObjectProperties(obj, obj2 = {}) {
 // Fonts that should not be added (both Sans and Serif variants):
 // DejaVu
 const serifFonts = ['SerifDefault', 'Baskerville', 'Book', 'C059', 'Cambria', 'Century', 'Courier', 'Garamond', 'Georgia', 'LucidaBright', 'Minion', 'P052', 'Palatino', 'Times'];
-const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Candara', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Myriad', 'Tahoma', 'Trebuchet', 'Verdana'];
+const sansFonts = ['SansDefault', 'Arial', 'Calibri', 'Candara', 'Carlito', 'Comic', 'Franklin', 'Helvetica', 'Impact', 'Interstate', 'Myriad', 'Tahoma', 'Trebuchet', 'UniversNext', 'Verdana'];
 
 const serifFontsRegex = new RegExp(serifFonts.reduce((x, y) => `${x}|${y}`), 'i');
 const sansFontsRegex = new RegExp(sansFonts.reduce((x, y) => `${x}|${y}`), 'i');
@@ -406,3 +406,18 @@ export const replaceSmartQuotes = (text) => {
     .replace(/"(?=$|[-–—])/, '”')
     .replace(/([a-z])'(?=[a-z]$)/i, '$1’');
 };
+
+/**
+ *
+ * @param {number} min - First number in the range.
+ * @param {number} max - Last number in the range (inclusive).
+ * @returns
+ * `range(1, 5)` returns `[1, 2, 3, 4, 5]`.
+ */
+export function range(min, max) {
+  const result = [];
+  for (let i = min; i <= max; i++) {
+    result.push(i);
+  }
+  return result;
+}

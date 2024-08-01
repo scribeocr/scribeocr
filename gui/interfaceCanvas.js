@@ -244,11 +244,11 @@ export class ScribeCanvas {
   /** @type {Array<KonvaOcrWord>} */
   static _wordArr = [];
 
-  /** @type {Array<InstanceType<typeof Konva.Rect>>} */
+  /**
+   * Contains `Rect` objects used to outline lines and paragraphs, as well as `Text` objects used to label those boxes.
+   * @type {Array<InstanceType<typeof Konva.Rect>|InstanceType<typeof Konva.Text>>}
+   */
   static _lineOutlineArr = [];
-
-  /** @type {Array<InstanceType<typeof Konva.Rect>>} */
-  static _blockOutlineArr = [];
 
   /** @type {Array<KonvaLayout>} */
   static _layoutRegionArr = [];
@@ -358,11 +358,6 @@ export class ScribeCanvas {
   static destroyLineOutlines = () => {
     ScribeCanvas._lineOutlineArr.forEach((x) => x.destroy());
     ScribeCanvas._lineOutlineArr.length = 0;
-  };
-
-  static destroyBlockOutlines = () => {
-    ScribeCanvas._blockOutlineArr.forEach((x) => x.destroy());
-    ScribeCanvas._blockOutlineArr.length = 0;
   };
 
   static destroyLayoutDataTables = () => {
@@ -987,8 +982,9 @@ export class KonvaOcrWord extends KonvaIText {
  * @param {bbox} box
  * @param {number} angle
  * @param {{x: number, y: number}} angleAdj
+ * @param {string} [label]
  */
-const addBlockOutline = (box, angle, angleAdj) => {
+const addBlockOutline = (box, angle, angleAdj, label) => {
   const height = box.bottom - box.top;
 
   const blockRect = new Konva.Rect({
@@ -1002,6 +998,23 @@ const addBlockOutline = (box, angle, angleAdj) => {
     draggable: false,
     listening: false,
   });
+
+  if (label) {
+    const labelObj = new Konva.Text({
+      x: box.left + angleAdj.x,
+      y: box.top + angleAdj.y,
+      text: label,
+      fontSize: 12,
+      fontFamily: 'Arial',
+      fill: 'rgba(0,0,255,0.75)',
+      rotation: angle,
+      draggable: false,
+      listening: false,
+    });
+
+    layerText.add(labelObj);
+    ScribeCanvas._lineOutlineArr.push(labelObj);
+  }
 
   layerText.add(blockRect);
 
@@ -1027,7 +1040,7 @@ export function renderPage(page) {
 
     page.pars.forEach((par) => {
       const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
-      addBlockOutline(par.bbox, angleArg, angleAdj);
+      addBlockOutline(par.bbox, angleArg, angleAdj, par.reason);
     });
   }
 
