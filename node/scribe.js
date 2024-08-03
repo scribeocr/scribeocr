@@ -1,10 +1,10 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 
 import {
   checkCLI,
   confCLI,
   debugCLI,
-  evalInternalCLI, overlayCLI, recognizeCLI,
+  evalInternalCLI, extractCLI, overlayCLI, recognizeCLI,
 } from './cli.js';
 
 const program = new Command();
@@ -28,6 +28,15 @@ program
   .argument('<ocr_file>', 'Input OCR file.  Accepts .hocr and Abbyy .xml (with character-level data enabled).')
   .description('Evaluate internal OCR engine by recognizing document (provided PDF file), and comparing to ground truth (provided OCR file).')
   .action(evalInternalCLI);
+
+program
+  .command('extract')
+  .argument('<pdf_file>', 'Input PDF file.')
+  .argument('[output_dir]', 'Directory for output file(s).', '.')
+  .addOption(new Option('-f, --format <ext>', 'Output format.').choices(['txt', 'json']).default('txt'))
+  .option('-r, --reflox', 'Reflow text by combining lines into paragraphs.')
+  .description('Extract text from PDF file and save in requested format.')
+  .action(extractCLI);
 
 program
   .command('overlay')

@@ -1,3 +1,4 @@
+import { extract } from './extract.js';
 import {
   check,
   conf,
@@ -27,6 +28,19 @@ export const evalInternalCLI = async (pdfFile, ocrFile) => {
       / evalMetrics.total) * 100) / 100;
   }
   console.log(`Word Error Rate: ${metricWER}`);
+  process.exitCode = 0;
+};
+
+/**
+ *
+ * @param {string} pdfFile - Path to PDF file.
+ * @param {?string} [outputDir='.'] - Output directory.
+ * @param {Object} [options]
+ * @param {'txt'|'json'} [options.format]
+ * @param {boolean} [options.reflow]
+ */
+export const extractCLI = async (pdfFile, outputDir, options) => {
+  await extract(pdfFile, outputDir, options);
   process.exitCode = 0;
 };
 
