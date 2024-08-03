@@ -195,7 +195,8 @@ export async function handleDownload(downloadType, fileName, minValue = 0, maxVa
     if (state.progress) state.progress.show(1);
     await sleep(0);
     fileName = /** @type {HTMLInputElement} */`${fileName.replace(/\.\w{1,4}$/, '')}.hocr`;
-    renderHOCR(ocrAll.active, fileName, minValue, maxValue);
+    const content = renderHOCR(ocrAll.active, minValue, maxValue);
+    saveAs(content, fileName);
     if (state.progress) state.progress.increment();
   } else if (downloadType === 'text') {
     if (state.progress) state.progress.show(1);
