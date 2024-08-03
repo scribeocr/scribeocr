@@ -1,6 +1,12 @@
 // import { updateDataProgress } from "../main.js";
 import { readOcrFile } from '../utils/miscUtils.js';
 
+export const splitHOCRStr = (hocrStrAll) => hocrStrAll.replace(/[\s\S]*?<body>/, '')
+  .replace(/<\/body>[\s\S]*$/, '')
+  .replace(/<\/body>[\s\S]*$/, '')
+  .trim()
+  .split(/(?=<div class=['"]ocr_page['"])/);
+
 /**
  * Import raw OCR data from files.
  * Currently supports .hocr (used by Tesseract), Abbyy .xml, and stext (an intermediate data format used by mupdf).
@@ -18,7 +24,6 @@ export async function importOCRFiles(ocrFilesAll) {
   let stextMode = false;
   let scribeMode = false;
 
-  let hocrStrPages;
   let hocrArrPages;
   let pageCountHOCR;
   let hocrRaw;
@@ -48,11 +53,7 @@ export async function importOCRFiles(ocrFilesAll) {
     } else {
       hocrStrStart = hocrStrAll.match(/[\s\S]*?<body>/)[0];
       hocrStrEnd = hocrStrAll.match(/<\/body>[\s\S]*$/)[0];
-      hocrStrPages = hocrStrAll.replace(/[\s\S]*?<body>/, '');
-      hocrStrPages = hocrStrPages.replace(/<\/body>[\s\S]*$/, '');
-      hocrStrPages = hocrStrPages.trim();
-
-      hocrArrPages = hocrStrPages.split(/(?=<div class=['"]ocr_page['"])/);
+      hocrArrPages = splitHOCRStr(hocrStrAll);
     }
 
     pageCountHOCR = hocrArrPages.length;

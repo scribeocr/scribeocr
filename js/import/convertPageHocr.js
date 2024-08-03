@@ -162,7 +162,7 @@ export async function convertPageHocr({
 
       const italic = /<\/em>\s*<\/span>/.test(match);
 
-      const wordID = match.match(/id=['"]([^'"]*)['"]/i)?.[1];
+      const wordID = match.match(/id=['"]([^'"]*)['"]/i)?.[1] || `word_${n + 1}_${pageObj.lines.length + 1}_${lineObj.words.length + 1}`;
 
       const wordLangRaw = match.match(/lang=['"]([^'"]*)['"]/i)?.[1];
 
@@ -238,7 +238,7 @@ export async function convertPageHocr({
         bottom: Math.max(...bboxesCore.map((x) => x[3])),
       };
 
-      const wordObj = new ocr.OcrWord(lineObj, text, wordBoxCore, `${wordID}a`);
+      const wordObj = new ocr.OcrWord(lineObj, text, wordBoxCore, wordID);
       wordObj.lang = wordLang;
 
       wordObj.chars = charObjArr;
@@ -259,7 +259,7 @@ export async function convertPageHocr({
        * @param {string} match
        */
     function convertWord(match) {
-      const wordID = match.match(/id=['"]([^'"]*)['"]/i)?.[1];
+      const wordID = match.match(/id=['"]([^'"]*)['"]/i)?.[1] || `word_${n + 1}_${pageObj.lines.length + 1}_${lineObj.words.length + 1}`;
 
       const wordSup = /<sup>/i.test(match);
       const wordDropCap = /<span class=['"]ocr_dropcap['"]>/i.test(match);
@@ -319,7 +319,7 @@ export async function convertPageHocr({
       const confMatch = titleStrWord.match(/(?:;|\s)x_wconf\s+(\d+)/)?.[1] || '0';
       const wordConf = parseInt(confMatch) || 0;
 
-      const wordObj = new ocr.OcrWord(lineObj, wordText, wordBox, `${wordID}a`);
+      const wordObj = new ocr.OcrWord(lineObj, wordText, wordBox, wordID);
       wordObj.lang = wordLang;
 
       // Font size is only respected if this is a re-import, as if an ocrWord object has `size` set, it will be used over line metrics.

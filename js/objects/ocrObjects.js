@@ -532,6 +532,20 @@ function rotateLine(line, angle, dims = null, useCharLevel = false) {
 }
 
 /**
+ * Clones page object.
+ * @param {OcrPage} page
+  */
+function clonePage(page) {
+  const pageNew = new OcrPage(page.n, { ...page.dims });
+  for (const line of page.lines) {
+    const lineNew = cloneLine(line);
+    lineNew.page = pageNew;
+    pageNew.lines.push(lineNew);
+  }
+  return pageNew;
+}
+
+/**
  * Clones line and included words.  Does not clone page.
  * Should be used rather than `structuredClone` for performance reasons.
  * @param {OcrLine} line
@@ -632,6 +646,7 @@ const ocr = {
   getMatchingWordIds,
   getPageText,
   getPrevLine,
+  clonePage,
   cloneLine,
   cloneWord,
   rotateLine,

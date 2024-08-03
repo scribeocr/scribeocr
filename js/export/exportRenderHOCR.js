@@ -9,10 +9,13 @@ import { round6 } from '../utils/miscUtils.js';
 /**
  *
  * @param {Array<OcrPage>} ocrData
- * @param {number} minValue
- * @param {number} maxValue
+ * @param {number} [minValue]
+ * @param {number} [maxValue]
  */
 export function renderHOCR(ocrData, minValue, maxValue) {
+  if (minValue === null || minValue === undefined) minValue = 0;
+  if (maxValue === null || maxValue === undefined) maxValue = ocrData.length - 1;
+
   const meta = {
     'font-metrics': fontMetricsObj,
     'default-font': fontAll.defaultFontName,
