@@ -303,10 +303,22 @@ const getDistinctChars = (ocrPageArr) => {
 /**
  * @param {OcrLine} line
  */
-const getLineText = (line) => {
+export const getLineText = (line) => {
   let text = '';
   for (let i = 0; i < line.words.length; i++) {
-    text += `${line.words[i].text} `;
+    text += `${line.words[i].text}`;
+    if (i < line.words.length - 1) text += ' ';
+  }
+  return text;
+};
+
+/**
+ * @param {OcrPar} par
+*/
+export const getParText = (par) => {
+  let text = '';
+  for (let i = 0; i < par.lines.length; i++) {
+    text += getLineText(par.lines[i]);
   }
   return text;
 };

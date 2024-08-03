@@ -2,14 +2,18 @@
 /* eslint-disable import/no-relative-packages */
 import { clearData } from '../../js/clear.js';
 import { opt } from '../../js/containers/app.js';
-import { ocrAll } from '../../js/containers/dataContainer.js';
+import { ocrAll, pageMetricsArr } from '../../js/containers/dataContainer.js';
 import { gs } from '../../js/containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw } from '../../js/fontContainerMain.js';
 import { initGeneralScheduler } from '../../js/generalWorkerMain.js';
 import { importFilesAll } from '../../js/import/import.js';
-import { assert } from '../../node_modules/chai/chai.js';
+import { getParText } from '../../js/objects/ocrObjects.js';
+import { assignParagraphs } from '../../js/utils/ocrUtils.js';
+import { assert, config } from '../../node_modules/chai/chai.js';
 // import mocha from '../../node_modules/mocha/mocha.js';
 import { ASSETS_PATH_KARMA } from '../constants.js';
+
+config.truncateThreshold = 0; // Disable truncation for actual/expected values on assertion failure.
 
 // Using arrow functions breaks references to `this`.
 /* eslint-disable prefer-arrow-callback */
@@ -43,11 +47,74 @@ describe('Check stext import function.', function () {
     assert.strictEqual(ocrAll.active[0].lines[43].words[0].text, '1');
   }).timeout(10000);
 
+  it('Should correctly calculate line angle for lines that start or end with superscripts.', async () => {
+    // Line that ends with superscript.
+    assert.strictEqual(ocrAll.active[0].lines[28].baseline[0], 0);
+    // Line that starts with superscript.
+    assert.strictEqual(ocrAll.active[0].lines[43].baseline[0], 0);
+  }).timeout(10000);
+
   after(async () => {
     await gs.clear();
     await clearData();
   });
 }).timeout(120000);
+
+// This test is conceptually similar to the previous one, but it uses a different document.
+// The tests have failed for this document when they have passed for the previous one, so having both adds value.
+describe('Check stext import function (2nd doc).', function () {
+  this.timeout(10000);
+  before(async () => {
+    await initGeneralScheduler();
+    opt.extractText = true;
+    await importFilesAll([`${ASSETS_PATH_KARMA}/academic_article_1.pdf`]);
+  });
+
+  it('Should correctly import trailing superscripts printed using font size adjustments (2nd doc)', async () => {
+    assert.strictEqual(ocrAll.active[0].lines[1].words[2].sup, true);
+    assert.strictEqual(ocrAll.active[0].lines[1].words[2].text, '1');
+  }).timeout(10000);
+
+  it('Should correctly import leading superscripts printed using font size adjustments (2nd doc)', async () => {
+    assert.strictEqual(ocrAll.active[0].lines[36].words[0].sup, true);
+    assert.strictEqual(ocrAll.active[0].lines[36].words[0].text, '1');
+  }).timeout(10000);
+
+  it('Should correctly calculate line angle for lines that start with superscripts (2nd doc).', async () => {
+    // Line that starts with superscript.
+    assert.strictEqual(ocrAll.active[0].lines[36].baseline[0], 0);
+  }).timeout(10000);
+
+  after(async () => {
+    await gs.clear();
+    await clearData();
+  });
+}).timeout(120000);
+
+describe('Check paragraph detection with academic article.', function () {
+  this.timeout(20000);
+  before(async () => {
+    await initGeneralScheduler();
+    opt.extractText = true;
+    await importFilesAll([`${ASSETS_PATH_KARMA}/academic_article_1.pdf`]);
+    ocrAll.active.forEach((page, index) => {
+      const angle = pageMetricsArr[index].angle || 0;
+      assignParagraphs(page, angle);
+    });
+  });
+
+  it('Paragraph detection functions with single-column layout with header and footnotes', async () => {
+    // The test document contains a header, 3 body paragraphs, and 3 footnotes.
+    assert.strictEqual(ocrAll.active[0].pars.length, 7);
+    assert.strictEqual(getParText(ocrAll.active[0].pars[0]), 'WHISTLEBLOWERS AND ENFORCEMENT ACTIONS 125');
+    assert.strictEqual(getParText(ocrAll.active[0].pars[6]), '3 The respondent is the party (either a firm or an individual) targeted by the SEC/DOJ.');
+  }).timeout(10000);
+
+  after(async () => {
+    await gs.clear();
+    await clearData();
+  });
+});
 
 describe('Check Tesseract import function.', function () {
   this.timeout(10000);

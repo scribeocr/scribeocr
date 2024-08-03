@@ -4,6 +4,7 @@ import {
   calcBboxUnion,
   calcLang,
   mean50,
+  quantile,
   round6,
   unescapeXml,
 } from '../utils/miscUtils.js';
@@ -30,16 +31,15 @@ export async function convertPageStext({ ocrStr, n }) {
   /** @type {Set<string>} */
   const langSet = new Set();
 
-  function convertParStext(xmlPar, n = 1) {
+  function convertParStext(xmlPar) {
     /** @type {Array<OcrLine>} */
     const parLineArr = [];
 
     /**
      * @param {string} xmlLine
-     * @param {number} n
      */
     // eslint-disable-next-line no-shadow
-    function convertLineStext(xmlLine, n = 1) {
+    function convertLineStext(xmlLine) {
     // Remove the <block> tag to avoid the regex matching it instead of the <line> tag.
     // We currently have no "block" level object, however this may be useful in the future.
       xmlLine = xmlLine.replace(/<block[^>]*?>/i, '');
@@ -70,9 +70,9 @@ export async function convertPageStext({ ocrStr, n }) {
       /** @type {Array<Array<{left: number, top: number, right: number, bottom: number}>>} */
       const bboxes = [];
 
-      let baselineFirst = 0;
-      let baselineLast = 0;
-      let baselineLastFallback = 0;
+      const baselineSlopeArr = /** @type {Array<Number>} */ ([]);
+      const baselineFirst = /** @type {Array<Number>} */ ([]);
+
       let baselineCurrent = 0;
 
       /** @type {Array<Array<string>>} */
@@ -94,9 +94,17 @@ export async function convertPageStext({ ocrStr, n }) {
       /** @type {Array<boolean>} */
       const superArr = [];
 
+      const wordLetterOrFontArr = /** @type {Array<Array<RegExpExecArray>>} */([]);
       for (let i = 0; i < wordStrArr.length; i++) {
-        const wordStr = wordStrArr[i];
+        // Fonts can be changed at any point in the word string.
+        // Sometimes the font is changed before a space character, and othertimes it is changed after the space character.
+        // This regex splits the string into elements that contain either (1) a font change or (2) a character.
+        // The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
+        const stextCharRegex = /(<font[^>]+>\s*)|<char quad=['"](\s*[\d.-]+)(\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(\s*[\d.-]+)(\s*[\d.-]+)[^>]*?y=['"]([\d.-]+)['"][^>]*?c=['"]([^'"]+)['"]\s*\/>/ig;
+        wordLetterOrFontArr[i] = [...wordStrArr[i].matchAll(stextCharRegex)];
+      }
 
+      for (let i = 0; i < wordLetterOrFontArr.length; i++) {
         let textWordArr = [];
         let bboxesWordArr = [];
         let fontFamily = fontFamilyArr[fontFamilyArr.length - 1] || fontFamilyLine || 'Default';
@@ -107,13 +115,7 @@ export async function convertPageStext({ ocrStr, n }) {
         let superWord = false;
         let styleWord = 'normal';
 
-        // Fonts can be changed at any point in the word string.
-        // Sometimes the font is changed before a space character, and othertimes it is changed after the space character.
-        // This regex splits the string into elements that contain either (1) a font change or (2) a character.
-        // The "quad" attribute includes 8 numbers (x and y coordinates for all 4 corners) however we only use capturing groups for 4
-        const stextCharRegex = /(<font[^>]+>\s*)|<char quad=['"](\s*[\d.-]+)(\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(?:\s*[\d.-]+)(\s*[\d.-]+)(\s*[\d.-]+)[^>]*?y=['"]([\d.-]+)['"][^>]*?c=['"]([^'"]+)['"]\s*\/>/ig;
-
-        const letterOrFontArr = [...wordStr.matchAll(stextCharRegex)];
+        const letterOrFontArr = wordLetterOrFontArr[i];
 
         if (letterOrFontArr.length === 0) continue;
 
@@ -121,6 +123,7 @@ export async function convertPageStext({ ocrStr, n }) {
 
         for (let j = 0; j < letterOrFontArr.length; j++) {
           const fontStr = letterOrFontArr[j][1];
+          const baseline = parseFloat(letterOrFontArr[j][6]);
           if (fontStr) {
             const fontNameStrI = fontStr?.match(/name=['"]([^'"]*)/)?.[1];
             const fontSizeStrI = fontStr?.match(/size=['"]([^'"]*)/)?.[1];
@@ -133,7 +136,7 @@ export async function convertPageStext({ ocrStr, n }) {
             if (fontSizeStrI) {
               const newSize = parseFloat(fontSizeStrI);
               const secondLetter = wordInit && bboxesWordArr.length === 1;
-              const baselineNextLetter = parseFloat(letterOrFontArr[j + 1]?.[6]);
+              const baselineNextLetter = parseFloat(letterOrFontArr[j + 1]?.[6]) || parseFloat(wordLetterOrFontArr[i + 1]?.[0]?.[6]);
               const fontSizeMin = Math.min(newSize, currentSize);
               const baselineDelta = (baselineNextLetter - baselineCurrent) / fontSizeMin;
               const sizeDelta = (newSize - currentSize) / fontSizeMin;
@@ -152,6 +155,9 @@ export async function convertPageStext({ ocrStr, n }) {
                   smallCapsArr.push(smallCaps);
                   smallCapsAltTitleCaseArr.push(smallCapsAltTitleCase);
                   superArr.push(sizeDelta > 0);
+
+                  // If the first word was determined to be a superscript, reset `baselineFirst` to avoid skewing the slope calculation.
+                  if (i === 0 && sizeDelta > 0) baselineFirst.length = 0;
 
                   textWordArr = [];
                   bboxesWordArr = [];
@@ -181,7 +187,7 @@ export async function convertPageStext({ ocrStr, n }) {
             smallCapsAlt = smallCapsAlt ?? smallCapsAltArr[smallCapsAltArr.length - 1];
             smallCaps = /small\W?cap/i.test(fontStr);
 
-            if (/italic/i.test(fontStr)) {
+            if (/italic/i.test(fontStr) || /-\w*ital/i.test(fontStr)) {
               // The word is already initialized, so we need to change the last element of the style array.
               // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
               currentStyle = 'italic';
@@ -193,7 +199,7 @@ export async function convertPageStext({ ocrStr, n }) {
 
             continue;
           } else {
-            baselineCurrent = parseFloat(letterOrFontArr[j][6]);
+            baselineCurrent = baseline;
           }
 
           if (!wordInit) {
@@ -201,35 +207,27 @@ export async function convertPageStext({ ocrStr, n }) {
             wordInit = true;
           }
 
-          // The first or last characters may be above the normal baseline, to the max of the first/last 3 characters is used to calculate slope.
-          if (baselineFirst === 0) {
-            baselineFirst = parseFloat(letterOrFontArr[j][6]);
-          } else if (j <= 3) {
-            baselineFirst = Math.max(baselineFirst, parseFloat(letterOrFontArr[j][6]));
-          }
+          const bbox = {
+            left: Math.round(parseFloat(letterOrFontArr[j][2])),
+            top: Math.round(parseFloat(letterOrFontArr[j][3])),
+            right: Math.round(parseFloat(letterOrFontArr[j][4])),
+            bottom: Math.round(parseFloat(letterOrFontArr[j][5])),
+          };
 
-          if (i === wordStrArr.length - 1) {
-            if (baselineLast === 0) {
-              baselineLast = parseFloat(letterOrFontArr[j][6]);
+          if (!superWord) {
+            if (baselineFirst.length === 0) {
+              baselineFirst.push(bbox.left, baseline);
             } else {
-              baselineLast = Math.max(baselineFirst, parseFloat(letterOrFontArr[j][6]));
+              baselineSlopeArr.push((baseline - baselineFirst[1]) / (bbox.left - baselineFirst[0]));
             }
           }
-          // Store a fallback value in case `baselineLast` is never set.
-          // This can happen if the last "word" has no letters.
-          baselineLastFallback = parseFloat(letterOrFontArr[j][6]);
 
           // Small caps created by reducing font size can carry forward across multiple words.
           smallCapsAlt = smallCapsAlt ?? smallCapsAltArr[smallCapsAltArr.length - 1];
 
           textWordArr.push(letterOrFontArr[j][7]);
 
-          bboxesWordArr.push({
-            left: Math.round(parseFloat(letterOrFontArr[j][2])),
-            top: Math.round(parseFloat(letterOrFontArr[j][3])),
-            right: Math.round(parseFloat(letterOrFontArr[j][4])),
-            bottom: Math.round(parseFloat(letterOrFontArr[j][5])),
-          });
+          bboxesWordArr.push(bbox);
         }
 
         if (textWordArr.length === 0) continue;
@@ -249,19 +247,14 @@ export async function convertPageStext({ ocrStr, n }) {
       // This commonly happens for "lines" that contain only space characters.
       if (bboxes.length === 0) return;
 
-      baselineLast = baselineLast || baselineLastFallback;
-
-      const rise = baselineLast - baselineFirst;
-      const run = bboxes[bboxes.length - 1][bboxes[bboxes.length - 1].length - 1].right - bboxes[0][0].left;
-
-      const baselineSlope = !run ? 0 : rise / run;
+      const baselineSlope = quantile(baselineSlopeArr, 0.5) || 0;
 
       const lineBbox = {
         left: lineBoxArr[0], top: lineBoxArr[1], right: lineBoxArr[2], bottom: lineBoxArr[3],
       };
 
       // baselinePoint should be the offset between the bottom of the line bounding box, and the baseline at the leftmost point
-      let baselinePoint = baselineFirst - lineBbox.bottom;
+      let baselinePoint = baselineFirst[1] - lineBbox.bottom;
       baselinePoint = baselinePoint || 0;
 
       const baselineOut = [round6(baselineSlope), Math.round(baselinePoint)];
@@ -363,12 +356,6 @@ export async function convertPageStext({ ocrStr, n }) {
 
         wordObj.sup = superArr[i];
 
-        if (styleArr[i] === 'sup') {
-          wordObj.sup = true;
-        } else if (styleArr[i] === 'dropcap') {
-          wordObj.dropcap = true;
-        }
-
         lineObj.words.push(wordObj);
 
         lettersKept++;
@@ -386,7 +373,7 @@ export async function convertPageStext({ ocrStr, n }) {
     const lineStrArr = xmlPar.split(/<\/line>/);
 
     for (let i = 0; i < lineStrArr.length; i++) {
-      const angle = convertLineStext(lineStrArr[i], n);
+      const angle = convertLineStext(lineStrArr[i]);
       if (typeof angle === 'number' && !Number.isNaN(angle)) angleRisePage.push(angle);
     }
 
@@ -407,7 +394,7 @@ export async function convertPageStext({ ocrStr, n }) {
   const parStrArr = ocrStr.split(/<\/block>/);
 
   for (let i = 0; i < parStrArr.length; i++) {
-    convertParStext(parStrArr[i], n);
+    convertParStext(parStrArr[i]);
   }
 
   const angleRiseMedian = mean50(angleRisePage) || 0;

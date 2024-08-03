@@ -187,12 +187,12 @@ class download {
   // Text export options
   static reflowCheckbox = /** @type {HTMLInputElement} */(document.getElementById('reflowCheckbox'));
 
-  static pageBreaksCheckbox = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
+  // static pageBreaksCheckbox = /** @type {HTMLInputElement} */(document.getElementById('pageBreaksCheckbox'));
 
   // Word export options
   static docxReflowCheckbox = /** @type {HTMLInputElement} */(document.getElementById('docxReflowCheckbox'));
 
-  static docxPageBreaksCheckbox = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
+  // static docxPageBreaksCheckbox = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
 
   // Format labels/options
   static formatLabelSVG = /** @type {HTMLElement} */(document.getElementById('formatLabelSVG'));

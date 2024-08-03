@@ -64,8 +64,8 @@ export async function convertPageAbbyy({ ocrStr, n }) {
       // Strangely, while Abbyy XML does provide a "baseline" attribute, it is often wildly incorrect (sometimes falling outside of the bounding box entirely).
       // One guess as to why is that coordinates calculated pre-dewarping are used along with a baseline calculated post-dewarping.
       // Regardless of the reason, baseline is recalculated here.
-      const baselineSlopeArr = [];
-      const baselineFirst = [];
+      const baselineSlopeArr = /** @type {Array<Number>} */ ([]);
+      const baselineFirst = /** @type {Array<Number>} */ ([]);
 
       const xmlLinePreChar = xmlLine.match(/^[\s\S]*?(?=<charParams)/)?.[0];
       const xmlLineFormatting = xmlLinePreChar?.match(/<formatting[^>]+/)?.[0];

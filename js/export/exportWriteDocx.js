@@ -18,13 +18,10 @@ export async function writeDocx(hocrCurrent, fileName, minpage = 0, maxpage = -1
 
   if (maxpage === -1) maxpage = hocrCurrent.length - 1;
 
-  const removeLineBreaks = opt.reflow;
-  const breaksBetweenPages = opt.reflow;
-
   const zipFileWriter = new Uint8ArrayWriter();
   const zipWriter = new ZipWriter(zipFileWriter);
 
-  const textReader = new TextReader(documentStart + renderText(hocrCurrent, minpage, maxpage, removeLineBreaks, breaksBetweenPages, true) + documentEnd);
+  const textReader = new TextReader(documentStart + renderText(hocrCurrent, minpage, maxpage, opt.reflow, true) + documentEnd);
   await zipWriter.add('word/document.xml', textReader);
 
   for (let i = 0; i < docxStrings.length; i++) {

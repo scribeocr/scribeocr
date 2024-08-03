@@ -201,7 +201,7 @@ export async function handleDownload(downloadType, fileName, minValue = 0, maxVa
     if (state.progress) state.progress.show(1);
     await sleep(0);
 
-    const content = renderText(ocrDownload, minValue, maxValue, opt.reflow, opt.reflow);
+    const content = renderText(ocrDownload, minValue, maxValue, opt.reflow, false);
 
     // const textBlob = new Blob([textStr], { type: 'text/plain' });
     fileName = `${fileName.replace(/\.\w{1,4}$/, '')}.txt`;

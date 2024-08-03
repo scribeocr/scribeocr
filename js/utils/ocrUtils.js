@@ -162,7 +162,7 @@ export function assignParagraphs(page, angle) {
 
     // Bullet points violate some heuristics, so we need to track them separately.
     // For a bullet point list, the first line *after* the line containing the bullet point appears to be indented.
-    const bullet = /^([•◦▪▫●○◼◻]|(i+\.))/.test(page.lines[h].words[0].text);
+    const bullet = /^([•◦▪▫●○◼◻➢]|(i+\.))/.test(page.lines[h].words[0].text);
     // const bullet = bulletChars.includes(page.lines[h].words[0].text.slice(0, 1));
     // This will not work with non-English alphabets.  Should be replaced with a more general solution at some point.
     const lowerStart = /[a-z]/.test(page.lines[h].words[0].text.slice(0, 1));
@@ -172,6 +172,20 @@ export function assignParagraphs(page, angle) {
     // This heuristic can override some but not all other heuristics that would otherwise split the paragraph.
     const lowerConnection = lowerStart && letterEndPrev;
 
+    if (parArr[parArr.length - 1] && parArr[parArr.length - 1].lines.length > 2) {
+      // Get indices of lines in the current paragraph.
+      const parLineIndices = parArr[parArr.length - 1].lines.slice(1).map((line) => page.lines.indexOf(line));
+      const parLeftMedian = quantile(parLineIndices.map((x) => lineLeftArr[x]), 0.5);
+      const parWidthMedian = quantile(parLineIndices.map((x) => lineWidthArr[x]), 0.5);
+
+      const leftChangeThresh = Math.max(parWidthMedian * 0.05, 50);
+
+      if (parLeftMedian && parWidthMedian && Math.abs(lineLeftArr[h] - parLeftMedian) > leftChangeThresh && Math.abs(lineLeftArr[h + 1] - parLeftMedian) > leftChangeThresh) {
+        newPar = true;
+        reason = 'left change';
+      }
+    }
+
     const expected = calcExpected(h);
 
     if (!expected) {
@@ -179,8 +193,20 @@ export function assignParagraphs(page, angle) {
       reason = 'default value (unable to calculate)';
     } else {
       const {
-        lineLeftMedian, lineRightMedian, lineWidthMedian,
+        lineLeftMedian, lineRightMedian, lineWidthMedian, lineSpaceMedian,
       } = expected;
+
+      // Note: `+1` is used to indicate some non-infinitesimal difference, as sometimes infinitesimal differences exist, which are effectively 0.
+
+      // Line flagged as indented if both:
+      // (1) line to start to the right of the median line (by 2.5% of the median width) and
+      // (2) line to start to the right of the previous line and the next line.
+      const indented = lineLeftMedian && (h + 1) < page.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025)
+      && lineLeftArr[h] > (lineLeftArr[h - 1] + 1) && lineLeftArr[h] > lineLeftArr[h + 1];
+
+      // Weaker version of other conditions, which may be used in combination of other evidence but are not strong enough on their own.
+      const indentedWeak = lineLeftArr[h] > (lineLeftArr[h - 1] + 1);
+      const lineSpaceWeak = lineSpaceArr[h - 1] > 0 && lineSpaceArr[h] > 1.1 * lineSpaceArr[h - 1];
 
       // Flag lines that likely end early.
       // A line likely ends early if all of the following conditions are met:
@@ -198,7 +224,7 @@ export function assignParagraphs(page, angle) {
         && !!lineLeftArr[h - 1] && lineLeftArr[h] - lineLeftArr[h - 1] > (lineWidthMedian * 0.2);
 
       // Add a line break if the previous line ended early
-      if (endsEarlyPrev && !lowerConnection) {
+      if (endsEarlyPrev && !lowerConnection && (lineSpaceWeak || indentedWeak)) {
         newPar = true;
         reason = 'prev line ends early';
       } else if (startsLatePrev && !lowerConnection) {
@@ -206,13 +232,15 @@ export function assignParagraphs(page, angle) {
         reason = 'prev line starts late';
 
       // Add a line break if this line is indented
-      // Requires (1) line to start to the right of the median line (by 2.5% of the median width) and
-      // (2) line to start to the right of the previous line and the next line.
-      } else if (lineLeftMedian && (h + 1) < page.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025)
-            && lineLeftArr[h] > lineLeftArr[h - 1] && lineLeftArr[h] > lineLeftArr[h + 1]
-            && !bulletPrev && !lowerConnection) {
+      } else if (indented && !bulletPrev && !lowerConnection) {
         newPar = true;
         reason = 'indentation';
+
+      // For the second line on the page, create a new paragraph if the preceding line space is significantly larger than the median line space in the window.
+      // This is necessary because the 'large space (relative)' rule only starts working on line 3.
+      } else if (h === 1 && lineSpaceArr[h] > 1.5 * lineSpaceMedian) {
+        newPar = true;
+        reason = 'large space (first line)';
       }
     }
 
@@ -223,7 +251,7 @@ export function assignParagraphs(page, angle) {
       reason = 'new column';
     }
 
-    // Create new paragraph if the following line space is significantly larger than the current line space.
+    // Create new paragraph if the current line space is significantly larger than the preceding line space.
     if (lineSpaceArr[h - 1] > 0 && lineSpaceArr[h] > 1.5 * lineSpaceArr[h - 1]) {
       newPar = true;
       reason = 'large space (relative)';

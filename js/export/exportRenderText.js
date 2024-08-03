@@ -1,128 +1,44 @@
 import { pageMetricsArr } from '../containers/dataContainer.js';
 import ocr from '../objects/ocrObjects.js';
-import { quantile } from '../utils/miscUtils.js';
+import { assignParagraphs } from '../utils/ocrUtils.js';
 
 /**
  * Convert an array of ocrPage objects to plain text, or XML for a Word document.
  *
- * @param {Array<OcrPage>} hocrCurrent -
+ * @param {Array<OcrPage>} ocrCurrent -
  * @param {number} minpage - The first page to include in the document.
  * @param {number} maxpage - The last page to include in the document.
- * @param {boolean} removeLineBreaks - Remove line breaks within what appears to be the same paragraph.
- *    This allows for reflowing text.
- * @param {boolean} breaksBetweenPages - Add line breaks between pages.
+ * @param {boolean} reflowText - Remove line breaks within what appears to be the same paragraph.
  * @param {boolean} docxMode - Create XML for a word document rather than plain text.
  */
-export function renderText(hocrCurrent, minpage = 0, maxpage = -1, removeLineBreaks = false, breaksBetweenPages = false, docxMode = false) {
+export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = false, docxMode = false) {
   let textStr = '';
 
-  if (maxpage === -1) maxpage = hocrCurrent.length - 1;
-
-  let endsEarlyPrev = false;
-  let startsLatePrev = false;
-  let lastCharEndingPunct = false;
+  if (maxpage === -1) maxpage = ocrCurrent.length - 1;
 
   let newLine = false;
 
   for (let g = (minpage - 1); g <= maxpage; g++) {
-    if (!hocrCurrent[g]) continue;
+    if (!ocrCurrent[g] || ocrCurrent[g].lines.length === 0) continue;
 
-    const pageObj = hocrCurrent[g];
+    const pageObj = ocrCurrent[g];
 
-    const lineLeftArr = [];
-    const lineRightArr = [];
-    const lineWidthArr = [];
-    const lineSpaceArr = [];
-    /** @type {?number} */
-    let lineLeftMedian = null;
-    /** @type {?number} */
-    let lineRightMedian = null;
-    /** @type {?number} */
-    let lineWidthMedian = null;
-    /** @type {?number} */
-    let lineSpaceMedian = null;
-
-    if (removeLineBreaks) {
-      const angle = (pageMetricsArr[g].angle || 0) * -1;
-
-      /** @type {?number} */
-      let y2Prev = null;
-
-      for (let h = 0; h < pageObj.lines.length; h++) {
-        const lineObj = pageObj.lines[h];
-        if (!lineObj) continue;
-
-        const lineBox = lineObj.bbox;
-
-        if (y2Prev !== null) {
-          lineSpaceArr.push(lineBox.bottom - y2Prev);
-        }
-
-        const sinAngle = Math.sin(angle * (Math.PI / 180));
-        const cosAngle = Math.cos(angle * (Math.PI / 180));
-
-        const x1Rot = lineBox.left * cosAngle - sinAngle * lineBox.bottom;
-        const x2Rot = lineBox.top * cosAngle - sinAngle * lineBox.bottom;
-
-        lineLeftArr.push(x1Rot);
-        lineRightArr.push(x2Rot);
-
-        lineWidthArr.push(lineBox.right - lineBox.left);
-
-        y2Prev = lineBox.bottom;
-      }
-
-      lineLeftMedian = quantile(lineLeftArr, 0.5);
-
-      lineRightMedian = quantile(lineRightArr, 0.5);
-
-      lineWidthMedian = quantile(lineWidthArr, 0.5);
-
-      lineSpaceMedian = quantile(lineSpaceArr, 0.5);
+    if (reflowText) {
+      const angle = pageMetricsArr[g].angle || 0;
+      assignParagraphs(pageObj, angle);
     }
 
+    let parCurrent = pageObj.lines[0].par;
+
     for (let h = 0; h < pageObj.lines.length; h++) {
-      // Flag lines that end early (with >=10% of the line empty)
-      const endsEarly = lineRightArr[h] < (lineRightMedian - lineWidthMedian * 0.1);
-      // Flag lines that start late (with >=20% of the line empty)
-      // This is intended to capture floating elements (such as titles and page numbers) and not lines that are indented.
-      const startsLate = lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.2);
-
-      // Add spaces or page breaks between lines
-      if (h > 0) {
-        if (removeLineBreaks) {
-          // Add a line break if the previous line ended early
-          if (endsEarlyPrev || startsLatePrev) {
-            newLine = true;
-
-          // Add a line break if there is blank space added between lines
-          } else if (lineSpaceMedian && lineSpaceArr[h - 1] > (2 * lineSpaceMedian)) {
-            newLine = true;
-
-          // Add a line break if this line is indented
-          // Requires (1) line to start to the right of the median line (by 2.5% of the median width) and
-          // (2) line to start to the right of the previous line and the next line.
-          } else if (lineLeftMedian && (h + 1) < pageObj.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025)
-            && lineLeftArr[h] > lineLeftArr[h - 1] && lineLeftArr[h] > lineLeftArr[h + 1]) {
-            newLine = true;
-          }
-        } else {
-          newLine = true;
-        }
-      } else if (g > 0) {
-        if (removeLineBreaks && !breaksBetweenPages) {
-          if (endsEarlyPrev || startsLatePrev || lastCharEndingPunct) {
-            newLine = true;
-          }
-        } else {
-          newLine = true;
-        }
-      }
-
-      endsEarlyPrev = endsEarly;
-      startsLatePrev = startsLate;
-
       const lineObj = pageObj.lines[h];
+
+      if (reflowText) {
+        if (lineObj.par !== parCurrent) newLine = true;
+        parCurrent = lineObj.par;
+      } else {
+        newLine = true;
+      }
 
       const fontStylePrev = '';
 
@@ -169,11 +85,6 @@ export function renderText(hocrCurrent, minpage = 0, maxpage = -1, removeLineBre
           textStr += ocr.escapeXml(wordObj.text);
         } else {
           textStr += wordObj.text;
-        }
-
-        // If this is the last word on the page, check if it contains ending punctuation
-        if ((h + 1) === pageObj.lines.length && (i + 1) === lineObj.words.length) {
-          lastCharEndingPunct = /[?.!]/.test(wordObj.text);
         }
       }
     }

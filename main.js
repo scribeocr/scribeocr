@@ -499,13 +499,13 @@ const toggleReflow = (value) => {
   elem.download.docxReflowCheckbox.checked = value;
   // If "Reflow Text" is turned off, then pages will automatically have line breaks between them
   if (value) {
-    elem.download.pageBreaksCheckbox.disabled = false;
-    elem.download.docxPageBreaksCheckbox.disabled = false;
+    // elem.download.pageBreaksCheckbox.disabled = false;
+    // elem.download.docxPageBreaksCheckbox.disabled = false;
   } else {
-    elem.download.pageBreaksCheckbox.disabled = true;
-    elem.download.pageBreaksCheckbox.checked = true;
-    elem.download.docxPageBreaksCheckbox.disabled = true;
-    elem.download.docxPageBreaksCheckbox.checked = true;
+    // elem.download.pageBreaksCheckbox.disabled = true;
+    // elem.download.pageBreaksCheckbox.checked = true;
+    // elem.download.docxPageBreaksCheckbox.disabled = true;
+    // elem.download.docxPageBreaksCheckbox.checked = true;
   }
 };
 

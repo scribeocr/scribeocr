@@ -2,7 +2,7 @@
 /* eslint-disable import/no-relative-packages */
 
 // import { after, it } from 'mocha';
-import { assert } from '../../node_modules/chai/chai.js';
+import { assert, config } from '../../node_modules/chai/chai.js';
 // import path from 'path';
 import { clearData } from '../../js/clear.js';
 import { opt } from '../../js/containers/app.js';
@@ -13,6 +13,8 @@ import { initGeneralScheduler, initTesseractInWorkers } from '../../js/generalWo
 import { importFilesAll } from '../../js/import/import.js';
 import { recognizeAll } from '../../js/recognizeConvert.js';
 import { ASSETS_PATH_KARMA } from '../constants.js';
+
+config.truncateThreshold = 0; // Disable truncation for actual/expected values on assertion failure.
 
 // Using arrow functions breaks references to `this`.
 /* eslint-disable prefer-arrow-callback */
@@ -31,8 +33,10 @@ describe('Check recognition-related features.', function () {
   });
 
   it('Font optimization improves overlap quality', async () => {
-    assert.isTrue(DebugData.evalOpt && DebugData.evalRaw && DebugData.evalOpt.sansMetrics.NimbusSans < DebugData.evalRaw.sansMetrics.NimbusSans);
-    assert.isTrue(DebugData.evalOpt && DebugData.evalOpt.sansMetrics.NimbusSans < 0.45);
+    if (!DebugData.evalRaw) throw new Error('DebugData.evalRaw is not defined');
+    if (!DebugData.evalOpt) throw new Error('DebugData.evalOpt is not defined');
+    assert.isBelow(DebugData.evalOpt.sansMetrics.NimbusSans, DebugData.evalRaw.sansMetrics.NimbusSans);
+    assert.isBelow(DebugData.evalOpt.sansMetrics.NimbusSans, 0.45);
   }).timeout(10000);
 
   it('Font optimization should be enabled when it improves overlap quality', async () => {
