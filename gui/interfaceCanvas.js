@@ -766,7 +766,9 @@ export class KonvaIText extends Konva.Shape {
       // This code removes any formatting from the pasted text.
       inputElem.oninput = () => {
         // eslint-disable-next-line no-self-assign
+        const index = getInputCursorIndex();
         inputElem.textContent = inputElem.textContent;
+        setCursor(index);
       };
     }
 
