@@ -157,16 +157,17 @@ export function assignParagraphs(page, angle) {
   };
 
   for (let h = 0; h < page.lines.length; h++) {
+    const line = page.lines[h];
     let endsEarlyInt = false;
     let startsLate = false;
 
     // Bullet points violate some heuristics, so we need to track them separately.
     // For a bullet point list, the first line *after* the line containing the bullet point appears to be indented.
-    const bullet = /^([•◦▪▫●○◼◻➢]|(i+\.))/.test(page.lines[h].words[0].text);
-    // const bullet = bulletChars.includes(page.lines[h].words[0].text.slice(0, 1));
+    const bullet = /^([•◦▪▫●○◼◻➢]|(i+\.))/.test(line.words[0].text);
+    // const bullet = bulletChars.includes(line.words[0].text.slice(0, 1));
     // This will not work with non-English alphabets.  Should be replaced with a more general solution at some point.
-    const lowerStart = /[a-z]/.test(page.lines[h].words[0].text.slice(0, 1));
-    const letterEnd = /\w/.test(page.lines[h].words[page.lines[h].words.length - 1].text.slice(-1));
+    const lowerStart = /[a-z]/.test(line.words[0].text.slice(0, 1));
+    const letterEnd = /\w/.test(line.words[line.words.length - 1].text.slice(-1));
     // If one line ends with a non-punctuation character and the next line starts with a lowercase letter,
     // they are likely part of the same paragraph.
     // This heuristic can override some but not all other heuristics that would otherwise split the paragraph.
@@ -245,8 +246,10 @@ export function assignParagraphs(page, angle) {
     }
 
     // Apply additional rules that do not depend on the rolling medians.
-    // Create new paragraph if the space between lines is negative, indicating the next line is part of a different column.
-    if (lineSpaceArr[h] && lineSpaceArr[h] < 0) {
+    // Create new paragraph if the line spacing is negative, indicating the next line is part of a different column.
+    // A threshold is used to prevent a small change in line spacing from creating a new paragraph.
+    const lineHeight = line.bbox.bottom - line.bbox.top;
+    if (lineSpaceArr[h] && lineSpaceArr[h] < (lineHeight * -1)) {
       newPar = true;
       reason = 'new column';
     }
@@ -257,7 +260,7 @@ export function assignParagraphs(page, angle) {
       reason = 'large space (relative)';
     }
 
-    const bbox = page.lines[h].bbox;
+    const bbox = line.bbox;
     const bboxPrev = page.lines[h - 1]?.bbox;
 
     // Create new paragraph if the space between lines is >2.5x the line height.
@@ -288,7 +291,7 @@ export function assignParagraphs(page, angle) {
       reason = '';
     }
 
-    parArr[parArr.length - 1].lines.push(page.lines[h]);
+    parArr[parArr.length - 1].lines.push(line);
 
     // The first line of a paragraph is not allowed to "end early" even if the other conditions are met.
     endsEarlyPrev = endsEarlyInt && !newPar;

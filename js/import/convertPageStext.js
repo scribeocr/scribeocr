@@ -77,8 +77,8 @@ export async function convertPageStext({ ocrStr, n }) {
 
       /** @type {Array<Array<string>>} */
       const text = [];
-      let currentStyle = 'normal';
-      let currentSize = 0;
+      let styleCurrent = 'normal';
+      let sizeCurrent = 0;
       /** @type {Array<string>} */
       const styleArr = [];
       /** @type {Array<boolean>} */
@@ -108,7 +108,9 @@ export async function convertPageStext({ ocrStr, n }) {
         let textWordArr = [];
         let bboxesWordArr = [];
         let fontFamily = fontFamilyArr[fontFamilyArr.length - 1] || fontFamilyLine || 'Default';
-        let fontSize = fontSizeArr[fontSizeArr.length - 1] || fontSizeLine || 10;
+        // Font size for the word is a separate variable, as if a font size changes at the end of the word,
+        // that should not be reflected until the following word.
+        let fontSizeWord = sizeCurrent || fontSizeLine || 10;
         let smallCaps;
         let smallCapsAlt;
         let smallCapsAltTitleCase;
@@ -136,44 +138,51 @@ export async function convertPageStext({ ocrStr, n }) {
             if (fontSizeStrI) {
               const newSize = parseFloat(fontSizeStrI);
               const secondLetter = wordInit && bboxesWordArr.length === 1;
-              const baselineNextLetter = parseFloat(letterOrFontArr[j + 1]?.[6]) || parseFloat(wordLetterOrFontArr[i + 1]?.[0]?.[6]);
-              const fontSizeMin = Math.min(newSize, currentSize);
+              const baselineNextLetter = parseFloat(letterOrFontArr[j + 1]?.[6]) || parseFloat(wordLetterOrFontArr[i + 1]?.[0]?.[6])
+                || parseFloat(wordLetterOrFontArr[i + 1]?.[1]?.[6]) || parseFloat(wordLetterOrFontArr[i + 1]?.[2]?.[6]);
+              const fontSizeMin = Math.min(newSize, sizeCurrent);
               const baselineDelta = (baselineNextLetter - baselineCurrent) / fontSizeMin;
-              const sizeDelta = (newSize - currentSize) / fontSizeMin;
-              if (secondLetter && newSize < currentSize && currentSize > 0 && baselineNextLetter && Math.abs(baselineDelta) < 0.1) {
+              const sizeDelta = (newSize - sizeCurrent) / fontSizeMin;
+              if (secondLetter && newSize < sizeCurrent && sizeCurrent > 0 && baselineNextLetter && Math.abs(baselineDelta) < 0.1) {
                 smallCapsAlt = true;
                 smallCapsAltTitleCase = true;
               } else if (Number.isFinite(baselineDelta) && Number.isFinite(sizeDelta)
-              && ((baselineDelta < -0.2 && sizeDelta < -0.2) || (i === 0 && baselineDelta > 0.2 && sizeDelta > 0.2))) {
+              && ((baselineDelta < -0.2 && sizeDelta < -0.2) || ([0, 1].includes(i) && baselineDelta > 0.2 && sizeDelta > 0.2))) {
                 if (textWordArr.length > 0) {
                   text.push(textWordArr);
                   bboxes.push(bboxesWordArr);
                   styleArr.push(styleWord);
                   fontFamilyArr.push(fontFamily);
-                  fontSizeArr.push(fontSize);
+                  fontSizeArr.push(fontSizeWord);
                   smallCapsAltArr.push(smallCapsAlt);
                   smallCapsArr.push(smallCaps);
                   smallCapsAltTitleCaseArr.push(smallCapsAltTitleCase);
                   superArr.push(sizeDelta > 0);
 
-                  // If the first word was determined to be a superscript, reset `baselineFirst` to avoid skewing the slope calculation.
-                  if (i === 0 && sizeDelta > 0) baselineFirst.length = 0;
-
                   textWordArr = [];
                   bboxesWordArr = [];
                   fontFamily = fontFamilyArr[fontFamilyArr.length - 1] || fontFamilyLine || 'Default';
-                  fontSize = fontSizeArr[fontSizeArr.length - 1] || fontSizeLine || 10;
                   styleWord = 'normal';
                 }
 
-                if (sizeDelta > 0) currentSize = newSize || currentSize;
+                // If the first word was determined to be a superscript, reset `baselineFirst` to avoid skewing the slope calculation.
+                if (sizeDelta > 0) {
+                  baselineFirst.length = 0;
+                  sizeCurrent = newSize || sizeCurrent;
+                  fontSizeWord = sizeCurrent;
+                  superArr[superArr.length - 1] = true;
+                  fontSizeArr[fontSizeArr.length - 1] = newSize;
+                }
+
                 superWord = sizeDelta < 0;
               } else {
+                sizeCurrent = newSize || sizeCurrent;
+                // Update current word only if this is before every letter in the word.
+                if (textWordArr.length === 0) fontSizeWord = sizeCurrent;
                 // An increase in font size ends any small caps sequence.
                 // A threshold is necessary because stext data has been observed to have small variations without a clear reason.
                 // eslint-disable-next-line no-lonely-if
                 if (Math.abs(sizeDelta) > 0.05) {
-                  currentSize = newSize || currentSize;
                   smallCapsAlt = false;
                   superWord = false;
                 }
@@ -181,7 +190,6 @@ export async function convertPageStext({ ocrStr, n }) {
             }
 
             fontFamily = fontNameStrI || (fontFamilyArr[fontFamilyArr.length - 1] || fontFamilyLine || 'Default');
-            fontSize = currentSize || (fontSizeArr[fontSizeArr.length - 1] || fontSizeLine || 10);
 
             // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
             smallCapsAlt = smallCapsAlt ?? smallCapsAltArr[smallCapsAltArr.length - 1];
@@ -190,11 +198,11 @@ export async function convertPageStext({ ocrStr, n }) {
             if (/italic/i.test(fontStr) || /-\w*ital/i.test(fontStr)) {
               // The word is already initialized, so we need to change the last element of the style array.
               // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
-              currentStyle = 'italic';
+              styleCurrent = 'italic';
             } else if (/bold/i.test(fontStr)) {
-              currentStyle = 'bold';
+              styleCurrent = 'bold';
             } else {
-              currentStyle = 'normal';
+              styleCurrent = 'normal';
             }
 
             continue;
@@ -203,7 +211,7 @@ export async function convertPageStext({ ocrStr, n }) {
           }
 
           if (!wordInit) {
-            styleWord = currentStyle;
+            styleWord = styleCurrent;
             wordInit = true;
           }
 
@@ -236,7 +244,7 @@ export async function convertPageStext({ ocrStr, n }) {
         bboxes.push(bboxesWordArr);
         styleArr.push(styleWord);
         fontFamilyArr.push(fontFamily);
-        fontSizeArr.push(fontSize);
+        fontSizeArr.push(fontSizeWord);
         smallCapsAltArr.push(smallCapsAlt);
         smallCapsArr.push(smallCaps);
         smallCapsAltTitleCaseArr.push(smallCapsAltTitleCase);

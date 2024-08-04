@@ -813,28 +813,6 @@ stage.on('touchmove', (event) => {
   }
 });
 
-/**
- * Adjusts the layer's scale based on key press combinations for zooming in and out.
- * @param {KeyboardEvent} event - The key down event.
- */
-const handleZoom = (event) => {
-  if (event.ctrlKey) {
-    if (['+', '='].includes(event.key)) {
-      zoomAllLayers(1.1, getLayerCenter(layerText));
-    } else if (['-', '_'].includes(event.key)) {
-      zoomAllLayers(0.9, getLayerCenter(layerText));
-    } else {
-      return; // Ignore other keys
-    }
-
-    layerText.batchDraw();
-    event.preventDefault(); // Prevent the default action to avoid browser zoom
-    event.stopPropagation();
-  }
-};
-
-document.addEventListener('keydown', handleZoom);
-
 const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
 
 let widthHeightInitial = true;

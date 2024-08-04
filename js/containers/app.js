@@ -34,7 +34,7 @@ export class opt {
 
   static intermediatePDF = false;
 
-  static reflow = false;
+  static reflow = true;
 
   static pageBreaks = true;
 

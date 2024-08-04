@@ -239,6 +239,48 @@ globalThis.fetchAndImportFiles = async (urls) => {
   zone.setAttribute('style', 'display:none');
 };
 
+/**
+ * Maps from generic `KeyboardEvent` when user presses a key to the appropriate action.
+ * This function is responsible for all keyboard shortcuts.
+ * @param {KeyboardEvent} event - The key down event.
+ */
+function handleKeyboardEvent(event) {
+  // Zoom in shortcut
+  if (event.ctrlKey && ['+', '='].includes(event.key)) {
+    zoomAllLayers(1.1, getLayerCenter(layerText));
+    layerText.batchDraw();
+    event.preventDefault(); // Prevent the default action to avoid browser zoom
+    event.stopPropagation();
+    return;
+  }
+
+  // Zoom out shortcut
+  if (event.ctrlKey && ['-', '_'].includes(event.key)) {
+    zoomAllLayers(1.1, getLayerCenter(layerText));
+    layerText.batchDraw();
+    event.preventDefault(); // Prevent the default action to avoid browser zoom
+    event.stopPropagation();
+    return;
+  }
+
+  // Prev page shortcut
+  if (event.key === 'PageUp') {
+    displayPage(state.cp.n - 1);
+    event.preventDefault();
+    return;
+  }
+
+  // Next page shortcut
+  if (event.key === 'PageDown') {
+    displayPage(state.cp.n + 1);
+    event.preventDefault();
+    return;
+  }
+}
+
+// Add various keyboard shortcuts.
+document.addEventListener('keydown', handleKeyboardEvent);
+
 // Add various event listners to HTML elements
 elem.nav.next.addEventListener('click', () => displayPage(state.cp.n + 1));
 elem.nav.prev.addEventListener('click', () => displayPage(state.cp.n - 1));
@@ -495,6 +537,7 @@ elem.download.xlsxPageNumberColumn.addEventListener('click', () => {
  */
 const toggleReflow = (value) => {
   opt.reflow = value;
+  // Keep the two reflow checkboxes in sync
   elem.download.reflowCheckbox.checked = value;
   elem.download.docxReflowCheckbox.checked = value;
   // If "Reflow Text" is turned off, then pages will automatically have line breaks between them

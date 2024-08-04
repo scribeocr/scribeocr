@@ -91,6 +91,30 @@ describe('Check stext import function (2nd doc).', function () {
   });
 }).timeout(120000);
 
+describe('Check stext import function (3rd doc).', function () {
+  this.timeout(10000);
+  before(async () => {
+    await initGeneralScheduler();
+    opt.extractText = true;
+    await importFilesAll([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
+  });
+
+  it('Should correctly import leading superscripts printed using font size adjustments (3rd doc)', async () => {
+    assert.strictEqual(ocrAll.active[0].lines[24].words[0].sup, true);
+    assert.strictEqual(ocrAll.active[0].lines[24].words[0].text, '2');
+  }).timeout(10000);
+
+  it('Should correctly parse font size for lines with superscripts (3rd doc)', async () => {
+    const words = ocrAll.active[0].lines[24].words;
+    assert.isTrue(words.map((word) => word.size && Math.round(word.size) === 29).reduce((acc, val) => acc && val));
+  }).timeout(10000);
+
+  after(async () => {
+    await gs.clear();
+    await clearData();
+  });
+}).timeout(120000);
+
 describe('Check paragraph detection with academic article.', function () {
   this.timeout(20000);
   before(async () => {
