@@ -30,6 +30,8 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
 
     let parCurrent = pageObj.lines[0].par;
 
+    let fontStylePrev = '';
+
     for (let h = 0; h < pageObj.lines.length; h++) {
       const lineObj = pageObj.lines[h];
 
@@ -39,8 +41,6 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
       } else {
         newLine = true;
       }
-
-      const fontStylePrev = '';
 
       for (let i = 0; i < lineObj.words.length; i++) {
         const wordObj = lineObj.words[i];
@@ -71,6 +71,8 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
           } else {
             textStr += ' ';
           }
+
+          fontStylePrev = fontStyle;
         } else if (newLine) {
           textStr = `${textStr}\n`;
         } else if (h > 0 || g > 0 || i > 0) {
