@@ -31,6 +31,7 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
     let parCurrent = pageObj.lines[0].par;
 
     let fontStylePrev = '';
+    let supPrev = false;
 
     for (let h = 0; h < pageObj.lines.length; h++) {
       const lineObj = pageObj.lines[h];
@@ -58,6 +59,10 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
             fontStyle += '<w:smallCaps/>';
           }
 
+          if (wordObj.sup) {
+            fontStyle += '<w:vertAlign w:val="superscript"/>';
+          }
+
           if (newLine || fontStyle !== fontStylePrev || (h === 0 && g === 0 && i === 0)) {
             const styleStr = fontStyle === '' ? '' : `<w:rPr>${fontStyle}</w:rPr>`;
 
@@ -65,6 +70,12 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
               textStr = `${textStr}<w:p><w:r>${styleStr}<w:t xml:space="preserve">`;
             } else if (newLine) {
               textStr = `${textStr}</w:t></w:r></w:p><w:p><w:r>${styleStr}<w:t xml:space="preserve">`;
+            // If the previous word was a superscript, the space is added switching back to normal text.
+            } else if (supPrev) {
+              textStr = `${textStr}</w:t></w:r><w:r>${styleStr}<w:t xml:space="preserve"> `;
+            // If this word is a superscript, no space is added between words.
+            } else if (wordObj.sup && i > 0) {
+              textStr = `${textStr}</w:t></w:r><w:r>${styleStr}<w:t xml:space="preserve">`;
             } else {
               textStr = `${textStr} </w:t></w:r><w:r>${styleStr}<w:t xml:space="preserve">`;
             }
@@ -73,6 +84,7 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
           }
 
           fontStylePrev = fontStyle;
+          supPrev = wordObj.sup;
         } else if (newLine) {
           textStr = `${textStr}\n`;
         } else if (h > 0 || g > 0 || i > 0) {
