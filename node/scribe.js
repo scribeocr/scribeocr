@@ -32,9 +32,9 @@ program
 program
   .command('extract')
   .argument('<pdf_file>', 'Input PDF file.')
-  .argument('[output_dir]', 'Directory for output file(s).', '.')
+  .argument('[output]', 'Output directory or file to save results.', '.')
   .addOption(new Option('-f, --format <ext>', 'Output format.').choices(['txt', 'json']).default('txt'))
-  .option('-r, --reflox', 'Reflow text by combining lines into paragraphs.')
+  .option('-r, --reflow', 'Reflow text by combining lines into paragraphs.')
   .description('Extract text from PDF file and save in requested format.')
   .action(extractCLI);
 
