@@ -1,7 +1,7 @@
 import { inputData } from '../containers/app.js';
 import { pageMetricsArr } from '../containers/dataContainer.js';
 import { getParText } from '../objects/ocrObjects.js';
-import { assignParagraphs } from '../utils/ocrUtils.js';
+import { assignParagraphs } from '../utils/reflowPars.js';
 
 /**
  * Exports paragraphs as string with a JSON object on each line.

@@ -11,7 +11,7 @@ import { gs } from '../../js/containers/schedulerContainer.js';
 import { initGeneralScheduler } from '../../js/generalWorkerMain.js';
 import { importFilesAll } from '../../js/import/import.js';
 import { getLineText, getParText } from '../../js/objects/ocrObjects.js';
-import { assignParagraphs } from '../../js/utils/ocrUtils.js';
+import { assignParagraphs } from '../../js/utils/reflowPars.js';
 import { ASSETS_PATH_KARMA } from '../constants.js';
 
 config.truncateThreshold = 0; // Disable truncation for actual/expected values on assertion failure.
@@ -62,6 +62,10 @@ describe('Check paragraph detection with complaint.', function () {
     assert.strictEqual(ocrAll.active[0].pars.length, 7);
     assert.strictEqual(getLineText(ocrAll.active[0].pars[2].lines[3]), 'partially offset by lower sales volumes of ($0.1 billion).” They further represented:');
     assert.strictEqual(getLineText(ocrAll.active[0].pars[3].lines[0]), 'Nutrition operating profit increased 20%. Human Nutrition results were higher');
+  }).timeout(10000);
+
+  it('Paragraph detection creates new paragraph when switching to center alignment', async () => {
+    assert.strictEqual(getParText(ocrAll.active[1].pars[2]), 'APPLICABILITY OF PRESUMPTION OF RELIANCE:FRAUD-ON-THE-MARKET DOCTRINE');
   }).timeout(10000);
 
   after(async () => {

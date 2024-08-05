@@ -1,6 +1,6 @@
 import { pageMetricsArr } from '../containers/dataContainer.js';
 import ocr from '../objects/ocrObjects.js';
-import { assignParagraphs } from '../utils/ocrUtils.js';
+import { assignParagraphs } from '../utils/reflowPars.js';
 
 /**
  * Convert an array of ocrPage objects to plain text, or XML for a Word document.

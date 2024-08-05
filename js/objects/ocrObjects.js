@@ -645,6 +645,8 @@ const ocr = {
   getDistinctChars,
   getMatchingWordIds,
   getPageText,
+  getParText,
+  getLineText,
   getPrevLine,
   clonePage,
   cloneLine,

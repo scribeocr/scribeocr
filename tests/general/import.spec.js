@@ -8,7 +8,7 @@ import { loadBuiltInFontsRaw } from '../../js/fontContainerMain.js';
 import { initGeneralScheduler } from '../../js/generalWorkerMain.js';
 import { importFilesAll } from '../../js/import/import.js';
 import { getParText } from '../../js/objects/ocrObjects.js';
-import { assignParagraphs } from '../../js/utils/ocrUtils.js';
+import { assignParagraphs } from '../../js/utils/reflowPars.js';
 import { assert, config } from '../../node_modules/chai/chai.js';
 // import mocha from '../../node_modules/mocha/mocha.js';
 import { ASSETS_PATH_KARMA } from '../constants.js';
