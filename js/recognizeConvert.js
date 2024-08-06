@@ -234,7 +234,7 @@ export async function convertPageCallback({
 }, n, mainData, engineName) {
   const fontPromiseArr = [];
   if (langSet.has('chi_sim')) fontPromiseArr.push(loadChiSimFont());
-  if (langSet.has('rus') || langSet.has('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
+  if (langSet.has('rus') || langSet.has('ukr') || langSet.has('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
   await Promise.all(fontPromiseArr);
 
   if (['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName)) ocrAll['Tesseract Latest'][n] = pageObj;
@@ -410,7 +410,7 @@ export async function recognizeAll(oemMode) {
   // Chinese requires loading a separate font.
   if (opt.langs.includes('chi_sim')) fontPromiseArr.push(loadChiSimFont());
   // Greek and Cyrillic require loading a version of the base fonts that include these characters.
-  if (opt.langs.includes('rus') || opt.langs.includes('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
+  if (opt.langs.includes('rus') || opt.langs.includes('ukr') || opt.langs.includes('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
   await Promise.all(fontPromiseArr);
 
   // Whether user uploaded data will be compared against in addition to both Tesseract engines
