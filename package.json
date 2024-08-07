@@ -2,7 +2,7 @@
   "name": "scribeocr",
   "version": "1.0.0",
   "description": "Web interface for proofreading OCR and creating fully-digitized documents.",
-  "main": "node/main.js",
+  "main": "module.js",
   "directories": {
     "lib": "lib"
   },

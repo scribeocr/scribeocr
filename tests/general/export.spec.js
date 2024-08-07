@@ -74,7 +74,7 @@ describe('Check .hocr export function.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 }).timeout(120000);

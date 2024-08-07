@@ -40,7 +40,7 @@ describe('Check paragraph detection with academic article.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 });
@@ -69,7 +69,7 @@ describe('Check paragraph detection with complaint.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 });

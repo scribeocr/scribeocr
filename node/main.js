@@ -125,7 +125,7 @@ async function main(func, params) {
     const { highConf, total } = calcConf(ocrAll.active);
     console.log(`Confidence: ${highConf / total} (${highConf} of ${total})`);
     if (func === 'conf') {
-      await gs.clear();
+      await gs.terminate();
       clearData();
       return output;
     }
@@ -158,7 +158,7 @@ async function main(func, params) {
   await tmpUnique.delete();
 
   // Terminate all workers
-  await gs.clear();
+  await gs.terminate();
   clearData();
 
   return output;

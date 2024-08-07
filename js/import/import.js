@@ -181,7 +181,7 @@ export async function importFilesAll(files) {
   imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
   hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
-  await importFiles({ pdfFiles: pdfFilesAll, imageFiles: imageFilesAll, hocrFiles: hocrFilesAll });
+  await importFilesByType({ pdfFiles: pdfFilesAll, imageFiles: imageFilesAll, hocrFiles: hocrFilesAll });
 }
 
 /**
@@ -192,7 +192,7 @@ export async function importFilesAll(files) {
  * @param {Array<File|FileNode|ArrayBuffer>} param.hocrFiles
  * @returns
  */
-export async function importFiles({ pdfFiles, imageFiles, hocrFiles }) {
+export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
   if (pdfFiles.length === 0 && imageFiles.length === 0 && hocrFiles.length === 0) {
     const errorText = 'No supported files found.';
     state.errorHandler(errorText);

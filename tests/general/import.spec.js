@@ -37,7 +37,7 @@ describe('Check Tesseract import function.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 }).timeout(120000);
@@ -62,7 +62,7 @@ describe('Check Abbyy XML import function.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 }).timeout(120000);
@@ -74,7 +74,7 @@ describe('Check cleanup functions allow for resetting module.', function () {
     opt.extractText = true;
     await importFilesAll([`${ASSETS_PATH_KARMA}/chi_eng_mixed_sample.pdf`]);
     await gs.schedulerInner.terminate();
-    await gs.clear();
+    await gs.terminate();
     await clearData();
     await initGeneralScheduler();
     opt.extractText = true;
@@ -82,7 +82,7 @@ describe('Check cleanup functions allow for resetting module.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 }).timeout(120000);

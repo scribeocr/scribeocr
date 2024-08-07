@@ -34,7 +34,7 @@ describe('Check stext import function language support.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 }).timeout(120000);
@@ -64,7 +64,7 @@ describe('Check small caps are detected in PDF imports.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 }).timeout(120000);
@@ -145,7 +145,7 @@ describe('Check superscripts are detected in PDF imports.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 }).timeout(120000);

@@ -36,7 +36,7 @@ export const evalInternalCLI = async (pdfFile, ocrFile) => {
  * @param {string} pdfFile - Path to PDF file.
  * @param {?string} [outputDir='.'] - Output directory.
  * @param {Object} [options]
- * @param {'txt'|'json'} [options.format]
+ * @param {'txt'} [options.format]
  * @param {boolean} [options.reflow]
  */
 export const extractCLI = async (pdfFile, outputDir, options) => {

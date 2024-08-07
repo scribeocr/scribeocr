@@ -70,7 +70,7 @@ export class gs {
     return /** @type {GeneralScheduler} */ (gs.scheduler);
   };
 
-  static clear = async () => {
+  static terminate = async () => {
     gs.scheduler = null;
     await gs.schedulerInner.terminate();
     gs.schedulerInner = null;

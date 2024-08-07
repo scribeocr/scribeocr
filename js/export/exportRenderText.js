@@ -18,7 +18,7 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
 
   let newLine = false;
 
-  for (let g = (minpage - 1); g <= maxpage; g++) {
+  for (let g = minpage; g <= maxpage; g++) {
     if (!ocrCurrent[g] || ocrCurrent[g].lines.length === 0) continue;
 
     const pageObj = ocrCurrent[g];

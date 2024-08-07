@@ -3,13 +3,12 @@ import { LayoutRegions, ocrAll, pageMetricsArr } from '../containers/dataContain
 import { ImageCache } from '../containers/imageContainer.js';
 import { reorderOcrPage } from '../modifyOCR.js';
 import { saveAs, sleep } from '../utils/miscUtils.js';
-import { renderParJSON } from './exportParJSON.js';
 import { hocrToPDF } from './exportPDF.js';
 import { renderHOCR } from './exportRenderHOCR.js';
 import { renderText } from './exportRenderText.js';
 
 /**
- * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'|'json'} downloadType
+ * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'} downloadType
  * @param {string} fileName
  * @param {number} [minValue=0]
  * @param {number} [maxValue=-1]
@@ -199,13 +198,6 @@ export async function handleDownload(downloadType, fileName, minValue = 0, maxVa
     await sleep(0);
     fileName = /** @type {HTMLInputElement} */`${fileName.replace(/\.\w{1,4}$/, '')}.hocr`;
     const content = renderHOCR(ocrAll.active, minValue, maxValue);
-    saveAs(content, fileName);
-    if (state.progress) state.progress.increment();
-  } else if (downloadType === 'json') {
-    if (state.progress) state.progress.show(1);
-    await sleep(0);
-    fileName = /** @type {HTMLInputElement} */`${fileName.replace(/\.\w{1,4}$/, '')}.json`;
-    const content = renderParJSON(ocrDownload, minValue, maxValue);
     saveAs(content, fileName);
     if (state.progress) state.progress.increment();
   } else if (downloadType === 'txt') {

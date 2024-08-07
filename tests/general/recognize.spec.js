@@ -44,7 +44,7 @@ describe('Check recognition-related features.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.clear();
+    await gs.terminate();
     await clearData();
   });
 });
