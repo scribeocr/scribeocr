@@ -83,6 +83,7 @@ export async function convertPageStext({ ocrStr, n }) {
       let sizeCurrentRaw = 0;
       /** Font size at the current position in the PDF, with changes for typographical reasons (small caps, superscripts) ignored. */
       let sizeCurrent = 0;
+      let smallCapsCurrent;
       let smallCapsCurrentAlt;
       /** @type {Array<string>} */
       const styleArr = [];
@@ -116,7 +117,7 @@ export async function convertPageStext({ ocrStr, n }) {
         // Font size for the word is a separate variable, as if a font size changes at the end of the word,
         // that should not be reflected until the following word.
         let fontSizeWord = sizeCurrent || fontSizeLine || 10;
-        let smallCapsWord = false;
+        let smallCapsWord = smallCapsCurrent || false;
         let smallCapsWordAlt = smallCapsCurrentAlt || false;
         // Title case adjustment does not carry forward between words. A word in title case may be followed by a word in all lower case.
         let smallCapsWordAltTitleCaseAdj = false;
@@ -200,9 +201,8 @@ export async function convertPageStext({ ocrStr, n }) {
                 // eslint-disable-next-line no-lonely-if
                 if (Math.abs(sizeDelta) > 0.05) {
                   smallCapsCurrentAlt = false;
-                  superWord = false;
-                  smallCapsCurrentAlt = false;
                   if (textWordArr.length === 0) {
+                    superWord = false;
                     smallCapsWordAlt = false;
                     smallCapsWordAltTitleCaseAdj = false;
                   }
@@ -212,13 +212,14 @@ export async function convertPageStext({ ocrStr, n }) {
 
             // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
             smallCapsCurrentAlt = smallCapsCurrentAlt ?? smallCapsAltArr[smallCapsAltArr.length - 1];
-            smallCapsWord = /small\W?cap/i.test(fontStr);
+            smallCapsCurrent = /(small\W?cap)|sc$/i.test(fontNameStrI);
+            smallCapsWord = smallCapsCurrent;
 
-            if (/italic/i.test(fontStr) || /-\w*ital/i.test(fontStr)) {
+            if (/italic/i.test(fontNameStrI) || /-\w*ital/i.test(fontNameStrI)) {
               // The word is already initialized, so we need to change the last element of the style array.
               // Label as `smallCapsAlt` rather than `smallCaps`, as we confirm the word is all caps before marking as `smallCaps`.
               styleCurrent = 'italic';
-            } else if (/bold/i.test(fontStr)) {
+            } else if (/bold/i.test(fontNameStrI)) {
               styleCurrent = 'bold';
             } else {
               styleCurrent = 'normal';
