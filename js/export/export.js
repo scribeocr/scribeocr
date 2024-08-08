@@ -9,11 +9,11 @@ import { renderText } from './exportRenderText.js';
 
 /**
  * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'} downloadType
- * @param {string} fileName
  * @param {number} [minValue=0]
  * @param {number} [maxValue=-1]
+ * @returns {Promise<string|ArrayBuffer>}
  */
-export async function handleDownload(downloadType, fileName, minValue = 0, maxValue = -1) {
+export async function exportData(downloadType, minValue = 0, maxValue = -1) {
   if (downloadType === 'text') downloadType = 'txt';
 
   // If recognition is currently running, wait for it to finish.
@@ -33,6 +33,9 @@ export async function handleDownload(downloadType, fileName, minValue = 0, maxVa
     ocrDownload = ocrAll.active;
   }
 
+  /** @type {string|ArrayBuffer} */
+  let content;
+
   if (downloadType === 'pdf') {
     const dimsLimit = { width: -1, height: -1 };
     if (opt.standardizePageSize) {
@@ -41,9 +44,6 @@ export async function handleDownload(downloadType, fileName, minValue = 0, maxVa
         dimsLimit.width = Math.max(dimsLimit.width, pageMetricsArr[i].dims.width);
       }
     }
-
-    fileName = `${fileName.replace(/\.\w{1,4}$/, '')}.pdf`;
-    let content;
 
     // For proof or ocr mode the text layer needs to be combined with a background layer
     if (opt.displayMode !== 'ebook') {
@@ -71,12 +71,7 @@ export async function handleDownload(downloadType, fileName, minValue = 0, maxVa
       const enc = new TextEncoder();
       const pdfEnc = enc.encode(pdfStr);
 
-      if (opt.intermediatePDF) {
-        // Fill up progress bar to 100%
-        if (state.progress) state.progress.fill();
-        saveAs(pdfEnc, fileName);
-        return;
-      }
+      if (opt.intermediatePDF) return pdfEnc;
 
       // Create a new scheduler if one does not yet exist.
       // This would be the case for image uploads.
@@ -178,54 +173,51 @@ export async function handleDownload(downloadType, fileName, minValue = 0, maxVa
       const pdfEnc = enc.encode(pdfStr);
 
       // Skip mupdf processing if the intermediate PDF is requested. Debugging purposes only.
-      if (opt.intermediatePDF) {
-        content = new Blob([pdfEnc], { type: 'application/octet-stream' });
-      } else {
-        const muPDFScheduler = await ImageCache.getMuPDFScheduler(1);
-        const w = muPDFScheduler.workers[0];
+      if (opt.intermediatePDF) return pdfEnc;
 
-        // The file name is only used to detect the ".pdf" extension
-        const pdf = await w.openDocument(pdfEnc.buffer, 'document.pdf');
+      const muPDFScheduler = await ImageCache.getMuPDFScheduler(1);
+      const w = muPDFScheduler.workers[0];
 
-        content = await w.write({
-          doc1: pdf, minpage: minValue, maxpage: maxValue, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, humanReadable: opt.humanReadablePDF,
-        });
-      }
+      // The file name is only used to detect the ".pdf" extension
+      const pdf = await w.openDocument(pdfEnc.buffer, 'document.pdf');
+
+      content = await w.write({
+        doc1: pdf, minpage: minValue, maxpage: maxValue, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, humanReadable: opt.humanReadablePDF,
+      });
     }
-    saveAs(content, fileName);
-  } else if (downloadType === 'hocr') {
-    if (state.progress) state.progress.show(1);
-    await sleep(0);
-    fileName = /** @type {HTMLInputElement} */`${fileName.replace(/\.\w{1,4}$/, '')}.hocr`;
-    const content = renderHOCR(ocrAll.active, minValue, maxValue);
-    saveAs(content, fileName);
-    if (state.progress) state.progress.increment();
-  } else if (downloadType === 'txt') {
-    if (state.progress) state.progress.show(1);
-    await sleep(0);
-
-    const content = renderText(ocrDownload, minValue, maxValue, opt.reflow, false);
-
-    // const textBlob = new Blob([textStr], { type: 'text/plain' });
-    fileName = `${fileName.replace(/\.\w{1,4}$/, '')}.txt`;
-
-    saveAs(content, fileName);
-    if (state.progress) state.progress.increment();
-  } else if (downloadType === 'docx') {
-    if (state.progress) state.progress.show(1);
-    await sleep(0);
-    fileName = `${fileName.replace(/\.\w{1,4}$/, '')}.docx`;
+  } if (downloadType === 'hocr') {
+    content = renderHOCR(ocrAll.active, minValue, maxValue);
+  } if (downloadType === 'txt') {
+    content = renderText(ocrDownload, minValue, maxValue, opt.reflow, false);
+  } if (downloadType === 'docx') {
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeDocx = (await import('./exportWriteDocx.js')).writeDocx;
-    await writeDocx(ocrDownload, fileName, minValue, maxValue);
-    if (state.progress) state.progress.increment();
-  } else if (downloadType === 'xlsx') {
+    content = await writeDocx(ocrDownload, minValue, maxValue);
+  } if (downloadType === 'xlsx') {
     if (state.progress) state.progress.show(1);
     await sleep(0);
-    fileName = `${fileName.replace(/\.\w{1,4}$/, '')}.xlsx`;
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeXlsx = (await import('./exportWriteTabular.js')).writeXlsx;
-    await writeXlsx(ocrDownload, fileName, minValue, maxValue);
-    if (state.progress) state.progress.increment();
+    content = await writeXlsx(ocrDownload, minValue, maxValue);
   }
+  return content;
+}
+
+/**
+ * Runs `exportData` and saves the result as a download (browser) or local file (Node.js).
+ * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'} downloadType
+ * @param {string} fileName
+ * @param {number} [minValue=0]
+ * @param {number} [maxValue=-1]
+ */
+export async function download(downloadType, fileName, minValue = 0, maxValue = -1) {
+  if (downloadType === 'text') downloadType = 'txt';
+  if (state.progress && downloadType !== 'pdf') {
+    state.progress.show(1);
+    await sleep(0);
+  }
+  fileName = fileName.replace(/\.\w{1,4}$/, `.${downloadType}`);
+  const content = await exportData(downloadType, minValue, maxValue);
+  saveAs(content, fileName);
+  if (state.progress) state.progress.fill();
 }

@@ -1,7 +1,7 @@
 import { clearData } from './js/clear.js';
 import { opt } from './js/containers/app.js';
 import { gs } from './js/containers/schedulerContainer.js';
-import { handleDownload } from './js/export/export.js';
+import { download, exportData } from './js/export/export.js';
 import { initGeneralScheduler } from './js/generalWorkerMain.js';
 import { importFilesAll } from './js/import/import.js';
 
@@ -31,10 +31,6 @@ const terminate = async () => {
   await gs.terminate();
 };
 
-const download = async (format, output) => {
-  await handleDownload(format, output);
-};
-
 export default {
-  clear, download, importFiles, init, setOptions, terminate,
+  clear, exportData, download, importFiles, init, setOptions, terminate,
 };

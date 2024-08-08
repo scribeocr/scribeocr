@@ -18,7 +18,7 @@ import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
 import { clearData } from '../js/clear.js';
 import { opt } from '../js/containers/app.js';
 import { gs } from '../js/containers/schedulerContainer.js';
-import { handleDownload } from '../js/export/export.js';
+import { download } from '../js/export/export.js';
 import { writeDebugCsv } from '../js/export/exportDebugCsv.js';
 import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
 import { initGeneralScheduler, initTesseractInWorkers } from '../js/generalWorkerMain.js';
@@ -144,7 +144,7 @@ async function main(func, params) {
     }
 
     const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, `${outputSuffix}.pdf`)}`;
-    await handleDownload('pdf', outputPath);
+    await download('pdf', outputPath);
   }
 
   if (debugComp) {

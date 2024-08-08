@@ -9,7 +9,7 @@ import {
 
 import { state } from '../js/containers/app.js';
 import { ImageCache } from '../js/containers/imageContainer.js';
-import { handleDownload } from '../js/export/export.js';
+import { download } from '../js/export/export.js';
 import { writeDebugCsv } from '../js/export/exportDebugCsv.js';
 import { elem } from './elems.js';
 import { ProgressBars } from './utils/progressBars.js';
@@ -152,7 +152,7 @@ export async function handleDownloadGUI() {
   const minValue = parseInt(elem.download.pdfPageMin.value) - 1;
   const maxValue = parseInt(elem.download.pdfPageMax.value) - 1;
 
-  await handleDownload(downloadType, fileName, minValue, maxValue);
+  await download(downloadType, fileName, minValue, maxValue);
 
   elem.download.download.disabled = false;
   elem.download.download.addEventListener('click', handleDownloadGUI);

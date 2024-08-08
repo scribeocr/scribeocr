@@ -37,7 +37,7 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
       const lineObj = pageObj.lines[h];
 
       if (reflowText) {
-        if (lineObj.par !== parCurrent) newLine = true;
+        if (g > 0 && h === 0 || lineObj.par !== parCurrent) newLine = true;
         parCurrent = lineObj.par;
       } else {
         newLine = true;

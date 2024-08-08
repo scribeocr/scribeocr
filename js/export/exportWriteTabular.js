@@ -2,8 +2,6 @@ import { calcOverlap } from '../modifyOCR.js';
 
 import ocr from '../objects/ocrObjects.js';
 
-import { saveAs } from '../utils/miscUtils.js';
-
 import { inputData, opt } from '../containers/app.js';
 import { LayoutDataTables } from '../containers/dataContainer.js';
 
@@ -336,11 +334,10 @@ function createCellsSingle(ocrTableWords, extraCols = [], startRow = 0, xlsxMode
 /**
  *
  * @param {Array<OcrPage>} ocrPageArr
- * @param {string} fileName
  * @param {number} minpage
  * @param {number} maxpage
  */
-export async function writeXlsx(ocrPageArr, fileName, minpage = 0, maxpage = -1) {
+export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
   const { xlsxStrings, sheetStart, sheetEnd } = await import('./resources/xlsxFiles.js');
   const { Uint8ArrayWriter, TextReader, ZipWriter } = await import('../../lib/zip.js/index.js');
 
@@ -382,5 +379,5 @@ export async function writeXlsx(ocrPageArr, fileName, minpage = 0, maxpage = -1)
 
   const zipFileData = await zipFileWriter.getData();
 
-  saveAs(zipFileData, fileName);
+  return zipFileData;
 }

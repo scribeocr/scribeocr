@@ -3,17 +3,15 @@ import { documentEnd, documentStart, docxStrings } from './resources/docxFiles.j
 import { renderText } from './exportRenderText.js';
 
 import { opt } from '../containers/app.js';
-import { saveAs } from '../utils/miscUtils.js';
 
 /**
  * Create a Word document from an array of ocrPage objects.
  *
  * @param {Array<OcrPage>} hocrCurrent -
- * @param {string} fileName
  * @param {number} minpage - The first page to include in the document.
  * @param {number} maxpage - The last page to include in the document.
  */
-export async function writeDocx(hocrCurrent, fileName, minpage = 0, maxpage = -1) {
+export async function writeDocx(hocrCurrent, minpage = 0, maxpage = -1) {
   const { Uint8ArrayWriter, TextReader, ZipWriter } = await import('../../lib/zip.js/index.js');
 
   if (maxpage === -1) maxpage = hocrCurrent.length - 1;
@@ -33,5 +31,5 @@ export async function writeDocx(hocrCurrent, fileName, minpage = 0, maxpage = -1
 
   const zipFileData = await zipFileWriter.getData();
 
-  saveAs(zipFileData, fileName);
+  return zipFileData;
 }
