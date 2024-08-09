@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import { opt, state } from '../js/containers/app.js';
+import { visInstructions } from '../js/containers/dataContainer.js';
 import { recognizeAll } from '../js/recognizeConvert.js';
 import { toggleEditConfUI, updateOcrVersionGUI } from '../main.js';
 import { elem } from './elems.js';
@@ -112,6 +113,30 @@ export function setLangOpt() {
   return;
 }
 
+const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
+const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+
+// TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
+// While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
+async function addVisInstructionsUI() {
+  const { combineOrderedArrays } = await import('../scrollview-web/util/combine.js');
+  if (!visInstructions || visInstructions.length === 0) return;
+  const visNamesAll = visInstructions.map((x) => Object.keys(x));
+  if (visNamesAll.length === 0) return;
+  const visNames = visNamesAll.reduce(combineOrderedArrays);
+
+  if (visNames.length === 0) return;
+
+  showDebugLegendElem.disabled = false;
+  selectDebugVisElem.disabled = false;
+  visNames.forEach((x) => {
+    const option = document.createElement('option');
+    option.value = x;
+    option.innerHTML = x;
+    selectDebugVisElem.appendChild(option);
+  });
+}
+
 export async function recognizeAllClick() {
   state.progress = ProgressBars.recognize;
 
@@ -128,6 +153,8 @@ export async function recognizeAllClick() {
   }
 
   await recognizeAll(oemMode);
+
+  addVisInstructionsUI();
 
   if (opt.enableOpt) {
     elem.view.optimizeFont.disabled = false;
