@@ -4,6 +4,7 @@ import { inputData, opt, state } from '../js/containers/app.js';
 import { pageMetricsArr, visInstructions } from '../js/containers/dataContainer.js';
 import { ImageCache } from '../js/containers/imageContainer.js';
 import Konva from '../lib/konva/index.js';
+import { elem } from './elems.js';
 import {
   getWordFillOpacity,
   layerBackground,
@@ -14,8 +15,6 @@ import {
 import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
 import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
 import { renderLayoutBoxes } from './interfaceLayout.js';
-
-const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 
@@ -83,8 +82,8 @@ export const selectDisplayMode = async (x) => {
     layerBackground.destroyChildren();
   }
 
-  if (state.debugVis && selectDebugVisElem.value !== 'None' && visInstructions[state.cp.n][selectDebugVisElem.value]) {
-    const image = visInstructions[state.cp.n][selectDebugVisElem.value].canvas;
+  if (state.debugVis && elem.info.selectDebugVis.value !== 'None' && visInstructions[state.cp.n][elem.info.selectDebugVis.value]) {
+    const image = visInstructions[state.cp.n][elem.info.selectDebugVis.value].canvas;
     const overlayImageKonva = new Konva.Image({
       image,
       scaleX: pageDims.width / image.width,
@@ -98,7 +97,7 @@ export const selectDisplayMode = async (x) => {
     layerOverlay.destroyChildren();
     layerOverlay.add(overlayImageKonva);
 
-    const offscreenCanvasLegend = visInstructions[state.cp.n][selectDebugVisElem.value].canvasLegend;
+    const offscreenCanvasLegend = visInstructions[state.cp.n][elem.info.selectDebugVis.value].canvasLegend;
     if (offscreenCanvasLegend) {
       ctxLegend.canvas.width = offscreenCanvasLegend.width;
       ctxLegend.canvas.height = offscreenCanvasLegend.height;

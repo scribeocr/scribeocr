@@ -93,7 +93,7 @@ import { clearData } from './js/clear.js';
 import { inputData, opt, state } from './js/containers/app.js';
 import { gs } from './js/containers/schedulerContainer.js';
 import { df } from './js/debugGlobals.js';
-import { initGeneralScheduler } from './js/generalWorkerMain.js';
+import { initGeneralScheduler, initTesseractInWorkers } from './js/generalWorkerMain.js';
 import { importFilesAll } from './js/import/import.js';
 import { convertOCRAll } from './js/recognizeConvert.js';
 
@@ -314,12 +314,11 @@ showDebugVisElem.addEventListener('change', () => {
   renderPageQueue(state.cp.n);
 });
 
-const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
-showDebugLegendElem.addEventListener('change', () => { renderPageQueue(state.cp.n); });
+elem.info.showDebugLegend.addEventListener('change', () => { renderPageQueue(state.cp.n); });
 
-showDebugLegendElem.addEventListener('input', () => {
+elem.info.showDebugLegend.addEventListener('input', () => {
   const legendCanvasParentDivElem = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
-  if (!showDebugLegendElem.checked) {
+  if (!elem.info.showDebugLegend.checked) {
     showHideElem(legendCanvasParentDivElem, false);
   } else {
     showHideElem(legendCanvasParentDivElem, true);
@@ -327,8 +326,7 @@ showDebugLegendElem.addEventListener('input', () => {
   if (pageMetricsArr[state.cp.n]?.dims) setCanvasWidthHeightZoom(pageMetricsArr[state.cp.n].dims, false);
 });
 
-const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
-selectDebugVisElem.addEventListener('change', () => { renderPageQueue(state.cp.n); });
+elem.info.selectDebugVis.addEventListener('change', () => { renderPageQueue(state.cp.n); });
 
 elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick);
 
@@ -627,7 +625,11 @@ const importFilesGUI = async (files) => {
   state.progress = ProgressBars.import;
   await importFilesAll(files);
 
-  displayPage(state.cp.n);
+  displayPage(state.cp.n, true);
+
+  // Start loading Tesseract if it was not already loaded.
+  // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
+  await initTesseractInWorkers({ anyOk: true, vanillaMode: opt.vanillaMode, langs: opt.langs });
 
   elem.nav.pageNum.value = '1';
   elem.nav.pageCount.textContent = String(state.pageCount);
@@ -1060,11 +1062,12 @@ let working = false;
 /**
  * Render page `n` in the UI.
  * @param {number} n
+ * @param {boolean} [force=false] - Render even if another page is actively being rendered.
  * @returns
  */
-export async function displayPage(n) {
+export async function displayPage(n, force = false) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered.
-  if (Number.isNaN(n) || n < 0 || n > (state.pageCount - 1) || working) {
+  if (Number.isNaN(n) || n < 0 || n > (state.pageCount - 1) || (working && !force)) {
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
     elem.nav.pageNum.value = (state.cp.n + 1).toString();
     return;

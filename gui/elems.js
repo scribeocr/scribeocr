@@ -255,6 +255,10 @@ class info {
   static humanReadablePDF = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
 
   static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
+
+  static selectDebugVis = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+
+  static showDebugLegend = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
 }
 
 export class elem {

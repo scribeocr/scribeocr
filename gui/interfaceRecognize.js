@@ -113,9 +113,6 @@ export function setLangOpt() {
   return;
 }
 
-const showDebugLegendElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
-const selectDebugVisElem = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
-
 // TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
 async function addVisInstructionsUI() {
@@ -127,13 +124,13 @@ async function addVisInstructionsUI() {
 
   if (visNames.length === 0) return;
 
-  showDebugLegendElem.disabled = false;
-  selectDebugVisElem.disabled = false;
+  elem.info.showDebugLegend.disabled = false;
+  elem.info.selectDebugVis.disabled = false;
   visNames.forEach((x) => {
     const option = document.createElement('option');
     option.value = x;
     option.innerHTML = x;
-    selectDebugVisElem.appendChild(option);
+    elem.info.selectDebugVis.appendChild(option);
   });
 }
 

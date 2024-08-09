@@ -13,7 +13,6 @@ import { gs } from '../containers/schedulerContainer.js';
 import { enableDisableFontOpt, optimizeFontContainerAll, setDefaultFontAuto } from '../fontContainerMain.js';
 import { runFontOptimization } from '../fontEval.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
-import { initTesseractInWorkers } from '../generalWorkerMain.js';
 import { LayoutDataTablePage, LayoutPage } from '../objects/layoutObjects.js';
 import { PageMetrics } from '../objects/pageMetricsObjects.js';
 import { checkCharWarn, convertOCRAll } from '../recognizeConvert.js';
@@ -263,80 +262,79 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
   let existingOpt = false;
   const oemName = 'User Upload';
   let stextMode;
-
-  if (xmlModeImport || inputData.extractTextMode) {
+  if (xmlModeImport) {
     // Initialize a new array on `ocrAll` if one does not already exist
     if (!ocrAll[oemName]) ocrAll[oemName] = Array(state.pageCount);
     ocrAll.active = ocrAll[oemName];
 
-    let stextModeImport;
-    if (xmlModeImport) {
-      const ocrData = await importOCRFiles(Array.from(hocrFiles));
+    const ocrData = await importOCRFiles(Array.from(hocrFiles));
 
-      ocrAllRaw.active = ocrData.hocrRaw;
-      // Subset OCR data to avoid uncaught error that occurs when there are more pages of OCR data than image data.
-      // While this should be rare, it appears to be fairly common with Archive.org documents.
-      // TODO: Add warning message displayed to user for this.
-      if (pageCountImage && ocrAllRaw.active.length > pageCountImage) {
-        console.log(`Identified ${ocrAllRaw.active.length} pages of OCR data but ${pageCountImage} pages of image/pdf data. Only first ${pageCountImage} pages will be used.`);
-        ocrAllRaw.active = ocrAllRaw.active.slice(0, pageCountImage);
-      }
-
-      // Restore font metrics and optimize font from previous session (if applicable)
-      if (ocrData.fontMetricsObj && Object.keys(ocrData.fontMetricsObj).length > 0) {
-        existingOpt = true;
-
-        replaceObjectProperties(fontMetricsObj, ocrData.fontMetricsObj);
-        await gs.schedulerReady;
-        setDefaultFontAuto(fontMetricsObj);
-
-        // If `ocrData.enableOpt` is `false`, then the metrics are present but ignored.
-        // This occurs if optimization was found to decrease accuracy for both sans and serif,
-        // not simply because the user disabled optimization in the view settings.
-        // If no `enableOpt` property exists but metrics are present, then optimization is enabled.
-        if (ocrData.enableOpt === 'false') {
-          opt.enableOpt = false;
-        } else {
-          const fontRaw = fontAll.getContainer('raw');
-          if (!fontRaw) throw new Error('Raw font data not found.');
-          fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
-          opt.enableOpt = true;
-          await enableDisableFontOpt(true);
-        }
-      }
-
-      if (ocrData.defaultFont) fontAll.defaultFontName = ocrData.defaultFont;
-
-      if (ocrData.sansFont) {
-        fontAll.sansDefaultName = ocrData.sansFont;
-      }
-
-      if (ocrData.serifFont) {
-        fontAll.serifDefaultName = ocrData.serifFont;
-      }
-
-      // Restore layout data from previous session (if applicable)
-      if (ocrData.layoutObj) {
-        for (let i = 0; i < ocrData.layoutObj.length; i++) {
-          LayoutRegions.pages[i] = ocrData.layoutObj[i];
-        }
-        existingLayout = true;
-      }
-
-      if (ocrData.layoutDataTableObj) {
-        for (let i = 0; i < ocrData.layoutDataTableObj.length; i++) {
-          LayoutDataTables.pages[i] = ocrData.layoutDataTableObj[i];
-        }
-        existingLayoutDataTable = true;
-      }
-
-      stextModeImport = ocrData.stextMode;
-      abbyyMode = ocrData.abbyyMode;
-      scribeMode = ocrData.scribeMode;
+    ocrAllRaw.active = ocrData.hocrRaw;
+    // Subset OCR data to avoid uncaught error that occurs when there are more pages of OCR data than image data.
+    // While this should be rare, it appears to be fairly common with Archive.org documents.
+    // TODO: Add warning message displayed to user for this.
+    if (pageCountImage && ocrAllRaw.active.length > pageCountImage) {
+      console.log(`Identified ${ocrAllRaw.active.length} pages of OCR data but ${pageCountImage} pages of image/pdf data. Only first ${pageCountImage} pages will be used.`);
+      ocrAllRaw.active = ocrAllRaw.active.slice(0, pageCountImage);
     }
 
-    // stext may be imported or extracted from an input PDF
-    stextMode = inputData.extractTextMode || stextModeImport;
+    // Restore font metrics and optimize font from previous session (if applicable)
+    if (ocrData.fontMetricsObj && Object.keys(ocrData.fontMetricsObj).length > 0) {
+      existingOpt = true;
+
+      replaceObjectProperties(fontMetricsObj, ocrData.fontMetricsObj);
+      await gs.schedulerReady;
+      setDefaultFontAuto(fontMetricsObj);
+
+      // If `ocrData.enableOpt` is `false`, then the metrics are present but ignored.
+      // This occurs if optimization was found to decrease accuracy for both sans and serif,
+      // not simply because the user disabled optimization in the view settings.
+      // If no `enableOpt` property exists but metrics are present, then optimization is enabled.
+      if (ocrData.enableOpt === 'false') {
+        opt.enableOpt = false;
+      } else {
+        const fontRaw = fontAll.getContainer('raw');
+        if (!fontRaw) throw new Error('Raw font data not found.');
+        fontAll.opt = await optimizeFontContainerAll(fontRaw, fontMetricsObj);
+        opt.enableOpt = true;
+        await enableDisableFontOpt(true);
+      }
+    }
+
+    if (ocrData.defaultFont) fontAll.defaultFontName = ocrData.defaultFont;
+
+    if (ocrData.sansFont) {
+      fontAll.sansDefaultName = ocrData.sansFont;
+    }
+
+    if (ocrData.serifFont) {
+      fontAll.serifDefaultName = ocrData.serifFont;
+    }
+
+    // Restore layout data from previous session (if applicable)
+    if (ocrData.layoutObj) {
+      for (let i = 0; i < ocrData.layoutObj.length; i++) {
+        LayoutRegions.pages[i] = ocrData.layoutObj[i];
+      }
+      existingLayout = true;
+    }
+
+    if (ocrData.layoutDataTableObj) {
+      for (let i = 0; i < ocrData.layoutDataTableObj.length; i++) {
+        LayoutDataTables.pages[i] = ocrData.layoutDataTableObj[i];
+      }
+      existingLayoutDataTable = true;
+    }
+
+    abbyyMode = ocrData.abbyyMode;
+    scribeMode = ocrData.scribeMode;
+
+    stextMode = ocrData.stextMode;
+  } else if (inputData.extractTextMode) {
+    // Initialize a new array on `ocrAll` if one does not already exist
+    if (!ocrAll[oemName]) ocrAll[oemName] = Array(state.pageCount);
+    ocrAll.active = ocrAll[oemName];
+    stextMode = true;
   }
 
   const pageCountHOCR = ocrAllRaw.active?.length;
@@ -405,8 +403,4 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
   }
 
   if (dummyLoadingBar && state.progress) state.progress.increment();
-
-  // Start loading Tesseract if it was not already loaded.
-  // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
-  await initTesseractInWorkers({ anyOk: true, vanillaMode: opt.vanillaMode, langs: opt.langs });
 }
