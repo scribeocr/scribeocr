@@ -65,7 +65,7 @@ describe('Check paragraph detection with complaint.', function () {
   }).timeout(10000);
 
   it('Paragraph detection creates new paragraph when switching to center alignment', async () => {
-    assert.strictEqual(getParText(ocrAll.active[1].pars[2]), 'APPLICABILITY OF PRESUMPTION OF RELIANCE:FRAUD-ON-THE-MARKET DOCTRINE');
+    assert.strictEqual(getParText(ocrAll.active[1].pars[2]), 'APPLICABILITY OF PRESUMPTION OF RELIANCE: FRAUD-ON-THE-MARKET DOCTRINE');
   }).timeout(10000);
 
   after(async () => {

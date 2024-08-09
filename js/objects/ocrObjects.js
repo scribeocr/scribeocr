@@ -318,6 +318,7 @@ export const getLineText = (line) => {
 export const getParText = (par) => {
   let text = '';
   for (let i = 0; i < par.lines.length; i++) {
+    if (i > 0) text += ' ';
     text += getLineText(par.lines[i]);
   }
   return text;
@@ -329,7 +330,7 @@ export const getParText = (par) => {
 const getPageText = (page) => {
   let text = '';
   for (let i = 0; i < page.lines.length; i++) {
-    if (i < 0) text += '\n';
+    if (i > 0) text += '\n';
     text += getLineText(page.lines[i]);
   }
   return text;
