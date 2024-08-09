@@ -10,16 +10,16 @@ import { importFilesAll } from './js/import/import.js';
 
 /**
  * Initialize the workers that handle most operations.
- * @param {Object} params
+ * @param {Object} [params]
  * @param {boolean} [params.pdf=false] - Load PDF renderer.
  * @param {boolean} [params.tesseract=false] - Load Tesseract.
  * The PDF renderer and Tesseract are automatically loaded when needed.
  * Therefore, the only reason to set `pdf` or `tesseract` to `true` is to pre-load them.
  */
-const init = async ({
-  pdf = false,
-  tesseract = false,
-}) => {
+const init = async (params) => {
+  const pdf = params && params.pdf ? params.pdf : false;
+  const tesseract = params && params.tesseract ? params.tesseract : false;
+
   const pdfPromise = pdf ? ImageCache.getMuPDFScheduler() : Promise.resolve();
 
   await initGeneralScheduler();
