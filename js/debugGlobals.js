@@ -3,7 +3,7 @@
 // This file adds various functions to a global object named `df` so they can be easily run from the console.
 // This object should never be referenced in code--the functions should be imported instead.
 
-import { opt, state } from '../js/containers/app.js';
+import { opt, state } from './containers/app.js';
 import {
   DebugData,
   fontMetricsObj,
@@ -12,20 +12,12 @@ import {
   ocrAll,
   ocrAllRaw,
   pageMetricsArr,
-} from '../js/containers/dataContainer.js';
-import { fontAll } from '../js/containers/fontContainer.js';
-import { ImageCache } from '../js/containers/imageContainer.js';
-import ocr from '../js/objects/ocrObjects.js';
-import { calcLineFontSize, calcWordMetrics, missingGlyphs } from '../js/utils/fontUtils.js';
-import { calcConf } from '../js/utils/ocrUtils.js';
-import { elem } from './elems.js';
-import {
-  layerBackground, layerOverlay,
-  layerText,
-  ScribeCanvas,
-  stage,
-} from './interfaceCanvas.js';
-import { downloadAllImages } from './interfaceDebug.js';
+} from './containers/dataContainer.js';
+import { fontAll } from './containers/fontContainer.js';
+import { ImageCache } from './containers/imageContainer.js';
+import ocr from './objects/ocrObjects.js';
+import { calcLineFontSize, calcWordMetrics, missingGlyphs } from './utils/fontUtils.js';
+import { calcConf } from './utils/ocrUtils.js';
 
 /**
  *
@@ -57,21 +49,19 @@ const getCharMetrics = (char) => {
   };
 };
 
-// Expose functions in global object for debugging purposes.
+// This object contains all important "under the hood" data, so is useful for debugging.
+// This is not considered part of the public interface, so is not documented, and may change at any time.
+// In general, this should not be used in production code, except as a hack.
+// If there are non-fringe use cases, then a documented interface should be created.
 export const df = {
   calcConf,
   calcLineFontSize,
   calcWordMetrics,
   DebugData,
-  downloadAllImages,
-  elem,
   fontAll,
   fontMetricsObj,
   getCharMetrics,
   ImageCache,
-  layerBackground,
-  layerOverlay,
-  layerText,
   LayoutDataTables,
   LayoutRegions,
   missingGlyphs,
@@ -80,7 +70,5 @@ export const df = {
   ocrAllRaw,
   opt,
   pageMetricsArr,
-  ScribeCanvas,
-  stage,
   state,
 };

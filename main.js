@@ -83,7 +83,6 @@ import {
   showDebugImages,
 } from './gui/interfaceDebug.js';
 
-import { df } from './gui/debugGlobals.js';
 import { elem } from './gui/elems.js';
 import {
   getLayerCenter, setCanvasWidthHeightZoom, zoomAllLayers,
@@ -93,6 +92,7 @@ import { ProgressBars } from './gui/utils/progressBars.js';
 import { clearData } from './js/clear.js';
 import { inputData, opt, state } from './js/containers/app.js';
 import { gs } from './js/containers/schedulerContainer.js';
+import { df } from './js/debugGlobals.js';
 import { initGeneralScheduler } from './js/generalWorkerMain.js';
 import { importFilesAll } from './js/import/import.js';
 import { convertOCRAll } from './js/recognizeConvert.js';

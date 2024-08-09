@@ -93,15 +93,10 @@ export class MuPDFScheduler {
     /** @type {Array<Awaited<ReturnType<typeof initMuPDFWorker>>>} */
     this.workers = workers;
     /**
-     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>[1]} args
-     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextXML>>}
+     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageText>[1]} args
+     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageText>>}
      */
-    this.pageTextXML = (args) => (this.scheduler.addJob('pageTextXML', args));
-    /**
-     * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextJSON>[1]} args
-     * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.pageTextJSON>>}
-     */
-    this.pageTextJSON = (args) => (this.scheduler.addJob('pageTextJSON', args));
+    this.pageText = (args) => (this.scheduler.addJob('pageText', args));
     /**
      * @param {Parameters<typeof import('../../mupdf/mupdf-worker.js').mupdf.extractAllFonts>[1]} args
      * @returns {Promise<ReturnType<typeof import('../../mupdf/mupdf-worker.js').mupdf.extractAllFonts>>}
@@ -230,6 +225,42 @@ export class ImageCache {
   static inputModes = {
     pdf: false,
     image: false,
+  };
+
+  static pdfContentStats = {
+    /** Total number of letters in the source PDF. */
+    letterCountTotal: 0,
+    /** Total number of visible letters in the source PDF. */
+    letterCountVis: 0,
+    /** Total number of pages with 100+ letters in the source PDF. */
+    pageCountTotalText: 0,
+    /** Total number of pages with 100+ visible letters in the source PDF. */
+    pageCountVisText: 0,
+  };
+
+  /** @type {?('text'|'ocr'|'image')} */
+  static pdfType = null;
+
+  static setPdfType = () => {
+    // The PDF is considered text-native if:
+    // (1) The total number of visible letters is at least 100 per page on average.
+    // (2) The total number of visible letters is at least 90% of the total number of letters.
+    // (3) The total number of pages with 100+ visible letters is at least half of the total number of pages.
+    if (ImageCache.pdfContentStats.letterCountTotal >= ImageCache.pageCount * 100
+      && ImageCache.pdfContentStats.letterCountVis >= ImageCache.pdfContentStats.letterCountTotal * 0.9
+      && ImageCache.pdfContentStats.pageCountVisText >= ImageCache.pageCount / 2) {
+      ImageCache.pdfType = 'text';
+    // The PDF is considered ocr-native if:
+    // (1) The total number of letters is at least 100 per page on average.
+    // (2) The total number of letters is at least half of the total number of letters.
+    } else if (ImageCache.pdfContentStats.letterCountTotal >= ImageCache.pageCount * 100
+      && ImageCache.pdfContentStats.letterCountVis >= ImageCache.pageCount / 2) {
+      ImageCache.pdfType = 'ocr';
+    // Otherwise, the PDF is considered image-native.
+    // This includes both literally image-only PDFs, as well as PDFs that have invalid encodings or other issues that prevent valid text extraction.
+    } else {
+      ImageCache.pdfType = 'image';
+    }
   };
 
   static colorModeDefault = 'gray';
@@ -535,6 +566,13 @@ export class ImageCache {
     ImageCache.inputModes.pdf = false;
     ImageCache.pageCount = 0;
     ImageCache.pdfDims300Arr.length = 0;
+    ImageCache.loadCount = 0;
+    ImageCache.nativeProps.length = 0;
+    ImageCache.binaryProps.length = 0;
+    ImageCache.pdfContentStats.letterCountTotal = 0;
+    ImageCache.pdfContentStats.letterCountVis = 0;
+    ImageCache.pdfContentStats.pageCountTotalText = 0;
+    ImageCache.pdfContentStats.pageCountVisText = 0;
   };
 
   /**
@@ -632,9 +670,17 @@ export class ImageCache {
       const resArr = pageDPI.map(async (x, i) => {
         // While using `pageTextJSON` would save some parsing, unfortunately that format only includes line-level granularity.
         // The XML format is the only built-in mupdf format that includes character-level granularity.
-        ocrAllRaw.active[i] = await muPDFScheduler.pageTextXML({ page: i + 1, dpi: x });
+        const res = await muPDFScheduler.pageText({
+          page: i + 1, dpi: x, format: 'xml', calcStats: true,
+        });
+        ImageCache.pdfContentStats.letterCountTotal += res.letterCountTotal;
+        ImageCache.pdfContentStats.letterCountVis += res.letterCountVis;
+        if (res.letterCountTotal >= 100) ImageCache.pdfContentStats.pageCountTotalText++;
+        if (res.letterCountVis >= 100) ImageCache.pdfContentStats.pageCountVisText++;
+        ocrAllRaw.active[i] = res.content;
       });
       await Promise.all(resArr);
+      ImageCache.setPdfType();
     }
   };
 }

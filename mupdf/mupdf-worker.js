@@ -86,7 +86,7 @@ const { Module, FS } = await import('./libmupdf.js');
 globalThis.Module = Module;
 globalThis.FS = FS;
 
-let wasm_pageText;
+let wasm_pageText0;
 let wasm_checkNativeText;
 let wasm_extractAllFonts;
 
@@ -110,7 +110,7 @@ Module.onRuntimeInitialized = function () {
   mupdf.getLastDrawData = Module.cwrap('getLastDrawData', 'number', []);
   mupdf.getLastDrawSize = Module.cwrap('getLastDrawSize', 'number', []);
   wasm_extractAllFonts = Module.cwrap('extractAllFonts', 'number', ['number']);
-  wasm_pageText = Module.cwrap('pageText', 'string', ['number', 'number', 'number', 'number', 'number']);
+  wasm_pageText0 = Module.cwrap('pageText', 'PageTextResults', ['number', 'number', 'number', 'number', 'number', 'number', 'number']);
   mupdf.searchJSON = Module.cwrap('search', 'string', ['number', 'number', 'number', 'string']);
   mupdf.loadOutline = Module.cwrap('loadOutline', 'number', ['number']);
   mupdf.freeOutline = Module.cwrap('freeOutline', null, ['number']);
@@ -122,6 +122,44 @@ Module.onRuntimeInitialized = function () {
   mupdf.writeDocument = Module.cwrap('writeDocument', 'null', []);
   postMessage('READY');
   ready = true;
+};
+
+/**
+ *
+ * @param {number} doc
+ * @param {Object} args
+ * @param {number} args.page
+ * @param {number} [args.dpi = 72]
+ * @param {'text'|'txt'|'html'|'xhtml'|'xml'|'json'} [args.format = 'text']
+ * @param {boolean} [args.skipTextInvis=false]
+ * @param {boolean} [args.calcStats=false]
+ * @returns {{letterCountTotal: number, letterCountVis: number, content: string}}
+ */
+mupdf.pageText = function (doc, {
+  page, dpi = 72, format = 'text', skipTextInvis = false, calcStats = false,
+}) {
+  const formatCode = {
+    txt: 0,
+    text: 0,
+    html: 1,
+    xhtml: 2,
+    xml: 3,
+    json: 4,
+  }[format];
+
+  const structPtr = wasm_pageText0(doc, page, dpi, formatCode, skipTextInvis, calcStats, true);
+
+  const letterCountTotal = Module.getValue(structPtr, 'i32');
+  const letterCountVis = Module.getValue(structPtr + 4, 'i32');
+  const dataPtr = Module.getValue(structPtr + 8, 'i32');
+
+  const content = Module.UTF8ToString(dataPtr);
+
+  return {
+    letterCountTotal,
+    letterCountVis,
+    content,
+  };
 };
 
 /**
@@ -396,67 +434,6 @@ mupdf.pageSizes = function (doc, dpi) {
 
 mupdf.pageLinks = function (doc, page, dpi) {
   return JSON.parse(mupdf.pageLinksJSON(doc, page, dpi));
-};
-
-/**
- *
- * @param {number} doc
- * @param {Object} args
- * @param {number} args.page
- * @param {number} args.dpi
- * @param {boolean} args.skipTextInvis
- */
-mupdf.pageText = function (doc, { page, dpi, skipTextInvis = false }) {
-  return wasm_pageText(doc, page, dpi, 0, skipTextInvis);
-};
-
-/**
- *
- * @param {number} doc
- * @param {Object} args
- * @param {number} args.page
- * @param {number} args.dpi
- * @param {boolean} args.skipTextInvis
- */
-mupdf.pageTextHTML = function (doc, { page, dpi, skipTextInvis = false }) {
-  return wasm_pageText(doc, page, dpi, 1, skipTextInvis);
-};
-
-/**
- *
- * @param {number} doc
- * @param {Object} args
- * @param {number} args.page
- * @param {number} args.dpi
- * @param {boolean} args.skipTextInvis
- */
-mupdf.pageTextXHTML = function (doc, { page, dpi, skipTextInvis = false }) {
-  return wasm_pageText(doc, page, dpi, 2, skipTextInvis);
-};
-
-/**
- *
- * @param {number} doc
- * @param {Object} args
- * @param {number} args.page
- * @param {number} args.dpi
- * @param {boolean} args.skipTextInvis
- * @returns {string}
- */
-mupdf.pageTextXML = function (doc, { page, dpi, skipTextInvis = false }) {
-  return wasm_pageText(doc, page, dpi, 3, skipTextInvis);
-};
-
-/**
- *
- * @param {number} doc
- * @param {Object} args
- * @param {number} args.page
- * @param {number} args.dpi
- * @param {boolean} args.skipTextInvis
- */
-mupdf.pageTextJSON = function (doc, { page, dpi, skipTextInvis = false }) {
-  return JSON.parse(wasm_pageText(doc, page, dpi, 4, skipTextInvis));
 };
 
 mupdf.search = function (doc, page, dpi, needle) {

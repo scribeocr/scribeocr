@@ -657,6 +657,41 @@ var callRuntimeCallbacks = callbacks => {
   }
 };
 
+/**
+     * @param {number} ptr
+     * @param {string} type
+     */ function getValue(ptr, type = "i8") {
+  if (type.endsWith("*")) type = "*";
+  switch (type) {
+   case "i1":
+    return HEAP8[ptr >>> 0];
+
+   case "i8":
+    return HEAP8[ptr >>> 0];
+
+   case "i16":
+    return HEAP16[((ptr) >>> 1) >>> 0];
+
+   case "i32":
+    return HEAP32[((ptr) >>> 2) >>> 0];
+
+   case "i64":
+    abort("to do getValue(i64) use WASM_BIGINT");
+
+   case "float":
+    return HEAPF32[((ptr) >>> 2) >>> 0];
+
+   case "double":
+    return HEAPF64[((ptr) >>> 3) >>> 0];
+
+   case "*":
+    return HEAPU32[((ptr) >>> 2) >>> 0];
+
+   default:
+    abort(`invalid type for getValue: ${type}`);
+  }
+}
+
 var noExitRuntime = Module["noExitRuntime"] || true;
 
 var ptrToString = ptr => {
@@ -4325,7 +4360,7 @@ var _countPages = Module["_countPages"] = createExportWrapper("countPages", 1);
 
 var _checkNativeText = Module["_checkNativeText"] = createExportWrapper("checkNativeText", 2);
 
-var _pageText = Module["_pageText"] = createExportWrapper("pageText", 5);
+var _pageText = Module["_pageText"] = createExportWrapper("pageText", 7);
 
 var _doDrawPageAsPNG = Module["_doDrawPageAsPNG"] = createExportWrapper("doDrawPageAsPNG", 4);
 
@@ -4536,7 +4571,7 @@ function invoke_viiiii(index, a1, a2, a3, a4, a5) {
   }
 }
 
-function invoke_viiif(index, a1, a2, a3, a4) {
+function invoke_viiii(index, a1, a2, a3, a4) {
   var sp = stackSave();
   try {
     getWasmTableEntry(index)(a1, a2, a3, a4);
@@ -4547,7 +4582,7 @@ function invoke_viiif(index, a1, a2, a3, a4) {
   }
 }
 
-function invoke_viiii(index, a1, a2, a3, a4) {
+function invoke_viiif(index, a1, a2, a3, a4) {
   var sp = stackSave();
   try {
     getWasmTableEntry(index)(a1, a2, a3, a4);
@@ -5359,6 +5394,10 @@ Module["ccall"] = ccall;
 
 Module["cwrap"] = cwrap;
 
+Module["getValue"] = getValue;
+
+Module["UTF8ToString"] = UTF8ToString;
+
 Module["FS_createPreloadedFile"] = FS_createPreloadedFile;
 
 Module["FS_unlink"] = FS_unlink;
@@ -5375,7 +5414,7 @@ var missingLibrarySymbols = [ "writeI53ToI64", "writeI53ToI64Clamped", "writeI53
 
 missingLibrarySymbols.forEach(missingLibrarySymbol);
 
-var unexportedSymbols = [ "run", "addOnPreRun", "addOnInit", "addOnPreMain", "addOnExit", "addOnPostRun", "out", "err", "callMain", "abort", "wasmMemory", "wasmExports", "writeStackCookie", "checkStackCookie", "convertI32PairToI53Checked", "stackSave", "stackRestore", "stackAlloc", "setTempRet0", "ptrToString", "zeroMemory", "exitJS", "getHeapMax", "growMemory", "ENV", "MONTH_DAYS_REGULAR", "MONTH_DAYS_LEAP", "MONTH_DAYS_REGULAR_CUMULATIVE", "MONTH_DAYS_LEAP_CUMULATIVE", "isLeapYear", "arraySum", "addDays", "ERRNO_CODES", "ERRNO_MESSAGES", "DNS", "Protocols", "Sockets", "initRandomFill", "randomFill", "timers", "warnOnce", "readEmAsmArgsArray", "readEmAsmArgs", "runEmAsmFunction", "jstoi_s", "getExecutableName", "keepRuntimeAlive", "asyncLoad", "alignMemory", "mmapAlloc", "wasmTable", "noExitRuntime", "getCFunc", "freeTableIndexes", "functionsInTableMap", "setValue", "getValue", "PATH", "PATH_FS", "UTF8Decoder", "UTF8ArrayToString", "UTF8ToString", "stringToUTF8Array", "stringToUTF8", "lengthBytesUTF8", "intArrayFromString", "stringToAscii", "UTF16Decoder", "stringToUTF8OnStack", "writeArrayToMemory", "JSEvents", "specialHTMLTargets", "findCanvasEventTarget", "currentFullscreenStrategy", "restoreOldWindowedStyle", "UNWIND_CACHE", "ExitStatus", "getEnvStrings", "doReadv", "doWritev", "promiseMap", "uncaughtExceptionCount", "exceptionLast", "exceptionCaught", "Browser", "getPreloadedImageData__data", "wget", "SYSCALLS", "preloadPlugins", "FS_modeStringToFlags", "FS_getMode", "FS_stdin_getChar_buffer", "FS_stdin_getChar", "FS_readFile", "FS", "MEMFS", "TTY", "PIPEFS", "SOCKFS", "tempFixedLengthArray", "miniTempWebGLFloatBuffers", "miniTempWebGLIntBuffers", "GL", "AL", "GLUT", "EGL", "GLEW", "IDBStore", "SDL", "SDL_gfx", "allocateUTF8", "allocateUTF8OnStack", "print", "printErr" ];
+var unexportedSymbols = [ "run", "addOnPreRun", "addOnInit", "addOnPreMain", "addOnExit", "addOnPostRun", "out", "err", "callMain", "abort", "wasmMemory", "wasmExports", "writeStackCookie", "checkStackCookie", "convertI32PairToI53Checked", "stackSave", "stackRestore", "stackAlloc", "setTempRet0", "ptrToString", "zeroMemory", "exitJS", "getHeapMax", "growMemory", "ENV", "MONTH_DAYS_REGULAR", "MONTH_DAYS_LEAP", "MONTH_DAYS_REGULAR_CUMULATIVE", "MONTH_DAYS_LEAP_CUMULATIVE", "isLeapYear", "arraySum", "addDays", "ERRNO_CODES", "ERRNO_MESSAGES", "DNS", "Protocols", "Sockets", "initRandomFill", "randomFill", "timers", "warnOnce", "readEmAsmArgsArray", "readEmAsmArgs", "runEmAsmFunction", "jstoi_s", "getExecutableName", "keepRuntimeAlive", "asyncLoad", "alignMemory", "mmapAlloc", "wasmTable", "noExitRuntime", "getCFunc", "freeTableIndexes", "functionsInTableMap", "setValue", "PATH", "PATH_FS", "UTF8Decoder", "UTF8ArrayToString", "stringToUTF8Array", "stringToUTF8", "lengthBytesUTF8", "intArrayFromString", "stringToAscii", "UTF16Decoder", "stringToUTF8OnStack", "writeArrayToMemory", "JSEvents", "specialHTMLTargets", "findCanvasEventTarget", "currentFullscreenStrategy", "restoreOldWindowedStyle", "UNWIND_CACHE", "ExitStatus", "getEnvStrings", "doReadv", "doWritev", "promiseMap", "uncaughtExceptionCount", "exceptionLast", "exceptionCaught", "Browser", "getPreloadedImageData__data", "wget", "SYSCALLS", "preloadPlugins", "FS_modeStringToFlags", "FS_getMode", "FS_stdin_getChar_buffer", "FS_stdin_getChar", "FS_readFile", "FS", "MEMFS", "TTY", "PIPEFS", "SOCKFS", "tempFixedLengthArray", "miniTempWebGLFloatBuffers", "miniTempWebGLIntBuffers", "GL", "AL", "GLUT", "EGL", "GLEW", "IDBStore", "SDL", "SDL_gfx", "allocateUTF8", "allocateUTF8OnStack", "print", "printErr" ];
 
 unexportedSymbols.forEach(unexportedRuntimeSymbol);
 
