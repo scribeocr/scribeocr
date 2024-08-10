@@ -634,9 +634,12 @@ export class KonvaIText extends Konva.Shape {
     this.dynamicWidth = dynamicWidth;
     this.editTextCallback = editTextCallback;
 
-    this.addEventListener('dblclick dbltap', (event) => {
+    this.addEventListener('dblclick', (event) => {
       // @ts-ignore
       if (event.button === 0) KonvaIText.addTextInput(this);
+    });
+    this.addEventListener('dbltap', () => {
+      KonvaIText.addTextInput(this);
     });
 
     this.select = () => {
@@ -1062,7 +1065,7 @@ export function renderPage(page) {
 
       const lineRect = new Konva.Rect({
         x: linebox.left + angleAdjLine.x,
-        y: linebox.top + angleAdjLine.y,
+        y: linebox.bottom + baseline[1] + angleAdjLine.y - height,
         width: linebox.right - linebox.left,
         height,
         rotation: angleArg,

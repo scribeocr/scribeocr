@@ -212,9 +212,21 @@ async function convertOCRPage(ocrRaw, n, mainData, format, engineName, scribeMod
     func = 'convertPageBlocks';
   }
 
-  await gs.schedulerReady;
-
-  const res = await gs.schedulerInner.addJob(func, { ocrStr: ocrRaw, n, scribeMode });
+  // Imports are always run in workers in actual use, however for debugging purposes they can be run in the main thread.
+  let res;
+  const parallel = true;
+  if (parallel) {
+    await gs.schedulerReady;
+    res = await gs.schedulerInner.addJob(func, { ocrStr: ocrRaw, n, scribeMode });
+  } else if (func === 'convertPageHocr') {
+    res = await import('./import/convertPageHocr.js').then((m) => m.convertPageHocr({ ocrStr: ocrRaw, n, scribeMode }));
+  } else if (func === 'convertPageAbbyy') {
+    res = await import('./import/convertPageAbbyy.js').then((m) => m.convertPageAbbyy({ ocrStr: ocrRaw, n, scribeMode }));
+  } else if (func === 'convertPageStext') {
+    res = await import('./import/convertPageStext.js').then((m) => m.convertPageStext({ ocrStr: ocrRaw, n, scribeMode }));
+  } else if (func === 'convertPageBlocks') {
+    res = await import('./import/convertPageBlocks.js').then((m) => m.convertPageBlocks({ ocrStr: ocrRaw, n, scribeMode }));
+  }
 
   await convertPageCallback(res, n, mainData, engineName);
 }
