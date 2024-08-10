@@ -634,8 +634,9 @@ export class KonvaIText extends Konva.Shape {
     this.dynamicWidth = dynamicWidth;
     this.editTextCallback = editTextCallback;
 
-    this.addEventListener('dblclick dbltap', () => {
-      KonvaIText.addTextInput(this);
+    this.addEventListener('dblclick dbltap', (event) => {
+      // @ts-ignore
+      if (event.button === 0) KonvaIText.addTextInput(this);
     });
 
     this.select = () => {
@@ -687,7 +688,7 @@ export class KonvaIText extends Konva.Shape {
     ScribeCanvas.inputWord = itext;
     ScribeCanvas.input = inputElem;
 
-    const text = itext.charArr.join('');
+    const wordStr = itext.charArr.join('');
 
     const scale = layerText.scaleY();
 
@@ -705,7 +706,7 @@ export class KonvaIText extends Konva.Shape {
 
     ctx.font = `${itext.fontFaceStyle} ${itext.fontFaceWeight} ${fontSizeHTML}px ${fontI.fontFaceName}`;
 
-    const metrics = ctx.measureText(text);
+    const metrics = ctx.measureText(wordStr);
 
     const fontSizeHTMLSmallCaps = itext.fontSize * scale * 0.8;
 
@@ -736,9 +737,9 @@ export class KonvaIText extends Konva.Shape {
     // and then wrapping each letter in a span with a smaller font size.
     if (itext.word.smallCaps) {
       inputElem.style.textTransform = 'uppercase';
-      inputElem.innerHTML = makeSmallCapsDivs(text);
+      inputElem.innerHTML = makeSmallCapsDivs(wordStr);
     } else {
-      inputElem.textContent = text;
+      inputElem.textContent = wordStr;
     }
 
     inputElem.style.letterSpacing = `${charSpacingHTML}px`;
@@ -765,8 +766,8 @@ export class KonvaIText extends Konva.Shape {
       // For example, copying contents of a low-conf word into a high-conf word will also copy the red color.
       // This code removes any formatting from the pasted text.
       inputElem.oninput = () => {
-        // eslint-disable-next-line no-self-assign
         const index = getInputCursorIndex();
+        // eslint-disable-next-line no-self-assign
         inputElem.textContent = inputElem.textContent;
         setCursor(index);
       };
