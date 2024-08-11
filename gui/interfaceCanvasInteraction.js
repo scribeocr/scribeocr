@@ -362,7 +362,7 @@ stage.on('mousedown touchstart', (e) => {
   hideContextMenu();
 
   // Left click only
-  if (e.evt.button !== 0) return;
+  if (e.type === 'mousedown' && e.evt.button !== 0) return;
 
   mouseDownTarget = e.target;
 

@@ -634,11 +634,9 @@ export class KonvaIText extends Konva.Shape {
     this.dynamicWidth = dynamicWidth;
     this.editTextCallback = editTextCallback;
 
-    this.addEventListener('dblclick', (event) => {
+    this.addEventListener('dblclick dbltap', (event) => {
       // @ts-ignore
-      if (event.button === 0) KonvaIText.addTextInput(this);
-    });
-    this.addEventListener('dbltap', () => {
+      if (event.type === 'dblclick' && event.button !== 0) return;
       KonvaIText.addTextInput(this);
     });
 
