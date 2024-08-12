@@ -1,5 +1,3 @@
-import { getRandomAlphanum } from '../../js/utils/miscUtils.js';
-
 /**
  *
  * @param {string} innerHTML - HTML content of warning/error message.
@@ -21,8 +19,6 @@ export function insertAlertMessage(innerHTML, error = true, parentElemId = 'aler
   const chosenSVG = error ? errorSVG : warningSVG;
 
   const htmlDiv = document.createElement('div');
-  const id = `alertDiv${getRandomAlphanum(5)}`;
-  htmlDiv.setAttribute('id', id);
 
   if (!visible) {
     htmlDiv.setAttribute('style', 'display:none');

@@ -483,7 +483,7 @@ async function penalizeWord(wordObjs) {
  * @param {number} [params.options.confThreshHigh]
  * @param {number} [params.options.confThreshMed]
  */
-export async function compareOCR({
+export async function compareOCRPageImp({
   pageA, pageB, binaryImage, pageMetricsObj, options = {},
 }) {
   const binaryImageBit = binaryImage.imageBitmap || await getImageBitmap(binaryImage.src);

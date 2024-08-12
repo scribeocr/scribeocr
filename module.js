@@ -1,51 +1,123 @@
 import { clearData } from './js/clear.js';
-import { opt } from './js/containers/app.js';
+import { inputData, opt } from './js/containers/app.js';
+import {
+  DebugData,
+  layoutDataTables,
+  layoutRegions,
+  ocrAll, pageMetricsArr, visInstructions,
+} from './js/containers/dataContainer.js';
+import { fontAll } from './js/containers/fontContainer.js';
 import { ImageCache } from './js/containers/imageContainer.js';
-import { gs } from './js/containers/schedulerContainer.js';
-import { df } from './js/debugGlobals.js';
+import coords from './js/coordinates.js';
+import { drawDebugImages } from './js/debug.js';
 import { download, exportData } from './js/export/export.js';
+import { writeDebugCsv } from './js/export/exportDebugCsv.js';
+import { extractSingleTableContent } from './js/export/exportWriteTabular.js';
 import { loadBuiltInFontsRaw } from './js/fontContainerMain.js';
-import { initGeneralScheduler, initTesseractInWorkers } from './js/generalWorkerMain.js';
-import { importFilesAll } from './js/import/import.js';
+import { gs } from './js/generalWorkerMain.js';
+import { importFilesAll, importFilesSupp } from './js/import/import.js';
+import { calcBoxOverlap, combineOCRPage } from './js/modifyOCR.js';
+import { calcTableBbox } from './js/objects/layoutObjects.js';
+import ocr from './js/objects/ocrObjects.js';
+import { compareOCRPage, recognize, recognizePage } from './js/recognizeConvert.js';
+import { calcWordMetrics } from './js/utils/fontUtils.js';
+import { imageStrToBlob } from './js/utils/imageUtils.js';
+import { countSubstringOccurrences, getRandomAlphanum, replaceSmartQuotes } from './js/utils/miscUtils.js';
+import { calcConf, mergeOcrWords, splitOcrWord } from './js/utils/ocrUtils.js';
+import { assignParagraphs } from './js/utils/reflowPars.js';
 
 /**
- * Initialize the workers that handle most operations.
+ * Initialize the program and optionally pre-load resources.
  * @param {Object} [params]
  * @param {boolean} [params.pdf=false] - Load PDF renderer.
- * @param {boolean} [params.tesseract=false] - Load Tesseract.
- * The PDF renderer and Tesseract are automatically loaded when needed.
- * Therefore, the only reason to set `pdf` or `tesseract` to `true` is to pre-load them.
+ * @param {boolean} [params.ocr=false] - Load OCR engine.
+ * @param {boolean} [params.font=false] - Load built-in fonts.
+ * The PDF renderer and OCR engine are automatically loaded when needed.
+ * Therefore, the only reason to set `pdf` or `ocr` to `true` is to pre-load them.
+ * @param {Parameters<typeof import('./js/generalWorkerMain.js').gs.initTesseract>[0]} [params.ocrParams] - Parameters for initializing OCR.
  */
 const init = async (params) => {
-  const pdf = params && params.pdf ? params.pdf : false;
-  const tesseract = params && params.tesseract ? params.tesseract : false;
+  const initPdf = params && params.pdf ? params.pdf : false;
+  const initOcr = params && params.ocr ? params.ocr : false;
+  const initFont = params && params.font ? params.font : false;
 
-  const pdfPromise = pdf ? ImageCache.getMuPDFScheduler() : Promise.resolve();
+  const promiseArr = [];
 
-  await initGeneralScheduler();
+  promiseArr.push(initPdf ? ImageCache.getMuPDFScheduler() : Promise.resolve());
 
-  if (tesseract) {
-    await initTesseractInWorkers({});
-    // TODO: Font loading should potentially be its own option.
-    const resReadyFontAllRaw = gs.setFontAllRawReady();
-    await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
+  promiseArr.push(gs.getGeneralScheduler());
+
+  if (initOcr) {
+    const ocrParams = params && params.ocrParams ? params.ocrParams : {};
+    promiseArr.push(gs.initTesseract(ocrParams));
   }
 
-  await pdfPromise;
-};
+  if (initFont) {
+    const resReadyFontAllRaw = gs.setFontAllRawReady();
+    promiseArr.push(loadBuiltInFontsRaw().then(() => resReadyFontAllRaw()));
+  }
 
-/**
- *
- * @param {Object} options
- * @param {boolean} [options.reflow] - Combine lines into paragraphs in .txt and .docx exports.
- * @param {boolean} [options.extractText] - Extract existing text from PDFs.
- */
-const setOptions = (options) => {
-  if (options && options.reflow !== undefined && options.reflow !== null) opt.reflow = options.reflow;
-  if (options && options.extractText !== undefined && options.extractText !== null) opt.extractText = options.extractText;
+  await Promise.all(promiseArr);
 };
 
 const importFiles = (files) => importFilesAll(files);
+
+class data {
+  // TODO: Modify such that debugging data is not calculated by default.
+  static debug = DebugData;
+
+  static font = fontAll;
+
+  static image = ImageCache;
+
+  static layoutRegions = layoutRegions;
+
+  static layoutDataTables = layoutDataTables;
+
+  static ocr = ocrAll;
+
+  static pageMetrics = pageMetricsArr;
+
+  static vis = visInstructions;
+}
+
+class utils {
+  // OCR utils
+  static assignParagraphs = assignParagraphs;
+
+  static calcConf = calcConf;
+
+  static mergeOcrWords = mergeOcrWords;
+
+  static splitOcrWord = splitOcrWord;
+
+  static ocr = ocr;
+
+  // Layout utils
+  static calcTableBbox = calcTableBbox;
+
+  static extractSingleTableContent = extractSingleTableContent;
+
+  // Font utils
+  static calcWordMetrics = calcWordMetrics;
+
+  // Misc utils
+  static calcBoxOverlap = calcBoxOverlap;
+
+  static replaceSmartQuotes = replaceSmartQuotes;
+
+  static getRandomAlphanum = getRandomAlphanum;
+
+  static countSubstringOccurrences = countSubstringOccurrences;
+
+  static coords = coords;
+
+  static imageStrToBlob = imageStrToBlob;
+
+  static writeDebugCsv = writeDebugCsv;
+
+  static drawDebugImages = drawDebugImages;
+}
 
 /**
  * Clears all document-specific data.
@@ -60,5 +132,19 @@ const terminate = async () => {
 };
 
 export default {
-  clear, exportData, download, importFiles, init, setOptions, terminate, df,
+  clear,
+  combineOCRPage,
+  compareOCRPage,
+  data,
+  exportData,
+  download,
+  importFiles,
+  importFilesSupp,
+  inputData,
+  init,
+  opt,
+  recognize,
+  recognizePage,
+  terminate,
+  utils,
 };

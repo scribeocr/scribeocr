@@ -1,16 +1,28 @@
-import { inputData, opt, state } from './containers/app.js';
+import { inputData, opt } from './containers/app.js';
 import {
+  convertPageWarn,
   DebugData,
   evalStats,
-  LayoutDataTables, ocrAll, pageMetricsArr, visInstructions,
+  layoutDataTables, ocrAll, pageMetricsArr, visInstructions,
 } from './containers/dataContainer.js';
 import { ImageCache, ImageWrapper } from './containers/imageContainer.js';
-import { gs } from './containers/schedulerContainer.js';
 import { loadBuiltInFontsRaw, loadChiSimFont } from './fontContainerMain.js';
 import { runFontOptimization } from './fontEval.js';
 import { calcFontMetricsFromPages } from './fontStatistics.js';
-import { initTesseractInWorkers } from './generalWorkerMain.js';
+import { gs } from './generalWorkerMain.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
+
+/**
+ *
+ * @param {Parameters<import('./worker/compareOCRModule.js').compareOCRPageImp>[0]} args
+ * node-canvas does not currently work in worker threads.
+ * See: https://github.com/Automattic/node-canvas/issues/1394
+ * Therefore, we need this wrapper function that detects Node.js and runs the function in the main thread.
+ */
+export const compareOCRPage = async (args) => {
+  const func = typeof process !== 'undefined' ? (await import('./worker/compareOCRModule.js')).compareOCRPageImp : gs.scheduler.compareOCRPageImp;
+  return func(args);
+};
 
 /**
  *  Calculate what arguments to use with Tesseract `recognize` function relating to rotation.
@@ -62,7 +74,6 @@ export const calcRecognizeRotateArgs = async (n, areaMode) => {
 /**
  * Run recognition on a page and save the results, including OCR data and (possibly) auto-rotated images, to the appropriate global array.
  *
- * @param {GeneralScheduler} scheduler
  * @param {number} n - Page number to recognize.
  * @param {boolean} legacy -
  * @param {boolean} lstm -
@@ -70,7 +81,7 @@ export const calcRecognizeRotateArgs = async (n, areaMode) => {
  * @param {Object<string, string>} tessOptions - Options to pass to Tesseract.js.
  * @param {boolean} [debugVis=false] - Generate instructions for debugging visualizations.
  */
-export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOptions = {}, debugVis = false) => {
+export const recognizePage = async (n, legacy, lstm, areaMode, tessOptions = {}, debugVis = false) => {
   const {
     angleThresh, angleKnown, rotateRadians, saveNativeImage, saveBinaryImageArg,
   } = await calcRecognizeRotateArgs(n, areaMode);
@@ -92,6 +103,8 @@ export const recognizePage = async (scheduler, n, legacy, lstm, areaMode, tessOp
   // This combination of options would be set for debug mode, where the point of running Tesseract
   // is to get debugging images for layout analysis rather than get text.
   const runRecognition = legacy || lstm;
+
+  const scheduler = await gs.getScheduler();
 
   const resArr = await scheduler.recognizeAndConvert2({
     image: nativeN.src,
@@ -170,21 +183,21 @@ export function checkCharWarn(warnArr) {
     if (browserMode) {
       const errorHTML = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
         <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-      state.errorHandler(errorHTML);
+      opt.errorHandler(errorHTML);
     } else {
       const errorText = `No character-level OCR data detected. Abbyy XML is only supported with character-level data. 
         See: https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why`;
-      state.errorHandler(errorText);
+      opt.errorHandler(errorText);
     }
   } if (charGoodCt === 0 && charWarnCt > 0) {
     if (browserMode) {
       const warningHTML = `No character-level OCR data detected. Font optimization features will be disabled. 
         <a href="https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why" target="_blank" class="alert-link">Learn more.</a>`;
-      state.warningHandler(warningHTML);
+      opt.warningHandler(warningHTML);
     } else {
       const errorText = `No character-level OCR data detected. Font optimization features will be disabled. 
         See: https://docs.scribeocr.com/faq.html#is-character-level-ocr-data-required--why`;
-      state.warningHandler(errorText);
+      opt.warningHandler(errorText);
     }
   }
 }
@@ -255,7 +268,7 @@ export async function convertPageCallback({
 
   // If this is flagged as the "main" data, then save the stats.
   if (mainData) {
-    state.convertPageWarn[n] = warn;
+    convertPageWarn[n] = warn;
 
     // The main OCR data is always preferred for setting page metrics.
     // This matters when the user uploads their own data, as the images are expected to be rendered at the same resolution as the OCR data.
@@ -267,18 +280,11 @@ export async function convertPageCallback({
   inputData.xmlMode[n] = true;
 
   // Layout boxes are only overwritten if none exist yet for the page
-  if (Object.keys(LayoutDataTables.pages[n].tables).length === 0) LayoutDataTables.pages[n] = dataTables;
+  if (Object.keys(layoutDataTables.pages[n].tables).length === 0) layoutDataTables.pages[n] = dataTables;
 
-  // Perform GUI-specific actions.
+  if (opt.recognizeConvertCallback) opt.recognizeConvertCallback(n, engineName);
 
-  // Display the page if either (1) this is the currently active OCR or (2) this is Tesseract Legacy and Tesseract LSTM is active, but does not exist yet.
-  // The latter condition occurs briefly whenever recognition is run in "Quality" mode.
-  const oemActive = Object.keys(ocrAll).find((key) => ocrAll[key] === ocrAll.active && key !== 'active');
-  const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
-
-  if (n === state.cp.n && displayOCR && state.display) state.display(state.cp.n);
-
-  if (state.progress) state.progress.increment();
+  if (opt.progress) opt.progress.increment();
 }
 
 /**
@@ -307,32 +313,36 @@ export async function convertOCRAll(ocrRawArr, mainData, format, engineName, scr
  * @param {boolean} legacy
  * @param {boolean} lstm
  * @param {boolean} mainData
+ * @param {Array<string>} [langs=['eng']]
+ * @param {boolean} [vanillaMode=false]
  */
-export async function recognizeAllPages(legacy = true, lstm = true, mainData = false) {
+export async function recognizeAllPages(legacy = true, lstm = true, mainData = false, langs = ['eng'], vanillaMode = false) {
   // Render all PDF pages to PNG if needed
   // This step should not create binarized images as they will be created by Tesseract during recognition.
   if (inputData.pdfMode) await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, false);
 
   if (legacy) {
     const oemText = 'Tesseract Legacy';
-    if (!ocrAll[oemText]) ocrAll[oemText] = Array(state.pageCount);
+    if (!ocrAll[oemText]) ocrAll[oemText] = Array(inputData.pageCount);
     ocrAll.active = ocrAll[oemText];
   }
 
   if (lstm) {
     const oemText = 'Tesseract LSTM';
-    if (!ocrAll[oemText]) ocrAll[oemText] = Array(state.pageCount);
+    if (!ocrAll[oemText]) ocrAll[oemText] = Array(inputData.pageCount);
     ocrAll.active = ocrAll[oemText];
   }
 
   // 'Tesseract Latest' includes the last version of Tesseract to run.
   // It exists only so that data can be consistently displayed during recognition,
   // should never be enabled after recognition is complete, and should never be editable by the user.
-  const oemText = 'Tesseract Latest';
-  if (!ocrAll[oemText]) ocrAll[oemText] = Array(state.pageCount);
-  ocrAll.active = ocrAll[oemText];
+  {
+    const oemText = 'Tesseract Latest';
+    if (!ocrAll[oemText]) ocrAll[oemText] = Array(inputData.pageCount);
+    ocrAll.active = ocrAll[oemText];
+  }
 
-  await initTesseractInWorkers({ anyOk: false, vanillaMode: opt.vanillaMode, langs: opt.langs });
+  await gs.initTesseract({ anyOk: false, vanillaMode, langs });
 
   // If Legacy and LSTM are both requested, LSTM completion is tracked by a second array of promises (`promisesB`).
   // In this case, `convertPageCallbackBrowser` can be run after the Legacy recognition is finished,
@@ -361,10 +371,8 @@ export async function recognizeAllPages(legacy = true, lstm = true, mainData = f
 
   const config = { upscale };
 
-  const scheduler = await gs.getScheduler();
-
   for (const x of inputPages) {
-    recognizePage(scheduler, x, legacy, lstm, false, config, state.debugVis).then(async (resArr) => {
+    recognizePage(x, legacy, lstm, false, config, opt.debugVis).then(async (resArr) => {
       const res0 = await resArr[0];
 
       if (res0.recognize.debugVis) {
@@ -395,7 +403,7 @@ export async function recognizeAllPages(legacy = true, lstm = true, mainData = f
   await Promise.all(promisesA);
 
   if (mainData) {
-    await checkCharWarn(state.convertPageWarn);
+    await checkCharWarn(convertPageWarn);
   }
 
   if (legacy && lstm) await Promise.all(promisesB);
@@ -411,18 +419,34 @@ export async function recognizeAllPages(legacy = true, lstm = true, mainData = f
 
 /**
  *
- * @param {'legacy'|'lstm'|'combined'} oemMode
- * @returns
+ * @param {Object} options
+ * @param {'speed'|'quality'} [options.mode='quality'] - Recognition mode.
+ * @param {Array<string>} [options.langs=['eng']] - Language(s) in document.
+ * @param {'lstm'|'legacy'|'combined'} [options.modeAdv='combined'] - Alternative method of setting recognition mode.
+ * @param {'conf'|'data'} [options.combineMode='data'] - Method of combining OCR results. Used if OCR data already exists.
+ * @param {boolean} [options.vanillaMode=false] - Whether to use the vanilla Tesseract.js model.
+ *
  */
-export async function recognizeAll(oemMode) {
+export async function recognize(options = {}) {
   await gs.schedulerReady;
   if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
 
+  const combineMode = options && options.combineMode ? options.combineMode : 'data';
+  const vanillaMode = options && options.vanillaMode !== undefined ? options.vanillaMode : false;
+
+  const langs = options && options.langs ? options.langs : ['eng'];
+  let oemMode = 'combined';
+  if (options && options.modeAdv) {
+    oemMode = options.modeAdv;
+  } else if (options && options.mode) {
+    oemMode = options.mode === 'speed' ? 'lstm' : 'legacy';
+  }
+
   const fontPromiseArr = [];
   // Chinese requires loading a separate font.
-  if (opt.langs.includes('chi_sim')) fontPromiseArr.push(loadChiSimFont());
+  if (langs.includes('chi_sim')) fontPromiseArr.push(loadChiSimFont());
   // Greek and Cyrillic require loading a version of the base fonts that include these characters.
-  if (opt.langs.includes('rus') || opt.langs.includes('ukr') || opt.langs.includes('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
+  if (langs.includes('rus') || langs.includes('ukr') || langs.includes('ell')) fontPromiseArr.push(loadBuiltInFontsRaw('all'));
   await Promise.all(fontPromiseArr);
 
   // Whether user uploaded data will be compared against in addition to both Tesseract engines
@@ -435,13 +459,13 @@ export async function recognizeAll(oemMode) {
     // If the progress bar finishes earlier, in addition to being misleading to users,
     // the automated browser tests wait until the progress bar fills up to conclude
     // the recognition step was successful.
-    if (state.progress) state.progress.show(ImageCache.pageCount + 1);
+    if (opt.progress) opt.progress.show(ImageCache.pageCount + 1);
 
     // ProgressBars.recognize.show(ImageCache.pageCount + 1);
     const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
-    await recognizeAllPages(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR));
+    await recognizeAllPages(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR), langs, vanillaMode);
     const time2b = Date.now();
     if (typeof process === 'undefined') console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
@@ -453,12 +477,11 @@ export async function recognizeAll(oemMode) {
   } else if (oemMode === 'combined') {
     // node-canvas does not currently work in worker threads.
     // See: https://github.com/Automattic/node-canvas/issues/1394
-    const compareOCR = typeof process !== 'undefined' ? (await import('./worker/compareOCRModule.js')).compareOCR : gs.scheduler.compareOCR;
 
     // ProgressBars.recognize.show(ImageCache.pageCount * 2 + 1);
-    if (state.progress) state.progress.show(ImageCache.pageCount * 2 + 1);
+    if (opt.progress) opt.progress.show(ImageCache.pageCount * 2 + 1);
     const time2a = Date.now();
-    await recognizeAllPages(true, true, true);
+    await recognizeAllPages(true, true, true, langs, vanillaMode);
     const time2b = Date.now();
     if (typeof process === 'undefined') console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
@@ -471,7 +494,7 @@ export async function recognizeAll(oemMode) {
 
     if (userUploadMode) {
       const oemText = 'Tesseract Combined';
-      if (!ocrAll[oemText]) ocrAll[oemText] = Array(state.pageCount);
+      if (!ocrAll[oemText]) ocrAll[oemText] = Array(inputData.pageCount);
       ocrAll.active = ocrAll[oemText];
 
       if (opt.saveDebugImages) {
@@ -489,9 +512,9 @@ export async function recognizeAll(oemMode) {
     // as low-confidence words are excluded when calculating overall character metrics.
     // For validation, this version is superior to both Legacy and LSTM, as it combines the more accurate bounding boxes/style data from Legacy
     // with the more accurate (on average) text data from LSTM.
-    if (!ocrAll['Tesseract Combined Temp']) ocrAll['Tesseract Combined Temp'] = Array(state.pageCount);
+    if (!ocrAll['Tesseract Combined Temp']) ocrAll['Tesseract Combined Temp'] = Array(inputData.pageCount);
     for (let i = 0; i < ImageCache.pageCount; i++) {
-      /** @type {Parameters<import('../js/generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
+      /** @type {Parameters<compareOCRPage>[0]['options']} */
       const compOptions1 = {
         mode: 'comb',
         evalConflicts: false,
@@ -500,7 +523,7 @@ export async function recognizeAll(oemMode) {
 
       const imgBinary = await ImageCache.getBinary(i);
 
-      const res1 = await compareOCR({
+      const res1 = await compareOCRPage({
         pageA: ocrAll['Tesseract Legacy'][i],
         pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
@@ -518,14 +541,14 @@ export async function recognizeAll(oemMode) {
     opt.enableOpt = await runFontOptimization(ocrAll['Tesseract Combined Temp']);
 
     const oemText = 'Combined';
-    if (!ocrAll[oemText]) ocrAll[oemText] = Array(state.pageCount);
+    if (!ocrAll[oemText]) ocrAll[oemText] = Array(inputData.pageCount);
     ocrAll.active = ocrAll[oemText];
 
     const time3a = Date.now();
     for (let i = 0; i < ImageCache.pageCount; i++) {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
-      /** @type {Parameters<import('../js/generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
+      /** @type {Parameters<compareOCRPage>[0]['options']} */
       const compOptions = {
         mode: 'comb',
         debugLabel: tessCombinedLabel,
@@ -538,7 +561,7 @@ export async function recognizeAll(oemMode) {
 
       const imgBinary = await ImageCache.getBinary(i);
 
-      const res = await compareOCR({
+      const res = await compareOCRPage({
         pageA: ocrAll['Tesseract Legacy'][i],
         pageB: ocrAll['Tesseract LSTM'][i],
         binaryImage: imgBinary,
@@ -552,8 +575,8 @@ export async function recognizeAll(oemMode) {
 
       // If the user uploaded data, compare to that as we
       if (userUploadMode) {
-        if (opt.combineMode === 'conf') {
-          /** @type {Parameters<import('../js/generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
+        if (combineMode === 'conf') {
+          /** @type {Parameters<compareOCRPage>[0]['options']} */
           const compOptions2 = {
             debugLabel: 'Combined',
             supplementComp: true,
@@ -567,7 +590,7 @@ export async function recognizeAll(oemMode) {
             editConf: true,
           };
 
-          const res2 = await compareOCR({
+          const res2 = await compareOCRPage({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinary,
@@ -579,7 +602,7 @@ export async function recognizeAll(oemMode) {
 
           ocrAll.Combined[i] = res2.page;
         } else {
-          /** @type {Parameters<import('../js/generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
+          /** @type {Parameters<compareOCRPage>[0]['options']} */
           const compOptions2 = {
             mode: 'comb',
             debugLabel: 'Combined',
@@ -593,7 +616,7 @@ export async function recognizeAll(oemMode) {
             confThreshMed: opt.confThreshMed,
           };
 
-          const res2 = await compareOCR({
+          const res2 = await compareOCRPage({
             pageA: ocrAll['User Upload'][i],
             pageB: ocrAll['Tesseract Combined'][i],
             binaryImage: imgBinary,
@@ -611,21 +634,23 @@ export async function recognizeAll(oemMode) {
     if (typeof process === 'undefined') console.log(`Comparison runtime: ${time3b - time3a} ms`);
   }
 
-  if (state.progress) state.progress.increment();
-
-  if (state.display) state.display(state.cp.n);
+  if (opt.progress) opt.progress.increment();
 
   return (ocrAll.active);
 }
 
 let evalStatsConfig = {};
 
+// TODO: What this set of functions does makes no sense.
+// Specifically, after comparing to ground truth for all pages, ground truth is then compared to the current page.
+// However, the page should be re-compared after making edits to the OCR data, not upon loading the page.
+// With the current strategy, edits would only be implemented if the user changes pages and then changes back again.
+// Also, this is not clean to add to the interface, as it only makes sense in the context of the GUI.
+// Consider splitting into compareGroundTruthPage and compareGroundTruth functions.
+// ALternatively, do we even need this in the interface? We already have compareOCRPage, so the building blocks are there.
+// There does need to be some easy way to benchmark OCR data however, so we may need this.
 export async function compareGroundTruth(n) {
   if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
-
-  // node-canvas does not currently work in worker threads.
-  // See: https://github.com/Automattic/node-canvas/issues/1394
-  const compareOCR = typeof process !== 'undefined' ? (await import('./worker/compareOCRModule.js')).compareOCR : gs.scheduler.compareOCR;
 
   const oemActive = Object.keys(ocrAll).find((key) => ocrAll[key] === ocrAll.active && key !== 'active');
 
@@ -635,7 +660,7 @@ export async function compareGroundTruth(n) {
     ignoreCap: opt.ignoreCap,
     ignoreExtra: opt.ignoreExtra,
   };
-  /** @type {Parameters<import('../js/generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
+  /** @type {Parameters<compareOCRPage>[0]['options']} */
   const compOptions = {
     ignorePunct: opt.ignorePunct,
     ignoreCap: opt.ignoreCap,
@@ -643,15 +668,15 @@ export async function compareGroundTruth(n) {
     confThreshMed: opt.confThreshMed,
   };
 
-  // Compare all pages if this has not been done already
+  // Compare all pages if this has not been done already with the current settings
   if (JSON.stringify(evalStatsConfig) !== JSON.stringify(evalStatsConfigNew) || evalStats.length === 0) {
-  // Render binarized versions of images
+    // Render binarized versions of images
     await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, true);
 
     for (let i = 0; i < ImageCache.pageCount; i++) {
       const imgBinary = await ImageCache.getBinary(n);
 
-      const res = await compareOCR({
+      const res = await compareOCRPage({
         pageA: ocrAll.active[i],
         pageB: ocrAll['Ground Truth'][i],
         binaryImage: imgBinary,
@@ -671,7 +696,7 @@ export async function compareGroundTruth(n) {
 
   const imgBinary = await ImageCache.getBinary(n);
 
-  const res = await compareOCR({
+  const res = await compareOCRPage({
     pageA: ocrAll.active[n],
     pageB: ocrAll['Ground Truth'][n],
     binaryImage: imgBinary,

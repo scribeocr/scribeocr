@@ -1,22 +1,17 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  ocrAll,
-} from '../js/containers/dataContainer.js';
-import {
   saveAs,
 } from '../js/utils/miscUtils.js';
 
-import { state } from '../js/containers/app.js';
-import { ImageCache } from '../js/containers/imageContainer.js';
-import { download } from '../js/export/export.js';
-import { writeDebugCsv } from '../js/export/exportDebugCsv.js';
+import { stateGUI } from '../main.js';
+import scribe from '../module.js';
 import { elem } from './elems.js';
 import { ProgressBars } from './utils/progressBars.js';
 import { insertAlertMessage } from './utils/warningMessages.js';
 
 elem.info.downloadSourcePDF.addEventListener('click', async () => {
-  const muPDFScheduler = await ImageCache.getMuPDFScheduler(1);
+  const muPDFScheduler = await scribe.data.image.getMuPDFScheduler(1);
   const w = muPDFScheduler.workers[0];
 
   if (!w.pdfDoc) {
@@ -36,7 +31,7 @@ elem.info.downloadSourcePDF.addEventListener('click', async () => {
 
 elem.info.downloadDebugCsv.addEventListener('click', async () => {
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.csv`;
-  writeDebugCsv(ocrAll.active, fileName);
+  scribe.utils.writeDebugCsv(scribe.data.ocr.active, fileName);
 });
 
 // Once per session, if the user opens the "Download" tab and proofreading mode is still enabled,
@@ -113,7 +108,7 @@ export function setFormatLabel(x) {
 }
 
 export function updatePdfPagesLabel() {
-  const pageCount = state.pageCount;
+  const pageCount = scribe.inputData.pageCount;
 
   let minValue = parseInt(elem.download.pdfPageMin.value);
   let maxValue = parseInt(elem.download.pdfPageMax.value);
@@ -141,7 +136,7 @@ export async function handleDownloadGUI() {
   elem.download.download.removeEventListener('click', handleDownloadGUI);
   elem.download.download.disabled = true;
 
-  state.progress = ProgressBars.download;
+  scribe.opt.progress = ProgressBars.download;
 
   updatePdfPagesLabel();
 
@@ -152,7 +147,10 @@ export async function handleDownloadGUI() {
   const minValue = parseInt(elem.download.pdfPageMin.value) - 1;
   const maxValue = parseInt(elem.download.pdfPageMax.value) - 1;
 
-  await download(downloadType, fileName, minValue, maxValue);
+  // If recognition is currently running, wait for it to finish.
+  await stateGUI.recognizeAllPromise;
+
+  await scribe.download(downloadType, fileName, minValue, maxValue);
 
   elem.download.download.disabled = false;
   elem.download.download.addEventListener('click', handleDownloadGUI);

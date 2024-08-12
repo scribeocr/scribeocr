@@ -1,11 +1,12 @@
 /* eslint-disable import/no-cycle */
 
-import { opt, state } from '../js/containers/app.js';
-import { visInstructions } from '../js/containers/dataContainer.js';
-import { recognizeAll } from '../js/recognizeConvert.js';
-import { toggleEditConfUI, updateOcrVersionGUI } from '../main.js';
+import {
+  displayPage, stateGUI, toggleEditConfUI, toggleLayoutButtons, updateOcrVersionGUI,
+} from '../main.js';
+import scribe from '../module.js';
 import { elem } from './elems.js';
 import { toggleEditButtons } from './interfaceEdit.js';
+import { optGUI } from './options.js';
 import { ProgressBars } from './utils/progressBars.js';
 import { insertAlertMessage } from './utils/warningMessages.js';
 
@@ -32,11 +33,11 @@ elem.recognize.psmLabelOption4.addEventListener('click', () => { setPsmLabel('4'
 
 elem.recognize.buildLabelOptionDefault.addEventListener('click', () => {
   setBuildLabel('default');
-  opt.vanillaMode = false;
+  optGUI.vanillaMode = false;
 });
 elem.recognize.buildLabelOptionVanilla.addEventListener('click', () => {
   setBuildLabel('vanilla');
-  opt.vanillaMode = true;
+  optGUI.vanillaMode = true;
 });
 
 function setOemLabel(x) {
@@ -108,7 +109,7 @@ export function setLangOpt() {
   // TODO: If too many language are selected, the user should be warned that this can cause issues.
   // If this is not explicit, I could see a user selecting every option "just in case".
 
-  opt.langs = langArr;
+  optGUI.langs = langArr;
 
   return;
 }
@@ -117,8 +118,8 @@ export function setLangOpt() {
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
 async function addVisInstructionsUI() {
   const { combineOrderedArrays } = await import('../scrollview-web/util/combine.js');
-  if (!visInstructions || visInstructions.length === 0) return;
-  const visNamesAll = visInstructions.map((x) => Object.keys(x));
+  if (!scribe.data.vis || scribe.data.vis.length === 0) return;
+  const visNamesAll = scribe.data.vis.map((x) => Object.keys(x));
   if (visNamesAll.length === 0) return;
   const visNames = visNamesAll.reduce(combineOrderedArrays);
 
@@ -135,7 +136,7 @@ async function addVisInstructionsUI() {
 }
 
 export async function recognizeAllClick() {
-  state.progress = ProgressBars.recognize;
+  scribe.opt.progress = ProgressBars.recognize;
 
   // User can select engine directly using advanced options, or indirectly using basic options.
   /** @type {"legacy" | "lstm" | "combined"} */
@@ -149,11 +150,18 @@ export async function recognizeAllClick() {
     setOemLabel('legacy');
   }
 
-  await recognizeAll(oemMode);
+  await scribe.recognize({
+    modeAdv: oemMode,
+    langs: optGUI.langs,
+    combineMode: optGUI.combineMode,
+    vanillaMode: optGUI.vanillaMode,
+  });
+
+  displayPage(stateGUI.cp.n);
 
   addVisInstructionsUI();
 
-  if (opt.enableOpt) {
+  if (scribe.opt.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
@@ -161,4 +169,5 @@ export async function recognizeAllClick() {
   updateOcrVersionGUI();
   toggleEditConfUI(false);
   toggleEditButtons(false);
+  toggleLayoutButtons(false);
 }

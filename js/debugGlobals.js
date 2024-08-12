@@ -3,12 +3,12 @@
 // This file adds various functions to a global object named `df` so they can be easily run from the console.
 // This object should never be referenced in code--the functions should be imported instead.
 
-import { opt, state } from './containers/app.js';
+import { opt } from './containers/app.js';
 import {
   DebugData,
   fontMetricsObj,
-  LayoutDataTables,
-  LayoutRegions,
+  layoutDataTables,
+  layoutRegions,
   ocrAll,
   ocrAllRaw,
   pageMetricsArr,
@@ -62,13 +62,12 @@ export const df = {
   fontMetricsObj,
   getCharMetrics,
   ImageCache,
-  LayoutDataTables,
-  LayoutRegions,
+  layoutDataTables,
+  layoutRegions,
   missingGlyphs,
   ocr,
   ocrAll,
   ocrAllRaw,
   opt,
   pageMetricsArr,
-  state,
 };

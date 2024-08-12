@@ -92,7 +92,7 @@ export function assignParagraphs(page, angle) {
 
     // Bullet points violate some heuristics, so we need to track them separately.
     // For a bullet point list, the first line *after* the line containing the bullet point appears to be indented.
-    const bullet = /^([•◦▪▫●○◼◻➢]|((i+|\d+|[a-z])(\.|\)))$)/.test(line.words[0].text);
+    const bullet = /^([•◦▪▫●○◼◻➢«»]|((i+|\d+|[a-z])(\.|\)))$)/.test(line.words[0].text);
     // This will not work with non-English alphabets.  Should be replaced with a more general solution at some point.
     const lowerStart = /[a-z]/.test(line.words[0].text.slice(0, 1));
     const letterEnd = /\w/.test(line.words[line.words.length - 1].text.slice(-1));

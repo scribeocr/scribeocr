@@ -2,12 +2,12 @@ import { winEncodingLookup } from '../../fonts/encoding.js';
 
 import { fontAll } from '../containers/fontContainer.js';
 import {
-  calcWordMetrics, subsetFont,
+    calcWordMetrics, subsetFont,
 } from '../utils/fontUtils.js';
 
 import { createEmbeddedFontType0, createEmbeddedFontType1 } from './exportPDFFonts.js';
 
-import { state } from '../containers/app.js';
+import { opt } from '../containers/app.js';
 import { pageMetricsArr } from '../containers/dataContainer.js';
 import ocr from '../objects/ocrObjects.js';
 
@@ -149,7 +149,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     // This assumes the "page" is always the last object returned by `ocrPageToPDF`.
     pageIndexArr.push(objectI - 1);
 
-    if (state.progress) state.progress.increment();
+    if (opt.progress) opt.progress.increment();
   }
 
   /** @type {Array<string>} */

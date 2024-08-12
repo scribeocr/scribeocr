@@ -1,8 +1,9 @@
-import { state } from './containers/app.js';
+import { inputData } from './containers/app.js';
 import {
+  convertPageWarn,
   fontMetricsObj,
-  LayoutDataTables,
-  LayoutRegions,
+  layoutDataTables,
+  layoutRegions,
   ocrAll,
   ocrAllRaw,
   pageMetricsArr,
@@ -12,13 +13,13 @@ import { ImageCache } from './containers/imageContainer.js';
 import { replaceObjectProperties } from './utils/miscUtils.js';
 
 export async function clearData() {
-  state.pageCount = 0;
+  inputData.pageCount = 0;
   replaceObjectProperties(ocrAll, { active: [] });
   replaceObjectProperties(ocrAllRaw, { active: [] });
-  LayoutRegions.pages.length = 0;
-  LayoutDataTables.pages.length = 0;
+  layoutRegions.pages.length = 0;
+  layoutDataTables.pages.length = 0;
   pageMetricsArr.length = 0;
-  state.convertPageWarn = [];
+  convertPageWarn.length = 0;
   await ImageCache.clear();
   // Clear optimized font data and reset fontAll to raw data.
   replaceObjectProperties(fontMetricsObj);

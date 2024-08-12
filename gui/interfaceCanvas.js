@@ -1,16 +1,9 @@
 /* eslint-disable import/no-cycle */
 
-import { opt, state } from '../js/containers/app.js';
-import { ocrAll, pageMetricsArr } from '../js/containers/dataContainer.js';
-import { fontAll } from '../js/containers/fontContainer.js';
-import { calcTableBbox } from '../js/objects/layoutObjects.js';
-import ocr from '../js/objects/ocrObjects.js';
-import { calcWordMetrics } from '../js/utils/fontUtils.js';
-import { replaceSmartQuotes } from '../js/utils/miscUtils.js';
-import { assignParagraphs } from '../js/utils/reflowPars.js';
 import { Button } from '../lib/bootstrap.esm.bundle.min.js';
 import Konva from '../lib/konva/index.js';
-import { search } from '../main.js';
+import { search, stateGUI } from '../main.js';
+import scribe from '../module.js';
 import { elem } from './elems.js';
 import {
   KonvaDataColumn,
@@ -84,8 +77,8 @@ class CanvasSelection {
     const selectedDataTableIdArr = [...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.table.id))];
     // eslint-disable-next-line no-use-before-define
     return ScribeCanvas._layoutDataTableArr.filter((x) => selectedDataTableIdArr.includes(x.layoutDataTable.id)).sort((a, b) => {
-      const boxA = calcTableBbox(a.layoutDataTable);
-      const boxB = calcTableBbox(b.layoutDataTable);
+      const boxA = scribe.utils.calcTableBbox(a.layoutDataTable);
+      const boxB = scribe.utils.calcTableBbox(b.layoutDataTable);
       return boxA.left - boxB.left;
     });
   };
@@ -97,8 +90,8 @@ class CanvasSelection {
     const selectedDataTableIdArr = [...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.table.id))];
     // eslint-disable-next-line no-use-before-define
     return ScribeCanvas._layoutDataTableArr.filter((x) => selectedDataTableIdArr.includes(x.layoutDataTable.id)).sort((a, b) => {
-      const boxA = calcTableBbox(a.layoutDataTable);
-      const boxB = calcTableBbox(b.layoutDataTable);
+      const boxA = scribe.utils.calcTableBbox(a.layoutDataTable);
+      const boxB = scribe.utils.calcTableBbox(b.layoutDataTable);
       return boxA.left - boxB.left;
     }).map((x) => x.layoutDataTable);
   };
@@ -408,7 +401,7 @@ export async function updateWordCanvas(wordI) {
   // Re-calculate left position given potentially new left bearing
   const {
     advanceArr, fontSize, kerningArr, charSpacing, charArr, leftSideBearing, rightSideBearing,
-  } = calcWordMetrics(wordI.word);
+  } = scribe.utils.calcWordMetrics(wordI.word);
 
   wordI.charArr = charArr;
 
@@ -477,10 +470,10 @@ export function getWordFillOpacity(word) {
     opacity = 1;
     fill = 'black';
   } else if (displayMode === 'eval') {
-    opacity = opt.overlayOpacity / 100;
+    opacity = scribe.opt.overlayOpacity / 100;
     fill = fillColorHexMatch;
   } else {
-    opacity = opt.overlayOpacity / 100;
+    opacity = scribe.opt.overlayOpacity / 100;
     fill = fillColorHex;
   }
 
@@ -512,7 +505,7 @@ export class KonvaIText extends Konva.Shape {
   }) {
     const {
       charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr,
-    } = calcWordMetrics(word);
+    } = scribe.utils.calcWordMetrics(word);
 
     const charSpacingFinal = !dynamicWidth ? charSpacing : 0;
 
@@ -613,7 +606,7 @@ export class KonvaIText extends Konva.Shape {
       },
     });
 
-    const fontI = fontAll.getWordFont(word);
+    const fontI = scribe.data.font.getWordFont(word);
 
     this.word = word;
     this.charArr = charArr;
@@ -703,7 +696,7 @@ export class KonvaIText extends Konva.Shape {
     const canvas = /** @type {HTMLCanvasElement} */ (document.createElement('canvas'));
     const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
 
-    const fontI = fontAll.getWordFont(itext.word);
+    const fontI = scribe.data.font.getWordFont(itext.word);
 
     ctx.font = `${itext.fontFaceStyle} ${itext.fontFaceWeight} ${fontSizeHTML}px ${fontI.fontFaceName}`;
 
@@ -777,9 +770,9 @@ export class KonvaIText extends Konva.Shape {
     ScribeCanvas.inputRemove = () => {
       if (!ScribeCanvas.input) return;
 
-      let textNew = ocr.replaceLigatures(ScribeCanvas.input.textContent || '').trim();
+      let textNew = scribe.utils.ocr.replaceLigatures(ScribeCanvas.input.textContent || '').trim();
 
-      if (elem.edit.smartQuotes.value) textNew = replaceSmartQuotes(textNew);
+      if (elem.edit.smartQuotes.value) textNew = scribe.utils.replaceSmartQuotes(textNew);
 
       // Words are not allowed to be empty
       if (textNew) {
@@ -893,7 +886,7 @@ export class KonvaOcrWord extends KonvaIText {
       editTextCallback: () => {},
     });
 
-    this.listening(!state.layoutMode);
+    this.listening(!stateGUI.layoutMode);
 
     this.lastX = this.x();
     this.lastWidth = this.width();
@@ -1030,20 +1023,20 @@ const addBlockOutline = (box, angle, angleAdj, label) => {
  * @param {OcrPage} page
  */
 export function renderPage(page) {
-  const matchIdArr = ocr.getMatchingWordIds(search.search, ocrAll.active[state.cp.n]);
+  const matchIdArr = scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[stateGUI.cp.n]);
 
-  const angle = pageMetricsArr[state.cp.n].angle || 0;
+  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
 
   // Layout mode features assume that auto-rotate is enabled.
-  const enableRotation = (opt.autoRotate || state.layoutMode) && Math.abs(angle ?? 0) > 0.05;
+  const enableRotation = (scribe.opt.autoRotate || stateGUI.layoutMode) && Math.abs(angle ?? 0) > 0.05;
 
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
   if (elem.view.outlinePars.checked && page) {
-    assignParagraphs(page, angle);
+    scribe.utils.assignParagraphs(page, angle);
 
     page.pars.forEach((par) => {
-      const angleAdj = enableRotation ? ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
+      const angleAdj = enableRotation ? scribe.utils.ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
       addBlockOutline(par.bbox, angleArg, angleAdj, par.reason);
     });
   }
@@ -1053,7 +1046,7 @@ export function renderPage(page) {
     const linebox = lineObj.bbox;
     const { baseline } = lineObj;
 
-    const angleAdjLine = enableRotation ? ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
+    const angleAdjLine = enableRotation ? scribe.utils.ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
 
     if (elem.view.outlineLines.checked) {
       const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
@@ -1091,7 +1084,7 @@ export function renderPage(page) {
 
       const outlineWord = elem.view.outlineWords.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
 
-      const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
+      const angleAdjWord = enableRotation ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
       let visualBaseline;
       if (enableRotation) {

@@ -1,18 +1,7 @@
 /* eslint-disable import/no-cycle */
 
-// File summary:
-// Main file that defines all interface event listners, defines all global variables,
-// and contains key functions for importing data and rendering to pdf/canvas.
-//
-// TODO: This file contains many miscellaneous functions and would benefit from being refactored.
-// Additionally, various data stored as global variables
-
 import { Collapse, Tooltip } from './lib/bootstrap.esm.bundle.min.js';
 import Konva from './lib/konva/index.js';
-
-import { importOCRFiles } from './js/import/importOCR.js';
-
-import { ImageCache } from './js/containers/imageContainer.js';
 
 import { recognizeAllClick } from './gui/interfaceRecognize.js';
 
@@ -20,24 +9,13 @@ import { handleDownloadGUI, setFormatLabel, updatePdfPagesLabel } from './gui/in
 
 import {
   enableDisableFontOpt,
-  loadBuiltInFontsRaw,
 } from './js/fontContainerMain.js';
 
-import {
-  LayoutRegions,
-  ocrAll,
-  pageMetricsArr,
-} from './js/containers/dataContainer.js';
+import scribe from './module.js';
 
 import { getAllFileEntries } from './gui/utils/dragAndDrop.js';
 import { insertAlertMessage } from './gui/utils/warningMessages.js';
 
-import {
-  occurrences,
-  showHideElem,
-} from './js/utils/miscUtils.js';
-
-// Functions for various UI tabs
 import { selectDisplayMode, setWordColorOpacity } from './gui/interfaceView.js';
 
 import {
@@ -65,16 +43,6 @@ import {
   stage,
 } from './gui/interfaceCanvas.js';
 
-// Third party libraries
-
-// Debugging functions
-// import { initConvertPageWorker } from './js/convertPage.js';
-
-// Load default settings
-import { setDefaults } from './gui/setDefaults.js';
-
-import ocr from './js/objects/ocrObjects.js';
-
 import {
   downloadCanvas,
   downloadCurrentImage,
@@ -88,14 +56,10 @@ import {
   getLayerCenter, setCanvasWidthHeightZoom, zoomAllLayers,
 } from './gui/interfaceCanvasInteraction.js';
 import { compareGroundTruthClick, createGroundTruthClick } from './gui/interfaceEvaluate.js';
+import { optGUI, setDefaults } from './gui/options.js';
 import { ProgressBars } from './gui/utils/progressBars.js';
-import { clearData } from './js/clear.js';
-import { inputData, opt, state } from './js/containers/app.js';
-import { gs } from './js/containers/schedulerContainer.js';
+import { showHideElem } from './gui/utils/utils.js';
 import { df } from './js/debugGlobals.js';
-import { initGeneralScheduler, initTesseractInWorkers } from './js/generalWorkerMain.js';
-import { importFilesAll } from './js/import/import.js';
-import { convertOCRAll } from './js/recognizeConvert.js';
 
 globalThis.df = df;
 
@@ -103,9 +67,47 @@ globalThis.d = () => {
   debugger;
 };
 
-opt.saveDebugImages = true;
+export class stateGUI {
+  static pageRendering = Promise.resolve(true);
 
-initGeneralScheduler();
+  static renderIt = 0;
+
+  static canvasDimsN = -1;
+
+  /** @type {?Function} */
+  static promiseResolve = null;
+
+  static recognizeAllPromise = Promise.resolve();
+
+  static layoutMode = false;
+
+  static cp = {
+    n: 0,
+    backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
+    renderStatus: 0,
+    renderNum: 0,
+  };
+}
+
+/**
+ *
+ * @param {number} n
+ * @param {string} engineName
+ */
+const recognizeConvertCallback = (n, engineName) => {
+  // Display the page if either (1) this is the currently active OCR or (2) this is Tesseract Legacy and Tesseract LSTM is active, but does not exist yet.
+  // The latter condition occurs briefly whenever recognition is run in "Quality" mode.
+  const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
+  const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
+
+  if (displayOCR && stateGUI.cp.n === n) displayPage(n, true);
+};
+
+scribe.opt.recognizeConvertCallback = recognizeConvertCallback;
+
+scribe.opt.saveDebugImages = true;
+
+scribe.init({ font: true });
 
 // Disable mouse wheel + control to zoom by the browser.
 // The application supports zooming in on the canvas,
@@ -126,43 +128,40 @@ elem.info.debugDownloadImage.addEventListener('click', downloadCurrentImage);
 elem.info.debugEvalLine.addEventListener('click', evalSelectedLine);
 
 elem.info.omitNativeTextCheckbox.addEventListener('click', () => {
-  opt.omitNativeText = elem.info.omitNativeTextCheckbox.checked;
+  scribe.opt.omitNativeText = elem.info.omitNativeTextCheckbox.checked;
 });
 
 elem.info.extractTextCheckbox.addEventListener('click', () => {
-  opt.extractText = elem.info.extractTextCheckbox.checked;
+  scribe.opt.extractText = elem.info.extractTextCheckbox.checked;
 });
 
 elem.download.addOverlayCheckbox.addEventListener('click', () => {
-  opt.addOverlay = elem.download.addOverlayCheckbox.checked;
+  scribe.opt.addOverlay = elem.download.addOverlayCheckbox.checked;
 });
 
 elem.download.standardizePageSize.addEventListener('click', () => {
-  opt.standardizePageSize = elem.download.standardizePageSize.checked;
+  scribe.opt.standardizePageSize = elem.download.standardizePageSize.checked;
 });
 
 elem.info.humanReadablePDF.addEventListener('click', () => {
-  opt.humanReadablePDF = elem.info.humanReadablePDF.checked;
+  scribe.opt.humanReadablePDF = elem.info.humanReadablePDF.checked;
 });
 
 elem.info.intermediatePDF.addEventListener('click', () => {
-  opt.intermediatePDF = elem.info.intermediatePDF.checked;
+  scribe.opt.intermediatePDF = elem.info.intermediatePDF.checked;
 });
 
 elem.view.displayMode.addEventListener('change', () => {
-  opt.displayMode = /** @type {"invis" | "ebook" | "eval" | "proof"} */(elem.view.displayMode.value);
+  scribe.opt.displayMode = /** @type {"invis" | "ebook" | "eval" | "proof"} */(elem.view.displayMode.value);
   if (elem.view.displayMode.value === 'eval') {
-    renderPageQueue(state.cp.n);
+    renderPageQueue(stateGUI.cp.n);
   } else {
-    selectDisplayMode(opt.displayMode);
+    selectDisplayMode(scribe.opt.displayMode);
   }
 });
 
-state.warningHandler = (x) => insertAlertMessage(x, false);
-state.errorHandler = insertAlertMessage;
-
-const resReadyFontAllRaw = gs.setFontAllRawReady();
-loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
+scribe.opt.warningHandler = (x) => insertAlertMessage(x, false);
+scribe.opt.errorHandler = insertAlertMessage;
 
 // Opt-in to bootstrap tooltip feature
 // https://getbootstrap.com/docs/5.0/components/tooltips/
@@ -265,14 +264,14 @@ function handleKeyboardEvent(event) {
 
   // Prev page shortcut
   if (event.key === 'PageUp') {
-    displayPage(state.cp.n - 1);
+    displayPage(stateGUI.cp.n - 1);
     event.preventDefault();
     return;
   }
 
   // Next page shortcut
   if (event.key === 'PageDown') {
-    displayPage(state.cp.n + 1);
+    displayPage(stateGUI.cp.n + 1);
     event.preventDefault();
     return;
   }
@@ -282,8 +281,8 @@ function handleKeyboardEvent(event) {
 document.addEventListener('keydown', handleKeyboardEvent);
 
 // Add various event listners to HTML elements
-elem.nav.next.addEventListener('click', () => displayPage(state.cp.n + 1));
-elem.nav.prev.addEventListener('click', () => displayPage(state.cp.n - 1));
+elem.nav.next.addEventListener('click', () => displayPage(stateGUI.cp.n + 1));
+elem.nav.prev.addEventListener('click', () => displayPage(stateGUI.cp.n - 1));
 
 elem.nav.zoomIn.addEventListener('click', () => {
   zoomAllLayers(1.1, getLayerCenter(layerText));
@@ -294,27 +293,27 @@ elem.nav.zoomOut.addEventListener('click', () => {
 });
 
 elem.view.colorMode.addEventListener('change', () => {
-  opt.colorMode = /** @type {"color" | "gray" | "binary"} */ (elem.view.colorMode.value);
-  renderPageQueue(state.cp.n);
+  scribe.opt.colorMode = /** @type {"color" | "gray" | "binary"} */ (elem.view.colorMode.value);
+  renderPageQueue(stateGUI.cp.n);
 });
 
 elem.view.overlayOpacity.addEventListener('input', () => {
-  opt.overlayOpacity = parseInt(elem.view.overlayOpacity.value);
+  scribe.opt.overlayOpacity = parseInt(elem.view.overlayOpacity.value);
   setWordColorOpacity();
   layerText.batchDraw();
 });
 
 elem.recognize.enableUpscale.addEventListener('click', () => {
-  opt.enableUpscale = elem.recognize.enableUpscale.checked;
+  scribe.opt.enableUpscale = elem.recognize.enableUpscale.checked;
 });
 
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 showDebugVisElem.addEventListener('change', () => {
-  state.debugVis = showDebugVisElem.checked;
-  renderPageQueue(state.cp.n);
+  scribe.opt.debugVis = showDebugVisElem.checked;
+  renderPageQueue(stateGUI.cp.n);
 });
 
-elem.info.showDebugLegend.addEventListener('change', () => { renderPageQueue(state.cp.n); });
+elem.info.showDebugLegend.addEventListener('change', () => { renderPageQueue(stateGUI.cp.n); });
 
 elem.info.showDebugLegend.addEventListener('input', () => {
   const legendCanvasParentDivElem = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
@@ -323,10 +322,10 @@ elem.info.showDebugLegend.addEventListener('input', () => {
   } else {
     showHideElem(legendCanvasParentDivElem, true);
   }
-  if (pageMetricsArr[state.cp.n]?.dims) setCanvasWidthHeightZoom(pageMetricsArr[state.cp.n].dims, false);
+  if (scribe.data.pageMetrics[stateGUI.cp.n]?.dims) setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, false);
 });
 
-elem.info.selectDebugVis.addEventListener('change', () => { renderPageQueue(state.cp.n); });
+elem.info.selectDebugVis.addEventListener('change', () => { renderPageQueue(stateGUI.cp.n); });
 
 elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick);
 
@@ -354,7 +353,7 @@ export const enableRecognitionClick = () => showHideElem(/** @type {HTMLDivEleme
 enableRecognitionElem.addEventListener('click', enableRecognitionClick);
 
 elem.info.enableLayout.addEventListener('click', () => {
-  opt.enableLayout = elem.info.enableLayout.checked;
+  scribe.opt.enableLayout = elem.info.enableLayout.checked;
   showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab')), elem.info.enableLayout.checked);
 });
 
@@ -371,7 +370,7 @@ elem.info.enableXlsxExport.addEventListener('click', enableXlsxExportClick);
 const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
 const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
 
-elem.evaluate.uploadOCRButton.addEventListener('click', importOCRFilesSupp);
+elem.evaluate.uploadOCRButton.addEventListener('click', importFilesSuppGUI);
 
 // const uploadOCRLabelElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRLabel'));
 const uploadOCRDataElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRData'));
@@ -416,22 +415,22 @@ optimizeFontDebugElem.addEventListener('click', () => {
 });
 
 elem.info.confThreshHigh.addEventListener('change', () => {
-  opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
-  renderPageQueue(state.cp.n);
+  scribe.opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
+  renderPageQueue(stateGUI.cp.n);
 });
 elem.info.confThreshMed.addEventListener('change', () => {
-  opt.confThreshMed = parseInt(elem.info.confThreshMed.value);
-  renderPageQueue(state.cp.n);
+  scribe.opt.confThreshMed = parseInt(elem.info.confThreshMed.value);
+  renderPageQueue(stateGUI.cp.n);
 });
 
 elem.view.autoRotate.addEventListener('click', () => {
-  opt.autoRotate = elem.view.autoRotate.checked;
-  renderPageQueue(state.cp.n);
+  scribe.opt.autoRotate = elem.view.autoRotate.checked;
+  renderPageQueue(stateGUI.cp.n);
 });
 
-elem.view.outlineWords.addEventListener('click', () => { renderPageQueue(state.cp.n); });
-elem.view.outlineLines.addEventListener('click', () => { renderPageQueue(state.cp.n); });
-elem.view.outlinePars.addEventListener('click', () => { renderPageQueue(state.cp.n); });
+elem.view.outlineWords.addEventListener('click', () => { renderPageQueue(stateGUI.cp.n); });
+elem.view.outlineLines.addEventListener('click', () => { renderPageQueue(stateGUI.cp.n); });
+elem.view.outlinePars.addEventListener('click', () => { renderPageQueue(stateGUI.cp.n); });
 
 elem.evaluate.displayLabelOptions.addEventListener('click', (e) => {
   // The elements this event are intended for are the individual elements of the list (not `displayLabelOptionsElem`),
@@ -454,11 +453,11 @@ elem.download.formatLabelOptionXlsx.addEventListener('click', () => { setFormatL
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 showConflictsElem.addEventListener('input', () => {
   if (showConflictsElem.checked) showDebugImages();
-  setCanvasWidthHeightZoom(pageMetricsArr[state.cp.n].dims, showConflictsElem.checked);
+  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, showConflictsElem.checked);
 });
 
 elem.recognize.recognizeAll.addEventListener('click', () => {
-  state.recognizeAllPromise = recognizeAllClick();
+  stateGUI.recognizeAllPromise = recognizeAllClick();
 });
 
 elem.edit.recognizeArea.addEventListener('click', () => (ScribeCanvas.mode = 'recognizeArea'));
@@ -488,18 +487,18 @@ elem.layout.setLayoutBoxInclusionLevelWord.addEventListener('click', () => setLa
 elem.layout.setLayoutBoxInclusionLevelLine.addEventListener('click', () => setLayoutBoxInclusionLevelClick('line'));
 
 elem.evaluate.ignorePunct.addEventListener('change', () => {
-  opt.ignorePunct = elem.evaluate.ignorePunct.checked;
-  renderPageQueue(state.cp.n);
+  scribe.opt.ignorePunct = elem.evaluate.ignorePunct.checked;
+  renderPageQueue(stateGUI.cp.n);
 });
 
 elem.evaluate.ignoreCap.addEventListener('change', () => {
-  opt.ignoreCap = elem.evaluate.ignoreCap.checked;
-  renderPageQueue(state.cp.n);
+  scribe.opt.ignoreCap = elem.evaluate.ignoreCap.checked;
+  renderPageQueue(stateGUI.cp.n);
 });
 
 elem.evaluate.ignoreExtra.addEventListener('change', () => {
-  opt.ignoreExtra = elem.evaluate.ignoreExtra.checked;
-  renderPageQueue(state.cp.n);
+  scribe.opt.ignoreExtra = elem.evaluate.ignoreExtra.checked;
+  renderPageQueue(stateGUI.cp.n);
 });
 
 elem.download.pdfPageMin.addEventListener('keyup', (event) => {
@@ -521,11 +520,11 @@ elem.nav.pageNum.addEventListener('keyup', (event) => {
 });
 
 elem.download.xlsxFilenameColumn.addEventListener('click', () => {
-  opt.xlsxFilenameColumn = elem.download.xlsxFilenameColumn.checked;
+  scribe.opt.xlsxFilenameColumn = elem.download.xlsxFilenameColumn.checked;
 });
 
 elem.download.xlsxPageNumberColumn.addEventListener('click', () => {
-  opt.xlsxPageNumberColumn = elem.download.xlsxPageNumberColumn.checked;
+  scribe.opt.xlsxPageNumberColumn = elem.download.xlsxPageNumberColumn.checked;
 });
 
 // TODO: Make one of these swtiches impact the other, so that they can be tied to a single option in `opt`.
@@ -534,7 +533,7 @@ elem.download.xlsxPageNumberColumn.addEventListener('click', () => {
  * @param {boolean} value
  */
 const toggleReflow = (value) => {
-  opt.reflow = value;
+  scribe.opt.reflow = value;
   // Keep the two reflow checkboxes in sync
   elem.download.reflowCheckbox.checked = value;
   elem.download.docxReflowCheckbox.checked = value;
@@ -591,7 +590,7 @@ export const addColorModeUI = () => {
   while (colorModeOptions.length > 0) {
     colorModeOptions[0].remove();
   }
-  if (inputData.imageMode) {
+  if (scribe.inputData.imageMode) {
     const option = document.createElement('option');
     option.text = 'Native';
     option.value = 'color';
@@ -615,36 +614,36 @@ export const addColorModeUI = () => {
 };
 
 elem.recognize.combineMode.addEventListener('change', () => {
-  opt.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.combineMode.value);
+  optGUI.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.combineMode.value);
 });
 
-state.progress = ProgressBars.import;
-state.display = displayPage;
+scribe.opt.progress = ProgressBars.import;
+scribe.opt.displayFunc = displayPage;
 
 const importFilesGUI = async (files) => {
-  state.progress = ProgressBars.import;
-  await importFilesAll(files);
+  scribe.opt.progress = ProgressBars.import;
+  await scribe.importFiles(files);
 
-  displayPage(state.cp.n, true);
+  displayPage(stateGUI.cp.n, true);
 
   // Start loading Tesseract if it was not already loaded.
   // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
-  await initTesseractInWorkers({ anyOk: true, vanillaMode: opt.vanillaMode, langs: opt.langs });
+  const ocrParams = { anyOk: true, vanillaMode: optGUI.vanillaMode, langs: optGUI.langs };
+  scribe.init({ ocr: true, ocrParams });
 
   elem.nav.pageNum.value = '1';
-  elem.nav.pageCount.textContent = String(state.pageCount);
+  elem.nav.pageCount.textContent = String(scribe.inputData.pageCount);
 
   // Allow for downloads.
-  elem.download.downloadFileName.value = state.downloadFileName;
+  elem.download.downloadFileName.value = scribe.inputData.defaultDownloadFileName;
   elem.download.download.disabled = false;
-  state.downloadReady = true;
 
-  if (inputData.imageMode || inputData.pdfMode) {
+  if (scribe.inputData.imageMode || scribe.inputData.pdfMode) {
     toggleRecognizeUI(false);
     addColorModeUI();
 
     // For PDF inputs, enable "Add Text to Import PDF" option
-    if (inputData.pdfMode) {
+    if (scribe.inputData.pdfMode) {
       elem.download.addOverlayCheckbox.checked = true;
       elem.download.addOverlayCheckbox.disabled = false;
     } else {
@@ -652,7 +651,7 @@ const importFilesGUI = async (files) => {
       elem.download.addOverlayCheckbox.disabled = true;
     }
   }
-  if (inputData.xmlMode[0] || inputData.extractTextMode) {
+  if (scribe.inputData.xmlMode[0] || scribe.inputData.extractTextMode) {
     elem.recognize.combineModeOptions.setAttribute('style', '');
     const oemName = 'User Upload';
     elem.evaluate.displayLabelText.innerHTML = oemName;
@@ -661,21 +660,47 @@ const importFilesGUI = async (files) => {
     toggleLayoutButtons(false);
   }
 
-  if (opt.enableOpt) {
+  if (scribe.opt.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
 };
 
+// Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
+async function importFilesSuppGUI() {
+  // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
+  const ocrName = uploadOCRNameElem.value;
+
+  if (!uploadOCRFileElem.files || uploadOCRFileElem.files.length === 0) return;
+
+  scribe.opt.progress = ProgressBars.eval;
+
+  await scribe.importFilesSupp(uploadOCRFileElem.files, ocrName);
+
+  elem.evaluate.displayLabelText.disabled = true;
+
+  toggleEditButtons(false);
+
+  uploadOCRNameElem.value = '';
+  uploadOCRFileElem.value = '';
+  // eslint-disable-next-line no-new
+  new Collapse(uploadOCRDataElem, { toggle: true });
+
+  updateOcrVersionGUI();
+
+  setCurrentHOCR(ocrName);
+  elem.evaluate.displayLabelText.disabled = true;
+}
+
 function prevMatchClick() {
-  if (state.cp.n === 0) return;
-  const lastPage = search.matches.slice(0, state.cp.n)?.findLastIndex((x) => x > 0);
+  if (stateGUI.cp.n === 0) return;
+  const lastPage = search.matches.slice(0, stateGUI.cp.n)?.findLastIndex((x) => x > 0);
   if (lastPage > -1) displayPage(lastPage);
 }
 
 function nextMatchClick() {
-  const nextPageOffset = search.matches.slice(state.cp.n + 1)?.findIndex((x) => x > 0);
-  if (nextPageOffset > -1) displayPage(state.cp.n + nextPageOffset + 1);
+  const nextPageOffset = search.matches.slice(stateGUI.cp.n + 1)?.findIndex((x) => x > 0);
+  if (nextPageOffset > -1) displayPage(stateGUI.cp.n + nextPageOffset + 1);
 }
 
 const editFindElem = /** @type {HTMLInputElement} */(document.getElementById('editFind'));
@@ -703,7 +728,7 @@ function findTextClick(text) {
     search.total = 0;
   }
 
-  elem.nav.matchCurrent.textContent = calcMatchNumber(state.cp.n);
+  elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
   elem.nav.matchCount.textContent = String(search.total);
 }
 
@@ -728,7 +753,7 @@ export const search = {
 
 // Highlight words that include substring in the current page
 function highlightcp(text) {
-  const matchIdArr = ocr.getMatchingWordIds(text, ocrAll.active[state.cp.n]);
+  const matchIdArr = scribe.utils.ocr.getMatchingWordIds(text, scribe.data.ocr.active[stateGUI.cp.n]);
 
   ScribeCanvas.getKonvaWords().forEach((wordObj) => {
     if (matchIdArr.includes(wordObj.word.id)) {
@@ -746,7 +771,7 @@ function findAllMatches(text) {
   const matches = [];
   const maxValue = search.text.length;
   for (let i = 0; i < maxValue; i++) {
-    const n = occurrences(search.text[i], text);
+    const n = scribe.utils.countSubstringOccurrences(search.text[i], text);
     matches[i] = n;
     total += n;
   }
@@ -757,21 +782,21 @@ function findAllMatches(text) {
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
 function updateFindStats() {
-  if (!ocrAll.active[state.cp.n]) {
-    search.text[state.cp.n] = '';
+  if (!scribe.data.ocr.active[stateGUI.cp.n]) {
+    search.text[stateGUI.cp.n] = '';
     return;
   }
 
   // Re-extract text from XML
-  search.text[state.cp.n] = ocr.getPageText(ocrAll.active[state.cp.n]);
+  search.text[stateGUI.cp.n] = scribe.utils.ocr.getPageText(scribe.data.ocr.active[stateGUI.cp.n]);
 
   if (search.search) {
     // Count matches in current page
-    search.matches[state.cp.n] = occurrences(search.text[state.cp.n], search.search);
+    search.matches[stateGUI.cp.n] = scribe.utils.countSubstringOccurrences(search.text[stateGUI.cp.n], search.search);
     // Calculate total number of matches
     search.total = search.matches.reduce((partialSum, a) => partialSum + a, 0);
 
-    elem.nav.matchCurrent.textContent = calcMatchNumber(state.cp.n);
+    elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
     elem.nav.matchCount.textContent = String(search.total);
   }
 }
@@ -780,10 +805,10 @@ function updateFindStats() {
 // We do this once (and then perform incremental updates) to avoid having to parse XML
 // with every search.
 function extractTextAll() {
-  const maxValue = ocrAll.active.length;
+  const maxValue = scribe.data.ocr.active.length;
 
   for (let g = 0; g < maxValue; g++) {
-    search.text[g] = ocr.getPageText(ocrAll.active[g]);
+    search.text[g] = scribe.utils.ocr.getPageText(scribe.data.ocr.active[g]);
   }
 }
 
@@ -802,33 +827,14 @@ function calcMatchNumber(n) {
   return `${String(matchPrev + 1)}-${String(matchPrev + 1 + (matchN - 1))}`;
 }
 
-/**
- * Initialize a new version of OCR data (Legacy, LSTM, etc.).
- * @param {string} label
- */
-export function initOCRVersion(label) {
-  // Exit early for 'Tesseract Latest'. This is used under the hood and users should not see it.
-  if (label === 'Tesseract Latest') return;
-
-  // Exit early if option already exists
-  const existingOptions = elem.evaluate.displayLabelOptions.children;
-  for (let i = 0; i < existingOptions.length; i++) {
-    if (existingOptions[i].innerHTML === label) return;
-  }
-  const option = document.createElement('a');
-  option.setAttribute('class', 'dropdown-item');
-  option.text = label;
-  elem.evaluate.displayLabelOptions.appendChild(option);
-}
-
 export function setCurrentHOCR(x) {
   const currentLabel = elem.evaluate.displayLabelText.innerHTML.trim();
   if (!x.trim() || x === currentLabel) return;
 
-  ocrAll.active = ocrAll[x];
+  scribe.data.ocr.active = scribe.data.ocr[x];
   elem.evaluate.displayLabelText.innerHTML = x;
 
-  renderPageQueue(state.cp.n);
+  renderPageQueue(stateGUI.cp.n);
 }
 
 /**
@@ -845,7 +851,7 @@ export const updateOcrVersionGUI = () => {
   versionsSkip.push('Tesseract Combined Temp');
   versionsSkip.push('active');
 
-  const ocrVersionsNew = Object.keys(ocrAll).filter((x) => !versionsSkip.includes(x));
+  const ocrVersionsNew = Object.keys(scribe.data.ocr).filter((x) => !versionsSkip.includes(x));
 
   ocrVersionsNew.forEach((label) => {
     const option = document.createElement('a');
@@ -854,7 +860,7 @@ export const updateOcrVersionGUI = () => {
     elem.evaluate.displayLabelOptions.appendChild(option);
   });
 
-  const oemActive = Object.keys(ocrAll).find((key) => ocrAll[key] === ocrAll.active && key !== 'active');
+  const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
   elem.evaluate.displayLabelText.innerHTML = oemActive;
 };
 
@@ -884,14 +890,14 @@ elem.download.download.addEventListener('hidden.bs.collapse', (e) => {
 const navLayoutElem = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
 navLayoutElem.addEventListener('show.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
-    state.layoutMode = true;
+    stateGUI.layoutMode = true;
     // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
     Konva.autoDrawEnabled = true;
-    if (!LayoutRegions.pages[state.cp.n]) return;
+    if (!scribe.data.layoutRegions.pages[stateGUI.cp.n]) return;
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
-    if (!opt.autoRotate) {
-      renderPageQueue(state.cp.n);
+    if (!scribe.opt.autoRotate) {
+      renderPageQueue(stateGUI.cp.n);
     } else {
       toggleSelectableWords(false);
       ScribeCanvas.destroyControls();
@@ -902,12 +908,12 @@ navLayoutElem.addEventListener('show.bs.collapse', (e) => {
 
 navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
-    state.layoutMode = false;
+    stateGUI.layoutMode = false;
     Konva.autoDrawEnabled = false;
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
-    if (!opt.autoRotate) {
-      renderPageQueue(state.cp.n);
+    if (!scribe.opt.autoRotate) {
+      renderPageQueue(stateGUI.cp.n);
     } else {
       toggleSelectableWords(true);
       ScribeCanvas.destroyRegions();
@@ -922,12 +928,12 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
 
 // Resets the environment.
 async function clearFiles() {
-  clearData();
+  scribe.clear();
   clearUI();
 }
 
 async function clearUI() {
-  state.cp.n = 0;
+  stateGUI.cp.n = 0;
 
   stage.clear();
   elem.nav.pageCount.textContent = '';
@@ -947,67 +953,18 @@ async function clearUI() {
 
 clearFiles();
 
-// Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
-async function importOCRFilesSupp() {
-  // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
-  const ocrName = uploadOCRNameElem.value;
-
-  if (!uploadOCRFileElem.files || uploadOCRFileElem.files.length === 0) return;
-
-  const ocrFilesAll = Array.from(uploadOCRFileElem.files);
-
-  ocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
-
-  elem.evaluate.displayLabelText.disabled = true;
-
-  const ocrData = await importOCRFiles(ocrFilesAll);
-
-  const pageCountHOCR = ocrData.hocrRaw.length;
-
-  // Enable confidence threshold input boxes (only used for Tesseract)
-  if (!ocrData.abbyyMode && !ocrData.stextMode && elem.info.confThreshHigh.disabled) {
-    toggleEditConfUI(false);
-  }
-
-  // If both OCR data and image data are present, confirm they have the same number of pages
-  if (ImageCache.pageCount !== pageCountHOCR) {
-    const warningHTML = `Page mismatch detected. Image data has ${ImageCache.pageCount} pages while OCR data has ${pageCountHOCR} pages.`;
-    insertAlertMessage(warningHTML, false);
-  }
-
-  ProgressBars.eval.show(pageCountHOCR);
-
-  toggleEditButtons(false);
-
-  /** @type {("hocr" | "abbyy" | "stext")} */
-  let format = 'hocr';
-  if (ocrData.abbyyMode) format = 'abbyy';
-  if (ocrData.stextMode) format = 'stext';
-
-  convertOCRAll(ocrData.hocrRaw, false, format, ocrName);
-
-  uploadOCRNameElem.value = '';
-  uploadOCRFileElem.value = '';
-  // eslint-disable-next-line no-new
-  new Collapse(uploadOCRDataElem, { toggle: true });
-
-  initOCRVersion(ocrName);
-  setCurrentHOCR(ocrName);
-  elem.evaluate.displayLabelText.disabled = true;
-}
-
 // Function that handles page-level info for rendering to canvas and pdf
 export async function renderPageQueue(n) {
-  let ocrData = ocrAll.active?.[n];
+  let ocrData = scribe.data.ocr.active?.[n];
 
   // Return early if there is not enough data to render a page yet
   // (0) Necessary info is not defined yet
-  const noInfo = inputData.xmlMode[n] === undefined;
+  const noInfo = scribe.inputData.xmlMode[n] === undefined;
   // (1) No data has been imported
-  const noInput = !inputData.xmlMode[n] && !(inputData.imageMode || inputData.pdfMode);
+  const noInput = !scribe.inputData.xmlMode[n] && !(scribe.inputData.imageMode || scribe.inputData.pdfMode);
   // (2) XML data should exist but does not (yet)
-  const xmlMissing = inputData.xmlMode[n]
-    && (ocrData === undefined || ocrData === null || pageMetricsArr[n].dims === undefined);
+  const xmlMissing = scribe.inputData.xmlMode[n]
+    && (ocrData === undefined || ocrData === null || scribe.data.pageMetrics[n].dims === undefined);
 
   const imageMissing = false;
   const pdfMissing = false;
@@ -1017,22 +974,22 @@ export async function renderPageQueue(n) {
     return;
   }
 
-  const renderItI = state.renderIt + 1;
-  state.renderIt = renderItI;
+  const renderItI = stateGUI.renderIt + 1;
+  stateGUI.renderIt = renderItI;
 
   // If a page is already being rendered, wait for it to complete
-  await state.pageRendering;
+  await stateGUI.pageRendering;
   // If another page has been requested already, return early
-  if (state.renderIt !== renderItI) return;
+  if (stateGUI.renderIt !== renderItI) return;
 
-  state.pageRendering = new Promise((resolve, reject) => {
-    state.promiseResolve = resolve;
+  stateGUI.pageRendering = new Promise((resolve, reject) => {
+    stateGUI.promiseResolve = resolve;
   });
 
-  if (inputData.evalMode) {
+  if (scribe.inputData.evalMode) {
     await compareGroundTruthClick(n);
     // ocrData must be re-assigned after comparing to ground truth or it will not update.
-    ocrData = ocrAll.active?.[n];
+    ocrData = scribe.data.ocr.active?.[n];
   }
 
   ScribeCanvas.destroyWords();
@@ -1040,21 +997,21 @@ export async function renderPageQueue(n) {
   // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
   // (whether by quickly changing pages or on the same page).
   // TODO: Find a better solution.
-  state.cp.renderNum += 1;
-  const renderNum = state.cp.renderNum;
+  stateGUI.cp.renderNum += 1;
+  const renderNum = stateGUI.cp.renderNum;
 
   // The active OCR version may have changed, so this needs to be re-checked.
-  if (state.cp.n === n && inputData.xmlMode[n]) {
+  if (stateGUI.cp.n === n && scribe.inputData.xmlMode[n]) {
     renderPage(ocrData);
-    if (state.cp.n === n && state.cp.renderNum === renderNum) {
-      await selectDisplayMode(opt.displayMode);
+    if (stateGUI.cp.n === n && stateGUI.cp.renderNum === renderNum) {
+      await selectDisplayMode(scribe.opt.displayMode);
     }
   } else {
-    await selectDisplayMode(opt.displayMode);
+    await selectDisplayMode(scribe.opt.displayMode);
   }
 
   // @ts-ignore
-  state.promiseResolve();
+  stateGUI.promiseResolve();
 }
 
 let working = false;
@@ -1067,15 +1024,15 @@ let working = false;
  */
 export async function displayPage(n, force = false) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered.
-  if (Number.isNaN(n) || n < 0 || n > (state.pageCount - 1) || (working && !force)) {
+  if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1) || (working && !force)) {
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
-    elem.nav.pageNum.value = (state.cp.n + 1).toString();
+    elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
     return;
   }
 
   working = true;
 
-  if (inputData.xmlMode[state.cp.n]) {
+  if (scribe.inputData.xmlMode[stateGUI.cp.n]) {
     // TODO: This is currently run whenever the page is changed.
     // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
     updateFindStats();
@@ -1083,15 +1040,15 @@ export async function displayPage(n, force = false) {
 
   elem.nav.matchCurrent.textContent = calcMatchNumber(n);
 
-  state.cp.n = n;
-  elem.nav.pageNum.value = (state.cp.n + 1).toString();
+  stateGUI.cp.n = n;
+  elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
 
-  await renderPageQueue(state.cp.n);
+  await renderPageQueue(stateGUI.cp.n);
 
   if (showConflictsElem.checked) showDebugImages();
 
   // Render background images ahead and behind current page to reduce delay when switching pages
-  if (inputData.pdfMode || inputData.imageMode) ImageCache.preRenderAheadBehindBrowser(n, elem.view.colorMode.value === 'binary');
+  if (scribe.inputData.pdfMode || scribe.inputData.imageMode) scribe.data.image.preRenderAheadBehindBrowser(n, elem.view.colorMode.value === 'binary');
 
   working = false;
 }
@@ -1104,7 +1061,7 @@ export async function displayPage(n, force = false) {
 async function optimizeFontClick(enable, useInitial = false) {
   await enableDisableFontOpt(enable, useInitial);
 
-  renderPageQueue(state.cp.n);
+  renderPageQueue(stateGUI.cp.n);
 }
 
 // Set default settings

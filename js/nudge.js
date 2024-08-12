@@ -1,6 +1,6 @@
 import { DebugData, ocrAll, pageMetricsArr } from './containers/dataContainer.js';
 import { ImageCache } from './containers/imageContainer.js';
-import { gs } from './containers/schedulerContainer.js';
+import { gs } from './generalWorkerMain.js';
 
 export async function evalOverlapDocument() {
   // Render binarized versions of images

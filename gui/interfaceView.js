@@ -1,9 +1,8 @@
 /* eslint-disable import/no-cycle */
 
-import { inputData, opt, state } from '../js/containers/app.js';
-import { pageMetricsArr, visInstructions } from '../js/containers/dataContainer.js';
-import { ImageCache } from '../js/containers/imageContainer.js';
 import Konva from '../lib/konva/index.js';
+import { stateGUI } from '../main.js';
+import scribe from '../module.js';
 import { elem } from './elems.js';
 import {
   getWordFillOpacity,
@@ -41,22 +40,22 @@ export function setWordColorOpacity() {
 export const selectDisplayMode = async (x) => {
   setWordColorOpacity();
 
-  const pageDims = pageMetricsArr[state.cp.n].dims;
+  const pageDims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
 
   // Include a background image if appropriate
-  if (['invis', 'proof', 'eval'].includes(x) && (inputData.imageMode || inputData.pdfMode)) {
-    state.cp.backgroundOpts.originX = 'center';
-    state.cp.backgroundOpts.originY = 'center';
+  if (['invis', 'proof', 'eval'].includes(x) && (scribe.inputData.imageMode || scribe.inputData.pdfMode)) {
+    stateGUI.cp.backgroundOpts.originX = 'center';
+    stateGUI.cp.backgroundOpts.originY = 'center';
 
-    const backgroundImage = opt.colorMode === 'binary' ? await ImageCache.getBinary(state.cp.n) : await ImageCache.getNative(state.cp.n);
-    const image = opt.colorMode === 'binary' ? await ImageCache.getBinaryBitmap(state.cp.n) : await ImageCache.getNativeBitmap(state.cp.n);
+    const backgroundImage = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinary(stateGUI.cp.n) : await scribe.data.image.getNative(stateGUI.cp.n);
+    const image = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinaryBitmap(stateGUI.cp.n) : await scribe.data.image.getNativeBitmap(stateGUI.cp.n);
     let rotation = 0;
     // Case where rotation is requested and the image has not already been rotated
-    if ((opt.autoRotate || state.layoutMode) && !backgroundImage.rotated) {
-      rotation = (pageMetricsArr[state.cp.n].angle || 0) * -1;
+    if ((scribe.opt.autoRotate || stateGUI.layoutMode) && !backgroundImage.rotated) {
+      rotation = (scribe.data.pageMetrics[stateGUI.cp.n].angle || 0) * -1;
     // Case where rotation is not requested and the image has already been rotated
-    } else if (!(opt.autoRotate || state.layoutMode) && backgroundImage.rotated) {
-      rotation = pageMetricsArr[state.cp.n].angle || 0;
+    } else if (!(scribe.opt.autoRotate || stateGUI.layoutMode) && backgroundImage.rotated) {
+      rotation = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
     }
 
     const scaleX = backgroundImage.upscaled ? 0.5 : 1;
@@ -82,8 +81,8 @@ export const selectDisplayMode = async (x) => {
     layerBackground.destroyChildren();
   }
 
-  if (state.debugVis && elem.info.selectDebugVis.value !== 'None' && visInstructions[state.cp.n][elem.info.selectDebugVis.value]) {
-    const image = visInstructions[state.cp.n][elem.info.selectDebugVis.value].canvas;
+  if (scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value]) {
+    const image = scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value].canvas;
     const overlayImageKonva = new Konva.Image({
       image,
       scaleX: pageDims.width / image.width,
@@ -97,7 +96,7 @@ export const selectDisplayMode = async (x) => {
     layerOverlay.destroyChildren();
     layerOverlay.add(overlayImageKonva);
 
-    const offscreenCanvasLegend = visInstructions[state.cp.n][elem.info.selectDebugVis.value].canvasLegend;
+    const offscreenCanvasLegend = scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value].canvasLegend;
     if (offscreenCanvasLegend) {
       ctxLegend.canvas.width = offscreenCanvasLegend.width;
       ctxLegend.canvas.height = offscreenCanvasLegend.height;
@@ -109,16 +108,16 @@ export const selectDisplayMode = async (x) => {
     layerOverlay.destroyChildren();
   }
 
-  if (state.layoutMode) {
+  if (stateGUI.layoutMode) {
     renderLayoutBoxes();
   }
 
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
-  if (state.canvasDimsN !== state.cp.n) {
-    setCanvasWidthHeightZoom(pageMetricsArr[state.cp.n].dims, showConflictsElem.checked);
+  if (stateGUI.canvasDimsN !== stateGUI.cp.n) {
+    setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, showConflictsElem.checked);
 
-    state.canvasDimsN = state.cp.n;
+    stateGUI.canvasDimsN = stateGUI.cp.n;
   // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,
   // so we only need to call it here if the zoom is not changed.
   }

@@ -5,18 +5,9 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { opt, state } from '../js/containers/app.js';
-import { DebugData, ocrAll, pageMetricsArr } from '../js/containers/dataContainer.js';
-import { fontAll } from '../js/containers/fontContainer.js';
-import { ImageCache } from '../js/containers/imageContainer.js';
-import { gs } from '../js/containers/schedulerContainer.js';
-import coords from '../js/coordinates.js';
-import { combineData } from '../js/modifyOCR.js';
-import ocr from '../js/objects/ocrObjects.js';
-import { recognizePage } from '../js/recognizeConvert.js';
-import { getRandomAlphanum } from '../js/utils/miscUtils.js';
 import { Button } from '../lib/bootstrap.esm.bundle.min.js';
-import { displayPage, renderPageQueue } from '../main.js';
+import { displayPage, renderPageQueue, stateGUI } from '../main.js';
+import scribe from '../module.js';
 import { elem } from './elems.js';
 import {
   KonvaOcrWord,
@@ -31,8 +22,8 @@ elem.edit.styleSmallCaps.addEventListener('click', () => toggleSmallCapsWords(el
 elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
 
 elem.edit.ligatures.addEventListener('change', () => {
-  opt.ligatures = elem.edit.ligatures.checked;
-  renderPageQueue(state.cp.n);
+  scribe.opt.ligatures = elem.edit.ligatures.checked;
+  renderPageQueue(stateGUI.cp.n);
 });
 
 const styleItalicButton = new Button(elem.edit.styleItalic);
@@ -49,14 +40,14 @@ export function deleteSelectedWords() {
     selectedIds.push(wordIDI);
     selectedObjects[i].destroy();
   }
-  ocr.deletePageWords(ocrAll.active[state.cp.n], selectedIds);
+  scribe.utils.ocr.deletePageWords(scribe.data.ocr.active[stateGUI.cp.n], selectedIds);
 
   ScribeCanvas.destroyControls();
 
   layerText.batchDraw();
 
   // Re-render the page if the user has selected the option to outline lines to update the line boxes.
-  if (elem.view.outlineLines.checked) renderPageQueue(state.cp.n);
+  if (elem.view.outlineLines.checked) renderPageQueue(stateGUI.cp.n);
 }
 
 /**
@@ -89,7 +80,7 @@ export async function changeWordFontStyle(style) {
 
     // wordI.fontStyle = newStyle;
 
-    const fontI = fontAll.getFont(wordI.fontFamilyLookup, newStyle);
+    const fontI = scribe.data.font.getFont(wordI.fontFamilyLookup, newStyle);
 
     wordI.fontFaceName = fontI.fontFaceName;
     wordI.fontFaceStyle = fontI.fontFaceStyle;
@@ -147,7 +138,7 @@ export async function changeWordFontFamily(fontName) {
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
 
-    const fontI = fontAll.getFont(fontName, wordI.word.style);
+    const fontI = scribe.data.font.getFont(fontName, wordI.word.style);
 
     if (fontName === 'Default') {
       wordI.word.font = null;
@@ -175,7 +166,7 @@ export function toggleSuperSelectedWords() {
     wordI.word.sup = !wordI.word.sup;
   }
 
-  renderPageQueue(state.cp.n);
+  renderPageQueue(stateGUI.cp.n);
 }
 
 /**
@@ -289,10 +280,10 @@ export async function addWordManual({
   let sinAngle = 0;
   let shiftX = 0;
   let shiftY = 0;
-  if (opt.autoRotate && Math.abs(pageMetricsArr[state.cp.n].angle ?? 0) > 0.05) {
-    const rotateAngle = pageMetricsArr[state.cp.n].angle || 0;
+  if (scribe.opt.autoRotate && Math.abs(scribe.data.pageMetrics[stateGUI.cp.n].angle ?? 0) > 0.05) {
+    const rotateAngle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
 
-    const pageDims = pageMetricsArr[state.cp.n].dims;
+    const pageDims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
 
     sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
     const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
@@ -320,31 +311,31 @@ export async function addWordManual({
     left: rectLeftHOCR, top: rectTopHOCR, right: rectRightHOCR, bottom: rectBottomHOCR,
   };
 
-  const pageObj = new ocr.OcrPage(state.cp.n, ocrAll.active[state.cp.n].dims);
+  const pageObj = new scribe.utils.ocr.OcrPage(stateGUI.cp.n, scribe.data.ocr.active[stateGUI.cp.n].dims);
   // Create a temporary line to hold the word until it gets combined.
   // This should not be used after `combineData` is run as it is not the final line.
-  const lineObjTemp = new ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
+  const lineObjTemp = new scribe.utils.ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
   pageObj.lines = [lineObjTemp];
-  const wordIDNew = getRandomAlphanum(10);
-  const wordObj = new ocr.OcrWord(lineObjTemp, wordText, wordBox, wordIDNew);
+  const wordIDNew = scribe.utils.getRandomAlphanum(10);
+  const wordObj = new scribe.utils.ocr.OcrWord(lineObjTemp, wordText, wordBox, wordIDNew);
   // Words added by user are assumed to be correct.
   wordObj.conf = 100;
   lineObjTemp.words = [wordObj];
 
-  combineData(pageObj, ocrAll.active[state.cp.n], pageMetricsArr[state.cp.n], true, false);
+  scribe.combineOCRPage(pageObj, scribe.data.ocr.active[stateGUI.cp.n], scribe.data.pageMetrics[stateGUI.cp.n], true, false);
 
   // Get line word was added to in main data.
   // This will have different metrics from `lineObj` when the line was combined into an existing line.
-  const wordObjNew = ocr.getPageWord(ocrAll.active[state.cp.n], wordIDNew);
+  const wordObjNew = scribe.utils.ocr.getPageWord(scribe.data.ocr.active[stateGUI.cp.n], wordIDNew);
 
   if (!wordObjNew) throw new Error('Failed to add word to page.');
 
-  const angle = pageMetricsArr[state.cp.n].angle || 0;
-  const enableRotation = opt.autoRotate && Math.abs(angle ?? 0) > 0.05;
+  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+  const enableRotation = scribe.opt.autoRotate && Math.abs(angle ?? 0) > 0.05;
   const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
 
-  const angleAdjLine = enableRotation ? ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
-  const angleAdjWord = enableRotation ? ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
+  const angleAdjLine = enableRotation ? scribe.utils.ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
+  const angleAdjWord = enableRotation ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
   const box = wordObjNew.bbox;
   const linebox = wordObjNew.line.bbox;
@@ -401,9 +392,9 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
   const imageRotated = true;
-  const angle = pageMetricsArr[state.cp.n].angle || 0;
+  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
 
-  const imageCoords = coords.canvasToImage(canvasCoords, imageRotated, opt.autoRotate, state.cp.n, angle);
+  const imageCoords = scribe.utils.coords.canvasToImage(canvasCoords, imageRotated, scribe.opt.autoRotate, stateGUI.cp.n, angle);
 
   if (printCoordsOnly) {
     const debugCoords = {
@@ -411,8 +402,8 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
       top: imageCoords.top,
       right: imageCoords.left + imageCoords.width,
       bottom: imageCoords.top + imageCoords.height,
-      topInv: pageMetricsArr[state.cp.n].dims.height - imageCoords.top,
-      bottomInv: pageMetricsArr[state.cp.n].dims.height - (imageCoords.top + imageCoords.height),
+      topInv: scribe.data.pageMetrics[stateGUI.cp.n].dims.height - imageCoords.top,
+      bottomInv: scribe.data.pageMetrics[stateGUI.cp.n].dims.height - (imageCoords.top + imageCoords.height),
     };
     console.log(debugCoords);
     return;
@@ -422,10 +413,9 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   // SINGLE_BLOCK: '6',
   // SINGLE_WORD: '8',
   const psm = wordMode ? '8' : '6';
-  const n = state.cp.n;
+  const n = stateGUI.cp.n;
 
-  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
-  const res0 = await recognizePage(gs.scheduler, n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
+  const res0 = await scribe.recognizePage(n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
 
   const resLegacy = await res0[0];
   const resLSTM = await res0[1];
@@ -440,14 +430,14 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   const debugLabel = 'recognizeArea';
 
-  if (debugLabel && !DebugData.debugImg[debugLabel]) {
-    DebugData.debugImg[debugLabel] = new Array(ImageCache.pageCount);
-    for (let i = 0; i < ImageCache.pageCount; i++) {
-      DebugData.debugImg[debugLabel][i] = [];
+  if (debugLabel && !scribe.data.debug.debugImg[debugLabel]) {
+    scribe.data.debug.debugImg[debugLabel] = new Array(scribe.data.image.pageCount);
+    for (let i = 0; i < scribe.data.image.pageCount; i++) {
+      scribe.data.debug.debugImg[debugLabel][i] = [];
     }
   }
 
-  /** @type {Parameters<import('../js/generalWorkerMain.js').GeneralScheduler['compareOCR']>[0]['options']} */
+  /** @type {Parameters<typeof scribe.compareOCRPage>[0]['options']} */
   const compOptions = {
     mode: 'comb',
     debugLabel,
@@ -458,19 +448,19 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     legacyLSTMComb: true,
   };
 
-  const imgBinary = await ImageCache.getBinary(n);
+  const imgBinary = await scribe.data.image.getBinary(n);
 
-  const res = await gs.scheduler.compareOCR({
+  const res = await scribe.compareOCRPage({
     pageA: pageObjLegacy,
     pageB: pageObjLSTM,
     binaryImage: imgBinary,
-    pageMetricsObj: pageMetricsArr[n],
+    pageMetricsObj: scribe.data.pageMetrics[n],
     options: compOptions,
   });
 
-  DebugData.debugImg[debugLabel][n].push(...res.debugImg);
+  scribe.data.debug.debugImg[debugLabel][n].push(...res.debugImg);
 
-  combineData(res.page, ocrAll.active[n], pageMetricsArr[n]);
+  scribe.combineOCRPage(res.page, scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
 
-  if (n === state.cp.n) displayPage(state.cp.n);
+  if (n === stateGUI.cp.n) displayPage(stateGUI.cp.n);
 }

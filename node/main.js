@@ -3,29 +3,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import { runFontOptimization } from '../js/fontEval.js';
 
-import ocr from '../js/objects/ocrObjects.js';
-
-import { drawDebugImages } from '../js/debug.js';
-
-import {
-  DebugData,
-  ocrAll,
-} from '../js/containers/dataContainer.js';
-import { loadBuiltInFontsRaw } from '../js/fontContainerMain.js';
-
-import { clearData } from '../js/clear.js';
-import { opt } from '../js/containers/app.js';
-import { gs } from '../js/containers/schedulerContainer.js';
-import { download } from '../js/export/export.js';
-import { writeDebugCsv } from '../js/export/exportDebugCsv.js';
-import { calcFontMetricsFromPages } from '../js/fontStatistics.js';
-import { initGeneralScheduler, initTesseractInWorkers } from '../js/generalWorkerMain.js';
-import { importFilesAll } from '../js/import/import.js';
-import { recognizeAll } from '../js/recognizeConvert.js';
-import { calcConf } from '../js/utils/ocrUtils.js';
 import { tmpUnique } from '../js/worker/compareOCRModule.js';
+import scribe from '../module.js';
 
 // When `debugMode` is enabled:
 // (1) Comparison images are saved as .png files.
@@ -33,7 +13,7 @@ import { tmpUnique } from '../js/worker/compareOCRModule.js';
 // (3) All OCR data is dumped as .hocr files.
 const debugMode = false;
 
-opt.saveDebugImages = debugMode;
+scribe.opt.saveDebugImages = debugMode;
 
 /** @type {import('canvas').CanvasRenderingContext2D} */
 let ctxDebug;
@@ -52,21 +32,20 @@ const debugDir = `${__dirname}/../../dev/debug/`;
  * @param {string} filePath
  */
 async function writeDebugImages(ctx, compDebugArrArr, filePath) {
-  await drawDebugImages({ ctx, compDebugArrArr, context: 'node' });
+  await scribe.utils.drawDebugImages({ ctx, compDebugArrArr, context: 'node' });
   const buffer0 = ctx.canvas.toBuffer('image/png');
   fs.writeFileSync(filePath, buffer0);
 }
 
 async function dumpDebugImagesAll() {
-  if (!DebugData.debugImg.Combined || DebugData.debugImg.Combined.length === 0) {
+  if (!scribe.data.debug.debugImg.Combined || scribe.data.debug.debugImg.Combined.length === 0) {
     console.log('No debug images to dump.');
-    console.log(DebugData.debugImg);
     return;
   }
 
-  for (let i = 0; i < DebugData.debugImg.Combined.length; i++) {
+  for (let i = 0; i < scribe.data.debug.debugImg.Combined.length; i++) {
     const filePath = `${debugDir}legacy_lstm_comp_${i}.png`;
-    await writeDebugImages(ctxDebug, [DebugData.debugImg.Combined[i]], filePath);
+    await writeDebugImages(ctxDebug, [scribe.data.debug.debugImg.Combined[i]], filePath);
   }
 }
 
@@ -83,15 +62,16 @@ async function dumpDebugImagesAll() {
  *
  */
 async function main(func, params) {
-  await initGeneralScheduler();
-  await initTesseractInWorkers({});
-  const resReadyFontAllRaw = gs.setFontAllRawReady();
-  await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
+  await scribe.init({
+    pdf: true,
+    ocr: true,
+    font: true,
+  });
 
   const robustConfMode = func === 'check' || params.robustConfMode || false;
 
-  opt.displayMode = params.overlayMode || 'invis';
-  opt.combineMode = robustConfMode ? 'conf' : 'data';
+  scribe.opt.displayMode = params.overlayMode || 'invis';
+  const combineMode = robustConfMode ? 'conf' : 'data';
 
   const output = {};
 
@@ -100,7 +80,7 @@ async function main(func, params) {
   const files = [];
   if (params.pdfFile) files.push(params.pdfFile);
   if (params.ocrFile) files.push(params.ocrFile);
-  await importFilesAll(files);
+  await scribe.importFiles(files);
 
   const backgroundArg = params.pdfFile;
   const backgroundArgStem = backgroundArg ? path.basename(backgroundArg).replace(/\.\w{1,5}$/i, '') : undefined;
@@ -112,30 +92,29 @@ async function main(func, params) {
   // TODO: (1) Find out why font data is not being imported correctly from .hocr files.
   // (2) Use Tesseract Legacy font data when (1) recognition is being run anyway and (2) no font metrics data exists already.
   if (robustConfMode || func === 'eval' || func === 'recognize') {
-    await recognizeAll('combined');
+    await scribe.recognize({
+      modeAdv: 'combined',
+      combineMode,
+    });
     if (func === 'recognize') {
-      output.text = ocrAll.active.map((x) => ocr.getPageText(x)).join('\n');
+      output.text = scribe.data.ocr.active.map((x) => scribe.utils.ocr.getPageText(x)).join('\n');
     }
-  } else {
-    calcFontMetricsFromPages(ocrAll.active);
-    await runFontOptimization(ocrAll.active);
   }
 
   if (func === 'check' || func === 'conf' || params.printConf) {
-    const { highConf, total } = calcConf(ocrAll.active);
+    const { highConf, total } = scribe.utils.calcConf(scribe.data.ocr.active);
     console.log(`Confidence: ${highConf / total} (${highConf} of ${total})`);
     if (func === 'conf') {
-      await gs.terminate();
-      clearData();
+      scribe.terminate();
       return output;
     }
   }
 
   if (['overlay', 'recognize'].includes(func) && backgroundArg) {
     let outputSuffix = '';
-    if (opt.displayMode === 'proof') {
+    if (scribe.opt.displayMode === 'proof') {
       outputSuffix = '_vis';
-    } else if (opt.displayMode === 'invis') {
+    } else if (scribe.opt.displayMode === 'invis') {
       const resolvedInputFile = path.dirname(path.resolve(backgroundArg));
       const resolvedOutputDir = path.resolve(outputDir);
       if (resolvedInputFile === resolvedOutputDir) {
@@ -144,12 +123,12 @@ async function main(func, params) {
     }
 
     const outputPath = `${outputDir}/${path.basename(backgroundArg).replace(/\.\w{1,5}$/i, `${outputSuffix}.pdf`)}`;
-    await download('pdf', outputPath);
+    await scribe.download('pdf', outputPath);
   }
 
   if (debugComp) {
     const outputPath = `${__dirname}/../../dev/debug/${backgroundArgStem}_debug.csv`;
-    writeDebugCsv(ocrAll.active, outputPath);
+    scribe.utils.writeDebugCsv(scribe.data.ocr.active, outputPath);
   }
 
   if (debugMode) dumpDebugImagesAll();
@@ -157,9 +136,7 @@ async function main(func, params) {
   // Delete temp directory with fonts
   await tmpUnique.delete();
 
-  // Terminate all workers
-  await gs.terminate();
-  clearData();
+  scribe.terminate();
 
   return output;
 }

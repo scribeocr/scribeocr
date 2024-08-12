@@ -1,15 +1,12 @@
 /* eslint-disable import/no-cycle */
 
-import { inputData, opt, state } from '../js/containers/app.js';
-import { evalStats, ocrAll } from '../js/containers/dataContainer.js';
-import { gs } from '../js/containers/schedulerContainer.js';
+import { evalStats } from '../js/containers/dataContainer.js';
 import { calcEvalStatsDoc, compareGroundTruth } from '../js/recognizeConvert.js';
-import { initOCRVersion, setCurrentHOCR } from '../main.js';
+import { setCurrentHOCR, stateGUI, updateOcrVersionGUI } from '../main.js';
+import scribe from '../module.js';
 import { elem } from './elems.js';
 
 export async function compareGroundTruthClick(n) {
-  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
-
   await compareGroundTruth(n);
 
   const metricTotalWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsPage'));
@@ -31,7 +28,7 @@ export async function compareGroundTruthClick(n) {
   metricCorrectLowConfWordsPageElem.innerHTML = String(evalStats[n].correctLowConf);
   metricIncorrectHighConfWordsPageElem.innerHTML = String(evalStats[n].incorrectHighConf);
 
-  if (opt.ignoreExtra) {
+  if (scribe.opt.ignoreExtra) {
     metricWERPageElem.innerHTML = (Math.round(((evalStats[n].incorrect + evalStats[n].missed) / evalStats[n].total) * 100) / 100).toString();
   } else {
     metricWERPageElem.innerHTML = (Math.round(((evalStats[n].incorrect + evalStats[n].missed + evalStats[n].extra)
@@ -58,7 +55,7 @@ export async function compareGroundTruthClick(n) {
   metricCorrectLowConfWordsDocElem.innerHTML = evalStatsDoc.correctLowConf.toString();
   metricIncorrectHighConfWordsDocElem.innerHTML = evalStatsDoc.incorrectHighConf.toString();
 
-  if (opt.ignoreExtra) {
+  if (scribe.opt.ignoreExtra) {
     metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed) / evalStatsDoc.total) * 100) / 100).toString();
   } else {
     metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed + evalStatsDoc.extra) / evalStatsDoc.total) * 100) / 100).toString();
@@ -66,16 +63,16 @@ export async function compareGroundTruthClick(n) {
 }
 
 export function createGroundTruthClick() {
-  if (!ocrAll['Ground Truth']) {
-    ocrAll['Ground Truth'] = Array(ocrAll.active.length);
+  if (!scribe.data.ocr['Ground Truth']) {
+    scribe.data.ocr['Ground Truth'] = Array(scribe.data.ocr.active.length);
   }
 
   // Use whatever the current HOCR is as a starting point
-  for (let i = 0; i < ocrAll.active.length; i++) {
-    ocrAll['Ground Truth'][i] = structuredClone(ocrAll.active[i]);
+  for (let i = 0; i < scribe.data.ocr.active.length; i++) {
+    scribe.data.ocr['Ground Truth'][i] = structuredClone(scribe.data.ocr.active[i]);
   }
 
-  initOCRVersion('Ground Truth');
+  updateOcrVersionGUI();
   setCurrentHOCR('Ground Truth');
 
   const option = document.createElement('option');
@@ -86,8 +83,8 @@ export function createGroundTruthClick() {
   elem.evaluate.createGroundTruth.disabled = true;
   // compareGroundTruthElem.disabled = false;
 
-  inputData.evalMode = true;
+  scribe.inputData.evalMode = true;
 
   // Calculate statistics
-  compareGroundTruthClick(state.cp.n);
+  compareGroundTruthClick(stateGUI.cp.n);
 }

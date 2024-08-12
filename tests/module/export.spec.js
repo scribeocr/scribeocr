@@ -1,16 +1,12 @@
 // Relative imports are required to run in browser.
 /* eslint-disable import/no-relative-packages */
-import { clearData } from '../../js/clear.js';
-import { ocrAll } from '../../js/containers/dataContainer.js';
-import { gs } from '../../js/containers/schedulerContainer.js';
-import { importFilesAll } from '../../js/import/import.js';
 import { assert, config } from '../../node_modules/chai/chai.js';
 // import mocha from '../../node_modules/mocha/mocha.js';
 import { renderHOCR } from '../../js/export/exportRenderHOCR.js';
-import { loadBuiltInFontsRaw } from '../../js/fontContainerMain.js';
-import { initGeneralScheduler, initTesseractInWorkers } from '../../js/generalWorkerMain.js';
+import { gs } from '../../js/generalWorkerMain.js';
 import { splitHOCRStr } from '../../js/import/importOCR.js';
 import ocr from '../../js/objects/ocrObjects.js';
+import scribe from '../../module.js';
 import { ASSETS_PATH_KARMA } from '../constants.js';
 
 config.truncateThreshold = 0; // Disable truncation for actual/expected values on assertion failure.
@@ -51,18 +47,14 @@ const standardizeOCRPages = (ocrArr) => {
 describe('Check .hocr export function.', function () {
   this.timeout(10000);
   before(async () => {
-    await initGeneralScheduler();
-    await initTesseractInWorkers({});
-    const resReadyFontAllRaw = gs.setFontAllRawReady();
-    await loadBuiltInFontsRaw().then(() => resReadyFontAllRaw());
-
-    await importFilesAll([`${ASSETS_PATH_KARMA}/scribe_test_pdf1_abbyy.xml`]);
+    await scribe.init({ ocr: true, font: true });
+    await scribe.importFiles([`${ASSETS_PATH_KARMA}/scribe_test_pdf1_abbyy.xml`]);
   });
 
   it('Exporting to .hocr and reimporting should restore OCR data without modification', async () => {
-    const ocrAllComp1 = standardizeOCRPages(ocrAll.active);
+    const ocrAllComp1 = standardizeOCRPages(scribe.data.ocr.active);
 
-    const hocrOutStrArr = splitHOCRStr(renderHOCR(ocrAll.active));
+    const hocrOutStrArr = splitHOCRStr(renderHOCR(scribe.data.ocr.active));
 
     const resArrPromises = hocrOutStrArr.map((x, i) => (gs.schedulerInner.addJob('convertPageHocr', { ocrStr: x, n: i, scribeMode: true })));
     const resArr = await Promise.all(resArrPromises);
@@ -74,7 +66,6 @@ describe('Check .hocr export function.', function () {
   }).timeout(10000);
 
   after(async () => {
-    await gs.terminate();
-    await clearData();
+    await scribe.terminate();
   });
 }).timeout(120000);

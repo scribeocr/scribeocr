@@ -21,7 +21,7 @@ export async function getAllFileEntries(dataTransferItemList) {
     if (dataTransferItemList[i].kind !== 'file') continue;
     // Note webkitGetAsEntry a non-standard feature and may change
     // Usage is necessary for handling directories
-    /**@type {FileSystemEntry|File} */
+    /** @type {FileSystemEntry|File} */
     let entry = dataTransferItemList[i].webkitGetAsEntry();
     // Sometimes, webkitGetAsEntry returns null but getAsFile returns a file properly.
     // The reason for this is unknown--it is observed when dragging an image from a web page rather than a file.

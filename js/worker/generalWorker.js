@@ -5,7 +5,7 @@ import { convertPageStext } from '../import/convertPageStext.js';
 
 import { fontAll, loadFontsFromSource } from '../containers/fontContainer.js';
 import {
-  compareOCR,
+  compareOCRPageImp,
   evalPage,
   evalPageFont,
   evalWords,
@@ -273,9 +273,9 @@ async function setDefaultFontNameWorker({ defaultFontName }) {
   fontAll.defaultFontName = defaultFontName;
 }
 
-async function compareOCRWrap(args) {
+async function compareOCRPageImpWrap(args) {
   args.options.tessWorker = worker;
-  return await compareOCR(args);
+  return await compareOCRPageImp(args);
 }
 
 postMessage({ data: 'ready', id: 0 });
@@ -305,7 +305,7 @@ addEventListener('message', async (e) => {
     evalPageFont,
     evalPage,
     evalWords,
-    compareOCR: compareOCRWrap,
+    compareOCRPageImp: compareOCRPageImpWrap,
     nudgePageFontSize,
     nudgePageBaseline,
 

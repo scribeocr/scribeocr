@@ -1,9 +1,9 @@
-import { calcOverlap } from '../modifyOCR.js';
+import { calcBoxOverlap } from '../modifyOCR.js';
 
 import ocr from '../objects/ocrObjects.js';
 
 import { inputData, opt } from '../containers/app.js';
-import { LayoutDataTables } from '../containers/dataContainer.js';
+import { layoutDataTables } from '../containers/dataContainer.js';
 
 /**
  * @param {ReturnType<extractTableContent>} tableWordObj
@@ -94,7 +94,7 @@ export function extractSingleTableContent(pageObj, boxes) {
 
       if (obj.inclusionLevel !== 'line') continue;
 
-      const overlap = obj.inclusionRule === 'left' ? calcOverlap(lineBoxALeft, obj.coords) : calcOverlap(lineObj.bbox, obj.coords);
+      const overlap = obj.inclusionRule === 'left' ? calcBoxOverlap(lineBoxALeft, obj.coords) : calcBoxOverlap(lineObj.bbox, obj.coords);
       if (overlap > 0.5) {
         for (let k = 0; k < lineObj.words.length; k++) {
           const wordObj = lineObj.words[k];
@@ -121,7 +121,7 @@ export function extractSingleTableContent(pageObj, boxes) {
           left: wordObj.bbox.left, top: wordObj.bbox.top, right: wordObj.bbox.left + 1, bottom: wordObj.bbox.bottom,
         };
 
-        const overlap = obj.inclusionRule === 'left' ? calcOverlap(wordBoxALeft, obj.coords) : calcOverlap(wordObj.bbox, obj.coords);
+        const overlap = obj.inclusionRule === 'left' ? calcBoxOverlap(wordBoxALeft, obj.coords) : calcBoxOverlap(wordObj.bbox, obj.coords);
 
         if (overlap > 0.5) {
           wordArr.push(wordObj);
@@ -139,7 +139,7 @@ export function extractSingleTableContent(pageObj, boxes) {
       for (let j = 0; j < boxesArr.length; j++) {
         const obj = boxesArr[j];
 
-        const overlap = calcOverlap(wordObj.bbox, obj.coords);
+        const overlap = calcBoxOverlap(wordObj.bbox, obj.coords);
 
         if (overlap > 0.5) {
           wordArr.push(wordObj);
@@ -203,7 +203,7 @@ export function extractSingleTableContent(pageObj, boxes) {
 
     for (let i = 0; i < indexArr.length; i++) {
       for (let j = indexArr[i]; j < colArr[i].length; j++) {
-        const overlap = calcOverlap(colArr[i][j].box, rowBox);
+        const overlap = calcBoxOverlap(colArr[i][j].box, rowBox);
         if (overlap > 0.5) {
           colWordArr[i].push(colArr[i][j].word);
           if (!rowBottom || colArr[i][j].box.bottom > rowBottom) rowBottom = colArr[i][j].box.bottom;
@@ -360,7 +360,7 @@ export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
     }
     if (opt.xlsxPageNumberColumn) extraCols.push(String(i + 1));
 
-    const tableWordObj = extractTableContent(ocrPageArr[i], LayoutDataTables.pages[i]);
+    const tableWordObj = extractTableContent(ocrPageArr[i], layoutDataTables.pages[i]);
     const cellsObj = createCells(tableWordObj, extraCols, rowCount);
     rowCount += cellsObj.rows;
     sheetContent += cellsObj.content;

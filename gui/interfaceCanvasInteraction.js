@@ -1,10 +1,7 @@
 /* eslint-disable import/no-cycle */
-import { state } from '../js/containers/app.js';
-import { LayoutRegions } from '../js/containers/dataContainer.js';
-import { showHideElem } from '../js/utils/miscUtils.js';
-import { mergeOcrWords, splitOcrWord } from '../js/utils/ocrUtils.js';
 import { Konva } from '../lib/konva/_FullInternals.js';
-import { renderPageQueue } from '../main.js';
+import { renderPageQueue, stateGUI } from '../main.js';
+import scribe from '../module.js';
 import {
   KonvaOcrWord,
   ScribeCanvas,
@@ -19,6 +16,7 @@ import {
   addLayoutDataTableClick,
   checkDataColumnsAdjacent, checkDataTablesAdjacent, mergeDataColumns, mergeDataTables, selectLayoutBoxesArea, splitDataColumn, splitDataTable,
 } from './interfaceLayout.js';
+import { showHideElem } from './utils/utils.js';
 
 const createContextMenuHTML = () => {
   const menuDiv = document.createElement('div');
@@ -111,13 +109,13 @@ const splitWordClick = () => {
   if (!konvaWord) return;
 
   const splitIndex = KonvaOcrWord.getCursorIndex(konvaWord);
-  const { wordA, wordB } = splitOcrWord(konvaWord.word, splitIndex);
+  const { wordA, wordB } = scribe.utils.splitOcrWord(konvaWord.word, splitIndex);
 
   const wordIndex = konvaWord.word.line.words.findIndex((x) => x.id === konvaWord.word.id);
 
   konvaWord.word.line.words.splice(wordIndex, 1, wordA, wordB);
 
-  renderPageQueue(state.cp.n);
+  renderPageQueue(stateGUI.cp.n);
 };
 
 const mergeWordsClick = () => {
@@ -125,13 +123,13 @@ const mergeWordsClick = () => {
 
   const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (selectedWords.length < 2 || !checkWordsAdjacent(selectedWords)) return;
-  const newWord = mergeOcrWords(selectedWords.map((x) => x.word));
+  const newWord = scribe.utils.mergeOcrWords(selectedWords.map((x) => x.word));
   const lineWords = selectedWords[0].word.line.words;
   lineWords.sort((a, b) => a.bbox.left - b.bbox.left);
   const firstIndex = lineWords.findIndex((x) => x.id === selectedWords[0].word.id);
   lineWords.splice(firstIndex, selectedWords.length, newWord);
 
-  renderPageQueue(state.cp.n);
+  renderPageQueue(stateGUI.cp.n);
 };
 
 const deleteLayoutDataTableClick = () => {
@@ -148,7 +146,7 @@ const deleteLayoutBoxClick = () => {
   hideContextMenu();
   const selectedLayoutBoxes = ScribeCanvas.CanvasSelection.getKonvaLayoutBoxes();
   selectedLayoutBoxes.forEach((obj) => {
-    delete LayoutRegions.pages[state.cp.n].boxes[obj.layoutBox.id];
+    delete scribe.data.layoutRegions.pages[stateGUI.cp.n].boxes[obj.layoutBox.id];
     obj.destroy();
   });
   ScribeCanvas.destroyControls();
@@ -254,7 +252,7 @@ stage.on('contextmenu', (e) => {
 
   let enableSplitWord = false;
   let enableMergeWords = false;
-  if (!state.layoutMode && e.target instanceof KonvaOcrWord) {
+  if (!stateGUI.layoutMode && e.target instanceof KonvaOcrWord) {
     if (selectedWords.length < 2) {
       const cursorIndex = KonvaOcrWord.getCursorIndex(e.target);
       if (cursorIndex > 0 && cursorIndex < e.target.word.text.length) {
@@ -408,7 +406,7 @@ stage.on('mousemove touchmove', (e) => {
 
 stage.on('mouseup touchend', (event) => {
   // For dragging layout boxes, other events are needed to stop the drag.
-  if (!state.layoutMode) {
+  if (!stateGUI.layoutMode) {
     event.evt.preventDefault();
     event.evt.stopPropagation();
   }
@@ -462,12 +460,12 @@ stage.on('mouseup touchend', (event) => {
     const box = {
       x: ptr.x, y: ptr.y, width: 1, height: 1,
     };
-    if (ScribeCanvas.mode === 'select' && !state.layoutMode) {
+    if (ScribeCanvas.mode === 'select' && !stateGUI.layoutMode) {
       ScribeCanvas.destroyControls(!event.evt.ctrlKey);
       selectWords(box);
       KonvaOcrWord.updateUI();
       layerText.batchDraw();
-    } else if (ScribeCanvas.mode === 'select' && state.layoutMode) {
+    } else if (ScribeCanvas.mode === 'select' && stateGUI.layoutMode) {
       ScribeCanvas.destroyControls(!event.evt.ctrlKey);
       selectLayoutBoxesArea(box);
       KonvaLayout.updateUI();
@@ -479,12 +477,12 @@ stage.on('mouseup touchend', (event) => {
   // update visibility in timeout, so we can check it in click event
   ScribeCanvas.selectingRectangle.visible(false);
 
-  if (ScribeCanvas.mode === 'select' && !state.layoutMode) {
+  if (ScribeCanvas.mode === 'select' && !stateGUI.layoutMode) {
     ScribeCanvas.destroyControls(!event.evt.ctrlKey);
     const box = ScribeCanvas.selectingRectangle.getClientRect();
     selectWords(box);
     KonvaOcrWord.updateUI();
-  } else if (ScribeCanvas.mode === 'select' && state.layoutMode) {
+  } else if (ScribeCanvas.mode === 'select' && stateGUI.layoutMode) {
     ScribeCanvas.destroyControls(!event.evt.ctrlKey);
     const box = ScribeCanvas.selectingRectangle.getClientRect();
     selectLayoutBoxesArea(box);

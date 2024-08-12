@@ -1,18 +1,9 @@
 /* eslint-disable import/no-cycle */
 
-import { opt, state } from '../js/containers/app.js';
-import {
-  DebugData,
-  fontMetricsObj, LayoutRegions,
-  ocrAll, pageMetricsArr
-} from '../js/containers/dataContainer.js';
-import { ImageCache } from '../js/containers/imageContainer.js';
-import { gs } from '../js/containers/schedulerContainer.js';
-import { drawDebugImages } from '../js/debug.js';
-import { calcOverlap } from '../js/modifyOCR.js';
-import ocr from '../js/objects/ocrObjects.js';
-import { imageStrToBlob } from '../js/utils/imageUtils.js';
+import { gs } from '../js/generalWorkerMain.js';
 import { saveAs } from '../js/utils/miscUtils.js';
+import { stateGUI } from '../main.js';
+import scribe from '../module.js';
 import { elem } from './elems.js';
 import {
   layerText,
@@ -39,15 +30,15 @@ export async function showDebugImages() {
   /** @type {Array<Array<CompDebugBrowser>>} */
   const compDebugArrArr = [];
 
-  const compDebugArr1 = DebugData.debugImg?.['Tesseract Combined']?.[state.cp.n];
-  const compDebugArr2 = DebugData.debugImg?.Combined?.[state.cp.n];
-  const compDebugArr3 = DebugData.debugImg?.recognizeArea?.[state.cp.n];
+  const compDebugArr1 = scribe.data.debug.debugImg?.['Tesseract Combined']?.[stateGUI.cp.n];
+  const compDebugArr2 = scribe.data.debug.debugImg?.Combined?.[stateGUI.cp.n];
+  const compDebugArr3 = scribe.data.debug.debugImg?.recognizeArea?.[stateGUI.cp.n];
 
   if (compDebugArr1 && compDebugArr1.length > 0) compDebugArrArr.push(compDebugArr1);
   if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);
   if (compDebugArr3 && compDebugArr3.length > 0) compDebugArrArr.push(compDebugArr3);
 
-  if (compDebugArrArr.length > 0) await drawDebugImages({ ctx: ctxDebug, compDebugArrArr, context: 'browser' });
+  if (compDebugArrArr.length > 0) await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr, context: 'browser' });
 }
 
 export async function evalSelectedLine() {
@@ -59,16 +50,16 @@ export async function evalSelectedLine() {
 
   const word0 = selectedObjects[0].word;
 
-  const imageBinary = await ImageCache.getBinary(state.cp.n);
+  const imageBinary = await scribe.data.image.getBinary(stateGUI.cp.n);
 
-  const pageMetricsObj = pageMetricsArr[state.cp.n];
+  const pageMetricsObj = scribe.data.pageMetrics[stateGUI.cp.n];
 
-  const lineObj = ocr.cloneLine(word0.line);
+  const lineObj = scribe.utils.ocr.cloneLine(word0.line);
 
   const imgDims = structuredClone(pageMetricsObj.dims);
   const imgAngle = imageBinary.rotated ? (pageMetricsObj.angle || 0) : 0;
   if (imageBinary.upscaled) {
-    ocr.scaleLine(lineObj, 2);
+    scribe.utils.ocr.scaleLine(lineObj, 2);
     imgDims.width *= 2;
     imgDims.height *= 2;
   }
@@ -81,13 +72,13 @@ export async function evalSelectedLine() {
     options: { view: true },
   });
 
-  await drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
+  await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
 
-  setCanvasWidthHeightZoom(pageMetricsArr[state.cp.n].dims, true);
+  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, true);
 }
 
 export async function downloadCanvas() {
-  const dims = pageMetricsArr[state.cp.n].dims;
+  const dims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
 
   const startX = layerText.x() > 0 ? Math.round(layerText.x()) : 0;
   const startY = layerText.y() > 0 ? Math.round(layerText.y()) : 0;
@@ -98,27 +89,27 @@ export async function downloadCanvas() {
     x: startX, y: startY, width, height,
   });
 
-  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(state.cp.n)}.png`;
-  const imgBlob = imageStrToBlob(canvasDataStr);
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(stateGUI.cp.n)}.png`;
+  const imgBlob = scribe.utils.imageStrToBlob(canvasDataStr);
   saveAs(imgBlob, fileName);
 }
 
 export async function downloadImage(n) {
-  const image = opt.colorMode === 'binary' ? await ImageCache.getBinary(n) : await ImageCache.getNative(n);
+  const image = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinary(n) : await scribe.data.image.getNative(n);
   const filenameBase = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}`;
 
   const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
-  const imgBlob = imageStrToBlob(image.src);
+  const imgBlob = scribe.utils.imageStrToBlob(image.src);
   saveAs(imgBlob, fileName);
 }
 
 export async function downloadCurrentImage() {
-  await downloadImage(state.cp.n);
+  await downloadImage(stateGUI.cp.n);
 }
 
 export async function downloadAllImages() {
-  const binary = opt.colorMode === 'binary';
-  for (let i = 0; i < ImageCache.pageCount; i++) {
+  const binary = scribe.opt.colorMode === 'binary';
+  for (let i = 0; i < scribe.data.image.pageCount; i++) {
     await downloadImage(i);
     // Not all files will be downloaded without a delay between downloads
     await new Promise((r) => setTimeout(r, 200));
@@ -126,8 +117,8 @@ export async function downloadAllImages() {
 }
 
 export function getExcludedText() {
-  for (let i = 0; i <= ocrAll.active.length; i++) {
-    const textArr = getExcludedTextPage(ocrAll.active[i], LayoutRegions.pages[i]);
+  for (let i = 0; i <= scribe.data.ocr.active.length; i++) {
+    const textArr = getExcludedTextPage(scribe.data.ocr.active[i], scribe.data.layoutRegions.pages[i]);
 
     if (textArr.length > 0) {
       textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));
@@ -157,7 +148,7 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
     const lineA = pageA.lines[i];
 
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
-      const overlap = calcOverlap(lineA.bbox, obj.coords);
+      const overlap = scribe.utils.calcBoxOverlap(lineA.bbox, obj.coords);
       if (overlap > 0.5) {
         if (obj.type === 'order') {
           orderArr[i] = obj.order;
@@ -176,6 +167,6 @@ export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
   return excludedArr;
 }
 
-function lookupKerning(letterA, letterB) {
-  return fontMetricsObj.SerifDefault.normal.kerning[`${letterA.charCodeAt(0)},${letterB.charCodeAt(0)}`];
-}
+// function lookupKerning(letterA, letterB) {
+//   return fontMetricsObj.SerifDefault.normal.kerning[`${letterA.charCodeAt(0)},${letterB.charCodeAt(0)}`];
+// }

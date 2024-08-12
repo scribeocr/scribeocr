@@ -1,5 +1,5 @@
-import { sleep } from '../../js/utils/miscUtils.js';
 import { Collapse } from '../../lib/bootstrap.esm.bundle.min.js';
+import { sleep } from './utils.js';
 
 export class ProgressBar {
   /**
@@ -8,7 +8,7 @@ export class ProgressBar {
    * @param {number} initValue
    * @param {boolean} alwaysUpdateUI - Always update the UI every time the value increments.
    */
-  constructor(id, maxValue, initValue = 0, alwaysUpdateUI = false) {
+  constructor(id, maxValue, initValue = 0, alwaysUpdateUI = false, progressCallback = null) {
     this.progressCollapse = document.getElementById(id);
     if (!this.progressCollapse) throw new Error(`Progress bar with ID ${id} not found.`);
 
@@ -20,6 +20,8 @@ export class ProgressBar {
     this.maxValue = maxValue;
     this.alwaysUpdateUI = alwaysUpdateUI;
 
+    this.progressCallback = progressCallback;
+
     this.progressCollapseObj.hide();
   }
 
@@ -28,7 +30,7 @@ export class ProgressBar {
    * @param {number} maxValue
    * @param {number} [initValue=0]
    */
-  show(maxValue, initValue = 0) {
+  async show(maxValue, initValue = 0) {
     this.maxValue = maxValue;
     this.value = initValue;
     this.progressBar.setAttribute('aria-valuenow', initValue.toString());
@@ -37,6 +39,7 @@ export class ProgressBar {
     this.progressCollapseObj.show();
     // eslint-disable-next-line no-use-before-define
     ProgressBars.active = this;
+    await sleep(0);
   }
 
   async increment() {

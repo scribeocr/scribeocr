@@ -13,7 +13,7 @@ module.exports = function (config) {
 
     // list of files / patterns to load in the browser
     files: [
-      { pattern: 'tests/general/*spec.js', type: 'module' },
+      { pattern: 'tests/module/*spec.js', type: 'module' },
       // Non-test files are not served by default, even if referenced in the test files.
       { pattern: '**/*', included: false, served: true },
     ],

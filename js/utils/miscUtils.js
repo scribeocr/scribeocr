@@ -79,10 +79,6 @@ export const mean50 = (arr) => {
   return numsMiddle.reduce((a, b) => a + b) / numsMiddle.length;
 };
 
-export function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 /**
  * Unescapes XML in a string. This should be replaced with a more robust solution.
  * @param {String} string
@@ -225,7 +221,7 @@ export function round6(x) {
  * @see Unit Test https://jsfiddle.net/Victornpb/5axuh96u/
  * @see https://stackoverflow.com/a/7924240/938822
  */
-export function occurrences(string, subString, allowOverlapping, caseSensitive = false) {
+export function countSubstringOccurrences(string, subString, allowOverlapping, caseSensitive = false) {
   string += '';
   subString += '';
   if (subString.length <= 0) return (string.length + 1);
@@ -384,19 +380,6 @@ export function getTextScript(text) {
 
   return { han, latin };
 }
-
-/**
- * Adds or removes CSS attribute `display:none` for HTML element.
- * @param {HTMLElement} elem
- * @param {boolean} show
- */
-export const showHideElem = (elem, show = true) => {
-  const styleCurrent = elem?.getAttribute('style');
-  let styleNew = styleCurrent?.replace(/display\s*:\s*\w+/, '')?.replace(/;{2,}/g, ';') || '';
-  if (!show) styleNew += ';display:none;';
-
-  elem?.setAttribute('style', styleNew);
-};
 
 export const replaceSmartQuotes = (text) => {
   if (!/['"]/.test(text)) return text;

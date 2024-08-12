@@ -1,6 +1,6 @@
 import { opt } from '../containers/app.js';
 import {
-  fontMetricsObj, LayoutDataTables, LayoutRegions, pageMetricsArr,
+  fontMetricsObj, layoutDataTables, layoutRegions, pageMetricsArr,
 } from '../containers/dataContainer.js';
 import { fontAll } from '../containers/fontContainer.js';
 import ocr from '../objects/ocrObjects.js';
@@ -22,8 +22,8 @@ export function renderHOCR(ocrData, minValue, maxValue) {
     'sans-font': fontAll.sansDefaultName,
     'serif-font': fontAll.serifDefaultName,
     'enable-opt': opt.enableOpt,
-    layout: LayoutRegions.pages,
-    'layout-data-table': LayoutDataTables.pages,
+    layout: layoutRegions.pages,
+    'layout-data-table': layoutDataTables.pages,
   };
 
   let hocrOut = String.raw`<?xml version="1.0" encoding="UTF-8"?>

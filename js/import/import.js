@@ -1,18 +1,19 @@
-import { inputData, opt, state } from '../containers/app.js';
+import { inputData, opt } from '../containers/app.js';
 import {
+  convertPageWarn,
   fontMetricsObj,
-  LayoutDataTables,
-  LayoutRegions,
+  layoutDataTables,
+  layoutRegions,
   ocrAll,
   ocrAllRaw,
   pageMetricsArr,
 } from '../containers/dataContainer.js';
 import { fontAll } from '../containers/fontContainer.js';
 import { ImageCache, imageUtils, ImageWrapper } from '../containers/imageContainer.js';
-import { gs } from '../containers/schedulerContainer.js';
 import { enableDisableFontOpt, optimizeFontContainerAll, setDefaultFontAuto } from '../fontContainerMain.js';
 import { runFontOptimization } from '../fontEval.js';
 import { calcFontMetricsFromPages } from '../fontStatistics.js';
+import { gs } from '../generalWorkerMain.js';
 import { LayoutDataTablePage, LayoutPage } from '../objects/layoutObjects.js';
 import { PageMetrics } from '../objects/pageMetricsObjects.js';
 import { checkCharWarn, convertOCRAll } from '../recognizeConvert.js';
@@ -124,7 +125,6 @@ export async function importFilesAll(files) {
 
   const curFiles = await standardizeFiles(files);
 
-  state.downloadReady = false;
   ImageCache.loadCount = 0;
 
   pageMetricsArr.length = 0;
@@ -133,7 +133,7 @@ export async function importFilesAll(files) {
   /** @type {Array<File|FileNode>} */
   const imageFilesAll = [];
   /** @type {Array<File|FileNode>} */
-  const hocrFilesAll = [];
+  const ocrFilesAll = [];
   /** @type {Array<File|FileNode>} */
   const pdfFilesAll = [];
   /** @type {Array<File|FileNode>} */
@@ -151,7 +151,7 @@ export async function importFilesAll(files) {
       imageFilesAll.push(file);
       // All .gz files are assumed to be OCR data (xml) since all other file types can be compressed already
     } else if (['hocr', 'xml', 'html', 'gz', 'stext'].includes(fileExt)) {
-      hocrFilesAll.push(file);
+      ocrFilesAll.push(file);
     } else if (['pdf'].includes(fileExt)) {
       pdfFilesAll.push(file);
     } else {
@@ -162,7 +162,7 @@ export async function importFilesAll(files) {
 
   if (unsupportedFilesAll.length > 0) {
     const errorText = `Import includes unsupported file types: ${Object.keys(unsupportedExt).join(', ')}`;
-    state.warningHandler(errorText);
+    opt.warningHandler(errorText);
   }
 
   if (pdfFilesAll[0]) {
@@ -175,12 +175,12 @@ export async function importFilesAll(files) {
   let downloadFileName = pdfFilesAll.length > 0 ? pdfFilesAll[0].name : curFiles[0].name;
   downloadFileName = downloadFileName.replace(/\.\w{1,4}$/, '');
   downloadFileName += '.pdf';
-  state.downloadFileName = downloadFileName;
+  inputData.defaultDownloadFileName = downloadFileName;
 
   imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
-  hocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+  ocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
-  await importFilesByType({ pdfFiles: pdfFilesAll, imageFiles: imageFilesAll, hocrFiles: hocrFilesAll });
+  await importFilesByType({ pdfFiles: pdfFilesAll, imageFiles: imageFilesAll, ocrFiles: ocrFilesAll });
 }
 
 /**
@@ -188,22 +188,22 @@ export async function importFilesAll(files) {
  * @param {Object} param
  * @param {Array<File|FileNode|ArrayBuffer>} param.pdfFiles
  * @param {Array<File|FileNode|ArrayBuffer>} param.imageFiles
- * @param {Array<File|FileNode|ArrayBuffer>} param.hocrFiles
+ * @param {Array<File|FileNode|ArrayBuffer>} param.ocrFiles
  * @returns
  */
-export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
-  if (pdfFiles.length === 0 && imageFiles.length === 0 && hocrFiles.length === 0) {
+export async function importFilesByType({ pdfFiles, imageFiles, ocrFiles }) {
+  if (pdfFiles.length === 0 && imageFiles.length === 0 && ocrFiles.length === 0) {
     const errorText = 'No supported files found.';
-    state.errorHandler(errorText);
+    opt.errorHandler(errorText);
     return;
   } if (pdfFiles.length > 0 && imageFiles.length > 0) {
     const errorText = 'PDF and image files cannot be imported together. Only first PDF file will be imported.';
-    state.warningHandler(errorText);
+    opt.warningHandler(errorText);
     pdfFiles.length = 1;
     imageFiles.length = 0;
   } else if (pdfFiles.length > 1) {
     const errorText = 'Multiple PDF files are not supported. Only first PDF file will be imported.';
-    state.warningHandler(errorText);
+    opt.warningHandler(errorText);
     pdfFiles.length = 1;
     imageFiles.length = 0;
   }
@@ -212,7 +212,7 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
   inputData.imageMode = !!(imageFiles.length > 0 && !inputData.pdfMode);
   ImageCache.inputModes.image = !!(imageFiles.length > 0 && !inputData.pdfMode);
 
-  const xmlModeImport = hocrFiles.length > 0;
+  const xmlModeImport = ocrFiles.length > 0;
 
   // Extract text from PDF document
   // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
@@ -223,7 +223,7 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
   // PDF files do not, as PDF files are not processed page-by-page at the import step.
   let progressMax = 0;
   if (inputData.imageMode) progressMax += imageFiles.length;
-  if (xmlModeImport) progressMax += hocrFiles.length;
+  if (xmlModeImport) progressMax += ocrFiles.length;
 
   // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
   // Therefore, a dummy loading bar with a max of 1 is created even when progress is not meaningfully tracked.
@@ -233,7 +233,7 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
     progressMax = 1;
   }
 
-  if (state.progress) state.progress.show(progressMax);
+  if (opt.progress) opt.progress.show(progressMax);
 
   let pageCount;
   let pageCountImage;
@@ -264,10 +264,10 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
   let stextMode;
   if (xmlModeImport) {
     // Initialize a new array on `ocrAll` if one does not already exist
-    if (!ocrAll[oemName]) ocrAll[oemName] = Array(state.pageCount);
+    if (!ocrAll[oemName]) ocrAll[oemName] = Array(inputData.pageCount);
     ocrAll.active = ocrAll[oemName];
 
-    const ocrData = await importOCRFiles(Array.from(hocrFiles));
+    const ocrData = await importOCRFiles(Array.from(ocrFiles));
 
     ocrAllRaw.active = ocrData.hocrRaw;
     // Subset OCR data to avoid uncaught error that occurs when there are more pages of OCR data than image data.
@@ -314,14 +314,14 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
     // Restore layout data from previous session (if applicable)
     if (ocrData.layoutObj) {
       for (let i = 0; i < ocrData.layoutObj.length; i++) {
-        LayoutRegions.pages[i] = ocrData.layoutObj[i];
+        layoutRegions.pages[i] = ocrData.layoutObj[i];
       }
       existingLayout = true;
     }
 
     if (ocrData.layoutDataTableObj) {
       for (let i = 0; i < ocrData.layoutDataTableObj.length; i++) {
-        LayoutDataTables.pages[i] = ocrData.layoutDataTableObj[i];
+        layoutDataTables.pages[i] = ocrData.layoutDataTableObj[i];
       }
       existingLayoutDataTable = true;
     }
@@ -332,7 +332,7 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
     stextMode = ocrData.stextMode;
   } else if (inputData.extractTextMode) {
     // Initialize a new array on `ocrAll` if one does not already exist
-    if (!ocrAll[oemName]) ocrAll[oemName] = Array(state.pageCount);
+    if (!ocrAll[oemName]) ocrAll[oemName] = Array(inputData.pageCount);
     ocrAll.active = ocrAll[oemName];
     stextMode = true;
   }
@@ -343,36 +343,36 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
   if (xmlModeImport && (inputData.imageMode || inputData.pdfMode)) {
     if (pageCountImage !== pageCountHOCR) {
       const warningHTML = `Page mismatch detected. Image data has ${pageCountImage} pages while OCR data has ${pageCountHOCR} pages.`;
-      state.warningHandler(warningHTML);
+      opt.warningHandler(warningHTML);
     }
   }
 
-  state.pageCount = pageCountImage ?? pageCountHOCR;
+  inputData.pageCount = pageCountImage ?? pageCountHOCR;
 
   ocrAllRaw.active = ocrAllRaw.active || Array(pageCount);
 
   if (!existingLayout) {
-    for (let i = 0; i < state.pageCount; i++) {
-      LayoutRegions.pages[i] = new LayoutPage();
+    for (let i = 0; i < inputData.pageCount; i++) {
+      layoutRegions.pages[i] = new LayoutPage();
     }
   }
 
   if (!existingLayoutDataTable) {
-    for (let i = 0; i < state.pageCount; i++) {
-      LayoutDataTables.pages[i] = new LayoutDataTablePage();
+    for (let i = 0; i < inputData.pageCount; i++) {
+      layoutDataTables.pages[i] = new LayoutDataTablePage();
     }
   }
 
-  inputData.xmlMode = new Array(state.pageCount);
+  inputData.xmlMode = new Array(inputData.pageCount);
 
   inputData.xmlMode.fill(false);
 
   // Render first page for PDF only
-  if (inputData.pdfMode && !xmlModeImport && state.display) state.display(0);
+  if (inputData.pdfMode && !xmlModeImport && opt.displayFunc) opt.displayFunc(0);
 
   if (inputData.imageMode) {
-    ImageCache.pageCount = state.pageCount;
-    for (let i = 0; i < state.pageCount; i++) {
+    ImageCache.pageCount = inputData.pageCount;
+    for (let i = 0; i < inputData.pageCount; i++) {
       ImageCache.nativeSrc[i] = await importImageFile(imageFiles[i]).then(async (imgStr) => {
         const imgWrapper = new ImageWrapper(i, imgStr, 'native', false, false);
         const imageDims = await imageUtils.getDims(imgWrapper);
@@ -380,8 +380,8 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
         return imgWrapper;
       });
       ImageCache.loadCount++;
-      if (state.display && i === 0) state.display(0);
-      if (state.progress) state.progress.increment();
+      if (opt.displayFunc && i === 0) opt.displayFunc(0);
+      if (opt.progress) opt.progress.increment();
     }
   }
 
@@ -395,12 +395,51 @@ export async function importFilesByType({ pdfFiles, imageFiles, hocrFiles }) {
     await convertOCRAll(ocrAllRaw.active, true, format, oemName, scribeMode).then(async () => {
       // Skip this step if optimization info was already restored from a previous session, or if using stext (which is character-level but not visually accurate).
       if (!existingOpt && !stextMode) {
-        await checkCharWarn(state.convertPageWarn);
+        await checkCharWarn(convertPageWarn);
         calcFontMetricsFromPages(ocrAll.active);
         opt.enableOpt = await runFontOptimization(ocrAll.active);
       }
     });
   }
 
-  if (dummyLoadingBar && state.progress) state.progress.increment();
+  if (dummyLoadingBar && opt.progress) opt.progress.increment();
+}
+
+// Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
+
+/**
+ * Import supplemental OCR files, such as an alternate OCR version or ground truth data.
+ * This function should not be used to import the main OCR files.
+ * @param {Array<File>|FileList|Array<string>} files
+ * @param {string} ocrName - Name of the OCR version (e.g. "Ground Truth")
+ */
+export async function importFilesSupp(files, ocrName) {
+  if (!files || files.length === 0) return;
+
+  if (opt.progress) opt.progress.show(files.length);
+
+  const curFiles = await standardizeFiles(files);
+
+  /** @type {Array<File|FileNode>} */
+  const ocrFilesAll = [];
+  for (let i = 0; i < curFiles.length; i++) ocrFilesAll.push(curFiles[i]);
+
+  ocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
+
+  const ocrData = await importOCRFiles(ocrFilesAll);
+
+  const pageCountHOCR = ocrData.hocrRaw.length;
+
+  // If both OCR data and image data are present, confirm they have the same number of pages
+  if (ImageCache.pageCount > 0 && ImageCache.pageCount !== pageCountHOCR) {
+    const warningHTML = `Page mismatch detected. Image data has ${ImageCache.pageCount} pages while OCR data has ${pageCountHOCR} pages.`;
+    opt.warningHandler(warningHTML);
+  }
+
+  /** @type {("hocr" | "abbyy" | "stext")} */
+  let format = 'hocr';
+  if (ocrData.abbyyMode) format = 'abbyy';
+  if (ocrData.stextMode) format = 'stext';
+
+  convertOCRAll(ocrData.hocrRaw, false, format, ocrName);
 }

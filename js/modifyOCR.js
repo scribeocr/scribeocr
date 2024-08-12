@@ -6,7 +6,7 @@ import { getRandomAlphanum } from './utils/miscUtils.js';
  * @param {bbox} boxA
  * @param {bbox} boxB
  */
-export function calcOverlap(boxA, boxB) {
+export function calcBoxOverlap(boxA, boxB) {
   const left = Math.max(boxA.left, boxB.left);
   const top = Math.max(boxA.top, boxB.top);
   const right = Math.min(boxA.right, boxB.right);
@@ -34,7 +34,7 @@ export function calcOverlap(boxA, boxB) {
  * @param {boolean} editWordIds - Edit word IDs in `pageB` by appending random characters to the end.
  *  As word ID values must be unique, this is useful when `pageB` may contain duplicative values.
  */
-export function combineData(pageA, pageB, pageMetricsObj, replaceFontSize = false, editWordIds = true) {
+export function combineOCRPage(pageA, pageB, pageMetricsObj, replaceFontSize = false, editWordIds = true) {
   const linesNew = pageA.lines;
   const { lines } = pageB;
 
@@ -232,7 +232,7 @@ export function reorderOcrPage(page, layoutObj, applyExclude = true, editInPlace
     const lineBoxA = hocrALine.bbox;
 
     for (const [id, obj] of Object.entries(layoutObj.boxes)) {
-      const overlap = calcOverlap(lineBoxA, obj.coords);
+      const overlap = calcBoxOverlap(lineBoxA, obj.coords);
       if (overlap > 0.5) {
         if (obj.type === 'order') {
           orderArr[i] = obj.order;

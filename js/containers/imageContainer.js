@@ -14,10 +14,9 @@ import {
   loadOpentype,
 } from './fontContainer.js';
 
-import { initTesseractInWorkers } from '../generalWorkerMain.js';
+import { gs } from '../generalWorkerMain.js';
 import { determineSansSerif, range } from '../utils/miscUtils.js';
 import { opt } from './app.js';
-import { gs } from './schedulerContainer.js';
 
 /**
  *
@@ -359,7 +358,7 @@ export class ImageCache {
 
     const resPromise = (async () => {
     // Wait for non-rotated version before replacing with promise
-      if (typeof process === 'undefined') await initTesseractInWorkers({ anyOk: true });
+      if (typeof process === 'undefined') await gs.initTesseract({ anyOk: true });
       return scheduler.recognize({
         image: inputImage.src,
         options: { rotateRadians: angleArg, upscale: upscaleArg },

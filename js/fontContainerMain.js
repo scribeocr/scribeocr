@@ -7,7 +7,7 @@ import {
   loadFontsFromSource,
   loadOpentype,
 } from './containers/fontContainer.js';
-import { gs } from './containers/schedulerContainer.js';
+import { gs } from './generalWorkerMain.js';
 
 /**
  *

@@ -1,8 +1,8 @@
-import { inputData, opt, state } from '../containers/app.js';
-import { LayoutRegions, ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
+import { inputData, opt } from '../containers/app.js';
+import { layoutRegions, ocrAll, pageMetricsArr } from '../containers/dataContainer.js';
 import { ImageCache } from '../containers/imageContainer.js';
 import { reorderOcrPage } from '../modifyOCR.js';
-import { saveAs, sleep } from '../utils/miscUtils.js';
+import { saveAs } from '../utils/miscUtils.js';
 import { hocrToPDF } from './exportPDF.js';
 import { renderHOCR } from './exportRenderHOCR.js';
 import { renderText } from './exportRenderText.js';
@@ -16,10 +16,7 @@ import { renderText } from './exportRenderText.js';
 export async function exportData(downloadType, minValue = 0, maxValue = -1) {
   if (downloadType === 'text') downloadType = 'txt';
 
-  // If recognition is currently running, wait for it to finish.
-  await state.recognizeAllPromise;
-
-  if (maxValue === -1) maxValue = state.pageCount - 1;
+  if (maxValue === -1) maxValue = inputData.pageCount - 1;
 
   /** @type {Array<OcrPage>} */
   let ocrDownload = [];
@@ -27,7 +24,7 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
   if (downloadType !== 'hocr' && opt.enableLayout) {
     // Reorder HOCR elements according to layout boxes
     for (let i = 0; i < ocrAll.active.length; i++) {
-      ocrDownload.push(reorderOcrPage(ocrAll.active[i], LayoutRegions.pages[i]));
+      ocrDownload.push(reorderOcrPage(ocrAll.active[i], layoutRegions.pages[i]));
     }
   } else {
     ocrDownload = ocrAll.active;
@@ -48,8 +45,7 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
     // For proof or ocr mode the text layer needs to be combined with a background layer
     if (opt.displayMode !== 'ebook') {
       const steps = opt.addOverlay ? 2 : 3;
-      if (state.progress) state.progress.show((maxValue + 1) * steps);
-      await sleep(0);
+      if (opt.progress) await opt.progress.show((maxValue + 1) * steps);
 
       const insertInputPDF = inputData.pdfMode && opt.addOverlay;
 
@@ -63,9 +59,9 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
 
       // Page sizes should not be standardized at this step, as the overlayText/overlayTextImage functions will perform this,
       // and assume that the overlay PDF is the same size as the input images.
-      // The `maxpage` argument must be set manually to `state.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
+      // The `maxpage` argument must be set manually to `inputData.pageCount-1`, as this avoids an error in the case where there is no OCR data (`hocrDownload` has length 0).
       // In all other cases, this should be equivalent to using the default argument of `-1` (which results in `hocrDownload.length` being used).
-      const pdfStr = await hocrToPDF(ocrDownload, 0, state.pageCount - 1, opt.displayMode, rotateText, rotateBackground,
+      const pdfStr = await hocrToPDF(ocrDownload, 0, inputData.pageCount - 1, opt.displayMode, rotateText, rotateBackground,
         { width: -1, height: -1 }, opt.confThreshHigh, opt.confThreshMed, opt.overlayOpacity / 100);
 
       const enc = new TextEncoder();
@@ -99,7 +95,7 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
           });
 
           // Fill up progress bar to 100%
-          if (state.progress) state.progress.fill();
+          if (opt.progress) opt.progress.fill();
         } catch (error) {
           console.error('Failed to insert contents into input PDF, creating new PDF from rendered images instead.');
           console.error(error);
@@ -117,7 +113,7 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
         const renderImage = binary || inputData.pdfMode;
 
         // Pre-render to benefit from parallel processing, since the loop below is synchronous.
-        if (renderImage) await ImageCache.preRenderRange(minValue, maxValue, binary, props, state.progress);
+        if (renderImage) await ImageCache.preRenderRange(minValue, maxValue, binary, props, opt.progress);
 
         await w.overlayTextImageStart({ humanReadable: opt.humanReadablePDF });
         for (let i = minValue; i < maxValue + 1; i++) {
@@ -139,12 +135,12 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
           await w.overlayTextImageAddPage({
             doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle: angleImagePdf,
           });
-          if (state.progress) state.progress.increment();
+          if (opt.progress) opt.progress.increment();
         }
         content = await w.overlayTextImageEnd();
 
         // Fill up progress bar to 100%
-        if (state.progress) state.progress.fill();
+        if (opt.progress) opt.progress.fill();
 
         // Otherwise, there is only OCR data and not image data.
       } else if (!insertInputPDF) {
@@ -153,11 +149,10 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
         });
 
         // Fill up progress bar to 100%
-        if (state.progress) state.progress.fill();
+        if (opt.progress) opt.progress.fill();
       }
     } else {
-      if (state.progress) state.progress.show(maxValue + 1);
-      await sleep(0);
+      if (opt.progress) await opt.progress.show(maxValue + 1);
 
       const pdfStr = await hocrToPDF(ocrDownload, minValue, maxValue, opt.displayMode, false, true, dimsLimit, opt.confThreshHigh, opt.confThreshMed,
         opt.overlayOpacity / 100);
@@ -194,8 +189,7 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
     const writeDocx = (await import('./exportWriteDocx.js')).writeDocx;
     content = await writeDocx(ocrDownload, minValue, maxValue);
   } if (downloadType === 'xlsx') {
-    if (state.progress) state.progress.show(1);
-    await sleep(0);
+    if (opt.progress) await opt.progress.show(1);
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeXlsx = (await import('./exportWriteTabular.js')).writeXlsx;
     content = await writeXlsx(ocrDownload, minValue, maxValue);
@@ -212,12 +206,11 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
  */
 export async function download(downloadType, fileName, minValue = 0, maxValue = -1) {
   if (downloadType === 'text') downloadType = 'txt';
-  if (state.progress && downloadType !== 'pdf') {
-    state.progress.show(1);
-    await sleep(0);
+  if (opt.progress && downloadType !== 'pdf') {
+    await opt.progress.show(1);
   }
   fileName = fileName.replace(/\.\w{1,4}$/, `.${downloadType}`);
   const content = await exportData(downloadType, minValue, maxValue);
   saveAs(content, fileName);
-  if (state.progress) state.progress.fill();
+  if (opt.progress) opt.progress.fill();
 }

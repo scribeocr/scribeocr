@@ -4,7 +4,7 @@
 /** @type {Object.<string, FontMetricsFamily>} */
 export const fontMetricsObj = {};
 
-export class LayoutRegions {
+export class layoutRegions {
   /** @type {Array<LayoutPage>} */
   static pages = [];
 
@@ -12,7 +12,7 @@ export class LayoutRegions {
   static defaultRegions = {};
 }
 
-export class LayoutDataTables {
+export class layoutDataTables {
 /** @type {Array<LayoutDataTablePage>} */
   static pages = [];
 
@@ -50,3 +50,6 @@ export const evalStats = [];
 
 /** @type {Array<Awaited<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>>} */
 export const visInstructions = [];
+
+/** @type {Array<Object<string, string>>} */
+export const convertPageWarn = [];

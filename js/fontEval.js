@@ -1,8 +1,8 @@
 import { DebugData, fontMetricsObj, pageMetricsArr } from './containers/dataContainer.js';
 import { fontAll } from './containers/fontContainer.js';
 import { ImageCache } from './containers/imageContainer.js';
-import { gs } from './containers/schedulerContainer.js';
 import { enableDisableFontOpt, optimizeFontContainerAll, setDefaultFontAuto } from './fontContainerMain.js';
+import { gs } from './generalWorkerMain.js';
 
 /**
  *
