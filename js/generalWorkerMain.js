@@ -214,11 +214,6 @@ export class gs {
     return /** @type {Function} */ (gs.resReadyFontAllRaw);
   };
 
-  static getScheduler = async () => {
-    await gs.schedulerReady;
-    return /** @type {GeneralScheduler} */ (gs.scheduler);
-  };
-
   static init = async () => {
     gs.setSchedulerReadyLoadFonts();
     gs.setSchedulerReady();

@@ -15,7 +15,7 @@ import { writeDebugCsv } from './js/export/exportDebugCsv.js';
 import { extractSingleTableContent } from './js/export/exportWriteTabular.js';
 import { loadBuiltInFontsRaw } from './js/fontContainerMain.js';
 import { gs } from './js/generalWorkerMain.js';
-import { importFilesAll, importFilesSupp } from './js/import/import.js';
+import { importFiles, importFilesSupp } from './js/import/import.js';
 import { calcBoxOverlap, combineOCRPage } from './js/modifyOCR.js';
 import { calcTableBbox } from './js/objects/layoutObjects.js';
 import ocr from './js/objects/ocrObjects.js';
@@ -60,7 +60,18 @@ const init = async (params) => {
   await Promise.all(promiseArr);
 };
 
-const importFiles = (files) => importFilesAll(files);
+/**
+ *
+ * @param {Parameters<typeof importFiles>[0]} files
+ * @param {Array<string>} [langs=['eng']]
+ * @param {Parameters<exportData>[0]} [outputFormat='txt']
+ * @returns
+ */
+const recognizeFiles = async (files, langs = ['eng'], outputFormat = 'txt') => {
+  await importFiles(files);
+  await recognize({ langs });
+  return exportData(outputFormat);
+};
 
 class data {
   // TODO: Modify such that debugging data is not calculated by default.
@@ -123,12 +134,12 @@ class utils {
  * Clears all document-specific data.
  */
 const clear = async () => {
-  await clearData();
+  clearData();
 };
 
 const terminate = async () => {
-  await clearData();
-  await gs.terminate();
+  clearData();
+  await Promise.allSettled([gs.terminate(), ImageCache.terminate()]);
 };
 
 export default {
@@ -145,6 +156,7 @@ export default {
   opt,
   recognize,
   recognizePage,
+  recognizeFiles,
   terminate,
   utils,
 };

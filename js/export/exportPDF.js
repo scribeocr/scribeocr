@@ -2,7 +2,7 @@ import { winEncodingLookup } from '../../fonts/encoding.js';
 
 import { fontAll } from '../containers/fontContainer.js';
 import {
-    calcWordMetrics, subsetFont,
+  calcWordMetrics, subsetFont,
 } from '../utils/fontUtils.js';
 
 import { createEmbeddedFontType0, createEmbeddedFontType1 } from './exportPDFFonts.js';

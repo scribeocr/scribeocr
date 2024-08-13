@@ -8,20 +8,20 @@ import { renderHOCR } from './exportRenderHOCR.js';
 import { renderText } from './exportRenderText.js';
 
 /**
- * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'} downloadType
+ * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'} format
  * @param {number} [minValue=0]
  * @param {number} [maxValue=-1]
  * @returns {Promise<string|ArrayBuffer>}
  */
-export async function exportData(downloadType, minValue = 0, maxValue = -1) {
-  if (downloadType === 'text') downloadType = 'txt';
+export async function exportData(format, minValue = 0, maxValue = -1) {
+  if (format === 'text') format = 'txt';
 
   if (maxValue === -1) maxValue = inputData.pageCount - 1;
 
   /** @type {Array<OcrPage>} */
   let ocrDownload = [];
 
-  if (downloadType !== 'hocr' && opt.enableLayout) {
+  if (format !== 'hocr' && opt.enableLayout) {
     // Reorder HOCR elements according to layout boxes
     for (let i = 0; i < ocrAll.active.length; i++) {
       ocrDownload.push(reorderOcrPage(ocrAll.active[i], layoutRegions.pages[i]));
@@ -33,7 +33,7 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
   /** @type {string|ArrayBuffer} */
   let content;
 
-  if (downloadType === 'pdf') {
+  if (format === 'pdf') {
     const dimsLimit = { width: -1, height: -1 };
     if (opt.standardizePageSize) {
       for (let i = minValue; i <= maxValue; i++) {
@@ -180,15 +180,15 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
         doc1: pdf, minpage: minValue, maxpage: maxValue, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, humanReadable: opt.humanReadablePDF,
       });
     }
-  } if (downloadType === 'hocr') {
+  } if (format === 'hocr') {
     content = renderHOCR(ocrAll.active, minValue, maxValue);
-  } if (downloadType === 'txt') {
+  } if (format === 'txt') {
     content = renderText(ocrDownload, minValue, maxValue, opt.reflow, false);
-  } if (downloadType === 'docx') {
+  } if (format === 'docx') {
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeDocx = (await import('./exportWriteDocx.js')).writeDocx;
     content = await writeDocx(ocrDownload, minValue, maxValue);
-  } if (downloadType === 'xlsx') {
+  } if (format === 'xlsx') {
     if (opt.progress) await opt.progress.show(1);
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeXlsx = (await import('./exportWriteTabular.js')).writeXlsx;
@@ -199,18 +199,18 @@ export async function exportData(downloadType, minValue = 0, maxValue = -1) {
 
 /**
  * Runs `exportData` and saves the result as a download (browser) or local file (Node.js).
- * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'} downloadType
+ * @param {'pdf'|'hocr'|'docx'|'xlsx'|'txt'|'text'} format
  * @param {string} fileName
  * @param {number} [minValue=0]
  * @param {number} [maxValue=-1]
  */
-export async function download(downloadType, fileName, minValue = 0, maxValue = -1) {
-  if (downloadType === 'text') downloadType = 'txt';
-  if (opt.progress && downloadType !== 'pdf') {
+export async function download(format, fileName, minValue = 0, maxValue = -1) {
+  if (format === 'text') format = 'txt';
+  if (opt.progress && format !== 'pdf') {
     await opt.progress.show(1);
   }
-  fileName = fileName.replace(/\.\w{1,4}$/, `.${downloadType}`);
-  const content = await exportData(downloadType, minValue, maxValue);
+  fileName = fileName.replace(/\.\w{1,4}$/, `.${format}`);
+  const content = await exportData(format, minValue, maxValue);
   saveAs(content, fileName);
   if (opt.progress) opt.progress.fill();
 }

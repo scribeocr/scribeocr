@@ -1,3 +1,4 @@
+import { clearData } from '../clear.js';
 import { inputData, opt } from '../containers/app.js';
 import {
   convertPageWarn,
@@ -81,7 +82,7 @@ const importImageFile = async (file) => new Promise((resolve, reject) => {
  * If using Node.js, file paths are converted into `FileNode` objects,
  * which have properties and methods similar to the browser `File` interface.
  * @param {Array<File>|FileList|Array<string>} files
- * @returns {Promise<Array<File>|FileList|Array<FileNode>>}
+ * @returns {Promise<Array<File>|Array<FileNode>>}
  */
 export async function standardizeFiles(files) {
   if (typeof files[0] === 'string') {
@@ -111,24 +112,20 @@ export async function standardizeFiles(files) {
     });
   }
 
-  return /** @type {Array<File>|FileList} */ (files);
+  if (globalThis.FileList && files instanceof FileList) {
+    return Array.from(files);
+  }
+
+  return /** @type {Array<File>} */ (files);
 }
 
 /**
  * Sorts single array of files into pdf, image, ocr, and unsupported files.
  * Used for browser interface, where files of multiple types may be uploaded using the same input.
- * @param {Array<File>|FileList|Array<string>} files
+ * @param {Array<File>|Array<FileNode>|FileList} files
  * @returns
  */
-export async function importFilesAll(files) {
-  if (!files || files.length === 0) return;
-
-  const curFiles = await standardizeFiles(files);
-
-  ImageCache.loadCount = 0;
-
-  pageMetricsArr.length = 0;
-
+export function sortInputFiles(files) {
   // Sort files into (1) HOCR files, (2) image files, or (3) unsupported using extension.
   /** @type {Array<File|FileNode>} */
   const imageFilesAll = [];
@@ -139,8 +136,8 @@ export async function importFilesAll(files) {
   /** @type {Array<File|FileNode>} */
   const unsupportedFilesAll = [];
   const unsupportedExt = {};
-  for (let i = 0; i < curFiles.length; i++) {
-    const file = curFiles[i];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
     const fileExt = file.name.match(/\.([^.]+)$/)?.[1].toLowerCase() || '';
 
     // TODO: Investigate whether other file formats are supported (without additional changes)
@@ -165,33 +162,67 @@ export async function importFilesAll(files) {
     opt.warningHandler(errorText);
   }
 
-  if (pdfFilesAll[0]) {
-    inputData.inputFileNames = [pdfFilesAll[0].name];
-  } else {
-    inputData.inputFileNames = imageFilesAll.map((x) => x.name);
-  }
-
-  // Set default download name
-  let downloadFileName = pdfFilesAll.length > 0 ? pdfFilesAll[0].name : curFiles[0].name;
-  downloadFileName = downloadFileName.replace(/\.\w{1,4}$/, '');
-  downloadFileName += '.pdf';
-  inputData.defaultDownloadFileName = downloadFileName;
-
   imageFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
   ocrFilesAll.sort((a, b) => ((a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)));
 
-  await importFilesByType({ pdfFiles: pdfFilesAll, imageFiles: imageFilesAll, ocrFiles: ocrFilesAll });
+  return { pdfFiles: pdfFilesAll, imageFiles: imageFilesAll, ocrFiles: ocrFilesAll };
 }
 
 /**
  *
- * @param {Object} param
- * @param {Array<File|FileNode|ArrayBuffer>} param.pdfFiles
- * @param {Array<File|FileNode|ArrayBuffer>} param.imageFiles
- * @param {Array<File|FileNode|ArrayBuffer>} param.ocrFiles
+ * @typedef {Object} SortedInputFiles
+ * @property {Array<File>|Array<string>|Array<ArrayBuffer>} [pdfFiles]
+ * @property {Array<File>|Array<string>|Array<ArrayBuffer>} [imageFiles]
+ * @property {Array<File>|Array<string>|Array<ArrayBuffer>} [ocrFiles]
+ */
+
+/**
+ * Import files for processing.
+ * An object with `pdfFiles`, `imageFiles`, and `ocrFiles` arrays can be provided to import multiple types of files.
+ * Alternatively, for `File` objects (browser) and file paths (Node.js), a single array can be provided, which is sorted based on extension.
+ * @param {Array<File>|FileList|Array<string>|SortedInputFiles} files
  * @returns
  */
-export async function importFilesByType({ pdfFiles, imageFiles, ocrFiles }) {
+export async function importFiles(files) {
+  clearData();
+
+  /** @type {Array<File|FileNode|ArrayBuffer>} */
+  let pdfFiles = [];
+  /** @type {Array<File|FileNode|ArrayBuffer>} */
+  let imageFiles = [];
+  /** @type {Array<File|FileNode|ArrayBuffer>} */
+  let ocrFiles = [];
+  // These statements contain many ts-ignore comments, because the TypeScript interpreter apparently cannot properly narrow arrays.
+  // See: https://github.com/microsoft/TypeScript/issues/42384
+  if ('pdfFiles' in files || 'imageFiles' in files || 'ocrFiles' in files) {
+    if (files.pdfFiles && files.pdfFiles[0] instanceof ArrayBuffer) {
+      // @ts-ignore
+      pdfFiles = files.pdfFiles;
+    } else if (files.pdfFiles) {
+      // @ts-ignore
+      pdfFiles = await standardizeFiles(files.pdfFiles);
+    }
+    if (files.imageFiles && files.imageFiles[0] instanceof ArrayBuffer) {
+      // @ts-ignore
+      imageFiles = files.imageFiles;
+    } else if (files.imageFiles) {
+      // @ts-ignore
+      imageFiles = await standardizeFiles(files.imageFiles);
+    }
+    if (files.ocrFiles && files.ocrFiles[0] instanceof ArrayBuffer) {
+      // @ts-ignore
+      ocrFiles = files.ocrFiles;
+    } else if (files.ocrFiles) {
+      // @ts-ignore
+      ocrFiles = await standardizeFiles(files.ocrFiles);
+    }
+  } else {
+    // @ts-ignore
+    const filesStand = await standardizeFiles(files);
+    if (files[0] instanceof ArrayBuffer) throw new Error('ArrayBuffer inputs must be sorted by file type.');
+    ({ pdfFiles, imageFiles, ocrFiles } = sortInputFiles(filesStand));
+  }
+
   if (pdfFiles.length === 0 && imageFiles.length === 0 && ocrFiles.length === 0) {
     const errorText = 'No supported files found.';
     opt.errorHandler(errorText);
@@ -206,6 +237,22 @@ export async function importFilesByType({ pdfFiles, imageFiles, ocrFiles }) {
     opt.warningHandler(errorText);
     pdfFiles.length = 1;
     imageFiles.length = 0;
+  }
+
+  if (pdfFiles[0] && !(pdfFiles[0] instanceof ArrayBuffer)) {
+    inputData.inputFileNames = [pdfFiles[0].name];
+  } else if (imageFiles[0] && !(imageFiles[0] instanceof ArrayBuffer)) {
+    // @ts-ignore
+    inputData.inputFileNames = imageFiles.map((x) => x.name);
+  }
+
+  // Set default download name
+  if (pdfFiles.length > 0 && 'name' in pdfFiles[0]) {
+    inputData.defaultDownloadFileName = `${pdfFiles[0].name.replace(/\.\w{1,4}$/, '')}.pdf`;
+  } else if (imageFiles.length > 0 && 'name' in imageFiles[0]) {
+    inputData.defaultDownloadFileName = `${imageFiles[0].name.replace(/\.\w{1,4}$/, '')}.pdf`;
+  } else if (ocrFiles.length > 0 && 'name' in ocrFiles[0]) {
+    inputData.defaultDownloadFileName = `${ocrFiles[0].name.replace(/\.\w{1,4}$/, '')}.pdf`;
   }
 
   inputData.pdfMode = pdfFiles.length === 1;

@@ -14,14 +14,22 @@ import { PageMetrics } from './objects/pageMetricsObjects.js';
 
 /**
  *
- * @param {Parameters<import('./worker/compareOCRModule.js').compareOCRPageImp>[0]} args
+ * @param {OcrPage} pageA
+ * @param {OcrPage} pageB
+ * @param {number} n
+ * @param  {Parameters<import('./worker/compareOCRModule.js').compareOCRPageImp>[0]['options']} options
  * node-canvas does not currently work in worker threads.
  * See: https://github.com/Automattic/node-canvas/issues/1394
  * Therefore, we need this wrapper function that detects Node.js and runs the function in the main thread.
+ * Additionally, this function adds arguments to the function call that are not available in the worker thread.
  */
-export const compareOCRPage = async (args) => {
+export const compareOCRPage = async (pageA, pageB, n, options) => {
   const func = typeof process !== 'undefined' ? (await import('./worker/compareOCRModule.js')).compareOCRPageImp : gs.scheduler.compareOCRPageImp;
-  return func(args);
+  const binaryImage = await ImageCache.getBinary(n);
+  const pageMetricsObj = pageMetricsArr[n];
+  return func({
+    pageA, pageB, binaryImage, pageMetricsObj, options,
+  });
 };
 
 /**
@@ -104,7 +112,7 @@ export const recognizePage = async (n, legacy, lstm, areaMode, tessOptions = {},
   // is to get debugging images for layout analysis rather than get text.
   const runRecognition = legacy || lstm;
 
-  const scheduler = await gs.getScheduler();
+  const scheduler = await gs.getGeneralScheduler();
 
   const resArr = await scheduler.recognizeAndConvert2({
     image: nativeN.src,
@@ -229,7 +237,7 @@ async function convertOCRPage(ocrRaw, n, mainData, format, engineName, scribeMod
   let res;
   const parallel = true;
   if (parallel) {
-    await gs.schedulerReady;
+    await gs.getGeneralScheduler();
     res = await gs.schedulerInner.addJob(func, { ocrStr: ocrRaw, n, scribeMode });
   } else if (func === 'convertPageHocr') {
     res = await import('./import/convertPageHocr.js').then((m) => m.convertPageHocr({ ocrStr: ocrRaw, n, scribeMode }));
@@ -428,8 +436,7 @@ export async function recognizeAllPages(legacy = true, lstm = true, mainData = f
  *
  */
 export async function recognize(options = {}) {
-  await gs.schedulerReady;
-  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
+  await gs.getGeneralScheduler();
 
   const combineMode = options && options.combineMode ? options.combineMode : 'data';
   const vanillaMode = options && options.vanillaMode !== undefined ? options.vanillaMode : false;
@@ -514,22 +521,14 @@ export async function recognize(options = {}) {
     // with the more accurate (on average) text data from LSTM.
     if (!ocrAll['Tesseract Combined Temp']) ocrAll['Tesseract Combined Temp'] = Array(inputData.pageCount);
     for (let i = 0; i < ImageCache.pageCount; i++) {
-      /** @type {Parameters<compareOCRPage>[0]['options']} */
+      /** @type {Parameters<typeof compareOCRPage>[3]} */
       const compOptions1 = {
         mode: 'comb',
         evalConflicts: false,
         legacyLSTMComb: true,
       };
 
-      const imgBinary = await ImageCache.getBinary(i);
-
-      const res1 = await compareOCRPage({
-        pageA: ocrAll['Tesseract Legacy'][i],
-        pageB: ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgBinary,
-        pageMetricsObj: pageMetricsArr[i],
-        options: compOptions1,
-      });
+      const res1 = await compareOCRPage(ocrAll['Tesseract Legacy'][i], ocrAll['Tesseract LSTM'][i], i, compOptions1);
 
       ocrAll['Tesseract Combined Temp'][i] = res1.page;
     }
@@ -548,7 +547,7 @@ export async function recognize(options = {}) {
     for (let i = 0; i < ImageCache.pageCount; i++) {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
-      /** @type {Parameters<compareOCRPage>[0]['options']} */
+      /** @type {Parameters<typeof compareOCRPage>[3]} */
       const compOptions = {
         mode: 'comb',
         debugLabel: tessCombinedLabel,
@@ -559,15 +558,7 @@ export async function recognize(options = {}) {
         legacyLSTMComb: true,
       };
 
-      const imgBinary = await ImageCache.getBinary(i);
-
-      const res = await compareOCRPage({
-        pageA: ocrAll['Tesseract Legacy'][i],
-        pageB: ocrAll['Tesseract LSTM'][i],
-        binaryImage: imgBinary,
-        pageMetricsObj: pageMetricsArr[i],
-        options: compOptions,
-      });
+      const res = await compareOCRPage(ocrAll['Tesseract Legacy'][i], ocrAll['Tesseract LSTM'][i], i, compOptions);
 
       if (DebugData.debugImg[tessCombinedLabel]) DebugData.debugImg[tessCombinedLabel][i] = res.debugImg;
 
@@ -576,7 +567,7 @@ export async function recognize(options = {}) {
       // If the user uploaded data, compare to that as we
       if (userUploadMode) {
         if (combineMode === 'conf') {
-          /** @type {Parameters<compareOCRPage>[0]['options']} */
+          /** @type {Parameters<typeof compareOCRPage>[3]} */
           const compOptions2 = {
             debugLabel: 'Combined',
             supplementComp: true,
@@ -590,19 +581,13 @@ export async function recognize(options = {}) {
             editConf: true,
           };
 
-          const res2 = await compareOCRPage({
-            pageA: ocrAll['User Upload'][i],
-            pageB: ocrAll['Tesseract Combined'][i],
-            binaryImage: imgBinary,
-            pageMetricsObj: pageMetricsArr[i],
-            options: compOptions2,
-          });
+          const res2 = await compareOCRPage(ocrAll['User Upload'][i], ocrAll['Tesseract Combined'][i], i, compOptions2);
 
           if (DebugData.debugImg.Combined) DebugData.debugImg.Combined[i] = res2.debugImg;
 
           ocrAll.Combined[i] = res2.page;
         } else {
-          /** @type {Parameters<compareOCRPage>[0]['options']} */
+          /** @type {Parameters<typeof compareOCRPage>[3]} */
           const compOptions2 = {
             mode: 'comb',
             debugLabel: 'Combined',
@@ -616,13 +601,7 @@ export async function recognize(options = {}) {
             confThreshMed: opt.confThreshMed,
           };
 
-          const res2 = await compareOCRPage({
-            pageA: ocrAll['User Upload'][i],
-            pageB: ocrAll['Tesseract Combined'][i],
-            binaryImage: imgBinary,
-            pageMetricsObj: pageMetricsArr[i],
-            options: compOptions2,
-          });
+          const res2 = await compareOCRPage(ocrAll['User Upload'][i], ocrAll['Tesseract Combined'][i], i, compOptions2);
 
           if (DebugData.debugImg.Combined) DebugData.debugImg.Combined[i] = res2.debugImg;
 
@@ -639,7 +618,13 @@ export async function recognize(options = {}) {
   return (ocrAll.active);
 }
 
-let evalStatsConfig = {};
+let evalStatsConfig = {
+  /** @type {string|undefined} */
+  ocrActive: undefined,
+  ignorePunct: opt.ignorePunct,
+  ignoreCap: opt.ignoreCap,
+  ignoreExtra: opt.ignoreExtra,
+};
 
 // TODO: What this set of functions does makes no sense.
 // Specifically, after comparing to ground truth for all pages, ground truth is then compared to the current page.
@@ -660,7 +645,7 @@ export async function compareGroundTruth(n) {
     ignoreCap: opt.ignoreCap,
     ignoreExtra: opt.ignoreExtra,
   };
-  /** @type {Parameters<compareOCRPage>[0]['options']} */
+  /** @type {Parameters<typeof compareOCRPage>[3]} */
   const compOptions = {
     ignorePunct: opt.ignorePunct,
     ignoreCap: opt.ignoreCap,
@@ -674,15 +659,7 @@ export async function compareGroundTruth(n) {
     await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, true);
 
     for (let i = 0; i < ImageCache.pageCount; i++) {
-      const imgBinary = await ImageCache.getBinary(n);
-
-      const res = await compareOCRPage({
-        pageA: ocrAll.active[i],
-        pageB: ocrAll['Ground Truth'][i],
-        binaryImage: imgBinary,
-        pageMetricsObj: pageMetricsArr[i],
-        options: compOptions,
-      });
+      const res = await compareOCRPage(ocrAll.active[i], ocrAll['Ground Truth'][i], i, compOptions);
 
       // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
       // rather than the currently active OCR.
@@ -691,18 +668,11 @@ export async function compareGroundTruth(n) {
 
       if (res.metrics) evalStats[i] = res.metrics;
     }
+
     evalStatsConfig = evalStatsConfigNew;
   }
 
-  const imgBinary = await ImageCache.getBinary(n);
-
-  const res = await compareOCRPage({
-    pageA: ocrAll.active[n],
-    pageB: ocrAll['Ground Truth'][n],
-    binaryImage: imgBinary,
-    pageMetricsObj: pageMetricsArr[n],
-    options: compOptions,
-  });
+  const res = await compareOCRPage(ocrAll.active[n], ocrAll['Ground Truth'][n], n, compOptions);
 
   // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
   // rather than the currently active OCR.

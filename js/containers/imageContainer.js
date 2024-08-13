@@ -354,7 +354,7 @@ export class ImageCache {
     // If no preference is specified for upscaling, default to false.
     const upscaleArg = props?.upscaled || false;
 
-    const scheduler = await gs.getScheduler();
+    const scheduler = await gs.getGeneralScheduler();
 
     const resPromise = (async () => {
     // Wait for non-rotated version before replacing with promise
@@ -552,15 +552,10 @@ export class ImageCache {
     }
   };
 
-  static clear = async () => {
+  static clear = () => {
     ImageCache.nativeSrc = [];
     ImageCache.native = [];
     ImageCache.binary = [];
-    if (ImageCache.muPDFScheduler) {
-      const muPDFScheduler = await ImageCache.muPDFScheduler;
-      await muPDFScheduler.scheduler.terminate();
-      ImageCache.muPDFScheduler = null;
-    }
     ImageCache.inputModes.image = false;
     ImageCache.inputModes.pdf = false;
     ImageCache.pageCount = 0;
@@ -572,6 +567,15 @@ export class ImageCache {
     ImageCache.pdfContentStats.letterCountVis = 0;
     ImageCache.pdfContentStats.pageCountTotalText = 0;
     ImageCache.pdfContentStats.pageCountVisText = 0;
+  };
+
+  static terminate = async () => {
+    ImageCache.clear();
+    if (ImageCache.muPDFScheduler) {
+      const muPDFScheduler = await ImageCache.muPDFScheduler;
+      await muPDFScheduler.scheduler.terminate();
+      ImageCache.muPDFScheduler = null;
+    }
   };
 
   /**

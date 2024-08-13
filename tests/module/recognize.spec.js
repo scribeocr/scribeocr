@@ -13,6 +13,19 @@ config.truncateThreshold = 0; // Disable truncation for actual/expected values o
 /* eslint-disable prefer-arrow-callback */
 /* eslint-disable func-names */
 
+describe('Check basic recognition features.', function () {
+  this.timeout(20000);
+  it('Should recognize basic .png image using single function', async () => {
+    const txt = await scribe.recognizeFiles([`${ASSETS_PATH_KARMA}/simple.png`]);
+    assert.strictEqual(txt, 'Tesseract.js');
+  }).timeout(10000);
+
+  it('Should recognize basic .jpg image using single function', async () => {
+    const txt = await scribe.recognizeFiles([`${ASSETS_PATH_KARMA}/simple.jpg`]);
+    assert.strictEqual(txt, 'Tesseract.js');
+  }).timeout(10000);
+});
+
 describe('Check recognition-related features.', function () {
   this.timeout(20000);
   before(async () => {

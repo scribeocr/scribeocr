@@ -12,7 +12,7 @@ import { fontAll } from './containers/fontContainer.js';
 import { ImageCache } from './containers/imageContainer.js';
 import { replaceObjectProperties } from './utils/miscUtils.js';
 
-export async function clearData() {
+export function clearData() {
   inputData.pageCount = 0;
   replaceObjectProperties(ocrAll, { active: [] });
   replaceObjectProperties(ocrAllRaw, { active: [] });
@@ -20,7 +20,7 @@ export async function clearData() {
   layoutDataTables.pages.length = 0;
   pageMetricsArr.length = 0;
   convertPageWarn.length = 0;
-  await ImageCache.clear();
+  ImageCache.clear();
   // Clear optimized font data and reset fontAll to raw data.
   replaceObjectProperties(fontMetricsObj);
   fontAll.clear();

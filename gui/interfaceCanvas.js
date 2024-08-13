@@ -628,8 +628,7 @@ export class KonvaIText extends Konva.Shape {
     this.editTextCallback = editTextCallback;
 
     this.addEventListener('dblclick dbltap', (event) => {
-      // @ts-ignore
-      if (event.type === 'dblclick' && event.button !== 0) return;
+      if (event instanceof MouseEvent && event.button !== 0) return;
       KonvaIText.addTextInput(this);
     });
 
