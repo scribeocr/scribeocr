@@ -275,11 +275,14 @@ export function pass3(pageObj) {
           const contentStrLetter = letterArr[k];
           const charHeight = charObj.bbox.bottom - charObj.bbox.top;
 
+          const ascChar = wordObj.smallCaps && /[A-Z0-9]/.test(contentStrLetter) || !wordObj.smallCaps && ascCharArr.includes(contentStrLetter);
+          const xChar = wordObj.smallCaps && /[a-z]/.test(contentStrLetter) || !wordObj.smallCaps && xCharArr.includes(contentStrLetter);
+
           // Save character heights to array for font size calculations
           lineAllHeightArr.push(charHeight);
-          if (ascCharArr.includes(contentStrLetter)) {
+          if (ascChar) {
             lineAscHeightArr.push(charHeight);
-          } else if (xCharArr.includes(contentStrLetter)) {
+          } else if (xChar) {
             lineXHeightArr.push(charHeight);
           }
         }

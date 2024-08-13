@@ -136,8 +136,6 @@ export async function handleDownloadGUI() {
   elem.download.download.removeEventListener('click', handleDownloadGUI);
   elem.download.download.disabled = true;
 
-  scribe.opt.progress = ProgressBars.download;
-
   updatePdfPagesLabel();
 
   const downloadType = (/** @type {string} */ (elem.download.formatLabelText.textContent)).toLowerCase();
@@ -147,10 +145,16 @@ export async function handleDownloadGUI() {
   const minValue = parseInt(elem.download.pdfPageMin.value) - 1;
   const maxValue = parseInt(elem.download.pdfPageMax.value) - 1;
 
+  ProgressBars.active = ProgressBars.download;
+  const progressMax = downloadType === 'pdf' ? (maxValue - minValue + 1) * 3 + 1 : (maxValue - minValue + 1) + 1;
+  ProgressBars.active.show(progressMax, 0);
+
   // If recognition is currently running, wait for it to finish.
   await stateGUI.recognizeAllPromise;
 
   await scribe.download(downloadType, fileName, minValue, maxValue);
+
+  ProgressBars.active.fill();
 
   elem.download.download.disabled = false;
   elem.download.download.addEventListener('click', handleDownloadGUI);

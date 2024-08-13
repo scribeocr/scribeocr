@@ -91,19 +91,34 @@ export class stateGUI {
 
 /**
  *
- * @param {number} n
- * @param {string} engineName
+ * @param {ProgressMessage} message
  */
-const recognizeConvertCallback = (n, engineName) => {
-  // Display the page if either (1) this is the currently active OCR or (2) this is Tesseract Legacy and Tesseract LSTM is active, but does not exist yet.
-  // The latter condition occurs briefly whenever recognition is run in "Quality" mode.
-  const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
-  const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
+const progressHandler = (message) => {
+  if (message.type === 'convert') {
+    ProgressBars.active.increment();
 
-  if (displayOCR && stateGUI.cp.n === n) displayPage(n, true);
+    const n = message.n;
+    const engineName = message.info.engineName;
+    // Display the page if either (1) this is the currently active OCR or (2) this is Tesseract Legacy and Tesseract LSTM is active, but does not exist yet.
+    // The latter condition occurs briefly whenever recognition is run in "Quality" mode.
+    const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
+    const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
+
+    if (displayOCR && stateGUI.cp.n === n) displayPage(n, true);
+  } else if (message.type === 'export') {
+    ProgressBars.active.increment();
+  } else if (message.type === 'importImage') {
+    ProgressBars.active.increment();
+    if (stateGUI.cp.n === message.n) displayPage(message.n, true);
+  } else if (message.type === 'importPDF') {
+    ProgressBars.active.increment();
+    if (stateGUI.cp.n === message.n) displayPage(message.n, true);
+  } else if (message.type === 'render') {
+    if (ProgressBars.active === ProgressBars.download) ProgressBars.active.increment();
+  }
 };
 
-scribe.opt.recognizeConvertCallback = recognizeConvertCallback;
+scribe.opt.progressHandler = progressHandler;
 
 scribe.opt.saveDebugImages = true;
 
@@ -617,11 +632,12 @@ elem.recognize.combineMode.addEventListener('change', () => {
   optGUI.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.combineMode.value);
 });
 
-scribe.opt.progress = ProgressBars.import;
-scribe.opt.displayFunc = displayPage;
+ProgressBars.active = ProgressBars.import;
 
 const importFilesGUI = async (files) => {
-  scribe.opt.progress = ProgressBars.import;
+  ProgressBars.active = ProgressBars.import;
+  ProgressBars.active.show(files.length, 0);
+
   await scribe.importFiles(files);
 
   displayPage(stateGUI.cp.n, true);
@@ -664,6 +680,8 @@ const importFilesGUI = async (files) => {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
+
+  ProgressBars.active.fill();
 };
 
 // Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
@@ -673,7 +691,8 @@ async function importFilesSuppGUI() {
 
   if (!uploadOCRFileElem.files || uploadOCRFileElem.files.length === 0) return;
 
-  scribe.opt.progress = ProgressBars.eval;
+  ProgressBars.active = ProgressBars.eval;
+  ProgressBars.active.show(uploadOCRFileElem.files.length, 0);
 
   await scribe.importFilesSupp(uploadOCRFileElem.files, ocrName);
 
@@ -690,6 +709,8 @@ async function importFilesSuppGUI() {
 
   setCurrentHOCR(ocrName);
   elem.evaluate.displayLabelText.disabled = true;
+
+  ProgressBars.active.fill();
 }
 
 function prevMatchClick() {

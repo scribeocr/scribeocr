@@ -127,6 +127,8 @@ export function renderHOCR(ocrData, minValue, maxValue) {
       hocrOut += '\n\t\t</span>';
     }
     hocrOut += '\n\t</div>';
+
+    opt.progressHandler({ n: i, type: 'export', info: { } });
   }
 
   hocrOut += '\n</body>\n</html>';

@@ -149,7 +149,7 @@ export async function hocrToPDF(hocrArr, minpage = 0, maxpage = -1, textMode = '
     // This assumes the "page" is always the last object returned by `ocrPageToPDF`.
     pageIndexArr.push(objectI - 1);
 
-    if (opt.progress) opt.progress.increment();
+    opt.progressHandler({ n: i, type: 'export', info: { } });
   }
 
   /** @type {Array<string>} */
@@ -490,7 +490,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
 
       textContentObjStr += ' ] TJ\n';
 
-      const fontSize = word.smallCaps && word.text[0] && word.text[0] !== word.text[0].toUpperCase() ? wordFontSize * 0.8 : wordFontSize;
+      const fontSize = word.smallCaps && word.text[0] && word.text[0] !== word.text[0].toUpperCase() ? wordFontSize * wordFont.smallCapsMult : wordFontSize;
       if (pdfFont !== pdfFontCurrent || fontSize !== fontSizeLast) {
         textContentObjStr += `${pdfFont} ${String(fontSize)} Tf\n`;
         pdfFontCurrent = pdfFont;
@@ -518,7 +518,7 @@ async function ocrPageToPDFStream(pageObj, outputDims, pdfFonts, textMode, angle
       for (let k = 0; k < charArr.length; k++) {
         const letterSrc = charArr[k];
         const letter = word.smallCaps ? charArr[k].toUpperCase() : charArr[k];
-        const fontSizeLetter = word.smallCaps && letterSrc !== letter ? wordFontSize * 0.8 : wordFontSize;
+        const fontSizeLetter = word.smallCaps && letterSrc !== letter ? wordFontSize * wordFont.smallCapsMult : wordFontSize;
 
         const letterEnc = pdfFontTypeCurrent === 0 ? wordFontOpentype.charToGlyphIndex(letter)?.toString(16).padStart(4, '0') : winEncodingLookup[letter];
         if (letterEnc) {

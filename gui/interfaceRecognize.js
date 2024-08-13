@@ -136,8 +136,6 @@ async function addVisInstructionsUI() {
 }
 
 export async function recognizeAllClick() {
-  scribe.opt.progress = ProgressBars.recognize;
-
   // User can select engine directly using advanced options, or indirectly using basic options.
   /** @type {"legacy" | "lstm" | "combined"} */
   let oemMode;
@@ -150,6 +148,10 @@ export async function recognizeAllClick() {
     setOemLabel('legacy');
   }
 
+  ProgressBars.active = ProgressBars.recognize;
+  const progressMax = oemMode === 'combined' ? scribe.data.image.pageCount * 2 + 1 : scribe.data.image.pageCount + 1;
+  ProgressBars.active.show(progressMax, 0);
+
   await scribe.recognize({
     modeAdv: oemMode,
     langs: optGUI.langs,
@@ -160,6 +162,8 @@ export async function recognizeAllClick() {
   displayPage(stateGUI.cp.n);
 
   addVisInstructionsUI();
+
+  ProgressBars.active.increment();
 
   if (scribe.opt.enableOpt) {
     elem.view.optimizeFont.disabled = false;

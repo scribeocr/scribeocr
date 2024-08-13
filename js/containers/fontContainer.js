@@ -191,6 +191,7 @@ export function FontContainerFont(family, style, src, opt, opentypeObj) {
   this.fontFaceWeight = this.style === 'bold' ? 'bold' : 'normal';
   /** @type {("sans"|"serif")} */
   this.type = determineSansSerif(this.family) === 'SansDefault' ? 'sans' : 'serif';
+  this.smallCapsMult = 0.75;
 
   if (typeof FontFace !== 'undefined') loadFontFace(this.fontFaceName, this.fontFaceStyle, this.fontFaceWeight, this.src);
 }

@@ -49,7 +49,7 @@ export class ProgressBar {
       console.log('Progress bar value >100%.');
     }
 
-    if (this.alwaysUpdateUI || this.value % 5 === 0 || this.value === this.maxValue) {
+    if (this.alwaysUpdateUI || this.value % 5 === 0 || this.value === this.maxValue || this.maxValue <= 10) {
       this.progressBar.setAttribute('aria-valuenow', this.value.toString());
       this.progressBar.setAttribute('style', `width: ${Math.max(this.value / this.maxValue * 100, 1)}%`);
       await sleep(0);
@@ -57,6 +57,7 @@ export class ProgressBar {
 
     if (this.value >= this.maxValue) {
       setTimeout(() => this.progressCollapseObj.hide(), 1000);
+      setTimeout(() => this.reset(), 2000);
     }
   }
 
@@ -75,8 +76,14 @@ export class ProgressBar {
       const ariaValueMaxStr = /** @type {string} */ (this.progressBar.getAttribute('aria-valuemax'));
       if (parseInt(ariaValueNowStr) >= parseInt(ariaValueMaxStr)) {
         this.progressCollapse.setAttribute('class', 'collapse');
+        setTimeout(() => this.reset(), 1000);
       }
     }
+  }
+
+  async reset() {
+    this.progressBar.setAttribute('aria-valuenow', '0');
+    this.progressBar.setAttribute('style', 'width: 0%');
   }
 }
 

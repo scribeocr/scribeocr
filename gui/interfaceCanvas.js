@@ -563,7 +563,7 @@ export class KonvaIText extends Konva.Shape {
               context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize}px ${shape.fontFaceName}`;
             } else {
               charI = charI.toUpperCase();
-              context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize * 0.8}px ${shape.fontFaceName}`;
+              context.font = `${shape.fontFaceStyle} ${shape.fontFaceWeight} ${shape.fontSize * shape.smallCapsMult}px ${shape.fontFaceName}`;
             }
           }
 
@@ -614,6 +614,7 @@ export class KonvaIText extends Konva.Shape {
     this.advanceArrTotal = advanceArrTotal;
     this.leftSideBearing = leftSideBearing;
     this.fontSize = fontSize;
+    this.smallCapsMult = fontI.smallCapsMult;
     // `yActual` contains the y value that we want to draw the text at, which is usually the baseline.
     this.yActual = yActual;
     this.lastWidth = this.width();
@@ -701,7 +702,7 @@ export class KonvaIText extends Konva.Shape {
 
     const metrics = ctx.measureText(wordStr);
 
-    const fontSizeHTMLSmallCaps = itext.fontSize * scale * 0.8;
+    const fontSizeHTMLSmallCaps = itext.fontSize * scale * fontI.smallCapsMult;
 
     inputElem.style.position = 'absolute';
     inputElem.style.left = `${x1}px`;

@@ -53,17 +53,12 @@ export class opt {
 
   static errorHandler = (x) => console.error(x);
 
-  /** @type {?Function} */
-  static recognizeConvertCallback = null;
+  /** @param {ProgressMessage} x */
+  // eslint-disable-next-line no-unused-vars
+  static progressHandler = (x) => {};
 
   /** Generate debug visualizations when running OCR. */
   static debugVis = false;
-
-  /** @type {?ProgressBar} */
-  static progress = null;
-
-  /** @type {?Function} */
-  static displayFunc = null;
 }
 
 export class inputData {

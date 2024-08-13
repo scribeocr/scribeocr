@@ -249,7 +249,7 @@ function calcFontMetricsPage(pageObj) {
       if (wordObj.chars && wordObj.chars.length !== wordObj.text.length) continue;
 
       // Do not include superscripts, dropcaps, and low-confidence words in statistics for font optimization.
-      if (wordObj.conf < 80 || wordObj.lang === 'chi_sim') continue;
+      if (wordObj.conf < 80 || wordObj.lang === 'chi_sim' || wordObj.sup || wordObj.smallCaps) continue;
       /** @type {Object.<string, FontMetricsRawFamily>} */
       const fontMetricsRawLine = {};
 

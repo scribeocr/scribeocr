@@ -265,23 +265,6 @@ export async function importFiles(files) {
   // Only enabled if (1) user selects this option, (2) user uploads a PDF, and (3) user does not upload XML data.
   inputData.extractTextMode = opt.extractText && inputData.pdfMode && !xmlModeImport;
 
-  // The loading bar should be initialized before anything significant runs (e.g. `ImageCache.openMainPDF` to provide some visual feedback).
-  // All pages of OCR data and individual images (.png or .jpeg) contribute to the import loading bar.
-  // PDF files do not, as PDF files are not processed page-by-page at the import step.
-  let progressMax = 0;
-  if (inputData.imageMode) progressMax += imageFiles.length;
-  if (xmlModeImport) progressMax += ocrFiles.length;
-
-  // Loading bars are necessary for automated testing as the tests wait for the loading bar to fill up.
-  // Therefore, a dummy loading bar with a max of 1 is created even when progress is not meaningfully tracked.
-  let dummyLoadingBar = false;
-  if (progressMax === 0) {
-    dummyLoadingBar = true;
-    progressMax = 1;
-  }
-
-  if (opt.progress) opt.progress.show(progressMax);
-
   let pageCount;
   let pageCountImage;
   let abbyyMode = false;
@@ -415,7 +398,9 @@ export async function importFiles(files) {
   inputData.xmlMode.fill(false);
 
   // Render first page for PDF only
-  if (inputData.pdfMode && !xmlModeImport && opt.displayFunc) opt.displayFunc(0);
+  if (inputData.pdfMode && !xmlModeImport) {
+    opt.progressHandler({ n: 0, type: 'importPDF', info: { } });
+  }
 
   if (inputData.imageMode) {
     ImageCache.pageCount = inputData.pageCount;
@@ -427,8 +412,7 @@ export async function importFiles(files) {
         return imgWrapper;
       });
       ImageCache.loadCount++;
-      if (opt.displayFunc && i === 0) opt.displayFunc(0);
-      if (opt.progress) opt.progress.increment();
+      opt.progressHandler({ n: i, type: 'importImage', info: { } });
     }
   }
 
@@ -448,8 +432,6 @@ export async function importFiles(files) {
       }
     });
   }
-
-  if (dummyLoadingBar && opt.progress) opt.progress.increment();
 }
 
 // Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
@@ -462,8 +444,6 @@ export async function importFiles(files) {
  */
 export async function importFilesSupp(files, ocrName) {
   if (!files || files.length === 0) return;
-
-  if (opt.progress) opt.progress.show(files.length);
 
   const curFiles = await standardizeFiles(files);
 

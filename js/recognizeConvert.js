@@ -290,9 +290,7 @@ export async function convertPageCallback({
   // Layout boxes are only overwritten if none exist yet for the page
   if (Object.keys(layoutDataTables.pages[n].tables).length === 0) layoutDataTables.pages[n] = dataTables;
 
-  if (opt.recognizeConvertCallback) opt.recognizeConvertCallback(n, engineName);
-
-  if (opt.progress) opt.progress.increment();
+  opt.progressHandler({ n, type: 'convert', info: { engineName } });
 }
 
 /**
@@ -462,19 +460,9 @@ export async function recognize(options = {}) {
 
   // A single Tesseract engine can be used (Legacy or LSTM) or the results from both can be used and combined.
   if (oemMode === 'legacy' || oemMode === 'lstm') {
-    // The last tick of the progress bar must be done after everything is finished.
-    // If the progress bar finishes earlier, in addition to being misleading to users,
-    // the automated browser tests wait until the progress bar fills up to conclude
-    // the recognition step was successful.
-    if (opt.progress) opt.progress.show(ImageCache.pageCount + 1);
-
-    // ProgressBars.recognize.show(ImageCache.pageCount + 1);
-    const time2a = Date.now();
     // Tesseract is used as the "main" data unless user-uploaded data exists and only the LSTM model is being run.
     // This is because Tesseract Legacy provides very strong metrics, and Abbyy often does not.
     await recognizeAllPages(oemMode === 'legacy', oemMode === 'lstm', !(oemMode === 'lstm' && existingOCR), langs, vanillaMode);
-    const time2b = Date.now();
-    if (typeof process === 'undefined') console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
     // Metrics from the LSTM model are so inaccurate they are not worth using.
     if (oemMode === 'legacy') {
@@ -482,15 +470,7 @@ export async function recognize(options = {}) {
       opt.enableOpt = await runFontOptimization(ocrAll['Tesseract Legacy']);
     }
   } else if (oemMode === 'combined') {
-    // node-canvas does not currently work in worker threads.
-    // See: https://github.com/Automattic/node-canvas/issues/1394
-
-    // ProgressBars.recognize.show(ImageCache.pageCount * 2 + 1);
-    if (opt.progress) opt.progress.show(ImageCache.pageCount * 2 + 1);
-    const time2a = Date.now();
     await recognizeAllPages(true, true, true, langs, vanillaMode);
-    const time2b = Date.now();
-    if (typeof process === 'undefined') console.log(`Tesseract runtime: ${time2b - time2a} ms`);
 
     if (opt.saveDebugImages) {
       DebugData.debugImg.Combined = new Array(ImageCache.pageCount);
@@ -543,8 +523,7 @@ export async function recognize(options = {}) {
     if (!ocrAll[oemText]) ocrAll[oemText] = Array(inputData.pageCount);
     ocrAll.active = ocrAll[oemText];
 
-    const time3a = Date.now();
-    for (let i = 0; i < ImageCache.pageCount; i++) {
+    const comparePageI = async (i) => {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
       /** @type {Parameters<typeof compareOCRPage>[3]} */
@@ -608,12 +587,20 @@ export async function recognize(options = {}) {
           ocrAll.Combined[i] = res2.page;
         }
       }
-    }
-    const time3b = Date.now();
-    if (typeof process === 'undefined') console.log(`Comparison runtime: ${time3b - time3a} ms`);
-  }
+    };
 
-  if (opt.progress) opt.progress.increment();
+    if (typeof process === 'undefined') {
+      const indices = [...Array(ImageCache.pageCount).keys()];
+      const compPromises = indices.map(async (i) => comparePageI(i));
+      await Promise.allSettled(compPromises);
+    } else {
+      // This needs to be run one at a time in Node.js, as this is run in the main thread,
+      // and there is no mechanism for queuing jobs, so side effects will interfere with each other.
+      for (let i = 0; i < ImageCache.pageCount; i++) {
+        await comparePageI(i);
+      }
+    }
+  }
 
   return (ocrAll.active);
 }

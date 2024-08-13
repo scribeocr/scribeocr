@@ -85,6 +85,7 @@ export async function changeWordFontStyle(style) {
     wordI.fontFaceName = fontI.fontFaceName;
     wordI.fontFaceStyle = fontI.fontFaceStyle;
     wordI.fontFaceWeight = fontI.fontFaceWeight;
+    wordI.smallCapsMult = fontI.smallCapsMult;
 
     wordI.fontFamilyLookup = fontI.family;
 
@@ -149,6 +150,7 @@ export async function changeWordFontFamily(fontName) {
     wordI.fontFaceName = fontI.fontFaceName;
     wordI.fontFaceStyle = fontI.fontFaceStyle;
     wordI.fontFaceWeight = fontI.fontFaceWeight;
+    wordI.smallCapsMult = fontI.smallCapsMult;
 
     wordI.fontFamilyLookup = fontI.family;
 

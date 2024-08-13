@@ -1,3 +1,4 @@
+import { opt } from '../containers/app.js';
 import { pageMetricsArr } from '../containers/dataContainer.js';
 import ocr from '../objects/ocrObjects.js';
 import { assignParagraphs } from '../utils/reflowPars.js';
@@ -102,6 +103,7 @@ export function renderText(ocrCurrent, minpage = 0, maxpage = -1, reflowText = f
         }
       }
     }
+    opt.progressHandler({ n: g, type: 'export', info: { } });
   }
 
   // Add final closing tags

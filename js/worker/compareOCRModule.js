@@ -799,6 +799,7 @@ export async function compareOCRPageImp({
                       wordsBArrRep.forEach((x) => {
                         // Use style from word A (assumed to be Tesseract Legacy)
                         x.style = wordA.style;
+                        x.smallCaps = wordA.smallCaps;
 
                         // Set confidence to 0
                         x.conf = 0;

@@ -44,9 +44,6 @@ export async function exportData(format, minValue = 0, maxValue = -1) {
 
     // For proof or ocr mode the text layer needs to be combined with a background layer
     if (opt.displayMode !== 'ebook') {
-      const steps = opt.addOverlay ? 2 : 3;
-      if (opt.progress) await opt.progress.show((maxValue + 1) * steps);
-
       const insertInputPDF = inputData.pdfMode && opt.addOverlay;
 
       const rotateBackground = !insertInputPDF && opt.autoRotate;
@@ -93,9 +90,6 @@ export async function exportData(format, minValue = 0, maxValue = -1) {
             pageheight: dimsLimit.height,
             humanReadable: opt.humanReadablePDF,
           });
-
-          // Fill up progress bar to 100%
-          if (opt.progress) opt.progress.fill();
         } catch (error) {
           console.error('Failed to insert contents into input PDF, creating new PDF from rendered images instead.');
           console.error(error);
@@ -113,7 +107,7 @@ export async function exportData(format, minValue = 0, maxValue = -1) {
         const renderImage = binary || inputData.pdfMode;
 
         // Pre-render to benefit from parallel processing, since the loop below is synchronous.
-        if (renderImage) await ImageCache.preRenderRange(minValue, maxValue, binary, props, opt.progress);
+        if (renderImage) await ImageCache.preRenderRange(minValue, maxValue, binary, props);
 
         await w.overlayTextImageStart({ humanReadable: opt.humanReadablePDF });
         for (let i = minValue; i < maxValue + 1; i++) {
@@ -135,25 +129,17 @@ export async function exportData(format, minValue = 0, maxValue = -1) {
           await w.overlayTextImageAddPage({
             doc1: pdfOverlay, image: image.src, i, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, angle: angleImagePdf,
           });
-          if (opt.progress) opt.progress.increment();
+          opt.progressHandler({ n: i, type: 'export', info: { } });
         }
         content = await w.overlayTextImageEnd();
-
-        // Fill up progress bar to 100%
-        if (opt.progress) opt.progress.fill();
 
         // Otherwise, there is only OCR data and not image data.
       } else if (!insertInputPDF) {
         content = await w.write({
           doc1: pdfOverlay, minpage: minValue, maxpage: maxValue, pagewidth: dimsLimit.width, pageheight: dimsLimit.height, humanReadable: opt.humanReadablePDF,
         });
-
-        // Fill up progress bar to 100%
-        if (opt.progress) opt.progress.fill();
       }
     } else {
-      if (opt.progress) await opt.progress.show(maxValue + 1);
-
       const pdfStr = await hocrToPDF(ocrDownload, minValue, maxValue, opt.displayMode, false, true, dimsLimit, opt.confThreshHigh, opt.confThreshMed,
         opt.overlayOpacity / 100);
 
@@ -189,7 +175,6 @@ export async function exportData(format, minValue = 0, maxValue = -1) {
     const writeDocx = (await import('./exportWriteDocx.js')).writeDocx;
     content = await writeDocx(ocrDownload, minValue, maxValue);
   } if (format === 'xlsx') {
-    if (opt.progress) await opt.progress.show(1);
     // Less common export formats are loaded dynamically to reduce initial load time.
     const writeXlsx = (await import('./exportWriteTabular.js')).writeXlsx;
     content = await writeXlsx(ocrDownload, minValue, maxValue);
@@ -206,11 +191,7 @@ export async function exportData(format, minValue = 0, maxValue = -1) {
  */
 export async function download(format, fileName, minValue = 0, maxValue = -1) {
   if (format === 'text') format = 'txt';
-  if (opt.progress && format !== 'pdf') {
-    await opt.progress.show(1);
-  }
   fileName = fileName.replace(/\.\w{1,4}$/, `.${format}`);
   const content = await exportData(format, minValue, maxValue);
   saveAs(content, fileName);
-  if (opt.progress) opt.progress.fill();
 }

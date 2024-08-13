@@ -406,8 +406,8 @@ export class ImageCache {
       propsNewBinary.colorMode = 'binary';
 
       const inputNative = ImageCache.native[n];
-      ImageCache.nativeProps[n] = propsNew;
-      ImageCache.binaryProps[n] = propsNewBinary;
+      if (newNative) ImageCache.nativeProps[n] = propsNew;
+      if (newBinary) ImageCache.binaryProps[n] = propsNewBinary;
       const res = (async () => {
         /** @type {?ImageWrapper} */
         let img1;
@@ -424,8 +424,8 @@ export class ImageCache {
         return { native: img1, binary: null };
       })();
 
-      if (renderRaw) ImageCache.native[n] = res.then((r) => r.native);
-      if (renderTransform) ImageCache.binary[n] = res.then((r) => r.binary);
+      if (newNative) ImageCache.native[n] = res.then((r) => r.native);
+      if (newBinary) ImageCache.binary[n] = res.then((r) => r.binary);
     }
 
     return { native: ImageCache.native[n], binary: ImageCache.binary[n] };
@@ -480,17 +480,16 @@ export class ImageCache {
    * @param {number} max - Max page to render.
    * @param {boolean} binary - Whether to render binary images.
    * @param {?ImagePropertiesRequest} [props=null]
-   * @param {?ProgressBar} [progress=null] - A progress tracking object, which should have an `increment` method.
    */
-  static preRenderRange = async (min, max, binary, props = null, progress = null) => {
+  static preRenderRange = async (min, max, binary, props = null) => {
     const pagesArr = range(min, max);
     if (binary) {
       await Promise.all(pagesArr.map((n) => ImageCache.getBinary(n, props).then(() => {
-        if (progress) progress.increment();
+        opt.progressHandler({ n, type: 'render', info: { } });
       })));
     } else {
       await Promise.all(pagesArr.map((n) => ImageCache.getNative(n, props).then(() => {
-        if (progress) progress.increment();
+        opt.progressHandler({ n, type: 'render', info: { } });
       })));
     }
   };

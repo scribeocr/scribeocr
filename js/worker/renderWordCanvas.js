@@ -108,19 +108,22 @@ export async function drawWordActual(ctx, words, imageBinaryBit, imgDims, angle,
    * Therefore, only the drawing code should be in this function; the metrics should be calculated elsewhere
    * and passed to this function, rather than calcualting from an `OcrWord` object.
    *
-   * @param {CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctx
-   * @param {Array<string>} charArr
-   * @param {number} left
-   * @param {number} bottom
-   * @param {Array<number>} advanceArr - Array of pixels to advance for each character.
+   * @param {Object} params
+   * @param {CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} params.ctx
+   * @param {Array<string>} params.charArr
+   * @param {number} params.left
+   * @param {number} params.bottom
+   * @param {Array<number>} params.advanceArr - Array of pixels to advance for each character.
    *    Unlike the "advance" property of a glyph, this is the actual distance to advance on the canvas,
    *    and should include kerning and character spacing.
-   * @param {FontContainerFont} font
-   * @param {number} size
-   * @param {boolean} smallCaps
-   * @param {string} fillStyle
+   * @param {FontContainerFont} params.font
+   * @param {number} params.size
+   * @param {boolean} params.smallCaps
+   * @param {string} [params.fillStyle='black']
    */
-const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, size, smallCaps, fillStyle = 'black') => {
+const printWordOnCanvas = async ({
+  ctx, charArr, left, bottom, advanceArr, font, size, smallCaps, fillStyle = 'black',
+}) => {
   ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size}px ${font.fontFaceName}`;
   ctx.fillStyle = fillStyle;
   ctx.textBaseline = 'alphabetic';
@@ -134,7 +137,7 @@ const printWordOnCanvas = async (ctx, charArr, left, bottom, advanceArr, font, s
         ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size}px ${font.fontFaceName}`;
       } else {
         charI = charI.toUpperCase();
-        ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size * 0.8}px ${font.fontFaceName}`;
+        ctx.font = `${font.fontFaceStyle} ${font.fontFaceWeight} ${size * font.smallCapsMult}px ${font.fontFaceName}`;
       }
     }
 
@@ -193,9 +196,13 @@ export const drawWordRender = async (ctx, word, offsetX = 0, cropY = 0, ctxView 
   let left = 1 + offsetX;
   if (word.visualCoords) left -= wordMetrics.leftSideBearing;
 
-  await printWordOnCanvas(ctx, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.smallCaps);
+  await printWordOnCanvas({
+    ctx, charArr: wordMetrics.charArr, left, bottom: y, advanceArr: advanceArrTotal, font: fontI, size: wordFontSize, smallCaps: word.smallCaps,
+  });
 
   if (ctxView) {
-    await printWordOnCanvas(ctxView, wordMetrics.charArr, left, y, advanceArrTotal, fontI, wordFontSize, word.smallCaps, 'red');
+    await printWordOnCanvas({
+      ctx: ctxView, charArr: wordMetrics.charArr, left, bottom: y, advanceArr: advanceArrTotal, font: fontI, size: wordFontSize, smallCaps: word.smallCaps, fillStyle: 'red',
+    });
   }
 };

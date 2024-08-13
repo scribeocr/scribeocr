@@ -113,6 +113,23 @@ declare global {
         errorAdjB: number | null; // Adjusted error of "B" words. Null until calculated.
     };
 
+    type ProgressMessage = ProgressMessageConvert | ProgressMessageGeneral;
+
+    type ProgressMessageGeneral = {
+        type: 'export' | 'importImage' | 'importPDF' | 'render';
+        n: number;
+        info: {};
+    }
+
+    type ProgressMessageConvert = {
+        type: 'convert';
+        n: number;
+        info: {
+            engineName: string;
+        };
+    }
+
+
     type ProgressBar = import("../gui/utils/progressBars.js").ProgressBar;
 
     type FileNode = import("./import/nodeAdapter.js").FileNode;

@@ -364,6 +364,7 @@ export async function writeXlsx(ocrPageArr, minpage = 0, maxpage = -1) {
     const cellsObj = createCells(tableWordObj, extraCols, rowCount);
     rowCount += cellsObj.rows;
     sheetContent += cellsObj.content;
+    opt.progressHandler({ n: i, type: 'export', info: { } });
   }
   sheetContent += sheetEnd;
 

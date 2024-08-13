@@ -222,8 +222,8 @@ export function calcWordMetrics(word, angle = 0) {
   if (word.smallCaps) {
     for (let i = 0; i < charArr2.length; i++) {
       if (charArr2[i] !== charArr[i]) {
-        advanceArr[i] *= 0.8;
-        if (kerningArr[i]) kerningArr[i] *= 0.8;
+        advanceArr[i] *= fontI.smallCapsMult;
+        if (kerningArr[i]) kerningArr[i] *= fontI.smallCapsMult;
       }
     }
   }
@@ -238,8 +238,8 @@ export function calcWordMetrics(word, angle = 0) {
 
   let wordLeftBearing = wordFirstGlyphMetrics.leftSideBearing || 0;
   let wordRightBearing = wordLastGlyphMetrics.rightSideBearing || 0;
-  if (word.smallCaps && charArr2[0] !== charArr[0]) wordLeftBearing *= 0.8;
-  if (word.smallCaps && charArr2[charArr2.length - 1] !== charArr[charArr2.length - 1]) wordRightBearing *= 0.8;
+  if (word.smallCaps && charArr2[0] !== charArr[0]) wordLeftBearing *= fontI.smallCapsMult;
+  if (word.smallCaps && charArr2[charArr2.length - 1] !== charArr[charArr2.length - 1]) wordRightBearing *= fontI.smallCapsMult;
 
   const wordWidth = word.visualCoords ? wordWidth1 - wordRightBearing - wordLeftBearing : wordWidth1;
   const wordWidthPx = wordWidth * (fontSize / fontOpentype.unitsPerEm);

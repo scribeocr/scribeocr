@@ -571,6 +571,7 @@ function cloneWord(word) {
   const wordNew = new OcrWord(word.line, word.text, { ...word.bbox }, word.id);
   wordNew.conf = word.conf;
   wordNew.sup = word.sup;
+  wordNew.smallCaps = word.smallCaps;
   wordNew.dropcap = word.dropcap;
   wordNew.font = word.font;
   wordNew.size = word.size;
