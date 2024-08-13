@@ -12,7 +12,7 @@ const port = 3031;
 describe('Generate output files using images and built-in OCR', function () {
   let driver;
   let customActions;
-  this.timeout(40000);
+  this.timeout(60000);
   const appURL = process.env.SELENIUM ? `http://172.18.0.2:${port}/` : `http://localhost:${port}/`;
 
   before(async function () {

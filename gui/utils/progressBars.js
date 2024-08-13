@@ -16,6 +16,8 @@ export class ProgressBar {
 
     this.progressBar = /** @type {HTMLDivElement} */ (this.progressCollapse.getElementsByClassName('progress-bar')[0]);
 
+    this.showN = 0;
+
     this.value = initValue;
     this.maxValue = maxValue;
     this.alwaysUpdateUI = alwaysUpdateUI;
@@ -31,6 +33,7 @@ export class ProgressBar {
    * @param {number} [initValue=0]
    */
   async show(maxValue, initValue = 0) {
+    this.showN++;
     this.maxValue = maxValue;
     this.value = initValue;
     this.progressBar.setAttribute('aria-valuenow', initValue.toString());
@@ -56,8 +59,13 @@ export class ProgressBar {
     }
 
     if (this.value >= this.maxValue) {
-      setTimeout(() => this.progressCollapseObj.hide(), 1000);
-      setTimeout(() => this.reset(), 2000);
+      const showNI = this.showN;
+      setTimeout(() => {
+        if (this.showN === showNI) this.progressCollapseObj.hide();
+      }, 1000);
+      setTimeout(() => {
+        if (this.showN === showNI) this.reset();
+      }, 2000);
     }
   }
 
