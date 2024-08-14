@@ -64,3 +64,29 @@ describe('Check paragraph detection with complaint.', function () {
     await scribe.terminate();
   });
 });
+
+describe('Check paragraph detection with document with significant line sepacing.', function () {
+  this.timeout(20000);
+  before(async () => {
+    await scribe.init({ font: true });
+    await scribe.importFiles([`${ASSETS_PATH_KARMA}/complaint_2.hocr`]);
+    scribe.data.ocr.active.forEach((page, index) => {
+      const angle = scribe.data.pageMetrics[index].angle || 0;
+      scribe.utils.assignParagraphs(page, angle);
+    });
+  });
+
+  it('Paragraph detection creates the correct number of paragraphs', async () => {
+    // The test document contains a header, 3 body paragraphs, and 3 footnotes.
+    assert.strictEqual(scribe.data.ocr.active[0].pars.length, 5);
+    const par2 = scribe.data.ocr.active[0].pars[2];
+    const firstWord = par2.lines[0].words[0];
+    const lastWord = par2.lines[4].words[par2.lines[4].words.length - 1];
+    assert.strictEqual(firstWord.text, '8.');
+    assert.strictEqual(lastWord.text, 'Defendant.');
+  }).timeout(10000);
+
+  after(async () => {
+    await scribe.terminate();
+  });
+});

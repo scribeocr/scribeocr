@@ -139,10 +139,13 @@ export function assignParagraphs(page, angle) {
       const indented = lineLeftMedian && (h + 1) < page.lines.length && lineLeftArr[h] > (lineLeftMedian + lineWidthMedian * 0.025)
         && lineLeftArr[h] > (lineLeftArr[h - 1] + 1) && lineLeftArr[h] > lineLeftArr[h + 1];
 
+      // All previous lines in paragraph have the same center point.
       const centerAlignedPrev = parLineIndices && parLineIndices.map((x) => lineCenterArr[x]).every((x) => Math.abs(x - lineCenterArr[h - 1]) < (lineWidthMedian * 0.0125));
 
+      // Line `h` and `h-1` have the same center point.
       const centerAligned = lineCenterArr[h - 1] && Math.abs(lineCenterArr[h - 1] - lineCenterArr[h]) < (lineWidthMedian * 0.0125);
 
+      // Line `h` and `h+1` have the same center point.
       const centerAlignedNext = lineCenterArr[h + 1] && Math.abs(lineCenterArr[h + 1] - lineCenterArr[h]) < (lineWidthMedian * 0.0125);
 
       const centerAlignedStart = !centerAlignedPrev && !centerAligned && centerAlignedNext;
@@ -153,6 +156,8 @@ export function assignParagraphs(page, angle) {
       // At a high level, this triggers if all the previous lines in the paragraph have the same alignment, the current line does not match that alignment,
       // and the current line matches the alignment of the next line.
       // The restrictions imposed for this rule to trigger are intentionally strict, as switching between center-aligned and left-aligned text is less common.
+      // Note that this rule is intended to capture *paragraphs* that switch alignment, not individual section header or footer lines, which are often centered.
+      // These should be handled by other rules.
       if (parLineIndices && lineCenterArr[h - 1] && (centerAlignedStart || centerAlignedEnd)) {
         // To be confident that the previous lines are center-aligned, there must be some variation in the line widths.
         // If there is not, then the center points may match because the text is justified, or left-aligned lines are the same width due to chance.
@@ -223,7 +228,9 @@ export function assignParagraphs(page, angle) {
     }
 
     // Create new paragraph if the current line space is significantly larger than the preceding line space.
-    if (lineSpaceArr[h - 1] > 0 && lineSpaceArr[h] > 1.5 * lineSpaceArr[h - 1]) {
+    const lineSpaceIncrease = lineSpaceArr[h - 1] > 0 && lineSpaceArr[h] > 1.5 * lineSpaceArr[h - 1];
+    const lineSpaceDecrease = lineSpaceArr[h + 1] > 0 && lineSpaceArr[h] > 1.5 * lineSpaceArr[h + 1];
+    if (lineSpaceIncrease || lineSpaceDecrease) {
       newPar = true;
       reason = 'large space (relative)';
     }
@@ -236,7 +243,7 @@ export function assignParagraphs(page, angle) {
     const height = bbox.bottom - bbox.top;
     const width = bbox.right - bbox.left;
     const heightRot = height * cosAngle - sinAngle * width;
-    if (lineSpaceArr[h] && lineSpaceArr[h] > 2.5 * heightRot) {
+    if (lineSpaceArr[h] && lineSpaceArr[h] > 3 * heightRot) {
       newPar = true;
       reason = 'large space (absolute)';
     }
