@@ -445,6 +445,8 @@ export async function importFiles(files) {
 export async function importFilesSupp(files, ocrName) {
   if (!files || files.length === 0) return;
 
+  if (!ocrAll[ocrName]) ocrAll[ocrName] = Array(inputData.pageCount);
+
   const curFiles = await standardizeFiles(files);
 
   /** @type {Array<File|FileNode>} */

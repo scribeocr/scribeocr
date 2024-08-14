@@ -45,9 +45,6 @@ export class DebugData {
   static evalOpt;
 }
 
-/** @type {Array<EvalMetrics>} */
-export const evalStats = [];
-
 /** @type {Array<Awaited<ReturnType<typeof import('../../scrollview-web/scrollview/ScrollView.js').ScrollView.prototype.getAll>>>} */
 export const visInstructions = [];
 

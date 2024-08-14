@@ -466,7 +466,7 @@ async function penalizeWord(wordObjs) {
  * @param {import('../containers/imageContainer.js').ImageWrapper} params.binaryImage
  * @param {PageMetrics} params.pageMetricsObj
  * @param {object} params.options
- * @param {("stats"|"comb")} [params.options.mode] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
+ * @param {("stats"|"comb")} [params.options.mode='stats'] - If `mode = 'stats'` stats quantifying the number of matches/mismatches are returned.
  *    If `mode = 'comb'` a new version of `pageA`, with text and confidence metrics informed by comparisons with pageB, is created.
  * @param {boolean} [params.options.editConf] - Whether confidence metrics should be updated when `mode = 'stats'`,
  *    rather than simply setting `compTruth`/`matchTruth`. Enabled when using recognition to update confidence metrics, but not when comparing to ground truth.

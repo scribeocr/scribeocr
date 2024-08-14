@@ -1,13 +1,57 @@
 /* eslint-disable import/no-cycle */
 
-import { evalStats } from '../js/containers/dataContainer.js';
-import { calcEvalStatsDoc, compareGroundTruth } from '../js/recognizeConvert.js';
 import { setCurrentHOCR, stateGUI, updateOcrVersionGUI } from '../main.js';
 import scribe from '../module.js';
 import { elem } from './elems.js';
+import { replaceObjectProperties } from './utils/utils.js';
+
+/** @type {Array<EvalMetrics>} */
+export const evalStats = [];
+
+let evalStatsConfig = {
+  /** @type {string|undefined} */
+  ocrActive: undefined,
+  ignorePunct: scribe.opt.ignorePunct,
+  ignoreCap: scribe.opt.ignoreCap,
+  ignoreExtra: scribe.opt.ignoreExtra,
+};
+
+export async function compareGroundTruth() {
+  const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
+
+  const evalStatsConfigNew = {
+    ocrActive: oemActive,
+    ignorePunct: scribe.opt.ignorePunct,
+    ignoreCap: scribe.opt.ignoreCap,
+    ignoreExtra: scribe.opt.ignoreExtra,
+  };
+  /** @type {Parameters<typeof scribe.compareOCRPage>[2]} */
+  const compOptions = {
+    ignorePunct: scribe.opt.ignorePunct,
+    ignoreCap: scribe.opt.ignoreCap,
+    confThreshHigh: scribe.opt.confThreshHigh,
+    confThreshMed: scribe.opt.confThreshMed,
+  };
+
+  // Compare all pages if this has not been done already with the current settings
+  if (JSON.stringify(evalStatsConfig) !== JSON.stringify(evalStatsConfigNew) || evalStats.length === 0) {
+    evalStatsConfig = evalStatsConfigNew;
+
+    // TODO: This will overwrite any edits made by the user while `compareOCR` is running.
+    // Is this a problem that is likely to occur in real use? If so, how should it be fixed?
+    const res = await scribe.compareOCR(scribe.data.ocr.active, scribe.data.ocr['Ground Truth'], compOptions);
+
+    // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
+    // rather than the currently active OCR.
+    // Assigning to "active" will overwrite whatever version the user currently has open.
+    scribe.data.ocr.active = res.ocr;
+
+    replaceObjectProperties(evalStats, res.metrics);
+  }
+}
 
 export async function compareGroundTruthClick(n) {
-  await compareGroundTruth(n);
+  await compareGroundTruth();
 
   const metricTotalWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsPage'));
   const metricCorrectWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectWordsPage'));
@@ -29,10 +73,9 @@ export async function compareGroundTruthClick(n) {
   metricIncorrectHighConfWordsPageElem.innerHTML = String(evalStats[n].incorrectHighConf);
 
   if (scribe.opt.ignoreExtra) {
-    metricWERPageElem.innerHTML = (Math.round(((evalStats[n].incorrect + evalStats[n].missed) / evalStats[n].total) * 100) / 100).toString();
+    metricWERPageElem.innerHTML = ((evalStats[n].incorrect + evalStats[n].missed) / evalStats[n].total).toFixed(2);
   } else {
-    metricWERPageElem.innerHTML = (Math.round(((evalStats[n].incorrect + evalStats[n].missed + evalStats[n].extra)
-    / evalStats[n].total) * 100) / 100).toString();
+    metricWERPageElem.innerHTML = ((evalStats[n].incorrect + evalStats[n].missed + evalStats[n].extra) / evalStats[n].total).toFixed(2);
   }
 
   const metricTotalWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsDoc'));
@@ -45,7 +88,7 @@ export async function compareGroundTruthClick(n) {
   const metricWERDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERDoc'));
 
   // Calculate and display metrics for full document
-  const evalStatsDoc = calcEvalStatsDoc();
+  const evalStatsDoc = scribe.utils.calcEvalStatsDoc(evalStats);
 
   metricTotalWordsDocElem.innerHTML = evalStatsDoc.total.toString();
   metricCorrectWordsDocElem.innerHTML = evalStatsDoc.correct.toString();
@@ -56,9 +99,9 @@ export async function compareGroundTruthClick(n) {
   metricIncorrectHighConfWordsDocElem.innerHTML = evalStatsDoc.incorrectHighConf.toString();
 
   if (scribe.opt.ignoreExtra) {
-    metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed) / evalStatsDoc.total) * 100) / 100).toString();
+    metricWERDocElem.innerHTML = ((evalStatsDoc.incorrect + evalStatsDoc.missed) / evalStatsDoc.total).toFixed(2);
   } else {
-    metricWERDocElem.innerHTML = (Math.round(((evalStatsDoc.incorrect + evalStatsDoc.missed + evalStatsDoc.extra) / evalStatsDoc.total) * 100) / 100).toString();
+    metricWERDocElem.innerHTML = ((evalStatsDoc.incorrect + evalStatsDoc.missed + evalStatsDoc.extra) / evalStatsDoc.total).toFixed(2);
   }
 }
 

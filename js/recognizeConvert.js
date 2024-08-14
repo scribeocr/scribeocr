@@ -2,7 +2,6 @@ import { inputData, opt } from './containers/app.js';
 import {
   convertPageWarn,
   DebugData,
-  evalStats,
   layoutDataTables, ocrAll, pageMetricsArr, visInstructions,
 } from './containers/dataContainer.js';
 import { ImageCache, ImageWrapper } from './containers/imageContainer.js';
@@ -11,25 +10,79 @@ import { runFontOptimization } from './fontEval.js';
 import { calcFontMetricsFromPages } from './fontStatistics.js';
 import { gs } from './generalWorkerMain.js';
 import { PageMetrics } from './objects/pageMetricsObjects.js';
+import { replaceObjectProperties } from './utils/miscUtils.js';
 
 /**
- *
+ * Compare two sets of OCR data for single page.
  * @param {OcrPage} pageA
  * @param {OcrPage} pageB
- * @param {number} n
  * @param  {Parameters<import('./worker/compareOCRModule.js').compareOCRPageImp>[0]['options']} options
  * node-canvas does not currently work in worker threads.
  * See: https://github.com/Automattic/node-canvas/issues/1394
  * Therefore, we need this wrapper function that detects Node.js and runs the function in the main thread.
  * Additionally, this function adds arguments to the function call that are not available in the worker thread.
  */
-export const compareOCRPage = async (pageA, pageB, n, options) => {
+export const compareOCRPage = async (pageA, pageB, options) => {
   const func = typeof process !== 'undefined' ? (await import('./worker/compareOCRModule.js')).compareOCRPageImp : gs.scheduler.compareOCRPageImp;
-  const binaryImage = await ImageCache.getBinary(n);
-  const pageMetricsObj = pageMetricsArr[n];
+  const binaryImage = await ImageCache.getBinary(pageA.n);
+  const pageMetricsObj = pageMetricsArr[pageA.n];
   return func({
     pageA, pageB, binaryImage, pageMetricsObj, options,
   });
+};
+
+/**
+ * Compare two sets of OCR data.
+ * @param {Array<OcrPage>} ocrA
+ * @param {Array<OcrPage>} ocrB
+ * @param  {Parameters<import('./worker/compareOCRModule.js').compareOCRPageImp>[0]['options']} options
+ */
+export const compareOCR = async (ocrA, ocrB, options) => {
+  /** @type {Parameters<typeof compareOCRPage>[2]} */
+  const compOptions = {
+    ignorePunct: opt.ignorePunct,
+    ignoreCap: opt.ignoreCap,
+    confThreshHigh: opt.confThreshHigh,
+    confThreshMed: opt.confThreshMed,
+  };
+
+  if (options) Object.assign(compOptions, options);
+
+  /** @type {Array<OcrPage>} */
+  const ocrArr = [];
+  /** @type {Array<?EvalMetrics>} */
+  const metricsArr = [];
+  /** @type {Array<?CompDebugBrowser | CompDebugNode>} */
+  const debugImageArr = [];
+
+  // Render binarized versions of images
+  // await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, true);
+
+  const comparePageI = async (i) => {
+    const res = await compareOCRPage(ocrA[i], ocrB[i], compOptions);
+
+    ocrArr[i] = res.page;
+
+    metricsArr[i] = res.metrics;
+
+    debugImageArr[i] = res.debug;
+  };
+
+  // This function is run in the main thread in Node.js, with no mechanism for queuing jobs.
+  // Therefore, this needs to be run one at a time in Node.js.
+  if (typeof process === 'undefined') {
+    const indices = [...Array(ocrA.length).keys()];
+    const compPromises = indices.map(async (i) => comparePageI(i));
+    await Promise.allSettled(compPromises);
+  } else {
+    // This needs to be run one at a time in Node.js, as this is run in the main thread,
+    // and there is no mechanism for queuing jobs, so side effects will interfere with each other.
+    for (let i = 0; i < ocrA.length; i++) {
+      await comparePageI(i);
+    }
+  }
+
+  return { ocr: ocrArr, metrics: metricsArr, debug: debugImageArr };
 };
 
 /**
@@ -500,17 +553,18 @@ export async function recognize(options = {}) {
     // For validation, this version is superior to both Legacy and LSTM, as it combines the more accurate bounding boxes/style data from Legacy
     // with the more accurate (on average) text data from LSTM.
     if (!ocrAll['Tesseract Combined Temp']) ocrAll['Tesseract Combined Temp'] = Array(inputData.pageCount);
-    for (let i = 0; i < ImageCache.pageCount; i++) {
-      /** @type {Parameters<typeof compareOCRPage>[3]} */
-      const compOptions1 = {
+
+    {
+      /** @type {Parameters<typeof compareOCR>[2]} */
+      const compOptions = {
         mode: 'comb',
         evalConflicts: false,
         legacyLSTMComb: true,
       };
 
-      const res1 = await compareOCRPage(ocrAll['Tesseract Legacy'][i], ocrAll['Tesseract LSTM'][i], i, compOptions1);
+      const res = await compareOCR(ocrAll['Tesseract Legacy'], ocrAll['Tesseract LSTM'], compOptions);
 
-      ocrAll['Tesseract Combined Temp'][i] = res1.page;
+      replaceObjectProperties(ocrAll['Tesseract Combined Temp'], res.ocr);
     }
 
     // Evaluate default fonts using up to 5 pages.
@@ -523,10 +577,10 @@ export async function recognize(options = {}) {
     if (!ocrAll[oemText]) ocrAll[oemText] = Array(inputData.pageCount);
     ocrAll.active = ocrAll[oemText];
 
-    const comparePageI = async (i) => {
+    {
       const tessCombinedLabel = userUploadMode ? 'Tesseract Combined' : 'Combined';
 
-      /** @type {Parameters<typeof compareOCRPage>[3]} */
+      /** @type {Parameters<typeof compareOCRPage>[2]} */
       const compOptions = {
         mode: 'comb',
         debugLabel: tessCombinedLabel,
@@ -537,67 +591,54 @@ export async function recognize(options = {}) {
         legacyLSTMComb: true,
       };
 
-      const res = await compareOCRPage(ocrAll['Tesseract Legacy'][i], ocrAll['Tesseract LSTM'][i], i, compOptions);
+      const res = await compareOCR(ocrAll['Tesseract Legacy'], ocrAll['Tesseract LSTM'], compOptions);
 
-      if (DebugData.debugImg[tessCombinedLabel]) DebugData.debugImg[tessCombinedLabel][i] = res.debugImg;
+      if (DebugData.debugImg[tessCombinedLabel]) DebugData.debugImg[tessCombinedLabel] = res.debug;
 
-      ocrAll[tessCombinedLabel][i] = res.page;
+      replaceObjectProperties(ocrAll[tessCombinedLabel], res.ocr);
+    }
 
-      // If the user uploaded data, compare to that as we
-      if (userUploadMode) {
-        if (combineMode === 'conf') {
-          /** @type {Parameters<typeof compareOCRPage>[3]} */
-          const compOptions2 = {
-            debugLabel: 'Combined',
-            supplementComp: true,
-            // The `tessScheduler` property must be defined manually for Node.js, which runs this function in the main thread.
-            // In the browser, this is run in a worker, and the Tesseract module is defined automatically there.
-            tessScheduler: typeof process !== 'undefined' ? gs.schedulerInner : undefined,
-            ignoreCap: opt.ignoreCap,
-            ignorePunct: opt.ignorePunct,
-            confThreshHigh: opt.confThreshHigh,
-            confThreshMed: opt.confThreshMed,
-            editConf: true,
-          };
+    if (userUploadMode) {
+      if (combineMode === 'conf') {
+        /** @type {Parameters<typeof compareOCRPage>[2]} */
+        const compOptions = {
+          debugLabel: 'Combined',
+          supplementComp: true,
+          // The `tessScheduler` property must be defined manually for Node.js, which runs this function in the main thread.
+          // In the browser, this is run in a worker, and the Tesseract module is defined automatically there.
+          tessScheduler: typeof process !== 'undefined' ? gs.schedulerInner : undefined,
+          ignoreCap: opt.ignoreCap,
+          ignorePunct: opt.ignorePunct,
+          confThreshHigh: opt.confThreshHigh,
+          confThreshMed: opt.confThreshMed,
+          editConf: true,
+        };
 
-          const res2 = await compareOCRPage(ocrAll['User Upload'][i], ocrAll['Tesseract Combined'][i], i, compOptions2);
+        const res = await compareOCR(ocrAll['User Upload'], ocrAll['Tesseract Combined'], compOptions);
 
-          if (DebugData.debugImg.Combined) DebugData.debugImg.Combined[i] = res2.debugImg;
+        if (DebugData.debugImg.Combined) DebugData.debugImg.Combined = res.debug;
 
-          ocrAll.Combined[i] = res2.page;
-        } else {
-          /** @type {Parameters<typeof compareOCRPage>[3]} */
-          const compOptions2 = {
-            mode: 'comb',
-            debugLabel: 'Combined',
-            supplementComp: true,
-            // The `tessScheduler` property must be defined manually for Node.js, which runs this function in the main thread.
-            // In the browser, this is run in a worker, and the Tesseract module is defined automatically there.
-            tessScheduler: typeof process !== 'undefined' ? gs.schedulerInner : undefined,
-            ignoreCap: opt.ignoreCap,
-            ignorePunct: opt.ignorePunct,
-            confThreshHigh: opt.confThreshHigh,
-            confThreshMed: opt.confThreshMed,
-          };
+        replaceObjectProperties(ocrAll.Combined, res.ocr);
+      } else {
+        /** @type {Parameters<typeof compareOCRPage>[2]} */
+        const compOptions = {
+          mode: 'comb',
+          debugLabel: 'Combined',
+          supplementComp: true,
+          // The `tessScheduler` property must be defined manually for Node.js, which runs this function in the main thread.
+          // In the browser, this is run in a worker, and the Tesseract module is defined automatically there.
+          tessScheduler: typeof process !== 'undefined' ? gs.schedulerInner : undefined,
+          ignoreCap: opt.ignoreCap,
+          ignorePunct: opt.ignorePunct,
+          confThreshHigh: opt.confThreshHigh,
+          confThreshMed: opt.confThreshMed,
+        };
 
-          const res2 = await compareOCRPage(ocrAll['User Upload'][i], ocrAll['Tesseract Combined'][i], i, compOptions2);
+        const res = await compareOCR(ocrAll['User Upload'], ocrAll['Tesseract Combined'], compOptions);
 
-          if (DebugData.debugImg.Combined) DebugData.debugImg.Combined[i] = res2.debugImg;
+        if (DebugData.debugImg.Combined) DebugData.debugImg.Combined = res.debug;
 
-          ocrAll.Combined[i] = res2.page;
-        }
-      }
-    };
-
-    if (typeof process === 'undefined') {
-      const indices = [...Array(ImageCache.pageCount).keys()];
-      const compPromises = indices.map(async (i) => comparePageI(i));
-      await Promise.allSettled(compPromises);
-    } else {
-      // This needs to be run one at a time in Node.js, as this is run in the main thread,
-      // and there is no mechanism for queuing jobs, so side effects will interfere with each other.
-      for (let i = 0; i < ImageCache.pageCount; i++) {
-        await comparePageI(i);
+        replaceObjectProperties(ocrAll.Combined, res.ocr);
       }
     }
   }
@@ -605,71 +646,11 @@ export async function recognize(options = {}) {
   return (ocrAll.active);
 }
 
-let evalStatsConfig = {
-  /** @type {string|undefined} */
-  ocrActive: undefined,
-  ignorePunct: opt.ignorePunct,
-  ignoreCap: opt.ignoreCap,
-  ignoreExtra: opt.ignoreExtra,
-};
-
-// TODO: What this set of functions does makes no sense.
-// Specifically, after comparing to ground truth for all pages, ground truth is then compared to the current page.
-// However, the page should be re-compared after making edits to the OCR data, not upon loading the page.
-// With the current strategy, edits would only be implemented if the user changes pages and then changes back again.
-// Also, this is not clean to add to the interface, as it only makes sense in the context of the GUI.
-// Consider splitting into compareGroundTruthPage and compareGroundTruth functions.
-// ALternatively, do we even need this in the interface? We already have compareOCRPage, so the building blocks are there.
-// There does need to be some easy way to benchmark OCR data however, so we may need this.
-export async function compareGroundTruth(n) {
-  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
-
-  const oemActive = Object.keys(ocrAll).find((key) => ocrAll[key] === ocrAll.active && key !== 'active');
-
-  const evalStatsConfigNew = {
-    ocrActive: oemActive,
-    ignorePunct: opt.ignorePunct,
-    ignoreCap: opt.ignoreCap,
-    ignoreExtra: opt.ignoreExtra,
-  };
-  /** @type {Parameters<typeof compareOCRPage>[3]} */
-  const compOptions = {
-    ignorePunct: opt.ignorePunct,
-    ignoreCap: opt.ignoreCap,
-    confThreshHigh: opt.confThreshHigh,
-    confThreshMed: opt.confThreshMed,
-  };
-
-  // Compare all pages if this has not been done already with the current settings
-  if (JSON.stringify(evalStatsConfig) !== JSON.stringify(evalStatsConfigNew) || evalStats.length === 0) {
-    // Render binarized versions of images
-    await ImageCache.preRenderRange(0, ImageCache.pageCount - 1, true);
-
-    for (let i = 0; i < ImageCache.pageCount; i++) {
-      const res = await compareOCRPage(ocrAll.active[i], ocrAll['Ground Truth'][i], i, compOptions);
-
-      // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
-      // rather than the currently active OCR.
-      // Assigning to "active" will overwrite whatever version the user currently has open.
-      ocrAll.active[i] = res.page;
-
-      if (res.metrics) evalStats[i] = res.metrics;
-    }
-
-    evalStatsConfig = evalStatsConfigNew;
-  }
-
-  const res = await compareOCRPage(ocrAll.active[n], ocrAll['Ground Truth'][n], n, compOptions);
-
-  // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
-  // rather than the currently active OCR.
-  // Assigning to "active" will overwrite whatever version the user currently has open.
-  ocrAll.active[n] = res.page;
-
-  if (res.metrics) evalStats[n] = res.metrics;
-}
-
-export const calcEvalStatsDoc = () => {
+/**
+ * Sum up evaluation statistics for all pages.
+ * @param {Array<EvalMetrics>} evalStatsArr
+ */
+export const calcEvalStatsDoc = (evalStatsArr) => {
   const evalStatsDoc = {
     total: 0,
     correct: 0,
@@ -680,14 +661,14 @@ export const calcEvalStatsDoc = () => {
     incorrectHighConf: 0,
   };
 
-  for (let i = 0; i < evalStats.length; i++) {
-    evalStatsDoc.total += evalStats[i].total;
-    evalStatsDoc.correct += evalStats[i].correct;
-    evalStatsDoc.incorrect += evalStats[i].incorrect;
-    evalStatsDoc.missed += evalStats[i].missed;
-    evalStatsDoc.extra += evalStats[i].extra;
-    evalStatsDoc.correctLowConf += evalStats[i].correctLowConf;
-    evalStatsDoc.incorrectHighConf += evalStats[i].incorrectHighConf;
+  for (let i = 0; i < evalStatsArr.length; i++) {
+    evalStatsDoc.total += evalStatsArr[i].total;
+    evalStatsDoc.correct += evalStatsArr[i].correct;
+    evalStatsDoc.incorrect += evalStatsArr[i].incorrect;
+    evalStatsDoc.missed += evalStatsArr[i].missed;
+    evalStatsDoc.extra += evalStatsArr[i].extra;
+    evalStatsDoc.correctLowConf += evalStatsArr[i].correctLowConf;
+    evalStatsDoc.incorrectHighConf += evalStatsArr[i].incorrectHighConf;
   }
   return evalStatsDoc;
 };

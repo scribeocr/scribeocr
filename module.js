@@ -19,7 +19,10 @@ import { importFiles, importFilesSupp } from './js/import/import.js';
 import { calcBoxOverlap, combineOCRPage } from './js/modifyOCR.js';
 import { calcTableBbox } from './js/objects/layoutObjects.js';
 import ocr from './js/objects/ocrObjects.js';
-import { compareOCRPage, recognize, recognizePage } from './js/recognizeConvert.js';
+import {
+  calcEvalStatsDoc,
+  compareOCR, compareOCRPage, recognize, recognizePage,
+} from './js/recognizeConvert.js';
 import { calcWordMetrics } from './js/utils/fontUtils.js';
 import { imageStrToBlob } from './js/utils/imageUtils.js';
 import { countSubstringOccurrences, getRandomAlphanum, replaceSmartQuotes } from './js/utils/miscUtils.js';
@@ -98,6 +101,8 @@ class utils {
 
   static calcConf = calcConf;
 
+  static calcEvalStatsDoc = calcEvalStatsDoc;
+
   static mergeOcrWords = mergeOcrWords;
 
   static splitOcrWord = splitOcrWord;
@@ -146,6 +151,7 @@ export default {
   clear,
   combineOCRPage,
   compareOCRPage,
+  compareOCR,
   data,
   exportData,
   download,
