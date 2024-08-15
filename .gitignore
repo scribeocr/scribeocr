@@ -1,10 +1,14 @@
 ignore
 .DS_Store
 .env
+.vscode
 node_modules/
+dev/debug
 cypress/downloads
 cypress/videos
 browserstack.json
+*.traineddata
+*.traineddata.gz
 log
 results
 **/screenshots
@@ -14,3 +18,5 @@ results
 /playwright/.cache/
 *.traineddata
 *.traineddata.gz
+settings.json
+tmp

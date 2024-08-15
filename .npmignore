@@ -1,8 +1,14 @@
+ignore
+.DS_Store
+.env
+.vscode
+node_modules
+dev/debug
+browserstack.json
 *.traineddata
 *.traineddata.gz
 .github
 .clinic
-node_modules
 gui
 tests
 dev
