@@ -6,7 +6,7 @@ import { convertPageStext } from '../import/convertPageStext.js';
 import { fontAll, loadFontsFromSource } from '../containers/fontContainer.js';
 import {
   compareOCRPageImp,
-  evalPage,
+  evalPageBase,
   evalPageFont,
   evalWords,
   nudgePageBaseline,
@@ -303,7 +303,7 @@ addEventListener('message', async (e) => {
 
     // OCR comparison/evaluation functions
     evalPageFont,
-    evalPage,
+    evalPageBase,
     evalWords,
     compareOCRPageImp: compareOCRPageImpWrap,
     nudgePageFontSize,

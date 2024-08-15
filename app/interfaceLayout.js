@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import Konva from '../lib/konva/index.js';
+import Konva from './lib/konva/index.js';
 
 import { displayPage, stateGUI } from '../main.js';
 

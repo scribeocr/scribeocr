@@ -1,7 +1,5 @@
 /* eslint-disable import/no-cycle */
 
-import { Button } from '../lib/bootstrap.esm.bundle.min.js';
-import Konva from '../lib/konva/index.js';
 import { search, stateGUI } from '../main.js';
 import scribe from '../module.js';
 import { elem } from './elems.js';
@@ -9,6 +7,8 @@ import {
   KonvaDataColumn,
   KonvaLayout,
 } from './interfaceLayout.js';
+import { Button } from './lib/bootstrap.esm.bundle.min.js';
+import Konva from './lib/konva/index.js';
 
 const styleItalicButton = new Button(elem.edit.styleItalic);
 const styleBoldButton = new Button(elem.edit.styleBold);

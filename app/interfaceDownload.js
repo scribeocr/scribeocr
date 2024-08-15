@@ -1,8 +1,5 @@
 /* eslint-disable import/no-cycle */
-
-import {
-  saveAs,
-} from '../js/utils/miscUtils.js';
+import { saveAs } from './utils/utils.js';
 
 import { stateGUI } from '../main.js';
 import scribe from '../module.js';

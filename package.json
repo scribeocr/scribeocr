@@ -1,7 +1,7 @@
 {
-  "name": "scribeocr",
-  "version": "1.0.0",
-  "description": "Web interface for proofreading OCR and creating fully-digitized documents.",
+  "name": "scribe.js",
+  "version": "0.1.0",
+  "description": "High-quality OCR and text extraction for images and PDFs.",
   "main": "module.js",
   "directories": {
     "lib": "lib"

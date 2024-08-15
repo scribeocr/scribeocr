@@ -1,0 +1,13 @@
+*.traineddata
+*.traineddata.gz
+.github
+.clinic
+node_modules
+gui
+tests
+dev
+tmp
+venv
+robots.txt
+settings.json
+karma.conf.cjs

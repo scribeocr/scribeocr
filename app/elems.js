@@ -3,7 +3,7 @@
 // If an object is used with `noImplicitAny` disabled, using elements that do not exist will not throw an error.
 // If `noImplicitAny` is enabled, an enormous number of errors will be thrown elsewhere in the codebase.
 
-import { Collapse } from '../lib/bootstrap.esm.bundle.min.js';
+import { Collapse } from './lib/bootstrap.esm.bundle.min.js';
 
 class nav {
   static next = /** @type {HTMLInputElement} */(document.getElementById('next'));

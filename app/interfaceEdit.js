@@ -5,7 +5,6 @@
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import { Button } from '../lib/bootstrap.esm.bundle.min.js';
 import { displayPage, renderPageQueue, stateGUI } from '../main.js';
 import scribe from '../module.js';
 import { elem } from './elems.js';
@@ -15,6 +14,7 @@ import {
   ScribeCanvas,
   updateWordCanvas,
 } from './interfaceCanvas.js';
+import { Button } from './lib/bootstrap.esm.bundle.min.js';
 
 elem.edit.styleItalic.addEventListener('click', () => { changeWordFontStyle('italic'); });
 elem.edit.styleBold.addEventListener('click', () => { changeWordFontStyle('bold'); });

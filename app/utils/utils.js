@@ -29,3 +29,30 @@ export function replaceObjectProperties(obj, obj2 = {}) {
   }
   Object.assign(obj, obj2);
 }
+
+/**
+ * Saves a Blob or a string URL as a file to the user's computer.
+ * Modified version of code found in FileSaver.js.
+ *
+ * @global
+ * @param {string|ArrayBuffer} content
+ * @param {string} fileName - File name.
+ */
+export const saveAs = async (content, fileName) => {
+  if (typeof process !== 'undefined') {
+    const { promises: fsPromises } = await import('fs');
+    await fsPromises.writeFile(fileName, content);
+    return;
+  }
+
+  const blob = new Blob([content], { type: 'application/octet-stream' });
+
+  const a = document.createElement('a');
+  a.download = fileName;
+  a.href = globalThis.URL.createObjectURL(blob);
+  a.dispatchEvent(new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+  }));
+};

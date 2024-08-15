@@ -1,11 +1,11 @@
 /* eslint-disable import/no-cycle */
 
-import { Collapse, Tooltip } from './lib/bootstrap.esm.bundle.min.js';
-import Konva from './lib/konva/index.js';
+import { Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js';
+import Konva from './app/lib/konva/index.js';
 
-import { recognizeAllClick } from './gui/interfaceRecognize.js';
+import { recognizeAllClick } from './app/interfaceRecognize.js';
 
-import { handleDownloadGUI, setFormatLabel, updatePdfPagesLabel } from './gui/interfaceDownload.js';
+import { handleDownloadGUI, setFormatLabel, updatePdfPagesLabel } from './app/interfaceDownload.js';
 
 import {
   enableDisableFontOpt,
@@ -13,10 +13,10 @@ import {
 
 import scribe from './module.js';
 
-import { getAllFileEntries } from './gui/utils/dragAndDrop.js';
-import { insertAlertMessage } from './gui/utils/warningMessages.js';
+import { getAllFileEntries } from './app/utils/dragAndDrop.js';
+import { insertAlertMessage } from './app/utils/warningMessages.js';
 
-import { selectDisplayMode, setWordColorOpacity } from './gui/interfaceView.js';
+import { selectDisplayMode, setWordColorOpacity } from './app/interfaceView.js';
 
 import {
   adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange,
@@ -24,7 +24,7 @@ import {
   changeWordFontSize,
   deleteSelectedWords,
   toggleEditButtons,
-} from './gui/interfaceEdit.js';
+} from './app/interfaceEdit.js';
 
 import {
   renderLayoutBoxes,
@@ -33,7 +33,7 @@ import {
   setLayoutBoxInclusionLevelClick,
   setLayoutBoxInclusionRuleClick,
   toggleSelectableWords,
-} from './gui/interfaceLayout.js';
+} from './app/interfaceLayout.js';
 
 import {
   layerOverlay,
@@ -41,7 +41,7 @@ import {
   renderPage,
   ScribeCanvas,
   stage,
-} from './gui/interfaceCanvas.js';
+} from './app/interfaceCanvas.js';
 
 import {
   downloadCanvas,
@@ -49,23 +49,16 @@ import {
   evalSelectedLine,
   printSelectedWords,
   showDebugImages,
-} from './gui/interfaceDebug.js';
+} from './app/interfaceDebug.js';
 
-import { elem } from './gui/elems.js';
+import { elem } from './app/elems.js';
 import {
   getLayerCenter, setCanvasWidthHeightZoom, zoomAllLayers,
-} from './gui/interfaceCanvasInteraction.js';
-import { compareGroundTruthClick, createGroundTruthClick } from './gui/interfaceEvaluate.js';
-import { optGUI, setDefaults } from './gui/options.js';
-import { ProgressBars } from './gui/utils/progressBars.js';
-import { showHideElem } from './gui/utils/utils.js';
-import { df } from './js/debugGlobals.js';
-
-globalThis.df = df;
-
-globalThis.d = () => {
-  debugger;
-};
+} from './app/interfaceCanvasInteraction.js';
+import { compareGroundTruthClick, createGroundTruthClick } from './app/interfaceEvaluate.js';
+import { optGUI, setDefaults } from './app/options.js';
+import { ProgressBars } from './app/utils/progressBars.js';
+import { showHideElem } from './app/utils/utils.js';
 
 export class stateGUI {
   static pageRendering = Promise.resolve(true);

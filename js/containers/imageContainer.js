@@ -431,8 +431,16 @@ export class ImageCache {
     return { native: ImageCache.native[n], binary: ImageCache.binary[n] };
   };
 
+  /**
+   * @param {number} n
+   * @param {Parameters<ImageCache.getImages>[1]} [props]
+   */
   static getNative = async (n, props) => ImageCache.getImages(n, props, true).native;
 
+  /**
+   * @param {number} n
+   * @param {Parameters<ImageCache.getImages>[1]} [props]
+   */
   static getBinary = async (n, props) => ImageCache.getImages(n, props, false).binary;
 
   /**

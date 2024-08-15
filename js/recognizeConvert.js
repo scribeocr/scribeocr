@@ -32,6 +32,22 @@ export const compareOCRPage = async (pageA, pageB, options) => {
 };
 
 /**
+ * @param {Object} params
+ * @param {OcrPage | OcrLine} params.page
+ * @param {?function} [params.func=null]
+ * @param {boolean} [params.view=false] - Draw results on debugging canvases
+ */
+export const evalOCRPage = async (params) => {
+  const func = typeof process !== 'undefined' ? (await import('./worker/compareOCRModule.js')).evalPageBase : gs.scheduler.evalPageBase;
+  const n = 'page' in params.page ? params.page.page.n : params.page.n;
+  const binaryImage = await ImageCache.getBinary(n);
+  const pageMetricsObj = pageMetricsArr[n];
+  return func({
+    page: params.page, binaryImage, pageMetricsObj, func: params.func, view: params.view,
+  });
+};
+
+/**
  * Compare two sets of OCR data.
  * @param {Array<OcrPage>} ocrA
  * @param {Array<OcrPage>} ocrB

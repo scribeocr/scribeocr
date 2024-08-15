@@ -1,6 +1,5 @@
 /* eslint-disable import/no-cycle */
 
-import Konva from '../lib/konva/index.js';
 import { stateGUI } from '../main.js';
 import scribe from '../module.js';
 import { elem } from './elems.js';
@@ -14,6 +13,7 @@ import {
 import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
 import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
 import { renderLayoutBoxes } from './interfaceLayout.js';
+import Konva from './lib/konva/index.js';
 
 const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 

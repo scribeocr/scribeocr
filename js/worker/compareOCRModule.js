@@ -1000,14 +1000,15 @@ export async function checkWords(wordsA, binaryImage, imageRotated, pageMetricsO
 
 /**
  * @param {Object} params
- * @param {OcrPage} params.page
+ * @param {OcrPage|OcrLine} params.page
  * @param {import('../containers/imageContainer.js').ImageWrapper} params.binaryImage
  * @param {PageMetrics} params.pageMetricsObj
- * @param {?function} params.func
+ * @param {?function} [params.func=null]
+ * @param {boolean} [params.view=false] - Draw results on debugging canvases
  * @returns
  */
-async function evalPageBase({
-  page, binaryImage, pageMetricsObj, func,
+export async function evalPageBase({
+  page, binaryImage, pageMetricsObj, func = null, view = false,
 }) {
   // If this is not being run in a worker, clone the data so the original is not edited.
   // This is not necessary when running in a worker, as the data is already cloned when sent to the worker.
@@ -1015,10 +1016,14 @@ async function evalPageBase({
     page = structuredClone(page);
   }
 
+  const lines = 'lines' in page ? page.lines : [page];
+
   const imgDims = structuredClone(pageMetricsObj.dims);
   const imgAngle = binaryImage.rotated ? (pageMetricsObj.angle || 0) : 0;
   if (binaryImage.upscaled) {
-    ocr.scalePage(page, 2);
+    for (let i = 0; i < lines.length; i++) {
+      ocr.scaleLine(lines[i], 2);
+    }
     imgDims.width *= 2;
     imgDims.height *= 2;
   }
@@ -1030,44 +1035,32 @@ async function evalPageBase({
 
   let metricTotal = 0;
   let wordsTotal = 0;
+  const debugArr = [];
 
-  for (let j = 0; j < page.lines.length; j++) {
-    let ocrLineJ = page.lines[j];
+  for (let j = 0; j < lines.length; j++) {
+    let ocrLineJ = lines[j];
 
     // The Chinese font is currently not loaded in the workers, so trying to evaluate it will cause an error.
     if (ocrLineJ.words[0].lang === 'chi_sim') continue;
 
     if (func) {
-      ocrLineJ = await func(page.lines[j]);
+      ocrLineJ = await func(lines[j]);
     }
 
     if (!ocrLineJ) continue;
 
     const evalRes = await evalWords({
-      wordsA: ocrLineJ.words, binaryImage: binaryImageBit, angle: imgAngle, imgDims, options: { view: false },
+      wordsA: ocrLineJ.words, binaryImage: binaryImageBit, angle: imgAngle, imgDims, options: { view },
     });
 
     metricTotal += (evalRes.metricA * ocrLineJ.words.length);
 
     wordsTotal += ocrLineJ.words.length;
+
+    if (evalRes.debug) debugArr.push(evalRes.debug);
   }
 
-  return { wordsTotal, metricTotal };
-}
-
-/**
- * @param {Object} params
- * @param {OcrPage} params.page
- * @param {import('../containers/imageContainer.js').ImageWrapper} params.binaryImage
- * @param {PageMetrics} params.pageMetricsObj
- * @returns
- */
-export async function evalPage({
-  page, binaryImage, pageMetricsObj,
-}) {
-  return await evalPageBase({
-    page, binaryImage, pageMetricsObj, func: null,
-  });
+  return { wordsTotal, metricTotal, debug: debugArr };
 }
 
 /**

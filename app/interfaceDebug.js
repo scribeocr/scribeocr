@@ -1,7 +1,5 @@
 /* eslint-disable import/no-cycle */
 
-import { gs } from '../js/generalWorkerMain.js';
-import { saveAs } from '../js/utils/miscUtils.js';
 import { stateGUI } from '../main.js';
 import scribe from '../module.js';
 import { elem } from './elems.js';
@@ -11,6 +9,7 @@ import {
   stage,
 } from './interfaceCanvas.js';
 import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
+import { saveAs } from './utils/utils.js';
 
 export function printSelectedWords(printOCR = true) {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
@@ -42,37 +41,14 @@ export async function showDebugImages() {
 }
 
 export async function evalSelectedLine() {
-  await gs.schedulerReady;
-  if (!gs.scheduler) throw new Error('GeneralScheduler must be defined before this function can run.');
-
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
   const word0 = selectedObjects[0].word;
 
-  const imageBinary = await scribe.data.image.getBinary(stateGUI.cp.n);
+  const res = await scribe.evalOCRPage({ page: word0.line, view: true });
 
-  const pageMetricsObj = scribe.data.pageMetrics[stateGUI.cp.n];
-
-  const lineObj = scribe.utils.ocr.cloneLine(word0.line);
-
-  const imgDims = structuredClone(pageMetricsObj.dims);
-  const imgAngle = imageBinary.rotated ? (pageMetricsObj.angle || 0) : 0;
-  if (imageBinary.upscaled) {
-    scribe.utils.ocr.scaleLine(lineObj, 2);
-    imgDims.width *= 2;
-    imgDims.height *= 2;
-  }
-
-  const res = await gs.scheduler.evalWords({
-    wordsA: lineObj.words,
-    binaryImage: imageBinary.src,
-    angle: imgAngle,
-    imgDims,
-    options: { view: true },
-  });
-
-  await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res?.debug]], context: 'browser' });
+  await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res.debug[0]]], context: 'browser' });
 
   setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, true);
 }

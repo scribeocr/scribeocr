@@ -25,7 +25,7 @@ export async function compareGroundTruth() {
     ignoreCap: scribe.opt.ignoreCap,
     ignoreExtra: scribe.opt.ignoreExtra,
   };
-  /** @type {Parameters<typeof scribe.compareOCRPage>[2]} */
+  /** @type {Parameters<typeof scribe.compareOCR>[2]} */
   const compOptions = {
     ignorePunct: scribe.opt.ignorePunct,
     ignoreCap: scribe.opt.ignoreCap,

@@ -71,7 +71,7 @@ export async function initGeneralWorker() {
     obj.optimizeFont = wrap('optimizeFont');
 
     obj.evalPageFont = wrap('evalPageFont');
-    obj.evalPage = wrap('evalPage');
+    obj.evalPageBase = wrap('evalPageBase');
     obj.evalWords = wrap('evalWords');
     obj.compareOCRPageImp = wrap('compareOCRPageImp');
     obj.nudgePageFontSize = wrap('nudgePageFontSize');
@@ -126,10 +126,10 @@ export class GeneralScheduler {
      */
     this.recognizeAndConvert2 = async (args) => (await this.scheduler.addJob('recognizeAndConvert2', args));
     /**
-     * @param {Parameters<typeof import('./worker/compareOCRModule.js').evalPage>[0]} args
-     * @returns {ReturnType<typeof import('./worker/compareOCRModule.js').evalPage>}
+     * @param {Parameters<typeof import('./worker/compareOCRModule.js').evalPageBase>[0]} args
+     * @returns {ReturnType<typeof import('./worker/compareOCRModule.js').evalPageBase>}
      */
-    this.evalPage = async (args) => (await this.scheduler.addJob('evalPage', args));
+    this.evalPageBase = async (args) => (await this.scheduler.addJob('evalPageBase', args));
     /**
      * @param {Parameters<typeof import('./worker/compareOCRModule.js').evalWords>[0]} args
      * @returns {ReturnType<typeof import('./worker/compareOCRModule.js').evalWords>}

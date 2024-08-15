@@ -21,7 +21,9 @@ import { calcTableBbox } from './js/objects/layoutObjects.js';
 import ocr from './js/objects/ocrObjects.js';
 import {
   calcEvalStatsDoc,
-  compareOCR, compareOCRPage, recognize, recognizePage,
+  compareOCR,
+  evalOCRPage,
+  recognize, recognizePage,
 } from './js/recognizeConvert.js';
 import { calcWordMetrics } from './js/utils/fontUtils.js';
 import { imageStrToBlob } from './js/utils/imageUtils.js';
@@ -67,7 +69,7 @@ const init = async (params) => {
  *
  * @param {Parameters<typeof importFiles>[0]} files
  * @param {Array<string>} [langs=['eng']]
- * @param {Parameters<exportData>[0]} [outputFormat='txt']
+ * @param {Parameters<typeof exportData>[0]} [outputFormat='txt']
  * @returns
  */
 const recognizeFiles = async (files, langs = ['eng'], outputFormat = 'txt') => {
@@ -142,6 +144,9 @@ const clear = async () => {
   clearData();
 };
 
+/**
+ * Terminates the program and releases resources.
+ */
 const terminate = async () => {
   clearData();
   await Promise.allSettled([gs.terminate(), ImageCache.terminate()]);
@@ -150,9 +155,9 @@ const terminate = async () => {
 export default {
   clear,
   combineOCRPage,
-  compareOCRPage,
   compareOCR,
   data,
+  evalOCRPage,
   exportData,
   download,
   importFiles,

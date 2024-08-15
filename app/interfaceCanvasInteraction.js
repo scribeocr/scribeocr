@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-import { Konva } from '../lib/konva/_FullInternals.js';
 import { renderPageQueue, stateGUI } from '../main.js';
 import scribe from '../module.js';
 import {
@@ -16,6 +15,7 @@ import {
   addLayoutDataTableClick,
   checkDataColumnsAdjacent, checkDataTablesAdjacent, mergeDataColumns, mergeDataTables, selectLayoutBoxesArea, splitDataColumn, splitDataTable,
 } from './interfaceLayout.js';
+import { Konva } from './lib/konva/_FullInternals.js';
 import { showHideElem } from './utils/utils.js';
 
 const createContextMenuHTML = () => {
@@ -353,7 +353,7 @@ function selectWords(box) {
   }
 }
 
-/** @type {import('../lib/konva/Stage.js').Stage | import('../lib/konva/Shape.js').Shape<import('../lib/konva/Shape.js').ShapeConfig>} */
+/** @type {import('./lib/konva/Stage.js').Stage | import('./lib/konva/Shape.js').Shape<import('./lib/konva/Shape.js').ShapeConfig>} */
 let mouseDownTarget = stage;
 
 stage.on('mousedown touchstart', (e) => {
@@ -669,9 +669,9 @@ stage.on('wheel', (event) => {
 });
 
 /**
- * @typedef {import('../lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
- * @typedef {import('../lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
- * @typedef {import('../lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
+ * @typedef {import('./lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
+ * @typedef {import('./lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
+ * @typedef {import('./lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
  */
 
 /**
