@@ -12,6 +12,8 @@ There are 3 primary uses cases for Scribe OCR.
 	1. Other OCR programs do not truly digitize documents, but rather add roughly-positioned invisible text over the original image.
 	2. Scribe OCR can be used to produce text native, ebook-style PDFs that accurately replicate the original document.
 
+Note: This repo only contains code for the user interface.  Recognition is run using the Scribe.js library, which is in the [Scribe.js repo](https://github.com/scribeocr/scribe.js).  Discussion regarding recognition--from questions about quality to instructions on how to implement OCR within your own project--should happen in that repo.
+
 # Running
 ScribeOCR can be run by using the public site at [scribeocr.com](https://scribeocr.com).  The entire program runs in your browser--no data is sent to a remote server. 
 

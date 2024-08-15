@@ -3,7 +3,7 @@
 import {
   displayPage, stateGUI, toggleEditConfUI, toggleLayoutButtons, updateOcrVersionGUI,
 } from '../main.js';
-import scribe from '../module.js';
+import scribe from '../scribe.js/module.js';
 import { elem } from './elems.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 import { optGUI } from './options.js';
@@ -117,7 +117,7 @@ export function setLangOpt() {
 // TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
 async function addVisInstructionsUI() {
-  const { combineOrderedArrays } = await import('../scrollview-web/util/combine.js');
+  const { combineOrderedArrays } = await import('../scribe.js/scrollview-web/util/combine.js');
   if (!scribe.data.vis || scribe.data.vis.length === 0) return;
   const visNamesAll = scribe.data.vis.map((x) => Object.keys(x));
   if (visNamesAll.length === 0) return;

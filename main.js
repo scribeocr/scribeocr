@@ -7,11 +7,7 @@ import { recognizeAllClick } from './app/interfaceRecognize.js';
 
 import { handleDownloadGUI, setFormatLabel, updatePdfPagesLabel } from './app/interfaceDownload.js';
 
-import {
-  enableDisableFontOpt,
-} from './js/fontContainerMain.js';
-
-import scribe from './module.js';
+import scribe from './scribe.js/module.js';
 
 import { getAllFileEntries } from './app/utils/dragAndDrop.js';
 import { insertAlertMessage } from './app/utils/warningMessages.js';
@@ -1073,7 +1069,7 @@ export async function displayPage(n, force = false) {
  * @param {boolean} [useInitial=false]
  */
 async function optimizeFontClick(enable, useInitial = false) {
-  await enableDisableFontOpt(enable, useInitial);
+  await scribe.enableFontOpt(enable, useInitial);
 
   renderPageQueue(stateGUI.cp.n);
 }

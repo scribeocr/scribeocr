@@ -6,7 +6,7 @@
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
 import { displayPage, renderPageQueue, stateGUI } from '../main.js';
-import scribe from '../module.js';
+import scribe from '../scribe.js/module.js';
 import { elem } from './elems.js';
 import {
   KonvaOcrWord,

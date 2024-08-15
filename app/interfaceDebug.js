@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import { stateGUI } from '../main.js';
-import scribe from '../module.js';
+import scribe from '../scribe.js/module.js';
 import { elem } from './elems.js';
 import {
   layerText,

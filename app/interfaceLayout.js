@@ -3,11 +3,7 @@ import Konva from './lib/konva/index.js';
 
 import { displayPage, stateGUI } from '../main.js';
 
-import {
-  LayoutDataColumn, LayoutDataTable, LayoutRegion,
-} from '../js/objects/layoutObjects.js';
-
-import scribe from '../module.js';
+import scribe from '../scribe.js/module.js';
 
 import {
   KonvaIText, ScribeCanvas,
@@ -52,8 +48,8 @@ export function addLayoutDataTableClick({
     left: x, top: y, right: x + width, bottom: y + height,
   };
 
-  const dataTable = new LayoutDataTable();
-  const layoutBox = new LayoutDataColumn(bbox, dataTable);
+  const dataTable = new scribe.layout.LayoutDataTable();
+  const layoutBox = new scribe.layout.LayoutDataColumn(bbox, dataTable);
 
   dataTable.boxes[0] = layoutBox;
 
@@ -85,7 +81,7 @@ export function addLayoutBoxClick({
     left: x, top: y, right: x + width, bottom: y + height,
   };
 
-  const region = new LayoutRegion(maxPriority + 1, bbox, type);
+  const region = new scribe.layout.LayoutRegion(maxPriority + 1, bbox, type);
 
   scribe.data.layoutRegions.pages[stateGUI.cp.n].boxes[region.id] = region;
 
@@ -581,7 +577,7 @@ export class KonvaDataTable {
   /**
    * @param {OcrPage|undefined} pageObj - The page object that the table is on.
    *    This can be undefined in the fringe case where the user makes layout boxes without any OCR data.
-   * @param {import('../js/objects/layoutObjects.js').LayoutDataTable} layoutDataTable
+   * @param {InstanceType<typeof scribe.layout.LayoutDataTable>} layoutDataTable
    * @param {boolean} [lockColumns=true]
    */
   constructor(pageObj, layoutDataTable, lockColumns = true) {
@@ -842,7 +838,7 @@ export class KonvaDataTable {
 /**
  * Render a layout data table on the canvas.
  * If the data table already exists on the canvas, it is automatically removed.
- * @param {import('../js/objects/layoutObjects.js').LayoutDataTable} layoutDataTable
+ * @param {InstanceType<typeof scribe.layout.LayoutDataTable>} layoutDataTable
  */
 function renderLayoutDataTable(layoutDataTable) {
   if (!layoutDataTable || Object.keys(layoutDataTable.boxes).length === 0) {
@@ -1026,7 +1022,7 @@ export const splitDataColumn = (column, x) => {
 
   column.layoutBox.coords = bboxLeft;
 
-  const layoutBoxLeft = new LayoutDataColumn(bboxRight, column.layoutBox.table);
+  const layoutBoxLeft = new scribe.layout.LayoutDataColumn(bboxRight, column.layoutBox.table);
 
   column.konvaTable.layoutDataTable.boxes.push(layoutBoxLeft);
 
@@ -1061,7 +1057,7 @@ export const splitDataTable = (columns) => {
   [layoutDataColumns0, layoutDataColumns1, layoutDataColumns2].forEach((layoutDataColumns) => {
     if (layoutDataColumns.length === 0) return;
 
-    const table = new LayoutDataTable();
+    const table = new scribe.layout.LayoutDataTable();
 
     layoutDataColumns.forEach((layoutDataColumn) => {
       layoutDataColumn.table = table;

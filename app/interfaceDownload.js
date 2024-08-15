@@ -2,7 +2,7 @@
 import { saveAs } from './utils/utils.js';
 
 import { stateGUI } from '../main.js';
-import scribe from '../module.js';
+import scribe from '../scribe.js/module.js';
 import { elem } from './elems.js';
 import { ProgressBars } from './utils/progressBars.js';
 import { insertAlertMessage } from './utils/warningMessages.js';

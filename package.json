@@ -1,8 +1,8 @@
 {
-  "name": "scribe.js",
+  "name": "scribeocr",
   "version": "0.1.0",
-  "description": "High-quality OCR and text extraction for images and PDFs.",
-  "main": "module.js",
+  "description": "Web interface for proofreading OCR and creating fully-digitized documents.",
+  "main": "main.js",
   "directories": {
     "lib": "lib"
   },
@@ -30,11 +30,7 @@
   "scripts": {
     "start": "node tests/scripts/server.js",
     "stop": "curl http://localhost:3031/shutdown",
-    "test": "npm-run-all test:cli test:gui test:module",
-    "test:module:browser": "karma start karma.conf.cjs",
-    "test:module:node": "mocha tests/module/*.js",
-    "test:module": "npm-run-all -p test:module:browser test:module:node",
-    "test:cli": "mocha tests/cli",
+    "test": "npm-run-all test:gui",
     "test:guispecs": "mocha tests/gui",
     "test:gui1": "run-s wait test:guispecs stop",
     "test:gui": "npm-run-all -p start test:gui1",
