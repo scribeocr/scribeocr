@@ -3,7 +3,7 @@
 import {
   displayPage, stateGUI, toggleEditConfUI, toggleLayoutButtons, updateOcrVersionGUI,
 } from '../main.js';
-import scribe from '../scribe.js/module.js';
+import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 import { optGUI } from './options.js';

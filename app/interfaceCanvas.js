@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import { search, stateGUI } from '../main.js';
-import scribe from '../scribe.js/module.js';
+import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import {
   KonvaDataColumn,

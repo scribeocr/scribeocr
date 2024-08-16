@@ -67,6 +67,9 @@
         // "one-var": "off",
         // "one-var-declaration-per-line": "off", 
 
+        // If this is enabled eslint breaks our import statements, such that they no longer run natively in the browser.
+        "import/no-relative-packages": "off",
+
         // This rule was depreciated
         "no-return-await": "off",
 

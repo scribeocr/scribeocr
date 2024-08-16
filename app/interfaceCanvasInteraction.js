@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 import { renderPageQueue, stateGUI } from '../main.js';
-import scribe from '../scribe.js/module.js';
+import scribe from '../scribe.js/scribe.js';
 import {
   KonvaOcrWord,
   ScribeCanvas,

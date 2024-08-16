@@ -3,7 +3,7 @@ import Konva from './lib/konva/index.js';
 
 import { displayPage, stateGUI } from '../main.js';
 
-import scribe from '../scribe.js/module.js';
+import scribe from '../scribe.js/scribe.js';
 
 import {
   KonvaIText, ScribeCanvas,
