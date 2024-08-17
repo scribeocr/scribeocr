@@ -70,6 +70,9 @@
         // If this is enabled eslint breaks our import statements, such that they no longer run natively in the browser.
         "import/no-relative-packages": "off",
 
+        // Using blocks for purely organizational purposes (e.g. when in-lining a function) is fine.
+        "no-lone-blocks": "off",
+
         // This rule was depreciated
         "no-return-await": "off",
 

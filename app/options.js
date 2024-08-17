@@ -21,6 +21,8 @@ export class optGUI {
 
   /** @type {'conf'|'data'} */
   static combineMode = 'data';
+
+  static extractText = false;
 }
 
 export function setDefaults() {

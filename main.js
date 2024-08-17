@@ -136,7 +136,7 @@ elem.info.omitNativeTextCheckbox.addEventListener('click', () => {
 });
 
 elem.info.extractTextCheckbox.addEventListener('click', () => {
-  scribe.opt.extractText = elem.info.extractTextCheckbox.checked;
+  optGUI.extractText = elem.info.extractTextCheckbox.checked;
 });
 
 elem.download.addOverlayCheckbox.addEventListener('click', () => {
@@ -627,7 +627,12 @@ const importFilesGUI = async (files) => {
   ProgressBars.active = ProgressBars.import;
   ProgressBars.active.show(files.length, 0);
 
-  await scribe.importFiles(files);
+  const params = {
+    extractPDFTextNative: optGUI.extractText,
+    extractPDFTextOCR: optGUI.extractText,
+  };
+
+  await scribe.importFiles(files, params);
 
   displayPage(stateGUI.cp.n, true);
 
@@ -656,11 +661,9 @@ const importFilesGUI = async (files) => {
       elem.download.addOverlayCheckbox.disabled = true;
     }
   }
-  if (scribe.inputData.xmlMode[0] || scribe.inputData.extractTextMode) {
-    elem.recognize.combineModeOptions.setAttribute('style', '');
-    const oemName = 'User Upload';
-    elem.evaluate.displayLabelText.innerHTML = oemName;
 
+  if (scribe.inputData.xmlMode[0]) {
+    updateOcrVersionGUI();
     toggleEditButtons(false);
     toggleLayoutButtons(false);
   }
