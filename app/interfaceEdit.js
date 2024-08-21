@@ -439,7 +439,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     }
   }
 
-  /** @type {Parameters<typeof import('../js/recognizeConvert.js').compareOCRPage>[2]} */
+  /** @type {Parameters<typeof scribe.compareOCR>[2]} */
   const compOptions = {
     mode: 'comb',
     debugLabel,
@@ -452,9 +452,9 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   const res = await scribe.compareOCR([pageObjLegacy], [pageObjLSTM], compOptions);
 
-  scribe.data.debug.debugImg[debugLabel][n].push(...res.debugImg);
+  scribe.data.debug.debugImg[debugLabel][n].push(...res.debug);
 
-  scribe.combineOCRPage(res.page, scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
+  scribe.combineOCRPage(res.ocr[0], scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
 
   if (n === stateGUI.cp.n) displayPage(stateGUI.cp.n);
 }

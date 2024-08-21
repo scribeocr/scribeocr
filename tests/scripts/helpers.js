@@ -30,6 +30,38 @@ class CustomSeleniumActions {
     }, 10000, 'Import progress bar did not reach maximum value in time');
   }
 
+  /**
+   * Helper function to simulate drawing on a canvas.
+   * The `from` and `to` parameters are relative to the center of the canvas element.
+   * Selenium has a built-in drag-and-drop function, however it is intended to drag an HTML element, not to simulate drawing on a canvas.
+   * @param {{x: number, y: number}} from
+   * @param {{x: number, y: number}} to
+   */
+  async clickAndDrag(from, to) {
+    const canvas = await this.driver.findElement(By.id('c'));
+
+    await this.driver.actions()
+      .move({ origin: canvas, x: from.x, y: from.y })
+      .press()
+      .move({ origin: canvas, x: to.x, y: to.y })
+      .release()
+      .perform();
+  }
+
+  async selectAllCanvas() {
+    const canvasElem = await this.driver.findElement(By.id('c'));
+    const canvasRect = await canvasElem.getRect();
+
+    // Arbitrarily large area that should capture the entire canvas
+    // The origin used by Selenium is the middle of the element, so we need to adjust the coordinates accordingly.
+    const x1 = Math.round(canvasRect.width * -0.5 + 100);
+    const y1 = Math.round(canvasRect.height * -0.5 + 200);
+    const x2 = Math.round(canvasRect.width * 0.5 - 100);
+    const y2 = Math.round(canvasRect.height * 0.5 - 100);
+
+    await this.clickAndDrag({ x: x1, y: y1 }, { x: x2, y: y2 });
+  }
+
   async recognize() {
     // Click on the 'Recognize' tab
     await this.driver.findElement(By.id('nav-recognize-tab')).click();

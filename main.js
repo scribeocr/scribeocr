@@ -229,6 +229,8 @@ zone.addEventListener('drop', async (event) => {
   showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
 });
 
+globalThis.scribe = scribe;
+
 /**
  * Fetches an array of URLs and runs `importFiles` on the results.
  * Intended only to be used by automated testing and not by users.
