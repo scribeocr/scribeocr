@@ -444,16 +444,11 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
   const res0 = await scribe.recognizePage(n, legacy, lstm, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm, upscale });
 
-  const resLegacy = await res0[0];
-  const resLSTM = await res0[1];
-
-  const debug = false;
-  if (debug) {
-    console.log(resLegacy.recognize);
-  }
-
   let pageNew;
   if (legacy && lstm) {
+    const resLegacy = await res0[0];
+    const resLSTM = await res0[1];
+
     const pageObjLSTM = resLSTM.convert.lstm.pageObj;
     const pageObjLegacy = resLegacy.convert.legacy.pageObj;
 
@@ -483,8 +478,10 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
     pageNew = res.ocr[0];
   } else if (legacy) {
+    const resLegacy = await res0[0];
     pageNew = resLegacy.convert.legacy.pageObj;
   } else {
+    const resLSTM = await res0[0];
     pageNew = resLSTM.convert.lstm.pageObj;
   }
 
