@@ -10,9 +10,6 @@ import { optGUI } from './options.js';
 import { ProgressBars } from './utils/progressBars.js';
 import { insertAlertMessage } from './utils/warningMessages.js';
 
-const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
-const oemLabelTextElem = /** @type {HTMLElement} */(document.getElementById('oemLabelText'));
-
 const langLabelElem = /** @type {HTMLDivElement} */(document.getElementById('langLabel'));
 langLabelElem.addEventListener('click', setLangOpt);
 
@@ -139,8 +136,8 @@ export async function recognizeAllClick() {
   // User can select engine directly using advanced options, or indirectly using basic options.
   /** @type {"legacy" | "lstm" | "combined"} */
   let oemMode;
-  if (enableAdvancedRecognitionElem.checked) {
-    oemMode = /** @type {"legacy" | "lstm" | "combined"} */(oemLabelTextElem.innerHTML.toLowerCase());
+  if (elem.info.enableAdvancedRecognition.checked) {
+    oemMode = /** @type {"legacy" | "lstm" | "combined"} */(elem.recognize.oemLabelText.innerHTML.toLowerCase());
   } else if (elem.recognize.ocrQuality.value === '1') {
     oemMode = 'combined';
   } else {

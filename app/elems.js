@@ -236,6 +236,8 @@ class info {
   // Optional features.
   static enableRecognition = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
 
+  static enableAdvancedRecognition = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
+
   static enableLayout = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
   static enableXlsxExport = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));

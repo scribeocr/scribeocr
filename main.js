@@ -337,21 +337,19 @@ elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick
 
 const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
 
-const enableAdvancedRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
-
 const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
 
 enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab')), enableEvalElem.checked));
 
-enableAdvancedRecognitionElem.addEventListener('click', () => {
+elem.info.enableAdvancedRecognition.addEventListener('click', () => {
   const advancedRecognitionOptions1Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions1'));
   const advancedRecognitionOptions2Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions2'));
   const advancedRecognitionOptions3Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions3'));
   const basicRecognitionOptionsElem = /** @type {HTMLDivElement} */(document.getElementById('basicRecognitionOptions'));
-  showHideElem(advancedRecognitionOptions1Elem, enableAdvancedRecognitionElem.checked);
-  showHideElem(advancedRecognitionOptions2Elem, enableAdvancedRecognitionElem.checked);
-  showHideElem(advancedRecognitionOptions3Elem, enableAdvancedRecognitionElem.checked);
-  showHideElem(basicRecognitionOptionsElem, !enableAdvancedRecognitionElem.checked);
+  showHideElem(advancedRecognitionOptions1Elem, elem.info.enableAdvancedRecognition.checked);
+  showHideElem(advancedRecognitionOptions2Elem, elem.info.enableAdvancedRecognition.checked);
+  showHideElem(advancedRecognitionOptions3Elem, elem.info.enableAdvancedRecognition.checked);
+  showHideElem(basicRecognitionOptionsElem, !elem.info.enableAdvancedRecognition.checked);
 });
 
 export const enableRecognitionClick = () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-recognize-tab')), enableRecognitionElem.checked);

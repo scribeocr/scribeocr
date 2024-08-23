@@ -45,12 +45,5 @@
   "bugs": {
     "url": "https://github.com/scribeocr/scribeocr/issues"
   },
-  "homepage": "https://github.com/scribeocr/scribeocr#readme",
-  "dependencies": {
-    "canvas": "^2.11.2",
-    "commander": "^11.1.0",
-    "puppeteer": "^22.13.0",
-    "tesseract.js": "scribeocr/tesseract.js#2065fd6",
-    "web-worker": "~1.2.0"
-  }
+  "homepage": "https://github.com/scribeocr/scribeocr#readme"
 }

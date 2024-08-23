@@ -388,6 +388,16 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   // Return early if the rectangle is too small to be a word.
   if (box.width < 4 || box.height < 4) return;
 
+  // As recognizing a single word is fast, it is run in "combined" mode unless a user has explicitly selected "legacy" or "lstm" in the advanced options.
+  /** @type {"legacy" | "lstm" | "combined"} */
+  let oemMode = 'combined';
+  if (elem.info.enableAdvancedRecognition.checked) {
+    oemMode = /** @type {"legacy" | "lstm" | "combined"} */(elem.recognize.oemLabelText.innerHTML.toLowerCase());
+  }
+
+  const legacy = oemMode === 'legacy' || oemMode === 'combined';
+  const lstm = oemMode === 'lstm' || oemMode === 'combined';
+
   const canvasCoords = {
     left: box.x, top: box.y, width: box.width, height: box.height,
   };
@@ -397,6 +407,12 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
 
   const imageCoords = scribe.utils.coords.canvasToImage(canvasCoords, imageRotated, scribe.opt.autoRotate, stateGUI.cp.n, angle);
+
+  // TODO: Should we handle the case where the rectangle goes off the edge of the image?
+  imageCoords.left = Math.round(imageCoords.left);
+  imageCoords.top = Math.round(imageCoords.top);
+  imageCoords.width = Math.round(imageCoords.width);
+  imageCoords.height = Math.round(imageCoords.height);
 
   if (printCoordsOnly) {
     const debugCoords = {
@@ -417,7 +433,16 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
   const psm = wordMode ? '8' : '6';
   const n = stateGUI.cp.n;
 
-  const res0 = await scribe.recognizePage(n, true, true, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm });
+  const upscale = scribe.inputData.imageMode && scribe.opt.enableUpscale;
+
+  if (upscale) {
+    imageCoords.left *= 2;
+    imageCoords.top *= 2;
+    imageCoords.width *= 2;
+    imageCoords.height *= 2;
+  }
+
+  const res0 = await scribe.recognizePage(n, legacy, lstm, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm, upscale });
 
   const resLegacy = await res0[0];
   const resLSTM = await res0[1];
@@ -427,34 +452,43 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
     console.log(resLegacy.recognize);
   }
 
-  const pageObjLSTM = resLSTM.convert.lstm.pageObj;
-  const pageObjLegacy = resLegacy.convert.legacy.pageObj;
+  let pageNew;
+  if (legacy && lstm) {
+    const pageObjLSTM = resLSTM.convert.lstm.pageObj;
+    const pageObjLegacy = resLegacy.convert.legacy.pageObj;
 
-  const debugLabel = 'recognizeArea';
+    const debugLabel = 'recognizeArea';
 
-  if (debugLabel && !scribe.data.debug.debugImg[debugLabel]) {
-    scribe.data.debug.debugImg[debugLabel] = new Array(scribe.data.image.pageCount);
-    for (let i = 0; i < scribe.data.image.pageCount; i++) {
-      scribe.data.debug.debugImg[debugLabel][i] = [];
+    if (debugLabel && !scribe.data.debug.debugImg[debugLabel]) {
+      scribe.data.debug.debugImg[debugLabel] = new Array(scribe.data.image.pageCount);
+      for (let i = 0; i < scribe.data.image.pageCount; i++) {
+        scribe.data.debug.debugImg[debugLabel][i] = [];
+      }
     }
+
+    /** @type {Parameters<typeof scribe.compareOCR>[2]} */
+    const compOptions = {
+      mode: 'comb',
+      debugLabel,
+      ignoreCap: elem.evaluate.ignoreCap.checked,
+      ignorePunct: elem.evaluate.ignorePunct.checked,
+      confThreshHigh: parseInt(elem.info.confThreshHigh.value),
+      confThreshMed: parseInt(elem.info.confThreshMed.value),
+      legacyLSTMComb: true,
+    };
+
+    const res = await scribe.compareOCR([pageObjLegacy], [pageObjLSTM], compOptions);
+
+    scribe.data.debug.debugImg[debugLabel][n].push(...res.debug);
+
+    pageNew = res.ocr[0];
+  } else if (legacy) {
+    pageNew = resLegacy.convert.legacy.pageObj;
+  } else {
+    pageNew = resLSTM.convert.lstm.pageObj;
   }
 
-  /** @type {Parameters<typeof scribe.compareOCR>[2]} */
-  const compOptions = {
-    mode: 'comb',
-    debugLabel,
-    ignoreCap: elem.evaluate.ignoreCap.checked,
-    ignorePunct: elem.evaluate.ignorePunct.checked,
-    confThreshHigh: parseInt(elem.info.confThreshHigh.value),
-    confThreshMed: parseInt(elem.info.confThreshMed.value),
-    legacyLSTMComb: true,
-  };
-
-  const res = await scribe.compareOCR([pageObjLegacy], [pageObjLSTM], compOptions);
-
-  scribe.data.debug.debugImg[debugLabel][n].push(...res.debug);
-
-  scribe.combineOCRPage(res.ocr[0], scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
+  scribe.combineOCRPage(pageNew, scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
 
   if (n === stateGUI.cp.n) displayPage(stateGUI.cp.n);
 }
