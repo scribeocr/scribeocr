@@ -229,7 +229,10 @@ zone.addEventListener('drop', async (event) => {
   showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
 });
 
+// Exposing important modules for debugging and testing purposes.
+// These should not be relied upon in code--import/export should be used instead.
 globalThis.scribe = scribe;
+globalThis.ScribeCanvas = ScribeCanvas;
 
 /**
  * Fetches an array of URLs and runs `importFiles` on the results.
@@ -454,10 +457,9 @@ elem.download.formatLabelOptionText.addEventListener('click', () => { setFormatL
 elem.download.formatLabelOptionDocx.addEventListener('click', () => { setFormatLabel('docx'); });
 elem.download.formatLabelOptionXlsx.addEventListener('click', () => { setFormatLabel('xlsx'); });
 
-const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
-showConflictsElem.addEventListener('input', () => {
-  if (showConflictsElem.checked) showDebugImages();
-  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, showConflictsElem.checked);
+elem.info.showConflicts.addEventListener('input', () => {
+  if (elem.info.showConflicts.checked) showDebugImages();
+  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, elem.info.showConflicts.checked);
 });
 
 elem.recognize.recognizeAll.addEventListener('click', () => {
@@ -617,8 +619,8 @@ export const addColorModeUI = () => {
   elem.view.colorMode.add(option);
 };
 
-elem.recognize.combineMode.addEventListener('change', () => {
-  optGUI.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.combineMode.value);
+elem.recognize.updateConfOnly.addEventListener('change', () => {
+  optGUI.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.updateConfOnly.checked ? 'conf' : 'data');
 });
 
 ProgressBars.active = ProgressBars.import;
@@ -1058,7 +1060,7 @@ export async function displayPage(n, force = false) {
 
   await renderPageQueue(stateGUI.cp.n);
 
-  if (showConflictsElem.checked) showDebugImages();
+  if (elem.info.showConflicts.checked) showDebugImages();
 
   // Render background images ahead and behind current page to reduce delay when switching pages
   if (scribe.inputData.pdfMode || scribe.inputData.imageMode) scribe.data.image.preRenderAheadBehindBrowser(n, elem.view.colorMode.value === 'binary');

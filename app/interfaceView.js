@@ -15,8 +15,6 @@ import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
 import { renderLayoutBoxes } from './interfaceLayout.js';
 import Konva from './lib/konva/index.js';
 
-const showConflictsElem = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
-
 const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
 
 /**
@@ -115,7 +113,7 @@ export const selectDisplayMode = async (x) => {
   // When the page changes, the dimensions and zoom are modified.
   // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
   if (stateGUI.canvasDimsN !== stateGUI.cp.n) {
-    setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, showConflictsElem.checked);
+    setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, elem.info.showConflicts.checked);
 
     stateGUI.canvasDimsN = stateGUI.cp.n;
   // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,

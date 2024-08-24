@@ -30,8 +30,6 @@ class nav {
 class recognize {
   static recognizeAll = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 
-  static combineMode = /** @type {HTMLSelectElement} */(document.getElementById('combineMode'));
-
   static ocrQuality = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 
   static enableUpscale = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
@@ -60,7 +58,7 @@ class recognize {
   static buildLabelOptionVanilla = /** @type {HTMLInputElement} */(document.getElementById('buildLabelOptionVanilla'));
 
   // Misc options
-  static combineModeOptions = /** @type {HTMLInputElement} */(document.getElementById('combineModeOptions'));
+  static updateConfOnly = /** @type {HTMLInputElement} */(document.getElementById('updateConfOnly'));
 }
 
 class evaluate {
@@ -259,6 +257,8 @@ class info {
   static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
 
   static selectDebugVis = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+
+  static showConflicts = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 
   static showDebugLegend = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
 }

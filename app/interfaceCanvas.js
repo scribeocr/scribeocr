@@ -326,12 +326,49 @@ export class ScribeCanvas {
 
   /**
    *
-   * @param {KonvaLayout} region
+   * @param {KonvaOcrWord} word
+   */
+  static destroyWord = (word) => {
+    word.destroy();
+    ScribeCanvas._wordArr = ScribeCanvas._wordArr.filter((x) => x !== word);
+  };
+
+  /**
+   *
+   * @param {import('./interfaceLayout.js').KonvaDataTable} dataTable
+   */
+  static addDataTable = (dataTable) => {
+    ScribeCanvas._layoutDataTableArr.push(dataTable);
+    layerOverlay.add(dataTable.tableRect);
+    dataTable.columns.forEach((column) => layerOverlay.add(column));
+  };
+
+  /**
+   *
+   * @param {import('./interfaceLayout.js').KonvaDataTable} dataTable
+   */
+  static destroyDataTable = (dataTable) => {
+    dataTable.destroy();
+    ScribeCanvas._layoutDataTableArr = ScribeCanvas._layoutDataTableArr.filter((x) => x.layoutDataTable.id !== dataTable.layoutDataTable.id);
+  };
+
+  /**
+   *
+   * @param {import('./interfaceLayout.js').KonvaLayout} region
    */
   static addRegion = (region) => {
     ScribeCanvas._layoutRegionArr.push(region);
     layerOverlay.add(region);
     if (region.label) layerOverlay.add(region.label);
+  };
+
+  /**
+   *
+   * @param {import('./interfaceLayout.js').KonvaLayout} region
+   */
+  static destroyRegion = (region) => {
+    region.destroy();
+    ScribeCanvas._layoutRegionArr = ScribeCanvas._layoutRegionArr.filter((x) => x.layoutBox.id !== region.layoutBox.id);
   };
 
   /**
@@ -373,21 +410,6 @@ export class ScribeCanvas {
     ScribeCanvas._wordArr.forEach((obj) => obj.destroy());
     ScribeCanvas.destroyLineOutlines();
     ScribeCanvas._wordArr.length = 0;
-  };
-
-  /**
-   *
-   * @param {string|Array<string>} ids
-   */
-  static destroyLayoutDataTablesById = (ids) => {
-    if (!Array.isArray(ids)) ids = [ids];
-    for (let j = 0; j < ScribeCanvas._layoutDataTableArr.length; j++) {
-      if (ids.includes(ScribeCanvas._layoutDataTableArr[j].layoutDataTable.id)) {
-        ScribeCanvas._layoutDataTableArr[j].destroy();
-        ScribeCanvas._layoutDataTableArr.splice(j, 1);
-        j--;
-      }
-    }
   };
 }
 
@@ -488,7 +510,7 @@ export class KonvaIText extends Konva.Shape {
    * @param {Object} options
    * @param {number} options.x
    * @param {number} options.yActual
-   * @param {import('../js/objects/ocrObjects.js').OcrWord} options.word
+   * @param {InstanceType<typeof scribe.utils.ocr.OcrWord>} options.word
    * @param {number} [options.rotation=0]
    * @param {boolean} [options.outline=false]
    * @param {boolean} [options.selected=false]

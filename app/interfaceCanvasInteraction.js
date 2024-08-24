@@ -48,14 +48,14 @@ const createContextMenuHTML = () => {
   mergeButton.style.display = 'none';
   mergeButton.addEventListener('click', mergeDataColumnsClick);
 
-  const deleteLayoutButton = document.createElement('button');
-  deleteLayoutButton.id = 'contextMenuDeleteLayoutBoxButton';
-  deleteLayoutButton.textContent = 'Delete';
-  deleteLayoutButton.style.display = 'none';
-  deleteLayoutButton.addEventListener('click', deleteLayoutBoxClick);
+  const deleteRegionButton = document.createElement('button');
+  deleteRegionButton.id = 'contextMenuDeleteLayoutRegionButton';
+  deleteRegionButton.textContent = 'Delete';
+  deleteRegionButton.style.display = 'none';
+  deleteRegionButton.addEventListener('click', deleteLayoutRegionClick);
 
   const deleteTableButton = document.createElement('button');
-  deleteTableButton.id = 'contextMenuDeleteTableButton';
+  deleteTableButton.id = 'contextMenuDeleteLayoutTableButton';
   deleteTableButton.textContent = 'Delete Table';
   deleteTableButton.style.display = 'none';
   deleteTableButton.addEventListener('click', deleteLayoutDataTableClick);
@@ -76,7 +76,7 @@ const createContextMenuHTML = () => {
   innerDiv.appendChild(mergeWordsButton);
   innerDiv.appendChild(splitColumnButton);
   innerDiv.appendChild(mergeButton);
-  innerDiv.appendChild(deleteLayoutButton);
+  innerDiv.appendChild(deleteRegionButton);
   innerDiv.appendChild(deleteTableButton);
   innerDiv.appendChild(mergeTablesButton);
   innerDiv.appendChild(splitTableButton);
@@ -137,19 +137,24 @@ const deleteLayoutDataTableClick = () => {
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
   if (selectedColumns.length === 0) return;
 
-  selectedColumns[0].konvaTable.delete();
+  scribe.data.layoutDataTables.deleteLayoutDataTable(selectedColumns[0].konvaTable.layoutDataTable, stateGUI.cp.n);
+
+  ScribeCanvas.destroyDataTable(selectedColumns[0].konvaTable);
   ScribeCanvas.destroyControls();
   layerOverlay.batchDraw();
 };
 
-const deleteLayoutBoxClick = () => {
+const deleteLayoutRegionClick = () => {
   hideContextMenu();
-  const selectedLayoutBoxes = ScribeCanvas.CanvasSelection.getKonvaLayoutBoxes();
-  selectedLayoutBoxes.forEach((obj) => {
-    delete scribe.data.layoutRegions.pages[stateGUI.cp.n].boxes[obj.layoutBox.id];
-    obj.destroy();
+  const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
+  if (selectedRegions.length === 0) return;
+
+  selectedRegions.forEach((region) => {
+    scribe.data.layoutRegions.deleteLayoutRegion(region.layoutBox, stateGUI.cp.n);
+    ScribeCanvas.destroyRegion(region);
   });
   ScribeCanvas.destroyControls();
+  layerOverlay.batchDraw();
 };
 
 const mergeDataColumnsClick = () => {
@@ -187,8 +192,8 @@ const contextMenuSplitWordButtonElem = /** @type {HTMLButtonElement} */(document
 const contextMenuMergeWordsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeWordsButton'));
 const contextMenuMergeColumnsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeColumnsButton'));
 const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
-const contextMenuDeleteLayoutBoxButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutBoxButton'));
-const contextMenuDeleteTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteTableButton'));
+const contextMenuDeleteLayoutRegionButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutRegionButton'));
+const contextMenuDeleteLayoutTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutTableButton'));
 const contextMenuMergeTablesButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeTablesButton'));
 const contextMenuSplitTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitTableButton'));
 
@@ -197,8 +202,8 @@ export const hideContextMenu = () => {
   contextMenuSplitWordButtonElem.style.display = 'none';
   contextMenuMergeColumnsButtonElem.style.display = 'none';
   contextMenuSplitColumnButtonElem.style.display = 'none';
-  contextMenuDeleteLayoutBoxButtonElem.style.display = 'none';
-  contextMenuDeleteTableButtonElem.style.display = 'none';
+  contextMenuDeleteLayoutRegionButtonElem.style.display = 'none';
+  contextMenuDeleteLayoutTableButtonElem.style.display = 'none';
   contextMenuMergeTablesButtonElem.style.display = 'none';
   contextMenuSplitTableButtonElem.style.display = 'none';
   menuNode.style.display = 'none';
@@ -270,7 +275,7 @@ stage.on('contextmenu', (e) => {
   let enableMergeTables = false;
   let enableMergeColumns = false;
   let enableSplit = false;
-  let enableDelete = false;
+  let enableDeleteRegion = false;
   let enableDeleteTable = false;
   let enableSplitTable = false;
 
@@ -279,12 +284,16 @@ stage.on('contextmenu', (e) => {
     const adjacentColumns = checkDataColumnsAdjacent(selectedColumns);
     if (selectedColumns.length > 1 && adjacentColumns) enableMergeColumns = true;
     if (selectedColumns.length === 1) enableSplit = true;
-    if (selectedRegions.length > 0) enableDelete = true;
+    if (selectedRegions.length > 0) enableDeleteRegion = true;
     if (selectedColumns.length > 0 && adjacentColumns && selectedColumns.length < selectedTables[0].boxes.length) enableSplitTable = true;
     if (selectedColumns.length > 0 && selectedColumns.length === selectedColumns[0].konvaTable.columns.length) enableDeleteTable = true;
-  } else if (selectedTables.length > 1 && checkDataTablesAdjacent(selectedTables)) enableMergeTables = true;
+  } else if (selectedTables.length > 1 && checkDataTablesAdjacent(selectedTables)) {
+    enableMergeTables = true;
+  } else if (selectedRegions.length > 0) {
+    enableDeleteRegion = true;
+  }
 
-  if (!(enableMergeColumns || enableSplit || enableDelete || enableDeleteTable || enableMergeTables || enableSplitTable || enableSplitWord || enableMergeWords)) return;
+  if (!(enableMergeColumns || enableSplit || enableDeleteRegion || enableDeleteTable || enableMergeTables || enableSplitTable || enableSplitWord || enableMergeWords)) return;
 
   if (enableMergeWords) {
     contextMenuMergeWordsButtonElem.style.display = 'initial';
@@ -298,11 +307,11 @@ stage.on('contextmenu', (e) => {
   if (enableSplit) {
     contextMenuSplitColumnButtonElem.style.display = 'initial';
   }
-  if (enableDelete) {
-    contextMenuDeleteLayoutBoxButtonElem.style.display = 'initial';
+  if (enableDeleteRegion) {
+    contextMenuDeleteLayoutRegionButtonElem.style.display = 'initial';
   }
   if (enableDeleteTable) {
-    contextMenuDeleteTableButtonElem.style.display = 'initial';
+    contextMenuDeleteLayoutTableButtonElem.style.display = 'initial';
   }
   if (enableMergeTables) {
     contextMenuMergeTablesButtonElem.style.display = 'initial';

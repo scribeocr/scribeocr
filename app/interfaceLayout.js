@@ -612,13 +612,7 @@ export class KonvaDataTable {
 
     this.tableRect = tableRect;
 
-    layerOverlay.add(tableRect);
-
     this.columns = this.layoutBoxesArr.map((layoutBox) => new KonvaDataColumn(layoutBox, this));
-
-    this.columns.forEach((column) => {
-      layerOverlay.add(column);
-    });
 
     /**
      * Removes the table from the canvas.
@@ -849,7 +843,7 @@ function renderLayoutDataTable(layoutDataTable) {
 
   const wordIdOldArr = konvaLayoutExisting?.tableContent?.rowWordArr.flat().flat().map((x) => x.id);
 
-  if (konvaLayoutExisting) ScribeCanvas.destroyLayoutDataTablesById(konvaLayoutExisting.layoutDataTable.id);
+  if (konvaLayoutExisting) ScribeCanvas.destroyDataTable(konvaLayoutExisting);
 
   const konvaLayout = new KonvaDataTable(scribe.data.ocr.active[stateGUI.cp.n], layoutDataTable);
 
@@ -865,7 +859,9 @@ function renderLayoutDataTable(layoutDataTable) {
     });
   }
 
-  ScribeCanvas._layoutDataTableArr.push(konvaLayout);
+  ScribeCanvas.addDataTable(konvaLayout);
+
+  // ScribeCanvas._layoutDataTableArr.push(konvaLayout);
 }
 
 export function renderLayoutDataTables() {
@@ -966,7 +962,8 @@ export const mergeDataColumns = (columns) => {
     columns[i].delete();
   }
 
-  columns[0].konvaTable.destroy();
+  ScribeCanvas.destroyDataTable(columns[0].konvaTable);
+
   renderLayoutDataTable(table);
 };
 
@@ -1028,7 +1025,7 @@ export const splitDataColumn = (column, x) => {
 
   column.konvaTable.layoutDataTable.boxes.sort((a, b) => a.coords.left - b.coords.left);
 
-  column.konvaTable.destroy();
+  ScribeCanvas.destroyDataTable(column.konvaTable);
   renderLayoutDataTable(column.konvaTable.layoutDataTable);
 };
 

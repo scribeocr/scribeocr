@@ -38,8 +38,9 @@ export function deleteSelectedWords() {
   for (let i = 0; i < selectedN; i++) {
     const wordIDI = selectedObjects[i].word.id;
     selectedIds.push(wordIDI);
-    selectedObjects[i].destroy();
+    ScribeCanvas.destroyWord(selectedObjects[i]);
   }
+
   scribe.utils.ocr.deletePageWords(scribe.data.ocr.active[stateGUI.cp.n], selectedIds);
 
   ScribeCanvas.destroyControls();
@@ -474,7 +475,7 @@ export async function recognizeArea(box, wordMode = false, printCoordsOnly = fal
 
     const res = await scribe.compareOCR([pageObjLegacy], [pageObjLSTM], compOptions);
 
-    scribe.data.debug.debugImg[debugLabel][n].push(...res.debug);
+    if (scribe.data.debug.debugImg[debugLabel]) scribe.data.debug.debugImg[debugLabel] = res.debug;
 
     pageNew = res.ocr[0];
   } else if (legacy) {
