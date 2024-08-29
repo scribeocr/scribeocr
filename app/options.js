@@ -23,6 +23,12 @@ export class optGUI {
   static combineMode = 'data';
 
   static extractText = false;
+
+  /**
+   * Whether to show the intermediate, internal versions of OCR.
+   * This is useful for debugging and testing, but should not be enabled by default.
+   */
+  static showInternalOCRVersions = false;
 }
 
 export function setDefaults() {

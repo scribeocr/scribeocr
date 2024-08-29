@@ -421,6 +421,12 @@ optimizeFontDebugElem.addEventListener('click', () => {
   }
 });
 
+const showIntermediateOCRElem = /** @type {HTMLInputElement} */(document.getElementById('showIntermediateOCR'));
+showIntermediateOCRElem.addEventListener('click', () => {
+  optGUI.showInternalOCRVersions = showIntermediateOCRElem.checked;
+  updateOcrVersionGUI();
+});
+
 elem.info.confThreshHigh.addEventListener('change', () => {
   scribe.opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
   renderPageQueue(stateGUI.cp.n);
@@ -856,14 +862,25 @@ export function setCurrentHOCR(x) {
  * Update the GUI dropdown menu with the latest OCR versions.
  */
 export const updateOcrVersionGUI = () => {
+  const versionsInt = ['Tesseract Latest', 'Tesseract Combined Temp'];
+
   // Skip versions that are already in the dropdown, or are only used under the hood.
   const labelElems = elem.evaluate.displayLabelOptions.children;
   const versionsSkip = [];
   for (let i = 0; i < labelElems.length; i++) {
     versionsSkip.push(labelElems[i].innerHTML);
+    if (!optGUI.showInternalOCRVersions && versionsInt.includes(labelElems[i].innerHTML)) {
+      labelElems[i].remove();
+      i--;
+    }
   }
-  versionsSkip.push('Tesseract Latest');
-  versionsSkip.push('Tesseract Combined Temp');
+
+  if (!optGUI.showInternalOCRVersions) {
+    for (const version of versionsInt) {
+      versionsSkip.push(version);
+    }
+  }
+
   versionsSkip.push('active');
 
   const ocrVersionsNew = Object.keys(scribe.data.ocr).filter((x) => !versionsSkip.includes(x));
