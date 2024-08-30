@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import { stateGUI } from '../main.js';
+import { renderPageStatic } from '../scribe.js/js/debug.js';
 import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import {
@@ -91,6 +92,12 @@ export async function downloadAllImages() {
     await new Promise((r) => setTimeout(r, 200));
   }
 }
+
+elem.info.downloadStaticVis.addEventListener('click', async () => {
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.png`;
+  const pngBlob = await renderPageStatic(scribe.data.ocr.active[stateGUI.cp.n]);
+  saveAs(pngBlob, fileName);
+});
 
 export function getExcludedText() {
   for (let i = 0; i <= scribe.data.ocr.active.length; i++) {

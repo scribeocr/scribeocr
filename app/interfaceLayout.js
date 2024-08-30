@@ -7,7 +7,7 @@ import scribe from '../scribe.js/scribe.js';
 
 import {
   KonvaIText, ScribeCanvas,
-  getWordFillOpacity,
+  getWordFillOpacityGUI,
   layerOverlay,
   updateWordCanvas,
 } from './interfaceCanvas.js';
@@ -629,7 +629,7 @@ export class KonvaDataTable {
       const wordIdArr = this.tableContent?.rowWordArr.flat().flat().map((x) => x.id) || [];
       const canvasDeselectWords = ScribeCanvas.getKonvaWords().filter((x) => wordIdArr.includes(x.word.id));
       canvasDeselectWords.forEach((x) => {
-        const { fill, opacity } = getWordFillOpacity(x.word);
+        const { fill, opacity } = getWordFillOpacityGUI(x.word);
         x.fill(fill);
         x.opacity(opacity);
       });
@@ -853,7 +853,7 @@ function renderLayoutDataTable(layoutDataTable) {
     const wordIdDeselectArr = wordIdOldArr.filter((x) => !wordIdNewArr.includes(x));
     const canvasDeselectWords = ScribeCanvas.getKonvaWords().filter((x) => wordIdDeselectArr.includes(x.word.id));
     canvasDeselectWords.forEach((x) => {
-      const { fill, opacity } = getWordFillOpacity(x.word);
+      const { fill, opacity } = getWordFillOpacityGUI(x.word);
       x.fill(fill);
       x.opacity(opacity);
     });

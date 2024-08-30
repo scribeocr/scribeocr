@@ -465,41 +465,13 @@ export async function updateWordCanvas(wordI) {
  *
  * @param {OcrWord} word
  */
-export function getWordFillOpacity(word) {
+export function getWordFillOpacityGUI(word) {
   const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
   const confThreshMed = elem.info.confThreshMed.value !== '' ? parseInt(elem.info.confThreshMed.value) : 75;
 
-  let fillColorHex;
-  if (word.conf > confThreshHigh) {
-    fillColorHex = '#00ff7b';
-  } else if (word.conf > confThreshMed) {
-    fillColorHex = '#ffc800';
-  } else {
-    fillColorHex = '#ff0000';
-  }
+  const displayMode = /** @type {"invis" | "ebook" | "eval" | "proof"} */(elem.view.displayMode.value);
 
-  const displayMode = elem.view.displayMode.value;
-
-  const fillColorHexMatch = word.matchTruth ? '#00ff7b' : '#ff0000';
-
-  let opacity;
-  let fill;
-  // Set current text color and opacity based on display mode selected
-  if (displayMode === 'invis') {
-    opacity = 0;
-    fill = 'black';
-  } else if (displayMode === 'ebook') {
-    opacity = 1;
-    fill = 'black';
-  } else if (displayMode === 'eval') {
-    opacity = scribe.opt.overlayOpacity / 100;
-    fill = fillColorHexMatch;
-  } else {
-    opacity = scribe.opt.overlayOpacity / 100;
-    fill = fillColorHex;
-  }
-
-  return { opacity, fill };
+  return scribe.utils.ocr.getWordFillOpacity(word, displayMode, confThreshMed, confThreshHigh, scribe.opt.overlayOpacity);
 }
 
 export class KonvaIText extends Konva.Shape {
@@ -893,7 +865,7 @@ export class KonvaOcrWord extends KonvaIText {
     visualLeft, yActual, topBaseline, word, rotation,
     outline, fillBox,
   }) {
-    const { fill, opacity } = getWordFillOpacity(word);
+    const { fill, opacity } = getWordFillOpacityGUI(word);
 
     super({
       x: visualLeft,
@@ -1096,10 +1068,6 @@ export function renderPage(page) {
     for (const wordObj of lineObj.words) {
       if (!wordObj.text) continue;
 
-      const box = wordObj.bbox;
-
-      const wordDropCap = wordObj.dropcap;
-
       const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
 
       const displayMode = elem.view.displayMode.value;
@@ -1112,13 +1080,13 @@ export function renderPage(page) {
       if (enableRotation) {
         visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
       } else {
-        visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
+        visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (wordObj.bbox.left - linebox.left);
       }
 
       let top = visualBaseline;
-      if (wordObj.sup || wordDropCap) top = box.bottom + angleAdjLine.y + angleAdjWord.y;
+      if (wordObj.sup || wordObj.dropcap) top = wordObj.bbox.bottom + angleAdjLine.y + angleAdjWord.y;
 
-      const visualLeft = box.left + angleAdjLine.x + angleAdjWord.x;
+      const visualLeft = wordObj.bbox.left + angleAdjLine.x + angleAdjWord.x;
 
       const wordCanvas = new KonvaOcrWord({
         visualLeft,

@@ -4,7 +4,7 @@ import { stateGUI } from '../main.js';
 import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import {
-  getWordFillOpacity,
+  getWordFillOpacityGUI,
   layerBackground,
   layerOverlay,
   ScribeCanvas,
@@ -22,7 +22,7 @@ const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvas
  */
 export function setWordColorOpacity() {
   ScribeCanvas.getKonvaWords().forEach((obj) => {
-    const { opacity, fill } = getWordFillOpacity(obj.word);
+    const { opacity, fill } = getWordFillOpacityGUI(obj.word);
     obj.fill(fill);
     obj.opacity(opacity);
   });
