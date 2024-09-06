@@ -1,10 +1,10 @@
 /* eslint-disable prefer-arrow-callback */
 /* eslint-disable func-names */
 
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { assert } from 'chai';
+import path from 'path';
 import { By, until } from 'selenium-webdriver';
+import { fileURLToPath } from 'url';
 import { createDriver } from '../scripts/helpers.js';
 
 globalThis.__dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -60,8 +60,7 @@ describe('Use delete and recognize word buttons', function () {
 
     const text = await driver.executeScript('return scribe.exportData("text")');
 
-    // The period is not detected since this is single-word mode.
-    assert.strictEqual(text, 'Tesseractjs');
+    assert.strictEqual(text, 'Tesseract.js');
   });
 
   it('"Recognize Area" recognizes area', async function () {

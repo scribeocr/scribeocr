@@ -49,7 +49,7 @@ import {
 
 import { elem } from './app/elems.js';
 import {
-  getLayerCenter, setCanvasWidthHeightZoom, zoomAllLayers,
+  getLayerCenter, rotateAllLayers, setCanvasWidthHeightZoom, zoomAllLayers,
 } from './app/interfaceCanvasInteraction.js';
 import { compareGroundTruthClick, createGroundTruthClick } from './app/interfaceEvaluate.js';
 import { optGUI, setDefaults } from './app/options.js';
@@ -437,8 +437,14 @@ elem.info.confThreshMed.addEventListener('change', () => {
 });
 
 elem.view.autoRotate.addEventListener('click', () => {
-  scribe.opt.autoRotate = elem.view.autoRotate.checked;
-  renderPageQueue(stateGUI.cp.n);
+  const angle = scribe.data.pageMetrics[stateGUI.cp.n]?.angle || 0;
+  if (elem.view.autoRotate.checked) {
+    scribe.opt.autoRotate = true;
+    rotateAllLayers(0);
+  } else {
+    scribe.opt.autoRotate = false;
+    rotateAllLayers(angle);
+  }
 });
 
 elem.view.outlineWords.addEventListener('click', () => { renderPageQueue(stateGUI.cp.n); });
@@ -462,6 +468,10 @@ elem.download.formatLabelOptionHOCR.addEventListener('click', () => { setFormatL
 elem.download.formatLabelOptionText.addEventListener('click', () => { setFormatLabel('text'); });
 elem.download.formatLabelOptionDocx.addEventListener('click', () => { setFormatLabel('docx'); });
 elem.download.formatLabelOptionXlsx.addEventListener('click', () => { setFormatLabel('xlsx'); });
+
+elem.info.debugConflicts.addEventListener('click', () => {
+  scribe.opt.debugVis = elem.info.debugConflicts.checked;
+});
 
 elem.info.showConflicts.addEventListener('input', () => {
   if (elem.info.showConflicts.checked) showDebugImages();
@@ -676,7 +686,7 @@ const importFilesGUI = async (files) => {
     toggleLayoutButtons(false);
   }
 
-  if (scribe.opt.enableOpt) {
+  if (scribe.data.font.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
@@ -1088,10 +1098,10 @@ export async function displayPage(n, force = false) {
 /**
  *
  * @param {boolean} enable
- * @param {boolean} [useInitial=false]
+ * @param {boolean} [force]
  */
-async function optimizeFontClick(enable, useInitial = false) {
-  await scribe.enableFontOpt(enable, useInitial);
+async function optimizeFontClick(enable, force) {
+  await scribe.enableFontOpt(enable, force);
 
   renderPageQueue(stateGUI.cp.n);
 }

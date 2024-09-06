@@ -262,6 +262,8 @@ class info {
 
   static showConflicts = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 
+  static debugConflicts = /** @type {HTMLInputElement} */(document.getElementById('debugConflicts'));
+
   static showDebugLegend = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
 }
 

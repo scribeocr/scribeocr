@@ -162,7 +162,7 @@ export async function recognizeAllClick() {
 
   ProgressBars.active.increment();
 
-  if (scribe.opt.enableOpt) {
+  if (scribe.data.font.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }

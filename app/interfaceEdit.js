@@ -334,22 +334,15 @@ export async function addWordManual({
   if (!wordObjNew) throw new Error('Failed to add word to page.');
 
   const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
-  const enableRotation = scribe.opt.autoRotate && Math.abs(angle ?? 0) > 0.05;
-  const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
+  const imageRotated = Math.abs(angle ?? 0) > 0.05;
 
-  const angleAdjLine = enableRotation ? scribe.utils.ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
-  const angleAdjWord = enableRotation ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
+  const angleAdjLine = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
+  const angleAdjWord = imageRotated ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
-  const box = wordObjNew.bbox;
   const linebox = wordObjNew.line.bbox;
   const baseline = wordObjNew.line.baseline;
 
-  let visualBaseline;
-  if (enableRotation) {
-    visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
-  } else {
-    visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (box.left - linebox.left);
-  }
+  const visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
 
   const displayMode = elem.view.displayMode.value;
   const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
@@ -359,7 +352,7 @@ export async function addWordManual({
     visualLeft: rectLeft,
     yActual: visualBaseline,
     topBaseline: visualBaseline,
-    rotation: angleArg,
+    rotation: 0,
     word: wordObj,
     outline: outlineWord,
     fillBox: false,

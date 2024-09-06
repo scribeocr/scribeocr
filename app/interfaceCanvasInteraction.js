@@ -125,6 +125,7 @@ const mergeWordsClick = () => {
   if (selectedWords.length < 2 || !checkWordsAdjacent(selectedWords)) return;
   const newWord = scribe.utils.mergeOcrWords(selectedWords.map((x) => x.word));
   const lineWords = selectedWords[0].word.line.words;
+  selectedWords.sort((a, b) => a.word.bbox.left - b.word.bbox.left);
   lineWords.sort((a, b) => a.bbox.left - b.bbox.left);
   const firstIndex = lineWords.findIndex((x) => x.id === selectedWords[0].word.id);
   lineWords.splice(firstIndex, selectedWords.length, newWord);
@@ -666,6 +667,20 @@ const panAllLayers = ({ deltaX = 0, deltaY = 0 }) => {
   layerBackground.y(layerBackground.y() + deltaY);
   layerOverlay.x(layerOverlay.x() + deltaX);
   layerOverlay.y(layerOverlay.y() + deltaY);
+
+  layerText.batchDraw();
+  layerBackground.batchDraw();
+  layerOverlay.batchDraw();
+};
+
+/**
+ *
+ * @param {number} degrees
+ */
+export const rotateAllLayers = (degrees) => {
+  layerText.rotation(degrees);
+  layerBackground.rotation(degrees);
+  layerOverlay.rotation(degrees);
 
   layerText.batchDraw();
   layerBackground.batchDraw();

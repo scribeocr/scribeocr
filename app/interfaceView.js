@@ -10,7 +10,7 @@ import {
   ScribeCanvas,
   stage,
 } from './interfaceCanvas.js';
-import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
+import { rotateAllLayers, setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
 import { enableDisableDownloadPDFAlert } from './interfaceDownload.js';
 import { renderLayoutBoxes } from './interfaceLayout.js';
 import Konva from './lib/konva/index.js';
@@ -48,12 +48,8 @@ export const selectDisplayMode = async (x) => {
     const backgroundImage = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinary(stateGUI.cp.n) : await scribe.data.image.getNative(stateGUI.cp.n);
     const image = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinaryBitmap(stateGUI.cp.n) : await scribe.data.image.getNativeBitmap(stateGUI.cp.n);
     let rotation = 0;
-    // Case where rotation is requested and the image has not already been rotated
-    if ((scribe.opt.autoRotate || stateGUI.layoutMode) && !backgroundImage.rotated) {
+    if (!backgroundImage.rotated) {
       rotation = (scribe.data.pageMetrics[stateGUI.cp.n].angle || 0) * -1;
-    // Case where rotation is not requested and the image has already been rotated
-    } else if (!(scribe.opt.autoRotate || stateGUI.layoutMode) && backgroundImage.rotated) {
-      rotation = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
     }
 
     const scaleX = backgroundImage.upscaled ? 0.5 : 1;
@@ -118,6 +114,15 @@ export const selectDisplayMode = async (x) => {
     stateGUI.canvasDimsN = stateGUI.cp.n;
   // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,
   // so we only need to call it here if the zoom is not changed.
+  }
+
+  const angle = scribe.data.pageMetrics[stateGUI.cp.n]?.angle || 0;
+  if (elem.view.autoRotate.checked) {
+    scribe.opt.autoRotate = true;
+    rotateAllLayers(0);
+  } else {
+    scribe.opt.autoRotate = false;
+    rotateAllLayers(angle);
   }
 
   stage.batchDraw();

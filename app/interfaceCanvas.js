@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import { search, stateGUI } from '../main.js';
+import { opt } from '../scribe.js/js/containers/app.js';
 import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import {
@@ -698,11 +699,20 @@ export class KonvaIText extends Konva.Shape {
 
     const fontSizeHTMLSmallCaps = itext.fontSize * scale * fontI.smallCapsMult;
 
+    // Align with baseline
+    const topHTML = y1 - metrics.fontBoundingBoxAscent + fontSizeHTML * 0.6;
+
     inputElem.style.position = 'absolute';
     inputElem.style.left = `${x1}px`;
-    inputElem.style.top = `${y1 - metrics.fontBoundingBoxAscent + fontSizeHTML * 0.6}px`; // Align with baseline
+    inputElem.style.top = `${topHTML}px`;
     inputElem.style.fontSize = `${fontSizeHTML}px`;
     inputElem.style.fontFamily = itext.fontFaceName;
+
+    const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+    if (!opt.autoRotate && Math.abs(angle ?? 0) > 0.05) {
+      inputElem.style.transformOrigin = `left ${y1 - topHTML}px`;
+      inputElem.style.transform = `rotate(${angle}deg)`;
+    }
 
     /**
      *
@@ -951,7 +961,7 @@ export class KonvaOcrWord extends KonvaIText {
   };
 
   /**
-   * Add controls for editing.
+   * Add controls for editing left/right bounds of word.
    * @param {KonvaOcrWord} itext
    */
   static addControls = (itext) => {
@@ -961,6 +971,7 @@ export class KonvaOcrWord extends KonvaIText {
       // This width is automatically scaled by Konva based on the zoom level.
       borderStrokeWidth: 2,
     });
+
     ScribeCanvas._controlArr.push(trans);
     layerText.add(trans);
 
@@ -971,11 +982,10 @@ export class KonvaOcrWord extends KonvaIText {
 /**
  *
  * @param {bbox} box
- * @param {number} angle
  * @param {{x: number, y: number}} angleAdj
  * @param {string} [label]
  */
-const addBlockOutline = (box, angle, angleAdj, label) => {
+const addBlockOutline = (box, angleAdj, label) => {
   const height = box.bottom - box.top;
 
   const blockRect = new Konva.Rect({
@@ -983,7 +993,6 @@ const addBlockOutline = (box, angle, angleAdj, label) => {
     y: box.top + angleAdj.y,
     width: box.right - box.left,
     height,
-    rotation: angle,
     stroke: 'rgba(0,0,255,0.75)',
     strokeWidth: 1,
     draggable: false,
@@ -998,7 +1007,6 @@ const addBlockOutline = (box, angle, angleAdj, label) => {
       fontSize: 12,
       fontFamily: 'Arial',
       fill: 'rgba(0,0,255,0.75)',
-      rotation: angle,
       draggable: false,
       listening: false,
     });
@@ -1021,17 +1029,14 @@ export function renderPage(page) {
 
   const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
 
-  // Layout mode features assume that auto-rotate is enabled.
-  const enableRotation = (scribe.opt.autoRotate || stateGUI.layoutMode) && Math.abs(angle ?? 0) > 0.05;
-
-  const angleArg = Math.abs(angle) > 0.05 && !enableRotation ? (angle) : 0;
+  const imageRotated = Math.abs(angle ?? 0) > 0.05;
 
   if (elem.view.outlinePars.checked && page) {
     scribe.utils.assignParagraphs(page, angle);
 
     page.pars.forEach((par) => {
-      const angleAdj = enableRotation ? scribe.utils.ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
-      addBlockOutline(par.bbox, angleArg, angleAdj, par.reason);
+      const angleAdj = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
+      addBlockOutline(par.bbox, angleAdj, par.reason);
     });
   }
 
@@ -1040,7 +1045,7 @@ export function renderPage(page) {
     const linebox = lineObj.bbox;
     const { baseline } = lineObj;
 
-    const angleAdjLine = enableRotation ? scribe.utils.ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
+    const angleAdjLine = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
 
     if (elem.view.outlineLines.checked) {
       const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
@@ -1053,7 +1058,6 @@ export function renderPage(page) {
         y: linebox.bottom + baseline[1] + angleAdjLine.y - height,
         width: linebox.right - linebox.left,
         height,
-        rotation: angleArg,
         stroke: 'rgba(0,0,255,0.75)',
         strokeWidth: 1,
         draggable: false,
@@ -1074,14 +1078,9 @@ export function renderPage(page) {
 
       const outlineWord = elem.view.outlineWords.checked || displayMode === 'eval' && wordObj.conf > confThreshHigh && !wordObj.matchTruth;
 
-      const angleAdjWord = enableRotation ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
+      const angleAdjWord = imageRotated ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
-      let visualBaseline;
-      if (enableRotation) {
-        visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
-      } else {
-        visualBaseline = linebox.bottom + baseline[1] + baseline[0] * (wordObj.bbox.left - linebox.left);
-      }
+      const visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
 
       let top = visualBaseline;
       if (wordObj.sup || wordObj.dropcap) top = wordObj.bbox.bottom + angleAdjLine.y + angleAdjWord.y;
@@ -1092,7 +1091,7 @@ export function renderPage(page) {
         visualLeft,
         yActual: top,
         topBaseline: visualBaseline,
-        rotation: angleArg,
+        rotation: 0,
         word: wordObj,
         outline: outlineWord,
         fillBox: matchIdArr.includes(wordObj.id),
