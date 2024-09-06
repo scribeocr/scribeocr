@@ -32,7 +32,13 @@ function _strokeFunc(context) {
     context.stroke();
 }
 function _fillFuncHit(context) {
-    context.fill();
+    const fillRule = this.attrs.fillRule;
+    if (fillRule) {
+        context.fill(fillRule);
+    }
+    else {
+        context.fill();
+    }
 }
 function _strokeFuncHit(context) {
     context.stroke();
@@ -268,8 +274,17 @@ export class Shape extends Node {
         };
     }
     getClientRect(config = {}) {
+        let hasCachedParent = false;
+        let parent = this.getParent();
+        while (parent) {
+            if (parent.isCached()) {
+                hasCachedParent = true;
+                break;
+            }
+            parent = parent.getParent();
+        }
         const skipTransform = config.skipTransform;
-        const relativeTo = config.relativeTo;
+        const relativeTo = config.relativeTo || (hasCachedParent && this.getStage()) || undefined;
         const fillRect = this.getSelfRect();
         const applyStroke = !config.skipStroke && this.hasStroke();
         const strokeWidth = (applyStroke && this.strokeWidth()) || 0;

@@ -23,7 +23,6 @@ export const Konva = Util._assign(Global, {
     DD,
     Shape,
     shapes,
-    Animation,
     Context,
     Canvas,
 });

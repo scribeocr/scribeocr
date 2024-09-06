@@ -382,6 +382,7 @@ export class Stage extends Container {
             DD.justDragged = false;
             Konva['_' + eventType + 'ListenClick'] = true;
             if (!shape || !shape.isListening()) {
+                this[eventType + 'ClickStartShape'] = undefined;
                 return;
             }
             if (Konva.capturePointerEventsEnabled) {
@@ -689,3 +690,10 @@ export class Stage extends Container {
 Stage.prototype.nodeType = STAGE;
 _registerNode(Stage);
 Factory.addGetterSetter(Stage, 'container');
+if (Konva.isBrowser) {
+    document.addEventListener('visibilitychange', () => {
+        stages.forEach((stage) => {
+            stage.batchDraw();
+        });
+    });
+}

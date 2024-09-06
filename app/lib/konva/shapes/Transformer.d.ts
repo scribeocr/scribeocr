@@ -1,6 +1,5 @@
 import { Transform } from '../Util.js';
 import { Node } from '../Node.js';
-import { Shape } from '../Shape.js';
 import { Rect } from './Rect.js';
 import { Group } from '../Group.js';
 import { ContainerConfig } from '../Container.js';
@@ -36,7 +35,7 @@ export interface TransformerConfig extends ContainerConfig {
     useSingleNodeRotation?: boolean;
     shouldOverdrawWholeArea?: boolean;
     anchorDragBoundFunc?: (oldPos: Vector2d, newPos: Vector2d, evt: any) => Vector2d;
-    anchorStyleFunc?: (anchor: Shape) => void;
+    anchorStyleFunc?: (anchor: Rect) => void;
 }
 export declare class Transformer extends Group {
     _nodes: Array<Node>;
@@ -95,7 +94,7 @@ export declare class Transformer extends Group {
     toObject(): {
         attrs: any;
         className: string;
-        children?: any[] | undefined;
+        children?: Array<any>;
     };
     clone(obj?: any): this;
     getClientRect(): IRect;
@@ -122,6 +121,7 @@ export declare class Transformer extends Group {
     shiftBehavior: GetSet<string, this>;
     centeredScaling: GetSet<boolean, this>;
     flipEnabled: GetSet<boolean, this>;
+    negativeScalingEnabled: GetSet<boolean, this>;
     ignoreStroke: GetSet<boolean, this>;
     boundBoxFunc: GetSet<(oldBox: Box, newBox: Box) => Box, this>;
     anchorDragBoundFunc: GetSet<(oldPos: Vector2d, newPos: Vector2d, e: MouseEvent) => Vector2d, this>;

@@ -441,6 +441,9 @@ export class Transformer extends Group {
         });
     }
     _handleMouseDown(e) {
+        if (this._transforming) {
+            return;
+        }
         this._movingAnchorName = e.target.name().split(' ')[0];
         var attrs = this._getNodeRect();
         var width = attrs.width;
@@ -683,6 +686,14 @@ export class Transformer extends Group {
     }
     _fitNodesInto(newAttrs, evt) {
         var oldAttrs = this._getNodeRect();
+        const minWidth = 10;
+        if (newAttrs.width < minWidth) {
+            newAttrs.width = minWidth;
+            if (this._movingAnchorName &&
+                this._movingAnchorName.indexOf('left') >= 0) {
+                newAttrs.x = oldAttrs.x + oldAttrs.width - minWidth;
+            }
+        }
         const minSize = 1;
         if (Util._inRange(newAttrs.width, -this.padding() * 2 - minSize, minSize)) {
             this.update();

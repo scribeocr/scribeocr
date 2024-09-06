@@ -4,7 +4,7 @@ import { GetSet, Vector2d } from './types.js';
 import { Shape } from './Shape.js';
 import { Layer } from './Layer.js';
 export interface StageConfig extends ContainerConfig {
-    container: HTMLDivElement | string;
+    container?: HTMLDivElement | string;
 }
 export declare const stages: Stage[];
 export declare class Stage extends Container<Layer> {
@@ -40,10 +40,10 @@ export declare class Stage extends Container<Layer> {
     destroy(): this;
     getPointerPosition(): Vector2d | null;
     _getPointerById(id?: number): (Vector2d & {
-        id?: number | undefined;
+        id?: number;
     }) | undefined;
     getPointersPositions(): (Vector2d & {
-        id?: number | undefined;
+        id?: number;
     })[];
     getStage(): this;
     getContent(): HTMLDivElement;

@@ -13,7 +13,7 @@ export const glob = typeof global !== 'undefined'
             : {};
 export const Konva = {
     _global: glob,
-    version: '9.3.6',
+    version: '9.3.14',
     isBrowser: detectBrowser(),
     isUnminified: /param/.test(function (param) { }.toString()),
     dblClickWindow: 400,
@@ -34,6 +34,7 @@ export const Konva = {
     _mouseDblClickPointerId: null,
     _touchDblClickPointerId: null,
     _pointerDblClickPointerId: null,
+    _fixTextRendering: false,
     pixelRatio: (typeof window !== 'undefined' && window.devicePixelRatio) || 1,
     dragDistance: 3,
     angleDeg: true,

@@ -24,6 +24,7 @@ export declare const Konva: {
     _mouseDblClickPointerId: null;
     _touchDblClickPointerId: null;
     _pointerDblClickPointerId: null;
+    _fixTextRendering: boolean;
     pixelRatio: number;
     dragDistance: number;
     angleDeg: boolean;
@@ -40,7 +41,7 @@ export declare const Konva: {
         _isElement(obj: any): obj is Element;
         _isFunction(obj: any): boolean;
         _isPlainObject(obj: any): boolean;
-        _isArray(obj: any): obj is any[];
+        _isArray(obj: any): obj is Array<any>;
         _isNumber(obj: any): obj is number;
         _isString(obj: any): obj is string;
         _isBoolean(obj: any): obj is boolean;
@@ -110,9 +111,9 @@ export declare const Konva: {
             b: number;
             a: number;
         } | undefined;
-        haveIntersection(r1: import("./types.js").IRect, r2: import("./types.js").IRect): boolean;
+        haveIntersection(r1: import("./types").IRect, r2: import("./types.js").IRect): boolean;
         cloneObject<Any>(obj: Any): Any;
-        cloneArray(arr: any[]): any[];
+        cloneArray(arr: Array<any>): any[];
         degToRad(deg: number): number;
         radToDeg(rad: number): number;
         _degToRad(deg: number): number;
@@ -125,10 +126,10 @@ export declare const Konva: {
         each(obj: Object, func: Function): void;
         _inRange(val: number, left: number, right: number): boolean;
         _getProjectionToSegment(x1: any, y1: any, x2: any, y2: any, x3: any, y3: any): any[];
-        _getProjectionToLine(pt: import("./types.js").Vector2d, line: import("./types.js").Vector2d[], isClosed: boolean): import("./types.js").Vector2d;
+        _getProjectionToLine(pt: import("./types").Vector2d, line: Array<import("./types").Vector2d>, isClosed: boolean): import("./types.js").Vector2d;
         _prepareArrayForTween(startArray: any, endArray: any, isClosed: any): number[];
         _prepareToStringify<T>(obj: any): T | null;
-        _assign<T_1, U>(target: T_1, source: U): T_1 & U;
+        _assign<T, U>(target: T, source: U): T & U;
         _getFirstPointerId(evt: any): any;
         releaseCanvas(...canvases: HTMLCanvasElement[]): void;
         drawRoundedRectPath(context: import("./Context.js").Context, width: number, height: number, cornerRadius: number | number[]): void;
@@ -144,13 +145,13 @@ export declare const Konva: {
     DD: {
         readonly isDragging: boolean;
         justDragged: boolean;
-        readonly node: import("./Node.js").Node<import("./Node.js").NodeConfig> | undefined;
+        readonly node: import("./Node").Node<import("./Node.js").NodeConfig> | undefined;
         _dragElements: Map<number, {
-            node: import("./Node.js").Node<import("./Node.js").NodeConfig>;
+            node: import("./Node.js").Node;
             startPointerPos: import("./types.js").Vector2d;
             offset: import("./types.js").Vector2d;
-            pointerId?: number | undefined;
-            dragStatus: "stopped" | "ready" | "dragging";
+            pointerId?: number;
+            dragStatus: "ready" | "dragging" | "stopped";
         }>;
         _drag(evt: any): void;
         _endDragBefore(evt?: any): void;
@@ -158,11 +159,7 @@ export declare const Konva: {
     };
     Shape: typeof import("./Shape.js").Shape;
     shapes: {
-        [key: string]: import("./Shape.js").Shape<import("./Shape.js").ShapeConfig>;
-    };
-    Animation: {
-        new(effect?: AnimationEffect | null | undefined, timeline?: AnimationTimeline | null | undefined): Animation;
-        prototype: Animation;
+        [key: string]: import("./Shape").Shape<import("./Shape.js").ShapeConfig>;
     };
     Context: typeof import("./Context.js").Context;
     Canvas: typeof import("./Canvas.js").Canvas;

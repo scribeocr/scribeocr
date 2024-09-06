@@ -36,7 +36,7 @@ export declare const Util: {
     _isElement(obj: any): obj is Element;
     _isFunction(obj: any): boolean;
     _isPlainObject(obj: any): boolean;
-    _isArray(obj: any): obj is any[];
+    _isArray(obj: any): obj is Array<any>;
     _isNumber(obj: any): obj is number;
     _isString(obj: any): obj is string;
     _isBoolean(obj: any): obj is boolean;
@@ -124,7 +124,7 @@ export declare const Util: {
     _getProjectionToLine(pt: Vector2d, line: Array<Vector2d>, isClosed: boolean): Vector2d;
     _prepareArrayForTween(startArray: any, endArray: any, isClosed: any): number[];
     _prepareToStringify<T>(obj: any): T | null;
-    _assign<T_1, U>(target: T_1, source: U): T_1 & U;
+    _assign<T, U>(target: T, source: U): T & U;
     _getFirstPointerId(evt: any): any;
     releaseCanvas(...canvases: HTMLCanvasElement[]): void;
     drawRoundedRectPath(context: Context, width: number, height: number, cornerRadius: number | number[]): void;

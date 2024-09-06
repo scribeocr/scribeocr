@@ -39,16 +39,16 @@ export interface NodeConfig {
 type NodeEventMap = GlobalEventHandlersEventMap & {
     [index: string]: any;
 };
-export interface KonvaEventObject<EventType> {
+export interface KonvaEventObject<EventType, This = Node> {
     type: string;
     target: Shape | Stage;
     evt: EventType;
     pointerId: number;
-    currentTarget: Node;
+    currentTarget: This;
     cancelBubble: boolean;
     child?: Node;
 }
-export type KonvaEventListener<This, EventType> = (this: This, ev: KonvaEventObject<EventType>) => void;
+export type KonvaEventListener<This, EventType> = (this: This, ev: KonvaEventObject<EventType, This>) => void;
 export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     _id: number;
     eventListeners: {
@@ -180,7 +180,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     toObject(): {
         attrs: Config & Record<string, any>;
         className: string;
-        children?: any[] | undefined;
+        children?: Array<any>;
     };
     toJSON(): string;
     getParent(): Container<Node<NodeConfig>> | null;

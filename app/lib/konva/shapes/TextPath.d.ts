@@ -27,7 +27,10 @@ export declare class TextPath extends Shape<TextPathConfig> {
     textHeight: number;
     constructor(config?: TextPathConfig);
     _getTextPathLength(): number;
-    _getPointAtLength(length: number): any;
+    _getPointAtLength(length: number): {
+        x: number;
+        y: number;
+    } | null;
     _readDataAttribute(): void;
     _sceneFunc(context: Context): void;
     _hitFunc(context: Context): void;

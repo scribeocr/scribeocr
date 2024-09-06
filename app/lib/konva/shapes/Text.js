@@ -1,6 +1,7 @@
 import { Util } from '../Util.js';
 import { Factory } from '../Factory.js';
 import { Shape } from '../Shape.js';
+import { Konva } from '../Global.js';
 import { getNumberValidator, getStringValidator, getNumberOrAutoValidator, getBooleanValidator, } from '../Validators.js';
 import { _registerNode } from '../Global.js';
 export function stringToArray(string) {
@@ -78,15 +79,22 @@ export class Text extends Shape {
         }
         var padding = this.padding(), fontSize = this.fontSize(), lineHeightPx = this.lineHeight() * fontSize, verticalAlign = this.verticalAlign(), direction = this.direction(), alignY = 0, align = this.align(), totalWidth = this.getWidth(), letterSpacing = this.letterSpacing(), fill = this.fill(), textDecoration = this.textDecoration(), shouldUnderline = textDecoration.indexOf('underline') !== -1, shouldLineThrough = textDecoration.indexOf('line-through') !== -1, n;
         direction = direction === INHERIT ? context.direction : direction;
-        var translateY = 0;
         var translateY = lineHeightPx / 2;
+        var baseline = MIDDLE;
+        if (Konva._fixTextRendering) {
+            var metrics = this.measureSize('M');
+            baseline = 'alphabetic';
+            translateY =
+                (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2 +
+                    lineHeightPx / 2;
+        }
         var lineTranslateX = 0;
         var lineTranslateY = 0;
         if (direction === RTL) {
             context.setAttr('direction', direction);
         }
         context.setAttr('font', this._getContextFont());
-        context.setAttr('textBaseline', MIDDLE);
+        context.setAttr('textBaseline', baseline);
         context.setAttr('textAlign', LEFT);
         if (verticalAlign === MIDDLE) {
             alignY = (this.getHeight() - textArrLen * lineHeightPx - padding * 2) / 2;
@@ -109,12 +117,17 @@ export class Text extends Shape {
             if (shouldUnderline) {
                 context.save();
                 context.beginPath();
-                context.moveTo(lineTranslateX, translateY + lineTranslateY + Math.round(fontSize / 2));
+                let yOffset = Konva._fixTextRendering
+                    ? Math.round(fontSize / 4)
+                    : Math.round(fontSize / 2);
+                const x = lineTranslateX;
+                const y = translateY + lineTranslateY + yOffset;
+                context.moveTo(x, y);
                 spacesNumber = text.split(' ').length - 1;
                 oneWord = spacesNumber === 0;
                 lineWidth =
                     align === JUSTIFY && !lastLine ? totalWidth - padding * 2 : width;
-                context.lineTo(lineTranslateX + Math.round(lineWidth), translateY + lineTranslateY + Math.round(fontSize / 2));
+                context.lineTo(x + Math.round(lineWidth), y);
                 context.lineWidth = fontSize / 15;
                 const gradient = this._getLinearGradient();
                 context.strokeStyle = gradient || fill;
@@ -124,14 +137,15 @@ export class Text extends Shape {
             if (shouldLineThrough) {
                 context.save();
                 context.beginPath();
-                context.moveTo(lineTranslateX, translateY + lineTranslateY);
+                let yOffset = Konva._fixTextRendering ? -Math.round(fontSize / 4) : 0;
+                context.moveTo(lineTranslateX, translateY + lineTranslateY + yOffset);
                 spacesNumber = text.split(' ').length - 1;
                 oneWord = spacesNumber === 0;
                 lineWidth =
                     align === JUSTIFY && lastLine && !oneWord
                         ? totalWidth - padding * 2
                         : width;
-                context.lineTo(lineTranslateX + Math.round(lineWidth), translateY + lineTranslateY);
+                context.lineTo(lineTranslateX + Math.round(lineWidth), translateY + lineTranslateY + yOffset);
                 context.lineWidth = fontSize / 15;
                 const gradient = this._getLinearGradient();
                 context.strokeStyle = gradient || fill;
@@ -203,12 +217,25 @@ export class Text extends Shape {
         return this.textHeight;
     }
     measureSize(text) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         var _context = getDummyContext(), fontSize = this.fontSize(), metrics;
         _context.save();
         _context.font = this._getContextFont();
         metrics = _context.measureText(text);
         _context.restore();
+        const scaleFactor = fontSize / 100;
         return {
+            actualBoundingBoxAscent: (_a = metrics.actualBoundingBoxAscent) !== null && _a !== void 0 ? _a : 71.58203125 * scaleFactor,
+            actualBoundingBoxDescent: (_b = metrics.actualBoundingBoxDescent) !== null && _b !== void 0 ? _b : 0,
+            actualBoundingBoxLeft: (_c = metrics.actualBoundingBoxLeft) !== null && _c !== void 0 ? _c : -7.421875 * scaleFactor,
+            actualBoundingBoxRight: (_d = metrics.actualBoundingBoxRight) !== null && _d !== void 0 ? _d : 75.732421875 * scaleFactor,
+            alphabeticBaseline: (_e = metrics.alphabeticBaseline) !== null && _e !== void 0 ? _e : 0,
+            emHeightAscent: (_f = metrics.emHeightAscent) !== null && _f !== void 0 ? _f : 100 * scaleFactor,
+            emHeightDescent: (_g = metrics.emHeightDescent) !== null && _g !== void 0 ? _g : -20 * scaleFactor,
+            fontBoundingBoxAscent: (_h = metrics.fontBoundingBoxAscent) !== null && _h !== void 0 ? _h : 91 * scaleFactor,
+            fontBoundingBoxDescent: (_j = metrics.fontBoundingBoxDescent) !== null && _j !== void 0 ? _j : 21 * scaleFactor,
+            hangingBaseline: (_k = metrics.hangingBaseline) !== null && _k !== void 0 ? _k : 72.80000305175781 * scaleFactor,
+            ideographicBaseline: (_l = metrics.ideographicBaseline) !== null && _l !== void 0 ? _l : -21 * scaleFactor,
             width: metrics.width,
             height: fontSize,
         };

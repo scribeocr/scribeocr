@@ -37,8 +37,19 @@ export declare class Text extends Shape<TextConfig> {
     getHeight(): any;
     getTextWidth(): number;
     getTextHeight(): number;
-    measureSize(text: any): {
-        width: any;
+    measureSize(text: string): {
+        actualBoundingBoxAscent: number;
+        actualBoundingBoxDescent: number;
+        actualBoundingBoxLeft: number;
+        actualBoundingBoxRight: number;
+        alphabeticBaseline: number;
+        emHeightAscent: number;
+        emHeightDescent: number;
+        fontBoundingBoxAscent: number;
+        fontBoundingBoxDescent: number;
+        hangingBaseline: number;
+        ideographicBaseline: number;
+        width: number;
         height: number;
     };
     _getContextFont(): string;

@@ -20,6 +20,7 @@ export declare const Konva: {
     _mouseDblClickPointerId: null;
     _touchDblClickPointerId: null;
     _pointerDblClickPointerId: null;
+    _fixTextRendering: boolean;
     pixelRatio: number;
     dragDistance: number;
     angleDeg: boolean;
