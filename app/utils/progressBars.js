@@ -100,7 +100,7 @@ export class ProgressBars {
 
   static eval = new ProgressBar('import-eval-progress-collapse', 100, 0, false);
 
-  static recognize = new ProgressBar('recognize-recognize-progress-collapse', 100, 0, false);
+  static recognize = new ProgressBar('recognize-recognize-progress-collapse', 100, 0, true);
 
   static download = new ProgressBar('generate-download-progress-collapse', 100, 0, false);
 
