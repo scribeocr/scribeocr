@@ -254,6 +254,8 @@ class info {
 
   static downloadStaticVis = /** @type {HTMLDivElement} */(document.getElementById('downloadStaticVis'));
 
+  static downloadPDFFonts = /** @type {HTMLDivElement} */(document.getElementById('downloadPDFFonts'));
+
   static humanReadablePDF = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
 
   static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));

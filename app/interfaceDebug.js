@@ -99,6 +99,16 @@ elem.info.downloadStaticVis.addEventListener('click', async () => {
   saveAs(pngBlob, fileName);
 });
 
+elem.info.downloadPDFFonts.addEventListener('click', async () => {
+  const muPDFScheduler = await scribe.data.image.muPDFScheduler;
+  if (!muPDFScheduler) return;
+  muPDFScheduler.extractAllFonts().then(async (x) => {
+    for (let i = 0; i < x.length; i++) {
+      saveAs(x[i], `font_${String(i).padStart(2, '0')}.ttf`);
+    }
+  });
+});
+
 export function getExcludedText() {
   for (let i = 0; i <= scribe.data.ocr.active.length; i++) {
     const textArr = getExcludedTextPage(scribe.data.ocr.active[i], scribe.data.layoutRegions.pages[i]);
@@ -114,7 +124,7 @@ export function getExcludedText() {
 
 /**
  * @param {OcrPage} pageA
- * @param {import('../js/objects/layoutObjects.js').LayoutPage} layoutObj
+ * @param {LayoutPage} layoutObj
  * @param {boolean} [applyExclude=true]
  */
 export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {

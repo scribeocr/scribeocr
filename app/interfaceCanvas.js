@@ -232,6 +232,14 @@ class CanvasSelection {
  * This is a class due to JSDoc type considerations. All methods and properties are static.
  */
 export class ScribeCanvas {
+  static stage = stage;
+
+  static layerBackground = layerBackground;
+
+  static layerText = layerText;
+
+  static layerOverlay = layerOverlay;
+
   /** @type {Array<InstanceType<typeof Konva.Rect> | InstanceType<typeof Konva.Transformer>>} */
   static _controlArr = [];
 
@@ -499,7 +507,7 @@ export class KonvaIText extends Konva.Shape {
     outline = false, selected = false, fillBox = false, opacity = 1, fill = 'black', dynamicWidth = false, editTextCallback,
   }) {
     const {
-      charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr,
+      charSpacing, leftSideBearing, rightSideBearing, fontSize, charArr, advanceArr, kerningArr, font,
     } = scribe.utils.calcWordMetrics(word);
 
     const charSpacingFinal = !dynamicWidth ? charSpacing : 0;
@@ -527,10 +535,16 @@ export class KonvaIText extends Konva.Shape {
       width = Math.max(width, 7);
     }
 
+    let y = yActual - fontSize * 0.6;
+    if (!word.visualCoords && (word.sup || word.dropcap)) {
+      const fontDesc = font.opentype.descender / font.opentype.unitsPerEm * fontSize;
+      y = yActual - fontSize * 0.6 + fontDesc;
+    }
+
     super({
       x,
       // `y` is what Konva sees as the y value, which corresponds to where the top of the interactive box is drawn.
-      y: yActual - fontSize * 0.6,
+      y,
       width,
       height: fontSize * 0.6,
       rotation,
@@ -547,7 +561,13 @@ export class KonvaIText extends Konva.Shape {
         context.fillStyle = shape.fill();
         context.lineWidth = 1;
 
-        shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
+        if (!shape.word.visualCoords && (shape.word.sup || shape.word.dropcap)) {
+          const fontI = scribe.data.font.getWordFont(shape.word);
+          const fontDesc = fontI.opentype.descender / fontI.opentype.unitsPerEm * shape.fontSize;
+          shape.setAttr('y', shape.yActual - shape.fontSize * 0.6 + fontDesc);
+        } else {
+          shape.setAttr('y', shape.yActual - shape.fontSize * 0.6);
+        }
 
         let leftI = shape.word.visualCoords ? 0 - this.leftSideBearing : 0;
         for (let i = 0; i < shape.charArr.length; i++) {
@@ -601,22 +621,20 @@ export class KonvaIText extends Konva.Shape {
       },
     });
 
-    const fontI = scribe.data.font.getWordFont(word);
-
     this.word = word;
     this.charArr = charArr;
     this.charSpacing = charSpacingFinal;
     this.advanceArrTotal = advanceArrTotal;
     this.leftSideBearing = leftSideBearing;
     this.fontSize = fontSize;
-    this.smallCapsMult = fontI.smallCapsMult;
+    this.smallCapsMult = font.smallCapsMult;
     // `yActual` contains the y value that we want to draw the text at, which is usually the baseline.
     this.yActual = yActual;
     this.lastWidth = this.width();
-    this.fontFaceStyle = fontI.fontFaceStyle;
-    this.fontFaceWeight = fontI.fontFaceWeight;
-    this.fontFaceName = fontI.fontFaceName;
-    this.fontFamilyLookup = fontI.family;
+    this.fontFaceStyle = font.fontFaceStyle;
+    this.fontFaceWeight = font.fontFaceWeight;
+    this.fontFaceName = font.fontFaceName;
+    this.fontFamilyLookup = font.family;
     this.outline = outline;
     this.selected = selected;
     this.fillBox = fillBox;

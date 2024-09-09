@@ -111,6 +111,8 @@ scribe.opt.progressHandler = progressHandler;
 
 scribe.opt.saveDebugImages = true;
 
+scribe.opt.calcSuppFontInfo = true;
+
 scribe.init({ font: true });
 
 // Disable mouse wheel + control to zoom by the browser.
@@ -427,6 +429,11 @@ showIntermediateOCRElem.addEventListener('click', () => {
   updateOcrVersionGUI();
 });
 
+const extractPDFFontsElem = /** @type {HTMLInputElement} */(document.getElementById('extractPDFFonts'));
+extractPDFFontsElem.addEventListener('click', () => {
+  scribe.opt.extractPDFFonts = extractPDFFontsElem.checked;
+});
+
 elem.info.confThreshHigh.addEventListener('change', () => {
   scribe.opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
   renderPageQueue(stateGUI.cp.n);
@@ -653,6 +660,16 @@ const importFilesGUI = async (files) => {
   await scribe.importFiles(files, params);
 
   displayPage(stateGUI.cp.n, true);
+
+  // Add fonts extracted from document to the UI
+  if (scribe.inputData.pdfMode && scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
+    Object.keys(scribe.data.font.doc).forEach((label) => {
+      const option = document.createElement('option');
+      option.value = label;
+      option.text = label;
+      elem.edit.wordFont.appendChild(option);
+    });
+  }
 
   // Start loading Tesseract if it was not already loaded.
   // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
