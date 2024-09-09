@@ -859,9 +859,10 @@ function renderLayoutDataTable(layoutDataTable) {
     });
   }
 
-  ScribeCanvas.addDataTable(konvaLayout);
-
-  // ScribeCanvas._layoutDataTableArr.push(konvaLayout);
+  ScribeCanvas._layoutDataTableArr.push(konvaLayout);
+  layerOverlay.add(konvaLayout.tableRect);
+  konvaLayout.columns.forEach((column) => layerOverlay.add(column));
+  konvaLayout.colLines.forEach((colLine) => colLine.moveToTop());
 }
 
 export function renderLayoutDataTables() {

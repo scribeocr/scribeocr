@@ -346,16 +346,6 @@ export class ScribeCanvas {
    *
    * @param {import('./interfaceLayout.js').KonvaDataTable} dataTable
    */
-  static addDataTable = (dataTable) => {
-    ScribeCanvas._layoutDataTableArr.push(dataTable);
-    layerOverlay.add(dataTable.tableRect);
-    dataTable.columns.forEach((column) => layerOverlay.add(column));
-  };
-
-  /**
-   *
-   * @param {import('./interfaceLayout.js').KonvaDataTable} dataTable
-   */
   static destroyDataTable = (dataTable) => {
     dataTable.destroy();
     ScribeCanvas._layoutDataTableArr = ScribeCanvas._layoutDataTableArr.filter((x) => x.layoutDataTable.id !== dataTable.layoutDataTable.id);
