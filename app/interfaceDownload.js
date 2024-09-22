@@ -1,11 +1,11 @@
 /* eslint-disable import/no-cycle */
 import { saveAs } from './utils/utils.js';
 
-import { stateGUI } from '../main.js';
 import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import { ProgressBars } from './utils/progressBars.js';
 import { insertAlertMessage } from './utils/warningMessages.js';
+import { stateGUI } from '../viewer/viewerCanvas.js';
 
 elem.info.downloadSourcePDF.addEventListener('click', async () => {
   const muPDFScheduler = await scribe.data.image.getMuPDFScheduler(1);

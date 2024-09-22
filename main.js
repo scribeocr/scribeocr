@@ -1,6 +1,5 @@
 /* eslint-disable import/no-cycle */
-
-import { Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js';
+import { Button, Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js';
 import Konva from './app/lib/konva/index.js';
 
 import { recognizeAllClick } from './app/interfaceRecognize.js';
@@ -12,32 +11,34 @@ import scribe from './scribe.js/scribe.js';
 import { getAllFileEntries } from './app/utils/dragAndDrop.js';
 import { insertAlertMessage } from './app/utils/warningMessages.js';
 
-import { selectDisplayMode, setWordColorOpacity } from './app/interfaceView.js';
-
 import {
   adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange,
   changeWordFontFamily,
   changeWordFontSize,
+  changeWordFontStyle,
   deleteSelectedWords,
   toggleEditButtons,
 } from './app/interfaceEdit.js';
 
 import {
-  renderLayoutBoxes,
   revertLayoutClick,
   setDefaultLayoutClick,
-  setLayoutBoxInclusionLevelClick,
   setLayoutBoxInclusionRuleClick,
   toggleSelectableWords,
 } from './app/interfaceLayout.js';
 
 import {
-  layerOverlay,
-  layerText,
-  renderPage,
+  KonvaIText,
   ScribeCanvas,
-  stage,
-} from './app/interfaceCanvas.js';
+  KonvaOcrWord,
+  stateGUI,
+  rotateAllLayers,
+  optGUI,
+  setWordColorOpacity,
+  setCanvasWidthHeightZoom,
+  zoomAllLayers,
+  getLayerCenter,
+} from './viewer/viewerCanvas.js';
 
 import {
   downloadCanvas,
@@ -49,34 +50,20 @@ import {
 
 import { elem } from './app/elems.js';
 import {
-  getLayerCenter, rotateAllLayers, setCanvasWidthHeightZoom, zoomAllLayers,
-} from './app/interfaceCanvasInteraction.js';
-import { compareGroundTruthClick, createGroundTruthClick } from './app/interfaceEvaluate.js';
-import { optGUI, setDefaults } from './app/options.js';
+  selectNextWord, selectRightWord, selectPrevWord, selectAboveWord, selectBelowWord,
+  selectLeftWord,
+  modifySelectedWordBbox,
+} from './viewer/viewerShortcuts.js';
+import { updateEvalStatsGUI, createGroundTruthClick } from './app/interfaceEvaluate.js';
 import { ProgressBars } from './app/utils/progressBars.js';
 import { showHideElem } from './app/utils/utils.js';
+import { findText, search } from './viewer/viewerSearch.js';
+import { KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick } from './viewer/viewerLayout.js';
+import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
 
-export class stateGUI {
-  static pageRendering = Promise.resolve(true);
-
-  static renderIt = 0;
-
-  static canvasDimsN = -1;
-
-  /** @type {?Function} */
-  static promiseResolve = null;
-
-  static recognizeAllPromise = Promise.resolve();
-
-  static layoutMode = false;
-
-  static cp = {
-    n: 0,
-    backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
-    renderStatus: 0,
-    renderNum: 0,
-  };
-}
+ScribeCanvas.init('c', document.documentElement.clientWidth, document.documentElement.clientHeight);
+ScribeCanvas.mouseupFunc2 = mouseupFunc2;
+ScribeCanvas.stage.on('contextmenu', contextMenuFunc);
 
 /**
  *
@@ -93,18 +80,25 @@ const progressHandler = (message) => {
     const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
     const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
 
-    if (displayOCR && stateGUI.cp.n === n) displayPage(n, true);
+    if (displayOCR && stateGUI.cp.n === n) displayPageGUI(n, true);
   } else if (message.type === 'export') {
     ProgressBars.active.increment();
   } else if (message.type === 'importImage') {
     ProgressBars.active.increment();
-    if (stateGUI.cp.n === message.n) displayPage(message.n, true);
+    if (stateGUI.cp.n === message.n) displayPageGUI(message.n, true);
   } else if (message.type === 'importPDF') {
     ProgressBars.active.increment();
-    if (stateGUI.cp.n === message.n) displayPage(message.n, true);
+    if (stateGUI.cp.n === message.n) displayPageGUI(message.n, true);
   } else if (message.type === 'render') {
     if (ProgressBars.active === ProgressBars.download) ProgressBars.active.increment();
   }
+};
+
+// Exposing important modules for debugging and testing purposes.
+// These should not be relied upon in code--import/export should be used instead.
+globalThis.df = {
+  scribe,
+  ScribeCanvas,
 };
 
 scribe.opt.progressHandler = progressHandler;
@@ -159,11 +153,7 @@ elem.info.intermediatePDF.addEventListener('click', () => {
 
 elem.view.displayMode.addEventListener('change', () => {
   scribe.opt.displayMode = /** @type {"invis" | "ebook" | "eval" | "proof"} */(elem.view.displayMode.value);
-  if (elem.view.displayMode.value === 'eval') {
-    renderPageQueue(stateGUI.cp.n);
-  } else {
-    selectDisplayMode(scribe.opt.displayMode);
-  }
+  displayPageGUI(stateGUI.cp.n);
 });
 
 scribe.opt.warningHandler = (x) => insertAlertMessage(x, false);
@@ -231,11 +221,6 @@ zone.addEventListener('drop', async (event) => {
   showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
 });
 
-// Exposing important modules for debugging and testing purposes.
-// These should not be relied upon in code--import/export should be used instead.
-globalThis.scribe = scribe;
-globalThis.ScribeCanvas = ScribeCanvas;
-
 /**
  * Fetches an array of URLs and runs `importFiles` on the results.
  * Intended only to be used by automated testing and not by users.
@@ -255,36 +240,167 @@ globalThis.fetchAndImportFiles = async (urls) => {
  * @param {KeyboardEvent} event - The key down event.
  */
 function handleKeyboardEvent(event) {
+  // When a shortcut that interacts with canvas elements is triggered,
+  // any focused UI element from the nav bar are unfocused.
+  // If this does not occur, then the UI will remain focused,
+  // and users attempting to interact with the canvas may instead interact with the UI.
+  // For example, pressing "enter" while the recognize tab is focused may trigger the "Recognize All" button.
+  const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
+  const activeElem = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
   // Zoom in shortcut
   if (event.ctrlKey && ['+', '='].includes(event.key)) {
-    zoomAllLayers(1.1, getLayerCenter(layerText));
-    layerText.batchDraw();
+    zoomAllLayers(1.1, getLayerCenter(ScribeCanvas.layerText));
+    ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
     event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
     return;
   }
 
   // Zoom out shortcut
   if (event.ctrlKey && ['-', '_'].includes(event.key)) {
-    zoomAllLayers(1.1, getLayerCenter(layerText));
-    layerText.batchDraw();
+    zoomAllLayers(0.9, getLayerCenter(ScribeCanvas.layerText));
+    ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
     event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
     return;
   }
 
   // Prev page shortcut
   if (event.key === 'PageUp') {
-    displayPage(stateGUI.cp.n - 1);
+    displayPageGUI(stateGUI.cp.n - 1);
     event.preventDefault();
     return;
   }
 
   // Next page shortcut
   if (event.key === 'PageDown') {
-    displayPage(stateGUI.cp.n + 1);
+    displayPageGUI(stateGUI.cp.n + 1);
     event.preventDefault();
     return;
+  }
+
+  if (event.key === 'Tab') {
+    if (event.shiftKey) {
+      selectPrevWord();
+    } else {
+      selectNextWord();
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.key === 'ArrowRight' && !ScribeCanvas.input) {
+    if (event.altKey) {
+      if (event.ctrlKey) {
+        modifySelectedWordBbox('right', 1);
+      } else {
+        modifySelectedWordBbox('left', 1);
+      }
+    } else {
+      selectRightWord(event.shiftKey);
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.key === 'ArrowLeft' && !ScribeCanvas.input) {
+    if (event.altKey) {
+      if (event.ctrlKey) {
+        modifySelectedWordBbox('right', -1);
+      } else {
+        modifySelectedWordBbox('left', -1);
+      }
+    } else {
+      selectLeftWord(event.shiftKey);
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.key === 'ArrowUp') {
+    selectAboveWord();
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.key === 'ArrowDown') {
+    selectBelowWord();
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.key === 'Enter' && !ScribeCanvas.input) {
+    const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+    if (selectedWords.length !== 1) return;
+    const selectedWord = selectedWords[0];
+    KonvaIText.addTextInput(selectedWord, 0);
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.key === 'i' && event.ctrlKey) {
+    changeWordFontStyle('italic');
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.key === 'b' && event.ctrlKey) {
+    changeWordFontStyle('bold');
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.altKey && ['+', '='].includes(event.key) && !ScribeCanvas.input) {
+    changeWordFontSize('plus');
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.altKey && ['-', '_'].includes(event.key) && !ScribeCanvas.input) {
+    changeWordFontSize('minus');
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  // If the user presses "Ctrl + a" and the active element is not in the nav bar,
+  // select all words on the overlay, omitting the nav bar.
+  if (event.ctrlKey && event.key === 'a' && (!activeElem || !navBarElem.contains(activeElem))) {
+    event.preventDefault(); // Prevent the default "select all" behavior
+
+    const scribeWords = document.querySelectorAll('.scribe-word');
+    if (scribeWords.length > 0) {
+      const range = document.createRange();
+      range.setStartBefore(scribeWords[0]);
+      range.setEndAfter(scribeWords[scribeWords.length - 1]);
+
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
   }
 }
 
@@ -292,26 +408,26 @@ function handleKeyboardEvent(event) {
 document.addEventListener('keydown', handleKeyboardEvent);
 
 // Add various event listners to HTML elements
-elem.nav.next.addEventListener('click', () => displayPage(stateGUI.cp.n + 1));
-elem.nav.prev.addEventListener('click', () => displayPage(stateGUI.cp.n - 1));
+elem.nav.next.addEventListener('click', () => displayPageGUI(stateGUI.cp.n + 1));
+elem.nav.prev.addEventListener('click', () => displayPageGUI(stateGUI.cp.n - 1));
 
 elem.nav.zoomIn.addEventListener('click', () => {
-  zoomAllLayers(1.1, getLayerCenter(layerText));
+  zoomAllLayers(1.1, getLayerCenter(ScribeCanvas.layerText));
 });
 
 elem.nav.zoomOut.addEventListener('click', () => {
-  zoomAllLayers(0.9, getLayerCenter(layerText));
+  zoomAllLayers(0.9, getLayerCenter(ScribeCanvas.layerText));
 });
 
 elem.view.colorMode.addEventListener('change', () => {
   scribe.opt.colorMode = /** @type {"color" | "gray" | "binary"} */ (elem.view.colorMode.value);
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 });
 
 elem.view.overlayOpacity.addEventListener('input', () => {
   scribe.opt.overlayOpacity = parseInt(elem.view.overlayOpacity.value);
   setWordColorOpacity();
-  layerText.batchDraw();
+  ScribeCanvas.layerText.batchDraw();
 });
 
 elem.recognize.enableUpscale.addEventListener('click', () => {
@@ -321,10 +437,10 @@ elem.recognize.enableUpscale.addEventListener('click', () => {
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 showDebugVisElem.addEventListener('change', () => {
   scribe.opt.debugVis = showDebugVisElem.checked;
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 });
 
-elem.info.showDebugLegend.addEventListener('change', () => { renderPageQueue(stateGUI.cp.n); });
+// elem.info.showDebugLegend.addEventListener('change', () => { displayPageGUI(stateGUI.cp.n); });
 
 elem.info.showDebugLegend.addEventListener('input', () => {
   const legendCanvasParentDivElem = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
@@ -333,10 +449,10 @@ elem.info.showDebugLegend.addEventListener('input', () => {
   } else {
     showHideElem(legendCanvasParentDivElem, true);
   }
-  if (scribe.data.pageMetrics[stateGUI.cp.n]?.dims) setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, false);
+  if (scribe.data.pageMetrics[stateGUI.cp.n]?.dims) setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims);
 });
 
-elem.info.selectDebugVis.addEventListener('change', () => { renderPageQueue(stateGUI.cp.n); });
+elem.info.selectDebugVis.addEventListener('change', () => { displayPageGUI(stateGUI.cp.n); });
 
 elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick);
 
@@ -396,7 +512,8 @@ elem.edit.fontSize.addEventListener('change', () => { changeWordFontSize(elem.ed
 elem.edit.wordFont.addEventListener('change', () => { changeWordFontFamily(elem.edit.wordFont.value); });
 
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
-document.getElementById('editBaseline')?.addEventListener('click', adjustBaseline);
+
+elem.edit.editBaseline.addEventListener('click', adjustBaseline);
 
 const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
 rangeBaselineElem.addEventListener('input', () => { adjustBaselineRange(rangeBaselineElem.value); });
@@ -419,7 +536,7 @@ optimizeFontDebugElem.addEventListener('click', () => {
   if (optimizeFontDebugElem.checked) {
     optimizeFontClick(true, true);
   } else {
-    optimizeFontClick(elem.view.optimizeFont.checked);
+    optimizeFontClick(elem.view.optimizeFont.checked, false);
   }
 });
 
@@ -436,11 +553,11 @@ extractPDFFontsElem.addEventListener('click', () => {
 
 elem.info.confThreshHigh.addEventListener('change', () => {
   scribe.opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 });
 elem.info.confThreshMed.addEventListener('change', () => {
   scribe.opt.confThreshMed = parseInt(elem.info.confThreshMed.value);
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 });
 
 elem.view.autoRotate.addEventListener('click', () => {
@@ -454,9 +571,20 @@ elem.view.autoRotate.addEventListener('click', () => {
   }
 });
 
-elem.view.outlineWords.addEventListener('click', () => { renderPageQueue(stateGUI.cp.n); });
-elem.view.outlineLines.addEventListener('click', () => { renderPageQueue(stateGUI.cp.n); });
-elem.view.outlinePars.addEventListener('click', () => { renderPageQueue(stateGUI.cp.n); });
+elem.view.outlineWords.addEventListener('click', () => {
+  optGUI.outlineWords = elem.view.outlineWords.checked;
+  displayPageGUI(stateGUI.cp.n);
+});
+
+elem.view.outlineLines.addEventListener('click', () => {
+  optGUI.outlineLines = elem.view.outlineLines.checked;
+  displayPageGUI(stateGUI.cp.n);
+});
+
+elem.view.outlinePars.addEventListener('click', () => {
+  optGUI.outlinePars = elem.view.outlinePars.checked;
+  displayPageGUI(stateGUI.cp.n);
+});
 
 elem.evaluate.displayLabelOptions.addEventListener('click', (e) => {
   // The elements this event are intended for are the individual elements of the list (not `displayLabelOptionsElem`),
@@ -465,6 +593,10 @@ elem.evaluate.displayLabelOptions.addEventListener('click', (e) => {
   if (e.target.className !== 'dropdown-item') return;
   // @ts-ignore
   setCurrentHOCR(e.target.innerHTML);
+});
+
+elem.edit.smartQuotes.addEventListener('click', () => {
+  optGUI.smartQuotes = elem.edit.smartQuotes.checked;
 });
 
 elem.download.download.addEventListener('click', handleDownloadGUI);
@@ -481,8 +613,7 @@ elem.info.debugConflicts.addEventListener('click', () => {
 });
 
 elem.info.showConflicts.addEventListener('input', () => {
-  if (elem.info.showConflicts.checked) showDebugImages();
-  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, elem.info.showConflicts.checked);
+  displayPageGUI(stateGUI.cp.n);
 });
 
 elem.recognize.recognizeAll.addEventListener('click', () => {
@@ -517,17 +648,17 @@ elem.layout.setLayoutBoxInclusionLevelLine.addEventListener('click', () => setLa
 
 elem.evaluate.ignorePunct.addEventListener('change', () => {
   scribe.opt.ignorePunct = elem.evaluate.ignorePunct.checked;
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 });
 
 elem.evaluate.ignoreCap.addEventListener('change', () => {
   scribe.opt.ignoreCap = elem.evaluate.ignoreCap.checked;
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 });
 
 elem.evaluate.ignoreExtra.addEventListener('change', () => {
   scribe.opt.ignoreExtra = elem.evaluate.ignoreExtra.checked;
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 });
 
 elem.download.pdfPageMin.addEventListener('keyup', (event) => {
@@ -544,7 +675,7 @@ elem.download.pdfPageMax.addEventListener('keyup', (event) => {
 
 elem.nav.pageNum.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
-    displayPage(parseInt(elem.nav.pageNum.value) - 1);
+    displayPageGUI(parseInt(elem.nav.pageNum.value) - 1);
   }
 });
 
@@ -659,7 +790,7 @@ const importFilesGUI = async (files) => {
 
   await scribe.importFiles(files, params);
 
-  displayPage(stateGUI.cp.n, true);
+  displayPageGUI(stateGUI.cp.n, true);
 
   // Add fonts extracted from document to the UI
   if (scribe.inputData.pdfMode && scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
@@ -743,12 +874,12 @@ async function importFilesSuppGUI() {
 function prevMatchClick() {
   if (stateGUI.cp.n === 0) return;
   const lastPage = search.matches.slice(0, stateGUI.cp.n)?.findLastIndex((x) => x > 0);
-  if (lastPage > -1) displayPage(lastPage);
+  if (lastPage > -1) displayPageGUI(lastPage);
 }
 
 function nextMatchClick() {
   const nextPageOffset = search.matches.slice(stateGUI.cp.n + 1)?.findIndex((x) => x > 0);
-  if (nextPageOffset > -1) displayPage(stateGUI.cp.n + nextPageOffset + 1);
+  if (nextPageOffset > -1) displayPageGUI(stateGUI.cp.n + nextPageOffset + 1);
 }
 
 const editFindElem = /** @type {HTMLInputElement} */(document.getElementById('editFind'));
@@ -760,104 +891,9 @@ editFindElem.addEventListener('keyup', (event) => {
 });
 
 function findTextClick(text) {
-  search.search = text.trim();
-  // Start by highlighting the matches in the current page
-  highlightcp(text);
-  if (search.search) {
-    // TODO: If extractTextAll takes any non-trivial amount of time to run,
-    // this should use a promise so it cannot be run twice if the user presses enter twice.
-    if (!search.init) {
-      extractTextAll();
-      search.init = true;
-    }
-    findAllMatches(search.search);
-  } else {
-    search.matches = [];
-    search.total = 0;
-  }
-
+  findText(text);
   elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
   elem.nav.matchCount.textContent = String(search.total);
-}
-
-/**
- * @typedef find
- * @type {object}
- * @property {string[]} text - Array with text contents of each page
- * @property {string} search - Search string
- * @property {number[]} matches - Array with number of matches on each page
- * @property {boolean} init - Whether find object has been initiated
- * @property {number} total - Total number of matches
-
- */
-/** @type {find} */
-export const search = {
-  text: [],
-  search: '',
-  matches: [],
-  init: false,
-  total: 0,
-};
-
-// Highlight words that include substring in the current page
-function highlightcp(text) {
-  const matchIdArr = scribe.utils.ocr.getMatchingWordIds(text, scribe.data.ocr.active[stateGUI.cp.n]);
-
-  ScribeCanvas.getKonvaWords().forEach((wordObj) => {
-    if (matchIdArr.includes(wordObj.word.id)) {
-      wordObj.fillBox = true;
-    } else {
-      wordObj.fillBox = false;
-    }
-  });
-
-  layerText.batchDraw();
-}
-
-function findAllMatches(text) {
-  let total = 0;
-  const matches = [];
-  const maxValue = search.text.length;
-  for (let i = 0; i < maxValue; i++) {
-    const n = scribe.utils.countSubstringOccurrences(search.text[i], text);
-    matches[i] = n;
-    total += n;
-  }
-  search.matches = matches;
-  search.total = total;
-}
-
-// Updates data used for "Find" feature on current page
-// Should be called after any edits are made, before moving to a different page
-function updateFindStats() {
-  if (!scribe.data.ocr.active[stateGUI.cp.n]) {
-    search.text[stateGUI.cp.n] = '';
-    return;
-  }
-
-  // Re-extract text from XML
-  search.text[stateGUI.cp.n] = scribe.utils.ocr.getPageText(scribe.data.ocr.active[stateGUI.cp.n]);
-
-  if (search.search) {
-    // Count matches in current page
-    search.matches[stateGUI.cp.n] = scribe.utils.countSubstringOccurrences(search.text[stateGUI.cp.n], search.search);
-    // Calculate total number of matches
-    search.total = search.matches.reduce((partialSum, a) => partialSum + a, 0);
-
-    elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
-    elem.nav.matchCount.textContent = String(search.total);
-  }
-}
-
-// Extract text from XML for every page
-// We do this once (and then perform incremental updates) to avoid having to parse XML
-// with every search.
-function extractTextAll() {
-  const maxValue = scribe.data.ocr.active.length;
-
-  for (let g = 0; g < maxValue; g++) {
-    search.text[g] = scribe.utils.ocr.getPageText(scribe.data.ocr.active[g]);
-  }
 }
 
 // Returns string showing index of match(es) found on current page.
@@ -882,7 +918,7 @@ export function setCurrentHOCR(x) {
   scribe.data.ocr.active = scribe.data.ocr[x];
   elem.evaluate.displayLabelText.innerHTML = x;
 
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 }
 
 /**
@@ -956,7 +992,7 @@ navLayoutElem.addEventListener('show.bs.collapse', (e) => {
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
     if (!scribe.opt.autoRotate) {
-      renderPageQueue(stateGUI.cp.n);
+      displayPageGUI(stateGUI.cp.n);
     } else {
       toggleSelectableWords(false);
       ScribeCanvas.destroyControls();
@@ -972,15 +1008,15 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
     if (!scribe.opt.autoRotate) {
-      renderPageQueue(stateGUI.cp.n);
+      displayPageGUI(stateGUI.cp.n);
     } else {
       toggleSelectableWords(true);
       ScribeCanvas.destroyRegions();
       ScribeCanvas.destroyLayoutDataTables();
       ScribeCanvas.destroyControls();
       setWordColorOpacity();
-      layerOverlay.batchDraw();
-      layerText.batchDraw();
+      ScribeCanvas.layerOverlay.batchDraw();
+      ScribeCanvas.layerText.batchDraw();
     }
   }
 });
@@ -994,7 +1030,7 @@ async function clearFiles() {
 async function clearUI() {
   stateGUI.cp.n = 0;
 
-  stage.clear();
+  if (ScribeCanvas.stage) ScribeCanvas.stage.clear();
   elem.nav.pageCount.textContent = '';
   elem.nav.pageNum.value = '';
   elem.download.downloadFileName.value = '';
@@ -1012,66 +1048,120 @@ async function clearUI() {
 
 clearFiles();
 
-// Function that handles page-level info for rendering to canvas and pdf
-export async function renderPageQueue(n) {
-  let ocrData = scribe.data.ocr.active?.[n];
+const styleItalicButton = new Button(elem.edit.styleItalic);
+const styleBoldButton = new Button(elem.edit.styleBold);
+const styleSmallCapsButton = new Button(elem.edit.styleSmallCaps);
+const styleSuperButton = new Button(elem.edit.styleSuper);
 
-  // Return early if there is not enough data to render a page yet
-  // (0) Necessary info is not defined yet
-  const noInfo = scribe.inputData.xmlMode[n] === undefined;
-  // (1) No data has been imported
-  const noInput = !scribe.inputData.xmlMode[n] && !(scribe.inputData.imageMode || scribe.inputData.pdfMode);
-  // (2) XML data should exist but does not (yet)
-  const xmlMissing = scribe.inputData.xmlMode[n]
-    && (ocrData === undefined || ocrData === null || scribe.data.pageMetrics[n].dims === undefined);
+KonvaOcrWord.updateUI = () => {
+  const wordFirst = ScribeCanvas.CanvasSelection.getKonvaWords()[0];
 
-  const imageMissing = false;
-  const pdfMissing = false;
+  if (!wordFirst) return;
 
-  if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing) {
-    console.log('Exiting renderPageQueue early');
-    return;
-  }
+  const { fontFamilyArr, fontSizeArr } = ScribeCanvas.CanvasSelection.getWordProperties();
 
-  const renderItI = stateGUI.renderIt + 1;
-  stateGUI.renderIt = renderItI;
-
-  // If a page is already being rendered, wait for it to complete
-  await stateGUI.pageRendering;
-  // If another page has been requested already, return early
-  if (stateGUI.renderIt !== renderItI) return;
-
-  stateGUI.pageRendering = new Promise((resolve, reject) => {
-    stateGUI.promiseResolve = resolve;
-  });
-
-  if (scribe.inputData.evalMode) {
-    await compareGroundTruthClick(n);
-    // ocrData must be re-assigned after comparing to ground truth or it will not update.
-    ocrData = scribe.data.ocr.active?.[n];
-  }
-
-  ScribeCanvas.destroyWords();
-
-  // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
-  // (whether by quickly changing pages or on the same page).
-  // TODO: Find a better solution.
-  stateGUI.cp.renderNum += 1;
-  const renderNum = stateGUI.cp.renderNum;
-
-  // The active OCR version may have changed, so this needs to be re-checked.
-  if (stateGUI.cp.n === n && scribe.inputData.xmlMode[n]) {
-    renderPage(ocrData);
-    if (stateGUI.cp.n === n && stateGUI.cp.renderNum === renderNum) {
-      await selectDisplayMode(scribe.opt.displayMode);
-    }
+  if (fontFamilyArr.length === 1) {
+    elem.edit.wordFont.value = String(wordFirst.fontFamilyLookup);
   } else {
-    await selectDisplayMode(scribe.opt.displayMode);
+    elem.edit.wordFont.value = '';
   }
 
-  // @ts-ignore
-  stateGUI.promiseResolve();
-}
+  if (fontSizeArr.length === 1) {
+    elem.edit.fontSize.value = String(wordFirst.fontSize);
+  } else {
+    elem.edit.fontSize.value = '';
+  }
+
+  if (wordFirst.word.sup !== elem.edit.styleSuper.classList.contains('active')) {
+    styleSuperButton.toggle();
+  }
+  if (wordFirst.word.smallCaps !== elem.edit.styleSmallCaps.classList.contains('active')) {
+    styleSmallCapsButton.toggle();
+  }
+  const italic = wordFirst.word.style === 'italic';
+  if (italic !== elem.edit.styleItalic.classList.contains('active')) {
+    styleItalicButton.toggle();
+  }
+  const bold = wordFirst.word.style === 'bold';
+  if (bold !== elem.edit.styleBold.classList.contains('active')) {
+    styleBoldButton.toggle();
+  }
+};
+
+/**
+     * Update the UI to reflect the properties of the selected objects.
+     * Should be called after new objects are selected.
+     */
+KonvaLayout.updateUI = () => {
+  const { inclusionRuleArr, inclusionLevelArr } = ScribeCanvas.CanvasSelection.getLayoutBoxProperties();
+
+  if (inclusionRuleArr.length === 1) {
+    elem.layout.setLayoutBoxInclusionRuleMajority.checked = inclusionRuleArr[0] === 'majority';
+    elem.layout.setLayoutBoxInclusionRuleLeft.checked = inclusionRuleArr[0] === 'left';
+  } else {
+    elem.layout.setLayoutBoxInclusionRuleMajority.checked = false;
+    elem.layout.setLayoutBoxInclusionRuleLeft.checked = false;
+  }
+
+  if (inclusionLevelArr.length === 1) {
+    elem.layout.setLayoutBoxInclusionLevelWord.checked = inclusionLevelArr[0] === 'word';
+    elem.layout.setLayoutBoxInclusionLevelLine.checked = inclusionLevelArr[0] === 'line';
+  } else {
+    elem.layout.setLayoutBoxInclusionLevelWord.checked = false;
+    elem.layout.setLayoutBoxInclusionLevelLine.checked = false;
+  }
+};
+
+const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
+
+const renderDebugVis = () => {
+  const pageDims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
+
+  if (scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value]) {
+    const image = scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value].canvas;
+    const overlayImageKonva = new Konva.Image({
+      image,
+      scaleX: pageDims.width / image.width,
+      scaleY: pageDims.height / image.height,
+      x: pageDims.width * 0.5,
+      y: pageDims.width * 0.5,
+      offsetX: image.width * 0.5,
+      offsetY: image.width * 0.5,
+    });
+
+    // ScribeCanvas.layerOverlay.destroyChildren();
+    ScribeCanvas.layerOverlay.add(overlayImageKonva);
+
+    const offscreenCanvasLegend = scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value].canvasLegend;
+    if (offscreenCanvasLegend) {
+      ctxLegend.canvas.width = offscreenCanvasLegend.width;
+      ctxLegend.canvas.height = offscreenCanvasLegend.height;
+      ctxLegend.drawImage(offscreenCanvasLegend, 0, 0);
+    } else {
+      ctxLegend.clearRect(0, 0, ctxLegend.canvas.width, ctxLegend.canvas.height);
+    }
+  }
+};
+
+const renderConflictVis = () => {
+  if (elem.info.showConflicts.checked) showDebugImages();
+  const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
+
+  if (elem.info.showConflicts.checked) {
+    const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
+
+    debugCanvasParentDivElem.style.width = `${document.documentElement.clientWidth}px`;
+    debugCanvasParentDivElem.style.height = `${debugHeight}px`;
+    debugCanvasParentDivElem.style.top = `${document.documentElement.clientHeight - debugHeight}px`;
+    debugCanvasParentDivElem.style.overflowY = 'scroll';
+    debugCanvasParentDivElem.style.zIndex = '10';
+    debugCanvasParentDivElem.style.position = 'absolute';
+
+    showHideElem(debugCanvasParentDivElem, true);
+  } else {
+    showHideElem(debugCanvasParentDivElem, false);
+  }
+};
 
 let working = false;
 
@@ -1081,7 +1171,7 @@ let working = false;
  * @param {boolean} [force=false] - Render even if another page is actively being rendered.
  * @returns
  */
-export async function displayPage(n, force = false) {
+export async function displayPageGUI(n, force = false) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered.
   if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1) || (working && !force)) {
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
@@ -1091,23 +1181,27 @@ export async function displayPage(n, force = false) {
 
   working = true;
 
-  if (scribe.inputData.xmlMode[stateGUI.cp.n]) {
-    // TODO: This is currently run whenever the page is changed.
-    // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
-    updateFindStats();
-  }
+  await ScribeCanvas.displayPage(n, force);
 
-  elem.nav.matchCurrent.textContent = calcMatchNumber(n);
+  if (stateGUI.layoutMode) renderLayoutBoxes();
 
-  stateGUI.cp.n = n;
+  // stateGUI.cp.n = n;
   elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
 
-  await renderPageQueue(stateGUI.cp.n);
+  // await renderPageQueue(stateGUI.cp.n);
+
+  elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
+  elem.nav.matchCount.textContent = String(search.total);
+
+  ScribeCanvas.layerOverlay.destroyChildren();
 
   if (elem.info.showConflicts.checked) showDebugImages();
 
-  // Render background images ahead and behind current page to reduce delay when switching pages
-  if (scribe.inputData.pdfMode || scribe.inputData.imageMode) scribe.data.image.preRenderAheadBehindBrowser(n, elem.view.colorMode.value === 'binary');
+  updateEvalStatsGUI(stateGUI.cp.n);
+
+  renderDebugVis();
+
+  renderConflictVis();
 
   working = false;
 }
@@ -1120,8 +1214,22 @@ export async function displayPage(n, force = false) {
 async function optimizeFontClick(enable, force) {
   await scribe.enableFontOpt(enable, force);
 
-  renderPageQueue(stateGUI.cp.n);
+  displayPageGUI(stateGUI.cp.n);
 }
 
 // Set default settings
-setDefaults();
+export function setDefaults() {
+  if (optGUI.enableXlsxExport === true) {
+    elem.info.enableXlsxExport.checked = true;
+    enableXlsxExportClick();
+  }
+
+  if (optGUI.downloadFormat && optGUI.downloadFormat !== 'pdf') {
+    setFormatLabel(optGUI.downloadFormat);
+  }
+
+  if (optGUI.enableRecognition === false) {
+    elem.info.enableRecognition.checked = false;
+    enableRecognitionClick();
+  }
+}

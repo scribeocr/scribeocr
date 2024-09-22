@@ -1,22 +1,232 @@
 /* eslint-disable import/no-cycle */
-import { renderPageQueue, stateGUI } from '../main.js';
 import scribe from '../scribe.js/scribe.js';
 import {
   KonvaOcrWord,
+  optGUI,
   ScribeCanvas,
-  layerBackground,
-  layerOverlay, layerText, stage,
-} from './interfaceCanvas.js';
-import { addWordManual, recognizeArea } from './interfaceEdit.js';
+  stateGUI,
+} from '../viewer/viewerCanvas.js';
 import {
-  KonvaDataColumn,
-  KonvaLayout,
   addLayoutBoxClick,
   addLayoutDataTableClick,
-  checkDataColumnsAdjacent, checkDataTablesAdjacent, mergeDataColumns, mergeDataTables, selectLayoutBoxesArea, splitDataColumn, splitDataTable,
+  selectLayoutBoxesArea,
 } from './interfaceLayout.js';
 import { Konva } from './lib/konva/_FullInternals.js';
-import { showHideElem } from './utils/utils.js';
+import { elem } from './elems.js';
+import {
+  checkDataColumnsAdjacent, checkDataTablesAdjacent, KonvaDataColumn, KonvaLayout, mergeDataColumns, mergeDataTables, splitDataColumn, splitDataTable,
+} from '../viewer/viewerLayout.js';
+
+/**
+ * Recognize area selected by user in Tesseract.
+ * @param {Object} box
+ * @param {number} box.width
+ * @param {number} box.height
+ * @param {number} box.x
+ * @param {number} box.y
+ * @param {boolean} [wordMode=false] - Assume selection is single word.
+ * @param {boolean} [printCoordsOnly=false] - Print rect coords only, do not run recognition. Used for debugging.
+ *
+ * Note: This function assumes OCR data already exists, which this function is adding to.
+ * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all".
+ * Even if recognizing an page for the first time using "recognize area" did not produce an error,
+ * it would still be problematic, as running "recognize all" afterwards would overwrite everything.
+ */
+async function recognizeArea(box, wordMode = false, printCoordsOnly = false) {
+  // Return early if the rectangle is too small to be a word.
+  if (box.width < 4 || box.height < 4) return;
+
+  // As recognizing a single word is fast, it is run in "combined" mode unless a user has explicitly selected "legacy" or "lstm" in the advanced options.
+  /** @type {"legacy" | "lstm" | "combined"} */
+  let oemMode = 'combined';
+  if (elem.info.enableAdvancedRecognition.checked) {
+    oemMode = /** @type {"legacy" | "lstm" | "combined"} */(elem.recognize.oemLabelText.innerHTML.toLowerCase());
+  }
+
+  const legacy = oemMode === 'legacy' || oemMode === 'combined';
+  const lstm = oemMode === 'lstm' || oemMode === 'combined';
+
+  const canvasCoords = {
+    left: box.x, top: box.y, width: box.width, height: box.height,
+  };
+
+  // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
+  const imageRotated = true;
+  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+
+  const imageCoords = scribe.utils.coords.canvasToImage(canvasCoords, imageRotated, scribe.opt.autoRotate, stateGUI.cp.n, angle);
+
+  // TODO: Should we handle the case where the rectangle goes off the edge of the image?
+  imageCoords.left = Math.round(imageCoords.left);
+  imageCoords.top = Math.round(imageCoords.top);
+  imageCoords.width = Math.round(imageCoords.width);
+  imageCoords.height = Math.round(imageCoords.height);
+
+  if (printCoordsOnly) {
+    const debugCoords = {
+      left: imageCoords.left,
+      top: imageCoords.top,
+      right: imageCoords.left + imageCoords.width,
+      bottom: imageCoords.top + imageCoords.height,
+      topInv: scribe.data.pageMetrics[stateGUI.cp.n].dims.height - imageCoords.top,
+      bottomInv: scribe.data.pageMetrics[stateGUI.cp.n].dims.height - (imageCoords.top + imageCoords.height),
+    };
+    console.log(debugCoords);
+    return;
+  }
+
+  // When a user is manually selecting words to recognize, they are assumed to be in the same block.
+  // SINGLE_BLOCK: '6',
+  // SINGLE_WORD: '8',
+  const psm = wordMode ? '8' : '6';
+  const n = stateGUI.cp.n;
+
+  const upscale = scribe.inputData.imageMode && scribe.opt.enableUpscale;
+
+  if (upscale) {
+    imageCoords.left *= 2;
+    imageCoords.top *= 2;
+    imageCoords.width *= 2;
+    imageCoords.height *= 2;
+  }
+
+  const res0 = await scribe.recognizePage(n, legacy, lstm, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm, upscale });
+
+  let pageNew;
+  if (legacy && lstm) {
+    const resLegacy = await res0[0];
+    const resLSTM = await res0[1];
+
+    const pageObjLSTM = resLSTM.convert.lstm.pageObj;
+    const pageObjLegacy = resLegacy.convert.legacy.pageObj;
+
+    const debugLabel = 'recognizeArea';
+
+    if (debugLabel && !scribe.data.debug.debugImg[debugLabel]) {
+      scribe.data.debug.debugImg[debugLabel] = new Array(scribe.data.image.pageCount);
+      for (let i = 0; i < scribe.data.image.pageCount; i++) {
+        scribe.data.debug.debugImg[debugLabel][i] = [];
+      }
+    }
+
+    /** @type {Parameters<typeof scribe.compareOCR>[2]} */
+    const compOptions = {
+      mode: 'comb',
+      debugLabel,
+      ignoreCap: scribe.opt.ignoreCap,
+      ignorePunct: scribe.opt.ignorePunct,
+      confThreshHigh: scribe.opt.confThreshHigh,
+      confThreshMed: scribe.opt.confThreshMed,
+      legacyLSTMComb: true,
+    };
+
+    const res = await scribe.compareOCR([pageObjLegacy], [pageObjLSTM], compOptions);
+
+    if (scribe.data.debug.debugImg[debugLabel]) scribe.data.debug.debugImg[debugLabel] = res.debug;
+
+    pageNew = res.ocr[0];
+  } else if (legacy) {
+    const resLegacy = await res0[0];
+    pageNew = resLegacy.convert.legacy.pageObj;
+  } else {
+    const resLSTM = await res0[0];
+    pageNew = resLSTM.convert.lstm.pageObj;
+  }
+
+  scribe.combineOCRPage(pageNew, scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
+
+  if (n === stateGUI.cp.n) ScribeCanvas.displayPage(stateGUI.cp.n);
+}
+
+async function addWordManual({
+  x: rectLeft, y: rectTop, height: rectHeight, width: rectWidth,
+}) {
+  const wordText = 'A';
+  // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
+  let angleAdjXRect = 0;
+  let angleAdjYRect = 0;
+  let sinAngle = 0;
+  let shiftX = 0;
+  let shiftY = 0;
+  if (scribe.opt.autoRotate && Math.abs(scribe.data.pageMetrics[stateGUI.cp.n].angle ?? 0) > 0.05) {
+    const rotateAngle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+
+    const pageDims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
+
+    sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
+    const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
+
+    shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
+    shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
+
+    const baselineY = (rectTop + rectHeight) - (rectHeight) / 3;
+
+    const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (rectLeft - shiftX);
+    const angleAdjXInt = sinAngle * ((baselineY - shiftY) - angleAdjYInt * 0.5);
+
+    angleAdjXRect = angleAdjXInt + shiftX;
+    angleAdjYRect = angleAdjYInt + shiftY;
+  }
+
+  // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
+  const rectTopHOCR = rectTop - angleAdjYRect;
+  const rectBottomHOCR = rectTop + rectHeight - angleAdjYRect;
+
+  const rectLeftHOCR = rectLeft - angleAdjXRect;
+  const rectRightHOCR = rectLeft + rectWidth - angleAdjXRect;
+
+  const wordBox = {
+    left: rectLeftHOCR, top: rectTopHOCR, right: rectRightHOCR, bottom: rectBottomHOCR,
+  };
+
+  const pageObj = new scribe.utils.ocr.OcrPage(stateGUI.cp.n, scribe.data.ocr.active[stateGUI.cp.n].dims);
+  // Create a temporary line to hold the word until it gets combined.
+  // This should not be used after `combineData` is run as it is not the final line.
+  const lineObjTemp = new scribe.utils.ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
+  pageObj.lines = [lineObjTemp];
+  const wordIDNew = scribe.utils.getRandomAlphanum(10);
+  const wordObj = new scribe.utils.ocr.OcrWord(lineObjTemp, wordText, wordBox, wordIDNew);
+  // Words added by user are assumed to be correct.
+  wordObj.conf = 100;
+  lineObjTemp.words = [wordObj];
+
+  scribe.combineOCRPage(pageObj, scribe.data.ocr.active[stateGUI.cp.n], scribe.data.pageMetrics[stateGUI.cp.n], true, false);
+
+  // Get line word was added to in main data.
+  // This will have different metrics from `lineObj` when the line was combined into an existing line.
+  const wordObjNew = scribe.utils.ocr.getPageWord(scribe.data.ocr.active[stateGUI.cp.n], wordIDNew);
+
+  if (!wordObjNew) throw new Error('Failed to add word to page.');
+
+  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+  const imageRotated = Math.abs(angle ?? 0) > 0.05;
+
+  const angleAdjLine = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
+  const angleAdjWord = imageRotated ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
+
+  const linebox = wordObjNew.line.bbox;
+  const baseline = wordObjNew.line.baseline;
+
+  const visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
+
+  // const displayMode = elem.view.displayMode.value;
+  // const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
+  const outlineWord = optGUI.outlineWords || scribe.opt.displayMode === 'eval' && wordObj.conf > scribe.opt.confThreshHigh && !wordObj.matchTruth;
+
+  const wordCanvas = new KonvaOcrWord({
+    visualLeft: rectLeft,
+    yActual: visualBaseline,
+    topBaseline: visualBaseline,
+    rotation: 0,
+    word: wordObj,
+    outline: outlineWord,
+    fillBox: false,
+  });
+
+  ScribeCanvas.addWord(wordCanvas);
+
+  ScribeCanvas.layerText.batchDraw();
+}
 
 const createContextMenuHTML = () => {
   const menuDiv = document.createElement('div');
@@ -115,7 +325,7 @@ const splitWordClick = () => {
 
   konvaWord.word.line.words.splice(wordIndex, 1, wordA, wordB);
 
-  renderPageQueue(stateGUI.cp.n);
+  ScribeCanvas.displayPage(stateGUI.cp.n);
 };
 
 const mergeWordsClick = () => {
@@ -130,7 +340,7 @@ const mergeWordsClick = () => {
   const firstIndex = lineWords.findIndex((x) => x.id === selectedWords[0].word.id);
   lineWords.splice(firstIndex, selectedWords.length, newWord);
 
-  renderPageQueue(stateGUI.cp.n);
+  ScribeCanvas.displayPage(stateGUI.cp.n);
 };
 
 const deleteLayoutDataTableClick = () => {
@@ -142,7 +352,7 @@ const deleteLayoutDataTableClick = () => {
 
   ScribeCanvas.destroyDataTable(selectedColumns[0].konvaTable);
   ScribeCanvas.destroyControls();
-  layerOverlay.batchDraw();
+  ScribeCanvas.layerOverlay.batchDraw();
 };
 
 const deleteLayoutRegionClick = () => {
@@ -155,7 +365,7 @@ const deleteLayoutRegionClick = () => {
     ScribeCanvas.destroyRegion(region);
   });
   ScribeCanvas.destroyControls();
-  layerOverlay.batchDraw();
+  ScribeCanvas.layerOverlay.batchDraw();
 };
 
 const mergeDataColumnsClick = () => {
@@ -173,7 +383,7 @@ const mergeDataTablesClick = () => {
 
 const splitDataColumnClick = () => {
   hideContextMenu();
-  // const ptr = layerOverlay.getRelativePointerPosition();
+  // const ptr = ScribeCanvas.layerOverlay.getRelativePointerPosition();
   // if (!ptr) return;
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
   splitDataColumn(selectedColumns[0], ScribeCanvas.contextMenuPointer.x);
@@ -237,11 +447,9 @@ style.textContent = `
 
 document.head.appendChild(style);
 
-stage.on('contextmenu', (e) => {
-  // prevent default behavior
-
-  const pointer = stage.getPointerPosition();
-  const pointerRelative = layerOverlay.getRelativePointerPosition();
+export const contextMenuFunc = (event) => {
+  const pointer = ScribeCanvas.stage.getPointerPosition();
+  const pointerRelative = ScribeCanvas.layerOverlay.getRelativePointerPosition();
 
   if (!pointer || !pointerRelative) return;
 
@@ -249,8 +457,8 @@ stage.on('contextmenu', (e) => {
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
   const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
 
-  if (e.target === stage || (selectedColumns.length === 0 && selectedRegions.length === 0 && selectedWords.length === 0)) {
-    // if we are on empty place of the stage we will do nothing
+  if (event.target === ScribeCanvas.stage || (selectedColumns.length === 0 && selectedRegions.length === 0 && selectedWords.length === 0)) {
+    // if we are on empty place of the ScribeCanvas.stage we will do nothing
     return;
   }
 
@@ -258,11 +466,11 @@ stage.on('contextmenu', (e) => {
 
   let enableSplitWord = false;
   let enableMergeWords = false;
-  if (!stateGUI.layoutMode && e.target instanceof KonvaOcrWord) {
+  if (!stateGUI.layoutMode && event.target instanceof KonvaOcrWord) {
     if (selectedWords.length < 2) {
-      const cursorIndex = KonvaOcrWord.getCursorIndex(e.target);
-      if (cursorIndex > 0 && cursorIndex < e.target.word.text.length) {
-        ScribeCanvas.contextMenuWord = e.target;
+      const cursorIndex = KonvaOcrWord.getCursorIndex(event.target);
+      if (cursorIndex > 0 && cursorIndex < event.target.word.text.length) {
+        ScribeCanvas.contextMenuWord = event.target;
         enableSplitWord = true;
       }
     } else {
@@ -324,20 +532,13 @@ stage.on('contextmenu', (e) => {
     contextMenuSplitTableButtonElem.style.display = 'initial';
   }
 
-  e.evt.preventDefault();
+  event.evt.preventDefault();
 
   menuNode.style.display = 'initial';
-  const containerRect = stage.container().getBoundingClientRect();
+  const containerRect = ScribeCanvas.stage.container().getBoundingClientRect();
   menuNode.style.top = `${containerRect.top + pointer.y + 4}px`;
   menuNode.style.left = `${containerRect.left + pointer.x + 4}px`;
-});
-
-const trans = new Konva.Transformer({
-  enabledAnchors: ['middle-left', 'middle-right'],
-  rotateEnabled: false,
-  borderStrokeWidth: 2,
-});
-layerText.add(trans);
+};
 
 /**
  *
@@ -359,99 +560,19 @@ function selectWords(box) {
     selectedWords.forEach((shape) => (shape.select()));
   } else if (selectedWords.length === 1) {
     KonvaOcrWord.addControls(selectedWords[0]);
+    selectedWords[0].select();
     KonvaOcrWord.updateUI();
   }
 }
 
-/** @type {import('./lib/konva/Stage.js').Stage | import('./lib/konva/Shape.js').Shape<import('./lib/konva/Shape.js').ShapeConfig>} */
-let mouseDownTarget = stage;
-
-stage.on('mousedown touchstart', (e) => {
+export const mouseupFunc2 = (event) => {
   hideContextMenu();
 
-  // Left click only
-  if (e.type === 'mousedown' && e.evt.button !== 0) return;
+  const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
+  const activeElem = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
 
-  mouseDownTarget = e.target;
-
-  if (ScribeCanvas.isTouchScreen && ScribeCanvas.mode === 'select') return;
-
-  // Move selection rectangle to top.
-  ScribeCanvas.selectingRectangle.zIndex(layerText.children.length - 1);
-
-  e.evt.preventDefault();
-  const startCoords = layerText.getRelativePointerPosition() || { x: 0, y: 0 };
-  ScribeCanvas.bbox.left = startCoords.x;
-  ScribeCanvas.bbox.top = startCoords.y;
-  ScribeCanvas.bbox.right = startCoords.x;
-  ScribeCanvas.bbox.bottom = startCoords.y;
-
-  ScribeCanvas.selectingRectangle.width(0);
-  ScribeCanvas.selectingRectangle.height(0);
-  ScribeCanvas.selecting = true;
-});
-
-stage.on('mousemove touchmove', (e) => {
-  // do nothing if we didn't start selection
-  if (!ScribeCanvas.selecting) {
-    return;
-  }
-  e.evt.preventDefault();
-  const endCoords = layerText.getRelativePointerPosition();
-  if (!endCoords) return;
-
-  ScribeCanvas.bbox.right = endCoords.x;
-  ScribeCanvas.bbox.bottom = endCoords.y;
-
-  ScribeCanvas.selectingRectangle.setAttrs({
-    visible: true,
-    x: Math.min(ScribeCanvas.bbox.left, ScribeCanvas.bbox.right),
-    y: Math.min(ScribeCanvas.bbox.top, ScribeCanvas.bbox.bottom),
-    width: Math.abs(ScribeCanvas.bbox.right - ScribeCanvas.bbox.left),
-    height: Math.abs(ScribeCanvas.bbox.bottom - ScribeCanvas.bbox.top),
-  });
-
-  layerText.batchDraw();
-});
-
-stage.on('mouseup touchend', (event) => {
-  // For dragging layout boxes, other events are needed to stop the drag.
-  if (!stateGUI.layoutMode) {
-    event.evt.preventDefault();
-    event.evt.stopPropagation();
-  }
-
-  const mouseUpTarget = event.target;
-
-  const editingWord = !!ScribeCanvas.input;
-
-  // If a word is being edited, the only action allowed is clicking outside the word to deselect it.
-  if (editingWord) {
-    if (mouseDownTarget === ScribeCanvas.inputWord || mouseUpTarget === ScribeCanvas.inputWord) {
-      ScribeCanvas.selecting = false;
-      return;
-    }
-    ScribeCanvas.destroyControls();
-    layerText.batchDraw();
-
-  // Delete any current selections if either (1) this is a new selection or (2) nothing is being clicked.
-  // Clicks must pass this check on both start and end.
-  // This prevents accidentally clearing a selection when the user is trying to highlight specific letters, but the mouse up happens over another word.
-  } else if ((mouseUpTarget instanceof Konva.Stage || mouseUpTarget instanceof Konva.Image)
-    && (ScribeCanvas.selecting || event.target instanceof Konva.Stage || event.target instanceof Konva.Image)) {
-    ScribeCanvas.destroyControls();
-  }
-
-  ScribeCanvas.selecting = false;
-
-  // Return early if this was a drag or pinch rather than a selection.
-  // `isDragging` will be true even for a touch event, so a minimum distance moved is required to differentiate between a click and a drag.
-  if (event.evt.button === 1 || (ScribeCanvas.drag.isDragging && ScribeCanvas.drag.dragDeltaTotal > 10) || ScribeCanvas.drag.isPinching || ScribeCanvas.drag.isResizingColumns) {
-    stopDragPinch(event);
-    return;
-  }
-  // `stopDragPinch` runs regardless of whether this actually is a drag/pinch, since `isDragging` can be enabled for taps.
-  stopDragPinch(event);
+  ScribeCanvas.stopDragPinch(event);
 
   // Exit early if the right mouse button was clicked on a selected column or word.
   if (event.evt.button === 2) {
@@ -462,10 +583,16 @@ stage.on('mouseup touchend', (event) => {
     if (event.target instanceof KonvaOcrWord && selectedWordIds.includes(event.target.word.id)) return;
   }
 
+  // Hide the baseline adjustment range if the user clicks somewhere outside of the currently selected word and outside of the range adjustment box.
+  if (activeElem && elem.edit.collapseRangeBaseline.contains(activeElem)) {
+    const open = elem.edit.collapseRangeBaselineBS._element.classList.contains('show');
+    if (open) elem.edit.collapseRangeBaselineBS.toggle();
+  }
+
   // Handle the case where no rectangle is drawn (i.e. a click event), or the rectangle is is extremely small.
   // Clicks are handled in the same function as rectangle selections as using separate events lead to issues when multiple events were triggered.
   if (!ScribeCanvas.selectingRectangle.visible() || (ScribeCanvas.selectingRectangle.width() < 5 && ScribeCanvas.selectingRectangle.height() < 5)) {
-    const ptr = stage.getPointerPosition();
+    const ptr = ScribeCanvas.stage.getPointerPosition();
     if (!ptr) return;
     const box = {
       x: ptr.x, y: ptr.y, width: 1, height: 1,
@@ -474,12 +601,12 @@ stage.on('mouseup touchend', (event) => {
       ScribeCanvas.destroyControls(!event.evt.ctrlKey);
       selectWords(box);
       KonvaOcrWord.updateUI();
-      layerText.batchDraw();
+      ScribeCanvas.layerText.batchDraw();
     } else if (ScribeCanvas.mode === 'select' && stateGUI.layoutMode) {
       ScribeCanvas.destroyControls(!event.evt.ctrlKey);
       selectLayoutBoxesArea(box);
       KonvaLayout.updateUI();
-      layerOverlay.batchDraw();
+      ScribeCanvas.layerOverlay.batchDraw();
     }
     return;
   }
@@ -498,425 +625,25 @@ stage.on('mouseup touchend', (event) => {
     selectLayoutBoxesArea(box);
     KonvaLayout.updateUI();
   } else if (ScribeCanvas.mode === 'addWord') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: layerText });
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
     addWordManual(box);
   } else if (ScribeCanvas.mode === 'recognizeWord') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: layerText });
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
     recognizeArea(box, true, false);
   } else if (ScribeCanvas.mode === 'recognizeArea') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: layerText });
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
     recognizeArea(box, false, false);
   } else if (ScribeCanvas.mode === 'printCoords') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: layerText });
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
     recognizeArea(box, false, true);
   } else if (ScribeCanvas.mode === 'addLayoutBoxOrder') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: layerText });
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
     addLayoutBoxClick(box, 'order');
   } else if (ScribeCanvas.mode === 'addLayoutBoxExclude') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: layerText });
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
     addLayoutBoxClick(box, 'exclude');
   } else if (ScribeCanvas.mode === 'addLayoutBoxDataTable') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: layerText });
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
     addLayoutDataTableClick(box);
-  }
-
-  ScribeCanvas.mode = 'select';
-
-  layerText.batchDraw();
-});
-
-/**
- * Check if the wheel event was from a track pad by applying a series of heuristics.
- * This function should be generally reliable, although it is inherently heuristic-based,
- * so should be refined over time as more edge cases are encountered.
- * @param {WheelEvent} event
- */
-const checkTrackPad = (event) => {
-  // DeltaY is generally 100 or 120 for mice.
-  if ([100, 120].includes(event.deltaY)) return false;
-  // DeltaY will be multiplied by the zoom level.
-  // While the user should not be zoomed in, this is accounted for here as a safeguard.
-  // The `window.devicePixelRatio` value is generally the zoom level.
-  // The known exceptions are:
-  // For high-density (e.g. Retina) displays, `window.devicePixelRatio` is 2, but the zoom level is 1.
-  // For Safari, this is bugged and `window.devicePixelRatio` does not scale with zooming.
-  // https://bugs.webkit.org/show_bug.cgi?id=124862
-  if ([100, 120].includes(Math.abs(Math.round(event.deltaY * window.devicePixelRatio * 1e5) / 1e5))) return false;
-
-  // If delta is an integer, it is likely from a mouse.
-  if (Math.round(event.deltaY) === event.deltaY) return false;
-
-  // If none of the above conditions were met, it is likely from a track pad.
-  return true;
-};
-
-// Function to handle wheel event
-/**
- * Handles the wheel event to scroll the layer vertically.
- * @param {WheelEvent} event - The wheel event from the user's mouse.
- */
-const handleWheel = (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-
-  if (event.ctrlKey) { // Zoom in or out
-    // Track pads report precise zoom values (many digits after the decimal) while mouses only move in fixed (integer) intervals.
-    const trackPadMode = checkTrackPad(event);
-
-    let delta = event.deltaY;
-
-    // If `deltaMode` is `1` (less common), units are in lines rather than pixels.
-    if (event.deltaMode === 1) delta *= 10;
-
-    // Zoom by a greater amount for track pads.
-    // Without this code, zooming would be extremely slow.
-    if (trackPadMode) {
-      delta *= 7;
-      // Cap at the equivalent of ~6 scrolls of a scroll wheel.
-      delta = Math.min(600, Math.max(-720, delta));
-    }
-
-    let scaleBy = 0.999 ** delta;
-    if (scaleBy > 1.1) scaleBy = 1.1;
-    if (scaleBy < 0.9) scaleBy = 0.9;
-
-    zoomAllLayers(scaleBy, stage.getPointerPosition());
-    ScribeCanvas.destroyControls();
-  } else { // Scroll vertically
-    ScribeCanvas.destroyControls();
-    panAllLayers({ deltaX: event.deltaX * -1, deltaY: event.deltaY * -1 });
-  }
-};
-
-/**
- *
- * @param {InstanceType<typeof Konva.Layer>} layer
- * @returns {{x: number, y: number}}
- */
-export const getLayerCenter = (layer) => {
-  const layerWidth = layer.width();
-  const layerHeight = layer.height();
-
-  // Calculate the center point of the layer before any transformations
-  const centerPoint = {
-    x: layerWidth / 2,
-    y: layerHeight / 2,
-  };
-
-  // Get the absolute transformation matrix for the layer
-  const transform = layer.getAbsoluteTransform();
-
-  // Apply the transformation to the center point
-  const transformedCenter = transform.point(centerPoint);
-
-  return transformedCenter;
-};
-
-/**
- *
- * @param {InstanceType<typeof Konva.Layer>} layer
- * @param {number} scaleBy
- * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
- *    If `null` (default), the center of the layer is used.
- */
-const zoomLayer = (layer, scaleBy, center = null) => {
-  const oldScale = layer.scaleX();
-  center = center || getLayerCenter(layer);
-
-  const mousePointTo = {
-    x: (center.x - layer.x()) / oldScale,
-    y: (center.y - layer.y()) / oldScale,
-  };
-
-  const newScale = oldScale * scaleBy;
-
-  layer.scaleX(newScale);
-  layer.scaleY(newScale);
-
-  const newPos = {
-    x: center.x - mousePointTo.x * newScale,
-    y: center.y - mousePointTo.y * newScale,
-  };
-
-  layer.position(newPos);
-  layer.batchDraw();
-};
-
-/**
- *
- * @param {number} scaleBy
- * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
- *    If `null` (default), the center of the layer is used.
- */
-export const zoomAllLayers = (scaleBy, center = null) => {
-  zoomLayer(layerText, scaleBy, center);
-  zoomLayer(layerBackground, scaleBy, center);
-  zoomLayer(layerOverlay, scaleBy, center);
-};
-
-/**
- *
- * @param {Object} coords
- * @param {number} [coords.deltaX=0]
- * @param {number} [coords.deltaY=0]
- */
-const panAllLayers = ({ deltaX = 0, deltaY = 0 }) => {
-  layerText.x(layerText.x() + deltaX);
-  layerText.y(layerText.y() + deltaY);
-  layerBackground.x(layerBackground.x() + deltaX);
-  layerBackground.y(layerBackground.y() + deltaY);
-  layerOverlay.x(layerOverlay.x() + deltaX);
-  layerOverlay.y(layerOverlay.y() + deltaY);
-
-  layerText.batchDraw();
-  layerBackground.batchDraw();
-  layerOverlay.batchDraw();
-};
-
-/**
- *
- * @param {number} degrees
- */
-export const rotateAllLayers = (degrees) => {
-  layerText.rotation(degrees);
-  layerBackground.rotation(degrees);
-  layerOverlay.rotation(degrees);
-
-  layerText.batchDraw();
-  layerBackground.batchDraw();
-  layerOverlay.batchDraw();
-};
-
-// Listen for wheel events on the stage
-stage.on('wheel', (event) => {
-  handleWheel(event.evt);
-});
-
-/**
- * @typedef {import('./lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
- * @typedef {import('./lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
- * @typedef {import('./lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
- */
-
-/**
- * Initiates dragging if the middle mouse button is pressed.
- * @param {KonvaMouseEvent} event
- */
-const startDrag = (event) => {
-  ScribeCanvas.drag.isDragging = true;
-  ScribeCanvas.drag.lastX = event.evt.x;
-  ScribeCanvas.drag.lastY = event.evt.y;
-  event.evt.preventDefault();
-};
-
-function getCenter(p1, p2) {
-  return {
-    x: (p1.x + p2.x) / 2,
-    y: (p1.y + p2.y) / 2,
-  };
-}
-
-function getDistance(p1, p2) {
-  return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
-}
-
-/**
- * Initiates dragging if the middle mouse button is pressed.
- * @param {KonvaTouchEvent} event
- */
-const startDragTouch = (event) => {
-  ScribeCanvas.drag.isDragging = true;
-  ScribeCanvas.drag.lastX = event.evt.touches[0].clientX;
-  ScribeCanvas.drag.lastY = event.evt.touches[0].clientY;
-  event.evt.preventDefault();
-};
-
-/**
- * Updates the layer's position based on mouse movement.
- * @param {KonvaMouseEvent} event
- */
-const executeDrag = (event) => {
-  if (ScribeCanvas.drag.isDragging) {
-    const deltaX = event.evt.x - ScribeCanvas.drag.lastX;
-    const deltaY = event.evt.y - ScribeCanvas.drag.lastY;
-
-    if (Math.round(deltaX) === 0 && Math.round(deltaY) === 0) return;
-
-    // This is an imprecise heuristic, so not bothering to calculate distance properly.
-    ScribeCanvas.drag.dragDeltaTotal += Math.abs(deltaX);
-    ScribeCanvas.drag.dragDeltaTotal += Math.abs(deltaY);
-
-    ScribeCanvas.drag.lastX = event.evt.x;
-    ScribeCanvas.drag.lastY = event.evt.y;
-
-    panAllLayers({ deltaX, deltaY });
-  }
-};
-
-/**
- * @param {KonvaTouchEvent} event
- */
-const executeDragTouch = (event) => {
-  if (ScribeCanvas.drag.isDragging) {
-    const deltaX = event.evt.touches[0].clientX - ScribeCanvas.drag.lastX;
-    const deltaY = event.evt.touches[0].clientY - ScribeCanvas.drag.lastY;
-    ScribeCanvas.drag.lastX = event.evt.touches[0].clientX;
-    ScribeCanvas.drag.lastY = event.evt.touches[0].clientY;
-
-    panAllLayers({ deltaX, deltaY });
-  }
-};
-
-/**
- * @param {KonvaTouchEvent} event
- */
-const executePinchTouch = (event) => {
-  const touch1 = event.evt.touches[0];
-  const touch2 = event.evt.touches[1];
-  if (!touch1 || !touch2) return;
-  ScribeCanvas.drag.isPinching = true;
-  const p1 = {
-    x: touch1.clientX,
-    y: touch1.clientY,
-  };
-  const p2 = {
-    x: touch2.clientX,
-    y: touch2.clientY,
-  };
-
-  const center = getCenter(p1, p2);
-  const dist = getDistance(p1, p2);
-
-  if (!ScribeCanvas.drag.lastDist || !ScribeCanvas.drag.lastCenter) {
-    ScribeCanvas.drag.lastCenter = center;
-    ScribeCanvas.drag.lastDist = dist;
-    return;
-  }
-
-  zoomAllLayers(dist / ScribeCanvas.drag.lastDist, center);
-  ScribeCanvas.drag.lastDist = dist;
-};
-
-/**
- * Stops dragging when the mouse button is released.
- * @param {KonvaMouseEvent|KonvaTouchEvent} event
- */
-const stopDragPinch = (event) => {
-  ScribeCanvas.drag.isDragging = false;
-  ScribeCanvas.drag.isPinching = false;
-  ScribeCanvas.drag.dragDeltaTotal = 0;
-  ScribeCanvas.drag.lastCenter = null;
-  ScribeCanvas.drag.lastDist = null;
-};
-
-// Event listeners for mouse interactions
-stage.on('mousedown', (event) => {
-  if (event.evt.button === 1) { // Middle mouse button
-    startDrag(event);
-  }
-});
-stage.on('mousemove', executeDrag);
-
-stage.on('touchstart', (event) => {
-  if (ScribeCanvas.mode === 'select') {
-    if (event.evt.touches[1]) {
-      executePinchTouch(event);
-    } else {
-      startDragTouch(event);
-    }
-  }
-});
-
-stage.on('touchmove', (event) => {
-  if (event.evt.touches[1]) {
-    executePinchTouch(event);
-  } else if (ScribeCanvas.drag.isDragging) {
-    executeDragTouch(event);
-  }
-});
-
-const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
-
-let widthHeightInitial = true;
-/**
- *
- * @param {dims} imgDims - Dimensions of image
- */
-export const setCanvasWidthHeightZoom = (imgDims, enableConflictsViewer = false) => {
-  const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
-
-  // Re-set width/height, in case the size of the window changed since originally set.
-  stage.height(totalHeight);
-  stage.width(document.documentElement.clientWidth);
-
-  // The first time this function is run, the canvas is centered and zoomed to fit the image.
-  // After that, whatever the user does with the canvas is preserved.
-  if (widthHeightInitial) {
-    widthHeightInitial = false;
-    const interfaceHeight = 100;
-    const bottomMarginHeight = 50;
-    const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
-
-    const zoom = targetHeight / imgDims.height;
-
-    layerText.scaleX(zoom);
-    layerText.scaleY(zoom);
-    layerBackground.scaleX(zoom);
-    layerBackground.scaleY(zoom);
-    layerOverlay.scaleX(zoom);
-    layerOverlay.scaleY(zoom);
-
-    layerText.x(((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2));
-    layerText.y(interfaceHeight);
-    layerBackground.x(((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2));
-    layerBackground.y(interfaceHeight);
-    layerOverlay.x(((document.documentElement.clientWidth - (imgDims.width * zoom)) / 2));
-    layerOverlay.y(interfaceHeight);
-  } else {
-    const left = layerText.x();
-    const top = layerText.y();
-    const scale = layerText.scaleX();
-    const stageWidth = stage.width();
-    const stageHeight = stage.height();
-
-    // Nudge the document into the viewport, using the lesser of:
-    // (1) the shift required to put 50% of the document into view, or
-    // (2) the shift required to fill 50% of the viewport.
-    // Both conditions are necessary for this to work as expected at all zoom levels.
-    if (left < imgDims.width * scale * -0.5
-    && left < (stageWidth / 2 - (imgDims.width * scale))) {
-      const newX = Math.min(imgDims.width * scale * -0.5, stageWidth / 2 - (imgDims.width * scale));
-      layerText.x(newX);
-      layerBackground.x(newX);
-      layerOverlay.x(newX);
-    } else if (left > stageWidth - (imgDims.width * scale * 0.5)
-    && left > stageWidth / 2) {
-      const newX = Math.max(stageWidth - (imgDims.width * scale * 0.5), stageWidth / 2);
-      layerText.x(newX);
-      layerBackground.x(newX);
-      layerOverlay.x(newX);
-    }
-
-    if (top < imgDims.height * scale * -0.5
-      && top < (stageHeight / 2 - (imgDims.height * scale))) {
-      const newY = Math.min(imgDims.height * scale * -0.5, stageHeight / 2 - (imgDims.height * scale));
-      layerText.y(newY);
-      layerBackground.y(newY);
-      layerOverlay.y(newY);
-    } else if (top > stageHeight - (imgDims.height * scale * 0.5)
-      && top > stageHeight / 2) {
-      const newY = Math.max(stageHeight - (imgDims.height * scale * 0.5), stageHeight / 2);
-      layerText.y(newY);
-      layerBackground.y(newY);
-      layerOverlay.y(newY);
-    }
-  }
-
-  if (enableConflictsViewer) {
-    const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
-
-    debugCanvasParentDivElem.setAttribute('style', `width:${document.documentElement.clientWidth}px;height:${debugHeight}px;overflow-y:scroll;z-index:10`);
-  } else {
-    showHideElem(debugCanvasParentDivElem, false);
   }
 };

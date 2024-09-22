@@ -1,15 +1,13 @@
 /* eslint-disable import/no-cycle */
 
-import { stateGUI } from '../main.js';
 import { renderPageStatic } from '../scribe.js/js/debug.js';
 import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import {
-  layerText,
   ScribeCanvas,
-  stage,
-} from './interfaceCanvas.js';
-import { setCanvasWidthHeightZoom } from './interfaceCanvasInteraction.js';
+  setCanvasWidthHeightZoom,
+  stateGUI,
+} from '../viewer/viewerCanvas.js';
 import { saveAs } from './utils/utils.js';
 
 export function printSelectedWords(printOCR = true) {
@@ -51,18 +49,18 @@ export async function evalSelectedLine() {
 
   await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res.debug[0]]], context: 'browser' });
 
-  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims, true);
+  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims);
 }
 
 export async function downloadCanvas() {
   const dims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
 
-  const startX = layerText.x() > 0 ? Math.round(layerText.x()) : 0;
-  const startY = layerText.y() > 0 ? Math.round(layerText.y()) : 0;
-  const width = dims.width * layerText.scaleX();
-  const height = dims.height * layerText.scaleY();
+  const startX = ScribeCanvas.layerText.x() > 0 ? Math.round(ScribeCanvas.layerText.x()) : 0;
+  const startY = ScribeCanvas.layerText.y() > 0 ? Math.round(ScribeCanvas.layerText.y()) : 0;
+  const width = dims.width * ScribeCanvas.layerText.scaleX();
+  const height = dims.height * ScribeCanvas.layerText.scaleY();
 
-  const canvasDataStr = stage.toDataURL({
+  const canvasDataStr = ScribeCanvas.stage.toDataURL({
     x: startX, y: startY, width, height,
   });
 

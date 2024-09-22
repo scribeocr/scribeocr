@@ -31,7 +31,7 @@ describe('Use delete and recognize word buttons', function () {
 
     await customActions.recognize();
 
-    const text = await driver.executeScript('return scribe.exportData("text")');
+    const text = await driver.executeScript('return df.scribe.exportData("text")');
 
     assert.strictEqual(text, 'Tesseract.js');
   });
@@ -44,7 +44,7 @@ describe('Use delete and recognize word buttons', function () {
     const deleteWordElem = await driver.findElement(By.id('deleteWord'));
     await deleteWordElem.click();
 
-    const text = await driver.executeScript('return scribe.exportData("text")');
+    const text = await driver.executeScript('return df.scribe.exportData("text")');
 
     assert.strictEqual(text, '');
   });
@@ -58,7 +58,7 @@ describe('Use delete and recognize word buttons', function () {
     // TODO: Make this dynamic
     await driver.sleep(5000);
 
-    const text = await driver.executeScript('return scribe.exportData("text")');
+    const text = await driver.executeScript('return df.scribe.exportData("text")');
 
     assert.strictEqual(text, 'Tesseract.js');
   });
@@ -80,7 +80,7 @@ describe('Use delete and recognize word buttons', function () {
     // TODO: Make this dynamic
     await driver.sleep(5000);
 
-    const text = await driver.executeScript('return scribe.exportData("text")');
+    const text = await driver.executeScript('return df.scribe.exportData("text")');
 
     assert.strictEqual(text, 'Tesseract.js');
   });
