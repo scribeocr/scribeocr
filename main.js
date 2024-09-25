@@ -249,7 +249,9 @@ function handleKeyboardEvent(event) {
   const activeElem = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   // Zoom in shortcut
-  if (event.ctrlKey && ['+', '='].includes(event.key)) {
+  // The modifier keys change what `event.key` is for the same button.
+  // `+` becomes `=` when shift is pressed, and `×` when control and alt are pressed.
+  if (event.ctrlKey && !event.altKey && ['+', '=', '×'].includes(event.key)) {
     zoomAllLayers(1.1, getLayerCenter(ScribeCanvas.layerText));
     ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
@@ -259,7 +261,7 @@ function handleKeyboardEvent(event) {
   }
 
   // Zoom out shortcut
-  if (event.ctrlKey && ['-', '_'].includes(event.key)) {
+  if (event.ctrlKey && !event.altKey && ['-', '_', '–'].includes(event.key)) {
     zoomAllLayers(0.9, getLayerCenter(ScribeCanvas.layerText));
     ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
@@ -295,8 +297,8 @@ function handleKeyboardEvent(event) {
   }
 
   if (event.key === 'ArrowRight' && !ScribeCanvas.input) {
-    if (event.altKey) {
-      if (event.ctrlKey) {
+    if (event.ctrlKey) {
+      if (event.altKey) {
         modifySelectedWordBbox('right', 1);
       } else {
         modifySelectedWordBbox('left', 1);
@@ -312,8 +314,8 @@ function handleKeyboardEvent(event) {
   }
 
   if (event.key === 'ArrowLeft' && !ScribeCanvas.input) {
-    if (event.altKey) {
-      if (event.ctrlKey) {
+    if (event.ctrlKey) {
+      if (event.altKey) {
         modifySelectedWordBbox('right', -1);
       } else {
         modifySelectedWordBbox('left', -1);
@@ -347,7 +349,8 @@ function handleKeyboardEvent(event) {
     const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
     if (selectedWords.length !== 1) return;
     const selectedWord = selectedWords[0];
-    KonvaIText.addTextInput(selectedWord, 0);
+    const pos = event.altKey ? -1 : 0;
+    KonvaIText.addTextInput(selectedWord, pos);
     event.preventDefault();
     event.stopPropagation();
     if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
@@ -370,7 +373,15 @@ function handleKeyboardEvent(event) {
     return;
   }
 
-  if (event.altKey && ['+', '='].includes(event.key) && !ScribeCanvas.input) {
+  if (event.key === 'Delete' && event.ctrlKey) {
+    deleteSelectedWords();
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
+
+  if (event.altKey && ['+', '=', '×'].includes(event.key) && !ScribeCanvas.input) {
     changeWordFontSize('plus');
     event.preventDefault();
     event.stopPropagation();
@@ -378,7 +389,7 @@ function handleKeyboardEvent(event) {
     return;
   }
 
-  if (event.altKey && ['-', '_'].includes(event.key) && !ScribeCanvas.input) {
+  if (event.altKey && ['-', '_', '–'].includes(event.key) && !ScribeCanvas.input) {
     changeWordFontSize('minus');
     event.preventDefault();
     event.stopPropagation();
@@ -386,6 +397,9 @@ function handleKeyboardEvent(event) {
     return;
   }
 
+  // Note: this code only works with the code that prints all words as HTML elements in the overlay,
+  // which is currently not used by the application.
+  // There is currently no copy/paste feature in the application (beyond copy/pasting a single word while editing).
   // If the user presses "Ctrl + a" and the active element is not in the nav bar,
   // select all words on the overlay, omitting the nav bar.
   if (event.ctrlKey && event.key === 'a' && (!activeElem || !navBarElem.contains(activeElem))) {

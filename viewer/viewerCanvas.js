@@ -1036,6 +1036,10 @@ export class KonvaIText extends Konva.Shape {
     return textDivs.join('');
   };
 
+  /**
+   * Position and show the input for editing.
+   * @param {KonvaIText} itext
+   */
   static itextToElem = (itext) => {
     const inputElem = document.createElement('span');
 
@@ -1116,9 +1120,11 @@ export class KonvaIText extends Konva.Shape {
    * Position and show the input for editing.
    * @param {KonvaIText} itext
    * @param {?number} cursorIndex - Index to position the cursor at. If `null`, position is determined by mouse location.
+   *    If `-1`, the cursor is positioned at the end of the text.
    */
   static addTextInput = (itext, cursorIndex = null) => {
-    const letterIndex = cursorIndex ?? KonvaIText.getCursorIndex(itext);
+    let letterIndex = cursorIndex ?? KonvaIText.getCursorIndex(itext);
+    if (letterIndex < 0) letterIndex = itext.charArr.length;
 
     if (ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
 
