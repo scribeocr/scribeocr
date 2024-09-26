@@ -1843,6 +1843,28 @@ const zoomLayer = (layer, scaleBy, center = null) => {
  *    If `null` (default), the center of the layer is used.
  */
 export const zoomAllLayers = (scaleBy, center = null) => {
+  if (!center) {
+    const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+
+    // If words are selected, zoom in on the selection.
+    if (selectedWords.length > 0) {
+      const selectionLeft = Math.min(...selectedWords.map((x) => x.x()));
+      const selectionRight = Math.max(...selectedWords.map((x) => x.x() + x.width()));
+      const selectionTop = Math.min(...selectedWords.map((x) => x.y()));
+      const selectionBottom = Math.max(...selectedWords.map((x) => x.y() + x.height()));
+      const center0 = { x: (selectionLeft + selectionRight) / 2, y: (selectionTop + selectionBottom) / 2 };
+
+      const transform = ScribeCanvas.layerText.getAbsoluteTransform();
+
+      // Apply the transformation to the center point
+      center = transform.point(center0);
+
+    // Otherwise, zoom in on the center of the text layer.
+    } else {
+      center = getLayerCenter(ScribeCanvas.layerText);
+    }
+  }
+
   zoomLayer(ScribeCanvas.layerText, scaleBy, center);
   zoomLayer(ScribeCanvas.layerBackground, scaleBy, center);
   zoomLayer(ScribeCanvas.layerOverlay, scaleBy, center);
@@ -1923,8 +1945,11 @@ export const handleWheel = (event) => {
 
     zoomAllLayers(scaleBy, ScribeCanvas.stage.getPointerPosition());
     ScribeCanvas.destroyControls();
+  } else if (event.shiftKey) { // Scroll horizontally
+    ScribeCanvas.destroyControls();
+    panAllLayers({ deltaX: event.deltaY });
   } else { // Scroll vertically
     ScribeCanvas.destroyControls();
-    panAllLayers({ deltaX: event.deltaX * -1, deltaY: event.deltaY * -1 });
+    panAllLayers({ deltaY: event.deltaY * -1 });
   }
 };

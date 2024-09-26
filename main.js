@@ -252,7 +252,7 @@ function handleKeyboardEvent(event) {
   // The modifier keys change what `event.key` is for the same button.
   // `+` becomes `=` when shift is pressed, and `×` when control and alt are pressed.
   if (event.ctrlKey && !event.altKey && ['+', '=', '×'].includes(event.key)) {
-    zoomAllLayers(1.1, getLayerCenter(ScribeCanvas.layerText));
+    zoomAllLayers(1.1);
     ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
     event.stopPropagation();
@@ -262,7 +262,7 @@ function handleKeyboardEvent(event) {
 
   // Zoom out shortcut
   if (event.ctrlKey && !event.altKey && ['-', '_', '–'].includes(event.key)) {
-    zoomAllLayers(0.9, getLayerCenter(ScribeCanvas.layerText));
+    zoomAllLayers(0.9);
     ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
     event.stopPropagation();

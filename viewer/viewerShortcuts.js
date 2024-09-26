@@ -1,5 +1,37 @@
-import { KonvaOcrWord, ScribeCanvas, updateWordCanvas } from './viewerCanvas.js';
+import {
+  KonvaOcrWord, panAllLayers, ScribeCanvas, updateWordCanvas,
+} from './viewerCanvas.js';
 import scribe from '../scribe.js/scribe.js';
+
+/**
+ *
+ * @param {KonvaIText} KonvaObject
+ */
+const scrollIntoView = (KonvaObject) => {
+  const delta = { deltaX: 0, deltaY: 0 };
+  const wordClientRect = KonvaObject.getClientRect({ relativeTo: ScribeCanvas.stage });
+  const wordBottomCanvas = wordClientRect.y + wordClientRect.height;
+  const wordRightCanvas = wordClientRect.x + wordClientRect.width;
+  const visibleBottomCanvas = ScribeCanvas.stage.height();
+  const visibleRightCanvas = ScribeCanvas.stage.width();
+
+  if (wordBottomCanvas > visibleBottomCanvas) {
+    delta.deltaY = (wordBottomCanvas - visibleBottomCanvas + 10) * -1;
+  } else if (wordClientRect.y < 150) {
+    // Top gets more padding to account for the toolbar
+    delta.deltaY = (wordClientRect.y - 200) * -1;
+  }
+
+  if (wordRightCanvas > visibleRightCanvas) {
+    delta.deltaX = (wordRightCanvas - visibleRightCanvas + 10) * -1;
+  } else if (wordClientRect.x < 0) {
+    delta.deltaX = (wordClientRect.x - 10) * -1;
+  }
+
+  if (delta.deltaX !== 0 || delta.deltaY !== 0) {
+    panAllLayers(delta);
+  }
+};
 
 /**
  * Moves the selection to the next word in the text, using the internal logical ordering of the words.
@@ -24,6 +56,7 @@ export function selectNextWord() {
   if (nextWord) {
     ScribeCanvas.destroyControls(true);
     const nextKonvaWord = words.filter((x) => x.word.id === nextWord.id)[0];
+    scrollIntoView(nextKonvaWord);
     ScribeCanvas.CanvasSelection.addWords(nextKonvaWord);
     KonvaOcrWord.addControls(nextKonvaWord);
     KonvaOcrWord.updateUI();
@@ -53,6 +86,7 @@ export function selectPrevWord() {
   if (prevWord) {
     ScribeCanvas.destroyControls(true);
     const prevKonvaWord = words.filter((x) => x.word.id === prevWord.id)[0];
+    scrollIntoView(prevKonvaWord);
     ScribeCanvas.CanvasSelection.addWords(prevKonvaWord);
     KonvaOcrWord.addControls(prevKonvaWord);
     KonvaOcrWord.updateUI();
@@ -98,6 +132,7 @@ export function selectRightWord(selectMultiple = false) {
   if (rightWord) {
     ScribeCanvas.destroyControls(!selectMultiple);
     const nextKonvaWord = words.filter((x) => x.word.id === rightWord.id)[0];
+    scrollIntoView(nextKonvaWord);
     nextKonvaWord.select();
     ScribeCanvas.CanvasSelection.addWords(nextKonvaWord);
     if (selectMultiple) {
@@ -149,6 +184,7 @@ export function selectLeftWord(selectMultiple = false) {
   if (leftWord) {
     ScribeCanvas.destroyControls(!selectMultiple);
     const nextKonvaWord = words.filter((x) => x.word.id === leftWord.id)[0];
+    scrollIntoView(nextKonvaWord);
     nextKonvaWord.select();
     ScribeCanvas.CanvasSelection.addWords(nextKonvaWord);
     if (selectMultiple) {
@@ -192,6 +228,7 @@ export function selectAboveWord() {
   if (aboveWord) {
     ScribeCanvas.destroyControls(true);
     const aboveKonvaWord = words.filter((x) => x.word.id === aboveWord.id)[0];
+    scrollIntoView(aboveKonvaWord);
     aboveKonvaWord.select();
     ScribeCanvas.CanvasSelection.addWords(aboveKonvaWord);
     KonvaOcrWord.addControls(aboveKonvaWord);
@@ -231,6 +268,7 @@ export function selectBelowWord() {
   if (belowWord) {
     ScribeCanvas.destroyControls(true);
     const belowKonvaWord = words.filter((x) => x.word.id === belowWord.id)[0];
+    scrollIntoView(belowKonvaWord);
     belowKonvaWord.select();
     ScribeCanvas.CanvasSelection.addWords(belowKonvaWord);
     KonvaOcrWord.addControls(belowKonvaWord);
