@@ -15,17 +15,19 @@ const scrollIntoView = (KonvaObject) => {
   const visibleBottomCanvas = ScribeCanvas.stage.height();
   const visibleRightCanvas = ScribeCanvas.stage.width();
 
-  if (wordBottomCanvas > visibleBottomCanvas) {
-    delta.deltaY = (wordBottomCanvas - visibleBottomCanvas + 10) * -1;
+  const margin = 30;
+
+  if (wordBottomCanvas > visibleBottomCanvas - margin) {
+    delta.deltaY = (wordBottomCanvas - visibleBottomCanvas + margin) * -1;
   } else if (wordClientRect.y < 150) {
     // Top gets more padding to account for the toolbar
     delta.deltaY = (wordClientRect.y - 200) * -1;
   }
 
-  if (wordRightCanvas > visibleRightCanvas) {
-    delta.deltaX = (wordRightCanvas - visibleRightCanvas + 10) * -1;
-  } else if (wordClientRect.x < 0) {
-    delta.deltaX = (wordClientRect.x - 10) * -1;
+  if (wordRightCanvas > visibleRightCanvas - margin) {
+    delta.deltaX = (wordRightCanvas - visibleRightCanvas + margin) * -1;
+  } else if (wordClientRect.x < margin) {
+    delta.deltaX = (wordClientRect.x - margin) * -1;
   }
 
   if (delta.deltaX !== 0 || delta.deltaY !== 0) {
