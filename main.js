@@ -57,7 +57,7 @@ import {
 import { updateEvalStatsGUI, createGroundTruthClick } from './app/interfaceEvaluate.js';
 import { ProgressBars } from './app/utils/progressBars.js';
 import { showHideElem } from './app/utils/utils.js';
-import { findText, search } from './viewer/viewerSearch.js';
+import { findText, highlightcp, search } from './viewer/viewerSearch.js';
 import { KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick } from './viewer/viewerLayout.js';
 import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
 
@@ -223,6 +223,35 @@ zone.addEventListener('drop', async (event) => {
 });
 
 /**
+ * Handle paste event to retrieve image from clipboard.
+ * @param {ClipboardEvent} event - The paste event containing clipboard data.
+ */
+const handlePaste = async (event) => {
+  // The event listner is on the `window` so is not deleted when the dropzone is hidden.
+  if (scribe.data.pageMetrics.length > 0) return;
+  const clipboardData = event.clipboardData;
+  if (!clipboardData) return;
+  const items = clipboardData.items;
+
+  const imageArr = [];
+  for (const item of items) {
+    if (item.type.indexOf('image') === 0) {
+      const blob = item.getAsFile();
+      imageArr.push(blob);
+    }
+  }
+
+  if (imageArr.length > 0) {
+    await importFilesGUI(imageArr);
+    zone.setAttribute('style', 'display:none');
+  }
+};
+
+// The paste listner needs to be on the window, not the dropzone.
+// Paste events are only triggered for individual elements if they are either input elements or have contenteditable set to true, neither of which are the case here.
+window.addEventListener('paste', handlePaste);
+
+/**
  * Fetches an array of URLs and runs `importFiles` on the results.
  * Intended only to be used by automated testing and not by users.
  *
@@ -253,6 +282,9 @@ function handleKeyboardEvent(event) {
     // eslint-disable-next-line no-new
     if (elem.nav.editFindCollapse.classList.contains('show')) new Collapse(elem.nav.editFindCollapse, { toggle: true });
   }
+
+  // If the user is typing in an input in the nav bar, do not trigger shortcuts.
+  if (activeElem && navBarElem.contains(activeElem) && activeElem instanceof HTMLInputElement) return;
 
   if (event.ctrlKey && ['f'].includes(event.key)) {
     // eslint-disable-next-line no-new
@@ -912,10 +944,36 @@ function nextMatchClick() {
   if (nextPageOffset > -1) displayPageGUI(stateGUI.cp.n + nextPageOffset + 1);
 }
 
+elem.nav.editFindCollapse.addEventListener('show.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'editFindCollapse') {
+    stateGUI.searchMode = true;
+    highlightcp(search.search);
+  }
+});
+
+elem.nav.editFindCollapse.addEventListener('hide.bs.collapse', (e) => {
+  if (e.target instanceof HTMLElement && e.target.id === 'editFindCollapse') {
+    stateGUI.searchMode = false;
+    const words = ScribeCanvas.getKonvaWords();
+    words.forEach((word) => word.fillBox = false);
+    ScribeCanvas.layerText.batchDraw();
+  }
+});
+
 elem.nav.editFind.addEventListener('keyup', (event) => {
-  if (event.keyCode === 13) {
+  if (event.key === 'Enter') {
     const val = elem.nav.editFind.value.trim();
-    findTextClick(val);
+    if (!val) return;
+
+    if (val === search.search) {
+      if (event.shiftKey) {
+        prevMatchClick();
+      } else {
+        nextMatchClick();
+      }
+    } else {
+      findTextClick(val);
+    }
   }
 });
 

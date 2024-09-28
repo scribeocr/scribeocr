@@ -46,7 +46,8 @@ function findAllMatches(text) {
 }
 
 // Highlight words that include substring in the current page
-function highlightcp(text) {
+export function highlightcp(text) {
+  if (!text) return;
   const matchIdArr = scribe.utils.ocr.getMatchingWordIds(text, scribe.data.ocr.active[stateGUI.cp.n]);
 
   ScribeCanvas.getKonvaWords().forEach((wordObj) => {
