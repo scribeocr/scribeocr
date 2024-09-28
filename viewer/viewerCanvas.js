@@ -230,6 +230,7 @@ class CanvasSelection {
   static deselectAllWords = () => {
     CanvasSelection._selectedWordArr.forEach((shape) => (shape.deselect()));
     CanvasSelection._selectedWordArr.length = 0;
+    CanvasSelection.selectedWordFirst = null;
   };
 
   static deselectAllRegions = () => {
@@ -392,12 +393,17 @@ export class ScribeCanvas {
 
   static mouseupFunc2 = (event) => {};
 
-  static init(elemId, width, height) {
-    this.elem = /** @type {HTMLElement} */ (document.getElementById(elemId));
-    if (!this.elem) throw new Error(`Element with id "${elemId}" not found.`);
+  /**
+   *
+   * @param {HTMLDivElement} elem
+   * @param {number} width
+   * @param {number} height
+   */
+  static init(elem, width, height) {
+    this.elem = elem;
 
     ScribeCanvas.stage = new Konva.Stage({
-      container: elemId,
+      container: elem,
       // width: document.documentElement.clientWidth,
       // height: document.documentElement.clientHeight,
       // width: this.elem.scrollWidth,

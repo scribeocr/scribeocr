@@ -3,7 +3,8 @@ import Konva from '../app/lib/konva/index.js';
 import scribe from '../scribe.js/scribe.js';
 // eslint-disable-next-line import/no-cycle
 import {
-  optGUI, ScribeCanvas, stateGUI, updateWordCanvas,
+  KonvaIText,
+  ScribeCanvas, stateGUI, updateWordCanvas,
 } from './viewerCanvas.js';
 
 // const colColorsHex = ['#287bb5', '#19aa9a', '#099b57'];

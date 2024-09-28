@@ -18,6 +18,10 @@ class nav {
 
   static zoomOut = /** @type {HTMLInputElement} */(document.getElementById('zoomOut'));
 
+  static editFind = /** @type {HTMLInputElement} */(document.getElementById('editFind'));
+
+  static editFindCollapse = /** @type {HTMLDivElement} */(document.getElementById('editFindCollapse'));
+
   static matchCount = /** @type {HTMLInputElement} */(document.getElementById('matchCount'));
 
   static matchCurrent = /** @type {HTMLInputElement} */(document.getElementById('matchCurrent'));
