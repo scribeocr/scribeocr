@@ -284,7 +284,7 @@ function handleKeyboardEvent(event) {
   }
 
   // If the user is typing in an input in the nav bar, do not trigger shortcuts.
-  if (activeElem && navBarElem.contains(activeElem) && activeElem instanceof HTMLInputElement) return;
+  if (activeElem && navBarElem.contains(activeElem) && (activeElem instanceof HTMLInputElement || activeElem instanceof HTMLSelectElement)) return;
 
   if (event.ctrlKey && ['f'].includes(event.key)) {
     // eslint-disable-next-line no-new

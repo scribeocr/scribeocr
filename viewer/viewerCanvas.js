@@ -1731,21 +1731,19 @@ export function renderPage(page) {
 
   for (let i = 0; i < page.lines.length; i++) {
     const lineObj = page.lines[i];
-    const linebox = lineObj.bbox;
-    const { baseline } = lineObj;
 
     const angleAdjLine = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
 
     if (optGUI.outlineLines) {
-      const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (linebox.right - linebox.left));
-      const height1 = linebox.bottom - linebox.top - heightAdj;
+      const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (lineObj.bbox.right - lineObj.bbox.left));
+      const height1 = lineObj.bbox.bottom - lineObj.bbox.top - heightAdj;
       const height2 = lineObj.words[0] ? lineObj.words[0].bbox.bottom - lineObj.words[0].bbox.top : 0;
       const height = Math.max(height1, height2);
 
       const lineRect = new Konva.Rect({
-        x: linebox.left + angleAdjLine.x,
-        y: linebox.bottom + baseline[1] + angleAdjLine.y - height,
-        width: linebox.right - linebox.left,
+        x: lineObj.bbox.left + angleAdjLine.x,
+        y: lineObj.bbox.bottom + lineObj.baseline[1] + angleAdjLine.y - height,
+        width: lineObj.bbox.right - lineObj.bbox.left,
         height,
         stroke: 'rgba(0,0,255,0.75)',
         strokeWidth: 1,
@@ -1769,7 +1767,7 @@ export function renderPage(page) {
 
       const angleAdjWord = imageRotated ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
-      const visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
+      const visualBaseline = lineObj.bbox.bottom + lineObj.baseline[1] + angleAdjLine.y + angleAdjWord.y;
 
       let top = visualBaseline;
       if (wordObj.sup || wordObj.dropcap) top = wordObj.bbox.bottom + angleAdjLine.y + angleAdjWord.y;
