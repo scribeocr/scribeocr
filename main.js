@@ -61,7 +61,8 @@ import { findText, search } from './viewer/viewerSearch.js';
 import { KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick } from './viewer/viewerLayout.js';
 import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
 
-ScribeCanvas.init('c', document.documentElement.clientWidth, document.documentElement.clientHeight);
+const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
+ScribeCanvas.init(canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
 ScribeCanvas.mouseupFunc2 = mouseupFunc2;
 ScribeCanvas.stage.on('contextmenu', contextMenuFunc);
 
@@ -247,6 +248,21 @@ function handleKeyboardEvent(event) {
   // For example, pressing "enter" while the recognize tab is focused may trigger the "Recognize All" button.
   const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
   const activeElem = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+  if (event.key === 'Escape') {
+    // eslint-disable-next-line no-new
+    if (elem.nav.editFindCollapse.classList.contains('show')) new Collapse(elem.nav.editFindCollapse, { toggle: true });
+  }
+
+  if (event.ctrlKey && ['f'].includes(event.key)) {
+    // eslint-disable-next-line no-new
+    if (!elem.nav.editFindCollapse.classList.contains('show')) new Collapse(elem.nav.editFindCollapse, { toggle: true });
+    elem.nav.editFind.focus();
+    event.preventDefault(); // Prevent the default action to avoid browser zoom
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    return;
+  }
 
   // Zoom in shortcut
   if (event.ctrlKey && ['+', '='].includes(event.key)) {
@@ -882,10 +898,9 @@ function nextMatchClick() {
   if (nextPageOffset > -1) displayPageGUI(stateGUI.cp.n + nextPageOffset + 1);
 }
 
-const editFindElem = /** @type {HTMLInputElement} */(document.getElementById('editFind'));
-editFindElem.addEventListener('keyup', (event) => {
+elem.nav.editFind.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
-    const val = editFindElem.value.trim();
+    const val = elem.nav.editFind.value.trim();
     findTextClick(val);
   }
 });
