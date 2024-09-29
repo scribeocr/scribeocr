@@ -1293,6 +1293,8 @@ document.addEventListener('copy', (e) => {
 
   const ids = getElementIdsInRange(range);
 
+  if (ids.length === 0) return;
+
   const text = scribe.utils.renderText([scribe.data.ocr.active[stateGUI.cp.n]], 0, 0, false, false, ids);
 
   // @ts-ignore

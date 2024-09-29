@@ -514,6 +514,10 @@ elem.info.showDebugLegend.addEventListener('input', () => {
   if (scribe.data.pageMetrics[stateGUI.cp.n]?.dims) setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims);
 });
 
+elem.info.debugHidePage.addEventListener('input', () => {
+  displayPageGUI(stateGUI.cp.n);
+});
+
 elem.info.selectDebugVis.addEventListener('change', () => { displayPageGUI(stateGUI.cp.n); });
 
 elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick);
@@ -1227,6 +1231,8 @@ const renderDebugVis = () => {
     } else {
       ctxLegend.clearRect(0, 0, ctxLegend.canvas.width, ctxLegend.canvas.height);
     }
+
+    ScribeCanvas.layerOverlay.batchDraw();
   }
 };
 
@@ -1268,7 +1274,16 @@ export async function displayPageGUI(n, force = false) {
 
   working = true;
 
-  await ScribeCanvas.displayPage(n, force);
+  const hidePage = scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && elem.info.debugHidePage.checked;
+
+  if (hidePage) {
+    ScribeCanvas.destroyWords();
+    ScribeCanvas.layerBackground.destroyChildren();
+    ScribeCanvas.layerBackground.batchDraw();
+    ScribeCanvas.layerText.batchDraw();
+  } else {
+    await ScribeCanvas.displayPage(n, force);
+  }
 
   if (stateGUI.layoutMode) renderLayoutBoxes();
 
