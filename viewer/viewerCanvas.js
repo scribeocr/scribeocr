@@ -1206,17 +1206,37 @@ export class KonvaIText extends Konva.Shape {
      */
     const getInputCursorIndex = () => {
       const sel = /** @type {Selection} */ (window.getSelection());
-      // The achor node may be either (1) a text element or (2) a `<span>` element that contains a text element.
-      const anchor = /** @type {HTMLElement} */ (sel.anchorNode);
-      let nodePrev = anchor?.parentElement?.className === 'input-sub' ? anchor?.parentElement.previousElementSibling : anchor?.previousElementSibling;
-      let nodePrevText = nodePrev?.nodeType === 3 ? nodePrev : nodePrev?.childNodes[0];
-
+      // The achor node may be either (1) a text node or (2) a `<span>` element that contains a text element.
+      const anchor = /** @type {Node} */ (sel.anchorNode);
       let index = sel.anchorOffset;
-      while (nodePrevText && nodePrev) {
-        index += nodePrevText.textContent?.length || 0;
-        nodePrev = nodePrev.className === 'input-sub' ? nodePrev.previousElementSibling : nodePrev?.previousElementSibling;
-        nodePrevText = nodePrev?.nodeType === 3 ? nodePrev : nodePrev?.childNodes[0];
+
+      /**
+       *
+       * @param {Node} node
+       */
+      const getPrevTextNode = (node) => {
+        if (node.previousSibling && node.previousSibling.nodeType === 3) return node.previousSibling;
+
+        if (node.parentNode instanceof HTMLElement) {
+          if (node.parentNode.classList.contains('scribe-word')) return undefined;
+        }
+
+        const prevSibling = node.parentNode?.previousSibling;
+
+        if (prevSibling) {
+          if (prevSibling.nodeType === 3) return prevSibling;
+          return prevSibling.childNodes[0];
+        }
+
+        return undefined;
+      };
+
+      let node = getPrevTextNode(anchor);
+      while (node) {
+        index += node.textContent?.length || 0;
+        node = getPrevTextNode(node);
       }
+
       return index;
     };
 
@@ -1498,6 +1518,11 @@ export const evalStats = [];
 export async function compareGroundTruth() {
   const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
 
+  if (!oemActive) {
+    console.error('No OCR data active');
+    return;
+  }
+
   const evalStatsConfigNew = {
     ocrActive: oemActive,
     ignorePunct: scribe.opt.ignorePunct,
@@ -1520,10 +1545,8 @@ export async function compareGroundTruth() {
     // Is this a problem that is likely to occur in real use? If so, how should it be fixed?
     const res = await scribe.compareOCR(scribe.data.ocr.active, scribe.data.ocr['Ground Truth'], compOptions);
 
-    // TODO: Replace this with a version that assigns the new value to the specific OCR version in question,
-    // rather than the currently active OCR.
-    // Assigning to "active" will overwrite whatever version the user currently has open.
-    scribe.data.ocr.active = res.ocr;
+    scribe.data.ocr[oemActive] = res.ocr;
+    scribe.data.ocr.active = scribe.data.ocr[oemActive];
 
     replaceObjectProperties(evalStats, res.metrics);
   }
