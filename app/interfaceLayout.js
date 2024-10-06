@@ -17,6 +17,52 @@ import {
 const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
 
 /**
+ *
+ * @param {Array<bbox>} boundingBoxes
+ */
+function calculateColumnBounds(boundingBoxes) {
+  const tolerance = 5; // Adjust as needed
+  const columns = [];
+
+  // Sort bounding boxes by their left edge
+  boundingBoxes.sort((a, b) => a.left - b.left);
+
+  boundingBoxes.forEach((box) => {
+    let addedToColumn = false;
+
+    for (const column of columns) {
+      // Check if the bounding box overlaps horizontally with the column
+      if (
+        box.left <= column.right + tolerance
+              && box.right >= column.left - tolerance
+      ) {
+        // Update column bounds
+        column.left = Math.min(column.left, box.left);
+        column.right = Math.max(column.right, box.right);
+        column.boxes.push(box);
+        addedToColumn = true;
+        break;
+      }
+    }
+
+    // If not added to any existing column, create a new column
+    if (!addedToColumn) {
+      columns.push({
+        left: box.left,
+        right: box.right,
+        boxes: [box],
+      });
+    }
+  });
+
+  // Extract column bounds
+  return columns.map((column) => ({
+    left: column.left,
+    right: column.right,
+  }));
+}
+
+/**
  * @param {Object} box
  * @param {number} box.x
  * @param {number} box.y
@@ -30,10 +76,35 @@ export function addLayoutDataTableClick({
     left: x, top: y, right: x + width, bottom: y + height,
   };
 
-  const dataTable = new scribe.layout.LayoutDataTable();
-  const layoutBox = new scribe.layout.LayoutDataColumn(bbox, dataTable);
+  const lines = scribe.data.ocr.active[stateGUI.cp.n].lines.filter((line) => scribe.utils.calcBoxOverlap(line.bbox, bbox) > 0.5);
+  const lineBoxes = lines.map((line) => line.bbox);
+  const columnBoundArr = calculateColumnBounds(lineBoxes);
+  const columnBboxArr = columnBoundArr.map((column) => ({
+    left: column.left,
+    top: bbox.top,
+    right: column.right,
+    bottom: bbox.bottom,
+  }));
 
-  dataTable.boxes[0] = layoutBox;
+  if (columnBboxArr.length > 0) {
+  // Expand column bounds so there is no empty space between columns.
+    columnBboxArr[0].left = bbox.left;
+    columnBboxArr[columnBboxArr.length - 1].right = bbox.right;
+    for (let i = 0; i < columnBboxArr.length - 1; i++) {
+      const boundRight = (columnBboxArr[i].right + columnBboxArr[i + 1].left) / 2;
+      columnBboxArr[i].right = boundRight;
+      columnBboxArr[i + 1].left = boundRight;
+    }
+  } else {
+    columnBboxArr.push(bbox);
+  }
+
+  const dataTable = new scribe.layout.LayoutDataTable();
+
+  columnBboxArr.forEach((columnBbox) => {
+    const layoutBox = new scribe.layout.LayoutDataColumn(columnBbox, dataTable);
+    dataTable.boxes.push(layoutBox);
+  });
 
   scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.push(dataTable);
 

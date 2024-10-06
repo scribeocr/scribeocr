@@ -7,8 +7,7 @@ import {
   ScribeCanvas, stateGUI, updateWordCanvas,
 } from './viewerCanvas.js';
 
-// const colColorsHex = ['#287bb5', '#19aa9a', '#099b57'];
-const colColorsHex = ['#000000', '#000000', '#000000'];
+const colColorsHex = ['#287bb5', '#19aa9a', '#099b57'];
 
 /**
  * Converts a hex color to rgba with a specified alpha.
