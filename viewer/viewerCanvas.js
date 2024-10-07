@@ -293,6 +293,8 @@ export class ScribeCanvas {
   /** @type {HTMLElement} */
   static elem;
 
+  static textOverlayHidden = false;
+
   /**
  * Initiates dragging if the middle mouse button is pressed.
  * @param {KonvaMouseEvent} event
@@ -574,6 +576,8 @@ export class ScribeCanvas {
       // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
       updateFindStats();
     }
+
+    ScribeCanvas.textOverlayHidden = false;
 
     stateGUI.cp.n = n;
     await renderPageQueue(stateGUI.cp.n);

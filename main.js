@@ -361,6 +361,34 @@ function handleKeyboardEvent(event) {
     return;
   }
 
+  if (event.ctrlKey && event.key === ' ' && !ScribeCanvas.textOverlayHidden) {
+    ScribeCanvas.textOverlayHidden = true;
+    ScribeCanvas.layerOverlay.hide();
+    ScribeCanvas.layerText.hide();
+    ScribeCanvas.layerOverlay.batchDraw();
+    ScribeCanvas.layerText.batchDraw();
+    const opacityOrig = ScribeCanvas.input ? ScribeCanvas.input.style.opacity : '0.8';
+    if (ScribeCanvas.input) ScribeCanvas.input.style.opacity = '0';
+    event.preventDefault();
+    event.stopPropagation();
+    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+
+    const handleKeyUp = (keyupEvent) => {
+      if (keyupEvent.key === 'Control' || keyupEvent.key === ' ') {
+        ScribeCanvas.layerOverlay.show();
+        ScribeCanvas.layerText.show();
+        ScribeCanvas.layerOverlay.batchDraw();
+        ScribeCanvas.layerText.batchDraw();
+        if (ScribeCanvas.input) ScribeCanvas.input.style.opacity = opacityOrig;
+        document.removeEventListener('keyup', handleKeyUp);
+        ScribeCanvas.textOverlayHidden = false;
+      }
+    };
+
+    document.addEventListener('keyup', handleKeyUp);
+    return;
+  }
+
   if (event.key === 'ArrowLeft' && !ScribeCanvas.input) {
     if (event.ctrlKey) {
       if (event.altKey) {
