@@ -203,7 +203,7 @@ class CanvasSelection {
     ScribeCanvas.CanvasSelection.addKonvaLayoutBoxes(konvaLayoutBoxes);
 
     // Boxes can only be resized one at a time
-    if (konvaLayoutBoxes.length === 1) KonvaLayout.addControls(konvaLayoutBoxes[0]);
+    if (konvaLayoutBoxes.length === 1 && !(konvaLayoutBoxes[0] instanceof KonvaDataColumn)) KonvaLayout.addControls(konvaLayoutBoxes[0]);
 
     selectedDataColumns.forEach((shape) => (shape.select()));
     selectedLayoutBoxes.forEach((shape) => (shape.select()));
