@@ -300,14 +300,12 @@ export class ScribeCanvas {
 
   /**
    *
-   * @param {InstanceType<typeof Konva.Layer>} layer
+   * @param {InstanceType<typeof Konva.Layer>|InstanceType<typeof Konva.Stage>} layer
    * @param {number} scaleBy
-   * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
-   *    If `null` (default), the center of the layer is used.
+   * @param {{x: number, y: number}} center - The center point to zoom in/out from.
    */
-  static _zoomLayer = (layer, scaleBy, center = null) => {
+  static _zoomStageImp = (layer, scaleBy, center) => {
     const oldScale = layer.scaleX();
-    center = center || getLayerCenter(layer);
 
     const mousePointTo = {
       x: (center.x - layer.x()) / oldScale,
@@ -334,7 +332,7 @@ export class ScribeCanvas {
    * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
    *    If `null` (default), the center of the layer is used.
    */
-  static _zoomAllLayers = (scaleBy, center = null) => {
+  static _zoomStage = (scaleBy, center = null) => {
     if (!center) {
       const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
 
@@ -357,9 +355,19 @@ export class ScribeCanvas {
       }
     }
 
-    ScribeCanvas._zoomLayer(ScribeCanvas.layerText, scaleBy, center);
-    ScribeCanvas._zoomLayer(ScribeCanvas.layerBackground, scaleBy, center);
-    ScribeCanvas._zoomLayer(ScribeCanvas.layerOverlay, scaleBy, center);
+    ScribeCanvas._zoomStageImp(ScribeCanvas.stage, scaleBy, center);
+  };
+
+  /**
+   *
+   * @param {Object} coords
+   * @param {number} [coords.deltaX=0]
+   * @param {number} [coords.deltaY=0]
+   */
+  static panStage = ({ deltaX = 0, deltaY = 0 }) => {
+    ScribeCanvas.stage.x(ScribeCanvas.stage.x() + deltaX);
+    ScribeCanvas.stage.y(ScribeCanvas.stage.y() + deltaY);
+    ScribeCanvas.stage.batchDraw();
   };
 
   /**
@@ -372,7 +380,7 @@ export class ScribeCanvas {
    */
   static zoom = (scaleBy, center = null) => {
     ScribeCanvas.deleteHTMLOverlay();
-    ScribeCanvas._zoomAllLayers(scaleBy, center);
+    ScribeCanvas._zoomStage(scaleBy, center);
     if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
   };
 
@@ -418,7 +426,7 @@ export class ScribeCanvas {
       ScribeCanvas.drag.lastX = event.evt.x;
       ScribeCanvas.drag.lastY = event.evt.y;
 
-      panAllLayers({ deltaX, deltaY });
+      ScribeCanvas.panStage({ deltaX, deltaY });
     }
   };
 
@@ -432,7 +440,7 @@ export class ScribeCanvas {
       ScribeCanvas.drag.lastX = event.evt.touches[0].clientX;
       ScribeCanvas.drag.lastY = event.evt.touches[0].clientY;
 
-      panAllLayers({ deltaX, deltaY });
+      ScribeCanvas.panStage({ deltaX, deltaY });
     }
   };
 
@@ -478,7 +486,7 @@ export class ScribeCanvas {
       return;
     }
 
-    ScribeCanvas._zoomAllLayers(dist / ScribeCanvas.drag.lastDist, center);
+    ScribeCanvas._zoomStage(dist / ScribeCanvas.drag.lastDist, center);
     ScribeCanvas.drag.lastDist = dist;
     if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
   };
@@ -2014,7 +2022,7 @@ export function renderPage(page) {
 
 /**
  *
- * @param {InstanceType<typeof Konva.Layer>} layer
+ * @param {InstanceType<typeof Konva.Layer>|InstanceType<typeof Konva.Stage>} layer
  * @returns {{x: number, y: number}}
  */
 export const getLayerCenter = (layer) => {
@@ -2034,25 +2042,6 @@ export const getLayerCenter = (layer) => {
   const transformedCenter = transform.point(centerPoint);
 
   return transformedCenter;
-};
-
-/**
- *
- * @param {Object} coords
- * @param {number} [coords.deltaX=0]
- * @param {number} [coords.deltaY=0]
- */
-export const panAllLayers = ({ deltaX = 0, deltaY = 0 }) => {
-  ScribeCanvas.layerText.x(ScribeCanvas.layerText.x() + deltaX);
-  ScribeCanvas.layerText.y(ScribeCanvas.layerText.y() + deltaY);
-  ScribeCanvas.layerBackground.x(ScribeCanvas.layerBackground.x() + deltaX);
-  ScribeCanvas.layerBackground.y(ScribeCanvas.layerBackground.y() + deltaY);
-  ScribeCanvas.layerOverlay.x(ScribeCanvas.layerOverlay.x() + deltaX);
-  ScribeCanvas.layerOverlay.y(ScribeCanvas.layerOverlay.y() + deltaY);
-
-  ScribeCanvas.layerText.batchDraw();
-  ScribeCanvas.layerBackground.batchDraw();
-  ScribeCanvas.layerOverlay.batchDraw();
 };
 
 /**
@@ -2110,14 +2099,14 @@ export const handleWheel = (event) => {
     if (scaleBy > 1.1) scaleBy = 1.1;
     if (scaleBy < 0.9) scaleBy = 0.9;
 
-    ScribeCanvas._zoomAllLayers(scaleBy, ScribeCanvas.stage.getPointerPosition());
+    ScribeCanvas._zoomStage(scaleBy, ScribeCanvas.stage.getPointerPosition());
     ScribeCanvas.destroyControls();
   } else if (event.shiftKey) { // Scroll horizontally
     ScribeCanvas.destroyControls();
-    panAllLayers({ deltaX: event.deltaY });
+    ScribeCanvas.panStage({ deltaX: event.deltaY });
   } else { // Scroll vertically
     ScribeCanvas.destroyControls();
-    panAllLayers({ deltaY: event.deltaY * -1 });
+    ScribeCanvas.panStage({ deltaY: event.deltaY * -1 });
   }
   if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
 };

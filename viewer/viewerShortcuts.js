@@ -1,5 +1,5 @@
 import {
-  KonvaOcrWord, panAllLayers, ScribeCanvas, updateWordCanvas,
+  KonvaOcrWord, ScribeCanvas, updateWordCanvas,
 } from './viewerCanvas.js';
 import scribe from '../scribe.js/scribe.js';
 
@@ -31,7 +31,7 @@ const scrollIntoView = (KonvaObject) => {
   }
 
   if (delta.deltaX !== 0 || delta.deltaY !== 0) {
-    panAllLayers(delta);
+    ScribeCanvas.panStage(delta);
   }
 };
 
