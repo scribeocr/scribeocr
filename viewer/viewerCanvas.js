@@ -293,17 +293,99 @@ export class ScribeCanvas {
   /** @type {HTMLElement} */
   static elem;
 
+  /** @type {HTMLDivElement} */
+  static HTMLOverlayBackstopElem;
+
   static textOverlayHidden = false;
 
   /**
- * Initiates dragging if the middle mouse button is pressed.
- * @param {KonvaMouseEvent} event
- */
+   *
+   * @param {InstanceType<typeof Konva.Layer>} layer
+   * @param {number} scaleBy
+   * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
+   *    If `null` (default), the center of the layer is used.
+   */
+  static _zoomLayer = (layer, scaleBy, center = null) => {
+    const oldScale = layer.scaleX();
+    center = center || getLayerCenter(layer);
+
+    const mousePointTo = {
+      x: (center.x - layer.x()) / oldScale,
+      y: (center.y - layer.y()) / oldScale,
+    };
+
+    const newScale = oldScale * scaleBy;
+
+    layer.scaleX(newScale);
+    layer.scaleY(newScale);
+
+    const newPos = {
+      x: center.x - mousePointTo.x * newScale,
+      y: center.y - mousePointTo.y * newScale,
+    };
+
+    layer.position(newPos);
+    layer.batchDraw();
+  };
+
+  /**
+   *
+   * @param {number} scaleBy
+   * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
+   *    If `null` (default), the center of the layer is used.
+   */
+  static _zoomAllLayers = (scaleBy, center = null) => {
+    if (!center) {
+      const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+
+      // If words are selected, zoom in on the selection.
+      if (selectedWords.length > 0) {
+        const selectionLeft = Math.min(...selectedWords.map((x) => x.x()));
+        const selectionRight = Math.max(...selectedWords.map((x) => x.x() + x.width()));
+        const selectionTop = Math.min(...selectedWords.map((x) => x.y()));
+        const selectionBottom = Math.max(...selectedWords.map((x) => x.y() + x.height()));
+        const center0 = { x: (selectionLeft + selectionRight) / 2, y: (selectionTop + selectionBottom) / 2 };
+
+        const transform = ScribeCanvas.layerText.getAbsoluteTransform();
+
+        // Apply the transformation to the center point
+        center = transform.point(center0);
+
+        // Otherwise, zoom in on the center of the text layer.
+      } else {
+        center = getLayerCenter(ScribeCanvas.layerText);
+      }
+    }
+
+    ScribeCanvas._zoomLayer(ScribeCanvas.layerText, scaleBy, center);
+    ScribeCanvas._zoomLayer(ScribeCanvas.layerBackground, scaleBy, center);
+    ScribeCanvas._zoomLayer(ScribeCanvas.layerOverlay, scaleBy, center);
+  };
+
+  /**
+   * Zoom in or out on the canvas.
+   * This function should be used for mapping buttons or other controls to zooming,
+   * as it handles redrawing the text overlay in addition to zooming the canvas.
+   * @param {number} scaleBy
+   * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
+   *    If `null` (default), the center of the layer is used.
+   */
+  static zoom = (scaleBy, center = null) => {
+    ScribeCanvas.deleteHTMLOverlay();
+    ScribeCanvas._zoomAllLayers(scaleBy, center);
+    if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
+  };
+
+  /**
+   * Initiates dragging if the middle mouse button is pressed.
+   * @param {MouseEvent} event
+   */
   static startDrag = (event) => {
+    ScribeCanvas.deleteHTMLOverlay();
     ScribeCanvas.drag.isDragging = true;
-    ScribeCanvas.drag.lastX = event.evt.x;
-    ScribeCanvas.drag.lastY = event.evt.y;
-    event.evt.preventDefault();
+    ScribeCanvas.drag.lastX = event.x;
+    ScribeCanvas.drag.lastY = event.y;
+    event.preventDefault();
   };
 
   /**
@@ -311,6 +393,7 @@ export class ScribeCanvas {
    * @param {KonvaTouchEvent} event
    */
   static startDragTouch = (event) => {
+    ScribeCanvas.deleteHTMLOverlay();
     ScribeCanvas.drag.isDragging = true;
     ScribeCanvas.drag.lastX = event.evt.touches[0].clientX;
     ScribeCanvas.drag.lastY = event.evt.touches[0].clientY;
@@ -318,9 +401,9 @@ export class ScribeCanvas {
   };
 
   /**
- * Updates the layer's position based on mouse movement.
- * @param {KonvaMouseEvent} event
- */
+   * Updates the layer's position based on mouse movement.
+   * @param {KonvaMouseEvent} event
+   */
   static executeDrag = (event) => {
     if (ScribeCanvas.drag.isDragging) {
       const deltaX = event.evt.x - ScribeCanvas.drag.lastX;
@@ -363,12 +446,16 @@ export class ScribeCanvas {
     ScribeCanvas.drag.dragDeltaTotal = 0;
     ScribeCanvas.drag.lastCenter = null;
     ScribeCanvas.drag.lastDist = null;
+    if (ScribeCanvas.enableHTMLOverlay && ScribeCanvas._wordHTMLArr.length === 0) {
+      ScribeCanvas.renderHTMLOverlay();
+    }
   };
 
   /**
    * @param {KonvaTouchEvent} event
    */
   static executePinchTouch = (event) => {
+    ScribeCanvas.deleteHTMLOverlay();
     const touch1 = event.evt.touches[0];
     const touch2 = event.evt.touches[1];
     if (!touch1 || !touch2) return;
@@ -391,8 +478,9 @@ export class ScribeCanvas {
       return;
     }
 
-    zoomAllLayers(dist / ScribeCanvas.drag.lastDist, center);
+    ScribeCanvas._zoomAllLayers(dist / ScribeCanvas.drag.lastDist, center);
     ScribeCanvas.drag.lastDist = dist;
+    if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
   };
 
   static mouseupFunc2 = (event) => {};
@@ -416,6 +504,15 @@ export class ScribeCanvas {
       height,
 
     });
+
+    ScribeCanvas.HTMLOverlayBackstopElem = document.createElement('div');
+    ScribeCanvas.HTMLOverlayBackstopElem.className = 'endOfContent';
+    ScribeCanvas.HTMLOverlayBackstopElem.style.position = 'absolute';
+    ScribeCanvas.HTMLOverlayBackstopElem.style.top = '0';
+    ScribeCanvas.HTMLOverlayBackstopElem.style.left = '0';
+    ScribeCanvas.HTMLOverlayBackstopElem.style.width = `${width}px`;
+    ScribeCanvas.HTMLOverlayBackstopElem.style.height = `${height}px`;
+    ScribeCanvas.HTMLOverlayBackstopElem.style.display = 'none';
 
     ScribeCanvas.layerBackground = new Konva.Layer();
     ScribeCanvas.layerText = new Konva.Layer();
@@ -442,7 +539,7 @@ export class ScribeCanvas {
     // Event listeners for mouse interactions
     ScribeCanvas.stage.on('mousedown', (event) => {
       if (event.evt.button === 1) { // Middle mouse button
-        ScribeCanvas.startDrag(event);
+        ScribeCanvas.startDrag(event.evt);
       }
     });
     ScribeCanvas.stage.on('mousemove', ScribeCanvas.executeDrag);
@@ -469,6 +566,8 @@ export class ScribeCanvas {
       // Left click only
       if (event.type === 'mousedown' && event.evt.button !== 0) return;
 
+      if (!ScribeCanvas.enableCanvasSelection) return;
+
       mouseDownTarget = event.target;
 
       if (ScribeCanvas.isTouchScreen && ScribeCanvas.mode === 'select') return;
@@ -489,6 +588,7 @@ export class ScribeCanvas {
     });
 
     ScribeCanvas.stage.on('mousemove touchmove', (e) => {
+      e.evt.preventDefault();
       // do nothing if we didn't start selection
       if (!ScribeCanvas.selecting) {
         return;
@@ -560,6 +660,41 @@ export class ScribeCanvas {
     });
   }
 
+  static renderHTMLOverlay = () => {
+    const words = ScribeCanvas.getKonvaWords();
+    words.forEach((word) => {
+      const elem = KonvaIText.itextToElem(word);
+      ScribeCanvas._wordHTMLArr.push(elem);
+      ScribeCanvas.elem.appendChild(elem);
+    });
+  };
+
+  static _renderHTMLOverlayEvents = 0;
+
+  /**
+   * Render the HTML overlay after 150ms, if no other events have been triggered in the meantime.
+   * This function should be called whenever a frequently-triggered event needs to render the HTML overlay,
+   * such as scrolling or zooming, which can result in performance issues if the overlay is rendered too frequently.
+   */
+  static renderHTMLOverlayAfterDelay = () => {
+    ScribeCanvas._renderHTMLOverlayEvents++;
+    const eventN = ScribeCanvas._renderHTMLOverlayEvents;
+    setTimeout(() => {
+      if (eventN === ScribeCanvas._renderHTMLOverlayEvents && ScribeCanvas._wordHTMLArr.length === 0) {
+        ScribeCanvas.renderHTMLOverlay();
+      }
+    }, 150);
+  };
+
+  static deleteHTMLOverlay = () => {
+    ScribeCanvas._wordHTMLArr.forEach((elem) => {
+      if (elem.parentNode) {
+        elem.parentNode.removeChild(elem);
+      }
+    });
+    ScribeCanvas._wordHTMLArr.length = 0;
+  };
+
   static working = false;
 
   /**
@@ -571,6 +706,8 @@ export class ScribeCanvas {
   static async displayPage(n, force = false) {
     // ScribeCanvas.working = true;
 
+    ScribeCanvas.deleteHTMLOverlay();
+
     if (scribe.inputData.xmlMode[stateGUI.cp.n]) {
       // TODO: This is currently run whenever the page is changed.
       // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
@@ -581,6 +718,8 @@ export class ScribeCanvas {
 
     stateGUI.cp.n = n;
     await renderPageQueue(stateGUI.cp.n);
+
+    if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlay();
 
     // Render background images ahead and behind current page to reduce delay when switching pages
     if (scribe.inputData.pdfMode || scribe.inputData.imageMode) scribe.data.image.preRenderAheadBehindBrowser(n, stateGUI.colorMode === 'binary');
@@ -632,6 +771,9 @@ export class ScribeCanvas {
   /** @type {?KonvaOcrWord} */
   static contextMenuWord = null;
 
+  /** @type {Array<HTMLSpanElement>} */
+  static _wordHTMLArr = [];
+
   /**
    * Contains the x and y coordinates of the last right-click event.
    * This is required for "right click" functions that are position-dependent,
@@ -640,6 +782,12 @@ export class ScribeCanvas {
   static contextMenuPointer = { x: 0, y: 0 };
 
   static selecting = false;
+
+  static enableCanvasSelection = false;
+
+  static enableEditing = false;
+
+  static enableHTMLOverlay = false;
 
   static CanvasSelection = CanvasSelection;
 
@@ -770,7 +918,45 @@ export class ScribeCanvas {
     ScribeCanvas.destroyLineOutlines();
     ScribeCanvas._wordArr.length = 0;
   };
+
+  /** @type {?Range} */
+  static _prevRange = null;
+
+  static _prevStart = null;
+
+  static _prevEnd = null;
+
+  static _onSelection = (event) => {
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+
+    const focusWordElem = selection.focusNode?.nodeType === Node.ELEMENT_NODE ? selection.focusNode : selection.focusNode?.parentNode;
+
+    if (!focusWordElem || !ScribeCanvas._wordHTMLArr.includes(focusWordElem)) return;
+
+    ScribeCanvas.HTMLOverlayBackstopElem.style.display = '';
+
+    ScribeCanvas.elem.insertBefore(ScribeCanvas.HTMLOverlayBackstopElem, focusWordElem);
+
+    ScribeCanvas._prevRange = range.cloneRange();
+  };
 }
+
+document.addEventListener('mouseup', () => {
+  if (ScribeCanvas.enableHTMLOverlay) {
+    ScribeCanvas.HTMLOverlayBackstopElem.style.display = 'none';
+  }
+});
+document.addEventListener('touchend', () => {
+  if (ScribeCanvas.enableHTMLOverlay) {
+    ScribeCanvas.HTMLOverlayBackstopElem.style.display = 'none';
+  }
+});
+
+document.addEventListener('selectionchange', ScribeCanvas._onSelection);
+document.addEventListener('mousedown', ScribeCanvas._onSelection);
 
 /**
  *
@@ -993,6 +1179,7 @@ export class KonvaIText extends Konva.Shape {
     this.editTextCallback = editTextCallback;
 
     this.addEventListener('dblclick dbltap', (event) => {
+      if (!ScribeCanvas.enableEditing) return;
       if (event instanceof MouseEvent && event.button !== 0) return;
       KonvaIText.addTextInput(this);
     });
@@ -1062,6 +1249,7 @@ export class KonvaIText extends Konva.Shape {
     const charSpacingHTML = itext.charSpacing * scale;
 
     let { x: x1, y: y1 } = itext.getAbsolutePosition();
+
     if (itext.word.visualCoords) x1 -= itext.leftSideBearing * scale;
 
     const fontSizeHTML = itext.fontSize * scale;
@@ -1089,6 +1277,7 @@ export class KonvaIText extends Konva.Shape {
     inputElem.style.top = `${topHTML}px`;
     inputElem.style.fontSize = `${fontSizeHTML}px`;
     inputElem.style.fontFamily = itext.fontFaceName;
+    inputElem.style.zIndex = '1';
 
     const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
     if (!scribe.opt.autoRotate && Math.abs(angle ?? 0) > 0.05) {
@@ -1124,6 +1313,19 @@ export class KonvaIText extends Konva.Shape {
     inputElem.classList.add('scribe-word');
 
     inputElem.id = itext.word.id;
+
+    // Prevent events triggered over the HTML elements from impacting the window rather than the canvas.
+    inputElem.addEventListener('wheel', (e) => {
+      ScribeCanvas.deleteHTMLOverlay();
+      handleWheel(e);
+    });
+
+    inputElem.addEventListener('mousedown', (e) => {
+      if (e.button === 1) { // Middle mouse button
+        ScribeCanvas.deleteHTMLOverlay();
+        ScribeCanvas.startDrag(e);
+      }
+    });
 
     return inputElem;
   };
@@ -1326,14 +1528,6 @@ document.addEventListener('copy', (e) => {
 
   e.preventDefault(); // Prevent the default copy action
 });
-
-globalThis.renderAllWordsHTML = () => {
-  const words = ScribeCanvas.getKonvaWords();
-  words.forEach((word) => {
-    const elem = KonvaIText.itextToElem(word);
-    document.body.appendChild(elem);
-  });
-};
 
 export class KonvaOcrWord extends KonvaIText {
   /**
@@ -1841,69 +2035,6 @@ export const getLayerCenter = (layer) => {
 
   return transformedCenter;
 };
-/**
- *
- * @param {InstanceType<typeof Konva.Layer>} layer
- * @param {number} scaleBy
- * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
- *    If `null` (default), the center of the layer is used.
- */
-const zoomLayer = (layer, scaleBy, center = null) => {
-  const oldScale = layer.scaleX();
-  center = center || getLayerCenter(layer);
-
-  const mousePointTo = {
-    x: (center.x - layer.x()) / oldScale,
-    y: (center.y - layer.y()) / oldScale,
-  };
-
-  const newScale = oldScale * scaleBy;
-
-  layer.scaleX(newScale);
-  layer.scaleY(newScale);
-
-  const newPos = {
-    x: center.x - mousePointTo.x * newScale,
-    y: center.y - mousePointTo.y * newScale,
-  };
-
-  layer.position(newPos);
-  layer.batchDraw();
-};
-
-/**
- *
- * @param {number} scaleBy
- * @param {?{x: number, y: number}} [center=null] - The center point to zoom in/out from.
- *    If `null` (default), the center of the layer is used.
- */
-export const zoomAllLayers = (scaleBy, center = null) => {
-  if (!center) {
-    const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
-
-    // If words are selected, zoom in on the selection.
-    if (selectedWords.length > 0) {
-      const selectionLeft = Math.min(...selectedWords.map((x) => x.x()));
-      const selectionRight = Math.max(...selectedWords.map((x) => x.x() + x.width()));
-      const selectionTop = Math.min(...selectedWords.map((x) => x.y()));
-      const selectionBottom = Math.max(...selectedWords.map((x) => x.y() + x.height()));
-      const center0 = { x: (selectionLeft + selectionRight) / 2, y: (selectionTop + selectionBottom) / 2 };
-
-      const transform = ScribeCanvas.layerText.getAbsoluteTransform();
-
-      // Apply the transformation to the center point
-      center = transform.point(center0);
-
-    // Otherwise, zoom in on the center of the text layer.
-    } else {
-      center = getLayerCenter(ScribeCanvas.layerText);
-    }
-  }
-
-  zoomLayer(ScribeCanvas.layerText, scaleBy, center);
-  zoomLayer(ScribeCanvas.layerBackground, scaleBy, center);
-  zoomLayer(ScribeCanvas.layerOverlay, scaleBy, center);
-};
 
 /**
  *
@@ -1954,6 +2085,7 @@ const checkTrackPad = (event) => {
  * @param {WheelEvent} event - The wheel event from the user's mouse.
  */
 export const handleWheel = (event) => {
+  ScribeCanvas.deleteHTMLOverlay();
   event.preventDefault();
   event.stopPropagation();
 
@@ -1978,7 +2110,7 @@ export const handleWheel = (event) => {
     if (scaleBy > 1.1) scaleBy = 1.1;
     if (scaleBy < 0.9) scaleBy = 0.9;
 
-    zoomAllLayers(scaleBy, ScribeCanvas.stage.getPointerPosition());
+    ScribeCanvas._zoomAllLayers(scaleBy, ScribeCanvas.stage.getPointerPosition());
     ScribeCanvas.destroyControls();
   } else if (event.shiftKey) { // Scroll horizontally
     ScribeCanvas.destroyControls();
@@ -1987,4 +2119,5 @@ export const handleWheel = (event) => {
     ScribeCanvas.destroyControls();
     panAllLayers({ deltaY: event.deltaY * -1 });
   }
+  if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
 };

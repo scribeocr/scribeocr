@@ -1,9 +1,11 @@
 import { showHideElem } from '../app/utils/utils.js';
 import scribe from '../scribe.js/scribe.js';
 import {
-  getLayerCenter, ScribeCanvas, stateGUI, zoomAllLayers,
+  getLayerCenter, ScribeCanvas, stateGUI,
 } from '../viewer/viewerCanvas.js';
 import { getAllFileEntries } from '../app/utils/dragAndDrop.js';
+
+ScribeCanvas.enableHTMLOverlay = true;
 
 class ScribePDFViewer {
   constructor(container, width = 800, height = 1000) {
@@ -122,10 +124,12 @@ class ScribePDFViewer {
 
     this.zoomOutElem.appendChild(zoomOutIcon);
 
-    this.zoomLevelElem = document.createElement('input');
-    this.zoomLevelElem.type = 'text';
-    this.zoomLevelElem.value = '100%';
-    this.zoomLevelElem.ariaLabel = 'Zoom level';
+    // A zoom level input element is currently not included, as we do not have any mechanism to update it for all of the ways zoom can be changed.
+    // Most notably, the zoom level can be changed by the user scrolling the mouse wheel over the canvas, which is handled by the viewer code rather than here.
+    // this.zoomLevelElem = document.createElement('input');
+    // this.zoomLevelElem.type = 'text';
+    // this.zoomLevelElem.value = '100%';
+    // this.zoomLevelElem.ariaLabel = 'Zoom level';
 
     this.zoomInElem = document.createElement('span');
     this.zoomInElem.className = 'cr-icon-button';
@@ -143,7 +147,7 @@ class ScribePDFViewer {
     this.zoomInElem.appendChild(zoomInIcon);
 
     zoomControls.appendChild(this.zoomOutElem);
-    zoomControls.appendChild(this.zoomLevelElem);
+    // zoomControls.appendChild(this.zoomLevelElem);
     zoomControls.appendChild(this.zoomInElem);
 
     // Vertical separator 2
@@ -209,11 +213,12 @@ class ScribePDFViewer {
     // Create the label for the file input
     const fileInputLabel = document.createElement('label');
     fileInputLabel.className = 'btn btn-info mb-3';
-    fileInputLabel.htmlFor = 'openFileInput';
+    // fileInputLabel.htmlFor = 'openFileInput';
     fileInputLabel.style.minWidth = '8rem';
     fileInputLabel.style.border = '1px solid';
     fileInputLabel.style.padding = '0.4rem';
     fileInputLabel.textContent = 'Select Files';
+    fileInputLabel.appendChild(this.openFileInputElem);
 
     // Create the first upload gallery div
     const uploadGallery1 = document.createElement('div');
@@ -226,7 +231,7 @@ class ScribePDFViewer {
 
     // Append all elements to the root div
     uploadDiv.appendChild(instructions);
-    uploadDiv.appendChild(this.openFileInputElem);
+    // uploadDiv.appendChild(this.openFileInputElem);
     uploadDiv.appendChild(fileInputLabel);
     uploadDiv.appendChild(uploadGallery1);
     uploadDiv.appendChild(uploadGallery2);
@@ -236,8 +241,8 @@ class ScribePDFViewer {
 
     this.importFile = async (file) => {
       const params = {
-        extractPDFTextNative: false,
-        extractPDFTextOCR: false,
+        extractPDFTextNative: true,
+        extractPDFTextOCR: true,
       };
 
       await scribe.importFiles([file], params);
@@ -281,11 +286,13 @@ class ScribePDFViewer {
     this.prevElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n - 1));
 
     this.zoomInElem.addEventListener('click', () => {
-      zoomAllLayers(1.1, getLayerCenter(ScribeCanvas.layerText));
+      ScribeCanvas.zoom(1.1, getLayerCenter(ScribeCanvas.layerText));
+      // this.zoomLevelElem.value = `${Math.round(ScribeCanvas.layerText.scaleX() * 100)}%`;
     });
 
     this.zoomOutElem.addEventListener('click', () => {
-      zoomAllLayers(0.9, getLayerCenter(ScribeCanvas.layerText));
+      ScribeCanvas.zoom(0.9, getLayerCenter(ScribeCanvas.layerText));
+      // this.zoomLevelElem.value = `${Math.round(ScribeCanvas.layerText.scaleX() * 100)}%`;
     });
 
     this.openFileInputElem.addEventListener('change', () => {
@@ -443,4 +450,9 @@ const pdfViewerContElem = /** @type {HTMLDivElement} */(document.getElementById(
 
 const pdfViewer = new ScribePDFViewer(pdfViewerContElem);
 
-globalThis.ScribeCanvas = ScribeCanvas;
+// Exposing important modules for debugging and testing purposes.
+// These should not be relied upon in code--import/export should be used instead.
+globalThis.df = {
+  scribe,
+  ScribeCanvas,
+};
