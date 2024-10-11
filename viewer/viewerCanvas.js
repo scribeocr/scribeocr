@@ -1252,7 +1252,7 @@ export class KonvaIText extends Konva.Shape {
 
     const wordStr = itext.charArr.join('');
 
-    const scale = ScribeCanvas.layerText.scaleY();
+    const scale = ScribeCanvas.layerText.getAbsoluteScale().y;
 
     const charSpacingHTML = itext.charSpacing * scale;
 
@@ -1356,7 +1356,7 @@ export class KonvaIText extends Konva.Shape {
     ScribeCanvas.inputWord = itext;
     ScribeCanvas.input = inputElem;
 
-    const scale = ScribeCanvas.layerText.scaleY();
+    const scale = ScribeCanvas.layerText.getAbsoluteScale().y;
 
     const fontI = scribe.data.font.getWordFont(itext.word);
 
