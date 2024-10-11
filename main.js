@@ -60,10 +60,6 @@ import { findText, highlightcp, search } from './viewer/viewerSearch.js';
 import { KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick } from './viewer/viewerLayout.js';
 import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
 
-import { detectTablesInPage } from './scribe.js/js/utils/detectTables.js';
-
-globalThis.detectTablesInPage = detectTablesInPage;
-
 const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
 ScribeCanvas.enableCanvasSelection = true;
 ScribeCanvas.enableEditing = true;
