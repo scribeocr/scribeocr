@@ -36,7 +36,6 @@ import {
   optGUI,
   setWordColorOpacity,
   setCanvasWidthHeightZoom,
-  zoomAllLayers,
   getLayerCenter,
 } from './viewer/viewerCanvas.js';
 
@@ -62,6 +61,8 @@ import { KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick } from 
 import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
 
 const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
+ScribeCanvas.enableCanvasSelection = true;
+ScribeCanvas.enableEditing = true;
 ScribeCanvas.init(canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
 ScribeCanvas.mouseupFunc2 = mouseupFunc2;
 ScribeCanvas.stage.on('contextmenu', contextMenuFunc);
@@ -300,7 +301,7 @@ function handleKeyboardEvent(event) {
   // The modifier keys change what `event.key` is for the same button.
   // `+` becomes `=` when shift is pressed, and `×` when control and alt are pressed.
   if (event.ctrlKey && !event.altKey && ['+', '=', '×'].includes(event.key)) {
-    zoomAllLayers(1.1);
+    ScribeCanvas.zoom(1.1);
     ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
     event.stopPropagation();
@@ -310,7 +311,7 @@ function handleKeyboardEvent(event) {
 
   // Zoom out shortcut
   if (event.ctrlKey && !event.altKey && ['-', '_', '–'].includes(event.key)) {
-    zoomAllLayers(0.9);
+    ScribeCanvas.zoom(0.9);
     ScribeCanvas.layerText.batchDraw();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
     event.stopPropagation();
@@ -502,11 +503,11 @@ elem.nav.next.addEventListener('click', () => displayPageGUI(stateGUI.cp.n + 1))
 elem.nav.prev.addEventListener('click', () => displayPageGUI(stateGUI.cp.n - 1));
 
 elem.nav.zoomIn.addEventListener('click', () => {
-  zoomAllLayers(1.1, getLayerCenter(ScribeCanvas.layerText));
+  ScribeCanvas.zoom(1.1, getLayerCenter(ScribeCanvas.layerText));
 });
 
 elem.nav.zoomOut.addEventListener('click', () => {
-  zoomAllLayers(0.9, getLayerCenter(ScribeCanvas.layerText));
+  ScribeCanvas.zoom(0.9, getLayerCenter(ScribeCanvas.layerText));
 });
 
 elem.view.colorMode.addEventListener('change', () => {
