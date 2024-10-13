@@ -32,8 +32,6 @@ export class stateGUI {
 
   static cp = {
     n: 0,
-    backgroundOpts: { stroke: '#3d3d3d', strokeWidth: 3 },
-    renderStatus: 0,
     renderNum: 0,
   };
 }
@@ -1044,8 +1042,6 @@ export const selectDisplayMode = async (x) => {
 
   // Include a background image if appropriate
   if (['invis', 'proof', 'eval'].includes(x) && (scribe.inputData.imageMode || scribe.inputData.pdfMode)) {
-    stateGUI.cp.backgroundOpts.originX = 'center';
-    stateGUI.cp.backgroundOpts.originY = 'center';
 
     const backgroundImage = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinary(stateGUI.cp.n) : await scribe.data.image.getNative(stateGUI.cp.n);
     const image = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinaryBitmap(stateGUI.cp.n) : await scribe.data.image.getNativeBitmap(stateGUI.cp.n);
