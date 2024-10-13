@@ -9,7 +9,7 @@ import scribe from '../scribe.js/scribe.js';
  */
 const scrollIntoView = (KonvaObject) => {
   const delta = { deltaX: 0, deltaY: 0 };
-  const wordClientRect = KonvaObject.getClientRect({ relativeTo: ScribeCanvas.stage });
+  const wordClientRect = KonvaObject.getClientRect();
   const wordBottomCanvas = wordClientRect.y + wordClientRect.height;
   const wordRightCanvas = wordClientRect.x + wordClientRect.width;
   const visibleBottomCanvas = ScribeCanvas.stage.height();
