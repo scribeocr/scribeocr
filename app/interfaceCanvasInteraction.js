@@ -1,7 +1,6 @@
 /* eslint-disable import/no-cycle */
 import scribe from '../scribe.js/scribe.js';
 import {
-  KonvaOcrWord,
   optGUI,
   ScribeCanvas,
   stateGUI,
@@ -16,6 +15,7 @@ import { elem } from './elems.js';
 import {
   checkDataColumnsAdjacent, checkDataTablesAdjacent, KonvaDataColumn, KonvaLayout, mergeDataColumns, mergeDataTables, splitDataColumn, splitDataTable,
 } from '../viewer/viewerLayout.js';
+import { KonvaOcrWord } from '../viewer/viewerWordObjects.js';
 
 /**
  * Recognize area selected by user in Tesseract.
@@ -221,6 +221,7 @@ async function addWordManual({
     word: wordObj,
     outline: outlineWord,
     fillBox: false,
+    listening: !stateGUI.layoutMode,
   });
 
   ScribeCanvas.addWord(wordCanvas);

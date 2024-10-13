@@ -1,7 +1,8 @@
 import {
-  KonvaOcrWord, ScribeCanvas, updateWordCanvas,
+  ScribeCanvas,
 } from './viewerCanvas.js';
 import scribe from '../scribe.js/scribe.js';
+import { KonvaIText, KonvaOcrWord } from './viewerWordObjects.js';
 
 /**
  *
@@ -292,5 +293,5 @@ export function modifySelectedWordBbox(side, amount) {
 
   selectedWord.word.bbox[side] += amount;
   if (side === 'left') selectedWord.x(selectedWord.x() + amount);
-  updateWordCanvas(selectedWord);
+  KonvaIText.updateWordCanvas(selectedWord);
 }

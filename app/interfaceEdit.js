@@ -6,7 +6,7 @@
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
 import scribe from '../scribe.js/scribe.js';
-import { ScribeCanvas, stateGUI, updateWordCanvas } from '../viewer/viewerCanvas.js';
+import { ScribeCanvas, stateGUI } from '../viewer/viewerCanvas.js';
 import { elem } from './elems.js';
 import { Button } from './lib/bootstrap.esm.bundle.min.js';
 
@@ -53,7 +53,7 @@ export async function changeWordFontStyle(style) {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects || selectedObjects.length === 0) return;
 
-  if (ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
+  if (ScribeCanvas.KonvaIText.inputRemove) ScribeCanvas.KonvaIText.inputRemove();
 
   // If first word style already matches target style, disable the style.
   const enable = selectedObjects[0].word.style !== style;
@@ -84,7 +84,7 @@ export async function changeWordFontStyle(style) {
 
     wordI.fontFamilyLookup = fontI.family;
 
-    await updateWordCanvas(wordI);
+    await ScribeCanvas.KonvaIText.updateWordCanvas(wordI);
   }
 
   ScribeCanvas.layerText.batchDraw();
@@ -121,7 +121,7 @@ export async function changeWordFontSize(fontSizeStr) {
     elem.edit.fontSize.value = String(fontSize);
     wordI.fontSize = fontSize;
 
-    await updateWordCanvas(wordI);
+    await ScribeCanvas.KonvaIText.updateWordCanvas(wordI);
   }
   ScribeCanvas.layerText.batchDraw();
 }
@@ -149,7 +149,7 @@ export async function changeWordFontFamily(fontName) {
 
     wordI.fontFamilyLookup = fontI.family;
 
-    await updateWordCanvas(wordI);
+    await ScribeCanvas.KonvaIText.updateWordCanvas(wordI);
   }
   ScribeCanvas.layerText.batchDraw();
 }
@@ -179,12 +179,12 @@ export async function toggleSmallCapsWords(enable) {
   for (let i = 0; i < selectedN; i++) {
     const wordI = selectedObjects[i];
     wordI.word.smallCaps = enable;
-    await updateWordCanvas(wordI);
+    await ScribeCanvas.KonvaIText.updateWordCanvas(wordI);
   }
   ScribeCanvas.layerText.batchDraw();
 }
 
-/** @type {Array<import('../viewer/viewerCanvas.js').KonvaOcrWord>} */
+/** @type {Array<import('../viewer/viewerWordObjects.js').KonvaOcrWord>} */
 let objectsLine;
 
 const baselineRange = 25;

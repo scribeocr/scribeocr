@@ -28,9 +28,7 @@ import {
 } from './app/interfaceLayout.js';
 
 import {
-  KonvaIText,
   ScribeCanvas,
-  KonvaOcrWord,
   stateGUI,
   rotateAllLayers,
   optGUI,
@@ -59,10 +57,11 @@ import { showHideElem } from './app/utils/utils.js';
 import { findText, highlightcp, search } from './viewer/viewerSearch.js';
 import { KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick } from './viewer/viewerLayout.js';
 import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
+import { KonvaIText, KonvaOcrWord } from './viewer/viewerWordObjects.js';
 
 const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
 ScribeCanvas.enableCanvasSelection = true;
-ScribeCanvas.enableEditing = true;
+ScribeCanvas.KonvaIText.enableEditing = true;
 ScribeCanvas.init(canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
 ScribeCanvas.mouseupFunc2 = mouseupFunc2;
 ScribeCanvas.stage.on('contextmenu', contextMenuFunc);
@@ -345,7 +344,7 @@ function handleKeyboardEvent(event) {
     return;
   }
 
-  if (event.key === 'ArrowRight' && !ScribeCanvas.input) {
+  if (event.key === 'ArrowRight' && !ScribeCanvas.KonvaIText.input) {
     if (event.ctrlKey) {
       if (event.altKey) {
         modifySelectedWordBbox('right', 1);
@@ -368,8 +367,8 @@ function handleKeyboardEvent(event) {
     ScribeCanvas.layerText.hide();
     ScribeCanvas.layerOverlay.batchDraw();
     ScribeCanvas.layerText.batchDraw();
-    const opacityOrig = ScribeCanvas.input ? ScribeCanvas.input.style.opacity : '0.8';
-    if (ScribeCanvas.input) ScribeCanvas.input.style.opacity = '0';
+    const opacityOrig = ScribeCanvas.KonvaIText.input ? ScribeCanvas.KonvaIText.input.style.opacity : '0.8';
+    if (ScribeCanvas.KonvaIText.input) ScribeCanvas.KonvaIText.input.style.opacity = '0';
     event.preventDefault();
     event.stopPropagation();
     if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
@@ -380,7 +379,7 @@ function handleKeyboardEvent(event) {
         ScribeCanvas.layerText.show();
         ScribeCanvas.layerOverlay.batchDraw();
         ScribeCanvas.layerText.batchDraw();
-        if (ScribeCanvas.input) ScribeCanvas.input.style.opacity = opacityOrig;
+        if (ScribeCanvas.KonvaIText.input) ScribeCanvas.KonvaIText.input.style.opacity = opacityOrig;
         document.removeEventListener('keyup', handleKeyUp);
         ScribeCanvas.textOverlayHidden = false;
       }
@@ -390,7 +389,7 @@ function handleKeyboardEvent(event) {
     return;
   }
 
-  if (event.key === 'ArrowLeft' && !ScribeCanvas.input) {
+  if (event.key === 'ArrowLeft' && !ScribeCanvas.KonvaIText.input) {
     if (event.ctrlKey) {
       if (event.altKey) {
         modifySelectedWordBbox('right', -1);
@@ -422,7 +421,7 @@ function handleKeyboardEvent(event) {
     return;
   }
 
-  if (event.key === 'Enter' && !ScribeCanvas.input) {
+  if (event.key === 'Enter' && !ScribeCanvas.KonvaIText.input) {
     const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
     if (selectedWords.length !== 1) return;
     const selectedWord = selectedWords[0];
@@ -458,7 +457,7 @@ function handleKeyboardEvent(event) {
     return;
   }
 
-  if (event.altKey && ['+', '=', '×'].includes(event.key) && !ScribeCanvas.input) {
+  if (event.altKey && ['+', '=', '×'].includes(event.key) && !ScribeCanvas.KonvaIText.input) {
     changeWordFontSize('plus');
     event.preventDefault();
     event.stopPropagation();
@@ -466,7 +465,7 @@ function handleKeyboardEvent(event) {
     return;
   }
 
-  if (event.altKey && ['-', '_', '–'].includes(event.key) && !ScribeCanvas.input) {
+  if (event.altKey && ['-', '_', '–'].includes(event.key) && !ScribeCanvas.KonvaIText.input) {
     changeWordFontSize('minus');
     event.preventDefault();
     event.stopPropagation();
@@ -691,7 +690,7 @@ elem.evaluate.displayLabelOptions.addEventListener('click', (e) => {
 });
 
 elem.edit.smartQuotes.addEventListener('click', () => {
-  optGUI.smartQuotes = elem.edit.smartQuotes.checked;
+  ScribeCanvas.KonvaIText.smartQuotes = elem.edit.smartQuotes.checked;
 });
 
 elem.download.download.addEventListener('click', handleDownloadGUI);

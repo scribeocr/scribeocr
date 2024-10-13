@@ -3,9 +3,9 @@ import Konva from '../app/lib/konva/index.js';
 import scribe from '../scribe.js/scribe.js';
 // eslint-disable-next-line import/no-cycle
 import {
-  KonvaIText,
-  ScribeCanvas, stateGUI, updateWordCanvas,
+  ScribeCanvas, stateGUI,
 } from './viewerCanvas.js';
+import { KonvaIText } from './viewerWordObjects.js';
 
 const colColorsHex = ['#287bb5', '#19aa9a', '#099b57'];
 
@@ -122,11 +122,11 @@ export class KonvaLayout extends Konva.Rect {
     });
 
     this.addEventListener('dragmove', () => {
-      if (ScribeCanvas.input && ScribeCanvas.input.parentElement && ScribeCanvas.inputRemove) ScribeCanvas.inputRemove();
+      if (ScribeCanvas.KonvaIText.input && ScribeCanvas.KonvaIText.input.parentElement && ScribeCanvas.KonvaIText.inputRemove) ScribeCanvas.KonvaIText.inputRemove();
       if (this.label) {
         this.label.x(this.x() + this.width() * 0.5);
         this.label.yActual = this.y() + this.height() * 0.5;
-        updateWordCanvas(this.label);
+        KonvaIText.updateWordCanvas(this.label);
       }
     });
 
@@ -147,7 +147,7 @@ export class KonvaLayout extends Konva.Rect {
       rotateEnabled: false,
       borderStrokeWidth: 2,
     });
-    ScribeCanvas._controlArr.push(trans);
+    ScribeCanvas.KonvaOcrWord._controlArr.push(trans);
     ScribeCanvas.layerOverlay.add(trans);
 
     trans.nodes([konvaLayout]);
