@@ -823,7 +823,7 @@ export class ScribeCanvas {
 
     // Render background images ahead and behind current page to reduce delay when switching pages
     if ((scribe.inputData.pdfMode || scribe.inputData.imageMode) && ScribeCanvas.pageStopsStart[0]) {
-      ViewerImageCache.renderAheadBehindBrowser(n, stateGUI.colorMode === 'binary');
+      ViewerImageCache.renderAheadBehindBrowser(n);
     }
   }
 

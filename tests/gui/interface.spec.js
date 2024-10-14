@@ -20,7 +20,7 @@ describe('Use delete and recognize word buttons', function () {
     ({ driver, customActions } = await createDriver());
   });
 
-  it('"Recognize All" recognizes basic image correctly', async function () {
+  it('\'Recognize All\' recognizes basic image correctly', async function () {
     // Navigate to the page
     await driver.get(appURL);
 
@@ -36,7 +36,7 @@ describe('Use delete and recognize word buttons', function () {
     assert.strictEqual(text, 'Tesseract.js');
   });
 
-  it('"Delete Word" deletes word', async function () {
+  it('\'Delete Word\' deletes word', async function () {
     await driver.findElement(By.id('nav-edit-tab')).click();
 
     await customActions.selectAllCanvas();
@@ -49,7 +49,7 @@ describe('Use delete and recognize word buttons', function () {
     assert.strictEqual(text, '');
   });
 
-  it('"Recognize Word" recognizes word', async function () {
+  it('\'Recognize Word\' recognizes word', async function () {
     const recognizeWordElem = await driver.findElement(By.id('recognizeWord'));
     await recognizeWordElem.click();
 
@@ -63,7 +63,7 @@ describe('Use delete and recognize word buttons', function () {
     assert.strictEqual(text, 'Tesseract.js');
   });
 
-  it('"Recognize Area" recognizes area', async function () {
+  it('\'Recognize Area\' recognizes area', async function () {
     await customActions.selectAllCanvas();
     const deleteWordElem = await driver.findElement(By.id('deleteWord'));
     await driver.wait(until.elementIsEnabled(deleteWordElem), 10000);
