@@ -77,9 +77,6 @@ export function updateFindStats() {
     search.matches[stateGUI.cp.n] = scribe.utils.countSubstringOccurrences(search.text[stateGUI.cp.n], search.search);
     // Calculate total number of matches
     search.total = search.matches.reduce((partialSum, a) => partialSum + a, 0);
-
-    // elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
-    // elem.nav.matchCount.textContent = String(search.total);
   }
 }
 
@@ -99,9 +96,6 @@ export function findText(text) {
     search.matches = [];
     search.total = 0;
   }
-
-  // elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
-  // elem.nav.matchCount.textContent = String(search.total);
 }
 
 // Returns string showing index of match(es) found on current page.

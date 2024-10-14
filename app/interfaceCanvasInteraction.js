@@ -627,24 +627,31 @@ export const mouseupFunc2 = (event) => {
     KonvaLayout.updateUI();
   } else if (ScribeCanvas.mode === 'addWord') {
     const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.pageStopsStart[stateGUI.cp.n];
     addWordManual(box);
   } else if (ScribeCanvas.mode === 'recognizeWord') {
     const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.pageStopsStart[stateGUI.cp.n];
     recognizeArea(box, true, false);
   } else if (ScribeCanvas.mode === 'recognizeArea') {
     const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.pageStopsStart[stateGUI.cp.n];
     recognizeArea(box, false, false);
   } else if (ScribeCanvas.mode === 'printCoords') {
     const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.pageStopsStart[stateGUI.cp.n];
     recognizeArea(box, false, true);
   } else if (ScribeCanvas.mode === 'addLayoutBoxOrder') {
     const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.pageStopsStart[stateGUI.cp.n];
     addLayoutBoxClick(box, 'order');
   } else if (ScribeCanvas.mode === 'addLayoutBoxExclude') {
     const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.pageStopsStart[stateGUI.cp.n];
     addLayoutBoxClick(box, 'exclude');
   } else if (ScribeCanvas.mode === 'addLayoutBoxDataTable') {
     const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.pageStopsStart[stateGUI.cp.n];
     addLayoutDataTableClick(box);
   }
 };

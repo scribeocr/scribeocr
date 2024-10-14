@@ -5,7 +5,6 @@ import scribe from '../scribe.js/scribe.js';
 import { elem } from './elems.js';
 import {
   ScribeCanvas,
-  setCanvasWidthHeightZoom,
   stateGUI,
 } from '../viewer/viewerCanvas.js';
 import { saveAs } from './utils/utils.js';
@@ -48,8 +47,6 @@ export async function evalSelectedLine() {
   const res = await scribe.evalOCRPage({ page: word0.line, view: true });
 
   await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res.debug[0]]], context: 'browser' });
-
-  setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims);
 }
 
 export async function downloadCanvas() {

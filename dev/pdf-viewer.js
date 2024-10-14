@@ -1,7 +1,7 @@
 import { showHideElem } from '../app/utils/utils.js';
 import scribe from '../scribe.js/scribe.js';
 import {
-  getLayerCenter, ScribeCanvas, stateGUI,
+  ScribeCanvas, stateGUI,
 } from '../viewer/viewerCanvas.js';
 import { getAllFileEntries } from '../app/utils/dragAndDrop.js';
 
@@ -282,16 +282,22 @@ class ScribePDFViewer {
     });
 
     // Add various event listners to HTML elements
-    this.nextElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n + 1));
-    this.prevElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n - 1));
+    this.nextElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n + 1, true));
+    this.prevElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n - 1, true));
+
+    this.pageNumElem.addEventListener('keyup', (event) => {
+      if (event.keyCode === 13) {
+        this.displayPageGUI(parseInt(this.pageNumElem.value) - 1, true);
+      }
+    });
 
     this.zoomInElem.addEventListener('click', () => {
-      ScribeCanvas.zoom(1.1, getLayerCenter(ScribeCanvas.layerText));
+      ScribeCanvas.zoom(1.1, ScribeCanvas.getStageCenter());
       // this.zoomLevelElem.value = `${Math.round(ScribeCanvas.layerText.scaleX() * 100)}%`;
     });
 
     this.zoomOutElem.addEventListener('click', () => {
-      ScribeCanvas.zoom(0.9, getLayerCenter(ScribeCanvas.layerText));
+      ScribeCanvas.zoom(0.9, ScribeCanvas.getStageCenter());
       // this.zoomLevelElem.value = `${Math.round(ScribeCanvas.layerText.scaleX() * 100)}%`;
     });
 
@@ -325,28 +331,24 @@ class ScribePDFViewer {
       this.importFile(files[0]);
     });
 
-    this.working = false;
+    ScribeCanvas.displayPageCallback = () => {
+      this.pageNumElem.value = (stateGUI.cp.n + 1).toString();
+    };
 
     /**
      * Render page `n` in the UI.
      * @param {number} n
-     * @param {boolean} [force=false] - Render even if another page is actively being rendered.
+     * @param {boolean} [scroll=false] - Scroll to the top of the page being rendered.
      */
-    this.displayPageGUI = async (n, force = false) => {
-      // Return early if (1) page does not exist or (2) another page is actively being rendered.
-      if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1) || (this.working && !force)) {
+    this.displayPageGUI = async (n, scroll = false) => {
+      // Return early page does not exist.
+      if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1)) {
         // Reset the value of pageNumElem (number in UI) to match the internal value of the page
         this.pageNumElem.value = (stateGUI.cp.n + 1).toString();
         return;
       }
 
-      this.working = true;
-
-      await ScribeCanvas.displayPage(n, force);
-
-      this.pageNumElem.value = (stateGUI.cp.n + 1).toString();
-
-      this.working = false;
+      await ScribeCanvas.displayPage(n, scroll);
     };
 
     ScribeCanvas.init(this.viewerContainer, width, height - toolbarHeight);

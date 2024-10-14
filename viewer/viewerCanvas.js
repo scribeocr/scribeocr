@@ -2,9 +2,10 @@
 import scribe from '../scribe.js/scribe.js';
 import Konva from '../app/lib/konva/index.js';
 import { search, updateFindStats } from './viewerSearch.js';
-import { KonvaDataColumn, KonvaLayout } from './viewerLayout.js';
+import { KonvaDataColumn, KonvaLayout, renderLayoutBoxes } from './viewerLayout.js';
 import { replaceObjectProperties } from '../app/utils/utils.js';
 import { KonvaIText, KonvaOcrWord } from './viewerWordObjects.js';
+import { ViewerImageCache } from './viewerImageCache.js';
 
 Konva.autoDrawEnabled = false;
 Konva.dragButtons = [0];
@@ -13,8 +14,6 @@ export class stateGUI {
   static pageRendering = Promise.resolve(true);
 
   static renderIt = 0;
-
-  static canvasDimsN = -1;
 
   /** @type {?Function} */
   static promiseResolve = null;
@@ -28,11 +27,8 @@ export class stateGUI {
   /** @type {'color'|'gray'|'binary'} */
   static colorMode = 'color';
 
-  static autoRotate = false;
-
   static cp = {
     n: 0,
-    renderNum: 0,
   };
 }
 
@@ -295,6 +291,68 @@ export class ScribeCanvas {
 
   static textOverlayHidden = false;
 
+  static multiPageMode = true;
+
+  /** @type {Array<number>} */
+  static pageStopsStart = [];
+
+  /** @type {Array<number>} */
+  static pageStopsEnd = [];
+
+  /** @type {?Function} */
+  static displayPageCallback = null;
+
+  /** @type {Array<InstanceType<typeof Konva.Rect>>} */
+  static placeholderRectArr = [];
+
+  static calcPageStops = () => {
+    const margin = 30;
+    let y = margin;
+    for (let i = 0; i < scribe.data.pageMetrics.length; i++) {
+      ScribeCanvas.pageStopsStart[i] = y;
+      const dims = scribe.data.pageMetrics[i].dims;
+      if (!dims) return;
+
+      // TODO: This does not work because angle is not populated at this point.
+      // This is true even when uploading a PDF with existing OCR data, as dims are defined before parsing the OCR data.
+      const rotation = (scribe.data.pageMetrics[i].angle || 0) * -1;
+      y += dims.height + margin;
+      ScribeCanvas.pageStopsEnd[i] = y;
+
+      if (!ScribeCanvas.placeholderRectArr[i]) {
+        ScribeCanvas.placeholderRectArr[i] = new Konva.Rect({
+          x: 0,
+          y: ScribeCanvas.pageStopsStart[i],
+          width: dims.width,
+          height: dims.height,
+          stroke: 'black',
+          strokeWidth: 2,
+          strokeScaleEnabled: false,
+          listening: false,
+          rotation,
+        });
+        ScribeCanvas.layerBackground.add(ScribeCanvas.placeholderRectArr[i]);
+      }
+    }
+  };
+
+  /**
+ *
+ * @returns {{x: number, y: number}}
+ */
+  static getStageCenter = () => {
+    const layerWidth = ScribeCanvas.stage.width();
+    const layerHeight = ScribeCanvas.stage.height();
+
+    // Calculate the center point of the layer before any transformations
+    const centerPoint = {
+      x: layerWidth / 2,
+      y: layerHeight / 2,
+    };
+
+    return centerPoint;
+  };
+
   /**
    *
    * @param {InstanceType<typeof Konva.Layer>|InstanceType<typeof Konva.Stage>} layer
@@ -348,7 +406,7 @@ export class ScribeCanvas {
 
         // Otherwise, zoom in on the center of the text layer.
       } else {
-        center = getLayerCenter(ScribeCanvas.layerText);
+        center = ScribeCanvas.getStageCenter();
       }
     }
 
@@ -362,6 +420,16 @@ export class ScribeCanvas {
    * @param {number} [coords.deltaY=0]
    */
   static panStage = ({ deltaX = 0, deltaY = 0 }) => {
+    const yOld = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
+    const yNew = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2 + deltaY) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
+
+    const pageOld = ScribeCanvas.pageStopsEnd.findIndex((y) => y > yOld) || 0;
+    const pageNew = ScribeCanvas.pageStopsEnd.findIndex((y) => y > yNew) || 0;
+
+    if (pageOld !== pageNew && pageNew >= 0) {
+      ScribeCanvas.displayPage(pageNew);
+    }
+
     ScribeCanvas.stage.x(ScribeCanvas.stage.x() + deltaX);
     ScribeCanvas.stage.y(ScribeCanvas.stage.y() + deltaY);
     ScribeCanvas.stage.batchDraw();
@@ -523,6 +591,9 @@ export class ScribeCanvas {
     ScribeCanvas.layerText = new Konva.Layer();
     ScribeCanvas.layerOverlay = new Konva.Layer();
 
+    ScribeCanvas.groupText = new Konva.Group();
+    ScribeCanvas.groupOverlay = new Konva.Group();
+
     ScribeCanvas.stage.add(ScribeCanvas.layerBackground);
     ScribeCanvas.stage.add(ScribeCanvas.layerText);
     ScribeCanvas.stage.add(ScribeCanvas.layerOverlay);
@@ -536,17 +607,6 @@ export class ScribeCanvas {
 
     ScribeCanvas.layerText.add(ScribeCanvas.selectingRectangle);
 
-    // Listen for wheel events on the ScribeCanvas.stage
-    ScribeCanvas.stage.on('wheel', (event) => {
-      handleWheel(event.evt);
-    });
-
-    // Event listeners for mouse interactions
-    ScribeCanvas.stage.on('mousedown', (event) => {
-      if (event.evt.button === 1) { // Middle mouse button
-        ScribeCanvas.startDrag(event.evt);
-      }
-    });
     ScribeCanvas.stage.on('mousemove', ScribeCanvas.executeDrag);
 
     ScribeCanvas.stage.on('touchstart', (event) => {
@@ -700,23 +760,54 @@ export class ScribeCanvas {
     ScribeCanvas._wordHTMLArr.length = 0;
   };
 
-  static working = false;
+  static runSetInitial = true;
+
+  /**
+   * Set the initial position and zoom of the canvas to reasonable defaults.
+   * @param {dims} imgDims - Dimensions of image
+   */
+  static setInitialPositionZoom = (imgDims) => {
+    ScribeCanvas.runSetInitial = false;
+
+    const totalHeight = document.documentElement.clientHeight;
+
+    const interfaceHeight = 100;
+    const bottomMarginHeight = 50;
+    const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
+
+    const zoom = targetHeight / imgDims.height;
+
+    ScribeCanvas.stage.scaleX(zoom);
+    ScribeCanvas.stage.scaleY(zoom);
+    ScribeCanvas.stage.x(((ScribeCanvas.stage.width() - (imgDims.width * zoom)) / 2));
+    ScribeCanvas.stage.y(interfaceHeight);
+  };
 
   /**
   * Render page `n` in the UI.
   * @param {number} n
-  * @param {boolean} [force=false] - Render even if another page is actively being rendered.
+  * @param {boolean} [scroll=false] - Scroll to the top of the page being rendered.
   * @returns
   */
-  static async displayPage(n, force = false) {
-    // ScribeCanvas.working = true;
-
+  static async displayPage(n, scroll = false) {
     ScribeCanvas.deleteHTMLOverlay();
 
     if (scribe.inputData.xmlMode[stateGUI.cp.n]) {
       // TODO: This is currently run whenever the page is changed.
       // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
       updateFindStats();
+    }
+
+    if (scroll) {
+      ScribeCanvas.stage.y((ScribeCanvas.pageStopsStart[n] - 100) * ScribeCanvas.stage.getAbsoluteScale().y * -1);
+    }
+
+    if (scribe.opt.displayMode === 'ebook') {
+      ScribeCanvas.layerBackground.hide();
+      ScribeCanvas.layerBackground.batchDraw();
+    } else {
+      ScribeCanvas.layerBackground.show();
+      ScribeCanvas.layerBackground.batchDraw();
     }
 
     ScribeCanvas.textOverlayHidden = false;
@@ -726,10 +817,14 @@ export class ScribeCanvas {
 
     if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlay();
 
-    // Render background images ahead and behind current page to reduce delay when switching pages
-    if (scribe.inputData.pdfMode || scribe.inputData.imageMode) scribe.data.image.preRenderAheadBehindBrowser(n, stateGUI.colorMode === 'binary');
+    if (ScribeCanvas.displayPageCallback) ScribeCanvas.displayPageCallback();
 
-    // ScribeCanvas.working = false;
+    if (stateGUI.layoutMode) renderLayoutBoxes();
+
+    // Render background images ahead and behind current page to reduce delay when switching pages
+    if ((scribe.inputData.pdfMode || scribe.inputData.imageMode) && ScribeCanvas.pageStopsStart[0]) {
+      ViewerImageCache.renderAheadBehindBrowser(n, stateGUI.colorMode === 'binary');
+    }
   }
 
   /** @type {InstanceType<typeof Konva.Stage>} */
@@ -743,6 +838,12 @@ export class ScribeCanvas {
 
   /** @type {InstanceType<typeof Konva.Layer>} */
   static layerOverlay;
+
+  /** @type {InstanceType<typeof Konva.Group>} */
+  static groupText;
+
+  /** @type {InstanceType<typeof Konva.Group>} */
+  static groupOverlay;
 
   /** @type {Array<KonvaOcrWord>} */
   static _wordArr = [];
@@ -785,6 +886,8 @@ export class ScribeCanvas {
   static KonvaIText = KonvaIText;
 
   static KonvaOcrWord = KonvaOcrWord;
+
+  static ViewerImageCache = ViewerImageCache;
 
   /** @type {bbox} */
   static bbox = {
@@ -833,7 +936,8 @@ export class ScribeCanvas {
    */
   static addWord = (word) => {
     ScribeCanvas._wordArr.push(word);
-    ScribeCanvas.layerText.add(word);
+    // ScribeCanvas.layerText.add(word);
+    ScribeCanvas.groupText.add(word);
   };
 
   /**
@@ -860,8 +964,8 @@ export class ScribeCanvas {
    */
   static addRegion = (region) => {
     ScribeCanvas._layoutRegionArr.push(region);
-    ScribeCanvas.layerOverlay.add(region);
-    if (region.label) ScribeCanvas.layerOverlay.add(region.label);
+    ScribeCanvas.groupOverlay.add(region);
+    if (region.label) ScribeCanvas.groupOverlay.add(region.label);
   };
 
   /**
@@ -953,20 +1057,6 @@ document.addEventListener('touchend', () => {
 document.addEventListener('selectionchange', ScribeCanvas._onSelection);
 document.addEventListener('mousedown', ScribeCanvas._onSelection);
 
-/**
- *
- * @param {number} degrees
- */
-export const rotateAllLayers = (degrees) => {
-  ScribeCanvas.layerText.rotation(degrees);
-  ScribeCanvas.layerBackground.rotation(degrees);
-  ScribeCanvas.layerOverlay.rotation(degrees);
-
-  ScribeCanvas.layerText.batchDraw();
-  ScribeCanvas.layerBackground.batchDraw();
-  ScribeCanvas.layerOverlay.batchDraw();
-};
-
 function getElementIdsInRange(range) {
   const elementIds = [];
   const treeWalker = document.createTreeWalker(
@@ -1011,8 +1101,6 @@ document.addEventListener('copy', (e) => {
   e.preventDefault(); // Prevent the default copy action
 });
 
-// const working = false;
-
 /**
  * Changes color and opacity of words based on the current display mode.
  */
@@ -1027,71 +1115,6 @@ export function setWordColorOpacity() {
     obj.opacity(opacity);
   });
 }
-
-/**
- * Change the display mode (e.g. proofread mode vs. ocr mode).
- * Impacts what color the text is printed and whether the background image is displayed.
- *
- * @param { ("invis"|"ebook"|"eval"|"proof")} x
- * @returns
- */
-export const selectDisplayMode = async (x) => {
-  setWordColorOpacity();
-
-  const pageDims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
-
-  // Include a background image if appropriate
-  if (['invis', 'proof', 'eval'].includes(x) && (scribe.inputData.imageMode || scribe.inputData.pdfMode)) {
-
-    const backgroundImage = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinary(stateGUI.cp.n) : await scribe.data.image.getNative(stateGUI.cp.n);
-    const image = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinaryBitmap(stateGUI.cp.n) : await scribe.data.image.getNativeBitmap(stateGUI.cp.n);
-    let rotation = 0;
-    if (!backgroundImage.rotated) {
-      rotation = (scribe.data.pageMetrics[stateGUI.cp.n].angle || 0) * -1;
-    }
-
-    const scaleX = backgroundImage.upscaled ? 0.5 : 1;
-    const scaleY = backgroundImage.upscaled ? 0.5 : 1;
-
-    const backgroundImageKonva = new Konva.Image({
-      image,
-      rotation,
-      scaleX,
-      scaleY,
-      x: pageDims.width * 0.5,
-      y: pageDims.height * 0.5,
-      offsetX: image.width * 0.5,
-      offsetY: image.height * 0.5,
-      strokeWidth: 4,
-      stroke: 'black',
-    });
-
-    ScribeCanvas.layerBackground.destroyChildren();
-
-    ScribeCanvas.layerBackground.add(backgroundImageKonva);
-  } else {
-    ScribeCanvas.layerBackground.destroyChildren();
-  }
-
-  // When the page changes, the dimensions and zoom are modified.
-  // This should be disabled when the page is not changing, as it would be frustrating for the zoom to be reset (for example) after recognizing a word.
-  if (stateGUI.canvasDimsN !== stateGUI.cp.n) {
-    setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims);
-
-    stateGUI.canvasDimsN = stateGUI.cp.n;
-    // The setCanvasWidthHeightZoom function will call canvas.requestRenderAll() if the zoom is changed,
-    // so we only need to call it here if the zoom is not changed.
-  }
-
-  const angle = scribe.data.pageMetrics[stateGUI.cp.n]?.angle || 0;
-  if (scribe.opt.autoRotate) {
-    rotateAllLayers(0);
-  } else {
-    rotateAllLayers(angle);
-  }
-
-  ScribeCanvas.stage.batchDraw();
-};
 
 let evalStatsConfig = {
   /** @type {string|undefined} */
@@ -1141,86 +1164,6 @@ export async function compareGroundTruth() {
   }
 }
 
-let widthHeightInitial = true;
-
-/**
- *
- * @param {dims} imgDims - Dimensions of image
- */
-export const setCanvasWidthHeightZoom = (imgDims) => {
-  // const enableConflictsViewer = false;
-  // const totalHeight = enableConflictsViewer ? Math.round(document.documentElement.clientHeight * 0.7) - 1 : document.documentElement.clientHeight;
-
-  const totalHeight = document.documentElement.clientHeight;
-
-  // // Re-set width/height, in case the size of the window changed since originally set.
-  // stage.height(totalHeight);
-  // ScribeCanvas.stage.width(document.documentElement.clientWidth);
-
-  // The first time this function is run, the canvas is centered and zoomed to fit the image.
-  // After that, whatever the user does with the canvas is preserved.
-  if (widthHeightInitial) {
-    widthHeightInitial = false;
-    const interfaceHeight = 100;
-    const bottomMarginHeight = 50;
-    const targetHeight = totalHeight - interfaceHeight - bottomMarginHeight;
-
-    const zoom = targetHeight / imgDims.height;
-
-    ScribeCanvas.layerText.scaleX(zoom);
-    ScribeCanvas.layerText.scaleY(zoom);
-    ScribeCanvas.layerBackground.scaleX(zoom);
-    ScribeCanvas.layerBackground.scaleY(zoom);
-    ScribeCanvas.layerOverlay.scaleX(zoom);
-    ScribeCanvas.layerOverlay.scaleY(zoom);
-
-    ScribeCanvas.layerText.x(((ScribeCanvas.stage.width() - (imgDims.width * zoom)) / 2));
-    ScribeCanvas.layerText.y(interfaceHeight);
-    ScribeCanvas.layerBackground.x(((ScribeCanvas.stage.width() - (imgDims.width * zoom)) / 2));
-    ScribeCanvas.layerBackground.y(interfaceHeight);
-    ScribeCanvas.layerOverlay.x(((ScribeCanvas.stage.width() - (imgDims.width * zoom)) / 2));
-    ScribeCanvas.layerOverlay.y(interfaceHeight);
-  } else {
-    const left = ScribeCanvas.layerText.x();
-    const top = ScribeCanvas.layerText.y();
-    const scale = ScribeCanvas.layerText.scaleX();
-    const stageWidth = ScribeCanvas.stage.width();
-    const stageHeight = ScribeCanvas.stage.height();
-
-    // Nudge the document into the viewport, using the lesser of:
-    // (1) the shift required to put 50% of the document into view, or
-    // (2) the shift required to fill 50% of the viewport.
-    // Both conditions are necessary for this to work as expected at all zoom levels.
-    if (left < imgDims.width * scale * -0.5
-    && left < (stageWidth / 2 - (imgDims.width * scale))) {
-      const newX = Math.min(imgDims.width * scale * -0.5, stageWidth / 2 - (imgDims.width * scale));
-      ScribeCanvas.layerText.x(newX);
-      ScribeCanvas.layerBackground.x(newX);
-      ScribeCanvas.layerOverlay.x(newX);
-    } else if (left > stageWidth - (imgDims.width * scale * 0.5)
-    && left > stageWidth / 2) {
-      const newX = Math.max(stageWidth - (imgDims.width * scale * 0.5), stageWidth / 2);
-      ScribeCanvas.layerText.x(newX);
-      ScribeCanvas.layerBackground.x(newX);
-      ScribeCanvas.layerOverlay.x(newX);
-    }
-
-    if (top < imgDims.height * scale * -0.5
-      && top < (stageHeight / 2 - (imgDims.height * scale))) {
-      const newY = Math.min(imgDims.height * scale * -0.5, stageHeight / 2 - (imgDims.height * scale));
-      ScribeCanvas.layerText.y(newY);
-      ScribeCanvas.layerBackground.y(newY);
-      ScribeCanvas.layerOverlay.y(newY);
-    } else if (top > stageHeight - (imgDims.height * scale * 0.5)
-      && top > stageHeight / 2) {
-      const newY = Math.max(stageHeight - (imgDims.height * scale * 0.5), stageHeight / 2);
-      ScribeCanvas.layerText.y(newY);
-      ScribeCanvas.layerBackground.y(newY);
-      ScribeCanvas.layerOverlay.y(newY);
-    }
-  }
-};
-
 // Function that handles page-level info for rendering to canvas
 export async function renderPageQueue(n) {
   let ocrData = scribe.data.ocr.active?.[n];
@@ -1234,13 +1177,23 @@ export async function renderPageQueue(n) {
   const xmlMissing = scribe.inputData.xmlMode[n]
     && (ocrData === undefined || ocrData === null || scribe.data.pageMetrics[n].dims === undefined);
 
+  let pageStopsMissing = false;
+  if (!ScribeCanvas.pageStopsStart[n] || !ScribeCanvas.pageStopsEnd[n]) {
+    ScribeCanvas.calcPageStops();
+    if (!ScribeCanvas.pageStopsStart[n] || !ScribeCanvas.pageStopsEnd[n]) {
+      pageStopsMissing = true;
+    }
+  }
+
   const imageMissing = false;
   const pdfMissing = false;
 
-  if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing) {
+  if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing || pageStopsMissing) {
     console.log('Exiting renderPageQueue early');
     return;
   }
+
+  if (ScribeCanvas.runSetInitial) ScribeCanvas.setInitialPositionZoom(scribe.data.pageMetrics[n].dims);
 
   const renderItI = stateGUI.renderIt + 1;
   stateGUI.renderIt = renderItI;
@@ -1262,21 +1215,11 @@ export async function renderPageQueue(n) {
 
   ScribeCanvas.destroyWords();
 
-  // These are all quick fixes for issues that occur when multiple calls to this function happen quickly
-  // (whether by quickly changing pages or on the same page).
-  // TODO: Find a better solution.
-  stateGUI.cp.renderNum += 1;
-  const renderNum = stateGUI.cp.renderNum;
-
-  // The active OCR version may have changed, so this needs to be re-checked.
-  if (stateGUI.cp.n === n && scribe.inputData.xmlMode[n]) {
+  if (scribe.inputData.xmlMode[n]) {
     renderPage(ocrData);
-    if (stateGUI.cp.n === n && stateGUI.cp.renderNum === renderNum) {
-      await selectDisplayMode(scribe.opt.displayMode);
-    }
-  } else {
-    await selectDisplayMode(scribe.opt.displayMode);
   }
+
+  ScribeCanvas.layerText.batchDraw();
 
   // @ts-ignore
   stateGUI.promiseResolve();
@@ -1314,11 +1257,11 @@ const addBlockOutline = (box, angleAdj, label) => {
       listening: false,
     });
 
-    ScribeCanvas.layerText.add(labelObj);
+    ScribeCanvas.groupText.add(labelObj);
     ScribeCanvas._lineOutlineArr.push(labelObj);
   }
 
-  ScribeCanvas.layerText.add(blockRect);
+  ScribeCanvas.groupText.add(blockRect);
 
   ScribeCanvas._lineOutlineArr.push(blockRect);
 };
@@ -1330,9 +1273,21 @@ const addBlockOutline = (box, angleAdj, label) => {
 export function renderPage(page) {
   const matchIdArr = stateGUI.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[stateGUI.cp.n]) : [];
 
+  const dims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
   const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
 
   const imageRotated = Math.abs(angle ?? 0) > 0.05;
+
+  const textRotation = scribe.opt.autoRotate ? 0 : angle;
+
+  const pageOffsetY = ScribeCanvas.multiPageMode ? ScribeCanvas.pageStopsStart[page.n] ?? 30 : 0;
+
+  ScribeCanvas.groupText.rotation(textRotation);
+  ScribeCanvas.groupText.offset({ x: dims.width * 0.5, y: dims.height * 0.5 });
+  ScribeCanvas.groupText.position({ x: dims.width * 0.5, y: pageOffsetY + dims.height * 0.5 });
+  ScribeCanvas.groupOverlay.rotation(textRotation);
+  ScribeCanvas.groupOverlay.offset({ x: dims.width * 0.5, y: dims.height * 0.5 });
+  ScribeCanvas.groupOverlay.position({ x: dims.width * 0.5, y: pageOffsetY + dims.height * 0.5 });
 
   if (optGUI.outlinePars && page) {
     scribe.utils.assignParagraphs(page, angle);
@@ -1367,15 +1322,11 @@ export function renderPage(page) {
 
       ScribeCanvas._lineOutlineArr.push(lineRect);
 
-      ScribeCanvas.layerText.add(lineRect);
+      ScribeCanvas.groupText.add(lineRect);
     }
 
     for (const wordObj of lineObj.words) {
       if (!wordObj.text) continue;
-
-      // const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
-
-      // const displayMode = elem.view.displayMode.value;
 
       const outlineWord = optGUI.outlineWords || scribe.opt.displayMode === 'eval' && wordObj.conf > scribe.opt.confThreshHigh && !wordObj.matchTruth;
 
@@ -1402,31 +1353,10 @@ export function renderPage(page) {
       ScribeCanvas.addWord(wordCanvas);
     }
   }
+
+  ScribeCanvas.layerText.add(ScribeCanvas.groupText);
+  ScribeCanvas.layerOverlay.add(ScribeCanvas.groupOverlay);
 }
-
-/**
- *
- * @param {InstanceType<typeof Konva.Layer>|InstanceType<typeof Konva.Stage>} layer
- * @returns {{x: number, y: number}}
- */
-export const getLayerCenter = (layer) => {
-  const layerWidth = layer.width();
-  const layerHeight = layer.height();
-
-  // Calculate the center point of the layer before any transformations
-  const centerPoint = {
-    x: layerWidth / 2,
-    y: layerHeight / 2,
-  };
-
-  // Get the absolute transformation matrix for the layer
-  const transform = layer.getAbsoluteTransform();
-
-  // Apply the transformation to the center point
-  const transformedCenter = transform.point(centerPoint);
-
-  return transformedCenter;
-};
 
 /**
  * Check if the wheel event was from a track pad by applying a series of heuristics.
@@ -1494,3 +1424,20 @@ export const handleWheel = (event) => {
   }
   if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
 };
+
+// Event listeners for mouse interactions.
+// These are added to the document because adding only to the canvas does not work when overlay text is clicked.
+// To avoid unintended interactions, the event listeners are only triggered when the target is within the canvas.
+document.addEventListener('wheel', (event) => {
+  if (event.target instanceof Node && ScribeCanvas.elem.contains(event.target)) {
+    handleWheel(event);
+  }
+}, { passive: false });
+
+document.addEventListener('mousedown', (event) => {
+  if (event.target instanceof Node && ScribeCanvas.elem.contains(event.target)) {
+    if (event.button === 1) { // Middle mouse button
+      ScribeCanvas.startDrag(event);
+    }
+  }
+});

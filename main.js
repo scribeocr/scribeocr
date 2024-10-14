@@ -30,11 +30,8 @@ import {
 import {
   ScribeCanvas,
   stateGUI,
-  rotateAllLayers,
   optGUI,
   setWordColorOpacity,
-  setCanvasWidthHeightZoom,
-  getLayerCenter,
 } from './viewer/viewerCanvas.js';
 
 import {
@@ -81,15 +78,15 @@ const progressHandler = (message) => {
     const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
     const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
 
-    if (displayOCR && stateGUI.cp.n === n) displayPageGUI(n, true);
+    if (displayOCR && stateGUI.cp.n === n) displayPageGUI(n);
   } else if (message.type === 'export') {
     ProgressBars.active.increment();
   } else if (message.type === 'importImage') {
     ProgressBars.active.increment();
-    if (stateGUI.cp.n === message.n) displayPageGUI(message.n, true);
+    if (stateGUI.cp.n === message.n) displayPageGUI(message.n);
   } else if (message.type === 'importPDF') {
     ProgressBars.active.increment();
-    if (stateGUI.cp.n === message.n) displayPageGUI(message.n, true);
+    if (stateGUI.cp.n === message.n) displayPageGUI(message.n);
   } else if (message.type === 'render') {
     if (ProgressBars.active === ProgressBars.download) ProgressBars.active.increment();
   }
@@ -320,14 +317,14 @@ function handleKeyboardEvent(event) {
 
   // Prev page shortcut
   if (event.key === 'PageUp') {
-    displayPageGUI(stateGUI.cp.n - 1);
+    displayPageGUI(stateGUI.cp.n - 1, true);
     event.preventDefault();
     return;
   }
 
   // Next page shortcut
   if (event.key === 'PageDown') {
-    displayPageGUI(stateGUI.cp.n + 1);
+    displayPageGUI(stateGUI.cp.n + 1, true);
     event.preventDefault();
     return;
   }
@@ -498,15 +495,15 @@ function handleKeyboardEvent(event) {
 document.addEventListener('keydown', handleKeyboardEvent);
 
 // Add various event listners to HTML elements
-elem.nav.next.addEventListener('click', () => displayPageGUI(stateGUI.cp.n + 1));
-elem.nav.prev.addEventListener('click', () => displayPageGUI(stateGUI.cp.n - 1));
+elem.nav.next.addEventListener('click', () => displayPageGUI(stateGUI.cp.n + 1, true));
+elem.nav.prev.addEventListener('click', () => displayPageGUI(stateGUI.cp.n - 1, true));
 
 elem.nav.zoomIn.addEventListener('click', () => {
-  ScribeCanvas.zoom(1.1, getLayerCenter(ScribeCanvas.layerText));
+  ScribeCanvas.zoom(1.1, ScribeCanvas.getStageCenter());
 });
 
 elem.nav.zoomOut.addEventListener('click', () => {
-  ScribeCanvas.zoom(0.9, getLayerCenter(ScribeCanvas.layerText));
+  ScribeCanvas.zoom(0.9, ScribeCanvas.getStageCenter());
 });
 
 elem.view.colorMode.addEventListener('change', () => {
@@ -539,7 +536,6 @@ elem.info.showDebugLegend.addEventListener('input', () => {
   } else {
     showHideElem(legendCanvasParentDivElem, true);
   }
-  if (scribe.data.pageMetrics[stateGUI.cp.n]?.dims) setCanvasWidthHeightZoom(scribe.data.pageMetrics[stateGUI.cp.n].dims);
 });
 
 elem.info.debugHidePage.addEventListener('input', () => {
@@ -655,14 +651,12 @@ elem.info.confThreshMed.addEventListener('change', () => {
 });
 
 elem.view.autoRotate.addEventListener('click', () => {
-  const angle = scribe.data.pageMetrics[stateGUI.cp.n]?.angle || 0;
   if (elem.view.autoRotate.checked) {
     scribe.opt.autoRotate = true;
-    rotateAllLayers(0);
   } else {
     scribe.opt.autoRotate = false;
-    rotateAllLayers(angle);
   }
+  displayPageGUI(stateGUI.cp.n);
 });
 
 elem.view.outlineWords.addEventListener('click', () => {
@@ -769,7 +763,7 @@ elem.download.pdfPageMax.addEventListener('keyup', (event) => {
 
 elem.nav.pageNum.addEventListener('keyup', (event) => {
   if (event.keyCode === 13) {
-    displayPageGUI(parseInt(elem.nav.pageNum.value) - 1);
+    displayPageGUI(parseInt(elem.nav.pageNum.value) - 1, true);
   }
 });
 
@@ -884,7 +878,7 @@ const importFilesGUI = async (files) => {
 
   await scribe.importFiles(files, params);
 
-  displayPageGUI(stateGUI.cp.n, true);
+  displayPageGUI(stateGUI.cp.n);
 
   // Add fonts extracted from document to the UI
   if (scribe.inputData.pdfMode && scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
@@ -1249,7 +1243,7 @@ const renderDebugVis = () => {
     });
 
     // ScribeCanvas.layerOverlay.destroyChildren();
-    ScribeCanvas.layerOverlay.add(overlayImageKonva);
+    ScribeCanvas.groupOverlay.add(overlayImageKonva);
 
     const offscreenCanvasLegend = scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value].canvasLegend;
     if (offscreenCanvasLegend) {
@@ -1284,23 +1278,26 @@ const renderConflictVis = () => {
   }
 };
 
-let working = false;
+ScribeCanvas.displayPageCallback = () => {
+  elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
+
+  elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
+  elem.nav.matchCount.textContent = String(search.total);
+};
 
 /**
  * Render page `n` in the UI.
  * @param {number} n
- * @param {boolean} [force=false] - Render even if another page is actively being rendered.
+ * @param {boolean} [scroll=false] - Scroll to the top of the page being rendered.
  * @returns
  */
-export async function displayPageGUI(n, force = false) {
+export async function displayPageGUI(n, scroll = false) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered.
-  if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1) || (working && !force)) {
+  if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1)) {
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
     elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
     return;
   }
-
-  working = true;
 
   const hidePage = scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && elem.info.debugHidePage.checked;
 
@@ -1310,20 +1307,8 @@ export async function displayPageGUI(n, force = false) {
     ScribeCanvas.layerBackground.batchDraw();
     ScribeCanvas.layerText.batchDraw();
   } else {
-    await ScribeCanvas.displayPage(n, force);
+    await ScribeCanvas.displayPage(n, scroll);
   }
-
-  if (stateGUI.layoutMode) renderLayoutBoxes();
-
-  // stateGUI.cp.n = n;
-  elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
-
-  // await renderPageQueue(stateGUI.cp.n);
-
-  elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
-  elem.nav.matchCount.textContent = String(search.total);
-
-  ScribeCanvas.layerOverlay.destroyChildren();
 
   if (elem.info.showConflicts.checked) showDebugImages();
 
@@ -1332,8 +1317,6 @@ export async function displayPageGUI(n, force = false) {
   renderDebugVis();
 
   renderConflictVis();
-
-  working = false;
 }
 
 /**

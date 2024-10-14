@@ -148,7 +148,7 @@ export class KonvaLayout extends Konva.Rect {
       borderStrokeWidth: 2,
     });
     ScribeCanvas.KonvaOcrWord._controlArr.push(trans);
-    ScribeCanvas.layerOverlay.add(trans);
+    ScribeCanvas.groupOverlay.add(trans);
 
     trans.nodes([konvaLayout]);
   };
@@ -451,14 +451,14 @@ export class KonvaDataTable {
     for (let i = 0; i <= this.columns.length; i++) {
       const colLine = new KonvaDataColSep(this.columns[i - 1], this.columns[i], this);
       this.colLines.push(colLine);
-      ScribeCanvas.layerOverlay.add(colLine);
+      ScribeCanvas.groupOverlay.add(colLine);
     }
 
     this.topControl = new KonvaDataTableControl(this, true);
     this.bottomControl = new KonvaDataTableControl(this, false);
 
-    ScribeCanvas.layerOverlay.add(this.topControl);
-    ScribeCanvas.layerOverlay.add(this.bottomControl);
+    ScribeCanvas.groupOverlay.add(this.topControl);
+    ScribeCanvas.groupOverlay.add(this.bottomControl);
 
     /** @type {Array<InstanceType<typeof Konva.Line>>} */
     this.rowLines = [];
@@ -481,7 +481,7 @@ export class KonvaDataTable {
       KonvaDataTable.colorTableWords(this);
 
       this.rowLines.forEach((rowLine) => {
-        ScribeCanvas.layerOverlay.add(rowLine);
+        ScribeCanvas.groupOverlay.add(rowLine);
       });
     }
 
@@ -526,7 +526,7 @@ export class KonvaDataTable {
           listening: false,
         });
         konvaDataTable.rowSpans.push(rowSpan);
-        ScribeCanvas.layerOverlay.add(rowSpan);
+        ScribeCanvas.groupOverlay.add(rowSpan);
       }
     }
 
@@ -577,7 +577,7 @@ export function renderLayoutDataTable(layoutDataTable) {
   }
 
   ScribeCanvas._layoutDataTableArr.push(konvaLayout);
-  konvaLayout.columns.forEach((column) => ScribeCanvas.layerOverlay.add(column));
+  konvaLayout.columns.forEach((column) => ScribeCanvas.groupOverlay.add(column));
   konvaLayout.colLines.forEach((colLine) => colLine.moveToTop());
 }
 
