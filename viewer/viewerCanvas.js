@@ -1273,10 +1273,10 @@ const addBlockOutline = (box, angleAdj, label) => {
  * @param {OcrPage} page
  */
 export function renderCanvasWords(page) {
-  const matchIdArr = stateGUI.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[stateGUI.cp.n]) : [];
+  const matchIdArr = stateGUI.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[page.n]) : [];
 
-  const dims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
-  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+  const dims = scribe.data.pageMetrics[page.n].dims;
+  const angle = scribe.data.pageMetrics[page.n].angle || 0;
 
   const imageRotated = Math.abs(angle ?? 0) > 0.05;
 
