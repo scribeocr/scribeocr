@@ -1124,7 +1124,7 @@ function getElementIdsInRange(range) {
     {
       acceptNode(node) {
         // Check if the node is within the range and has the class 'scribe-word'
-        if (node.classList && node.classList.contains('scribe-word')) {
+        if (node instanceof HTMLElement && node.classList && node.classList.contains('scribe-word')) {
           const nodeRange = document.createRange();
           nodeRange.selectNode(node);
           return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
@@ -1136,7 +1136,7 @@ function getElementIdsInRange(range) {
 
   while (treeWalker.nextNode()) {
     const node = treeWalker.currentNode;
-    if (node.id) {
+    if (node instanceof HTMLElement && node.id) {
       elementIds.push(node.id);
     }
   }
