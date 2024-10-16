@@ -56,7 +56,6 @@ async function recognizeArea(box, wordMode = false, printCoordsOnly = false) {
 
   const imageCoords = scribe.utils.coords.canvasToImage(canvasCoords, imageRotated, scribe.opt.autoRotate, stateGUI.cp.n, angle);
 
-  // TODO: Should we handle the case where the rectangle goes off the edge of the image?
   imageCoords.left = Math.round(imageCoords.left);
   imageCoords.top = Math.round(imageCoords.top);
   imageCoords.width = Math.round(imageCoords.width);
@@ -89,6 +88,20 @@ async function recognizeArea(box, wordMode = false, printCoordsOnly = false) {
     imageCoords.width *= 2;
     imageCoords.height *= 2;
   }
+
+  // Restrict the rectangle to the page dimensions.
+  const pageDims = scribe.data.pageMetrics[n].dims;
+  const leftClip = Math.max(0, imageCoords.left);
+  const topClip = Math.max(0, imageCoords.top);
+  // Tesseract has a bug that subtracting 1 from the width and height (when setting the rectangle to the full image) fixes.
+  // See: https://github.com/naptha/tesseract.js/issues/936
+  const rightClip = Math.min(pageDims.width - 1, imageCoords.left + imageCoords.width);
+  const bottomClip = Math.min(pageDims.height - 1, imageCoords.top + imageCoords.height);
+  imageCoords.left = leftClip;
+  imageCoords.top = topClip;
+  imageCoords.width = rightClip - leftClip;
+  imageCoords.height = bottomClip - topClip;
+  if (imageCoords.width < 4 || imageCoords.height < 4) return;
 
   const res0 = await scribe.recognizePage(n, legacy, lstm, true, { rectangle: imageCoords, tessedit_pageseg_mode: psm, upscale });
 
