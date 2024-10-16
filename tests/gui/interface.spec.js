@@ -33,7 +33,7 @@ describe('Use delete and recognize word buttons', function () {
 
     const text = await driver.executeScript('return df.scribe.exportData("text")');
 
-    assert.strictEqual(text, 'Tesseract.js');
+    assert.strictEqual(text, 'Tesseract');
   });
 
   it('\'Delete Word\' deletes word', async function () {
@@ -60,7 +60,7 @@ describe('Use delete and recognize word buttons', function () {
 
     const text = await driver.executeScript('return df.scribe.exportData("text")');
 
-    assert.strictEqual(text, 'Tesseract.js');
+    assert.strictEqual(text, 'Tesseract');
   });
 
   it('\'Recognize Area\' recognizes area', async function () {
@@ -82,7 +82,7 @@ describe('Use delete and recognize word buttons', function () {
 
     const text = await driver.executeScript('return df.scribe.exportData("text")');
 
-    assert.strictEqual(text, 'Tesseract.js');
+    assert.strictEqual(text, 'Tesseract');
   });
 
   afterEach(async function () {
