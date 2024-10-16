@@ -297,6 +297,10 @@ export class ScribeCanvas {
    * @returns {number}
    */
   static getPageStop = (n, start = true) => {
+    // This needs to be here to prevent `ScribeCanvas.calcPageStops` from being called before the final page dimensions are known.
+    // This is an issue when a PDF is being uploaded alongside existing OCR data, as the correct dimensions are not known until the OCR data is parsed.
+    if (start && n === 0) return 30;
+
     if (start && ScribeCanvas.#pageStopsStart[n]) return ScribeCanvas.#pageStopsStart[n];
     if (!start && ScribeCanvas.#pageStopsEnd[n]) return ScribeCanvas.#pageStopsEnd[n];
 

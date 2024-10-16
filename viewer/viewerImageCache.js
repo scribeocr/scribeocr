@@ -202,6 +202,10 @@ export class ViewerImageCache {
     ViewerImageCache.#cleanBitmapCache(curr);
     ViewerImageCache.#cleanBitmapCache2(curr);
 
+    // Do not render the following pages when a PDF is being uploaded alongside OCR data, and the OCR dimensions are not yet available.
+    // There is currently no mechanism for re-rendering at the correct dimensions.
+    if (curr === 0 && scribe.data.ocr?.active?.[curr] && !scribe.data.ocr?.active?.[curr + 1] && scribe.data.pageMetrics.length > curr + 1) return;
+
     for (let i = 0; i <= ViewerImageCache.cacheRenderPages; i++) {
       if (curr - i >= 0) {
         resArr.push(ViewerImageCache.addKonvaImage(curr - i));
