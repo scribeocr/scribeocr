@@ -83,7 +83,11 @@ const progressHandler = (message) => {
     ProgressBars.active.increment();
   } else if (message.type === 'importImage') {
     ProgressBars.active.increment();
-    if (stateGUI.cp.n === message.n) displayPageGUI(message.n);
+    if (stateGUI.cp.n === message.n) {
+      displayPageGUI(message.n);
+    } else if (Math.abs(stateGUI.cp.n - message.n) < 2) {
+      ScribeCanvas.renderPage(message.n);
+    }
   } else if (message.type === 'importPDF') {
     ProgressBars.active.increment();
     if (stateGUI.cp.n === message.n) displayPageGUI(message.n);

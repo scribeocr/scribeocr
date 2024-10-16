@@ -11,13 +11,6 @@ Konva.autoDrawEnabled = false;
 Konva.dragButtons = [0];
 
 export class stateGUI {
-  static pageRendering = Promise.resolve(true);
-
-  static renderIt = 0;
-
-  /** @type {?Function} */
-  static promiseResolve = null;
-
   static recognizeAllPromise = Promise.resolve();
 
   static layoutMode = false;
@@ -291,13 +284,31 @@ export class ScribeCanvas {
 
   static textOverlayHidden = false;
 
-  static multiPageMode = true;
+  /** @type {Array<number>} */
+  static #pageStopsStart = [];
 
   /** @type {Array<number>} */
-  static pageStopsStart = [];
+  static #pageStopsEnd = [];
 
-  /** @type {Array<number>} */
-  static pageStopsEnd = [];
+  /**
+   *
+   * @param {number} n
+   * @param {boolean} start
+   * @returns {number}
+   */
+  static getPageStop = (n, start = true) => {
+    if (start && ScribeCanvas.#pageStopsStart[n]) return ScribeCanvas.#pageStopsStart[n];
+    if (!start && ScribeCanvas.#pageStopsEnd[n]) return ScribeCanvas.#pageStopsEnd[n];
+
+    ScribeCanvas.calcPageStops();
+
+    if (start && ScribeCanvas.#pageStopsStart[n]) return ScribeCanvas.#pageStopsStart[n];
+    if (!start && ScribeCanvas.#pageStopsEnd[n]) return ScribeCanvas.#pageStopsEnd[n];
+
+    // The `null` condition is only true briefly during initialization, and is not worth checking for every time throughout the program.
+    // @ts-ignore
+    return null;
+  };
 
   /** @type {?Function} */
   static displayPageCallback = null;
@@ -309,7 +320,7 @@ export class ScribeCanvas {
     const margin = 30;
     let y = margin;
     for (let i = 0; i < scribe.data.pageMetrics.length; i++) {
-      ScribeCanvas.pageStopsStart[i] = y;
+      ScribeCanvas.#pageStopsStart[i] = y;
       const dims = scribe.data.pageMetrics[i].dims;
       if (!dims) return;
 
@@ -317,12 +328,12 @@ export class ScribeCanvas {
       // This is true even when uploading a PDF with existing OCR data, as dims are defined before parsing the OCR data.
       const rotation = (scribe.data.pageMetrics[i].angle || 0) * -1;
       y += dims.height + margin;
-      ScribeCanvas.pageStopsEnd[i] = y;
+      ScribeCanvas.#pageStopsEnd[i] = y;
 
       if (!ScribeCanvas.placeholderRectArr[i]) {
         ScribeCanvas.placeholderRectArr[i] = new Konva.Rect({
           x: 0,
-          y: ScribeCanvas.pageStopsStart[i],
+          y: ScribeCanvas.getPageStop(i),
           width: dims.width,
           height: dims.height,
           stroke: 'black',
@@ -423,8 +434,8 @@ export class ScribeCanvas {
     const yOld = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
     const yNew = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2 + deltaY) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
 
-    const pageOld = ScribeCanvas.pageStopsEnd.findIndex((y) => y > yOld) || 0;
-    const pageNew = ScribeCanvas.pageStopsEnd.findIndex((y) => y > yNew) || 0;
+    const pageOld = ScribeCanvas.#pageStopsEnd.findIndex((y) => y > yOld) || 0;
+    const pageNew = ScribeCanvas.#pageStopsEnd.findIndex((y) => y > yNew) || 0;
 
     if (pageOld !== pageNew && pageNew >= 0) {
       ScribeCanvas.displayPage(pageNew);
@@ -783,6 +794,53 @@ export class ScribeCanvas {
     ScribeCanvas.stage.y(interfaceHeight);
   };
 
+  // Function that handles page-level info for rendering to canvas
+  static renderPage = async (n) => {
+    let ocrData = scribe.data.ocr.active?.[n];
+
+    // Return early if there is not enough data to render a page yet
+    // (0) Necessary info is not defined yet
+    const noInfo = scribe.inputData.xmlMode[n] === undefined;
+    // (1) No data has been imported
+    const noInput = !scribe.inputData.xmlMode[n] && !(scribe.inputData.imageMode || scribe.inputData.pdfMode);
+    // (2) XML data should exist but does not (yet)
+    const xmlMissing = scribe.inputData.xmlMode[n]
+    && (ocrData === undefined || ocrData === null || scribe.data.pageMetrics[n].dims === undefined);
+
+    const pageStopsMissing = ScribeCanvas.getPageStop(n) === null;
+
+    const imageMissing = false;
+    const pdfMissing = false;
+
+    if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing || pageStopsMissing) {
+      console.log('Exiting renderPageQueue early');
+      return true;
+    }
+
+    if (ScribeCanvas.runSetInitial) ScribeCanvas.setInitialPositionZoom(scribe.data.pageMetrics[n].dims);
+
+    if (scribe.inputData.evalMode) {
+      await compareGroundTruth();
+      // ocrData must be re-assigned after comparing to ground truth or it will not update.
+      ocrData = scribe.data.ocr.active?.[n];
+    }
+
+    ScribeCanvas.destroyWords();
+
+    if (scribe.inputData.xmlMode[n]) {
+      renderCanvasWords(ocrData);
+    }
+
+    ScribeCanvas.layerText.batchDraw();
+
+    // Render background images ahead and behind current page to reduce delay when switching pages
+    if ((scribe.inputData.pdfMode || scribe.inputData.imageMode)) {
+      ViewerImageCache.renderAheadBehindBrowser(n);
+    }
+
+    return false;
+  };
+
   /**
   * Render page `n` in the UI.
   * @param {number} n
@@ -798,10 +856,6 @@ export class ScribeCanvas {
       updateFindStats();
     }
 
-    if (scroll) {
-      ScribeCanvas.stage.y((ScribeCanvas.pageStopsStart[n] - 100) * ScribeCanvas.stage.getAbsoluteScale().y * -1);
-    }
-
     if (scribe.opt.displayMode === 'ebook') {
       ScribeCanvas.layerBackground.hide();
       ScribeCanvas.layerBackground.batchDraw();
@@ -812,19 +866,24 @@ export class ScribeCanvas {
 
     ScribeCanvas.textOverlayHidden = false;
 
+    const err = await ScribeCanvas.renderPage(n);
+
+    if (err) {
+      console.log('Exiting displayPage early');
+      return;
+    }
+
+    if (scroll) {
+      ScribeCanvas.stage.y((ScribeCanvas.getPageStop(n) - 100) * ScribeCanvas.stage.getAbsoluteScale().y * -1);
+    }
+
     stateGUI.cp.n = n;
-    await renderPageQueue(stateGUI.cp.n);
 
     if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlay();
 
     if (ScribeCanvas.displayPageCallback) ScribeCanvas.displayPageCallback();
 
     if (stateGUI.layoutMode) renderLayoutBoxes();
-
-    // Render background images ahead and behind current page to reduce delay when switching pages
-    if ((scribe.inputData.pdfMode || scribe.inputData.imageMode) && ScribeCanvas.pageStopsStart[0]) {
-      ViewerImageCache.renderAheadBehindBrowser(n);
-    }
   }
 
   /** @type {InstanceType<typeof Konva.Stage>} */
@@ -1164,67 +1223,6 @@ export async function compareGroundTruth() {
   }
 }
 
-// Function that handles page-level info for rendering to canvas
-export async function renderPageQueue(n) {
-  let ocrData = scribe.data.ocr.active?.[n];
-
-  // Return early if there is not enough data to render a page yet
-  // (0) Necessary info is not defined yet
-  const noInfo = scribe.inputData.xmlMode[n] === undefined;
-  // (1) No data has been imported
-  const noInput = !scribe.inputData.xmlMode[n] && !(scribe.inputData.imageMode || scribe.inputData.pdfMode);
-  // (2) XML data should exist but does not (yet)
-  const xmlMissing = scribe.inputData.xmlMode[n]
-    && (ocrData === undefined || ocrData === null || scribe.data.pageMetrics[n].dims === undefined);
-
-  let pageStopsMissing = false;
-  if (!ScribeCanvas.pageStopsStart[n] || !ScribeCanvas.pageStopsEnd[n]) {
-    ScribeCanvas.calcPageStops();
-    if (!ScribeCanvas.pageStopsStart[n] || !ScribeCanvas.pageStopsEnd[n]) {
-      pageStopsMissing = true;
-    }
-  }
-
-  const imageMissing = false;
-  const pdfMissing = false;
-
-  if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing || pageStopsMissing) {
-    console.log('Exiting renderPageQueue early');
-    return;
-  }
-
-  if (ScribeCanvas.runSetInitial) ScribeCanvas.setInitialPositionZoom(scribe.data.pageMetrics[n].dims);
-
-  const renderItI = stateGUI.renderIt + 1;
-  stateGUI.renderIt = renderItI;
-
-  // If a page is already being rendered, wait for it to complete
-  await stateGUI.pageRendering;
-  // If another page has been requested already, return early
-  if (stateGUI.renderIt !== renderItI) return;
-
-  stateGUI.pageRendering = new Promise((resolve, reject) => {
-    stateGUI.promiseResolve = resolve;
-  });
-
-  if (scribe.inputData.evalMode) {
-    await compareGroundTruth();
-    // ocrData must be re-assigned after comparing to ground truth or it will not update.
-    ocrData = scribe.data.ocr.active?.[n];
-  }
-
-  ScribeCanvas.destroyWords();
-
-  if (scribe.inputData.xmlMode[n]) {
-    renderPage(ocrData);
-  }
-
-  ScribeCanvas.layerText.batchDraw();
-
-  // @ts-ignore
-  stateGUI.promiseResolve();
-}
-
 /**
  *
  * @param {bbox} box
@@ -1270,7 +1268,7 @@ const addBlockOutline = (box, angleAdj, label) => {
  *
  * @param {OcrPage} page
  */
-export function renderPage(page) {
+export function renderCanvasWords(page) {
   const matchIdArr = stateGUI.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[stateGUI.cp.n]) : [];
 
   const dims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
@@ -1280,7 +1278,7 @@ export function renderPage(page) {
 
   const textRotation = scribe.opt.autoRotate ? 0 : angle;
 
-  const pageOffsetY = ScribeCanvas.multiPageMode ? ScribeCanvas.pageStopsStart[page.n] ?? 30 : 0;
+  const pageOffsetY = ScribeCanvas.getPageStop(page.n) ?? 30;
 
   ScribeCanvas.groupText.rotation(textRotation);
   ScribeCanvas.groupText.offset({ x: dims.width * 0.5, y: dims.height * 0.5 });

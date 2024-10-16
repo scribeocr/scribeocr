@@ -62,7 +62,7 @@ export class ViewerImageCache {
       rotation = (scribe.data.pageMetrics[n].angle || 0) * -1;
     }
 
-    const pageOffsetY = ScribeCanvas.multiPageMode ? ScribeCanvas.pageStopsStart[n] ?? 30 : 0;
+    const pageOffsetY = ScribeCanvas.getPageStop(n) ?? 30;
 
     const y = pageOffsetY + pageDims.height * 0.5;
 
@@ -159,6 +159,8 @@ export class ViewerImageCache {
       }
       if (!rerender) return;
     }
+
+    if (ScribeCanvas.getPageStop(n) === null) return;
 
     ViewerImageCache.konvaImagesProps[n] = null;
     ViewerImageCache.konvaImages[n] = ViewerImageCache.getKonvaImage(n).then((res) => {
