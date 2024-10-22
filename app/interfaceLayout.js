@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-import Konva from './lib/konva/index.js';
 
 import { displayPageGUI } from '../main.js';
 
@@ -22,7 +21,9 @@ const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('l
  */
 function calculateColumnBounds(boundingBoxes) {
   const tolerance = 5; // Adjust as needed
-  const columns = [];
+
+  /** @type {Array<{left: number, right: number}>} */
+  const columnBounds = [];
 
   // Sort bounding boxes by their left edge
   boundingBoxes.sort((a, b) => a.left - b.left);
@@ -30,7 +31,7 @@ function calculateColumnBounds(boundingBoxes) {
   boundingBoxes.forEach((box) => {
     let addedToColumn = false;
 
-    for (const column of columns) {
+    for (const column of columnBounds) {
       // Check if the bounding box overlaps horizontally with the column
       if (
         box.left <= column.right + tolerance
@@ -39,7 +40,6 @@ function calculateColumnBounds(boundingBoxes) {
         // Update column bounds
         column.left = Math.min(column.left, box.left);
         column.right = Math.max(column.right, box.right);
-        column.boxes.push(box);
         addedToColumn = true;
         break;
       }
@@ -47,47 +47,43 @@ function calculateColumnBounds(boundingBoxes) {
 
     // If not added to any existing column, create a new column
     if (!addedToColumn) {
-      columns.push({
+      columnBounds.push({
         left: box.left,
         right: box.right,
-        boxes: [box],
       });
     }
   });
 
-  // Extract column bounds
-  return columns.map((column) => ({
-    left: column.left,
-    right: column.right,
-  }));
+  return columnBounds;
 }
 
 /**
+ * @param {number} n - Page number.
  * @param {Object} box
- * @param {number} box.x
- * @param {number} box.y
  * @param {number} box.width
  * @param {number} box.height
+ * @param {number} box.left
+ * @param {number} box.top
  */
-export function addLayoutDataTableClick({
-  x, y, width, height,
-}) {
+export function addLayoutDataTableClick(n, box) {
   const bbox = {
-    left: x, top: y, right: x + width, bottom: y + height,
+    left: box.left, top: box.top, right: box.left + box.width, bottom: box.top + box.height,
   };
 
-  const lines = scribe.data.ocr.active[stateGUI.cp.n].lines.filter((line) => scribe.utils.calcBoxOverlap(line.bbox, bbox) > 0.5);
-  const lineBoxes = lines.map((line) => line.bbox);
-  const columnBoundArr = calculateColumnBounds(lineBoxes);
-  const columnBboxArr = columnBoundArr.map((column) => ({
-    left: column.left,
-    top: bbox.top,
-    right: column.right,
-    bottom: bbox.bottom,
-  }));
+  const lines = scribe.data.ocr.active[n].lines.filter((line) => scribe.utils.calcBoxOverlap(line.bbox, bbox) > 0.5);
 
-  if (columnBboxArr.length > 0) {
-  // Expand column bounds so there is no empty space between columns.
+  let columnBboxArr;
+  if (lines.length > 0) {
+    const lineBoxes = lines.map((line) => line.bbox);
+    const columnBoundArr = calculateColumnBounds(lineBoxes);
+    columnBboxArr = columnBoundArr.map((column) => ({
+      left: column.left,
+      top: bbox.top,
+      right: column.right,
+      bottom: bbox.bottom,
+    }));
+
+    // Expand column bounds so there is no empty space between columns.
     columnBboxArr[0].left = bbox.left;
     columnBboxArr[columnBboxArr.length - 1].right = bbox.right;
     for (let i = 0; i < columnBboxArr.length - 1; i++) {
@@ -96,49 +92,47 @@ export function addLayoutDataTableClick({
       columnBboxArr[i + 1].left = boundRight;
     }
   } else {
-    columnBboxArr.push(bbox);
+    columnBboxArr = [{ ...bbox }];
   }
 
-  const dataTable = new scribe.layout.LayoutDataTable();
+  const dataTable = new scribe.layout.LayoutDataTable(scribe.data.layoutDataTables.pages[n]);
 
   columnBboxArr.forEach((columnBbox) => {
     const layoutBox = new scribe.layout.LayoutDataColumn(columnBbox, dataTable);
     dataTable.boxes.push(layoutBox);
   });
 
-  scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.push(dataTable);
+  scribe.data.layoutDataTables.pages[n].tables.push(dataTable);
 
-  scribe.data.layoutRegions.pages[stateGUI.cp.n].default = false;
-  scribe.data.layoutDataTables.pages[stateGUI.cp.n].default = false;
+  scribe.data.layoutRegions.pages[n].default = false;
+  scribe.data.layoutDataTables.pages[n].default = false;
 
   renderLayoutDataTable(dataTable);
 }
 
 /**
+ * @param {number} n - Page number.
  * @param {Object} box
- * @param {number} box.x
- * @param {number} box.y
  * @param {number} box.width
  * @param {number} box.height
- * @param {('order'|'exclude')} type
+ * @param {number} box.left
+ * @param {number} box.top
  */
-export function addLayoutBoxClick({
-  x, y, width, height,
-}, type) {
+export function addLayoutBoxClick(n, box, type) {
   layoutBoxTypeElem.textContent = { order: 'Order', exclude: 'Exclude' }[type];
 
   // Maximum priority for boxes that already exist
-  const maxPriority = Math.max(...Object.values(scribe.data.layoutRegions.pages[stateGUI.cp.n].boxes).map((box) => box.order), -1);
+  const maxPriority = Math.max(...Object.values(scribe.data.layoutRegions.pages[n].boxes).map((layoutRegion) => layoutRegion.order), -1);
 
   const bbox = {
-    left: x, top: y, right: x + width, bottom: y + height,
+    left: box.left, top: box.top, right: box.left + box.width, bottom: box.top + box.height,
   };
 
-  const region = new scribe.layout.LayoutRegion(maxPriority + 1, bbox, type);
+  const region = new scribe.layout.LayoutRegion(scribe.data.layoutRegions.pages[n], maxPriority + 1, bbox, type);
 
-  scribe.data.layoutRegions.pages[stateGUI.cp.n].boxes[region.id] = region;
+  scribe.data.layoutRegions.pages[n].boxes[region.id] = region;
 
-  renderLayoutBoxes();
+  renderLayoutBoxes(n);
 }
 
 export function toggleSelectableWords(selectable = true) {
@@ -174,52 +168,4 @@ export function revertLayoutClick() {
   scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
 
   displayPageGUI(stateGUI.cp.n);
-}
-
-export function setLayoutBoxTypeClick(type) {
-  const selectedLayoutBoxes = ScribeCanvas.CanvasSelection.getKonvaRegions();
-  selectedLayoutBoxes.forEach((x) => {
-    x.layoutBox.type = type;
-  });
-
-  renderLayoutBoxes();
-}
-
-export function setLayoutBoxInclusionRuleClick(rule) {
-  // Save the selected boxes to reselect them after re-rendering.
-  const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
-  const selectedDataColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
-
-  const selectedArr = selectedRegions.map((x) => x.layoutBox.id);
-  selectedArr.push(...selectedDataColumns.map((x) => x.layoutBox.id));
-
-  let changed = false;
-  selectedRegions.forEach((x) => {
-    changed = changed || x.layoutBox.inclusionRule !== rule;
-    x.layoutBox.inclusionRule = rule;
-  });
-  selectedDataColumns.forEach((x) => {
-    changed = changed || x.layoutBox.inclusionRule !== rule;
-    x.layoutBox.inclusionRule = rule;
-  });
-
-  if (changed) {
-    renderLayoutBoxes();
-    ScribeCanvas.CanvasSelection.selectLayoutBoxesById(selectedArr);
-  }
-}
-
-/**
- *
- * @param {Object} box
- * @param {number} box.width
- * @param {number} box.height
- * @param {number} box.x
- * @param {number} box.y
- */
-export function selectLayoutBoxesArea(box) {
-  const shapes = ScribeCanvas.getKonvaLayoutBoxes();
-  const layoutBoxes = shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
-
-  ScribeCanvas.CanvasSelection.selectLayoutBoxes(layoutBoxes);
 }

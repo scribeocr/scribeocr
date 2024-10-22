@@ -3,7 +3,7 @@ import Konva from '../app/lib/konva/index.js';
 import scribe from '../scribe.js/scribe.js';
 // eslint-disable-next-line import/no-cycle
 import {
-  ScribeCanvas, stateGUI,
+  ScribeCanvas,
 } from './viewerCanvas.js';
 import { KonvaIText } from './viewerWordObjects.js';
 
@@ -32,14 +32,16 @@ const setAlpha = (color, alpha) => color.replace(/,\s*[\d.]+\)/, `,${alpha})`);
  */
 export class KonvaLayout extends Konva.Rect {
   /**
-     *
-     * @param {LayoutDataColumn|LayoutRegion} layoutBox
-     */
+   *
+   * @param {LayoutDataColumn|LayoutRegion} layoutBox
+   */
   constructor(layoutBox) {
     const origX = layoutBox.coords.left;
     const origY = layoutBox.coords.top;
     const width = layoutBox.coords.right - layoutBox.coords.left;
     const height = layoutBox.coords.bottom - layoutBox.coords.top;
+
+    const n = layoutBox instanceof scribe.layout.LayoutDataColumn ? layoutBox.table.page.n : layoutBox.page.n;
 
     // "Order" boxes are blue, "exclude" boxes are red, data columns are uncolored, as the color is added by the table.
     let fill;
@@ -93,7 +95,7 @@ export class KonvaLayout extends Konva.Rect {
     // as this will fail for layout boxes that were created in another thread.
     if (layoutBox.type === 'order') {
       // Create dummy ocr data for the order box
-      const pageObj = new scribe.utils.ocr.OcrPage(stateGUI.cp.n, { width: 1, height: 1 });
+      const pageObj = new scribe.utils.ocr.OcrPage(n, { width: 1, height: 1 });
       const box = {
         left: 0, right: 0, top: 0, bottom: 0,
       };
@@ -136,11 +138,20 @@ export class KonvaLayout extends Konva.Rect {
   }
 
   /**
-     * Add controls for editing.
-     * @param {KonvaLayout} konvaLayout
-     */
+   * Add controls for editing.
+   * @param {KonvaLayout} konvaLayout
+   */
   static addControls = (konvaLayout) => {
     const enabledAnchors = ['middle-left', 'middle-right', 'top-center', 'bottom-center'];
+
+    let n;
+    if (konvaLayout.layoutBox instanceof scribe.layout.LayoutDataColumn) {
+      n = konvaLayout.layoutBox.table.page.n;
+    } else {
+      n = konvaLayout.layoutBox.page.n;
+    }
+
+    const group = ScribeCanvas.getOverlayGroup(n);
 
     const trans = new Konva.Transformer({
       enabledAnchors,
@@ -148,16 +159,17 @@ export class KonvaLayout extends Konva.Rect {
       borderStrokeWidth: 2,
     });
     ScribeCanvas.KonvaOcrWord._controlArr.push(trans);
-    ScribeCanvas.groupOverlay.add(trans);
+    group.add(trans);
 
     trans.nodes([konvaLayout]);
   };
 
   /**
-     * Add controls for editing.
-     * @param {KonvaLayout|KonvaDataColumn} konvaLayout
-     */
+   * Add controls for editing.
+   * @param {KonvaLayout|KonvaDataColumn} konvaLayout
+   */
   static updateLayoutBoxes(konvaLayout) {
+    const n = konvaLayout.layoutBox instanceof scribe.layout.LayoutDataColumn ? konvaLayout.layoutBox.table.page.n : konvaLayout.layoutBox.page.n;
     const width = konvaLayout.width() * konvaLayout.scaleX();
     const height = konvaLayout.height() * konvaLayout.scaleY();
     const right = konvaLayout.x() + width;
@@ -165,14 +177,14 @@ export class KonvaLayout extends Konva.Rect {
     konvaLayout.layoutBox.coords = {
       left: konvaLayout.x(), top: konvaLayout.y(), right, bottom,
     };
-    scribe.data.layoutRegions.pages[stateGUI.cp.n].default = false;
-    scribe.data.layoutDataTables.pages[stateGUI.cp.n].default = false;
+    scribe.data.layoutRegions.pages[n].default = false;
+    scribe.data.layoutDataTables.pages[n].default = false;
   }
 
   /**
-     * Update the UI to reflect the properties of the selected objects.
-     * Should be called after new objects are selected.
-     */
+   * Update the UI to reflect the properties of the selected objects.
+   * Should be called after new objects are selected.
+   */
   static updateUI = () => { };
 }
 
@@ -207,20 +219,24 @@ export class KonvaDataTableControl extends Konva.Line {
 
     });
 
+    const n = konvaTable.layoutDataTable.page.n;
+
     this.konvaTable = konvaTable;
 
-    this.boundTop = ScribeCanvas.layerOverlay.y();
-    this.boundBottom = ScribeCanvas.layerOverlay.y() + scribe.data.pageMetrics[stateGUI.cp.n].dims.height * ScribeCanvas.layerOverlay.getAbsoluteScale().y;
+    this.boundTop = 0;
+    this.boundBottom = 10000;
 
     this.on('dragstart', () => {
       ScribeCanvas.drag.isResizingColumns = true;
 
+      const group = ScribeCanvas.getOverlayGroup(n);
+
       if (top) {
-        this.boundTop = ScribeCanvas.layerOverlay.y();
+        this.boundTop = group.getAbsoluteTransform().m[5];
         this.boundBottom = this.konvaTable.bottomControl.getAbsolutePosition().y - 20;
       } else {
         this.boundTop = this.konvaTable.topControl.getAbsolutePosition().y + 20;
-        this.boundBottom = ScribeCanvas.layerOverlay.y() + scribe.data.pageMetrics[stateGUI.cp.n].dims.height * ScribeCanvas.layerOverlay.getAbsoluteScale().y;
+        this.boundBottom = group.getAbsoluteTransform().m[5] + scribe.data.pageMetrics[n].dims.height * group.getAbsoluteScale().y;
       }
     });
     this.addEventListener('dragmove', () => {
@@ -262,11 +278,11 @@ export class KonvaDataTableControl extends Konva.Line {
 
 export class KonvaDataColSep extends Konva.Line {
   /**
-     *
-     * @param {KonvaDataColumn} columnLeft
-     * @param {KonvaDataColumn} columnRight
-     * @param {KonvaDataTable} konvaTable
-     */
+   *
+   * @param {KonvaDataColumn} columnLeft
+   * @param {KonvaDataColumn} columnRight
+   * @param {KonvaDataTable} konvaTable
+   */
   constructor(columnLeft, columnRight, konvaTable) {
     const x = columnRight ? columnRight.layoutBox.coords.left : columnLeft.layoutBox.coords.right;
     const y = columnRight ? columnRight.layoutBox.coords.top : columnLeft.layoutBox.coords.top;
@@ -296,19 +312,20 @@ export class KonvaDataColSep extends Konva.Line {
 
     });
 
+    const n = konvaTable.layoutDataTable.page.n;
+
     this.next = () => {
-      const next = this.konvaTable.colLines.find((x) => x.x() > this.x());
+      const next = this.konvaTable.colLines.find((obj) => obj.x() > this.x());
       return next;
     };
 
     this.prev = () => {
-      const prev = this.konvaTable.colLines.slice().reverse().find((x) => x.x() < this.x());
+      const prev = this.konvaTable.colLines.slice().reverse().find((obj) => obj.x() < this.x());
       return prev;
     };
 
-    this.boundLeft = ScribeCanvas.layerOverlay.x();
-
-    this.boundRight = ScribeCanvas.layerOverlay.x() + scribe.data.pageMetrics[stateGUI.cp.n].dims.width * ScribeCanvas.layerOverlay.getAbsoluteScale().x;
+    this.boundTop = 0;
+    this.boundBottom = 10000;
 
     this.konvaTable = konvaTable;
     this.columnLeft = columnLeft;
@@ -317,11 +334,13 @@ export class KonvaDataColSep extends Konva.Line {
     this.on('dragstart', () => {
       ScribeCanvas.drag.isResizingColumns = true;
 
+      const group = ScribeCanvas.getOverlayGroup(n);
+
       const boundLeftNeighbor = this.prev()?.absolutePosition()?.x;
       const boundRightNeighbor = this.next()?.absolutePosition()?.x;
 
-      const boundLeftRaw = boundLeftNeighbor ?? ScribeCanvas.layerOverlay.x();
-      const boundRightRaw = boundRightNeighbor ?? ScribeCanvas.layerOverlay.x() + scribe.data.pageMetrics[stateGUI.cp.n].dims.width * ScribeCanvas.layerOverlay.getAbsoluteScale().x;
+      const boundLeftRaw = boundLeftNeighbor ?? group.getAbsoluteTransform().m[4];
+      const boundRightRaw = boundRightNeighbor ?? group.getAbsoluteTransform().m[4] + scribe.data.pageMetrics[n].dims.width * ScribeCanvas.layerOverlay.getAbsoluteScale().x;
 
       // Add minimum width between columns to prevent lines from overlapping.
       const minColWidthAbs = Math.min((boundRightRaw - boundLeftRaw) / 3, 10);
@@ -371,10 +390,15 @@ export class KonvaDataColSep extends Konva.Line {
   }
 }
 
-export function renderLayoutDataTables() {
-  if (!scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables) return;
-  ScribeCanvas.destroyLayoutDataTables();
-  Object.values(scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables).forEach((table) => {
+/**
+ *
+ * @param {number} n
+ * @returns
+ */
+export function renderLayoutDataTables(n) {
+  if (!scribe.data.layoutDataTables.pages[n].tables) return;
+  // ScribeCanvas.destroyLayoutDataTables();
+  Object.values(scribe.data.layoutDataTables.pages[n].tables).forEach((table) => {
     renderLayoutDataTable(table);
   });
 
@@ -383,11 +407,11 @@ export function renderLayoutDataTables() {
 
 export class KonvaDataTable {
   /**
-     * @param {OcrPage|undefined} pageObj - The page object that the table is on.
-     *    This can be undefined in the fringe case where the user makes layout boxes without any OCR data.
-     * @param {InstanceType<typeof scribe.layout.LayoutDataTable>} layoutDataTable
-     * @param {boolean} [lockColumns=true]
-     */
+   * @param {OcrPage|undefined} pageObj - The page object that the table is on.
+   *    This can be undefined in the fringe case where the user makes layout boxes without any OCR data.
+   * @param {InstanceType<typeof scribe.layout.LayoutDataTable>} layoutDataTable
+   * @param {boolean} [lockColumns=true]
+   */
   constructor(pageObj, layoutDataTable, lockColumns = true) {
     // The `columns` array is expected to be sorted left to right in other code.
     this.layoutBoxesArr = Object.values(layoutDataTable.boxes).sort((a, b) => a.coords.left - b.coords.left);
@@ -439,26 +463,28 @@ export class KonvaDataTable {
      * Delete the table, both from the layout data and from the canvas.
      */
     this.delete = () => {
-      const tableIndex = scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.findIndex((x) => x.id === this.layoutDataTable.id);
-      scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.splice(tableIndex, 1);
+      const tableIndex = scribe.data.layoutDataTables.pages[this.layoutDataTable.page.n].tables.findIndex((x) => x.id === this.layoutDataTable.id);
+      scribe.data.layoutDataTables.pages[this.layoutDataTable.page.n].tables.splice(tableIndex, 1);
       this.destroy();
-      scribe.data.layoutRegions.pages[stateGUI.cp.n].default = false;
-      scribe.data.layoutDataTables.pages[stateGUI.cp.n].default = false;
+      scribe.data.layoutRegions.pages[this.layoutDataTable.page.n].default = false;
+      scribe.data.layoutDataTables.pages[this.layoutDataTable.page.n].default = false;
     };
+
+    const group = ScribeCanvas.getOverlayGroup(layoutDataTable.page.n);
 
     /** @type {Array<KonvaDataColSep>} */
     this.colLines = [];
     for (let i = 0; i <= this.columns.length; i++) {
       const colLine = new KonvaDataColSep(this.columns[i - 1], this.columns[i], this);
       this.colLines.push(colLine);
-      ScribeCanvas.groupOverlay.add(colLine);
+      group.add(colLine);
     }
 
     this.topControl = new KonvaDataTableControl(this, true);
     this.bottomControl = new KonvaDataTableControl(this, false);
 
-    ScribeCanvas.groupOverlay.add(this.topControl);
-    ScribeCanvas.groupOverlay.add(this.bottomControl);
+    group.add(this.topControl);
+    group.add(this.bottomControl);
 
     /** @type {Array<InstanceType<typeof Konva.Line>>} */
     this.rowLines = [];
@@ -481,7 +507,7 @@ export class KonvaDataTable {
       KonvaDataTable.colorTableWords(this);
 
       this.rowLines.forEach((rowLine) => {
-        ScribeCanvas.groupOverlay.add(rowLine);
+        group.add(rowLine);
       });
     }
 
@@ -494,6 +520,8 @@ export class KonvaDataTable {
    */
   static colorTableWords(konvaDataTable) {
     if (!konvaDataTable.tableContent) return;
+
+    const group = ScribeCanvas.getOverlayGroup(konvaDataTable.layoutDataTable.page.n);
 
     konvaDataTable.rowSpans.forEach((rowSpan) => rowSpan.destroy());
 
@@ -526,7 +554,7 @@ export class KonvaDataTable {
           listening: false,
         });
         konvaDataTable.rowSpans.push(rowSpan);
-        ScribeCanvas.groupOverlay.add(rowSpan);
+        group.add(rowSpan);
       }
     }
 
@@ -553,13 +581,14 @@ export function renderLayoutDataTable(layoutDataTable) {
     console.log(`Skipping table ${layoutDataTable?.id} as it has no boxes`);
     return;
   }
-  const konvaLayoutExisting = ScribeCanvas._layoutDataTableArr.find((x) => x.layoutDataTable.id === layoutDataTable.id);
+
+  const konvaLayoutExisting = ScribeCanvas.getKonvaDataTables().find((x) => x.layoutDataTable.id === layoutDataTable.id);
 
   const wordIdOldArr = konvaLayoutExisting?.tableContent?.rowWordArr.flat().flat().map((x) => x.id);
 
-  if (konvaLayoutExisting) ScribeCanvas.destroyDataTable(konvaLayoutExisting);
+  if (konvaLayoutExisting) konvaLayoutExisting.destroy();
 
-  const konvaLayout = new KonvaDataTable(scribe.data.ocr.active[stateGUI.cp.n], layoutDataTable);
+  const konvaLayout = new KonvaDataTable(scribe.data.ocr.active[layoutDataTable.page.n], layoutDataTable);
 
   // Reset the color for words that are no longer in the table.
   if (wordIdOldArr) {
@@ -576,17 +605,31 @@ export function renderLayoutDataTable(layoutDataTable) {
     });
   }
 
-  ScribeCanvas._layoutDataTableArr.push(konvaLayout);
-  konvaLayout.columns.forEach((column) => ScribeCanvas.groupOverlay.add(column));
+  konvaLayout.columns.forEach((column) => {
+    const group = ScribeCanvas.getOverlayGroup(column.konvaTable.layoutDataTable.page.n);
+    group.add(column);
+  });
   konvaLayout.colLines.forEach((colLine) => colLine.moveToTop());
+}
+
+export class KonvaRegion extends KonvaLayout {
+  /**
+   *
+   * @param {LayoutRegion} layoutBox
+   */
+  constructor(layoutBox) {
+    super(layoutBox);
+
+    this.layoutBox = layoutBox;
+  }
 }
 
 export class KonvaDataColumn extends KonvaLayout {
   /**
-     *
-     * @param {LayoutDataColumn} layoutBox
-     * @param {KonvaDataTable} konvaTable
-     */
+   *
+   * @param {LayoutDataColumn} layoutBox
+   * @param {KonvaDataTable} konvaTable
+   */
   constructor(layoutBox, konvaTable) {
     super(layoutBox);
     // Overwrite layoutBox so type inference works correctly, and `layoutBox` gets type `LayoutDataColumn` instead of `LayoutBox`.
@@ -603,17 +646,17 @@ export class KonvaDataColumn extends KonvaLayout {
     };
 
     /**
-         * Delete the column, both from the layout data and from the canvas.
-         */
+     * Delete the column, both from the layout data and from the canvas.
+     */
     this.delete = () => {
       const colIndexI = this.layoutBox.table.boxes.findIndex((x) => x.id === this.layoutBox.id);
       this.layoutBox.table.boxes.splice(colIndexI, 1);
       this.destroy();
-      scribe.data.layoutRegions.pages[stateGUI.cp.n].default = false;
-      scribe.data.layoutDataTables.pages[stateGUI.cp.n].default = false;
+      scribe.data.layoutRegions.pages[layoutBox.table.page.n].default = false;
+      scribe.data.layoutDataTables.pages[layoutBox.table.page.n].default = false;
       if (this.layoutBox.table.boxes.length === 0) {
-        const tableIndex = scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.findIndex((x) => x.id === this.layoutBox.table.id);
-        scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.splice(tableIndex, 1);
+        const tableIndex = scribe.data.layoutDataTables.pages[layoutBox.table.page.n].tables.findIndex((x) => x.id === this.layoutBox.table.id);
+        scribe.data.layoutDataTables.pages[layoutBox.table.page.n].tables.splice(tableIndex, 1);
         this.konvaTable.destroy();
       }
     };
@@ -663,8 +706,8 @@ const getAdjacentTables = (table) => {
   const tableYMid = (tableBox.top + tableBox.bottom) / 2;
 
   // Filter to tables that have vertial overlap, and sort by horizontal position.
-  const tablesBoxesAll = scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.map((x) => scribe.utils.calcTableBbox(x));
-  const tables = scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.filter((x, i) => tablesBoxesAll[i].top < tableYMid && tablesBoxesAll[i].bottom > tableYMid).sort((a, b) => {
+  const tablesBoxesAll = scribe.data.layoutDataTables.pages[table.page.n].tables.map((x) => scribe.utils.calcTableBbox(x));
+  const tables = scribe.data.layoutDataTables.pages[table.page.n].tables.filter((x, i) => tablesBoxesAll[i].top < tableYMid && tablesBoxesAll[i].bottom > tableYMid).sort((a, b) => {
     const boxA = scribe.utils.calcTableBbox(a);
     const boxB = scribe.utils.calcTableBbox(b);
     return boxA.left - boxB.left;
@@ -718,7 +761,7 @@ export const mergeDataColumns = (columns) => {
     columns[i].delete();
   }
 
-  ScribeCanvas.destroyDataTable(columns[0].konvaTable);
+  columns[0].konvaTable.destroy();
 
   renderLayoutDataTable(table);
 };
@@ -791,13 +834,22 @@ const cleanLayoutDataColumns = (table) => {
   table.boxes = columnsArr;
 };
 
-export function renderLayoutBoxes() {
-  ScribeCanvas.destroyRegions();
-  Object.values(scribe.data.layoutRegions.pages[stateGUI.cp.n].boxes).forEach((box) => {
-    const konvaLayout = new KonvaLayout(box);
-    ScribeCanvas.addRegion(konvaLayout);
+/**
+ *
+ * @param {number} n
+ */
+export function renderLayoutBoxes(n) {
+  const group = ScribeCanvas.getOverlayGroup(n);
+  group.destroyChildren();
+
+  if (!ScribeCanvas.overlayGroupsRenderIndices.includes(n)) ScribeCanvas.overlayGroupsRenderIndices.push(n);
+
+  Object.values(scribe.data.layoutRegions.pages[n].boxes).forEach((box) => {
+    const konvaLayout = new KonvaRegion(box);
+    group.add(konvaLayout);
+    if (konvaLayout.label) group.add(konvaLayout.label);
   });
-  renderLayoutDataTables();
+  renderLayoutDataTables(n);
 
   ScribeCanvas.layerOverlay.batchDraw();
 }
@@ -807,24 +859,50 @@ export function setLayoutBoxInclusionLevelClick(level) {
   const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
   const selectedDataColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
 
+  const changedPages = {};
+
   const selectedArr = selectedRegions.map((x) => x.layoutBox.id);
   selectedArr.push(...selectedDataColumns.map((x) => x.layoutBox.id));
 
-  let changed = false;
   selectedRegions.forEach((x) => {
-    changed = changed || x.layoutBox.inclusionLevel !== level;
+    if (x.layoutBox.inclusionLevel !== level) changedPages[x.layoutBox.page.n] = true;
     x.layoutBox.inclusionLevel = level;
   });
 
   selectedDataColumns.forEach((x) => {
-    changed = changed || x.layoutBox.inclusionLevel !== level;
+    if (x.layoutBox.inclusionLevel !== level) changedPages[x.layoutBox.table.page.n] = true;
     x.layoutBox.inclusionLevel = level;
   });
 
-  if (changed) {
-    renderLayoutBoxes();
+  Object.keys(changedPages).forEach((n) => {
+    renderLayoutBoxes(Number(n));
     ScribeCanvas.CanvasSelection.selectLayoutBoxesById(selectedArr);
-  }
+  });
+}
+
+export function setLayoutBoxInclusionRuleClick(rule) {
+  // Save the selected boxes to reselect them after re-rendering.
+  const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
+  const selectedDataColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
+
+  const changedPages = {};
+
+  const selectedArr = selectedRegions.map((x) => x.layoutBox.id);
+  selectedArr.push(...selectedDataColumns.map((x) => x.layoutBox.id));
+
+  selectedRegions.forEach((x) => {
+    if (x.layoutBox.inclusionRule !== rule) changedPages[x.layoutBox.page.n] = true;
+    x.layoutBox.inclusionRule = rule;
+  });
+  selectedDataColumns.forEach((x) => {
+    if (x.layoutBox.inclusionRule !== rule) changedPages[x.layoutBox.table.page.n] = true;
+    x.layoutBox.inclusionRule = rule;
+  });
+
+  Object.keys(changedPages).forEach((n) => {
+    renderLayoutBoxes(Number(n));
+    ScribeCanvas.CanvasSelection.selectLayoutBoxesById(selectedArr);
+  });
 }
 
 /**
@@ -838,20 +916,22 @@ export const mergeDataTables = (tables) => {
 
   const tableFirst = tables[0];
 
+  const n = tableFirst.page.n;
+
   for (let i = 1; i < tables.length; i++) {
     tables[i].boxes.forEach((x) => {
       x.table = tableFirst;
       tableFirst.boxes.push(x);
     });
-    const tableIndex = scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.findIndex((x) => x.id === tables[i].id);
-    scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.splice(tableIndex, 1);
+    const tableIndex = scribe.data.layoutDataTables.pages[n].tables.findIndex((x) => x.id === tables[i].id);
+    scribe.data.layoutDataTables.pages[n].tables.splice(tableIndex, 1);
   }
-  scribe.data.layoutRegions.pages[stateGUI.cp.n].default = false;
-  scribe.data.layoutDataTables.pages[stateGUI.cp.n].default = false;
+  scribe.data.layoutRegions.pages[n].default = false;
+  scribe.data.layoutDataTables.pages[n].default = false;
 
   cleanLayoutDataColumns(tableFirst);
 
-  renderLayoutBoxes();
+  renderLayoutBoxes(n);
 };
 
 /**
@@ -885,7 +965,7 @@ export const splitDataColumn = (column, x) => {
 
   column.konvaTable.layoutDataTable.boxes.sort((a, b) => a.coords.left - b.coords.left);
 
-  ScribeCanvas.destroyDataTable(column.konvaTable);
+  column.konvaTable.destroy();
   renderLayoutDataTable(column.konvaTable.layoutDataTable);
 };
 
@@ -902,30 +982,32 @@ export const splitDataTable = (columns) => {
 
   columns.sort((a, b) => a.x() - b.x());
 
+  const n = columns[0].layoutBox.table.page.n;
+
   const layoutDataColumns0 = columns[0].layoutBox.table.boxes.filter((x) => x.coords.left < columns[0].layoutBox.coords.left);
   const layoutDataColumns1 = columns.map((x) => x.layoutBox);
   const layoutDataColumns2 = columns[0].layoutBox.table.boxes.filter((x) => x.coords.left > columns[columns.length - 1].layoutBox.coords.left);
 
   // Remove old table
   const tableExisting = layoutDataColumns1[0].table;
-  const tableIndex = scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.findIndex((x) => x.id === tableExisting.id);
-  scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.splice(tableIndex, 1);
+  const tableIndex = scribe.data.layoutDataTables.pages[n].tables.findIndex((x) => x.id === tableExisting.id);
+  scribe.data.layoutDataTables.pages[n].tables.splice(tableIndex, 1);
 
   [layoutDataColumns0, layoutDataColumns1, layoutDataColumns2].forEach((layoutDataColumns) => {
     if (layoutDataColumns.length === 0) return;
 
-    const table = new scribe.layout.LayoutDataTable();
+    const table = new scribe.layout.LayoutDataTable(columns[0].layoutBox.table.page);
 
     layoutDataColumns.forEach((layoutDataColumn) => {
       layoutDataColumn.table = table;
       table.boxes.push(layoutDataColumn);
     });
 
-    scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables.push(table);
+    scribe.data.layoutDataTables.pages[n].tables.push(table);
   });
 
-  scribe.data.layoutRegions.pages[stateGUI.cp.n].default = false;
-  scribe.data.layoutDataTables.pages[stateGUI.cp.n].default = false;
+  scribe.data.layoutRegions.pages[n].default = false;
+  scribe.data.layoutDataTables.pages[n].default = false;
 
-  renderLayoutDataTables();
+  renderLayoutDataTables(n);
 };

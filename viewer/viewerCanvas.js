@@ -2,7 +2,9 @@
 import scribe from '../scribe.js/scribe.js';
 import Konva from '../app/lib/konva/index.js';
 import { search, updateFindStats } from './viewerSearch.js';
-import { KonvaDataColumn, KonvaLayout, renderLayoutBoxes } from './viewerLayout.js';
+import {
+  KonvaDataColumn, KonvaLayout, KonvaRegion, renderLayoutBoxes,
+} from './viewerLayout.js';
 import { replaceObjectProperties } from '../app/utils/utils.js';
 import { KonvaIText, KonvaOcrWord } from './viewerWordObjects.js';
 import { ViewerImageCache } from './viewerImageCache.js';
@@ -71,7 +73,7 @@ class CanvasSelection {
   /** @type {?KonvaOcrWord} */
   static selectedWordFirst = null;
 
-  /** @type {Array<KonvaLayout>} */
+  /** @type {Array<import('./viewerLayout.js').KonvaRegion>} */
   static _selectedRegionArr = [];
 
   /** @type {Array<KonvaDataColumn>} */
@@ -91,32 +93,9 @@ class CanvasSelection {
 
   static getKonvaLayoutBoxes = () => [...CanvasSelection._selectedRegionArr, ...CanvasSelection._selectedDataColumnArr];
 
-  /**
-   * Gets the distinct data tables associated with the selected data columuns.
-   * @returns {Array<import('./viewerLayout.js').KonvaDataTable>}
-   */
-  static getKonvaDataTables = () => {
-    const selectedDataTableIdArr = [...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.table.id))];
-    // eslint-disable-next-line no-use-before-define
-    return ScribeCanvas._layoutDataTableArr.filter((x) => selectedDataTableIdArr.includes(x.layoutDataTable.id)).sort((a, b) => {
-      const boxA = scribe.utils.calcTableBbox(a.layoutDataTable);
-      const boxB = scribe.utils.calcTableBbox(b.layoutDataTable);
-      return boxA.left - boxB.left;
-    });
-  };
+  static getDataTables = () => ([...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.table))]);
 
-  /**
-   * Gets the distinct data tables associated with the selected data columuns.
-   */
-  static getDataTables = () => {
-    const selectedDataTableIdArr = [...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.table.id))];
-    // eslint-disable-next-line no-use-before-define
-    return ScribeCanvas._layoutDataTableArr.filter((x) => selectedDataTableIdArr.includes(x.layoutDataTable.id)).sort((a, b) => {
-      const boxA = scribe.utils.calcTableBbox(a.layoutDataTable);
-      const boxB = scribe.utils.calcTableBbox(b.layoutDataTable);
-      return boxA.left - boxB.left;
-    }).map((x) => x.layoutDataTable);
-  };
+  static getKonvaDataTables = () => ([...new Set(CanvasSelection._selectedDataColumnArr.map((x) => x.konvaTable))]);
 
   /**
    * Add word or array of words to the current selection.
@@ -131,19 +110,23 @@ class CanvasSelection {
       if (!CanvasSelection._selectedWordArr.map((x) => x.word.id).includes(wordI.word.id)) {
         CanvasSelection._selectedWordArr.push(wordI);
       }
-      // if (i === words.length - 1) CanvasSelection.selectedWordLast = wordI;
     }
   };
 
   /**
    * Add layout boxes, including both regions and data columns, to the current selection.
    * Ignores boxes that are already selected.
-   * @param {Array<import('./viewerLayout.js').KonvaLayout>|import('./viewerLayout.js').KonvaLayout|
-   * Array<import('./viewerLayout.js').KonvaLayout>|import('./viewerLayout.js').KonvaLayout} konvaLayoutBoxes
+   * @param {Array<import('./viewerLayout.js').KonvaRegion|import('./viewerLayout.js').KonvaDataColumn>|
+   * import('./viewerLayout.js').KonvaRegion|import('./viewerLayout.js').KonvaDataColumn} konvaLayoutBoxes
    */
   static addKonvaLayoutBoxes = (konvaLayoutBoxes) => {
-    if (!Array.isArray(konvaLayoutBoxes)) konvaLayoutBoxes = [konvaLayoutBoxes];
-    konvaLayoutBoxes.forEach((konvaLayoutBox) => {
+    let konvaLayoutBoxesArr;
+    if (konvaLayoutBoxes instanceof KonvaRegion || konvaLayoutBoxes instanceof KonvaDataColumn) {
+      konvaLayoutBoxesArr = [konvaLayoutBoxes];
+    } else {
+      konvaLayoutBoxesArr = konvaLayoutBoxes;
+    }
+    konvaLayoutBoxesArr.forEach((konvaLayoutBox) => {
       if (konvaLayoutBox instanceof KonvaDataColumn) {
         if (!CanvasSelection._selectedDataColumnArr.map((x) => x.layoutBox.id).includes(konvaLayoutBox.layoutBox.id)) {
           CanvasSelection._selectedDataColumnArr.push(konvaLayoutBox);
@@ -163,21 +146,17 @@ class CanvasSelection {
  */
   static selectLayoutBoxesById = (layoutBoxIdArr) => {
     // eslint-disable-next-line no-use-before-define
-    const konvaLayoutBoxes = ScribeCanvas._layoutRegionArr.filter((x) => layoutBoxIdArr.includes(x.layoutBox.id));
+    const konvaLayoutBoxes = ScribeCanvas.getKonvaRegions().filter((x) => layoutBoxIdArr.includes(x.layoutBox.id));
 
     // eslint-disable-next-line no-use-before-define
-    ScribeCanvas._layoutDataTableArr.forEach((table) => {
-      table.columns.forEach((column) => {
-        if (layoutBoxIdArr.includes(column.layoutBox.id)) konvaLayoutBoxes.push(column);
-      });
-    });
+    const konvaDataColumns = ScribeCanvas.getKonvaDataColumns().filter((x) => layoutBoxIdArr.includes(x.layoutBox.id));
 
-    CanvasSelection.selectLayoutBoxes(konvaLayoutBoxes);
+    CanvasSelection.selectLayoutBoxes([...konvaLayoutBoxes, ...konvaDataColumns]);
   };
 
   /**
    *
-   * @param {Array<KonvaLayout>} konvaLayoutBoxes
+   * @param {Array<KonvaRegion|KonvaDataColumn>} konvaLayoutBoxes
    */
   static selectLayoutBoxes = (konvaLayoutBoxes) => {
     // eslint-disable-next-line no-use-before-define
@@ -393,7 +372,6 @@ export class ScribeCanvas {
     };
 
     layer.position(newPos);
-    layer.batchDraw();
   };
 
   /**
@@ -426,6 +404,21 @@ export class ScribeCanvas {
     }
 
     ScribeCanvas._zoomStageImp(ScribeCanvas.stage, scaleBy, center);
+
+    if (!ScribeCanvas.updateCurrentPage()) {
+      ScribeCanvas.stage.batchDraw();
+    }
+  };
+
+  static updateCurrentPage = () => {
+    const y = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
+    const pageNew = ScribeCanvas.calcPage(y);
+
+    if (stateGUI.cp.n !== pageNew && pageNew >= 0) {
+      ScribeCanvas.displayPage(pageNew, false, false);
+      return true;
+    }
+    return false;
   };
 
   /**
@@ -435,19 +428,12 @@ export class ScribeCanvas {
    * @param {number} [coords.deltaY=0]
    */
   static panStage = ({ deltaX = 0, deltaY = 0 }) => {
-    const yOld = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
-    const yNew = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2 + deltaY) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
-
-    const pageOld = ScribeCanvas.#pageStopsEnd.findIndex((y) => y > yOld) || 0;
-    const pageNew = ScribeCanvas.#pageStopsEnd.findIndex((y) => y > yNew) || 0;
-
-    if (pageOld !== pageNew && pageNew >= 0) {
-      ScribeCanvas.displayPage(pageNew);
-    }
-
     ScribeCanvas.stage.x(ScribeCanvas.stage.x() + deltaX);
     ScribeCanvas.stage.y(ScribeCanvas.stage.y() + deltaY);
-    ScribeCanvas.stage.batchDraw();
+
+    if (!ScribeCanvas.updateCurrentPage()) {
+      ScribeCanvas.stage.batchDraw();
+    }
   };
 
   /**
@@ -606,9 +592,6 @@ export class ScribeCanvas {
     ScribeCanvas.layerText = new Konva.Layer();
     ScribeCanvas.layerOverlay = new Konva.Layer();
 
-    ScribeCanvas.groupText = new Konva.Group();
-    ScribeCanvas.groupOverlay = new Konva.Group();
-
     ScribeCanvas.stage.add(ScribeCanvas.layerBackground);
     ScribeCanvas.stage.add(ScribeCanvas.layerText);
     ScribeCanvas.stage.add(ScribeCanvas.layerOverlay);
@@ -763,7 +746,7 @@ export class ScribeCanvas {
       if (eventN === ScribeCanvas._renderHTMLOverlayEvents && ScribeCanvas._wordHTMLArr.length === 0) {
         ScribeCanvas.renderHTMLOverlay();
       }
-    }, 150);
+    }, 200);
   };
 
   static deleteHTMLOverlay = () => {
@@ -799,7 +782,7 @@ export class ScribeCanvas {
   };
 
   // Function that handles page-level info for rendering to canvas
-  static renderPage = async (n) => {
+  static renderWords = async (n) => {
     let ocrData = scribe.data.ocr.active?.[n];
 
     // Return early if there is not enough data to render a page yet
@@ -829,17 +812,8 @@ export class ScribeCanvas {
       ocrData = scribe.data.ocr.active?.[n];
     }
 
-    ScribeCanvas.destroyWords();
-
     if (scribe.inputData.xmlMode[n]) {
       renderCanvasWords(ocrData);
-    }
-
-    ScribeCanvas.layerText.batchDraw();
-
-    // Render background images ahead and behind current page to reduce delay when switching pages
-    if ((scribe.inputData.pdfMode || scribe.inputData.imageMode)) {
-      ViewerImageCache.renderAheadBehindBrowser(n);
     }
 
     return false;
@@ -849,9 +823,10 @@ export class ScribeCanvas {
   * Render page `n` in the UI.
   * @param {number} n
   * @param {boolean} [scroll=false] - Scroll to the top of the page being rendered.
+  * @param {boolean} [refresh=true] - Refresh the page even if it is already displayed.
   * @returns
   */
-  static async displayPage(n, scroll = false) {
+  static async displayPage(n, scroll = false, refresh = true) {
     ScribeCanvas.deleteHTMLOverlay();
 
     if (scribe.inputData.xmlMode[stateGUI.cp.n]) {
@@ -870,24 +845,57 @@ export class ScribeCanvas {
 
     ScribeCanvas.textOverlayHidden = false;
 
-    const err = await ScribeCanvas.renderPage(n);
+    let err = false;
+
+    if (refresh || !ScribeCanvas.textGroupsRenderIndices.includes(n)) {
+      err = await ScribeCanvas.renderWords(n);
+    }
 
     if (err) {
       console.log('Exiting displayPage early');
       return;
     }
 
+    if (n - 1 >= 0 && (refresh || !ScribeCanvas.textGroupsRenderIndices.includes(n - 1))) {
+      await ScribeCanvas.renderWords(n - 1);
+    }
+    if (n + 1 < scribe.data.ocr.active.length && (refresh || !ScribeCanvas.textGroupsRenderIndices.includes(n + 1))) {
+      await ScribeCanvas.renderWords(n + 1);
+    }
+
     if (scroll) {
       ScribeCanvas.stage.y((ScribeCanvas.getPageStop(n) - 100) * ScribeCanvas.stage.getAbsoluteScale().y * -1);
     }
 
+    ScribeCanvas.layerText.batchDraw();
+
     stateGUI.cp.n = n;
 
-    if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlay();
+    ScribeCanvas.destroyText();
+    ScribeCanvas.destroyOverlay();
+
+    if (ScribeCanvas.enableHTMLOverlay && !ScribeCanvas.drag.isDragging && !ScribeCanvas.drag.isPinching) {
+      ScribeCanvas.renderHTMLOverlayAfterDelay();
+    }
 
     if (ScribeCanvas.displayPageCallback) ScribeCanvas.displayPageCallback();
 
-    if (stateGUI.layoutMode) renderLayoutBoxes();
+    if (stateGUI.layoutMode) {
+      if (refresh || !ScribeCanvas.overlayGroupsRenderIndices.includes(n)) {
+        await renderLayoutBoxes(n);
+      }
+      if (n - 1 >= 0 && (refresh || !ScribeCanvas.overlayGroupsRenderIndices.includes(n - 1))) {
+        await renderLayoutBoxes(n - 1);
+      }
+      if (n + 1 < scribe.data.ocr.active.length && (refresh || !ScribeCanvas.overlayGroupsRenderIndices.includes(n + 1))) {
+        await ScribeCanvas.renderWords(n + 1);
+      }
+    }
+
+    // Render background images ahead and behind current page to reduce delay when switching pages
+    if ((scribe.inputData.pdfMode || scribe.inputData.imageMode)) {
+      ViewerImageCache.renderAheadBehindBrowser(n);
+    }
   }
 
   /** @type {InstanceType<typeof Konva.Stage>} */
@@ -902,14 +910,59 @@ export class ScribeCanvas {
   /** @type {InstanceType<typeof Konva.Layer>} */
   static layerOverlay;
 
-  /** @type {InstanceType<typeof Konva.Group>} */
-  static groupText;
+  /** @type {Array<InstanceType<typeof Konva.Group>>} */
+  static #textGroups = [];
 
-  /** @type {InstanceType<typeof Konva.Group>} */
-  static groupOverlay;
+  /**
+   *
+   * @param {number} n
+   */
+  static createGroup = (n) => {
+    const group = new Konva.Group();
+    const dims = scribe.data.pageMetrics[n].dims;
+    const angle = scribe.data.pageMetrics[n].angle || 0;
+    const textRotation = scribe.opt.autoRotate ? 0 : angle;
+    const pageOffsetY = ScribeCanvas.getPageStop(n) ?? 30;
+    group.rotation(textRotation);
+    group.offset({ x: dims.width * 0.5, y: dims.height * 0.5 });
+    group.position({ x: dims.width * 0.5, y: pageOffsetY + dims.height * 0.5 });
+    return group;
+  };
 
-  /** @type {Array<KonvaOcrWord>} */
-  static _wordArr = [];
+  /**
+   *
+   * @param {number} n
+   * @returns
+   */
+  static getTextGroup = (n) => {
+    if (!ScribeCanvas.#textGroups[n]) {
+      ScribeCanvas.#textGroups[n] = ScribeCanvas.createGroup(n);
+      ScribeCanvas.layerText.add(ScribeCanvas.#textGroups[n]);
+    }
+    return ScribeCanvas.#textGroups[n];
+  };
+
+  /** @type {Array<InstanceType<typeof Konva.Group>>} */
+  static #overlayGroups = [];
+
+  /**
+   *
+   * @param {number} n
+   * @returns
+   */
+  static getOverlayGroup = (n) => {
+    if (!ScribeCanvas.#overlayGroups[n]) {
+      ScribeCanvas.#overlayGroups[n] = ScribeCanvas.createGroup(n);
+      ScribeCanvas.layerOverlay.add(ScribeCanvas.#overlayGroups[n]);
+    }
+    return ScribeCanvas.#overlayGroups[n];
+  };
+
+  /** @type {Array<number>} */
+  static textGroupsRenderIndices = [];
+
+  /** @type {Array<number>} */
+  static overlayGroupsRenderIndices = [];
 
   /**
    * Contains `Rect` objects used to outline lines and paragraphs, as well as `Text` objects used to label those boxes.
@@ -917,13 +970,57 @@ export class ScribeCanvas {
    */
   static _lineOutlineArr = [];
 
-  /** @type {Array<KonvaLayout>} */
-  static _layoutRegionArr = [];
-
-  /** @type {Array<import('./viewerLayout.js').KonvaDataTable>} */
-  static _layoutDataTableArr = [];
-
   static selectingRectangle;
+
+  /**
+   *
+   * @param {number} y
+   */
+  static calcPage = (y) => {
+    // Force page stops to be calculated if they are not already.
+    if (ScribeCanvas.#pageStopsEnd[ScribeCanvas.#pageStopsEnd.length - 1] === undefined) {
+      ScribeCanvas.calcPageStops();
+    }
+    return ScribeCanvas.#pageStopsEnd.findIndex((y1) => y1 > y);
+  };
+
+  static calcSelectionImageCoords = () => {
+    const y = ScribeCanvas.selectingRectangle.y();
+    const n = ScribeCanvas.calcPage(y);
+
+    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
+    box.y -= ScribeCanvas.getPageStop(n);
+
+    const canvasCoordsPage = {
+      left: box.x, top: box.y, width: box.width, height: box.height,
+    };
+
+    // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
+    const imageRotated = true;
+    const angle = scribe.data.pageMetrics[n].angle || 0;
+
+    const imageCoords = scribe.utils.coords.canvasToImage(canvasCoordsPage, imageRotated, scribe.opt.autoRotate, n, angle);
+
+    imageCoords.left = Math.round(imageCoords.left);
+    imageCoords.top = Math.round(imageCoords.top);
+    imageCoords.width = Math.round(imageCoords.width);
+    imageCoords.height = Math.round(imageCoords.height);
+
+    // Restrict the rectangle to the page dimensions.
+    const pageDims = scribe.data.pageMetrics[n].dims;
+    const leftClip = Math.max(0, imageCoords.left);
+    const topClip = Math.max(0, imageCoords.top);
+    // Tesseract has a bug that subtracting 1 from the width and height (when setting the rectangle to the full image) fixes.
+    // See: https://github.com/naptha/tesseract.js/issues/936
+    const rightClip = Math.min(pageDims.width - 1, imageCoords.left + imageCoords.width);
+    const bottomClip = Math.min(pageDims.height - 1, imageCoords.top + imageCoords.height);
+    imageCoords.left = leftClip;
+    imageCoords.top = topClip;
+    imageCoords.width = rightClip - leftClip;
+    imageCoords.height = bottomClip - topClip;
+
+    return { box: imageCoords, n };
+  };
 
   /** @type {?KonvaOcrWord} */
   static contextMenuWord = null;
@@ -975,70 +1072,75 @@ export class ScribeCanvas {
     lastDist: null,
   };
 
-  static getKonvaWords = () => ScribeCanvas._wordArr;
+  static getKonvaWords = () => {
+    /** @type {Array<KonvaOcrWord>} */
+    const words = [];
+    if (ScribeCanvas.#textGroups[stateGUI.cp.n - 1]?.children) {
+      ScribeCanvas.#textGroups[stateGUI.cp.n - 1].children.forEach((x) => {
+        if (x instanceof KonvaOcrWord) words.push(x);
+      });
+    }
+    if (ScribeCanvas.#textGroups[stateGUI.cp.n]?.children) {
+      ScribeCanvas.#textGroups[stateGUI.cp.n].children.forEach((x) => {
+        if (x instanceof KonvaOcrWord) words.push(x);
+      });
+    }
+    if (ScribeCanvas.#textGroups[stateGUI.cp.n + 1]?.children) {
+      ScribeCanvas.#textGroups[stateGUI.cp.n + 1].children.forEach((x) => {
+        if (x instanceof KonvaOcrWord) words.push(x);
+      });
+    }
 
-  static getKonvaRegions = () => ScribeCanvas._layoutRegionArr;
-
-  static getKonvaDataTables = () => ScribeCanvas._layoutDataTableArr;
-
-  /**
-   * Get all layout boxes, including both regions and data columns.
-   * Returns copy.
-   */
-  static getKonvaLayoutBoxes = () => {
-    const layoutBoxes = ScribeCanvas._layoutRegionArr.slice();
-    ScribeCanvas._layoutDataTableArr.forEach((x) => {
-      layoutBoxes.push(...x.columns);
-    });
-    return layoutBoxes;
+    return words;
   };
 
-  /**
-   *
-   * @param {KonvaOcrWord} word
-   */
-  static addWord = (word) => {
-    ScribeCanvas._wordArr.push(word);
-    // ScribeCanvas.layerText.add(word);
-    ScribeCanvas.groupText.add(word);
+  static getKonvaRegions = () => {
+    /** @type {Array<KonvaRegion>} */
+    const regions = [];
+    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1].children.forEach((x) => {
+        if (x instanceof KonvaRegion) regions.push(x);
+      });
+    }
+    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n]?.children) {
+      ScribeCanvas.#overlayGroups[stateGUI.cp.n].children.forEach((x) => {
+        if (x instanceof KonvaRegion) regions.push(x);
+      });
+    }
+    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1].children.forEach((x) => {
+        if (x instanceof KonvaRegion) regions.push(x);
+      });
+    }
+
+    return regions;
   };
 
-  /**
-   *
-   * @param {KonvaOcrWord} word
-   */
-  static destroyWord = (word) => {
-    word.destroy();
-    ScribeCanvas._wordArr = ScribeCanvas._wordArr.filter((x) => x !== word);
+  static getKonvaDataColumns = () => {
+    /** @type {Array<KonvaDataColumn>} */
+    const columns = [];
+    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1].children.forEach((x) => {
+        if (x instanceof KonvaDataColumn) columns.push(x);
+      });
+    }
+    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n]?.children) {
+      ScribeCanvas.#overlayGroups[stateGUI.cp.n].children.forEach((x) => {
+        if (x instanceof KonvaDataColumn) columns.push(x);
+      });
+    }
+    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1].children.forEach((x) => {
+        if (x instanceof KonvaDataColumn) columns.push(x);
+      });
+    }
+
+    return columns;
   };
 
-  /**
-   *
-   * @param {import('./viewerLayout.js').KonvaDataTable} dataTable
-   */
-  static destroyDataTable = (dataTable) => {
-    dataTable.destroy();
-    ScribeCanvas._layoutDataTableArr = ScribeCanvas._layoutDataTableArr.filter((x) => x.layoutDataTable.id !== dataTable.layoutDataTable.id);
-  };
+  static getDataTables = () => ([...new Set(ScribeCanvas.getKonvaDataColumns().map((x) => x.layoutBox.table))]);
 
-  /**
-   *
-   * @param {import('./viewerLayout.js').KonvaLayout} region
-   */
-  static addRegion = (region) => {
-    ScribeCanvas._layoutRegionArr.push(region);
-    ScribeCanvas.groupOverlay.add(region);
-    if (region.label) ScribeCanvas.groupOverlay.add(region.label);
-  };
-
-  /**
-   *
-   * @param {import('./viewerLayout.js').KonvaLayout} region
-   */
-  static destroyRegion = (region) => {
-    region.destroy();
-    ScribeCanvas._layoutRegionArr = ScribeCanvas._layoutRegionArr.filter((x) => x.layoutBox.id !== region.layoutBox.id);
-  };
+  static getKonvaDataTables = () => ([...new Set(ScribeCanvas.getKonvaDataColumns().map((x) => x.konvaTable))]);
 
   /**
    *
@@ -1054,31 +1156,34 @@ export class ScribeCanvas {
     if (ScribeCanvas.KonvaIText.inputRemove) ScribeCanvas.KonvaIText.inputRemove();
   };
 
-  static destroyLineOutlines = () => {
-    ScribeCanvas._lineOutlineArr.forEach((x) => x.destroy());
-    ScribeCanvas._lineOutlineArr.length = 0;
+  /**
+   * Destroy objects in the overlay layer. By default, only objects outside the current view are destroyed.
+   * @param {boolean} [outsideViewOnly=true] - If `true`, only destroy objects outside the current view.
+   */
+  static destroyOverlay = (outsideViewOnly = true) => {
+    for (let i = 0; i < ScribeCanvas.overlayGroupsRenderIndices.length; i++) {
+      const n = ScribeCanvas.overlayGroupsRenderIndices[i];
+      if (Math.abs(n - stateGUI.cp.n) > 1 || !outsideViewOnly) {
+        ScribeCanvas.#overlayGroups[n].destroyChildren();
+        ScribeCanvas.overlayGroupsRenderIndices.splice(i, 1);
+        i--;
+      }
+    }
   };
 
-  static destroyLayoutDataTables = () => {
-    ScribeCanvas._layoutDataTableArr.forEach((x) => x.destroy());
-    ScribeCanvas._layoutDataTableArr.length = 0;
-    ScribeCanvas.CanvasSelection.deselectAllDataColumns();
-  };
-
-  static destroyRegions = () => {
-    ScribeCanvas._layoutRegionArr.forEach((x) => x.destroy());
-    ScribeCanvas._layoutRegionArr.length = 0;
-    ScribeCanvas.destroyLayoutDataTables();
-    ScribeCanvas.CanvasSelection.deselectAllRegions();
-  };
-
-  static destroyWords = () => {
-    // Any time words are destroyed, controls must be destroyed as well.
-    // If this does not happen controls will have references to destroyed words, which causes errors to be thrown.
-    ScribeCanvas.destroyControls();
-    ScribeCanvas._wordArr.forEach((obj) => obj.destroy());
-    ScribeCanvas.destroyLineOutlines();
-    ScribeCanvas._wordArr.length = 0;
+  /**
+   * Destroy objects in the text layer. By default, only objects outside the current view are destroyed.
+   * @param {boolean} [outsideViewOnly=true] - If `true`, only destroy objects outside the current view.
+   */
+  static destroyText = (outsideViewOnly = true) => {
+    for (let i = 0; i < ScribeCanvas.textGroupsRenderIndices.length; i++) {
+      const n = ScribeCanvas.textGroupsRenderIndices[i];
+      if (Math.abs(n - stateGUI.cp.n) > 1 || !outsideViewOnly) {
+        ScribeCanvas.#textGroups[n].destroyChildren();
+        ScribeCanvas.textGroupsRenderIndices.splice(i, 1);
+        i--;
+      }
+    }
   };
 
   /** @type {?Range} */
@@ -1150,13 +1255,23 @@ function getElementIdsInRange(range) {
 
 document.addEventListener('copy', (e) => {
   const sel = /** @type {Selection} */ (window.getSelection());
+
+  if (sel.rangeCount === 0) return;
+
   const range = sel.getRangeAt(0);
 
   const ids = getElementIdsInRange(range);
 
   if (ids.length === 0) return;
 
-  const text = scribe.utils.renderText([scribe.data.ocr.active[stateGUI.cp.n]], 0, 0, false, false, ids);
+  ScribeCanvas.textGroupsRenderIndices.sort((a, b) => a - b);
+
+  let text = '';
+  for (let i = 0; i < ScribeCanvas.textGroupsRenderIndices.length; i++) {
+    if (i > 0) text += '\n\n';
+    const n = ScribeCanvas.textGroupsRenderIndices[i];
+    text += scribe.utils.renderText([scribe.data.ocr.active[n]], 0, 0, false, false, ids);
+  }
 
   // @ts-ignore
   e.clipboardData.setData('text/plain', text);
@@ -1229,12 +1344,15 @@ export async function compareGroundTruth() {
 
 /**
  *
+ * @param {number} n
  * @param {bbox} box
  * @param {{x: number, y: number}} angleAdj
  * @param {string} [label]
  */
-const addBlockOutline = (box, angleAdj, label) => {
+const addBlockOutline = (n, box, angleAdj, label) => {
   const height = box.bottom - box.top;
+
+  const group = ScribeCanvas.getTextGroup(n);
 
   const blockRect = new Konva.Rect({
     x: box.left + angleAdj.x,
@@ -1259,11 +1377,11 @@ const addBlockOutline = (box, angleAdj, label) => {
       listening: false,
     });
 
-    ScribeCanvas.groupText.add(labelObj);
+    group.add(labelObj);
     ScribeCanvas._lineOutlineArr.push(labelObj);
   }
 
-  ScribeCanvas.groupText.add(blockRect);
+  group.add(blockRect);
 
   ScribeCanvas._lineOutlineArr.push(blockRect);
 };
@@ -1273,30 +1391,23 @@ const addBlockOutline = (box, angleAdj, label) => {
  * @param {OcrPage} page
  */
 export function renderCanvasWords(page) {
+  const group = ScribeCanvas.getTextGroup(page.n);
+  group.destroyChildren();
+
+  if (!ScribeCanvas.textGroupsRenderIndices.includes(page.n)) ScribeCanvas.textGroupsRenderIndices.push(page.n);
+
   const matchIdArr = stateGUI.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[page.n]) : [];
 
-  const dims = scribe.data.pageMetrics[page.n].dims;
   const angle = scribe.data.pageMetrics[page.n].angle || 0;
 
   const imageRotated = Math.abs(angle ?? 0) > 0.05;
-
-  const textRotation = scribe.opt.autoRotate ? 0 : angle;
-
-  const pageOffsetY = ScribeCanvas.getPageStop(page.n) ?? 30;
-
-  ScribeCanvas.groupText.rotation(textRotation);
-  ScribeCanvas.groupText.offset({ x: dims.width * 0.5, y: dims.height * 0.5 });
-  ScribeCanvas.groupText.position({ x: dims.width * 0.5, y: pageOffsetY + dims.height * 0.5 });
-  ScribeCanvas.groupOverlay.rotation(textRotation);
-  ScribeCanvas.groupOverlay.offset({ x: dims.width * 0.5, y: dims.height * 0.5 });
-  ScribeCanvas.groupOverlay.position({ x: dims.width * 0.5, y: pageOffsetY + dims.height * 0.5 });
 
   if (optGUI.outlinePars && page) {
     scribe.utils.assignParagraphs(page, angle);
 
     page.pars.forEach((par) => {
       const angleAdj = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(par.lines[0]) : { x: 0, y: 0 };
-      addBlockOutline(par.bbox, angleAdj, par.reason);
+      addBlockOutline(page.n, par.bbox, angleAdj, par.reason);
     });
   }
 
@@ -1324,7 +1435,7 @@ export function renderCanvasWords(page) {
 
       ScribeCanvas._lineOutlineArr.push(lineRect);
 
-      ScribeCanvas.groupText.add(lineRect);
+      group.add(lineRect);
     }
 
     for (const wordObj of lineObj.words) {
@@ -1352,12 +1463,9 @@ export function renderCanvasWords(page) {
         listening: !stateGUI.layoutMode,
       });
 
-      ScribeCanvas.addWord(wordCanvas);
+      group.add(wordCanvas);
     }
   }
-
-  ScribeCanvas.layerText.add(ScribeCanvas.groupText);
-  ScribeCanvas.layerOverlay.add(ScribeCanvas.groupOverlay);
 }
 
 /**

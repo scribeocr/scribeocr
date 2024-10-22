@@ -23,7 +23,6 @@ import {
 import {
   revertLayoutClick,
   setDefaultLayoutClick,
-  setLayoutBoxInclusionRuleClick,
   toggleSelectableWords,
 } from './app/interfaceLayout.js';
 
@@ -52,7 +51,9 @@ import { updateEvalStatsGUI, createGroundTruthClick } from './app/interfaceEvalu
 import { ProgressBars } from './app/utils/progressBars.js';
 import { showHideElem } from './app/utils/utils.js';
 import { findText, highlightcp, search } from './viewer/viewerSearch.js';
-import { KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick } from './viewer/viewerLayout.js';
+import {
+  KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick, setLayoutBoxInclusionRuleClick,
+} from './viewer/viewerLayout.js';
 import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
 import { KonvaIText, KonvaOcrWord } from './viewer/viewerWordObjects.js';
 
@@ -86,7 +87,7 @@ const progressHandler = (message) => {
     if (stateGUI.cp.n === message.n) {
       displayPageGUI(message.n);
     } else if (Math.abs(stateGUI.cp.n - message.n) < 2) {
-      ScribeCanvas.renderPage(message.n);
+      ScribeCanvas.renderWords(message.n);
     }
   } else if (message.type === 'importPDF') {
     ProgressBars.active.increment();
@@ -321,14 +322,14 @@ function handleKeyboardEvent(event) {
 
   // Prev page shortcut
   if (event.key === 'PageUp') {
-    displayPageGUI(stateGUI.cp.n - 1, true);
+    displayPageGUI(stateGUI.cp.n - 1, true, false);
     event.preventDefault();
     return;
   }
 
   // Next page shortcut
   if (event.key === 'PageDown') {
-    displayPageGUI(stateGUI.cp.n + 1, true);
+    displayPageGUI(stateGUI.cp.n + 1, true, false);
     event.preventDefault();
     return;
   }
@@ -499,8 +500,8 @@ function handleKeyboardEvent(event) {
 document.addEventListener('keydown', handleKeyboardEvent);
 
 // Add various event listners to HTML elements
-elem.nav.next.addEventListener('click', () => displayPageGUI(stateGUI.cp.n + 1, true));
-elem.nav.prev.addEventListener('click', () => displayPageGUI(stateGUI.cp.n - 1, true));
+elem.nav.next.addEventListener('click', () => displayPageGUI(stateGUI.cp.n + 1, true, false));
+elem.nav.prev.addEventListener('click', () => displayPageGUI(stateGUI.cp.n - 1, true, false));
 
 elem.nav.zoomIn.addEventListener('click', () => {
   ScribeCanvas.zoom(1.1, ScribeCanvas.getStageCenter());
@@ -528,10 +529,13 @@ elem.recognize.enableUpscale.addEventListener('click', () => {
 const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 showDebugVisElem.addEventListener('change', () => {
   scribe.opt.debugVis = showDebugVisElem.checked;
-  displayPageGUI(stateGUI.cp.n);
+  if (scribe.opt.debugVis) {
+    displayPageGUI(stateGUI.cp.n);
+  } else {
+    ScribeCanvas.destroyOverlay(false);
+    ScribeCanvas.layerOverlay.batchDraw();
+  }
 });
-
-// elem.info.showDebugLegend.addEventListener('change', () => { displayPageGUI(stateGUI.cp.n); });
 
 elem.info.showDebugLegend.addEventListener('input', () => {
   const legendCanvasParentDivElem = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
@@ -543,7 +547,19 @@ elem.info.showDebugLegend.addEventListener('input', () => {
 });
 
 elem.info.debugHidePage.addEventListener('input', () => {
-  displayPageGUI(stateGUI.cp.n);
+  const hidePage = scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && elem.info.debugHidePage.checked;
+
+  if (hidePage) {
+    ScribeCanvas.layerBackground.hide();
+    ScribeCanvas.layerText.hide();
+    ScribeCanvas.layerBackground.batchDraw();
+    ScribeCanvas.layerText.batchDraw();
+  } else {
+    ScribeCanvas.layerBackground.show();
+    ScribeCanvas.layerText.show();
+    ScribeCanvas.layerBackground.batchDraw();
+    ScribeCanvas.layerText.batchDraw();
+  }
 });
 
 elem.info.selectDebugVis.addEventListener('change', () => { displayPageGUI(stateGUI.cp.n); });
@@ -1113,7 +1129,7 @@ navLayoutElem.addEventListener('show.bs.collapse', (e) => {
     } else {
       toggleSelectableWords(false);
       ScribeCanvas.destroyControls();
-      renderLayoutBoxes();
+      renderLayoutBoxes(stateGUI.cp.n);
     }
   }
 });
@@ -1128,8 +1144,9 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
       displayPageGUI(stateGUI.cp.n);
     } else {
       toggleSelectableWords(true);
-      ScribeCanvas.destroyRegions();
-      ScribeCanvas.destroyLayoutDataTables();
+      ScribeCanvas.destroyOverlay(false);
+      // ScribeCanvas.destroyRegions();
+      // ScribeCanvas.destroyLayoutDataTables();
       ScribeCanvas.destroyControls();
       setWordColorOpacity();
       ScribeCanvas.layerOverlay.batchDraw();
@@ -1231,11 +1248,16 @@ KonvaLayout.updateUI = () => {
 
 const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
 
-const renderDebugVis = () => {
-  const pageDims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
+const renderDebugVis = (n) => {
+  if (scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && scribe.data.vis[n][elem.info.selectDebugVis.value]) {
+    const group = ScribeCanvas.getOverlayGroup(n);
+    group.destroyChildren();
 
-  if (scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value]) {
-    const image = scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value].canvas;
+    if (!ScribeCanvas.overlayGroupsRenderIndices.includes(n)) ScribeCanvas.overlayGroupsRenderIndices.push(n);
+
+    const pageDims = scribe.data.pageMetrics[n].dims;
+
+    const image = scribe.data.vis[n][elem.info.selectDebugVis.value].canvas;
     const overlayImageKonva = new Konva.Image({
       image,
       scaleX: pageDims.width / image.width,
@@ -1246,10 +1268,9 @@ const renderDebugVis = () => {
       offsetY: image.width * 0.5,
     });
 
-    // ScribeCanvas.layerOverlay.destroyChildren();
-    ScribeCanvas.groupOverlay.add(overlayImageKonva);
+    group.add(overlayImageKonva);
 
-    const offscreenCanvasLegend = scribe.data.vis[stateGUI.cp.n][elem.info.selectDebugVis.value].canvasLegend;
+    const offscreenCanvasLegend = scribe.data.vis[n][elem.info.selectDebugVis.value].canvasLegend;
     if (offscreenCanvasLegend) {
       ctxLegend.canvas.width = offscreenCanvasLegend.width;
       ctxLegend.canvas.height = offscreenCanvasLegend.height;
@@ -1287,15 +1308,18 @@ ScribeCanvas.displayPageCallback = () => {
 
   elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
   elem.nav.matchCount.textContent = String(search.total);
+
+  renderDebugVis(stateGUI.cp.n);
 };
 
 /**
  * Render page `n` in the UI.
  * @param {number} n
  * @param {boolean} [scroll=false] - Scroll to the top of the page being rendered.
+ * @param {boolean} [refresh=true] - Refresh the page even if it is already displayed.
  * @returns
  */
-export async function displayPageGUI(n, scroll = false) {
+export async function displayPageGUI(n, scroll = false, refresh = true) {
   // Return early if (1) page does not exist or (2) another page is actively being rendered.
   if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1)) {
     // Reset the value of pageNumElem (number in UI) to match the internal value of the page
@@ -1303,22 +1327,11 @@ export async function displayPageGUI(n, scroll = false) {
     return;
   }
 
-  const hidePage = scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && elem.info.debugHidePage.checked;
-
-  if (hidePage) {
-    ScribeCanvas.destroyWords();
-    ScribeCanvas.layerBackground.destroyChildren();
-    ScribeCanvas.layerBackground.batchDraw();
-    ScribeCanvas.layerText.batchDraw();
-  } else {
-    await ScribeCanvas.displayPage(n, scroll);
-  }
+  await ScribeCanvas.displayPage(n, scroll, refresh);
 
   if (elem.info.showConflicts.checked) showDebugImages();
 
   updateEvalStatsGUI(stateGUI.cp.n);
-
-  renderDebugVis();
 
   renderConflictVis();
 }

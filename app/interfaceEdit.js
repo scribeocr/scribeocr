@@ -27,15 +27,20 @@ const styleSmallCapsButton = new Button(elem.edit.styleSmallCaps);
 export function deleteSelectedWords() {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   const selectedN = selectedObjects.length;
-  const selectedIds = [];
 
+  /** @type {Object<string, Array<string>>} */
+  const selectedIds = {};
   for (let i = 0; i < selectedN; i++) {
-    const wordIDI = selectedObjects[i].word.id;
-    selectedIds.push(wordIDI);
-    ScribeCanvas.destroyWord(selectedObjects[i]);
+    const wordIdI = selectedObjects[i].word.id;
+    const n = selectedObjects[i].word.line.page.n;
+    if (!selectedIds[n]) selectedIds[n] = [];
+    selectedIds[n].push(wordIdI);
+    selectedObjects[i].destroy();
   }
 
-  scribe.utils.ocr.deletePageWords(scribe.data.ocr.active[stateGUI.cp.n], selectedIds);
+  for (const [n, ids] of Object.entries(selectedIds)) {
+    scribe.utils.ocr.deletePageWords(scribe.data.ocr.active[n], ids);
+  }
 
   ScribeCanvas.destroyControls();
 

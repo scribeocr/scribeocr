@@ -8,7 +8,6 @@ import {
 import {
   addLayoutBoxClick,
   addLayoutDataTableClick,
-  selectLayoutBoxesArea,
 } from './interfaceLayout.js';
 import { Konva } from './lib/konva/_FullInternals.js';
 import { elem } from './elems.js';
@@ -19,22 +18,24 @@ import { KonvaOcrWord } from '../viewer/viewerWordObjects.js';
 
 /**
  * Recognize area selected by user in Tesseract.
+ * @param {number} n - Page number.
  * @param {Object} box
  * @param {number} box.width
  * @param {number} box.height
- * @param {number} box.x
- * @param {number} box.y
+ * @param {number} box.left
+ * @param {number} box.top
  * @param {boolean} [wordMode=false] - Assume selection is single word.
- * @param {boolean} [printCoordsOnly=false] - Print rect coords only, do not run recognition. Used for debugging.
  *
  * Note: This function assumes OCR data already exists, which this function is adding to.
  * Users should not be allowed to recognize a word/area before OCR data is provided by (1) upload or (2) running "recognize all".
  * Even if recognizing an page for the first time using "recognize area" did not produce an error,
  * it would still be problematic, as running "recognize all" afterwards would overwrite everything.
  */
-async function recognizeArea(box, wordMode = false, printCoordsOnly = false) {
+async function recognizeArea(n, box, wordMode = false) {
   // Return early if the rectangle is too small to be a word.
   if (box.width < 4 || box.height < 4) return;
+
+  const imageCoords = { ...box };
 
   // As recognizing a single word is fast, it is run in "combined" mode unless a user has explicitly selected "legacy" or "lstm" in the advanced options.
   /** @type {"legacy" | "lstm" | "combined"} */
@@ -46,39 +47,10 @@ async function recognizeArea(box, wordMode = false, printCoordsOnly = false) {
   const legacy = oemMode === 'legacy' || oemMode === 'combined';
   const lstm = oemMode === 'lstm' || oemMode === 'combined';
 
-  const canvasCoords = {
-    left: box.x, top: box.y, width: box.width, height: box.height,
-  };
-
-  // This should always be running on a rotated image, as the recognize area button is only enabled after the angle is already known.
-  const imageRotated = true;
-  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
-
-  const imageCoords = scribe.utils.coords.canvasToImage(canvasCoords, imageRotated, scribe.opt.autoRotate, stateGUI.cp.n, angle);
-
-  imageCoords.left = Math.round(imageCoords.left);
-  imageCoords.top = Math.round(imageCoords.top);
-  imageCoords.width = Math.round(imageCoords.width);
-  imageCoords.height = Math.round(imageCoords.height);
-
-  if (printCoordsOnly) {
-    const debugCoords = {
-      left: imageCoords.left,
-      top: imageCoords.top,
-      right: imageCoords.left + imageCoords.width,
-      bottom: imageCoords.top + imageCoords.height,
-      topInv: scribe.data.pageMetrics[stateGUI.cp.n].dims.height - imageCoords.top,
-      bottomInv: scribe.data.pageMetrics[stateGUI.cp.n].dims.height - (imageCoords.top + imageCoords.height),
-    };
-    console.log(debugCoords);
-    return;
-  }
-
   // When a user is manually selecting words to recognize, they are assumed to be in the same block.
   // SINGLE_BLOCK: '6',
   // SINGLE_WORD: '8',
   const psm = wordMode ? '8' : '6';
-  const n = stateGUI.cp.n;
 
   const upscale = scribe.inputData.imageMode && scribe.opt.enableUpscale;
 
@@ -148,12 +120,20 @@ async function recognizeArea(box, wordMode = false, printCoordsOnly = false) {
 
   scribe.combineOCRPage(pageNew, scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
 
-  if (n === stateGUI.cp.n) ScribeCanvas.displayPage(stateGUI.cp.n);
+  if (ScribeCanvas.textGroupsRenderIndices.includes(n)) ScribeCanvas.displayPage(stateGUI.cp.n);
 }
 
-async function addWordManual({
-  x: rectLeft, y: rectTop, height: rectHeight, width: rectWidth,
-}) {
+/**
+ *
+ * @param {number} n - Page number.
+ * @param {Object} box
+ * @param {number} box.width
+ * @param {number} box.height
+ * @param {number} box.left
+ * @param {number} box.top
+ *
+ */
+async function addWordManual(n, box) {
   const wordText = 'A';
   // Calculate offset between HOCR coordinates and canvas coordinates (due to e.g. roatation)
   let angleAdjXRect = 0;
@@ -161,10 +141,10 @@ async function addWordManual({
   let sinAngle = 0;
   let shiftX = 0;
   let shiftY = 0;
-  if (scribe.opt.autoRotate && Math.abs(scribe.data.pageMetrics[stateGUI.cp.n].angle ?? 0) > 0.05) {
-    const rotateAngle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+  if (scribe.opt.autoRotate && Math.abs(scribe.data.pageMetrics[n].angle ?? 0) > 0.05) {
+    const rotateAngle = scribe.data.pageMetrics[n].angle || 0;
 
-    const pageDims = scribe.data.pageMetrics[stateGUI.cp.n].dims;
+    const pageDims = scribe.data.pageMetrics[n].dims;
 
     sinAngle = Math.sin(rotateAngle * (Math.PI / 180));
     const cosAngle = Math.cos(rotateAngle * (Math.PI / 180));
@@ -172,9 +152,9 @@ async function addWordManual({
     shiftX = sinAngle * (pageDims.height * 0.5) * -1 || 0;
     shiftY = sinAngle * ((pageDims.width - shiftX) * 0.5) || 0;
 
-    const baselineY = (rectTop + rectHeight) - (rectHeight) / 3;
+    const baselineY = (box.top + box.height) - (box.height) / 3;
 
-    const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (rectLeft - shiftX);
+    const angleAdjYInt = (1 - cosAngle) * (baselineY - shiftY) - sinAngle * (box.left - shiftX);
     const angleAdjXInt = sinAngle * ((baselineY - shiftY) - angleAdjYInt * 0.5);
 
     angleAdjXRect = angleAdjXInt + shiftX;
@@ -182,17 +162,17 @@ async function addWordManual({
   }
 
   // Calculate coordinates as they would appear in the HOCR file (subtracting out all transformations)
-  const rectTopHOCR = rectTop - angleAdjYRect;
-  const rectBottomHOCR = rectTop + rectHeight - angleAdjYRect;
+  const rectTopHOCR = box.top - angleAdjYRect;
+  const rectBottomHOCR = box.top + box.height - angleAdjYRect;
 
-  const rectLeftHOCR = rectLeft - angleAdjXRect;
-  const rectRightHOCR = rectLeft + rectWidth - angleAdjXRect;
+  const rectLeftHOCR = box.left - angleAdjXRect;
+  const rectRightHOCR = box.left + box.width - angleAdjXRect;
 
   const wordBox = {
     left: rectLeftHOCR, top: rectTopHOCR, right: rectRightHOCR, bottom: rectBottomHOCR,
   };
 
-  const pageObj = new scribe.utils.ocr.OcrPage(stateGUI.cp.n, scribe.data.ocr.active[stateGUI.cp.n].dims);
+  const pageObj = new scribe.utils.ocr.OcrPage(n, scribe.data.ocr.active[n].dims);
   // Create a temporary line to hold the word until it gets combined.
   // This should not be used after `combineData` is run as it is not the final line.
   const lineObjTemp = new scribe.utils.ocr.OcrLine(pageObj, wordBox, [0, 0], 10, null);
@@ -203,15 +183,15 @@ async function addWordManual({
   wordObj.conf = 100;
   lineObjTemp.words = [wordObj];
 
-  scribe.combineOCRPage(pageObj, scribe.data.ocr.active[stateGUI.cp.n], scribe.data.pageMetrics[stateGUI.cp.n], true, false);
+  scribe.combineOCRPage(pageObj, scribe.data.ocr.active[n], scribe.data.pageMetrics[n], true, false);
 
   // Get line word was added to in main data.
   // This will have different metrics from `lineObj` when the line was combined into an existing line.
-  const wordObjNew = scribe.utils.ocr.getPageWord(scribe.data.ocr.active[stateGUI.cp.n], wordIDNew);
+  const wordObjNew = scribe.utils.ocr.getPageWord(scribe.data.ocr.active[n], wordIDNew);
 
   if (!wordObjNew) throw new Error('Failed to add word to page.');
 
-  const angle = scribe.data.pageMetrics[stateGUI.cp.n].angle || 0;
+  const angle = scribe.data.pageMetrics[n].angle || 0;
   const imageRotated = Math.abs(angle ?? 0) > 0.05;
 
   const angleAdjLine = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(wordObjNew.line) : { x: 0, y: 0 };
@@ -222,12 +202,10 @@ async function addWordManual({
 
   const visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
 
-  // const displayMode = elem.view.displayMode.value;
-  // const confThreshHigh = elem.info.confThreshHigh.value !== '' ? parseInt(elem.info.confThreshHigh.value) : 85;
   const outlineWord = optGUI.outlineWords || scribe.opt.displayMode === 'eval' && wordObj.conf > scribe.opt.confThreshHigh && !wordObj.matchTruth;
 
   const wordCanvas = new KonvaOcrWord({
-    visualLeft: rectLeft,
+    visualLeft: box.left,
     yActual: visualBaseline,
     topBaseline: visualBaseline,
     rotation: 0,
@@ -237,7 +215,8 @@ async function addWordManual({
     listening: !stateGUI.layoutMode,
   });
 
-  ScribeCanvas.addWord(wordCanvas);
+  const group = ScribeCanvas.getTextGroup(n);
+  group.add(wordCanvas);
 
   ScribeCanvas.layerText.batchDraw();
 }
@@ -364,7 +343,7 @@ const deleteLayoutDataTableClick = () => {
 
   scribe.data.layoutDataTables.deleteLayoutDataTable(selectedColumns[0].konvaTable.layoutDataTable, stateGUI.cp.n);
 
-  ScribeCanvas.destroyDataTable(selectedColumns[0].konvaTable);
+  selectedColumns[0].konvaTable.destroy();
   ScribeCanvas.destroyControls();
   ScribeCanvas.layerOverlay.batchDraw();
 };
@@ -376,7 +355,7 @@ const deleteLayoutRegionClick = () => {
 
   selectedRegions.forEach((region) => {
     scribe.data.layoutRegions.deleteLayoutRegion(region.layoutBox, stateGUI.cp.n);
-    ScribeCanvas.destroyRegion(region);
+    region.destroy();
   });
   ScribeCanvas.destroyControls();
   ScribeCanvas.layerOverlay.batchDraw();
@@ -579,6 +558,22 @@ function selectWords(box) {
   }
 }
 
+/**
+ *
+ * @param {Object} box
+ * @param {number} box.width
+ * @param {number} box.height
+ * @param {number} box.x
+ * @param {number} box.y
+ */
+export function selectLayoutBoxesArea(box) {
+  // const shapes = ScribeCanvas.getKonvaLayoutBoxes();
+  const shapes = [...ScribeCanvas.getKonvaDataColumns(), ...ScribeCanvas.getKonvaRegions()];
+  const layoutBoxes = shapes.filter((shape) => Konva.Util.haveIntersection(box, shape.getClientRect()));
+
+  ScribeCanvas.CanvasSelection.selectLayoutBoxes(layoutBoxes);
+}
+
 export const mouseupFunc2 = (event) => {
   hideContextMenu();
 
@@ -638,33 +633,31 @@ export const mouseupFunc2 = (event) => {
     const box = ScribeCanvas.selectingRectangle.getClientRect();
     selectLayoutBoxesArea(box);
     KonvaLayout.updateUI();
-  } else if (ScribeCanvas.mode === 'addWord') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
-    box.y -= ScribeCanvas.getPageStop(stateGUI.cp.n);
-    addWordManual(box);
-  } else if (ScribeCanvas.mode === 'recognizeWord') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
-    box.y -= ScribeCanvas.getPageStop(stateGUI.cp.n);
-    recognizeArea(box, true, false);
-  } else if (ScribeCanvas.mode === 'recognizeArea') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
-    box.y -= ScribeCanvas.getPageStop(stateGUI.cp.n);
-    recognizeArea(box, false, false);
-  } else if (ScribeCanvas.mode === 'printCoords') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
-    box.y -= ScribeCanvas.getPageStop(stateGUI.cp.n);
-    recognizeArea(box, false, true);
-  } else if (ScribeCanvas.mode === 'addLayoutBoxOrder') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
-    box.y -= ScribeCanvas.getPageStop(stateGUI.cp.n);
-    addLayoutBoxClick(box, 'order');
-  } else if (ScribeCanvas.mode === 'addLayoutBoxExclude') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
-    box.y -= ScribeCanvas.getPageStop(stateGUI.cp.n);
-    addLayoutBoxClick(box, 'exclude');
-  } else if (ScribeCanvas.mode === 'addLayoutBoxDataTable') {
-    const box = ScribeCanvas.selectingRectangle.getClientRect({ relativeTo: ScribeCanvas.layerText });
-    box.y -= ScribeCanvas.getPageStop(stateGUI.cp.n);
-    addLayoutDataTableClick(box);
+  } else if (['addWord', 'recognizeWord', 'recognizeArea', 'printCoords', 'addLayoutBoxOrder', 'addLayoutBoxExclude', 'addLayoutBoxDataTable'].includes(ScribeCanvas.mode)) {
+    const { n, box } = ScribeCanvas.calcSelectionImageCoords();
+
+    if (ScribeCanvas.mode === 'addWord') {
+      addWordManual(n, box);
+    } else if (ScribeCanvas.mode === 'recognizeWord') {
+      recognizeArea(n, box, true);
+    } else if (ScribeCanvas.mode === 'recognizeArea') {
+      recognizeArea(n, box, false);
+    } else if (ScribeCanvas.mode === 'printCoords') {
+      const debugCoords = {
+        left: box.left,
+        top: box.top,
+        right: box.left + box.width,
+        bottom: box.top + box.height,
+        topInv: scribe.data.pageMetrics[n].dims.height - box.top,
+        bottomInv: scribe.data.pageMetrics[n].dims.height - (box.top + box.height),
+      };
+      console.log(debugCoords);
+    } else if (ScribeCanvas.mode === 'addLayoutBoxOrder') {
+      addLayoutBoxClick(n, box, 'order');
+    } else if (ScribeCanvas.mode === 'addLayoutBoxExclude') {
+      addLayoutBoxClick(n, box, 'exclude');
+    } else if (ScribeCanvas.mode === 'addLayoutBoxDataTable') {
+      addLayoutDataTableClick(n, box);
+    }
   }
 };

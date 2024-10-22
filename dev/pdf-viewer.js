@@ -282,12 +282,12 @@ class ScribePDFViewer {
     });
 
     // Add various event listners to HTML elements
-    this.nextElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n + 1, true));
-    this.prevElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n - 1, true));
+    this.nextElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n + 1, true, false));
+    this.prevElem.addEventListener('click', () => this.displayPageGUI(stateGUI.cp.n - 1, true, false));
 
     this.pageNumElem.addEventListener('keyup', (event) => {
       if (event.keyCode === 13) {
-        this.displayPageGUI(parseInt(this.pageNumElem.value) - 1, true);
+        this.displayPageGUI(parseInt(this.pageNumElem.value) - 1, true, false);
       }
     });
 
@@ -339,8 +339,9 @@ class ScribePDFViewer {
      * Render page `n` in the UI.
      * @param {number} n
      * @param {boolean} [scroll=false] - Scroll to the top of the page being rendered.
+     * @param {boolean} [refresh=true] - Refresh the page even if it is already displayed.
      */
-    this.displayPageGUI = async (n, scroll = false) => {
+    this.displayPageGUI = async (n, scroll = false, refresh = true) => {
       // Return early page does not exist.
       if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1)) {
         // Reset the value of pageNumElem (number in UI) to match the internal value of the page
@@ -348,7 +349,7 @@ class ScribePDFViewer {
         return;
       }
 
-      await ScribeCanvas.displayPage(n, scroll);
+      await ScribeCanvas.displayPage(n, scroll, refresh);
     };
 
     ScribeCanvas.init(this.viewerContainer, width, height - toolbarHeight);
