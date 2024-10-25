@@ -37,10 +37,11 @@ export async function initBitmapWorker() {
     const messageHandler = async (data) => {
       if (workerPromises[data.id]) {
         if (data.status === 'reject') {
-          console.log(data.data);
           workerPromises[data.id].reject(data.data);
+          delete workerPromises[data.id];
         } else {
           workerPromises[data.id].resolve(data.data);
+          delete workerPromises[data.id];
         }
       }
     };
