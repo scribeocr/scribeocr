@@ -16,6 +16,21 @@ export function sleep(ms) {
 }
 
 /**
+ *
+ * @param {number} min - First number in the range.
+ * @param {number} max - Last number in the range (inclusive).
+ * @returns
+ * `range(1, 5)` returns `[1, 2, 3, 4, 5]`.
+ */
+export function range(min, max) {
+  const result = [];
+  for (let i = min; i <= max; i++) {
+    result.push(i);
+  }
+  return result;
+}
+
+/**
  * Delete all properties from `obj` and replace with properties from `obj2`.
  * By default `obj2 = {}`, which clears `obj`.
  * @param {Object} obj

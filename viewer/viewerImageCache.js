@@ -2,6 +2,8 @@ import scribe from '../scribe.js/scribe.js';
 /* eslint-disable import/no-cycle */
 import { ScribeCanvas, stateGUI } from './viewerCanvas.js';
 import Konva from '../app/lib/konva/index.js';
+import { initBitmapWorker } from './bitmapWorkerMain.js';
+import { range } from '../app/utils/utils.js';
 
 /**
  * @typedef {Object} ImageProperties
@@ -17,6 +19,19 @@ import Konva from '../app/lib/konva/index.js';
  * @property {?boolean} [upscaled]
  * @property {?('color'|'gray'|'binary')} [colorMode]
  */
+
+export class BitmapScheduler {
+  constructor(scheduler, workers) {
+    this.scheduler = scheduler;
+    /** @type {Array<Awaited<ReturnType<typeof initBitmapWorker>>>} */
+    this.workers = workers;
+    /**
+     * @param {Parameters<typeof import('./bitmapWorker.js').getImageBitmap>} args
+     * @returns {Promise<ReturnType<typeof import('./bitmapWorker.js').getImageBitmap>>}
+     */
+    this.pageText = (args) => (this.scheduler.addJob('pageText', args));
+  }
+}
 
 export class ViewerImageCache {
   /**
@@ -47,6 +62,47 @@ export class ViewerImageCache {
 
   /** @type {Array<?Promise<boolean>>} */
   static #binaryBitmapPromises = [];
+
+  /** @type {?Promise<BitmapScheduler>} */
+  static bitmapScheduler = null;
+
+  /**
+   * Initializes the bitmap scheduler.
+   * This is used to load image bitmaps in the background, since this can be slow and memory-intensive for large images.
+   * @param {number} numWorkers
+   * @returns
+   */
+  static #initBitmapScheduler = async (numWorkers = 3) => {
+    const Tesseract = (await import('../scribe.js/tess/tesseract.esm.min.js')).default;
+    const scheduler = await Tesseract.createScheduler();
+    const workersPromiseArr = range(1, numWorkers).map(async () => {
+      const w = await initBitmapWorker();
+      w.id = `png-${Math.random().toString(16).slice(3, 8)}`;
+      scheduler.addWorker(w);
+      return w;
+    });
+
+    const workers = await Promise.all(workersPromiseArr);
+
+    return new BitmapScheduler(scheduler, workers);
+  };
+
+  /**
+   * Gets the bitmap scheduler if it exists, otherwise creates a new one.
+   * @param {number} [numWorkers=3] - Number of workers to create.
+   * @returns
+   */
+  static getBitmapScheduler = async (numWorkers = 3) => {
+    if (ViewerImageCache.bitmapScheduler) return ViewerImageCache.bitmapScheduler;
+    ViewerImageCache.bitmapScheduler = ViewerImageCache.#initBitmapScheduler(numWorkers);
+    return ViewerImageCache.bitmapScheduler;
+  };
+
+  static imageStrToBitmap = async (imageStr) => {
+    const bitmapScheduler = await ViewerImageCache.getBitmapScheduler();
+    const res = bitmapScheduler.scheduler.addJob('getImageBitmap', [imageStr]);
+    return res;
+  };
 
   /**
    *
@@ -107,7 +163,7 @@ export class ViewerImageCache {
     const nativeN = await scribe.data.image.getNative(n, props);
     if (ViewerImageCache.#nativeBitmapPromises[n]) await ViewerImageCache.#nativeBitmapPromises[n];
     if (!nativeN.imageBitmap) {
-      const bitmapPromise = scribe.utils.getImageBitmap(nativeN.src);
+      const bitmapPromise = ViewerImageCache.imageStrToBitmap(nativeN.src);
 
       ViewerImageCache.#nativeBitmapPromises[n] = bitmapPromise.then(() => (true));
       nativeN.imageBitmap = await bitmapPromise;
@@ -125,7 +181,7 @@ export class ViewerImageCache {
     const binaryN = await scribe.data.image.getBinary(n, props);
     if (ViewerImageCache.#binaryBitmapPromises[n]) await ViewerImageCache.#binaryBitmapPromises[n];
     if (!binaryN.imageBitmap) {
-      const bitmapPromise = scribe.utils.getImageBitmap(binaryN.src);
+      const bitmapPromise = ViewerImageCache.imageStrToBitmap(binaryN.src);
 
       ViewerImageCache.#binaryBitmapPromises[n] = bitmapPromise.then(() => (true));
       binaryN.imageBitmap = await bitmapPromise;
