@@ -41,7 +41,9 @@ export class KonvaLayout extends Konva.Rect {
     const width = layoutBox.coords.right - layoutBox.coords.left;
     const height = layoutBox.coords.bottom - layoutBox.coords.top;
 
-    const n = layoutBox instanceof scribe.layout.LayoutDataColumn ? layoutBox.table.page.n : layoutBox.page.n;
+    // `instanceof LayoutDataColumn` should not be used to determine the type of the layout box,
+    // as this will fail for layout boxes that were created in another thread.
+    const n = layoutBox.type === 'dataColumn' ? layoutBox.table.page.n : layoutBox.page.n;
 
     // "Order" boxes are blue, "exclude" boxes are red, data columns are uncolored, as the color is added by the table.
     let fill;
@@ -145,7 +147,7 @@ export class KonvaLayout extends Konva.Rect {
     const enabledAnchors = ['middle-left', 'middle-right', 'top-center', 'bottom-center'];
 
     let n;
-    if (konvaLayout.layoutBox instanceof scribe.layout.LayoutDataColumn) {
+    if (layoutBox.type === 'dataColumn') {
       n = konvaLayout.layoutBox.table.page.n;
     } else {
       n = konvaLayout.layoutBox.page.n;
@@ -169,7 +171,7 @@ export class KonvaLayout extends Konva.Rect {
    * @param {KonvaLayout|KonvaDataColumn} konvaLayout
    */
   static updateLayoutBoxes(konvaLayout) {
-    const n = konvaLayout.layoutBox instanceof scribe.layout.LayoutDataColumn ? konvaLayout.layoutBox.table.page.n : konvaLayout.layoutBox.page.n;
+    const n = konvaLayout.layoutBox.type === 'dataColumn' ? konvaLayout.layoutBox.table.page.n : konvaLayout.layoutBox.page.n;
     const width = konvaLayout.width() * konvaLayout.scaleX();
     const height = konvaLayout.height() * konvaLayout.scaleY();
     const right = konvaLayout.x() + width;
@@ -1048,37 +1050,34 @@ export function addLayoutDataTable(n, box) {
     left: box.left, top: box.top, right: box.left + box.width, bottom: box.top + box.height,
   };
 
-  const lines = scribe.data.ocr.active[n].lines.filter((line) => scribe.utils.calcBoxOverlap(line.bbox, bbox) > 0.5);
+  const dataTable = scribe.utils.makeTableFromBbox(scribe.data.ocr.active[n], bbox);
+  dataTable.page = scribe.data.layoutDataTables.pages[n];
 
-  let columnBboxArr;
-  if (lines.length > 0) {
-    const lineBoxes = lines.map((line) => line.bbox);
-    const columnBoundArr = scribe.utils.calcColumnBounds(lineBoxes);
-    columnBboxArr = columnBoundArr.map((column) => ({
-      left: column.left,
-      top: bbox.top,
-      right: column.right,
-      bottom: bbox.bottom,
-    }));
+  // const lines = scribe.data.ocr.active[n].lines.filter((line) => scribe.utils.calcBoxOverlap(line.bbox, bbox) > 0.5);
 
-    // Expand column bounds so there is no empty space between columns.
-    columnBboxArr[0].left = bbox.left;
-    columnBboxArr[columnBboxArr.length - 1].right = bbox.right;
-    for (let i = 0; i < columnBboxArr.length - 1; i++) {
-      const boundRight = (columnBboxArr[i].right + columnBboxArr[i + 1].left) / 2;
-      columnBboxArr[i].right = boundRight;
-      columnBboxArr[i + 1].left = boundRight;
-    }
-  } else {
-    columnBboxArr = [{ ...bbox }];
-  }
+  // let columnBboxArr;
+  // if (lines.length > 0) {
+  //   const lineBoxes = lines.map((line) => line.bbox);
+  //   const columnBoundArr = scribe.utils.calcColumnBounds(lineBoxes);
+  //   columnBboxArr = columnBoundArr.map((column) => ({
+  //     left: column.left,
+  //     top: bbox.top,
+  //     right: column.right,
+  //     bottom: bbox.bottom,
+  //   }));
 
-  const dataTable = new scribe.layout.LayoutDataTable(scribe.data.layoutDataTables.pages[n]);
+  //   columnBboxArr[0].left = bbox.left;
+  //   columnBboxArr[columnBboxArr.length - 1].right = bbox.right;
+  // } else {
+  //   columnBboxArr = [{ ...bbox }];
+  // }
 
-  columnBboxArr.forEach((columnBbox) => {
-    const layoutBox = new scribe.layout.LayoutDataColumn(columnBbox, dataTable);
-    dataTable.boxes.push(layoutBox);
-  });
+  // const dataTable = new scribe.layout.LayoutDataTable(scribe.data.layoutDataTables.pages[n]);
+
+  // columnBboxArr.forEach((columnBbox) => {
+  //   const layoutBox = new scribe.layout.LayoutDataColumn(columnBbox, dataTable);
+  //   dataTable.boxes.push(layoutBox);
+  // });
 
   scribe.data.layoutDataTables.pages[n].tables.push(dataTable);
 
@@ -1087,6 +1086,17 @@ export function addLayoutDataTable(n, box) {
 
   renderLayoutDataTable(dataTable);
 }
+
+globalThis.autoDetectTables = (n) => {
+  const tableBboxes = scribe.utils.detectTablesInPage(scribe.data.ocr.active[n]);
+  console.log(`Detected ${tableBboxes.length} tables`);
+  tableBboxes.forEach((bbox) => {
+    const bbox2 = {
+      left: bbox.left, top: bbox.top, width: bbox.right - bbox.left, height: bbox.bottom - bbox.top,
+    };
+    addLayoutDataTable(n, bbox2);
+  });
+};
 
 /**
  *

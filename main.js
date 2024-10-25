@@ -64,6 +64,12 @@ ScribeCanvas.init(canvasContainer, document.documentElement.clientWidth, documen
 ScribeCanvas.mouseupFunc2 = mouseupFunc2;
 ScribeCanvas.stage.on('contextmenu', contextMenuFunc);
 
+elem.layout.autoDetectTables.addEventListener('click', () => {
+  scribe.opt.autoDetectTables = elem.layout.autoDetectTables.checked;
+});
+
+globalThis.detectTablesInPage = scribe.utils.detectTablesInPage;
+
 /**
  *
  * @param {ProgressMessage} message

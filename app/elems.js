@@ -162,6 +162,8 @@ class layout {
   static setDefaultLayout = /** @type {HTMLInputElement} */(document.getElementById('setDefaultLayout'));
 
   static revertLayout = /** @type {HTMLInputElement} */(document.getElementById('revertLayout'));
+
+  static autoDetectTables = /** @type {HTMLInputElement} */(document.getElementById('autoDetectTables'));
 }
 
 class download {
