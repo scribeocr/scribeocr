@@ -54,7 +54,7 @@ import { findText, highlightcp, search } from './viewer/viewerSearch.js';
 import {
   KonvaLayout, renderLayoutBoxes, setLayoutBoxInclusionLevelClick, setLayoutBoxInclusionRuleClick,
 } from './viewer/viewerLayout.js';
-import { contextMenuFunc, mouseupFunc2 } from './app/interfaceCanvasInteraction.js';
+import { contextMenuFunc, mouseupFunc2 } from './viewer/viewerCanvasInteraction.js';
 import { KonvaIText, KonvaOcrWord } from './viewer/viewerWordObjects.js';
 
 const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
@@ -740,8 +740,17 @@ const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('l
 elem.layout.addLayoutBox.addEventListener('click', () => {
   ScribeCanvas.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
 });
-elem.layout.addLayoutBoxTypeOrder.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxOrder'));
-elem.layout.addLayoutBoxTypeExclude.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxExclude'));
+
+elem.layout.addLayoutBoxTypeOrder.addEventListener('click', () => {
+  ScribeCanvas.mode = 'addLayoutBoxOrder';
+  layoutBoxTypeElem.textContent = 'Order';
+});
+
+elem.layout.addLayoutBoxTypeExclude.addEventListener('click', () => {
+  ScribeCanvas.mode = 'addLayoutBoxExclude';
+  layoutBoxTypeElem.textContent = 'Exclude';
+});
+
 elem.layout.addDataTable.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxDataTable'));
 
 elem.layout.setDefaultLayout.addEventListener('click', () => setDefaultLayoutClick());

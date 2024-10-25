@@ -428,8 +428,11 @@ export class ScribeCanvas {
    * @param {number} [coords.deltaY=0]
    */
   static panStage = ({ deltaX = 0, deltaY = 0 }) => {
-    ScribeCanvas.stage.x(ScribeCanvas.stage.x() + deltaX);
-    ScribeCanvas.stage.y(ScribeCanvas.stage.y() + deltaY);
+    const x = ScribeCanvas.stage.x();
+    const y = ScribeCanvas.stage.y();
+
+    ScribeCanvas.stage.x(x + deltaX);
+    ScribeCanvas.stage.y(y + deltaY);
 
     if (!ScribeCanvas.updateCurrentPage()) {
       ScribeCanvas.stage.batchDraw();
@@ -1270,7 +1273,7 @@ document.addEventListener('copy', (e) => {
   for (let i = 0; i < ScribeCanvas.textGroupsRenderIndices.length; i++) {
     if (i > 0) text += '\n\n';
     const n = ScribeCanvas.textGroupsRenderIndices[i];
-    text += scribe.utils.renderText([scribe.data.ocr.active[n]], 0, 0, false, false, ids);
+    text += scribe.utils.writeText([scribe.data.ocr.active[n]], 0, 0, false, false, ids);
   }
 
   // @ts-ignore

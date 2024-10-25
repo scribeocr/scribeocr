@@ -4,17 +4,14 @@ import {
   optGUI,
   ScribeCanvas,
   stateGUI,
-} from '../viewer/viewerCanvas.js';
+} from './viewerCanvas.js';
+import { Konva } from '../app/lib/konva/_FullInternals.js';
 import {
-  addLayoutBoxClick,
-  addLayoutDataTableClick,
-} from './interfaceLayout.js';
-import { Konva } from './lib/konva/_FullInternals.js';
-import { elem } from './elems.js';
-import {
+  addLayoutBox,
+  addLayoutDataTable,
   checkDataColumnsAdjacent, checkDataTablesAdjacent, KonvaDataColumn, KonvaLayout, mergeDataColumns, mergeDataTables, splitDataColumn, splitDataTable,
-} from '../viewer/viewerLayout.js';
-import { KonvaOcrWord } from '../viewer/viewerWordObjects.js';
+} from './viewerLayout.js';
+import { KonvaOcrWord } from './viewerWordObjects.js';
 
 /**
  * Recognize area selected by user in Tesseract.
@@ -37,15 +34,8 @@ async function recognizeArea(n, box, wordMode = false) {
 
   const imageCoords = { ...box };
 
-  // As recognizing a single word is fast, it is run in "combined" mode unless a user has explicitly selected "legacy" or "lstm" in the advanced options.
-  /** @type {"legacy" | "lstm" | "combined"} */
-  let oemMode = 'combined';
-  if (elem.info.enableAdvancedRecognition.checked) {
-    oemMode = /** @type {"legacy" | "lstm" | "combined"} */(elem.recognize.oemLabelText.innerHTML.toLowerCase());
-  }
-
-  const legacy = oemMode === 'legacy' || oemMode === 'combined';
-  const lstm = oemMode === 'lstm' || oemMode === 'combined';
+  const legacy = true;
+  const lstm = true;
 
   // When a user is manually selecting words to recognize, they are assumed to be in the same block.
   // SINGLE_BLOCK: '6',
@@ -263,6 +253,12 @@ const createContextMenuHTML = () => {
   deleteTableButton.style.display = 'none';
   deleteTableButton.addEventListener('click', deleteLayoutDataTableClick);
 
+  const copyTableContentsButton = document.createElement('button');
+  copyTableContentsButton.id = 'contextMenuCopyLayoutTableContentsButton';
+  copyTableContentsButton.textContent = 'Copy Table Contents';
+  copyTableContentsButton.style.display = 'none';
+  copyTableContentsButton.addEventListener('click', copyTableContentsClick);
+
   const mergeTablesButton = document.createElement('button');
   mergeTablesButton.id = 'contextMenuMergeTablesButton';
   mergeTablesButton.textContent = 'Merge Tables';
@@ -281,27 +277,13 @@ const createContextMenuHTML = () => {
   innerDiv.appendChild(mergeButton);
   innerDiv.appendChild(deleteRegionButton);
   innerDiv.appendChild(deleteTableButton);
+  innerDiv.appendChild(copyTableContentsButton);
   innerDiv.appendChild(mergeTablesButton);
   innerDiv.appendChild(splitTableButton);
 
   menuDiv.appendChild(innerDiv);
 
   return menuDiv;
-};
-
-/**
- *
- * @param {Array<KonvaOcrWord>} words
- * @returns
- */
-const checkWordsAdjacent = (words) => {
-  const sortedWords = words.slice().sort((a, b) => a.word.bbox.left - b.word.bbox.left);
-  const lineWords = words[0].word.line.words;
-  lineWords.sort((a, b) => a.bbox.left - b.bbox.left);
-
-  const firstIndex = lineWords.findIndex((x) => x.id === sortedWords[0].word.id);
-  const lastIndex = lineWords.findIndex((x) => x.id === sortedWords[sortedWords.length - 1].word.id);
-  return lastIndex - firstIndex === sortedWords.length - 1;
 };
 
 const splitWordClick = () => {
@@ -324,14 +306,15 @@ const splitWordClick = () => {
 const mergeWordsClick = () => {
   hideContextMenu();
 
-  const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
-  if (selectedWords.length < 2 || !checkWordsAdjacent(selectedWords)) return;
-  const newWord = scribe.utils.mergeOcrWords(selectedWords.map((x) => x.word));
-  const lineWords = selectedWords[0].word.line.words;
-  selectedWords.sort((a, b) => a.word.bbox.left - b.word.bbox.left);
+  const selectedKonvaWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+  const selectedWords = selectedKonvaWords.map((x) => x.word);
+  if (selectedKonvaWords.length < 2 || !scribe.utils.checkOcrWordsAdjacent(selectedWords)) return;
+  const newWord = scribe.utils.mergeOcrWords(selectedKonvaWords.map((x) => x.word));
+  const lineWords = selectedKonvaWords[0].word.line.words;
+  selectedKonvaWords.sort((a, b) => a.word.bbox.left - b.word.bbox.left);
   lineWords.sort((a, b) => a.bbox.left - b.bbox.left);
-  const firstIndex = lineWords.findIndex((x) => x.id === selectedWords[0].word.id);
-  lineWords.splice(firstIndex, selectedWords.length, newWord);
+  const firstIndex = lineWords.findIndex((x) => x.id === selectedKonvaWords[0].word.id);
+  lineWords.splice(firstIndex, selectedKonvaWords.length, newWord);
 
   ScribeCanvas.displayPage(stateGUI.cp.n);
 };
@@ -359,6 +342,33 @@ const deleteLayoutRegionClick = () => {
   });
   ScribeCanvas.destroyControls();
   ScribeCanvas.layerOverlay.batchDraw();
+};
+
+const copyTableContentsClick = () => {
+  hideContextMenu();
+  const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
+  if (selectedColumns.length === 0) return;
+
+  const table = document.createElement('table');
+
+  if (!selectedColumns[0].konvaTable.tableContent) return;
+
+  selectedColumns[0].konvaTable.tableContent.rowWordArr.forEach((row) => {
+    const tr = document.createElement('tr');
+    row.forEach((cell) => {
+      const td = document.createElement('td');
+      td.textContent = cell.map((word) => word.text).join(' ');
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
+
+  navigator.clipboard.write([
+    new ClipboardItem({
+      'text/html': new Blob([table.outerHTML], { type: 'text/html' }),
+      'text/plain': new Blob([table.innerText], { type: 'text/plain' }),
+    }),
+  ]);
 };
 
 const mergeDataColumnsClick = () => {
@@ -398,6 +408,7 @@ const contextMenuMergeColumnsButtonElem = /** @type {HTMLButtonElement} */(docum
 const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
 const contextMenuDeleteLayoutRegionButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutRegionButton'));
 const contextMenuDeleteLayoutTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteLayoutTableButton'));
+const contextMenuCopyLayoutTableContentsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuCopyLayoutTableContentsButton'));
 const contextMenuMergeTablesButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeTablesButton'));
 const contextMenuSplitTableButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitTableButton'));
 
@@ -408,6 +419,7 @@ export const hideContextMenu = () => {
   contextMenuSplitColumnButtonElem.style.display = 'none';
   contextMenuDeleteLayoutRegionButtonElem.style.display = 'none';
   contextMenuDeleteLayoutTableButtonElem.style.display = 'none';
+  contextMenuCopyLayoutTableContentsButtonElem.style.display = 'none';
   contextMenuMergeTablesButtonElem.style.display = 'none';
   contextMenuSplitTableButtonElem.style.display = 'none';
   menuNode.style.display = 'none';
@@ -446,11 +458,12 @@ export const contextMenuFunc = (event) => {
 
   if (!pointer || !pointerRelative) return;
 
-  const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+  const selectedKonvaWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+  const selectedWords = selectedKonvaWords.map((x) => x.word);
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
   const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
 
-  if (event.target === ScribeCanvas.stage || (selectedColumns.length === 0 && selectedRegions.length === 0 && selectedWords.length === 0)) {
+  if (event.target === ScribeCanvas.stage || (selectedColumns.length === 0 && selectedRegions.length === 0 && selectedKonvaWords.length === 0)) {
     // if we are on empty place of the ScribeCanvas.stage we will do nothing
     return;
   }
@@ -460,14 +473,14 @@ export const contextMenuFunc = (event) => {
   let enableSplitWord = false;
   let enableMergeWords = false;
   if (!stateGUI.layoutMode && event.target instanceof KonvaOcrWord) {
-    if (selectedWords.length < 2) {
+    if (selectedKonvaWords.length < 2) {
       const cursorIndex = KonvaOcrWord.getCursorIndex(event.target);
       if (cursorIndex > 0 && cursorIndex < event.target.word.text.length) {
         ScribeCanvas.contextMenuWord = event.target;
         enableSplitWord = true;
       }
     } else {
-      const adjacentWords = checkWordsAdjacent(selectedWords);
+      const adjacentWords = scribe.utils.checkOcrWordsAdjacent(selectedWords);
       if (adjacentWords) enableMergeWords = true;
     }
   }
@@ -479,6 +492,7 @@ export const contextMenuFunc = (event) => {
   let enableSplit = false;
   let enableDeleteRegion = false;
   let enableDeleteTable = false;
+  let enableCopyTableContents = false;
   let enableSplitTable = false;
 
   if (selectedTables.length === 1) {
@@ -488,14 +502,18 @@ export const contextMenuFunc = (event) => {
     if (selectedColumns.length === 1) enableSplit = true;
     if (selectedRegions.length > 0) enableDeleteRegion = true;
     if (selectedColumns.length > 0 && adjacentColumns && selectedColumns.length < selectedTables[0].boxes.length) enableSplitTable = true;
-    if (selectedColumns.length > 0 && selectedColumns.length === selectedColumns[0].konvaTable.columns.length) enableDeleteTable = true;
+    if (selectedColumns.length > 0 && selectedColumns.length === selectedColumns[0].konvaTable.columns.length) {
+      enableDeleteTable = true;
+      enableCopyTableContents = true;
+    }
   } else if (selectedTables.length > 1 && checkDataTablesAdjacent(selectedTables)) {
     enableMergeTables = true;
   } else if (selectedRegions.length > 0) {
     enableDeleteRegion = true;
   }
 
-  if (!(enableMergeColumns || enableSplit || enableDeleteRegion || enableDeleteTable || enableMergeTables || enableSplitTable || enableSplitWord || enableMergeWords)) return;
+  if (!(enableMergeColumns || enableSplit || enableDeleteRegion || enableDeleteTable || enableCopyTableContents || enableMergeTables || enableSplitTable
+    || enableSplitWord || enableMergeWords)) return;
 
   if (enableMergeWords) {
     contextMenuMergeWordsButtonElem.style.display = 'initial';
@@ -514,6 +532,9 @@ export const contextMenuFunc = (event) => {
   }
   if (enableDeleteTable) {
     contextMenuDeleteLayoutTableButtonElem.style.display = 'initial';
+  }
+  if (enableCopyTableContents) {
+    contextMenuCopyLayoutTableContentsButtonElem.style.display = 'initial';
   }
   if (enableMergeTables) {
     contextMenuMergeTablesButtonElem.style.display = 'initial';
@@ -593,10 +614,10 @@ export const mouseupFunc2 = (event) => {
   }
 
   // Hide the baseline adjustment range if the user clicks somewhere outside of the currently selected word and outside of the range adjustment box.
-  if (activeElem && elem.edit.collapseRangeBaseline.contains(activeElem)) {
-    const open = elem.edit.collapseRangeBaselineBS._element.classList.contains('show');
-    if (open) elem.edit.collapseRangeBaselineBS.toggle();
-  }
+  // if (activeElem && elem.edit.collapseRangeBaseline.contains(activeElem)) {
+  //   const open = elem.edit.collapseRangeBaselineBS._element.classList.contains('show');
+  //   if (open) elem.edit.collapseRangeBaselineBS.toggle();
+  // }
 
   // Handle the case where no rectangle is drawn (i.e. a click event), or the rectangle is is extremely small.
   // Clicks are handled in the same function as rectangle selections as using separate events lead to issues when multiple events were triggered.
@@ -653,11 +674,11 @@ export const mouseupFunc2 = (event) => {
       };
       console.log(debugCoords);
     } else if (ScribeCanvas.mode === 'addLayoutBoxOrder') {
-      addLayoutBoxClick(n, box, 'order');
+      addLayoutBox(n, box, 'order');
     } else if (ScribeCanvas.mode === 'addLayoutBoxExclude') {
-      addLayoutBoxClick(n, box, 'exclude');
+      addLayoutBox(n, box, 'exclude');
     } else if (ScribeCanvas.mode === 'addLayoutBoxDataTable') {
-      addLayoutDataTableClick(n, box);
+      addLayoutDataTable(n, box);
     }
   }
 };

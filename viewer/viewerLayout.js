@@ -1011,3 +1011,105 @@ export const splitDataTable = (columns) => {
 
   renderLayoutDataTables(n);
 };
+
+/**
+ * @param {number} n - Page number.
+ * @param {Object} box
+ * @param {number} box.width
+ * @param {number} box.height
+ * @param {number} box.left
+ * @param {number} box.top
+ */
+export function addLayoutBox(n, box, type) {
+  // Maximum priority for boxes that already exist
+  const maxPriority = Math.max(...Object.values(scribe.data.layoutRegions.pages[n].boxes).map((layoutRegion) => layoutRegion.order), -1);
+
+  const bbox = {
+    left: box.left, top: box.top, right: box.left + box.width, bottom: box.top + box.height,
+  };
+
+  const region = new scribe.layout.LayoutRegion(scribe.data.layoutRegions.pages[n], maxPriority + 1, bbox, type);
+
+  scribe.data.layoutRegions.pages[n].boxes[region.id] = region;
+
+  renderLayoutBoxes(n);
+}
+
+/**
+ * @param {number} n - Page number.
+ * @param {Object} box
+ * @param {number} box.width
+ * @param {number} box.height
+ * @param {number} box.left
+ * @param {number} box.top
+ */
+export function addLayoutDataTable(n, box) {
+  const bbox = {
+    left: box.left, top: box.top, right: box.left + box.width, bottom: box.top + box.height,
+  };
+
+  const lines = scribe.data.ocr.active[n].lines.filter((line) => scribe.utils.calcBoxOverlap(line.bbox, bbox) > 0.5);
+
+  let columnBboxArr;
+  if (lines.length > 0) {
+    const lineBoxes = lines.map((line) => line.bbox);
+    const columnBoundArr = scribe.utils.calcColumnBounds(lineBoxes);
+    columnBboxArr = columnBoundArr.map((column) => ({
+      left: column.left,
+      top: bbox.top,
+      right: column.right,
+      bottom: bbox.bottom,
+    }));
+
+    // Expand column bounds so there is no empty space between columns.
+    columnBboxArr[0].left = bbox.left;
+    columnBboxArr[columnBboxArr.length - 1].right = bbox.right;
+    for (let i = 0; i < columnBboxArr.length - 1; i++) {
+      const boundRight = (columnBboxArr[i].right + columnBboxArr[i + 1].left) / 2;
+      columnBboxArr[i].right = boundRight;
+      columnBboxArr[i + 1].left = boundRight;
+    }
+  } else {
+    columnBboxArr = [{ ...bbox }];
+  }
+
+  const dataTable = new scribe.layout.LayoutDataTable(scribe.data.layoutDataTables.pages[n]);
+
+  columnBboxArr.forEach((columnBbox) => {
+    const layoutBox = new scribe.layout.LayoutDataColumn(columnBbox, dataTable);
+    dataTable.boxes.push(layoutBox);
+  });
+
+  scribe.data.layoutDataTables.pages[n].tables.push(dataTable);
+
+  scribe.data.layoutRegions.pages[n].default = false;
+  scribe.data.layoutDataTables.pages[n].default = false;
+
+  renderLayoutDataTable(dataTable);
+}
+
+/**
+ *
+ * @param {number} n
+ */
+export function setDefaultLayout(n) {
+  scribe.data.layoutRegions.defaultRegions = structuredClone(scribe.data.layoutRegions.pages[n].boxes);
+  for (let i = 0; i < scribe.data.layoutRegions.pages.length; i++) {
+    if (scribe.data.layoutRegions.pages[i].default) {
+      scribe.data.layoutRegions.pages[i].boxes = structuredClone(scribe.data.layoutRegions.defaultRegions);
+    }
+  }
+}
+
+/**
+ *
+ * @param {number} n
+ */
+export function setDefaultLayoutDataTable(n) {
+  scribe.data.layoutDataTables.defaultTables = structuredClone(scribe.data.layoutDataTables.pages[n].tables);
+  for (let i = 0; i < scribe.data.layoutDataTables.pages.length; i++) {
+    if (scribe.data.layoutDataTables.pages[i].default) {
+      scribe.data.layoutDataTables.pages[i].tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
+    }
+  }
+}
