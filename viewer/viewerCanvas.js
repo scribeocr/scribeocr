@@ -431,6 +431,29 @@ export class ScribeCanvas {
     const x = ScribeCanvas.stage.x();
     const y = ScribeCanvas.stage.y();
 
+    // Clip the inputs to prevent the user from panning the entire document outside of the viewport.
+    if (stateGUI.cp.n === 0) {
+      const maxY = (ScribeCanvas.getPageStop(0) - 100) * ScribeCanvas.stage.getAbsoluteScale().y * -1 + ScribeCanvas.stage.height() / 2;
+      const maxYDelta = Math.max(0, maxY - y);
+      deltaY = Math.min(deltaY, maxYDelta);
+    }
+
+    if (stateGUI.cp.n === scribe.data.pageMetrics.length - 1) {
+      const minY = ScribeCanvas.getPageStop(stateGUI.cp.n, false) * ScribeCanvas.stage.getAbsoluteScale().y * -1
+        + ScribeCanvas.stage.height() / 2;
+      const minYDelta = Math.max(0, y - minY);
+      deltaY = Math.max(deltaY, -minYDelta);
+    }
+
+    const minX = (scribe.data.pageMetrics[stateGUI.cp.n].dims.width / 2) * ScribeCanvas.stage.getAbsoluteScale().y * -1;
+    const minXDelta = Math.max(0, x - minX);
+    deltaX = Math.max(deltaX, -minXDelta);
+
+    const maxX = (scribe.data.pageMetrics[stateGUI.cp.n].dims.width / 2) * ScribeCanvas.stage.getAbsoluteScale().y * -1
+      + ScribeCanvas.stage.width();
+    const maxXDelta = Math.max(0, maxX - x);
+    deltaX = Math.min(deltaX, maxXDelta);
+
     ScribeCanvas.stage.x(x + deltaX);
     ScribeCanvas.stage.y(y + deltaY);
 
