@@ -139,33 +139,6 @@ export class KonvaLayout extends Konva.Rect {
 
   /**
    * Add controls for editing.
-   * @param {KonvaLayout} konvaLayout
-   */
-  static addControls = (konvaLayout) => {
-    const enabledAnchors = ['middle-left', 'middle-right', 'top-center', 'bottom-center'];
-
-    let n;
-    if (konvaLayout.layoutBox instanceof scribe.layout.LayoutDataColumn) {
-      n = konvaLayout.layoutBox.table.page.n;
-    } else {
-      n = konvaLayout.layoutBox.page.n;
-    }
-
-    const group = ScribeCanvas.getOverlayGroup(n);
-
-    const trans = new Konva.Transformer({
-      enabledAnchors,
-      rotateEnabled: false,
-      borderStrokeWidth: 2,
-    });
-    ScribeCanvas.KonvaOcrWord._controlArr.push(trans);
-    group.add(trans);
-
-    trans.nodes([konvaLayout]);
-  };
-
-  /**
-   * Add controls for editing.
    * @param {KonvaLayout|KonvaDataColumn} konvaLayout
    */
   static updateLayoutBoxes(konvaLayout) {
@@ -186,6 +159,184 @@ export class KonvaLayout extends Konva.Rect {
    * Should be called after new objects are selected.
    */
   static updateUI = () => { };
+}
+
+export class KonvaRegionControlHorizontal extends Konva.Line {
+  /**
+   *
+   * @param {KonvaRegion} konvaRegion
+   */
+  constructor(konvaRegion, top = true) {
+    super({
+      x: konvaRegion.layoutBox.coords.left,
+      y: top ? konvaRegion.layoutBox.coords.top : konvaRegion.layoutBox.coords.bottom,
+      points: [0, 0, konvaRegion.layoutBox.coords.right - konvaRegion.layoutBox.coords.left, 0],
+      stroke: 'black',
+      strokeWidth: 2,
+      strokeScaleEnabled: false,
+      draggable: true,
+      dragBoundFunc(pos) {
+        const newY = Math.max(this.boundTop, Math.min(this.boundBottom, pos.y));
+
+        return {
+          x: this.absolutePosition().x,
+          y: newY,
+        };
+      },
+      hitFunc(context, shape) {
+        context.beginPath();
+        context.rect(0, -3, shape.width(), 6);
+        context.closePath();
+        context.fillStrokeShape(shape);
+      },
+
+    });
+
+    const n = konvaRegion.layoutBox.page.n;
+
+    this.konvaRegion = konvaRegion;
+
+    this.boundTop = 0;
+    this.boundBottom = 10000;
+
+    this.on('dragstart', () => {
+      ScribeCanvas.drag.isResizingColumns = true;
+
+      const group = ScribeCanvas.getOverlayGroup(n);
+
+      if (top) {
+        this.boundTop = group.getAbsoluteTransform().m[5];
+        this.boundBottom = this.konvaRegion.bottomControl.getAbsolutePosition().y - 20;
+      } else {
+        this.boundTop = this.konvaRegion.topControl.getAbsolutePosition().y + 20;
+        this.boundBottom = group.getAbsoluteTransform().m[5] + scribe.data.pageMetrics[n].dims.height * group.getAbsoluteScale().y;
+      }
+    });
+    this.addEventListener('dragmove', () => {
+      if (top) {
+        this.konvaRegion.layoutBox.coords.top = this.y();
+
+        this.konvaRegion.y(this.konvaRegion.layoutBox.coords.top);
+        this.konvaRegion.height(this.konvaRegion.layoutBox.coords.bottom - this.konvaRegion.layoutBox.coords.top);
+
+        this.konvaRegion.leftControl.y(this.konvaRegion.layoutBox.coords.top);
+        this.konvaRegion.rightControl.y(this.konvaRegion.layoutBox.coords.top);
+        this.konvaRegion.leftControl.points([0, 0, 0, konvaRegion.layoutBox.coords.bottom - this.konvaRegion.layoutBox.coords.top]);
+        this.konvaRegion.rightControl.points([0, 0, 0, konvaRegion.layoutBox.coords.bottom - this.konvaRegion.layoutBox.coords.top]);
+      } else {
+        this.konvaRegion.layoutBox.coords.bottom = this.y();
+
+        this.konvaRegion.height(this.konvaRegion.layoutBox.coords.bottom - this.konvaRegion.layoutBox.coords.top);
+
+        this.konvaRegion.leftControl.points([0, 0, 0, konvaRegion.layoutBox.coords.bottom - this.konvaRegion.layoutBox.coords.top]);
+        this.konvaRegion.rightControl.points([0, 0, 0, konvaRegion.layoutBox.coords.bottom - this.konvaRegion.layoutBox.coords.top]);
+      }
+
+      if (this.konvaRegion.label) {
+        this.konvaRegion.label.x(this.konvaRegion.x() + this.konvaRegion.width() * 0.5);
+        this.konvaRegion.label.yActual = this.konvaRegion.y() + this.konvaRegion.height() * 0.5;
+        KonvaIText.updateWordCanvas(this.konvaRegion.label);
+      }
+    });
+    this.addEventListener('dragend', () => {
+      ScribeCanvas.drag.isResizingColumns = false;
+    });
+
+    this.on('mouseover', () => {
+      document.body.style.cursor = 'row-resize';
+    });
+    this.on('mouseout', () => {
+      document.body.style.cursor = 'default';
+    });
+  }
+}
+
+export class KonvaRegionControlVertical extends Konva.Line {
+  /**
+   *
+   * @param {KonvaRegion} konvaRegion
+   */
+  constructor(konvaRegion, left = true) {
+    super({
+      x: left ? konvaRegion.layoutBox.coords.left : konvaRegion.layoutBox.coords.right,
+      y: konvaRegion.layoutBox.coords.top,
+      points: [0, 0, 0, konvaRegion.layoutBox.coords.bottom - konvaRegion.layoutBox.coords.top],
+      stroke: 'black',
+      strokeWidth: 2,
+      strokeScaleEnabled: false,
+      draggable: true,
+      dragBoundFunc(pos) {
+        const newX = Math.max(this.boundLeft, Math.min(this.boundRight, pos.x));
+
+        // Restrict vertical movement by setting the y position to the initial y position.
+        return {
+          x: newX,
+          y: this.absolutePosition().y,
+        };
+      },
+      hitFunc(context, shape) {
+        context.beginPath();
+        context.rect(-3, 0, 6, shape.height());
+        context.closePath();
+        context.fillStrokeShape(shape);
+      },
+    });
+
+    const n = konvaRegion.layoutBox.page.n;
+
+    this.konvaRegion = konvaRegion;
+
+    this.boundLeft = 0;
+    this.boundRight = 10000;
+
+    this.on('dragstart', () => {
+      ScribeCanvas.drag.isResizingColumns = true;
+
+      const group = ScribeCanvas.getOverlayGroup(n);
+
+      if (left) {
+        this.boundLeft = group.getAbsoluteTransform().m[4];
+        this.boundRight = this.konvaRegion.rightControl.getAbsolutePosition().x - 20;
+      } else {
+        this.boundLeft = this.konvaRegion.leftControl.getAbsolutePosition().x + 20;
+        this.boundRight = group.getAbsoluteTransform().m[4] + scribe.data.pageMetrics[n].dims.width * group.getAbsoluteScale().x;
+      }
+    });
+    this.addEventListener('dragmove', () => {
+      if (left) {
+        this.konvaRegion.layoutBox.coords.left = this.x();
+        this.konvaRegion.x(this.konvaRegion.layoutBox.coords.left);
+        this.konvaRegion.width(this.konvaRegion.layoutBox.coords.right - this.konvaRegion.layoutBox.coords.left);
+
+        this.konvaRegion.topControl.x(this.konvaRegion.layoutBox.coords.left);
+        this.konvaRegion.bottomControl.x(this.konvaRegion.layoutBox.coords.left);
+        this.konvaRegion.topControl.points([0, 0, konvaRegion.layoutBox.coords.right - this.konvaRegion.layoutBox.coords.left, 0]);
+        this.konvaRegion.bottomControl.points([0, 0, konvaRegion.layoutBox.coords.right - this.konvaRegion.layoutBox.coords.left, 0]);
+      } else {
+        this.konvaRegion.layoutBox.coords.right = this.x();
+        this.konvaRegion.width(this.konvaRegion.layoutBox.coords.right - this.konvaRegion.layoutBox.coords.left);
+
+        this.konvaRegion.topControl.points([0, 0, konvaRegion.layoutBox.coords.right - konvaRegion.layoutBox.coords.left, 0]);
+        this.konvaRegion.bottomControl.points([0, 0, konvaRegion.layoutBox.coords.right - konvaRegion.layoutBox.coords.left, 0]);
+      }
+
+      if (this.konvaRegion.label) {
+        this.konvaRegion.label.x(this.konvaRegion.x() + this.konvaRegion.width() * 0.5);
+        this.konvaRegion.label.yActual = this.konvaRegion.y() + this.konvaRegion.height() * 0.5;
+        KonvaIText.updateWordCanvas(this.konvaRegion.label);
+      }
+    });
+    this.addEventListener('dragend', () => {
+      ScribeCanvas.drag.isResizingColumns = false;
+    });
+
+    this.on('mouseover', () => {
+      document.body.style.cursor = 'col-resize';
+    });
+    this.on('mouseout', () => {
+      document.body.style.cursor = 'default';
+    });
+  }
 }
 
 export class KonvaDataTableControl extends Konva.Line {
@@ -324,8 +475,8 @@ export class KonvaDataColSep extends Konva.Line {
       return prev;
     };
 
-    this.boundTop = 0;
-    this.boundBottom = 10000;
+    this.boundLeft = 0;
+    this.boundRight = 10000;
 
     this.konvaTable = konvaTable;
     this.columnLeft = columnLeft;
@@ -610,6 +761,8 @@ export function renderLayoutDataTable(layoutDataTable) {
     group.add(column);
   });
   konvaLayout.colLines.forEach((colLine) => colLine.moveToTop());
+  konvaLayout.topControl.moveToTop();
+  konvaLayout.bottomControl.moveToTop();
 }
 
 export class KonvaRegion extends KonvaLayout {
@@ -621,6 +774,30 @@ export class KonvaRegion extends KonvaLayout {
     super(layoutBox);
 
     this.layoutBox = layoutBox;
+
+    this.topControl = new KonvaRegionControlHorizontal(this, true);
+    this.bottomControl = new KonvaRegionControlHorizontal(this, false);
+
+    this.leftControl = new KonvaRegionControlVertical(this, true);
+    this.rightControl = new KonvaRegionControlVertical(this, false);
+
+    const group = ScribeCanvas.getOverlayGroup(layoutBox.page.n);
+
+    group.add(this.topControl);
+    group.add(this.bottomControl);
+    group.add(this.leftControl);
+    group.add(this.rightControl);
+
+    this.addEventListener('dragmove', () => {
+      this.topControl.x(this.x());
+      this.topControl.y(this.y());
+      this.bottomControl.x(this.x());
+      this.bottomControl.y(this.y() + this.height());
+      this.leftControl.x(this.x());
+      this.leftControl.y(this.y());
+      this.rightControl.x(this.x() + this.width());
+      this.rightControl.y(this.y());
+    });
   }
 }
 
@@ -848,6 +1025,10 @@ export function renderLayoutBoxes(n) {
     const konvaLayout = new KonvaRegion(box);
     group.add(konvaLayout);
     if (konvaLayout.label) group.add(konvaLayout.label);
+    konvaLayout.topControl.moveToTop();
+    konvaLayout.bottomControl.moveToTop();
+    konvaLayout.leftControl.moveToTop();
+    konvaLayout.rightControl.moveToTop();
   });
   renderLayoutDataTables(n);
 
