@@ -115,8 +115,10 @@ export class ViewerImageCache {
     const image = scribe.opt.colorMode === 'binary' ? await ViewerImageCache.getBinaryBitmap(n) : await ViewerImageCache.getNativeBitmap(n);
 
     let rotation = 0;
-    if (!backgroundImage.rotated) {
+    if (scribe.opt.autoRotate && !backgroundImage.rotated) {
       rotation = (scribe.data.pageMetrics[n].angle || 0) * -1;
+    } else if (!scribe.opt.autoRotate && backgroundImage.rotated) {
+      rotation = (scribe.data.pageMetrics[n].angle || 0);
     }
 
     const pageOffsetY = ScribeCanvas.getPageStop(n) ?? 30;
@@ -233,6 +235,7 @@ export class ViewerImageCache {
 
     ViewerImageCache.konvaImages[n].then((konvaImage) => {
       ScribeCanvas.layerBackground.add(konvaImage);
+      if (ScribeCanvas.placeholderRectArr[n]) ScribeCanvas.placeholderRectArr[n].hide();
       if (Math.abs(stateGUI.cp.n - n) < 2) ScribeCanvas.layerBackground.batchDraw();
     });
   };
@@ -303,6 +306,7 @@ export class ViewerImageCache {
     // Delete images that are sufficiently far away from the current page to save memory.
     for (let i = 0; i < scribe.data.image.pageCount; i++) {
       if (Math.abs(curr - i) > ViewerImageCache.cacheDeletePages) {
+        if (ScribeCanvas.placeholderRectArr[i]) ScribeCanvas.placeholderRectArr[i].show();
         ViewerImageCache.deleteKonvaImage(i);
       }
     }

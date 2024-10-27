@@ -1420,11 +1420,14 @@ export function renderCanvasWords(page) {
   const group = ScribeCanvas.getTextGroup(page.n);
   group.destroyChildren();
 
+  const angle = scribe.data.pageMetrics[page.n].angle || 0;
+  const textRotation = scribe.opt.autoRotate ? 0 : angle;
+
+  group.rotation(textRotation);
+
   if (!ScribeCanvas.textGroupsRenderIndices.includes(page.n)) ScribeCanvas.textGroupsRenderIndices.push(page.n);
 
   const matchIdArr = stateGUI.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[page.n]) : [];
-
-  const angle = scribe.data.pageMetrics[page.n].angle || 0;
 
   const imageRotated = Math.abs(angle ?? 0) > 0.05;
 
