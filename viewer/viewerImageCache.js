@@ -219,6 +219,12 @@ export class ViewerImageCache {
 
     if (ScribeCanvas.getPageStop(n) === null) return;
 
+    if (ViewerImageCache.konvaImages[n]) {
+      ViewerImageCache.konvaImages[n].then((konvaImage) => {
+        konvaImage.destroy();
+      });
+    }
+
     ViewerImageCache.konvaImagesProps[n] = null;
     ViewerImageCache.konvaImages[n] = ViewerImageCache.getKonvaImage(n).then((res) => {
       ViewerImageCache.konvaImagesProps[n] = res.props;
