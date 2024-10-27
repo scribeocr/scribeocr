@@ -60,8 +60,6 @@ export class optGUI {
   static outlinePars = false;
 }
 
-// layerText.add(selectingRectangle);
-
 /**
  * Class for managing the selection of words, layout boxes, and data columns on the canvas.
  * This is a class due to JSDoc type considerations. All methods and properties are static.
@@ -194,10 +192,23 @@ class CanvasSelection {
     return { inclusionRuleArr, inclusionLevelArr };
   };
 
-  static deselectAllWords = () => {
-    CanvasSelection._selectedWordArr.forEach((shape) => (shape.deselect()));
-    CanvasSelection._selectedWordArr.length = 0;
-    CanvasSelection.selectedWordFirst = null;
+  /**
+   *
+   * @param {number} [n]
+   */
+  static deselectAllWords = (n) => {
+    for (let i = CanvasSelection._selectedWordArr.length - 1; i >= 0; i--) {
+      if (n === null || n === undefined || CanvasSelection._selectedWordArr[i].word.line.page.n === n) {
+        CanvasSelection._selectedWordArr[i].deselect();
+        CanvasSelection._selectedWordArr.splice(i, 1);
+      }
+    }
+
+    if (CanvasSelection.selectedWordFirst && (n === null || n === undefined)) {
+      CanvasSelection.selectedWordFirst = null;
+    } else if (CanvasSelection.selectedWordFirst && CanvasSelection.selectedWordFirst.word.line.page.n === n) {
+      CanvasSelection.selectedWordFirst = CanvasSelection._selectedWordArr[0] || null;
+    }
   };
 
   static deselectAllRegions = () => {
@@ -1419,6 +1430,12 @@ const addBlockOutline = (n, box, angleAdj, label) => {
 export function renderCanvasWords(page) {
   const group = ScribeCanvas.getTextGroup(page.n);
   group.destroyChildren();
+  if (ScribeCanvas.KonvaIText.inputWord && ScribeCanvas.KonvaIText.inputWord.word.line.page.n === page.n
+    && ScribeCanvas.KonvaIText.inputRemove
+  ) {
+    ScribeCanvas.KonvaIText.inputRemove();
+  }
+  ScribeCanvas.CanvasSelection.deselectAllWords(page.n);
 
   const angle = scribe.data.pageMetrics[page.n].angle || 0;
   const textRotation = scribe.opt.autoRotate ? 0 : angle;

@@ -602,8 +602,8 @@ export class KonvaOcrWord extends KonvaIText {
      * @param {KonvaOcrWord} itext
      */
   static addControls = (itext) => {
-    const layer = itext.getLayer();
-    if (!layer) throw new Error('Object must be added to a layer before drawing text');
+    const parent = itext.getParent();
+    if (!parent) throw new Error('Object must be added to a layer before drawing text');
 
     const trans = new Konva.Transformer({
       enabledAnchors: ['middle-left', 'middle-right'],
@@ -613,7 +613,7 @@ export class KonvaOcrWord extends KonvaIText {
     });
 
     KonvaOcrWord._controlArr.push(trans);
-    layer.add(trans);
+    parent.add(trans);
 
     trans.nodes([itext]);
   };
