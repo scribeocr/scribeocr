@@ -41,7 +41,9 @@ export class KonvaLayout extends Konva.Rect {
     const width = layoutBox.coords.right - layoutBox.coords.left;
     const height = layoutBox.coords.bottom - layoutBox.coords.top;
 
-    const n = layoutBox instanceof scribe.layout.LayoutDataColumn ? layoutBox.table.page.n : layoutBox.page.n;
+    // `instanceof LayoutDataColumn` should not be used to determine the type of the layout box,
+    // as this will fail for layout boxes that were created in another thread.
+    const n = layoutBox.type === 'dataColumn' ? layoutBox.table.page.n : layoutBox.page.n;
 
     // "Order" boxes are blue, "exclude" boxes are red, data columns are uncolored, as the color is added by the table.
     let fill;
@@ -142,7 +144,7 @@ export class KonvaLayout extends Konva.Rect {
    * @param {KonvaLayout|KonvaDataColumn} konvaLayout
    */
   static updateLayoutBoxes(konvaLayout) {
-    const n = konvaLayout.layoutBox instanceof scribe.layout.LayoutDataColumn ? konvaLayout.layoutBox.table.page.n : konvaLayout.layoutBox.page.n;
+    const n = konvaLayout.layoutBox.type === 'dataColumn' ? konvaLayout.layoutBox.table.page.n : konvaLayout.layoutBox.page.n;
     const width = konvaLayout.width() * konvaLayout.scaleX();
     const height = konvaLayout.height() * konvaLayout.scaleY();
     const right = konvaLayout.x() + width;
