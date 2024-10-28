@@ -922,7 +922,7 @@ export class ScribeCanvas {
         await renderLayoutBoxes(n - 1);
       }
       if (n + 1 < scribe.data.ocr.active.length && (refresh || !ScribeCanvas.overlayGroupsRenderIndices.includes(n + 1))) {
-        await ScribeCanvas.renderWords(n + 1);
+        await renderLayoutBoxes(n + 1);
       }
     }
 
@@ -997,12 +997,6 @@ export class ScribeCanvas {
 
   /** @type {Array<number>} */
   static overlayGroupsRenderIndices = [];
-
-  /**
-   * Contains `Rect` objects used to outline lines and paragraphs, as well as `Text` objects used to label those boxes.
-   * @type {Array<InstanceType<typeof Konva.Rect>|InstanceType<typeof Konva.Text>>}
-   */
-  static _lineOutlineArr = [];
 
   static selectingRectangle;
 
@@ -1412,12 +1406,9 @@ const addBlockOutline = (n, box, angleAdj, label) => {
     });
 
     group.add(labelObj);
-    ScribeCanvas._lineOutlineArr.push(labelObj);
   }
 
   group.add(blockRect);
-
-  ScribeCanvas._lineOutlineArr.push(blockRect);
 };
 
 /**
@@ -1475,8 +1466,6 @@ export function renderCanvasWords(page) {
         draggable: false,
         listening: false,
       });
-
-      ScribeCanvas._lineOutlineArr.push(lineRect);
 
       group.add(lineRect);
     }
