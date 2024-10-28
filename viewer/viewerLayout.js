@@ -1019,6 +1019,11 @@ export function renderLayoutBoxes(n) {
   const group = ScribeCanvas.getOverlayGroup(n);
   group.destroyChildren();
 
+  const angle = scribe.data.pageMetrics[n].angle || 0;
+  const textRotation = scribe.opt.autoRotate ? 0 : angle;
+
+  group.rotation(textRotation);
+
   if (!ScribeCanvas.overlayGroupsRenderIndices.includes(n)) ScribeCanvas.overlayGroupsRenderIndices.push(n);
 
   Object.values(scribe.data.layoutRegions.pages[n].boxes).forEach((box) => {

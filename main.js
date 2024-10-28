@@ -1148,19 +1148,11 @@ navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
     stateGUI.layoutMode = false;
     Konva.autoDrawEnabled = false;
 
-    // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
-    if (!scribe.opt.autoRotate) {
-      displayPageGUI(stateGUI.cp.n);
-    } else {
-      toggleSelectableWords(true);
-      ScribeCanvas.destroyOverlay(false);
-      // ScribeCanvas.destroyRegions();
-      // ScribeCanvas.destroyLayoutDataTables();
-      ScribeCanvas.destroyControls();
-      setWordColorOpacity();
-      ScribeCanvas.layerOverlay.batchDraw();
-      ScribeCanvas.layerText.batchDraw();
-    }
+    ScribeCanvas.destroyOverlay(false);
+    ScribeCanvas.layerOverlay.batchDraw();
+    setWordColorOpacity();
+    ScribeCanvas.layerText.batchDraw();
+    toggleSelectableWords(true);
   }
 });
 
