@@ -517,8 +517,8 @@ export class KonvaDataColSep extends Konva.Line {
         this.columnRight.x(this.columnRight.layoutBox.coords.left);
         this.columnRight.width(this.columnRight.layoutBox.coords.right - this.columnRight.layoutBox.coords.left);
       } else {
-        this.konvaTable.topControl.points([0, 0, konvaTable.coords.right - konvaTable.coords.left, 0]);
-        this.konvaTable.bottomControl.points([0, 0, konvaTable.coords.right - konvaTable.coords.left, 0]);
+        this.konvaTable.topControl.points([0, 0, this.x() - konvaTable.coords.left, 0]);
+        this.konvaTable.bottomControl.points([0, 0, this.x() - konvaTable.coords.left, 0]);
       }
     });
     this.addEventListener('dragend', () => {
