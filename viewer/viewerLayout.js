@@ -800,6 +800,23 @@ export class KonvaRegion extends KonvaLayout {
       this.rightControl.x(this.x() + this.width());
       this.rightControl.y(this.y());
     });
+
+    this.destroyLayout = this.destroy;
+
+    /**
+     * Removes the region from the canvas.
+     * Does not impact the underlying data.
+     */
+    this.destroy = () => {
+      this.topControl.destroy();
+      this.bottomControl.destroy();
+      this.leftControl.destroy();
+      this.rightControl.destroy();
+
+      this.destroyLayout();
+
+      return this;
+    };
   }
 }
 

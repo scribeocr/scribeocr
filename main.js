@@ -839,6 +839,7 @@ elem.nav.nextMatch.addEventListener('click', () => nextMatchClick());
 
 export function toggleLayoutButtons(disable = true) {
   elem.layout.addLayoutBox.disabled = disable;
+  elem.layout.addDataTable.disabled = disable;
   elem.layout.setDefaultLayout.disabled = disable;
   elem.layout.revertLayout.disabled = disable;
 }

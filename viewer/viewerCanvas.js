@@ -660,6 +660,8 @@ export class ScribeCanvas {
     });
 
     ScribeCanvas.stage.on('mousedown touchstart', (event) => {
+      if (scribe.data.pageMetrics.length === 0) return;
+
       // Left click only
       if (event.type === 'mousedown' && event.evt.button !== 0) return;
 
@@ -1571,13 +1573,13 @@ export const handleWheel = (event) => {
 // These are added to the document because adding only to the canvas does not work when overlay text is clicked.
 // To avoid unintended interactions, the event listeners are only triggered when the target is within the canvas.
 document.addEventListener('wheel', (event) => {
-  if (event.target instanceof Node && ScribeCanvas.elem.contains(event.target)) {
+  if (event.target instanceof Node && ScribeCanvas.elem.contains(event.target) && scribe.data.pageMetrics.length > 0) {
     handleWheel(event);
   }
 }, { passive: false });
 
 document.addEventListener('mousedown', (event) => {
-  if (event.target instanceof Node && ScribeCanvas.elem.contains(event.target)) {
+  if (event.target instanceof Node && ScribeCanvas.elem.contains(event.target) && scribe.data.pageMetrics.length > 0) {
     if (event.button === 1) { // Middle mouse button
       ScribeCanvas.startDrag(event);
     }
