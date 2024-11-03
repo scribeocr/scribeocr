@@ -992,12 +992,12 @@ async function importFilesSuppGUI() {
 function prevMatchClick() {
   if (stateGUI.cp.n === 0) return;
   const lastPage = search.matches.slice(0, stateGUI.cp.n)?.findLastIndex((x) => x > 0);
-  if (lastPage > -1) displayPageGUI(lastPage);
+  if (lastPage > -1) displayPageGUI(lastPage, true);
 }
 
 function nextMatchClick() {
   const nextPageOffset = search.matches.slice(stateGUI.cp.n + 1)?.findIndex((x) => x > 0);
-  if (nextPageOffset > -1) displayPageGUI(stateGUI.cp.n + nextPageOffset + 1);
+  if (nextPageOffset > -1) displayPageGUI(stateGUI.cp.n + nextPageOffset + 1, true);
 }
 
 elem.nav.editFindCollapse.addEventListener('show.bs.collapse', (e) => {
