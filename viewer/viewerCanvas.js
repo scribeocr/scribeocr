@@ -835,6 +835,15 @@ export class ScribeCanvas {
     const imageMissing = false;
     const pdfMissing = false;
 
+    const group = ScribeCanvas.getTextGroup(n);
+    group.destroyChildren();
+    if (ScribeCanvas.KonvaIText.inputWord && ScribeCanvas.KonvaIText.inputWord.word.line.page.n === n
+      && ScribeCanvas.KonvaIText.inputRemove
+    ) {
+      ScribeCanvas.KonvaIText.inputRemove();
+    }
+    ScribeCanvas.CanvasSelection.deselectAllWords(n);
+
     if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing || pageStopsMissing) {
       console.log('Exiting renderPageQueue early');
       return true;
@@ -881,15 +890,8 @@ export class ScribeCanvas {
 
     ScribeCanvas.textOverlayHidden = false;
 
-    let err = false;
-
     if (refresh || !ScribeCanvas.textGroupsRenderIndices.includes(n)) {
-      err = await ScribeCanvas.renderWords(n);
-    }
-
-    if (err) {
-      console.log('Exiting displayPage early');
-      return;
+      await ScribeCanvas.renderWords(n);
     }
 
     if (n - 1 >= 0 && (refresh || !ScribeCanvas.textGroupsRenderIndices.includes(n - 1))) {
@@ -1419,13 +1421,6 @@ const addBlockOutline = (n, box, angleAdj, label) => {
  */
 export function renderCanvasWords(page) {
   const group = ScribeCanvas.getTextGroup(page.n);
-  group.destroyChildren();
-  if (ScribeCanvas.KonvaIText.inputWord && ScribeCanvas.KonvaIText.inputWord.word.line.page.n === page.n
-    && ScribeCanvas.KonvaIText.inputRemove
-  ) {
-    ScribeCanvas.KonvaIText.inputRemove();
-  }
-  ScribeCanvas.CanvasSelection.deselectAllWords(page.n);
 
   const angle = scribe.data.pageMetrics[page.n].angle || 0;
   const textRotation = scribe.opt.autoRotate ? 0 : angle;
