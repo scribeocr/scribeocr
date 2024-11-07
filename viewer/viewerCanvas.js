@@ -45,8 +45,6 @@ export class optGUI {
   /** @type {'conf'|'data'} */
   static combineMode = 'data';
 
-  static extractText = false;
-
   /**
    * Whether to show the intermediate, internal versions of OCR.
    * This is useful for debugging and testing, but should not be enabled by default.

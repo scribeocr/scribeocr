@@ -299,7 +299,7 @@ describe('Generate output files using PDF and existing text layer', function () 
     // Click on the 'Download' tab
     await driver.findElement(By.id('nav-about-tab')).click();
     await driver.findElement(By.id('advancedOptionsButton')).click();
-    await driver.findElement(By.id('extractTextCheckbox')).click();
+    await driver.findElement(By.id('setPDFTextActiveCheckbox')).click();
 
     // Upload the files
     await customActions.uploadFiles([

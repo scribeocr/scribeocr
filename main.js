@@ -56,6 +56,8 @@ import {
 } from './viewer/viewerLayout.js';
 import { contextMenuFunc, mouseupFunc2 } from './viewer/viewerCanvasInteraction.js';
 import { KonvaIText, KonvaOcrWord } from './viewer/viewerWordObjects.js';
+import { createBootstrapModal } from './app/utils/modals.js';
+import { opt } from './scribe.js/js/containers/app.js';
 
 const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
 ScribeCanvas.enableCanvasSelection = true;
@@ -134,8 +136,12 @@ elem.info.omitNativeTextCheckbox.addEventListener('click', () => {
   scribe.opt.omitNativeText = elem.info.omitNativeTextCheckbox.checked;
 });
 
-elem.info.extractTextCheckbox.addEventListener('click', () => {
-  optGUI.extractText = elem.info.extractTextCheckbox.checked;
+elem.info.setPDFTextActiveCheckbox.addEventListener('click', () => {
+  scribe.opt.setPDFTextActive = elem.info.setPDFTextActiveCheckbox.checked;
+});
+
+elem.info.usePDFTextCheckbox.addEventListener('click', () => {
+  scribe.opt.usePDFText = elem.info.usePDFTextCheckbox.checked;
 });
 
 elem.download.addOverlayCheckbox.addEventListener('click', () => {
@@ -902,8 +908,8 @@ const importFilesGUI = async (files) => {
   ProgressBars.active.show(files.length, 0);
 
   const params = {
-    extractPDFTextNative: optGUI.extractText,
-    extractPDFTextOCR: optGUI.extractText,
+    extractPDFTextNative: true,
+    extractPDFTextOCR: true,
   };
 
   await scribe.importFiles(files, params);

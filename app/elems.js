@@ -247,7 +247,9 @@ class info {
   static dataTableOptions = /** @type {HTMLDivElement} */(document.getElementById('dataTableOptions'));
 
   // Advanced options.
-  static extractTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('extractTextCheckbox'));
+  static setPDFTextActiveCheckbox = /** @type {HTMLInputElement} */(document.getElementById('setPDFTextActiveCheckbox'));
+
+  static usePDFTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('usePDFTextCheckbox'));
 
   static omitNativeTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
 

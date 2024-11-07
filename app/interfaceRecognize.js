@@ -149,11 +149,16 @@ export async function recognizeAllClick() {
   const progressMax = oemMode === 'combined' ? scribe.data.image.pageCount * 2 + 1 : scribe.data.image.pageCount + 1;
   ProgressBars.active.show(progressMax, 0);
 
+  // For existing OCR data extracted from a PDF, if the user runs OCR, we assume they want to overwrite the existing data.
+  // The existing data can still be used to correct errors.
+  const forceMainData = scribe.inputData.pdfMode && scribe.inputData.pdfType === 'ocr';
+
   await scribe.recognize({
     modeAdv: oemMode,
     langs: optGUI.langs,
     combineMode: optGUI.combineMode,
     vanillaMode: optGUI.vanillaMode,
+    forceMainData,
   });
 
   displayPageGUI(stateGUI.cp.n);
