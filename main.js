@@ -134,9 +134,15 @@ elem.info.omitNativeTextCheckbox.addEventListener('click', () => {
   scribe.opt.omitNativeText = elem.info.omitNativeTextCheckbox.checked;
 });
 
-elem.info.extractTextCheckbox.addEventListener('click', () => {
-  optGUI.extractText = elem.info.extractTextCheckbox.checked;
+elem.info.usePDFTextMainCheckbox.addEventListener('click', () => {
+  scribe.opt.usePDFTextMain = elem.info.usePDFTextMainCheckbox.checked;
 });
+scribe.opt.usePDFTextMain = elem.info.usePDFTextMainCheckbox.checked;
+
+elem.info.usePDFTextSuppCheckbox.addEventListener('click', () => {
+  scribe.opt.usePDFTextSupp = elem.info.usePDFTextSuppCheckbox.checked;
+});
+scribe.opt.usePDFTextSupp = elem.info.usePDFTextSuppCheckbox.checked;
 
 elem.download.addOverlayCheckbox.addEventListener('click', () => {
   scribe.opt.addOverlay = elem.download.addOverlayCheckbox.checked;
@@ -612,7 +618,7 @@ const uploadOCRDataElem = /** @type {HTMLInputElement} */(document.getElementByI
 
 uploadOCRDataElem.addEventListener('show.bs.collapse', () => {
   if (!uploadOCRNameElem.value) {
-    uploadOCRNameElem.value = `OCR Data ${elem.evaluate.displayLabelOptions.childElementCount + 1}`;
+    uploadOCRNameElem.value = `OCR Data ${elem.evaluate.displayLabelOptions.childElementCount}`;
   }
 });
 
@@ -902,8 +908,8 @@ const importFilesGUI = async (files) => {
   ProgressBars.active.show(files.length, 0);
 
   const params = {
-    extractPDFTextNative: optGUI.extractText,
-    extractPDFTextOCR: optGUI.extractText,
+    extractPDFTextNative: true,
+    extractPDFTextOCR: true,
   };
 
   await scribe.importFiles(files, params);
@@ -1058,8 +1064,13 @@ export function setCurrentHOCR(x) {
   const currentLabel = elem.evaluate.displayLabelText.innerHTML.trim();
   if (!x.trim() || x === currentLabel) return;
 
-  scribe.data.ocr.active = scribe.data.ocr[x];
   elem.evaluate.displayLabelText.innerHTML = x;
+
+  if (x.toLowerCase() === 'none') {
+    scribe.data.ocr.active = [];
+  } else {
+    scribe.data.ocr.active = scribe.data.ocr[x];
+  }
 
   displayPageGUI(stateGUI.cp.n);
 }
@@ -1099,7 +1110,11 @@ export const updateOcrVersionGUI = () => {
   });
 
   const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
-  elem.evaluate.displayLabelText.innerHTML = oemActive;
+  if (oemActive) {
+    elem.evaluate.displayLabelText.innerHTML = oemActive;
+  } else {
+    elem.evaluate.displayLabelText.innerHTML = 'None';
+  }
 };
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
@@ -1347,21 +1362,4 @@ async function optimizeFontClick(enable, force) {
   await scribe.enableFontOpt(enable, force);
 
   displayPageGUI(stateGUI.cp.n);
-}
-
-// Set default settings
-export function setDefaults() {
-  if (optGUI.enableXlsxExport === true) {
-    elem.info.enableXlsxExport.checked = true;
-    enableXlsxExportClick();
-  }
-
-  if (optGUI.downloadFormat && optGUI.downloadFormat !== 'pdf') {
-    setFormatLabel(optGUI.downloadFormat);
-  }
-
-  if (optGUI.enableRecognition === false) {
-    elem.info.enableRecognition.checked = false;
-    enableRecognitionClick();
-  }
 }

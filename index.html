@@ -879,6 +879,7 @@
                             <div id="displayLabelText" style="display:inline-block"> </div>
                           </button>
                           <ul id="displayLabelOptions" class="dropdown-menu">
+                            <a class="dropdown-item">None</a>
                           </ul>
                         </div>
                         <div class="row" style="padding-top:0.4rem">
@@ -1441,15 +1442,11 @@
                               autocomplete="off" disabled>
                           </div>
                         </div>
-                        <div class="form-check form-switch" style="margin-top:0.4rem">
-                          <!-- <label><input class="form-check-input" type="checkbox" id="showMarginCheckbox"> Show
-                          Margin</label><br> -->
-                          <label><input class="form-check-input" type="checkbox" id="extractTextCheckbox"> Extract Text
-                            from
-                            PDF</label><br>
-                          <label><input class="form-check-input" type="checkbox" id="omitNativeTextCheckbox"> Omit
-                            Native
-                            Text in PDF</label><br>
+                        <label style="margin-top:0.4rem">Text from PDF</label>
+                        <div class="form-check form-switch">
+                          <label><input class="form-check-input" type="checkbox" id="usePDFTextMainCheckbox" style="margin-top:0.4rem"> Use as Main Data</label><br>
+                          <label><input class="form-check-input" type="checkbox" id="usePDFTextSuppCheckbox" checked> Use as Supplemental Data</label><br>
+                          <label><input class="form-check-input" type="checkbox" id="omitNativeTextCheckbox"> Omit When Rendering</label><br>
                         </div>
                       </div>
                     </div>

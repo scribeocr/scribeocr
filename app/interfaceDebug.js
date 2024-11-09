@@ -9,11 +9,32 @@ import {
 } from '../viewer/viewerCanvas.js';
 import { saveAs } from './utils/utils.js';
 
+/**
+ * Print the code needed to access a specific OCR word.
+ * This is useful for generating automated tests.
+ * @param {OcrWord} word
+ */
+const printOcrWordCode = (word) => {
+  if (!scribe.data.ocr.active[stateGUI.cp.n]) return;
+  let i = 0;
+  let j = 0;
+  for (i = 0; i < scribe.data.ocr.active[stateGUI.cp.n].lines.length; i++) {
+    const line = scribe.data.ocr.active[stateGUI.cp.n].lines[i];
+    for (j = 0; j < line.words.length; j++) {
+      if (line.words[j].id === word.id) {
+        console.log(`scribe.data.ocr.active[${stateGUI.cp.n}].lines[${i}].words[${j}]`);
+        return;
+      }
+    }
+  }
+};
+
 export function printSelectedWords(printOCR = true) {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
   if (!selectedObjects) return;
   for (let i = 0; i < selectedObjects.length; i++) {
     if (printOCR) {
+      printOcrWordCode(selectedObjects[i].word);
       console.log(selectedObjects[i].word);
     } else {
       console.log(selectedObjects[i]);
