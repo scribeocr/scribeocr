@@ -1556,10 +1556,11 @@ export const handleWheel = (event) => {
     ScribeCanvas.destroyControls();
   } else if (event.shiftKey) { // Scroll horizontally
     ScribeCanvas.destroyControls();
-    ScribeCanvas.panStage({ deltaX: event.deltaY });
+    const deltaX = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX * -1 : event.deltaY * -1;
+    ScribeCanvas.panStage({ deltaX });
   } else { // Scroll vertically
     ScribeCanvas.destroyControls();
-    ScribeCanvas.panStage({ deltaY: event.deltaY * -1 });
+    ScribeCanvas.panStage({ deltaY: event.deltaY * -1, deltaX: event.deltaX * -1 });
   }
   if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
 };
