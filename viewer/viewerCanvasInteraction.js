@@ -12,6 +12,7 @@ import {
   checkDataColumnsAdjacent, checkDataTablesAdjacent, KonvaDataColumn, KonvaLayout, mergeDataColumns, mergeDataTables, splitDataColumn, splitDataTable,
 } from './viewerLayout.js';
 import { KonvaOcrWord } from './viewerWordObjects.js';
+import { deleteSelectedWord } from './viewerModifySelectedWords.js';
 
 /**
  * Recognize area selected by user in Tesseract.
@@ -217,6 +218,12 @@ const createContextMenuHTML = () => {
 
   const innerDiv = document.createElement('div');
 
+  const deleteWordsButton = document.createElement('button');
+  deleteWordsButton.id = 'contextMenuDeleteWordsButton';
+  deleteWordsButton.textContent = 'Delete Words';
+  deleteWordsButton.style.display = 'none';
+  deleteWordsButton.addEventListener('click', deleteWordsClick);
+
   const splitWordButton = document.createElement('button');
   splitWordButton.id = 'contextMenuSplitWordButton';
   splitWordButton.textContent = 'Split Word';
@@ -271,6 +278,7 @@ const createContextMenuHTML = () => {
   splitTableButton.style.display = 'none';
   splitTableButton.addEventListener('click', splitDataTableClick);
 
+  innerDiv.appendChild(deleteWordsButton);
   innerDiv.appendChild(splitWordButton);
   innerDiv.appendChild(mergeWordsButton);
   innerDiv.appendChild(splitColumnButton);
@@ -399,10 +407,17 @@ const splitDataTableClick = () => {
   ScribeCanvas.destroyControls();
 };
 
+const deleteWordsClick = () => {
+  hideContextMenu();
+  deleteSelectedWord();
+  ScribeCanvas.destroyControls();
+};
+
 const menuNode = createContextMenuHTML();
 document.body.appendChild(menuNode);
 
 const contextMenuSplitWordButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitWordButton'));
+const contextMenuDeleteWordsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuDeleteWordsButton'));
 const contextMenuMergeWordsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeWordsButton'));
 const contextMenuMergeColumnsButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuMergeColumnsButton'));
 const contextMenuSplitColumnButtonElem = /** @type {HTMLButtonElement} */(document.getElementById('contextMenuSplitColumnButton'));
@@ -415,6 +430,7 @@ const contextMenuSplitTableButtonElem = /** @type {HTMLButtonElement} */(documen
 export const hideContextMenu = () => {
   contextMenuMergeWordsButtonElem.style.display = 'none';
   contextMenuSplitWordButtonElem.style.display = 'none';
+  contextMenuDeleteWordsButtonElem.style.display = 'none';
   contextMenuMergeColumnsButtonElem.style.display = 'none';
   contextMenuSplitColumnButtonElem.style.display = 'none';
   contextMenuDeleteLayoutRegionButtonElem.style.display = 'none';
@@ -463,15 +479,12 @@ export const contextMenuFunc = (event) => {
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
   const selectedRegions = ScribeCanvas.CanvasSelection.getKonvaRegions();
 
-  if (event.target === ScribeCanvas.stage || (selectedColumns.length === 0 && selectedRegions.length === 0 && selectedKonvaWords.length === 0)) {
-    // if we are on empty place of the ScribeCanvas.stage we will do nothing
-    return;
-  }
-
   ScribeCanvas.contextMenuPointer = pointerRelative;
 
   let enableSplitWord = false;
   let enableMergeWords = false;
+  let enableDeleteWords = false;
+  if (!stateGUI.layoutMode && selectedKonvaWords.length > 0) enableDeleteWords = true;
   if (!stateGUI.layoutMode && event.target instanceof KonvaOcrWord) {
     if (selectedKonvaWords.length < 2) {
       const cursorIndex = KonvaOcrWord.getCursorIndex(event.target);
@@ -513,13 +526,16 @@ export const contextMenuFunc = (event) => {
   }
 
   if (!(enableMergeColumns || enableSplit || enableDeleteRegion || enableDeleteTable || enableCopyTableContents || enableMergeTables || enableSplitTable
-    || enableSplitWord || enableMergeWords)) return;
+    || enableSplitWord || enableMergeWords || enableDeleteWords)) return;
 
   if (enableMergeWords) {
     contextMenuMergeWordsButtonElem.style.display = 'initial';
   }
   if (enableSplitWord) {
     contextMenuSplitWordButtonElem.style.display = 'initial';
+  }
+  if (enableDeleteWords) {
+    contextMenuDeleteWordsButtonElem.style.display = 'initial';
   }
   if (enableMergeColumns) {
     contextMenuMergeColumnsButtonElem.style.display = 'initial';
@@ -604,11 +620,15 @@ export const mouseupFunc2 = (event) => {
 
   ScribeCanvas.stopDragPinch(event);
 
-  // Exit early if the right mouse button was clicked on a selected column or word.
+  // Exit early if the right mouse button was clicked to bring up a context menu.
   if (event.evt.button === 2) {
     const selectedColumnIds = ScribeCanvas.CanvasSelection.getKonvaDataColumns().map((x) => x.layoutBox.id);
     const selectedWordIds = ScribeCanvas.CanvasSelection.getKonvaWords().map((x) => x.word.id);
 
+    // Right clicking on empty space should not clear the selection.
+    if (!(event.target instanceof KonvaDataColumn || event.target instanceof KonvaOcrWord)) return;
+
+    // Right clicking on a selected object should not clear the selection.
     if (event.target instanceof KonvaDataColumn && selectedColumnIds.includes(event.target.layoutBox.id)) return;
     if (event.target instanceof KonvaOcrWord && selectedWordIds.includes(event.target.word.id)) return;
   }

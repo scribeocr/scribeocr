@@ -1,10 +1,10 @@
 /* eslint-disable import/no-cycle */
 
 import {
-  displayPageGUI, toggleEditConfUI, toggleLayoutButtons, updateOcrVersionGUI,
+  toggleEditConfUI, toggleLayoutButtons, updateOcrVersionGUI,
 } from '../main.js';
 import scribe from '../scribe.js/scribe.js';
-import { optGUI, stateGUI } from '../viewer/viewerCanvas.js';
+import { optGUI, ScribeCanvas, stateGUI } from '../viewer/viewerCanvas.js';
 import { elem } from './elems.js';
 import { toggleEditButtons } from './interfaceEdit.js';
 import { ProgressBars } from './utils/progressBars.js';
@@ -156,7 +156,7 @@ export async function recognizeAllClick() {
     vanillaMode: optGUI.vanillaMode,
   });
 
-  displayPageGUI(stateGUI.cp.n);
+  ScribeCanvas.displayPage(stateGUI.cp.n);
 
   addVisInstructionsUI();
 

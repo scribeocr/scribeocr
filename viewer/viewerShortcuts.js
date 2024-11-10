@@ -1,8 +1,13 @@
+// eslint-disable-next-line import/no-cycle
 import {
   ScribeCanvas,
+  stateGUI,
 } from './viewerCanvas.js';
 import scribe from '../scribe.js/scribe.js';
 import { KonvaIText, KonvaOcrWord } from './viewerWordObjects.js';
+import {
+  deleteSelectedWord, modifySelectedWordBbox, modifySelectedWordFontSize, modifySelectedWordStyle,
+} from './viewerModifySelectedWords.js';
 
 /**
  *
@@ -280,18 +285,202 @@ export function selectBelowWord() {
 }
 
 /**
- *
- * @param {'left'|'right'} side
- * @param {number} amount
- * @returns
+ * Maps from generic `KeyboardEvent` when user presses a key to the appropriate action.
+ * This function is responsible for all keyboard shortcuts.
+ * @param {KeyboardEvent} event - The key down event.
  */
-export function modifySelectedWordBbox(side, amount) {
-  // const words = ScribeCanvas.getKonvaWords();
-  const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
-  if (selectedWords.length !== 1) return;
-  const selectedWord = selectedWords[0];
+export function handleKeyboardEvent(event) {
+  // Zoom in shortcut
+  // The modifier keys change what `event.key` is for the same button.
+  // `+` becomes `=` when shift is pressed, and `×` when control and alt are pressed.
+  if (event.ctrlKey && !event.altKey && ['+', '=', '×'].includes(event.key)) {
+    ScribeCanvas.zoom(1.1);
+    ScribeCanvas.layerText.batchDraw();
+    event.preventDefault(); // Prevent the default action to avoid browser zoom
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
 
-  selectedWord.word.bbox[side] += amount;
-  if (side === 'left') selectedWord.x(selectedWord.x() + amount);
-  KonvaIText.updateWordCanvas(selectedWord);
+  // Zoom out shortcut
+  if (event.ctrlKey && !event.altKey && ['-', '_', '–'].includes(event.key)) {
+    ScribeCanvas.zoom(0.9);
+    ScribeCanvas.layerText.batchDraw();
+    event.preventDefault(); // Prevent the default action to avoid browser zoom
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  // Prev page shortcut
+  if (event.key === 'PageUp') {
+    ScribeCanvas.displayPage(stateGUI.cp.n - 1, true, false);
+    event.preventDefault();
+    return;
+  }
+
+  // Next page shortcut
+  if (event.key === 'PageDown') {
+    ScribeCanvas.displayPage(stateGUI.cp.n + 1, true, false);
+    event.preventDefault();
+    return;
+  }
+
+  if (event.key === 'Tab') {
+    if (event.shiftKey) {
+      selectPrevWord();
+    } else {
+      selectNextWord();
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.key === 'ArrowRight' && !ScribeCanvas.KonvaIText.input) {
+    if (event.ctrlKey) {
+      if (event.altKey) {
+        modifySelectedWordBbox('right', 1);
+      } else {
+        modifySelectedWordBbox('left', 1);
+      }
+    } else {
+      selectRightWord(event.shiftKey);
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.ctrlKey && event.key === ' ' && !ScribeCanvas.textOverlayHidden) {
+    ScribeCanvas.textOverlayHidden = true;
+    ScribeCanvas.layerOverlay.hide();
+    ScribeCanvas.layerText.hide();
+    ScribeCanvas.layerOverlay.batchDraw();
+    ScribeCanvas.layerText.batchDraw();
+    const opacityOrig = ScribeCanvas.KonvaIText.input ? ScribeCanvas.KonvaIText.input.style.opacity : '0.8';
+    if (ScribeCanvas.KonvaIText.input) ScribeCanvas.KonvaIText.input.style.opacity = '0';
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+
+    const handleKeyUp = (keyupEvent) => {
+      if (keyupEvent.key === 'Control' || keyupEvent.key === ' ') {
+        ScribeCanvas.layerOverlay.show();
+        ScribeCanvas.layerText.show();
+        ScribeCanvas.layerOverlay.batchDraw();
+        ScribeCanvas.layerText.batchDraw();
+        if (ScribeCanvas.KonvaIText.input) ScribeCanvas.KonvaIText.input.style.opacity = opacityOrig;
+        document.removeEventListener('keyup', handleKeyUp);
+        ScribeCanvas.textOverlayHidden = false;
+      }
+    };
+
+    document.addEventListener('keyup', handleKeyUp);
+    return;
+  }
+
+  if (event.key === 'ArrowLeft' && !ScribeCanvas.KonvaIText.input) {
+    if (event.ctrlKey) {
+      if (event.altKey) {
+        modifySelectedWordBbox('right', -1);
+      } else {
+        modifySelectedWordBbox('left', -1);
+      }
+    } else {
+      selectLeftWord(event.shiftKey);
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.key === 'ArrowUp') {
+    selectAboveWord();
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.key === 'ArrowDown') {
+    selectBelowWord();
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.key === 'Enter' && !ScribeCanvas.KonvaIText.input) {
+    const selectedWords = ScribeCanvas.CanvasSelection.getKonvaWords();
+    if (selectedWords.length !== 1) return;
+    const selectedWord = selectedWords[0];
+    const pos = event.altKey ? -1 : 0;
+    KonvaIText.addTextInput(selectedWord, pos);
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.key === 'i' && event.ctrlKey) {
+    modifySelectedWordStyle('italic');
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.key === 'b' && event.ctrlKey) {
+    modifySelectedWordStyle('bold');
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.key === 'Delete' && event.ctrlKey) {
+    deleteSelectedWord();
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.altKey && ['+', '=', '×'].includes(event.key) && !ScribeCanvas.KonvaIText.input) {
+    modifySelectedWordFontSize('plus');
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  if (event.altKey && ['-', '_', '–'].includes(event.key) && !ScribeCanvas.KonvaIText.input) {
+    modifySelectedWordFontSize('minus');
+    event.preventDefault();
+    event.stopPropagation();
+    ScribeCanvas.keyboardShortcutCallback(event);
+    return;
+  }
+
+  // This code makes `Ctrl+A` select all words on the canvas, but nothing off the canvas.
+  // It is currently disabled because it is overly aggressive and can impact other parts of the page unrelated to the PDF viewer.
+  // if (event.ctrlKey && event.key === 'a') {
+  //   const scribeWords = document.querySelectorAll('.scribe-word');
+  //   if (scribeWords.length > 0) {
+  //     event.preventDefault(); // Prevent the default "select all" behavior
+  //     const range = document.createRange();
+  //     range.setStartBefore(scribeWords[0]);
+  //     range.setEndAfter(scribeWords[scribeWords.length - 1]);
+
+  //     const selection = window.getSelection();
+  //     if (!selection) return;
+  //     selection.removeAllRanges();
+  //     selection.addRange(range);
+  //   }
+  // }
 }

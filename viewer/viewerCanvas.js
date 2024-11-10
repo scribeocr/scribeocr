@@ -8,6 +8,8 @@ import {
 import { replaceObjectProperties } from '../app/utils/utils.js';
 import { KonvaIText, KonvaOcrWord } from './viewerWordObjects.js';
 import { ViewerImageCache } from './viewerImageCache.js';
+import { handleKeyboardEvent } from './viewerShortcuts.js';
+import { contextMenuFunc, mouseupFunc2 } from './viewerCanvasInteraction.js';
 
 Konva.autoDrawEnabled = false;
 Konva.dragButtons = [0];
@@ -589,7 +591,11 @@ export class ScribeCanvas {
     if (ScribeCanvas.enableHTMLOverlay) ScribeCanvas.renderHTMLOverlayAfterDelay();
   };
 
-  static mouseupFunc2 = (event) => {};
+  /**
+   * Function called after keyboard shortcut is pressed.
+   * @param {*} event
+   */
+  static keyboardShortcutCallback = (event) => {};
 
   /**
    *
@@ -610,6 +616,8 @@ export class ScribeCanvas {
       height,
 
     });
+
+    ScribeCanvas.stage.on('contextmenu', contextMenuFunc);
 
     ScribeCanvas.HTMLOverlayBackstopElem = document.createElement('div');
     ScribeCanvas.HTMLOverlayBackstopElem.className = 'endOfContent';
@@ -735,7 +743,7 @@ export class ScribeCanvas {
       // Delete any current selections if either (1) this is a new selection or (2) nothing is being clicked.
       // Clicks must pass this check on both start and end.
       // This prevents accidentally clearing a selection when the user is trying to highlight specific letters, but the mouse up happens over another word.
-      } else if ((mouseUpTarget instanceof Konva.Stage || mouseUpTarget instanceof Konva.Image)
+      } else if (event.evt.button === 0 && (mouseUpTarget instanceof Konva.Stage || mouseUpTarget instanceof Konva.Image)
         && (ScribeCanvas.selecting || event.target instanceof Konva.Stage || event.target instanceof Konva.Image)) {
         ScribeCanvas.destroyControls();
       }
@@ -749,7 +757,7 @@ export class ScribeCanvas {
         return;
       }
 
-      ScribeCanvas.mouseupFunc2(event);
+      mouseupFunc2(event);
 
       ScribeCanvas.mode = 'select';
 
@@ -843,8 +851,7 @@ export class ScribeCanvas {
     ScribeCanvas.CanvasSelection.deselectAllWords(n);
 
     if (noInfo || noInput || xmlMissing || imageMissing || pdfMissing || pageStopsMissing) {
-      console.log('Exiting renderPageQueue early');
-      return true;
+      return;
     }
 
     if (ScribeCanvas.runSetInitial) ScribeCanvas.setInitialPositionZoom(scribe.data.pageMetrics[n].dims);
@@ -858,8 +865,6 @@ export class ScribeCanvas {
     if (scribe.inputData.xmlMode[n]) {
       renderCanvasWords(ocrData);
     }
-
-    return false;
   };
 
   /**
@@ -870,6 +875,14 @@ export class ScribeCanvas {
   * @returns
   */
   static async displayPage(n, scroll = false, refresh = true) {
+    // Return early if (1) page does not exist or (2) another page is actively being rendered.
+    if (Number.isNaN(n) || n < 0 || n > (scribe.inputData.pageCount - 1)) {
+      // Reset the value of pageNumElem (number in UI) to match the internal value of the page
+      // elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
+      if (ScribeCanvas.displayPageCallback) ScribeCanvas.displayPageCallback();
+      return;
+    }
+
     ScribeCanvas.deleteHTMLOverlay();
 
     if (scribe.inputData.xmlMode[stateGUI.cp.n]) {
@@ -1578,3 +1591,6 @@ document.addEventListener('mousedown', (event) => {
     }
   }
 });
+
+// Add various keyboard shortcuts.
+document.addEventListener('keydown', handleKeyboardEvent);
