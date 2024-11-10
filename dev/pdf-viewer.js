@@ -240,12 +240,7 @@ class ScribePDFViewer {
     this.pdfViewerElem.appendChild(this.dropZone);
 
     this.importFile = async (file) => {
-      const params = {
-        extractPDFTextNative: true,
-        extractPDFTextOCR: true,
-      };
-
-      await scribe.importFiles([file], params);
+      await scribe.importFiles([file]);
 
       this.pageCountElem.textContent = scribe.inputData.pageCount.toString();
       this.pageNumElem.value = '1';

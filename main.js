@@ -119,14 +119,18 @@ elem.info.omitNativeTextCheckbox.addEventListener('click', () => {
 });
 
 elem.info.usePDFTextMainCheckbox.addEventListener('click', () => {
-  scribe.opt.usePDFTextMain = elem.info.usePDFTextMainCheckbox.checked;
+  scribe.opt.usePDFText.native.main = elem.info.usePDFTextMainCheckbox.checked;
+  scribe.opt.usePDFText.ocr.main = elem.info.usePDFTextMainCheckbox.checked;
 });
-scribe.opt.usePDFTextMain = elem.info.usePDFTextMainCheckbox.checked;
+scribe.opt.usePDFText.native.main = elem.info.usePDFTextMainCheckbox.checked;
+scribe.opt.usePDFText.ocr.main = elem.info.usePDFTextMainCheckbox.checked;
 
 elem.info.usePDFTextSuppCheckbox.addEventListener('click', () => {
-  scribe.opt.usePDFTextSupp = elem.info.usePDFTextSuppCheckbox.checked;
+  scribe.opt.usePDFText.native.supp = elem.info.usePDFTextMainCheckbox.checked;
+  scribe.opt.usePDFText.ocr.supp = elem.info.usePDFTextMainCheckbox.checked;
 });
-scribe.opt.usePDFTextSupp = elem.info.usePDFTextSuppCheckbox.checked;
+scribe.opt.usePDFText.native.supp = elem.info.usePDFTextMainCheckbox.checked;
+scribe.opt.usePDFText.ocr.supp = elem.info.usePDFTextMainCheckbox.checked;
 
 elem.download.addOverlayCheckbox.addEventListener('click', () => {
   scribe.opt.addOverlay = elem.download.addOverlayCheckbox.checked;
@@ -730,12 +734,7 @@ const importFilesGUI = async (files) => {
   ProgressBars.active = ProgressBars.import;
   ProgressBars.active.show(files.length, 0);
 
-  const params = {
-    extractPDFTextNative: true,
-    extractPDFTextOCR: true,
-  };
-
-  await scribe.importFiles(files, params);
+  await scribe.importFiles(files);
 
   ScribeCanvas.displayPage(stateGUI.cp.n);
 
