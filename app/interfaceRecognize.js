@@ -1,12 +1,12 @@
 /* eslint-disable import/no-cycle */
 
 import {
+  toggleEditButtons,
   toggleEditConfUI, toggleLayoutButtons, updateOcrVersionGUI,
 } from '../main.js';
 import scribe from '../scribe.js/scribe.js';
 import { optGUI, ScribeCanvas, stateGUI } from '../viewer/viewerCanvas.js';
 import { elem } from './elems.js';
-import { toggleEditButtons } from './interfaceEdit.js';
 import { ProgressBars } from './utils/progressBars.js';
 import { insertAlertMessage } from './utils/warningMessages.js';
 
