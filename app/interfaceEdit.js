@@ -1,51 +1,10 @@
-/* eslint-disable import/no-cycle */
-
 // File summary:
 // Functions called by the buttons in the "Edit" tab (used for editing words).
 // Most operations (change size/font/etc.) have 2 functions:
 // one function to edit the canvas, and another to edit the underlying HOCR data.
 
-import scribe from '../scribe.js/scribe.js';
-import { ScribeCanvas, stateGUI } from '../viewer/viewerCanvas.js';
+import { ScribeCanvas } from '../viewer/viewerCanvas.js';
 import { elem } from './elems.js';
-
-elem.edit.styleSmallCaps.addEventListener('click', () => toggleSmallCapsWords(elem.edit.styleSmallCaps.classList.contains('active')));
-elem.edit.styleSuper.addEventListener('click', toggleSuperSelectedWords);
-
-elem.edit.ligatures.addEventListener('change', () => {
-  scribe.opt.ligatures = elem.edit.ligatures.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
-});
-
-export function toggleSuperSelectedWords() {
-  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
-  if (!selectedObjects || selectedObjects.length === 0) return;
-  const selectedN = selectedObjects.length;
-  for (let i = 0; i < selectedN; i++) {
-    const wordI = selectedObjects[i];
-    wordI.word.sup = !wordI.word.sup;
-  }
-
-  ScribeCanvas.displayPage(stateGUI.cp.n);
-}
-
-/**
- *
- * @param {boolean} enable
- * @returns
- */
-export async function toggleSmallCapsWords(enable) {
-  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
-  if (!selectedObjects || selectedObjects.length === 0) return;
-  const selectedN = selectedObjects.length;
-
-  for (let i = 0; i < selectedN; i++) {
-    const wordI = selectedObjects[i];
-    wordI.word.smallCaps = enable;
-    await ScribeCanvas.KonvaIText.updateWordCanvas(wordI);
-  }
-  ScribeCanvas.layerText.batchDraw();
-}
 
 /** @type {Array<import('../viewer/viewerWordObjects.js').KonvaOcrWord>} */
 let objectsLine;

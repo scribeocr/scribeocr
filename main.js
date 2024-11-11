@@ -12,7 +12,8 @@ import { getAllFileEntries } from './app/utils/dragAndDrop.js';
 import { insertAlertMessage } from './app/utils/warningMessages.js';
 
 import {
-  adjustBaseline, adjustBaselineRange, adjustBaselineRangeChange,
+  adjustBaseline, adjustBaselineRange,
+  adjustBaselineRangeChange,
   toggleEditButtons,
 } from './app/interfaceEdit.js';
 
@@ -40,7 +41,8 @@ import {
   KonvaLayout, renderLayoutBoxes, setDefaultLayout, setDefaultLayoutDataTable, setLayoutBoxInclusionLevelClick, setLayoutBoxInclusionRuleClick,
 } from './viewer/viewerLayout.js';
 import {
-  deleteSelectedWord, modifySelectedWordFontFamily, modifySelectedWordFontSize, modifySelectedWordStyle,
+  deleteSelectedWord, modifySelectedWordFontFamily, modifySelectedWordFontSize, modifySelectedWordSmallCaps, modifySelectedWordStyle,
+  modifySelectedWordSuper,
 } from './viewer/viewerModifySelectedWords.js';
 
 const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
@@ -277,7 +279,7 @@ ScribeCanvas.keyboardShortcutCallback = (event) => {
  * This function is responsible for all keyboard shortcuts.
  * @param {KeyboardEvent} event - The key down event.
  */
-function handleKeyboardEvent(event) {
+function handleKeyboardEventGUI(event) {
   // When a shortcut that interacts with canvas elements is triggered,
   // any focused UI element from the nav bar are unfocused.
   // If this does not occur, then the UI will remain focused,
@@ -306,7 +308,7 @@ function handleKeyboardEvent(event) {
 }
 
 // Add various keyboard shortcuts.
-document.addEventListener('keydown', handleKeyboardEvent);
+document.addEventListener('keydown', handleKeyboardEventGUI);
 
 // Add various event listners to HTML elements
 elem.nav.next.addEventListener('click', () => ScribeCanvas.displayPage(stateGUI.cp.n + 1, true, false));
@@ -432,6 +434,14 @@ elem.edit.fontMinus.addEventListener('click', () => { modifySelectedWordFontSize
 elem.edit.fontPlus.addEventListener('click', () => { modifySelectedWordFontSize('plus'); });
 elem.edit.fontSize.addEventListener('change', () => { modifySelectedWordFontSize(elem.edit.fontSize.value); });
 elem.edit.wordFont.addEventListener('change', () => { modifySelectedWordFontFamily(elem.edit.wordFont.value); });
+
+elem.edit.styleSmallCaps.addEventListener('click', () => modifySelectedWordSmallCaps(elem.edit.styleSmallCaps.classList.contains('active')));
+elem.edit.styleSuper.addEventListener('click', () => modifySelectedWordSuper(elem.edit.styleSuper.classList.contains('active')));
+
+elem.edit.ligatures.addEventListener('change', () => {
+  scribe.opt.ligatures = elem.edit.ligatures.checked;
+  ScribeCanvas.displayPage(stateGUI.cp.n);
+});
 
 // document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 

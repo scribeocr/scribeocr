@@ -149,3 +149,37 @@ export async function modifySelectedWordFontFamily(fontName) {
   }
   ScribeCanvas.layerText.batchDraw();
 }
+
+/**
+ *
+ * @param {boolean} enable
+ */
+export function modifySelectedWordSuper(enable) {
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
+  if (!selectedObjects || selectedObjects.length === 0) return;
+  const selectedN = selectedObjects.length;
+  for (let i = 0; i < selectedN; i++) {
+    const wordI = selectedObjects[i];
+    // wordI.word.sup = !wordI.word.sup;
+    wordI.word.sup = enable;
+  }
+
+  ScribeCanvas.displayPage(stateGUI.cp.n);
+}
+
+/**
+ *
+ * @param {boolean} enable
+ */
+export async function modifySelectedWordSmallCaps(enable) {
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
+  if (!selectedObjects || selectedObjects.length === 0) return;
+  const selectedN = selectedObjects.length;
+
+  for (let i = 0; i < selectedN; i++) {
+    const wordI = selectedObjects[i];
+    wordI.word.smallCaps = enable;
+    await ScribeCanvas.KonvaIText.updateWordCanvas(wordI);
+  }
+  ScribeCanvas.layerText.batchDraw();
+}
