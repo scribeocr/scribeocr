@@ -598,6 +598,12 @@ export class ScribeCanvas {
   static keyboardShortcutCallback = (event) => {};
 
   /**
+   * Function called after keyboard shortcut is pressed.
+   * @param {boolean} deselect
+   */
+  static destroyControlsCallback = (deselect) => {};
+
+  /**
    *
    * @param {HTMLDivElement} elem
    * @param {number} width
@@ -1197,6 +1203,8 @@ export class ScribeCanvas {
     if (deselect) ScribeCanvas.CanvasSelection.deselectAll();
 
     if (ScribeCanvas.KonvaIText.inputRemove) ScribeCanvas.KonvaIText.inputRemove();
+
+    ScribeCanvas.destroyControlsCallback(deselect);
   };
 
   /**

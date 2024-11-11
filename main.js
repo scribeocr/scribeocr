@@ -274,6 +274,17 @@ ScribeCanvas.keyboardShortcutCallback = (event) => {
   if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
 };
 
+ScribeCanvas.destroyControlsCallback = (deselect) => {
+  if (deselect) {
+    const open = elem.edit.collapseRangeBaselineBS._element.classList.contains('show');
+
+    if (open) {
+      elem.edit.collapseRangeBaselineBS.toggle();
+      return;
+    }
+  }
+};
+
 /**
  * Maps from generic `KeyboardEvent` when user presses a key to the appropriate action.
  * This function is responsible for all keyboard shortcuts.
