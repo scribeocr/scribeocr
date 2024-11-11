@@ -5,6 +5,16 @@
 
 import { Collapse } from './lib/bootstrap.esm.bundle.min.js';
 
+class upload {
+  static uploadOCRName = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
+
+  static uploadOCRFile = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
+
+  static uploadDropZone = /** @type {HTMLInputElement} */(document.getElementById('uploadDropZone'));
+
+  static openFileInput = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
+}
+
 class nav {
   static next = /** @type {HTMLInputElement} */(document.getElementById('next'));
 
@@ -29,6 +39,12 @@ class nav {
   static prevMatch = /** @type {HTMLInputElement} */(document.getElementById('prevMatch'));
 
   static nextMatch = /** @type {HTMLInputElement} */(document.getElementById('nextMatch'));
+
+  static navBar = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
+
+  static navRecognize = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
+
+  static navLayout = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
 }
 
 class recognize {
@@ -63,6 +79,15 @@ class recognize {
 
   // Misc options
   static updateConfOnly = /** @type {HTMLInputElement} */(document.getElementById('updateConfOnly'));
+
+  // Advanced recognition options
+  static advancedRecognitionOptions1 = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions1'));
+
+  static advancedRecognitionOptions2 = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions2'));
+
+  static advancedRecognitionOptions3 = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions3'));
+
+  static basicRecognitionOptions = /** @type {HTMLDivElement} */(document.getElementById('basicRecognitionOptions'));
 }
 
 class evaluate {
@@ -79,6 +104,8 @@ class evaluate {
   static createGroundTruth = /** @type {HTMLInputElement} */(document.getElementById('createGroundTruth'));
 
   static uploadOCRButton = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRButton'));
+
+  static uploadOCRData = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRData'));
 }
 
 class view {
@@ -156,6 +183,8 @@ class layout {
   static addLayoutBoxTypeOrder = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeOrder'));
 
   static addLayoutBoxTypeExclude = /** @type {HTMLInputElement} */(document.getElementById('addLayoutBoxTypeExclude'));
+
+  static layoutBoxType = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
 
   static addDataTable = /** @type {HTMLInputElement} */(document.getElementById('addDataTable'));
 
@@ -240,6 +269,8 @@ class info {
 
   static enableAdvancedRecognition = /** @type {HTMLInputElement} */(document.getElementById('enableAdvancedRecognition'));
 
+  static enableEval = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
+
   static enableLayout = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
 
   static enableXlsxExport = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
@@ -252,6 +283,9 @@ class info {
   static usePDFTextSuppCheckbox = /** @type {HTMLInputElement} */(document.getElementById('usePDFTextSuppCheckbox'));
 
   static omitNativeTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
+
+  // Debug visualizations
+  static showDebugVis = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
 
   // Debug output.
   static downloadDebugCsv = /** @type {HTMLDivElement} */(document.getElementById('downloadDebugCsv'));
@@ -275,9 +309,32 @@ class info {
   static showDebugLegend = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
 
   static debugHidePage = /** @type {HTMLInputElement} */(document.getElementById('debugHidePage'));
+
+  static debugPrintCoords = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
+
+  // Debug options
+  static optimizeFontDebug = /** @type {HTMLInputElement} */(document.getElementById('optimizeFontDebug'));
+
+  static showIntermediateOCR = /** @type {HTMLInputElement} */(document.getElementById('showIntermediateOCR'));
+
+  static extractPDFFonts = /** @type {HTMLInputElement} */(document.getElementById('extractPDFFonts'));
+}
+
+class canvas {
+  static legendCanvasParentDiv = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
+
+  static legendCanvas = /** @type {HTMLCanvasElement} */(document.getElementById('legendCanvas'));
+
+  static debugCanvasParentDiv = /** @type {HTMLDivElement} */(document.getElementById('debugCanvasParentDiv'));
+
+  static canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
 }
 
 export class elem {
+  static upload = upload;
+
+  static canvas = canvas;
+
   static nav = nav;
 
   static recognize = recognize;

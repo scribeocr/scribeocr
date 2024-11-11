@@ -37,10 +37,9 @@ import {
   modifySelectedWordSuper,
 } from './viewer/viewerModifySelectedWords.js';
 
-const canvasContainer = /** @type {HTMLDivElement} */(document.getElementById('c'));
 ScribeCanvas.enableCanvasSelection = true;
 ScribeCanvas.KonvaIText.enableEditing = true;
-ScribeCanvas.init(canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
+ScribeCanvas.init(elem.canvas.canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
 
 /**
  *
@@ -155,38 +154,35 @@ scribe.opt.errorHandler = insertAlertMessage;
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 tooltipTriggerList.forEach((tooltipTriggerEl) => new Tooltip(tooltipTriggerEl));
 
-const zone = /** @type {HTMLInputElement} */ (document.getElementById('uploadDropZone'));
+elem.upload.openFileInput.addEventListener('change', () => {
+  if (!elem.upload.openFileInput.files || elem.upload.openFileInput.files.length === 0) return;
 
-const openFileInputElem = /** @type {HTMLInputElement} */(document.getElementById('openFileInput'));
-openFileInputElem.addEventListener('change', () => {
-  if (!openFileInputElem.files || openFileInputElem.files.length === 0) return;
-
-  importFilesGUI(openFileInputElem.files);
+  importFilesGUI(elem.upload.openFileInput.files);
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
+  showHideElem(/** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement), false);
 });
 
 let highlightActiveCt = 0;
-zone.addEventListener('dragover', (event) => {
+elem.upload.uploadDropZone.addEventListener('dragover', (event) => {
   event.preventDefault();
-  zone.classList.add('highlight');
+  elem.upload.uploadDropZone.classList.add('highlight');
   highlightActiveCt++;
 });
 
-zone.addEventListener('dragleave', (event) => {
+elem.upload.uploadDropZone.addEventListener('dragleave', (event) => {
   event.preventDefault();
   // Only remove the highlight after 0.1 seconds, and only if it has not since been re-activated.
   // This avoids flickering.
   const highlightActiveCtNow = highlightActiveCt;
   setTimeout(() => {
     if (highlightActiveCtNow === highlightActiveCt) {
-      zone.classList.remove('highlight');
+      elem.upload.uploadDropZone.classList.remove('highlight');
     }
   }, 100);
 });
 
 // This is where the drop is handled.
-zone.addEventListener('drop', async (event) => {
+elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
   // Prevent navigation.
   event.preventDefault();
 
@@ -204,12 +200,12 @@ zone.addEventListener('drop', async (event) => {
 
   if (files.length === 0) return;
 
-  zone.classList.remove('highlight');
+  elem.upload.uploadDropZone.classList.remove('highlight');
 
   importFilesGUI(files);
 
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(/** @type {HTMLElement} */ (zone.parentElement), false);
+  showHideElem(/** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement), false);
 });
 
 /**
@@ -233,7 +229,7 @@ const handlePaste = async (event) => {
 
   if (imageArr.length > 0) {
     await importFilesGUI(imageArr);
-    zone.setAttribute('style', 'display:none');
+    elem.upload.uploadDropZone.setAttribute('style', 'display:none');
   }
 };
 
@@ -251,7 +247,7 @@ globalThis.fetchAndImportFiles = async (urls) => {
   // Call the existing importFiles function with the file array
   importFilesGUI(urls);
 
-  zone.setAttribute('style', 'display:none');
+  elem.upload.uploadDropZone.setAttribute('style', 'display:none');
 };
 
 ScribeCanvas.keyboardShortcutCallback = (event) => {
@@ -260,10 +256,9 @@ ScribeCanvas.keyboardShortcutCallback = (event) => {
   // If this does not occur, then the UI will remain focused,
   // and users attempting to interact with the canvas may instead interact with the UI.
   // For example, pressing "enter" while the recognize tab is focused may trigger the "Recognize All" button.
-  const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
   const activeElem = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-  if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+  if (activeElem && elem.nav.navBar.contains(activeElem)) activeElem.blur();
 };
 
 ScribeCanvas.destroyControlsCallback = (deselect) => {
@@ -288,7 +283,6 @@ function handleKeyboardEventGUI(event) {
   // If this does not occur, then the UI will remain focused,
   // and users attempting to interact with the canvas may instead interact with the UI.
   // For example, pressing "enter" while the recognize tab is focused may trigger the "Recognize All" button.
-  const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
   const activeElem = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   if (event.key === 'Escape') {
@@ -297,7 +291,7 @@ function handleKeyboardEventGUI(event) {
   }
 
   // If the user is typing in an input in the nav bar, do not trigger shortcuts.
-  if (activeElem && navBarElem.contains(activeElem) && (activeElem instanceof HTMLInputElement || activeElem instanceof HTMLSelectElement)) return;
+  if (activeElem && elem.nav.navBar.contains(activeElem) && (activeElem instanceof HTMLInputElement || activeElem instanceof HTMLSelectElement)) return;
 
   if (event.ctrlKey && ['f'].includes(event.key)) {
     // eslint-disable-next-line no-new
@@ -305,7 +299,7 @@ function handleKeyboardEventGUI(event) {
     elem.nav.editFind.focus();
     event.preventDefault(); // Prevent the default action to avoid browser zoom
     event.stopPropagation();
-    if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
+    if (activeElem && elem.nav.navBar.contains(activeElem)) activeElem.blur();
     return;
   }
 }
@@ -340,9 +334,8 @@ elem.recognize.enableUpscale.addEventListener('click', () => {
   scribe.opt.enableUpscale = elem.recognize.enableUpscale.checked;
 });
 
-const showDebugVisElem = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
-showDebugVisElem.addEventListener('change', () => {
-  scribe.opt.debugVis = showDebugVisElem.checked;
+elem.info.showDebugVis.addEventListener('change', () => {
+  scribe.opt.debugVis = elem.info.showDebugVis.checked;
   if (scribe.opt.debugVis) {
     ScribeCanvas.displayPage(stateGUI.cp.n);
   } else {
@@ -352,11 +345,10 @@ showDebugVisElem.addEventListener('change', () => {
 });
 
 elem.info.showDebugLegend.addEventListener('input', () => {
-  const legendCanvasParentDivElem = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
   if (!elem.info.showDebugLegend.checked) {
-    showHideElem(legendCanvasParentDivElem, false);
+    showHideElem(elem.canvas.legendCanvasParentDiv, false);
   } else {
-    showHideElem(legendCanvasParentDivElem, true);
+    showHideElem(elem.canvas.legendCanvasParentDiv, true);
   }
 });
 
@@ -380,30 +372,22 @@ elem.info.selectDebugVis.addEventListener('change', () => { ScribeCanvas.display
 
 elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick);
 
-const enableRecognitionElem = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
-
-const enableEvalElem = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
-
-enableEvalElem.addEventListener('click', () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab')), enableEvalElem.checked));
+elem.info.enableEval.addEventListener('click', () => showHideElem(elem.info.enableEval, elem.info.enableEval.checked));
 
 elem.info.enableAdvancedRecognition.addEventListener('click', () => {
-  const advancedRecognitionOptions1Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions1'));
-  const advancedRecognitionOptions2Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions2'));
-  const advancedRecognitionOptions3Elem = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions3'));
-  const basicRecognitionOptionsElem = /** @type {HTMLDivElement} */(document.getElementById('basicRecognitionOptions'));
-  showHideElem(advancedRecognitionOptions1Elem, elem.info.enableAdvancedRecognition.checked);
-  showHideElem(advancedRecognitionOptions2Elem, elem.info.enableAdvancedRecognition.checked);
-  showHideElem(advancedRecognitionOptions3Elem, elem.info.enableAdvancedRecognition.checked);
-  showHideElem(basicRecognitionOptionsElem, !elem.info.enableAdvancedRecognition.checked);
+  showHideElem(elem.recognize.advancedRecognitionOptions1, elem.info.enableAdvancedRecognition.checked);
+  showHideElem(elem.recognize.advancedRecognitionOptions2, elem.info.enableAdvancedRecognition.checked);
+  showHideElem(elem.recognize.advancedRecognitionOptions3, elem.info.enableAdvancedRecognition.checked);
+  showHideElem(elem.recognize.basicRecognitionOptions, !elem.info.enableAdvancedRecognition.checked);
 });
 
-export const enableRecognitionClick = () => showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-recognize-tab')), enableRecognitionElem.checked);
+export const enableRecognitionClick = () => showHideElem(elem.nav.navRecognize, elem.info.enableRecognition.checked);
 
-enableRecognitionElem.addEventListener('click', enableRecognitionClick);
+elem.info.enableRecognition.addEventListener('click', enableRecognitionClick);
 
 elem.info.enableLayout.addEventListener('click', () => {
   scribe.opt.enableLayout = elem.info.enableLayout.checked;
-  showHideElem(/** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab')), elem.info.enableLayout.checked);
+  showHideElem(elem.nav.navLayout, elem.info.enableLayout.checked);
 });
 
 export const enableXlsxExportClick = () => {
@@ -416,17 +400,11 @@ export const enableXlsxExportClick = () => {
 
 elem.info.enableXlsxExport.addEventListener('click', enableXlsxExportClick);
 
-const uploadOCRNameElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRName'));
-const uploadOCRFileElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRFile'));
-
 elem.evaluate.uploadOCRButton.addEventListener('click', importFilesSuppGUI);
 
-// const uploadOCRLabelElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRLabel'));
-const uploadOCRDataElem = /** @type {HTMLInputElement} */(document.getElementById('uploadOCRData'));
-
-uploadOCRDataElem.addEventListener('show.bs.collapse', () => {
-  if (!uploadOCRNameElem.value) {
-    uploadOCRNameElem.value = `OCR Data ${elem.evaluate.displayLabelOptions.childElementCount}`;
+elem.evaluate.uploadOCRData.addEventListener('show.bs.collapse', () => {
+  if (!elem.upload.uploadOCRName.value) {
+    elem.upload.uploadOCRName.value = `OCR Data ${elem.evaluate.displayLabelOptions.childElementCount}`;
   }
 });
 
@@ -445,8 +423,6 @@ elem.edit.ligatures.addEventListener('change', () => {
   scribe.opt.ligatures = elem.edit.ligatures.checked;
   ScribeCanvas.displayPage(stateGUI.cp.n);
 });
-
-// document.getElementById('editBoundingBox').addEventListener('click', toggleBoundingBoxesSelectedWords);
 
 /** @type {Array<import('./viewer/viewerWordObjects.js').KonvaOcrWord>} */
 let objectsLine;
@@ -542,9 +518,8 @@ export function toggleEditButtons(disable = true) {
 
 elem.edit.editBaseline.addEventListener('click', adjustBaseline);
 
-const rangeBaselineElem = /** @type {HTMLInputElement} */(document.getElementById('rangeBaseline'));
-rangeBaselineElem.addEventListener('input', () => { adjustBaselineRange(rangeBaselineElem.value); });
-rangeBaselineElem.addEventListener('mouseup', () => { adjustBaselineRangeChange(rangeBaselineElem.value); });
+elem.edit.rangeBaseline.addEventListener('input', () => { adjustBaselineRange(elem.edit.rangeBaseline.value); });
+elem.edit.rangeBaseline.addEventListener('mouseup', () => { adjustBaselineRangeChange(elem.edit.rangeBaseline.value); });
 
 elem.edit.deleteWord.addEventListener('click', deleteSelectedWord);
 
@@ -554,28 +529,25 @@ elem.view.optimizeFont.addEventListener('click', () => {
   // This button does nothing if the debug option optimizeFontDebugElem is enabled.
   // This approach is used rather than disabling the button, as `optimizeFontElem.disabled` is checked in other functions
   // to determine whether font optimization is enabled.
-  if (optimizeFontDebugElem.checked) return;
+  if (elem.info.optimizeFontDebug.checked) return;
   optimizeFontClick(elem.view.optimizeFont.checked);
 });
 
-const optimizeFontDebugElem = /** @type {HTMLInputElement} */(document.getElementById('optimizeFontDebug'));
-optimizeFontDebugElem.addEventListener('click', () => {
-  if (optimizeFontDebugElem.checked) {
+elem.info.optimizeFontDebug.addEventListener('click', () => {
+  if (elem.info.optimizeFontDebug.checked) {
     optimizeFontClick(true, true);
   } else {
     optimizeFontClick(elem.view.optimizeFont.checked, false);
   }
 });
 
-const showIntermediateOCRElem = /** @type {HTMLInputElement} */(document.getElementById('showIntermediateOCR'));
-showIntermediateOCRElem.addEventListener('click', () => {
-  optGUI.showInternalOCRVersions = showIntermediateOCRElem.checked;
+elem.info.showIntermediateOCR.addEventListener('click', () => {
+  optGUI.showInternalOCRVersions = elem.info.showIntermediateOCR.checked;
   updateOcrVersionGUI();
 });
 
-const extractPDFFontsElem = /** @type {HTMLInputElement} */(document.getElementById('extractPDFFonts'));
-extractPDFFontsElem.addEventListener('click', () => {
-  scribe.opt.extractPDFFonts = extractPDFFontsElem.checked;
+elem.info.extractPDFFonts.addEventListener('click', () => {
+  scribe.opt.extractPDFFonts = elem.info.extractPDFFonts.checked;
 });
 
 elem.info.confThreshHigh.addEventListener('change', () => {
@@ -646,26 +618,22 @@ elem.recognize.recognizeAll.addEventListener('click', () => {
 });
 
 elem.edit.recognizeArea.addEventListener('click', () => (ScribeCanvas.mode = 'recognizeArea'));
-const recognizeWordElem = /** @type {HTMLInputElement} */(document.getElementById('recognizeWord'));
-recognizeWordElem.addEventListener('click', () => (ScribeCanvas.mode = 'recognizeWord'));
+elem.edit.recognizeWord.addEventListener('click', () => (ScribeCanvas.mode = 'recognizeWord'));
 
-const debugPrintCoordsElem = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
-debugPrintCoordsElem.addEventListener('click', () => (ScribeCanvas.mode = 'printCoords'));
-
-const layoutBoxTypeElem = /** @type {HTMLElement} */ (document.getElementById('layoutBoxType'));
+elem.info.debugPrintCoords.addEventListener('click', () => (ScribeCanvas.mode = 'printCoords'));
 
 elem.layout.addLayoutBox.addEventListener('click', () => {
-  ScribeCanvas.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[layoutBoxTypeElem.textContent];
+  ScribeCanvas.mode = { Order: 'addLayoutBoxOrder', Exclude: 'addLayoutBoxExclude', Column: 'addLayoutBoxDataTable' }[elem.layout.layoutBoxType.textContent];
 });
 
 elem.layout.addLayoutBoxTypeOrder.addEventListener('click', () => {
   ScribeCanvas.mode = 'addLayoutBoxOrder';
-  layoutBoxTypeElem.textContent = 'Order';
+  elem.layout.layoutBoxType.textContent = 'Order';
 });
 
 elem.layout.addLayoutBoxTypeExclude.addEventListener('click', () => {
   ScribeCanvas.mode = 'addLayoutBoxExclude';
-  layoutBoxTypeElem.textContent = 'Exclude';
+  elem.layout.layoutBoxType.textContent = 'Exclude';
 });
 
 function toggleSelectableWords(selectable = true) {
@@ -896,23 +864,23 @@ const importFilesGUI = async (files) => {
 // Import supplemental OCR files (from "Evaluate Accuracy" UI tab)
 async function importFilesSuppGUI() {
   // TODO: Add input validation for names (e.g. unique, no illegal symbols, not named "Ground Truth" or other reserved name)
-  const ocrName = uploadOCRNameElem.value;
+  const ocrName = elem.upload.uploadOCRName.value;
 
-  if (!uploadOCRFileElem.files || uploadOCRFileElem.files.length === 0) return;
+  if (!elem.upload.uploadOCRFile.files || elem.upload.uploadOCRFile.files.length === 0) return;
 
   ProgressBars.active = ProgressBars.eval;
-  ProgressBars.active.show(uploadOCRFileElem.files.length, 0);
+  ProgressBars.active.show(elem.upload.uploadOCRFile.files.length, 0);
 
-  await scribe.importFilesSupp(uploadOCRFileElem.files, ocrName);
+  await scribe.importFilesSupp(elem.upload.uploadOCRFile.files, ocrName);
 
   elem.evaluate.displayLabelText.disabled = true;
 
   toggleEditButtons(false);
 
-  uploadOCRNameElem.value = '';
-  uploadOCRFileElem.value = '';
+  elem.upload.uploadOCRName.value = '';
+  elem.upload.uploadOCRFile.value = '';
   // eslint-disable-next-line no-new
-  new Collapse(uploadOCRDataElem, { toggle: true });
+  new Collapse(elem.evaluate.uploadOCRData, { toggle: true });
 
   updateOcrVersionGUI();
 
@@ -1046,15 +1014,13 @@ export const updateOcrVersionGUI = () => {
 
 // Users may select an edit action (e.g. "Add Word", "Recognize Word", etc.) but then never follow through.
 // This function cleans up any changes/event listners caused by the initial click in such cases.
-const navBarElem = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
-navBarElem.addEventListener('click', (e) => {
+elem.nav.navBar.addEventListener('click', (e) => {
   ScribeCanvas.mode = 'select';
 }, true);
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
-const navRecognizeElem = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
-navRecognizeElem.addEventListener('hidden.bs.collapse', (e) => {
+elem.nav.navRecognize.addEventListener('hidden.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-recognize') {
     ProgressBars.eval.hide();
     ProgressBars.recognize.hide();
@@ -1067,8 +1033,7 @@ elem.download.download.addEventListener('hidden.bs.collapse', (e) => {
   }
 });
 
-const navLayoutElem = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
-navLayoutElem.addEventListener('show.bs.collapse', (e) => {
+elem.nav.navLayout.addEventListener('show.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
     stateGUI.layoutMode = true;
     // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
@@ -1086,7 +1051,7 @@ navLayoutElem.addEventListener('show.bs.collapse', (e) => {
   }
 });
 
-navLayoutElem.addEventListener('hide.bs.collapse', (e) => {
+elem.nav.navLayout.addEventListener('hide.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
     stateGUI.layoutMode = false;
     Konva.autoDrawEnabled = false;
@@ -1186,7 +1151,7 @@ KonvaLayout.updateUI = () => {
   }
 };
 
-const ctxLegend = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('legendCanvas')).getContext('2d'));
+const ctxLegend = /** @type {CanvasRenderingContext2D} */ (elem.canvas.legendCanvas.getContext('2d'));
 
 const renderDebugVis = (n) => {
   if (scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && scribe.data.vis[n][elem.info.selectDebugVis.value]) {
@@ -1225,21 +1190,20 @@ const renderDebugVis = (n) => {
 
 const renderConflictVis = () => {
   if (elem.info.showConflicts.checked) showDebugImages();
-  const debugCanvasParentDivElem = /** @type {HTMLDivElement} */ (document.getElementById('debugCanvasParentDiv'));
 
   if (elem.info.showConflicts.checked) {
     const debugHeight = Math.round(document.documentElement.clientHeight * 0.3);
 
-    debugCanvasParentDivElem.style.width = `${document.documentElement.clientWidth}px`;
-    debugCanvasParentDivElem.style.height = `${debugHeight}px`;
-    debugCanvasParentDivElem.style.top = `${document.documentElement.clientHeight - debugHeight}px`;
-    debugCanvasParentDivElem.style.overflowY = 'scroll';
-    debugCanvasParentDivElem.style.zIndex = '10';
-    debugCanvasParentDivElem.style.position = 'absolute';
+    elem.canvas.debugCanvasParentDiv.style.width = `${document.documentElement.clientWidth}px`;
+    elem.canvas.debugCanvasParentDiv.style.height = `${debugHeight}px`;
+    elem.canvas.debugCanvasParentDiv.style.top = `${document.documentElement.clientHeight - debugHeight}px`;
+    elem.canvas.debugCanvasParentDiv.style.overflowY = 'scroll';
+    elem.canvas.debugCanvasParentDiv.style.zIndex = '10';
+    elem.canvas.debugCanvasParentDiv.style.position = 'absolute';
 
-    showHideElem(debugCanvasParentDivElem, true);
+    showHideElem(elem.canvas.debugCanvasParentDiv, true);
   } else {
-    showHideElem(debugCanvasParentDivElem, false);
+    showHideElem(elem.canvas.debugCanvasParentDiv, false);
   }
 };
 
