@@ -42,17 +42,28 @@ class nav {
 
   static navBar = /** @type {HTMLDivElement} */(document.getElementById('navBar'));
 
-  static navRecognize = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
+  static navRecognizeTab = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize-tab'));
+
+  static navEvalTab = /** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab'));
+
+  static navLayoutTab = /** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab'));
 
   static navLayout = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
+
+  static navRecognize = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
 }
 
 class recognize {
+  // Basic options
   static recognizeAll = /** @type {HTMLInputElement} */(document.getElementById('recognizeAll'));
 
   static ocrQuality = /** @type {HTMLInputElement} */(document.getElementById('ocrQuality'));
 
-  static enableUpscale = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
+  static langLabel = /** @type {HTMLButtonElement} */(document.getElementById('langLabel'));
+
+  static langLabelText = /** @type {HTMLDivElement} */(document.getElementById('langLabelText'));
+
+  static collapseLang = /** @type {HTMLDivElement} */(document.getElementById('collapseLang'));
 
   // OEM options
   static oemLabelText = /** @type {HTMLInputElement} */(document.getElementById('oemLabelText'));
@@ -77,9 +88,6 @@ class recognize {
 
   static buildLabelOptionVanilla = /** @type {HTMLInputElement} */(document.getElementById('buildLabelOptionVanilla'));
 
-  // Misc options
-  static updateConfOnly = /** @type {HTMLInputElement} */(document.getElementById('updateConfOnly'));
-
   // Advanced recognition options
   static advancedRecognitionOptions1 = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions1'));
 
@@ -88,6 +96,10 @@ class recognize {
   static advancedRecognitionOptions3 = /** @type {HTMLDivElement} */(document.getElementById('advancedRecognitionOptions3'));
 
   static basicRecognitionOptions = /** @type {HTMLDivElement} */(document.getElementById('basicRecognitionOptions'));
+
+  static updateConfOnly = /** @type {HTMLInputElement} */(document.getElementById('updateConfOnly'));
+
+  static enableUpscale = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
 }
 
 class evaluate {

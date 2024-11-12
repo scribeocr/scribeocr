@@ -1,11 +1,9 @@
 /* eslint-disable import/no-cycle */
 import scribe from '../scribe.js/scribe.js';
 import {
-  optGUI,
   ScribeCanvas,
-  stateGUI,
 } from './viewerCanvas.js';
-import { Konva } from '../app/lib/konva/_FullInternals.js';
+import { Konva } from './konva/_FullInternals.js';
 import {
   addLayoutBox,
   addLayoutDataTable,
@@ -111,7 +109,7 @@ async function recognizeArea(n, box, wordMode = false) {
 
   scribe.combineOCRPage(pageNew, scribe.data.ocr.active[n], scribe.data.pageMetrics[n]);
 
-  if (ScribeCanvas.textGroupsRenderIndices.includes(n)) ScribeCanvas.displayPage(stateGUI.cp.n);
+  if (ScribeCanvas.textGroupsRenderIndices.includes(n)) ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 }
 
 /**
@@ -193,7 +191,7 @@ async function addWordManual(n, box) {
 
   const visualBaseline = linebox.bottom + baseline[1] + angleAdjLine.y + angleAdjWord.y;
 
-  const outlineWord = optGUI.outlineWords || scribe.opt.displayMode === 'eval' && wordObj.conf > scribe.opt.confThreshHigh && !wordObj.matchTruth;
+  const outlineWord = ScribeCanvas.opt.outlineWords || scribe.opt.displayMode === 'eval' && wordObj.conf > scribe.opt.confThreshHigh && !wordObj.matchTruth;
 
   const wordCanvas = new KonvaOcrWord({
     visualLeft: box.left,
@@ -203,7 +201,7 @@ async function addWordManual(n, box) {
     word: wordObj,
     outline: outlineWord,
     fillBox: false,
-    listening: !stateGUI.layoutMode,
+    listening: !ScribeCanvas.state.layoutMode,
   });
 
   const group = ScribeCanvas.getTextGroup(n);
@@ -308,7 +306,7 @@ const splitWordClick = () => {
 
   konvaWord.word.line.words.splice(wordIndex, 1, wordA, wordB);
 
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 };
 
 const mergeWordsClick = () => {
@@ -324,7 +322,7 @@ const mergeWordsClick = () => {
   const firstIndex = lineWords.findIndex((x) => x.id === selectedKonvaWords[0].word.id);
   lineWords.splice(firstIndex, selectedKonvaWords.length, newWord);
 
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 };
 
 const deleteLayoutDataTableClick = () => {
@@ -332,7 +330,7 @@ const deleteLayoutDataTableClick = () => {
   const selectedColumns = ScribeCanvas.CanvasSelection.getKonvaDataColumns();
   if (selectedColumns.length === 0) return;
 
-  scribe.data.layoutDataTables.deleteLayoutDataTable(selectedColumns[0].konvaTable.layoutDataTable, stateGUI.cp.n);
+  scribe.data.layoutDataTables.deleteLayoutDataTable(selectedColumns[0].konvaTable.layoutDataTable, ScribeCanvas.state.cp.n);
 
   selectedColumns[0].konvaTable.destroy();
   ScribeCanvas.destroyControls();
@@ -345,7 +343,7 @@ const deleteLayoutRegionClick = () => {
   if (selectedRegions.length === 0) return;
 
   selectedRegions.forEach((region) => {
-    scribe.data.layoutRegions.deleteLayoutRegion(region.layoutBox, stateGUI.cp.n);
+    scribe.data.layoutRegions.deleteLayoutRegion(region.layoutBox, ScribeCanvas.state.cp.n);
     region.destroy();
   });
   ScribeCanvas.destroyControls();
@@ -484,8 +482,8 @@ export const contextMenuFunc = (event) => {
   let enableSplitWord = false;
   let enableMergeWords = false;
   let enableDeleteWords = false;
-  if (!stateGUI.layoutMode && selectedKonvaWords.length > 0) enableDeleteWords = true;
-  if (!stateGUI.layoutMode && event.target instanceof KonvaOcrWord) {
+  if (!ScribeCanvas.state.layoutMode && selectedKonvaWords.length > 0) enableDeleteWords = true;
+  if (!ScribeCanvas.state.layoutMode && event.target instanceof KonvaOcrWord) {
     if (selectedKonvaWords.length < 2) {
       const cursorIndex = KonvaOcrWord.getCursorIndex(event.target);
       if (cursorIndex > 0 && cursorIndex < event.target.word.text.length) {
@@ -647,12 +645,12 @@ export const mouseupFunc2 = (event) => {
     const box = {
       x: ptr.x, y: ptr.y, width: 1, height: 1,
     };
-    if (ScribeCanvas.mode === 'select' && !stateGUI.layoutMode) {
+    if (ScribeCanvas.mode === 'select' && !ScribeCanvas.state.layoutMode) {
       ScribeCanvas.destroyControls(!event.evt.ctrlKey);
       selectWords(box);
       KonvaOcrWord.updateUI();
       ScribeCanvas.layerText.batchDraw();
-    } else if (ScribeCanvas.mode === 'select' && stateGUI.layoutMode) {
+    } else if (ScribeCanvas.mode === 'select' && ScribeCanvas.state.layoutMode) {
       ScribeCanvas.destroyControls(!event.evt.ctrlKey);
       selectLayoutBoxesArea(box);
       KonvaLayout.updateUI();
@@ -664,12 +662,12 @@ export const mouseupFunc2 = (event) => {
   // update visibility in timeout, so we can check it in click event
   ScribeCanvas.selectingRectangle.visible(false);
 
-  if (ScribeCanvas.mode === 'select' && !stateGUI.layoutMode) {
+  if (ScribeCanvas.mode === 'select' && !ScribeCanvas.state.layoutMode) {
     ScribeCanvas.destroyControls(!event.evt.ctrlKey);
     const box = ScribeCanvas.selectingRectangle.getClientRect();
     selectWords(box);
     KonvaOcrWord.updateUI();
-  } else if (ScribeCanvas.mode === 'select' && stateGUI.layoutMode) {
+  } else if (ScribeCanvas.mode === 'select' && ScribeCanvas.state.layoutMode) {
     ScribeCanvas.destroyControls(!event.evt.ctrlKey);
     const box = ScribeCanvas.selectingRectangle.getClientRect();
     selectLayoutBoxesArea(box);

@@ -1,9 +1,9 @@
 import scribe from '../scribe.js/scribe.js';
 /* eslint-disable import/no-cycle */
-import { ScribeCanvas, stateGUI } from './viewerCanvas.js';
-import Konva from '../app/lib/konva/index.js';
+import { ScribeCanvas } from './viewerCanvas.js';
+import Konva from './konva/index.js';
 import { initBitmapWorker } from './bitmapWorkerMain.js';
-import { range } from '../app/utils/utils.js';
+import { range } from '../scribe.js/js/utils/miscUtils.js';
 
 /**
  * @typedef {Object} ImageProperties
@@ -212,7 +212,7 @@ export class ViewerImageCache {
 
           if (Math.abs(konvaImage.rotation() - rotation) > 0.01) {
             konvaImage.rotation(rotation);
-            if (Math.abs(stateGUI.cp.n - n) < 2) ScribeCanvas.layerBackground.batchDraw();
+            if (Math.abs(ScribeCanvas.state.cp.n - n) < 2) ScribeCanvas.layerBackground.batchDraw();
           }
         }
       }
@@ -236,7 +236,7 @@ export class ViewerImageCache {
     ViewerImageCache.konvaImages[n].then((konvaImage) => {
       ScribeCanvas.layerBackground.add(konvaImage);
       if (ScribeCanvas.placeholderRectArr[n]) ScribeCanvas.placeholderRectArr[n].hide();
-      if (Math.abs(stateGUI.cp.n - n) < 2) ScribeCanvas.layerBackground.batchDraw();
+      if (Math.abs(ScribeCanvas.state.cp.n - n) < 2) ScribeCanvas.layerBackground.batchDraw();
     });
   };
 

@@ -1,7 +1,7 @@
 import { showHideElem } from '../app/utils/utils.js';
 import scribe from '../scribe.js/scribe.js';
 import {
-  ScribeCanvas, stateGUI,
+  ScribeCanvas,
 } from '../viewer/viewerCanvas.js';
 import { getAllFileEntries } from '../app/utils/dragAndDrop.js';
 
@@ -277,8 +277,8 @@ class ScribePDFViewer {
     });
 
     // Add various event listners to HTML elements
-    this.nextElem.addEventListener('click', () => ScribeCanvas.displayPage(stateGUI.cp.n + 1, true, false));
-    this.prevElem.addEventListener('click', () => ScribeCanvas.displayPage(stateGUI.cp.n - 1, true, false));
+    this.nextElem.addEventListener('click', () => ScribeCanvas.displayPage(ScribeCanvas.state.cp.n + 1, true, false));
+    this.prevElem.addEventListener('click', () => ScribeCanvas.displayPage(ScribeCanvas.state.cp.n - 1, true, false));
 
     this.pageNumElem.addEventListener('keyup', (event) => {
       if (event.keyCode === 13) {
@@ -327,7 +327,7 @@ class ScribePDFViewer {
     });
 
     ScribeCanvas.displayPageCallback = () => {
-      this.pageNumElem.value = (stateGUI.cp.n + 1).toString();
+      this.pageNumElem.value = (ScribeCanvas.state.cp.n + 1).toString();
     };
 
     ScribeCanvas.init(this.viewerContainer, width, height - toolbarHeight);

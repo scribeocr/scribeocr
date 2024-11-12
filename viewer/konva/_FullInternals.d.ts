@@ -1,13 +1,8 @@
-import { Transform } from './Util.js';
-import { Node } from './Node.js';
-import { Container } from './Container.js';
-import { Stage } from './Stage.js';
-import { Layer } from './Layer.js';
-import { FastLayer } from './FastLayer.js';
-import { Group } from './Group.js';
-import { Shape } from './Shape.js';
-import { Context } from './Context.js';
-import { Canvas } from './Canvas.js';
+import { Image } from './shapes/Image.js';
+import { Line } from './shapes/Line.js';
+import { Rect } from './shapes/Rect.js';
+import { Text } from './shapes/Text.js';
+import { Transformer } from './shapes/Transformer.js';
 export declare const Konva: {
     _global: any;
     version: string;
@@ -116,7 +111,7 @@ export declare const Konva: {
             b: number;
             a: number;
         } | undefined;
-        haveIntersection(r1: import("./types").IRect, r2: import("./types.js").IRect): boolean;
+        haveIntersection(r1: import("./types.js").IRect, r2: import("./types.js").IRect): boolean;
         cloneObject<Any>(obj: Any): Any;
         cloneArray(arr: Array<any>): any[];
         degToRad(deg: number): number;
@@ -131,28 +126,28 @@ export declare const Konva: {
         each(obj: Object, func: Function): void;
         _inRange(val: number, left: number, right: number): boolean;
         _getProjectionToSegment(x1: any, y1: any, x2: any, y2: any, x3: any, y3: any): any[];
-        _getProjectionToLine(pt: import("./types").Vector2d, line: Array<import("./types").Vector2d>, isClosed: boolean): import("./types.js").Vector2d;
+        _getProjectionToLine(pt: import("./types.js").Vector2d, line: Array<import("./types.js").Vector2d>, isClosed: boolean): import("./types.js").Vector2d;
         _prepareArrayForTween(startArray: any, endArray: any, isClosed: any): number[];
         _prepareToStringify<T>(obj: any): T | null;
         _assign<T, U>(target: T, source: U): T & U;
         _getFirstPointerId(evt: any): any;
         releaseCanvas(...canvases: HTMLCanvasElement[]): void;
-        drawRoundedRectPath(context: Context, width: number, height: number, cornerRadius: number | number[]): void;
+        drawRoundedRectPath(context: import("./Context.js").Context, width: number, height: number, cornerRadius: number | number[]): void;
     };
-    Transform: typeof Transform;
-    Node: typeof Node;
-    Container: typeof Container;
-    Stage: typeof Stage;
-    stages: Stage[];
-    Layer: typeof Layer;
-    FastLayer: typeof FastLayer;
-    Group: typeof Group;
+    Transform: typeof import("./Util.js").Transform;
+    Node: typeof import("./Node.js").Node;
+    Container: typeof import("./Container.js").Container;
+    Stage: typeof import("./Stage.js").Stage;
+    stages: import("./Stage.js").Stage[];
+    Layer: typeof import("./Layer.js").Layer;
+    FastLayer: typeof import("./FastLayer.js").FastLayer;
+    Group: typeof import("./Group.js").Group;
     DD: {
         readonly isDragging: boolean;
         justDragged: boolean;
-        readonly node: Node<import("./Node.js").NodeConfig> | undefined;
+        readonly node: import("./Node.js").Node<import("./Node.js").NodeConfig> | undefined;
         _dragElements: Map<number, {
-            node: Node;
+            node: import("./Node.js").Node;
             startPointerPos: import("./types.js").Vector2d;
             offset: import("./types.js").Vector2d;
             pointerId?: number;
@@ -162,11 +157,16 @@ export declare const Konva: {
         _endDragBefore(evt?: any): void;
         _endDragAfter(evt: any): void;
     };
-    Shape: typeof Shape;
+    Shape: typeof import("./Shape.js").Shape;
     shapes: {
-        [key: string]: Shape<import("./Shape.js").ShapeConfig>;
+        [key: string]: import("./Shape.js").Shape<import("./Shape.js").ShapeConfig>;
     };
-    Context: typeof Context;
-    Canvas: typeof Canvas;
+    Context: typeof import("./Context.js").Context;
+    Canvas: typeof import("./Canvas.js").Canvas;
+} & {
+    Image: typeof Image;
+    Line: typeof Line;
+    Rect: typeof Rect;
+    Text: typeof Text;
+    Transformer: typeof Transformer;
 };
-export default Konva;

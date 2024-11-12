@@ -1,20 +1,24 @@
 /* eslint-disable import/no-cycle */
 import scribe from '../scribe.js/scribe.js';
-import Konva from '../app/lib/konva/index.js';
-import { search, updateFindStats } from './viewerSearch.js';
+import Konva from './konva/index.js';
+import { search } from './viewerSearch.js';
 import {
-  KonvaDataColumn, KonvaLayout, KonvaRegion, renderLayoutBoxes,
+  KonvaDataColumn, KonvaLayout, KonvaRegion, layout,
 } from './viewerLayout.js';
 import { replaceObjectProperties } from '../app/utils/utils.js';
 import { KonvaIText, KonvaOcrWord } from './viewerWordObjects.js';
 import { ViewerImageCache } from './viewerImageCache.js';
 import { handleKeyboardEvent } from './viewerShortcuts.js';
 import { contextMenuFunc, mouseupFunc2 } from './viewerCanvasInteraction.js';
+import {
+  deleteSelectedWord, modifySelectedWordBbox, modifySelectedWordFontFamily, modifySelectedWordFontSize, modifySelectedWordSmallCaps, modifySelectedWordStyle,
+  modifySelectedWordSuper,
+} from './viewerModifySelectedWords.js';
 
 Konva.autoDrawEnabled = false;
 Konva.dragButtons = [0];
 
-export class stateGUI {
+export class stateViewer {
   static recognizeAllPromise = Promise.resolve();
 
   static layoutMode = false;
@@ -33,7 +37,7 @@ export class stateGUI {
  * This object contains the values of options for the GUI that do not directly map to options in the `scribe` module.
  * This includes both GUI-specific options and options that are implemented through arguments rather than the `opts` object.
  */
-export class optGUI {
+export class optViewer {
   static enableRecognition = true;
 
   static enableXlsxExport = false;
@@ -59,6 +63,17 @@ export class optGUI {
 
   static outlinePars = false;
 }
+
+let evalStatsConfig = {
+  /** @type {string|undefined} */
+  ocrActive: undefined,
+  ignorePunct: scribe.opt.ignorePunct,
+  ignoreCap: scribe.opt.ignoreCap,
+  ignoreExtra: scribe.opt.ignoreExtra,
+};
+
+/** @type {Array<EvalMetrics>} */
+const evalStats = [];
 
 /**
  * Class for managing the selection of words, layout boxes, and data columns on the canvas.
@@ -237,6 +252,20 @@ class CanvasSelection {
       }
     }
   };
+
+  static deleteSelectedWord = deleteSelectedWord;
+
+  static modifySelectedWordBbox = modifySelectedWordBbox;
+
+  static modifySelectedWordStyle = modifySelectedWordStyle;
+
+  static modifySelectedWordFontSize = modifySelectedWordFontSize;
+
+  static modifySelectedWordFontFamily = modifySelectedWordFontFamily;
+
+  static modifySelectedWordSuper = modifySelectedWordSuper;
+
+  static modifySelectedWordSmallCaps = modifySelectedWordSmallCaps;
 }
 
 function getCenter(p1, p2) {
@@ -253,9 +282,9 @@ function getDistance(p1, p2) {
 let mouseDownTarget;
 
 /**
- * @typedef {import('../app/lib/konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
- * @typedef {import('../app/lib/konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
- * @typedef {import('../app/lib/konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
+ * @typedef {import('./konva/Node.js').KonvaEventObject<MouseEvent>} KonvaMouseEvent
+ * @typedef {import('./konva/Node.js').KonvaEventObject<TouchEvent>} KonvaTouchEvent
+ * @typedef {import('./konva/Node.js').KonvaEventObject<WheelEvent>} KonvaWheelEvent
  */
 
 /**
@@ -422,7 +451,7 @@ export class ScribeCanvas {
     const y = (ScribeCanvas.stage.y() - ScribeCanvas.stage.height() / 2) / ScribeCanvas.stage.getAbsoluteScale().y * -1;
     const pageNew = ScribeCanvas.calcPage(y);
 
-    if (stateGUI.cp.n !== pageNew && pageNew >= 0) {
+    if (stateViewer.cp.n !== pageNew && pageNew >= 0) {
       ScribeCanvas.displayPage(pageNew, false, false);
       return true;
     }
@@ -440,24 +469,24 @@ export class ScribeCanvas {
     const y = ScribeCanvas.stage.y();
 
     // Clip the inputs to prevent the user from panning the entire document outside of the viewport.
-    if (stateGUI.cp.n === 0) {
+    if (stateViewer.cp.n === 0) {
       const maxY = (ScribeCanvas.getPageStop(0) - 100) * ScribeCanvas.stage.getAbsoluteScale().y * -1 + ScribeCanvas.stage.height() / 2;
       const maxYDelta = Math.max(0, maxY - y);
       deltaY = Math.min(deltaY, maxYDelta);
     }
 
-    if (stateGUI.cp.n === scribe.data.pageMetrics.length - 1) {
-      const minY = ScribeCanvas.getPageStop(stateGUI.cp.n, false) * ScribeCanvas.stage.getAbsoluteScale().y * -1
+    if (stateViewer.cp.n === scribe.data.pageMetrics.length - 1) {
+      const minY = ScribeCanvas.getPageStop(stateViewer.cp.n, false) * ScribeCanvas.stage.getAbsoluteScale().y * -1
         + ScribeCanvas.stage.height() / 2;
       const minYDelta = Math.max(0, y - minY);
       deltaY = Math.max(deltaY, -minYDelta);
     }
 
-    const minX = (scribe.data.pageMetrics[stateGUI.cp.n].dims.width / 2) * ScribeCanvas.stage.getAbsoluteScale().y * -1;
+    const minX = (scribe.data.pageMetrics[stateViewer.cp.n].dims.width / 2) * ScribeCanvas.stage.getAbsoluteScale().y * -1;
     const minXDelta = Math.max(0, x - minX);
     deltaX = Math.max(deltaX, -minXDelta);
 
-    const maxX = (scribe.data.pageMetrics[stateGUI.cp.n].dims.width / 2) * ScribeCanvas.stage.getAbsoluteScale().y * -1
+    const maxX = (scribe.data.pageMetrics[stateViewer.cp.n].dims.width / 2) * ScribeCanvas.stage.getAbsoluteScale().y * -1
       + ScribeCanvas.stage.width();
     const maxXDelta = Math.max(0, maxX - x);
     deltaX = Math.min(deltaX, maxXDelta);
@@ -728,7 +757,7 @@ export class ScribeCanvas {
       // if (activeElem && navBarElem.contains(activeElem)) activeElem.blur();
 
       // For dragging layout boxes, other events are needed to stop the drag.
-      if (!stateGUI.layoutMode) {
+      if (!stateViewer.layoutMode) {
         event.evt.preventDefault();
         event.evt.stopPropagation();
       }
@@ -891,10 +920,10 @@ export class ScribeCanvas {
 
     ScribeCanvas.deleteHTMLOverlay();
 
-    if (scribe.inputData.xmlMode[stateGUI.cp.n]) {
+    if (scribe.inputData.xmlMode[stateViewer.cp.n]) {
       // TODO: This is currently run whenever the page is changed.
       // If this adds any meaningful overhead, we should only have stats updated when edits are actually made.
-      updateFindStats();
+      search.updateFindStats();
     }
 
     if (scribe.opt.displayMode === 'ebook') {
@@ -924,7 +953,7 @@ export class ScribeCanvas {
 
     ScribeCanvas.layerText.batchDraw();
 
-    stateGUI.cp.n = n;
+    stateViewer.cp.n = n;
 
     ScribeCanvas.destroyText();
     ScribeCanvas.destroyOverlay();
@@ -935,15 +964,15 @@ export class ScribeCanvas {
 
     if (ScribeCanvas.displayPageCallback) ScribeCanvas.displayPageCallback();
 
-    if (stateGUI.layoutMode) {
+    if (stateViewer.layoutMode) {
       if (refresh || !ScribeCanvas.overlayGroupsRenderIndices.includes(n)) {
-        await renderLayoutBoxes(n);
+        await layout.renderLayoutBoxes(n);
       }
       if (n - 1 >= 0 && (refresh || !ScribeCanvas.overlayGroupsRenderIndices.includes(n - 1))) {
-        await renderLayoutBoxes(n - 1);
+        await layout.renderLayoutBoxes(n - 1);
       }
       if (n + 1 < scribe.data.ocr.active.length && (refresh || !ScribeCanvas.overlayGroupsRenderIndices.includes(n + 1))) {
-        await renderLayoutBoxes(n + 1);
+        await layout.renderLayoutBoxes(n + 1);
       }
     }
 
@@ -1092,11 +1121,29 @@ export class ScribeCanvas {
 
   static CanvasSelection = CanvasSelection;
 
+  static Konva = Konva;
+
   static KonvaIText = KonvaIText;
 
   static KonvaOcrWord = KonvaOcrWord;
 
+  static KonvaLayout = KonvaLayout;
+
   static ViewerImageCache = ViewerImageCache;
+
+  static state = stateViewer;
+
+  static opt = optViewer;
+
+  static search = search;
+
+  static layout = layout;
+
+  static setWordColorOpacity = setWordColorOpacity;
+
+  static compareGroundTruth = compareGroundTruth;
+
+  static evalStats = evalStats;
 
   /** @type {bbox} */
   static bbox = {
@@ -1124,18 +1171,18 @@ export class ScribeCanvas {
   static getKonvaWords = () => {
     /** @type {Array<KonvaOcrWord>} */
     const words = [];
-    if (ScribeCanvas.#textGroups[stateGUI.cp.n - 1]?.children) {
-      ScribeCanvas.#textGroups[stateGUI.cp.n - 1].children.forEach((x) => {
+    if (ScribeCanvas.#textGroups[stateViewer.cp.n - 1]?.children) {
+      ScribeCanvas.#textGroups[stateViewer.cp.n - 1].children.forEach((x) => {
         if (x instanceof KonvaOcrWord) words.push(x);
       });
     }
-    if (ScribeCanvas.#textGroups[stateGUI.cp.n]?.children) {
-      ScribeCanvas.#textGroups[stateGUI.cp.n].children.forEach((x) => {
+    if (ScribeCanvas.#textGroups[stateViewer.cp.n]?.children) {
+      ScribeCanvas.#textGroups[stateViewer.cp.n].children.forEach((x) => {
         if (x instanceof KonvaOcrWord) words.push(x);
       });
     }
-    if (ScribeCanvas.#textGroups[stateGUI.cp.n + 1]?.children) {
-      ScribeCanvas.#textGroups[stateGUI.cp.n + 1].children.forEach((x) => {
+    if (ScribeCanvas.#textGroups[stateViewer.cp.n + 1]?.children) {
+      ScribeCanvas.#textGroups[stateViewer.cp.n + 1].children.forEach((x) => {
         if (x instanceof KonvaOcrWord) words.push(x);
       });
     }
@@ -1146,18 +1193,18 @@ export class ScribeCanvas {
   static getKonvaRegions = () => {
     /** @type {Array<KonvaRegion>} */
     const regions = [];
-    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1]?.children) {
-      ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1].children.forEach((x) => {
+    if (ScribeCanvas.#overlayGroups[stateViewer.cp.n - 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateViewer.cp.n - 1].children.forEach((x) => {
         if (x instanceof KonvaRegion) regions.push(x);
       });
     }
-    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n]?.children) {
-      ScribeCanvas.#overlayGroups[stateGUI.cp.n].children.forEach((x) => {
+    if (ScribeCanvas.#overlayGroups[stateViewer.cp.n]?.children) {
+      ScribeCanvas.#overlayGroups[stateViewer.cp.n].children.forEach((x) => {
         if (x instanceof KonvaRegion) regions.push(x);
       });
     }
-    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1]?.children) {
-      ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1].children.forEach((x) => {
+    if (ScribeCanvas.#overlayGroups[stateViewer.cp.n + 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateViewer.cp.n + 1].children.forEach((x) => {
         if (x instanceof KonvaRegion) regions.push(x);
       });
     }
@@ -1168,18 +1215,18 @@ export class ScribeCanvas {
   static getKonvaDataColumns = () => {
     /** @type {Array<KonvaDataColumn>} */
     const columns = [];
-    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1]?.children) {
-      ScribeCanvas.#overlayGroups[stateGUI.cp.n - 1].children.forEach((x) => {
+    if (ScribeCanvas.#overlayGroups[stateViewer.cp.n - 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateViewer.cp.n - 1].children.forEach((x) => {
         if (x instanceof KonvaDataColumn) columns.push(x);
       });
     }
-    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n]?.children) {
-      ScribeCanvas.#overlayGroups[stateGUI.cp.n].children.forEach((x) => {
+    if (ScribeCanvas.#overlayGroups[stateViewer.cp.n]?.children) {
+      ScribeCanvas.#overlayGroups[stateViewer.cp.n].children.forEach((x) => {
         if (x instanceof KonvaDataColumn) columns.push(x);
       });
     }
-    if (ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1]?.children) {
-      ScribeCanvas.#overlayGroups[stateGUI.cp.n + 1].children.forEach((x) => {
+    if (ScribeCanvas.#overlayGroups[stateViewer.cp.n + 1]?.children) {
+      ScribeCanvas.#overlayGroups[stateViewer.cp.n + 1].children.forEach((x) => {
         if (x instanceof KonvaDataColumn) columns.push(x);
       });
     }
@@ -1214,7 +1261,7 @@ export class ScribeCanvas {
   static destroyOverlay = (outsideViewOnly = true) => {
     for (let i = 0; i < ScribeCanvas.overlayGroupsRenderIndices.length; i++) {
       const n = ScribeCanvas.overlayGroupsRenderIndices[i];
-      if (Math.abs(n - stateGUI.cp.n) > 1 || !outsideViewOnly) {
+      if (Math.abs(n - stateViewer.cp.n) > 1 || !outsideViewOnly) {
         ScribeCanvas.#overlayGroups[n].destroyChildren();
         ScribeCanvas.overlayGroupsRenderIndices.splice(i, 1);
         i--;
@@ -1229,7 +1276,7 @@ export class ScribeCanvas {
   static destroyText = (outsideViewOnly = true) => {
     for (let i = 0; i < ScribeCanvas.textGroupsRenderIndices.length; i++) {
       const n = ScribeCanvas.textGroupsRenderIndices[i];
-      if (Math.abs(n - stateGUI.cp.n) > 1 || !outsideViewOnly) {
+      if (Math.abs(n - stateViewer.cp.n) > 1 || !outsideViewOnly) {
         ScribeCanvas.#textGroups[n].destroyChildren();
         ScribeCanvas.textGroupsRenderIndices.splice(i, 1);
         i--;
@@ -1333,7 +1380,7 @@ document.addEventListener('copy', (e) => {
 /**
  * Changes color and opacity of words based on the current display mode.
  */
-export function setWordColorOpacity() {
+function setWordColorOpacity() {
   ScribeCanvas.getKonvaWords().forEach((obj) => {
     // const { opacity, fill } = getWordFillOpacityGUI(obj.word);
 
@@ -1345,18 +1392,7 @@ export function setWordColorOpacity() {
   });
 }
 
-let evalStatsConfig = {
-  /** @type {string|undefined} */
-  ocrActive: undefined,
-  ignorePunct: scribe.opt.ignorePunct,
-  ignoreCap: scribe.opt.ignoreCap,
-  ignoreExtra: scribe.opt.ignoreExtra,
-};
-
-/** @type {Array<EvalMetrics>} */
-export const evalStats = [];
-
-export async function compareGroundTruth() {
+async function compareGroundTruth() {
   const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
 
   if (!oemActive) {
@@ -1447,11 +1483,11 @@ export function renderCanvasWords(page) {
 
   if (!ScribeCanvas.textGroupsRenderIndices.includes(page.n)) ScribeCanvas.textGroupsRenderIndices.push(page.n);
 
-  const matchIdArr = stateGUI.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[page.n]) : [];
+  const matchIdArr = stateViewer.searchMode ? scribe.utils.ocr.getMatchingWordIds(search.search, scribe.data.ocr.active[page.n]) : [];
 
   const imageRotated = Math.abs(angle ?? 0) > 0.05;
 
-  if (optGUI.outlinePars && page) {
+  if (optViewer.outlinePars && page) {
     scribe.utils.assignParagraphs(page, angle);
 
     page.pars.forEach((par) => {
@@ -1465,7 +1501,7 @@ export function renderCanvasWords(page) {
 
     const angleAdjLine = imageRotated ? scribe.utils.ocr.calcLineStartAngleAdj(lineObj) : { x: 0, y: 0 };
 
-    if (optGUI.outlineLines) {
+    if (optViewer.outlineLines) {
       const heightAdj = Math.abs(Math.tan(angle * (Math.PI / 180)) * (lineObj.bbox.right - lineObj.bbox.left));
       const height1 = lineObj.bbox.bottom - lineObj.bbox.top - heightAdj;
       const height2 = lineObj.words[0] ? lineObj.words[0].bbox.bottom - lineObj.words[0].bbox.top : 0;
@@ -1488,7 +1524,7 @@ export function renderCanvasWords(page) {
     for (const wordObj of lineObj.words) {
       if (!wordObj.text) continue;
 
-      const outlineWord = optGUI.outlineWords || scribe.opt.displayMode === 'eval' && wordObj.conf > scribe.opt.confThreshHigh && !wordObj.matchTruth;
+      const outlineWord = optViewer.outlineWords || scribe.opt.displayMode === 'eval' && wordObj.conf > scribe.opt.confThreshHigh && !wordObj.matchTruth;
 
       const angleAdjWord = imageRotated ? scribe.utils.ocr.calcWordAngleAdj(wordObj) : { x: 0, y: 0 };
 
@@ -1507,7 +1543,7 @@ export function renderCanvasWords(page) {
         word: wordObj,
         outline: outlineWord,
         fillBox: matchIdArr.includes(wordObj.id),
-        listening: !stateGUI.layoutMode,
+        listening: !stateViewer.layoutMode,
       });
 
       group.add(wordCanvas);

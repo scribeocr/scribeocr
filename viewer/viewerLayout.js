@@ -1,5 +1,5 @@
 // import Konva from '../lib/konva/index.js';
-import Konva from '../app/lib/konva/index.js';
+import Konva from './konva/index.js';
 import scribe from '../scribe.js/scribe.js';
 // eslint-disable-next-line import/no-cycle
 import {
@@ -163,7 +163,7 @@ export class KonvaLayout extends Konva.Rect {
   static updateUI = () => { };
 }
 
-export class KonvaRegionControlHorizontal extends Konva.Line {
+class KonvaRegionControlHorizontal extends Konva.Line {
   /**
    *
    * @param {KonvaRegion} konvaRegion
@@ -253,7 +253,7 @@ export class KonvaRegionControlHorizontal extends Konva.Line {
   }
 }
 
-export class KonvaRegionControlVertical extends Konva.Line {
+class KonvaRegionControlVertical extends Konva.Line {
   /**
    *
    * @param {KonvaRegion} konvaRegion
@@ -1297,7 +1297,7 @@ export function addLayoutDataTable(n, box) {
  *
  * @param {number} n
  */
-export function setDefaultLayout(n) {
+function setDefaultLayout(n) {
   scribe.data.layoutRegions.defaultRegions = structuredClone(scribe.data.layoutRegions.pages[n].boxes);
   for (let i = 0; i < scribe.data.layoutRegions.pages.length; i++) {
     if (scribe.data.layoutRegions.pages[i].default) {
@@ -1310,11 +1310,33 @@ export function setDefaultLayout(n) {
  *
  * @param {number} n
  */
-export function setDefaultLayoutDataTable(n) {
+function setDefaultLayoutDataTable(n) {
   scribe.data.layoutDataTables.defaultTables = structuredClone(scribe.data.layoutDataTables.pages[n].tables);
   for (let i = 0; i < scribe.data.layoutDataTables.pages.length; i++) {
     if (scribe.data.layoutDataTables.pages[i].default) {
       scribe.data.layoutDataTables.pages[i].tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
     }
   }
+}
+
+export class layout {
+  static renderLayoutBoxes = renderLayoutBoxes;
+
+  static setLayoutBoxInclusionLevelClick = setLayoutBoxInclusionLevelClick;
+
+  static setLayoutBoxInclusionRuleClick = setLayoutBoxInclusionRuleClick;
+
+  static mergeDataTables = mergeDataTables;
+
+  static splitDataColumn = splitDataColumn;
+
+  static splitDataTable = splitDataTable;
+
+  static addLayoutBox = addLayoutBox;
+
+  static addLayoutDataTable = addLayoutDataTable;
+
+  static setDefaultLayout = setDefaultLayout;
+
+  static setDefaultLayoutDataTable = setDefaultLayoutDataTable;
 }

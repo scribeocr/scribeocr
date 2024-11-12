@@ -1,7 +1,6 @@
 // eslint-disable-next-line import/no-cycle
 import {
   ScribeCanvas,
-  stateGUI,
 } from './viewerCanvas.js';
 import scribe from '../scribe.js/scribe.js';
 import { KonvaIText, KonvaOcrWord } from './viewerWordObjects.js';
@@ -314,14 +313,14 @@ export function handleKeyboardEvent(event) {
 
   // Prev page shortcut
   if (event.key === 'PageUp') {
-    ScribeCanvas.displayPage(stateGUI.cp.n - 1, true, false);
+    ScribeCanvas.displayPage(ScribeCanvas.state.cp.n - 1, true, false);
     event.preventDefault();
     return;
   }
 
   // Next page shortcut
   if (event.key === 'PageDown') {
-    ScribeCanvas.displayPage(stateGUI.cp.n + 1, true, false);
+    ScribeCanvas.displayPage(ScribeCanvas.state.cp.n + 1, true, false);
     event.preventDefault();
     return;
   }

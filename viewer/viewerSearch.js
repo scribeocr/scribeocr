@@ -1,25 +1,29 @@
 // eslint-disable-next-line import/no-cycle
-import { ScribeCanvas, stateGUI } from './viewerCanvas.js';
+import { ScribeCanvas } from './viewerCanvas.js';
 import scribe from '../scribe.js/scribe.js';
 
-/**
- * @typedef find
- * @type {object}
- * @property {string[]} text - Array with text contents of each page
- * @property {string} search - Search string
- * @property {number[]} matches - Array with number of matches on each page
- * @property {boolean} init - Whether find object has been initiated
- * @property {number} total - Total number of matches
+export class search {
+  /** @type {string[]} */
+  static text = [];
 
- */
-/** @type {find} */
-export const search = {
-  text: [],
-  search: '',
-  matches: [],
-  init: false,
-  total: 0,
-};
+  /** @type {string} */
+  static search = '';
+
+  /** @type {number[]} */
+  static matches = [];
+
+  static init = false;
+
+  static total = 0;
+
+  static highlightcp = highlightcp;
+
+  static updateFindStats = updateFindStats;
+
+  static findText = findText;
+
+  static calcMatchNumber = calcMatchNumber;
+}
 
 // Extract text from XML for every page
 // We do this once (and then perform incremental updates) to avoid having to parse XML
@@ -46,9 +50,9 @@ function findAllMatches(text) {
 }
 
 // Highlight words that include substring in the current page
-export function highlightcp(text) {
+function highlightcp(text) {
   if (!text) return;
-  const matchIdArr = scribe.utils.ocr.getMatchingWordIds(text, scribe.data.ocr.active[stateGUI.cp.n]);
+  const matchIdArr = scribe.utils.ocr.getMatchingWordIds(text, scribe.data.ocr.active[ScribeCanvas.state.cp.n]);
 
   ScribeCanvas.getKonvaWords().forEach((wordObj) => {
     if (matchIdArr.includes(wordObj.word.id)) {
@@ -63,24 +67,24 @@ export function highlightcp(text) {
 
 // Updates data used for "Find" feature on current page
 // Should be called after any edits are made, before moving to a different page
-export function updateFindStats() {
-  if (!scribe.data.ocr.active[stateGUI.cp.n]) {
-    search.text[stateGUI.cp.n] = '';
+function updateFindStats() {
+  if (!scribe.data.ocr.active[ScribeCanvas.state.cp.n]) {
+    search.text[ScribeCanvas.state.cp.n] = '';
     return;
   }
 
   // Re-extract text from XML
-  search.text[stateGUI.cp.n] = scribe.utils.ocr.getPageText(scribe.data.ocr.active[stateGUI.cp.n]);
+  search.text[ScribeCanvas.state.cp.n] = scribe.utils.ocr.getPageText(scribe.data.ocr.active[ScribeCanvas.state.cp.n]);
 
   if (search.search) {
     // Count matches in current page
-    search.matches[stateGUI.cp.n] = scribe.utils.countSubstringOccurrences(search.text[stateGUI.cp.n], search.search);
+    search.matches[ScribeCanvas.state.cp.n] = scribe.utils.countSubstringOccurrences(search.text[ScribeCanvas.state.cp.n], search.search);
     // Calculate total number of matches
     search.total = search.matches.reduce((partialSum, a) => partialSum + a, 0);
   }
 }
 
-export function findText(text) {
+function findText(text) {
   search.search = text.trim();
   // Start by highlighting the matches in the current page
   highlightcp(text);
@@ -99,7 +103,7 @@ export function findText(text) {
 }
 
 // Returns string showing index of match(es) found on current page.
-export function calcMatchNumber(n) {
+function calcMatchNumber(n) {
   const matchN = search.matches?.[n];
   if (!matchN) {
     return '-';

@@ -1,4 +1,4 @@
-import Konva from '../app/lib/konva/index.js';
+import Konva from './konva/index.js';
 import scribe from '../scribe.js/scribe.js';
 
 export class KonvaIText extends Konva.Shape {

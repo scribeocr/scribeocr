@@ -1,8 +1,5 @@
 /* eslint-disable import/no-cycle */
 import { Button, Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js';
-import Konva from './app/lib/konva/index.js';
-
-import { recognizeAllClick } from './app/interfaceRecognize.js';
 
 import scribe from './scribe.js/scribe.js';
 
@@ -11,31 +8,12 @@ import { insertAlertMessage } from './app/utils/warningMessages.js';
 
 import {
   ScribeCanvas,
-  stateGUI,
-  optGUI,
-  setWordColorOpacity,
 } from './viewer/viewerCanvas.js';
 
-import {
-  downloadCanvas,
-  downloadCurrentImage,
-  evalSelectedLine,
-  printSelectedWords,
-  showDebugImages,
-} from './app/interfaceDebug.js';
-
 import { elem } from './app/elems.js';
-import { updateEvalStatsGUI, createGroundTruthClick } from './app/interfaceEvaluate.js';
 import { ProgressBars } from './app/utils/progressBars.js';
 import { saveAs, showHideElem } from './app/utils/utils.js';
-import { findText, highlightcp, search } from './viewer/viewerSearch.js';
-import {
-  KonvaLayout, renderLayoutBoxes, setDefaultLayout, setDefaultLayoutDataTable, setLayoutBoxInclusionLevelClick, setLayoutBoxInclusionRuleClick,
-} from './viewer/viewerLayout.js';
-import {
-  deleteSelectedWord, modifySelectedWordFontFamily, modifySelectedWordFontSize, modifySelectedWordSmallCaps, modifySelectedWordStyle,
-  modifySelectedWordSuper,
-} from './viewer/viewerModifySelectedWords.js';
+import { renderPageStatic } from './scribe.js/js/debug.js';
 
 ScribeCanvas.enableCanvasSelection = true;
 ScribeCanvas.KonvaIText.enableEditing = true;
@@ -56,19 +34,19 @@ const progressHandler = (message) => {
     const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
     const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
 
-    if (displayOCR && stateGUI.cp.n === n) ScribeCanvas.displayPage(n);
+    if (displayOCR && ScribeCanvas.state.cp.n === n) ScribeCanvas.displayPage(n);
   } else if (message.type === 'export') {
     ProgressBars.active.increment();
   } else if (message.type === 'importImage') {
     ProgressBars.active.increment();
-    if (stateGUI.cp.n === message.n) {
+    if (ScribeCanvas.state.cp.n === message.n) {
       ScribeCanvas.displayPage(message.n);
-    } else if (Math.abs(stateGUI.cp.n - message.n) < 2) {
+    } else if (Math.abs(ScribeCanvas.state.cp.n - message.n) < 2) {
       ScribeCanvas.renderWords(message.n);
     }
   } else if (message.type === 'importPDF') {
     ProgressBars.active.increment();
-    if (stateGUI.cp.n === message.n) ScribeCanvas.displayPage(message.n);
+    if (ScribeCanvas.state.cp.n === message.n) ScribeCanvas.displayPage(message.n);
   } else if (message.type === 'render') {
     if (ProgressBars.active === ProgressBars.download) ProgressBars.active.increment();
   }
@@ -143,7 +121,7 @@ elem.info.intermediatePDF.addEventListener('click', () => {
 
 elem.view.displayMode.addEventListener('change', () => {
   scribe.opt.displayMode = /** @type {"invis" | "ebook" | "eval" | "proof"} */(elem.view.displayMode.value);
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 scribe.opt.warningHandler = (x) => insertAlertMessage(x, false);
@@ -308,8 +286,8 @@ function handleKeyboardEventGUI(event) {
 document.addEventListener('keydown', handleKeyboardEventGUI);
 
 // Add various event listners to HTML elements
-elem.nav.next.addEventListener('click', () => ScribeCanvas.displayPage(stateGUI.cp.n + 1, true, false));
-elem.nav.prev.addEventListener('click', () => ScribeCanvas.displayPage(stateGUI.cp.n - 1, true, false));
+elem.nav.next.addEventListener('click', () => ScribeCanvas.displayPage(ScribeCanvas.state.cp.n + 1, true, false));
+elem.nav.prev.addEventListener('click', () => ScribeCanvas.displayPage(ScribeCanvas.state.cp.n - 1, true, false));
 
 elem.nav.zoomIn.addEventListener('click', () => {
   ScribeCanvas.zoom(1.1, ScribeCanvas.getStageCenter());
@@ -321,12 +299,12 @@ elem.nav.zoomOut.addEventListener('click', () => {
 
 elem.view.colorMode.addEventListener('change', () => {
   scribe.opt.colorMode = /** @type {"color" | "gray" | "binary"} */ (elem.view.colorMode.value);
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.view.overlayOpacity.addEventListener('input', () => {
   scribe.opt.overlayOpacity = parseInt(elem.view.overlayOpacity.value);
-  setWordColorOpacity();
+  ScribeCanvas.setWordColorOpacity();
   ScribeCanvas.layerText.batchDraw();
 });
 
@@ -337,7 +315,7 @@ elem.recognize.enableUpscale.addEventListener('click', () => {
 elem.info.showDebugVis.addEventListener('change', () => {
   scribe.opt.debugVis = elem.info.showDebugVis.checked;
   if (scribe.opt.debugVis) {
-    ScribeCanvas.displayPage(stateGUI.cp.n);
+    ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
   } else {
     ScribeCanvas.destroyOverlay(false);
     ScribeCanvas.layerOverlay.batchDraw();
@@ -368,11 +346,11 @@ elem.info.debugHidePage.addEventListener('input', () => {
   }
 });
 
-elem.info.selectDebugVis.addEventListener('change', () => { ScribeCanvas.displayPage(stateGUI.cp.n); });
+elem.info.selectDebugVis.addEventListener('change', () => { ScribeCanvas.displayPage(ScribeCanvas.state.cp.n); });
 
 elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick);
 
-elem.info.enableEval.addEventListener('click', () => showHideElem(elem.info.enableEval, elem.info.enableEval.checked));
+elem.info.enableEval.addEventListener('click', () => showHideElem(elem.nav.navEvalTab, elem.info.enableEval.checked));
 
 elem.info.enableAdvancedRecognition.addEventListener('click', () => {
   showHideElem(elem.recognize.advancedRecognitionOptions1, elem.info.enableAdvancedRecognition.checked);
@@ -381,13 +359,13 @@ elem.info.enableAdvancedRecognition.addEventListener('click', () => {
   showHideElem(elem.recognize.basicRecognitionOptions, !elem.info.enableAdvancedRecognition.checked);
 });
 
-export const enableRecognitionClick = () => showHideElem(elem.nav.navRecognize, elem.info.enableRecognition.checked);
+export const enableRecognitionClick = () => showHideElem(elem.nav.navRecognizeTab, elem.info.enableRecognition.checked);
 
 elem.info.enableRecognition.addEventListener('click', enableRecognitionClick);
 
 elem.info.enableLayout.addEventListener('click', () => {
   scribe.opt.enableLayout = elem.info.enableLayout.checked;
-  showHideElem(elem.nav.navLayout, elem.info.enableLayout.checked);
+  showHideElem(elem.nav.navLayoutTab, elem.info.enableLayout.checked);
 });
 
 export const enableXlsxExportClick = () => {
@@ -408,20 +386,20 @@ elem.evaluate.uploadOCRData.addEventListener('show.bs.collapse', () => {
   }
 });
 
-elem.edit.styleItalic.addEventListener('click', () => { modifySelectedWordStyle('italic'); });
-elem.edit.styleBold.addEventListener('click', () => { modifySelectedWordStyle('bold'); });
+elem.edit.styleItalic.addEventListener('click', () => { ScribeCanvas.CanvasSelection.modifySelectedWordStyle('italic'); });
+elem.edit.styleBold.addEventListener('click', () => { ScribeCanvas.CanvasSelection.modifySelectedWordStyle('bold'); });
 
-elem.edit.fontMinus.addEventListener('click', () => { modifySelectedWordFontSize('minus'); });
-elem.edit.fontPlus.addEventListener('click', () => { modifySelectedWordFontSize('plus'); });
-elem.edit.fontSize.addEventListener('change', () => { modifySelectedWordFontSize(elem.edit.fontSize.value); });
-elem.edit.wordFont.addEventListener('change', () => { modifySelectedWordFontFamily(elem.edit.wordFont.value); });
+elem.edit.fontMinus.addEventListener('click', () => { ScribeCanvas.CanvasSelection.modifySelectedWordFontSize('minus'); });
+elem.edit.fontPlus.addEventListener('click', () => { ScribeCanvas.CanvasSelection.modifySelectedWordFontSize('plus'); });
+elem.edit.fontSize.addEventListener('change', () => { ScribeCanvas.CanvasSelection.modifySelectedWordFontSize(elem.edit.fontSize.value); });
+elem.edit.wordFont.addEventListener('change', () => { ScribeCanvas.CanvasSelection.modifySelectedWordFontFamily(elem.edit.wordFont.value); });
 
-elem.edit.styleSmallCaps.addEventListener('click', () => modifySelectedWordSmallCaps(elem.edit.styleSmallCaps.classList.contains('active')));
-elem.edit.styleSuper.addEventListener('click', () => modifySelectedWordSuper(elem.edit.styleSuper.classList.contains('active')));
+elem.edit.styleSmallCaps.addEventListener('click', () => ScribeCanvas.CanvasSelection.modifySelectedWordSmallCaps(elem.edit.styleSmallCaps.classList.contains('active')));
+elem.edit.styleSuper.addEventListener('click', () => ScribeCanvas.CanvasSelection.modifySelectedWordSuper(elem.edit.styleSuper.classList.contains('active')));
 
 elem.edit.ligatures.addEventListener('change', () => {
   scribe.opt.ligatures = elem.edit.ligatures.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 /** @type {Array<import('./viewer/viewerWordObjects.js').KonvaOcrWord>} */
@@ -521,7 +499,7 @@ elem.edit.editBaseline.addEventListener('click', adjustBaseline);
 elem.edit.rangeBaseline.addEventListener('input', () => { adjustBaselineRange(elem.edit.rangeBaseline.value); });
 elem.edit.rangeBaseline.addEventListener('mouseup', () => { adjustBaselineRangeChange(elem.edit.rangeBaseline.value); });
 
-elem.edit.deleteWord.addEventListener('click', deleteSelectedWord);
+elem.edit.deleteWord.addEventListener('click', ScribeCanvas.CanvasSelection.deleteSelectedWord);
 
 elem.edit.addWord.addEventListener('click', () => (ScribeCanvas.mode = 'addWord'));
 
@@ -542,7 +520,7 @@ elem.info.optimizeFontDebug.addEventListener('click', () => {
 });
 
 elem.info.showIntermediateOCR.addEventListener('click', () => {
-  optGUI.showInternalOCRVersions = elem.info.showIntermediateOCR.checked;
+  ScribeCanvas.opt.showInternalOCRVersions = elem.info.showIntermediateOCR.checked;
   updateOcrVersionGUI();
 });
 
@@ -552,11 +530,11 @@ elem.info.extractPDFFonts.addEventListener('click', () => {
 
 elem.info.confThreshHigh.addEventListener('change', () => {
   scribe.opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 elem.info.confThreshMed.addEventListener('change', () => {
   scribe.opt.confThreshMed = parseInt(elem.info.confThreshMed.value);
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.view.autoRotate.addEventListener('click', () => {
@@ -565,22 +543,22 @@ elem.view.autoRotate.addEventListener('click', () => {
   } else {
     scribe.opt.autoRotate = false;
   }
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.view.outlineWords.addEventListener('click', () => {
-  optGUI.outlineWords = elem.view.outlineWords.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.opt.outlineWords = elem.view.outlineWords.checked;
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.view.outlineLines.addEventListener('click', () => {
-  optGUI.outlineLines = elem.view.outlineLines.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.opt.outlineLines = elem.view.outlineLines.checked;
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.view.outlinePars.addEventListener('click', () => {
-  optGUI.outlinePars = elem.view.outlinePars.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.opt.outlinePars = elem.view.outlinePars.checked;
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.evaluate.displayLabelOptions.addEventListener('click', (e) => {
@@ -610,11 +588,165 @@ elem.info.debugConflicts.addEventListener('click', () => {
 });
 
 elem.info.showConflicts.addEventListener('input', () => {
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
+elem.recognize.langLabel.addEventListener('click', setLangOpt);
+
+const langChoiceElemArr = Array.from(elem.recognize.collapseLang.querySelectorAll('.form-check-input'));
+
+const langChoices = langChoiceElemArr.map((element) => element.id);
+
+elem.recognize.psmLabelOption3.addEventListener('click', () => { setPsmLabel('3'); });
+elem.recognize.psmLabelOption4.addEventListener('click', () => { setPsmLabel('4'); });
+
+elem.recognize.buildLabelOptionDefault.addEventListener('click', () => {
+  setBuildLabel('default');
+  ScribeCanvas.opt.vanillaMode = false;
+});
+elem.recognize.buildLabelOptionVanilla.addEventListener('click', () => {
+  setBuildLabel('vanilla');
+  ScribeCanvas.opt.vanillaMode = true;
+});
+
+function setOemLabel(x) {
+  if (x.toLowerCase() === 'lstm') {
+    elem.recognize.oemLabelText.innerHTML = 'LSTM';
+  } else if (x.toLowerCase() === 'legacy') {
+    elem.recognize.oemLabelText.innerHTML = 'Legacy';
+  } else if (x.toLowerCase() === 'combined') {
+    elem.recognize.oemLabelText.innerHTML = 'Combined';
+  }
+}
+
+/**
+ *
+ * @param {string} x
+ */
+function setPsmLabel(x) {
+  if (x === '3') {
+    elem.recognize.psmLabelText.innerHTML = 'Automatic';
+  } else if (x === '4') {
+    elem.recognize.psmLabelText.innerHTML = 'Single Column';
+  } else if (x === '8') {
+    elem.recognize.psmLabelText.innerHTML = 'Single Word';
+  }
+}
+
+function setBuildLabel(x) {
+  if (x.toLowerCase() === 'default') {
+    elem.recognize.buildLabelText.innerHTML = 'Scribe';
+  } else if (x.toLowerCase() === 'vanilla') {
+    elem.recognize.buildLabelText.innerHTML = 'Vanilla';
+  }
+}
+
+const langAlertElem = insertAlertMessage('Only enable languages known to be in the source document. Enabling many languages decreases performance.', false, 'alertRecognizeDiv', false);
+export const enableDisablelangAlertElem = () => {
+  // Enable message if more than 2 languages are selected
+  const enable = langChoiceElemArr.map((x) => x.checked).reduce((x, y) => x + y, 0) > 2;
+
+  if (enable) {
+    langAlertElem.setAttribute('style', '');
+  } else {
+    langAlertElem.setAttribute('style', 'display:none');
+  }
+};
+
+elem.recognize.collapseLang.addEventListener('click', enableDisablelangAlertElem);
+
+export function setLangOpt() {
+  const langArr = [];
+  langChoices.forEach((x) => {
+    const langCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById(x));
+    console.assert(langCheckboxElem, 'Expected language does not exist');
+    if (langCheckboxElem && langCheckboxElem.checked) langArr.push(x);
+  });
+
+  if (langArr.length === 0) {
+    langArr.push('eng');
+    const langCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById('eng'));
+    langCheckboxElem.checked = true;
+  }
+
+  function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  }
+
+  elem.recognize.langLabelText.innerText = `Lang: ${langArr.map((x) => capitalizeFirstLetter(x)).join('+')}`;
+
+  // TODO: If too many language are selected, the user should be warned that this can cause issues.
+  // If this is not explicit, I could see a user selecting every option "just in case".
+
+  ScribeCanvas.opt.langs = langArr;
+
+  return;
+}
+
+// TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
+// While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
+async function addVisInstructionsUI() {
+  const { combineOrderedArrays } = await import('./scribe.js/scrollview-web/util/combine.js');
+  if (!scribe.data.vis || scribe.data.vis.length === 0) return;
+  const visNamesAll = scribe.data.vis.map((x) => Object.keys(x));
+  if (visNamesAll.length === 0) return;
+  const visNames = visNamesAll.reduce(combineOrderedArrays);
+
+  if (visNames.length === 0) return;
+
+  elem.info.showDebugLegend.disabled = false;
+  elem.info.selectDebugVis.disabled = false;
+  visNames.forEach((x) => {
+    const option = document.createElement('option');
+    option.value = x;
+    option.innerHTML = x;
+    elem.info.selectDebugVis.appendChild(option);
+  });
+}
+
+export async function recognizeAllClick() {
+  // User can select engine directly using advanced options, or indirectly using basic options.
+  /** @type {"legacy" | "lstm" | "combined"} */
+  let oemMode;
+  if (elem.info.enableAdvancedRecognition.checked) {
+    oemMode = /** @type {"legacy" | "lstm" | "combined"} */(elem.recognize.oemLabelText.innerHTML.toLowerCase());
+  } else if (elem.recognize.ocrQuality.value === '1') {
+    oemMode = 'combined';
+  } else {
+    oemMode = 'legacy';
+    setOemLabel('legacy');
+  }
+
+  ProgressBars.active = ProgressBars.recognize;
+  const progressMax = oemMode === 'combined' ? scribe.data.image.pageCount * 2 + 1 : scribe.data.image.pageCount + 1;
+  ProgressBars.active.show(progressMax, 0);
+
+  await scribe.recognize({
+    modeAdv: oemMode,
+    langs: ScribeCanvas.opt.langs,
+    combineMode: ScribeCanvas.opt.combineMode,
+    vanillaMode: ScribeCanvas.opt.vanillaMode,
+  });
+
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
+
+  addVisInstructionsUI();
+
+  ProgressBars.active.increment();
+
+  if (scribe.data.font.enableOpt) {
+    elem.view.optimizeFont.disabled = false;
+    elem.view.optimizeFont.checked = true;
+  }
+
+  updateOcrVersionGUI();
+  toggleEditConfUI(false);
+  toggleEditButtons(false);
+  toggleLayoutButtons(false);
+}
+
 elem.recognize.recognizeAll.addEventListener('click', () => {
-  stateGUI.recognizeAllPromise = recognizeAllClick();
+  ScribeCanvas.state.recognizeAllPromise = recognizeAllClick();
 });
 
 elem.edit.recognizeArea.addEventListener('click', () => (ScribeCanvas.mode = 'recognizeArea'));
@@ -644,17 +776,17 @@ function toggleSelectableWords(selectable = true) {
 }
 
 function setDefaultLayoutClick() {
-  setDefaultLayout(stateGUI.cp.n);
-  setDefaultLayoutDataTable(stateGUI.cp.n);
+  ScribeCanvas.layout.setDefaultLayout(ScribeCanvas.state.cp.n);
+  ScribeCanvas.layout.setDefaultLayoutDataTable(ScribeCanvas.state.cp.n);
 }
 
 function revertLayoutClick() {
-  scribe.data.layoutRegions.pages[stateGUI.cp.n].default = true;
-  scribe.data.layoutRegions.pages[stateGUI.cp.n].boxes = structuredClone(scribe.data.layoutRegions.defaultRegions);
-  scribe.data.layoutDataTables.pages[stateGUI.cp.n].default = true;
-  scribe.data.layoutDataTables.pages[stateGUI.cp.n].tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
+  scribe.data.layoutRegions.pages[ScribeCanvas.state.cp.n].default = true;
+  scribe.data.layoutRegions.pages[ScribeCanvas.state.cp.n].boxes = structuredClone(scribe.data.layoutRegions.defaultRegions);
+  scribe.data.layoutDataTables.pages[ScribeCanvas.state.cp.n].default = true;
+  scribe.data.layoutDataTables.pages[ScribeCanvas.state.cp.n].tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
 
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 }
 
 elem.layout.addDataTable.addEventListener('click', () => (ScribeCanvas.mode = 'addLayoutBoxDataTable'));
@@ -663,25 +795,25 @@ elem.layout.setDefaultLayout.addEventListener('click', () => setDefaultLayoutCli
 
 elem.layout.revertLayout.addEventListener('click', () => revertLayoutClick());
 
-elem.layout.setLayoutBoxInclusionRuleMajority.addEventListener('click', () => setLayoutBoxInclusionRuleClick('majority'));
-elem.layout.setLayoutBoxInclusionRuleLeft.addEventListener('click', () => setLayoutBoxInclusionRuleClick('left'));
+elem.layout.setLayoutBoxInclusionRuleMajority.addEventListener('click', () => ScribeCanvas.layout.setLayoutBoxInclusionRuleClick('majority'));
+elem.layout.setLayoutBoxInclusionRuleLeft.addEventListener('click', () => ScribeCanvas.layout.setLayoutBoxInclusionRuleClick('left'));
 
-elem.layout.setLayoutBoxInclusionLevelWord.addEventListener('click', () => setLayoutBoxInclusionLevelClick('word'));
-elem.layout.setLayoutBoxInclusionLevelLine.addEventListener('click', () => setLayoutBoxInclusionLevelClick('line'));
+elem.layout.setLayoutBoxInclusionLevelWord.addEventListener('click', () => ScribeCanvas.layout.setLayoutBoxInclusionLevelClick('word'));
+elem.layout.setLayoutBoxInclusionLevelLine.addEventListener('click', () => ScribeCanvas.layout.setLayoutBoxInclusionLevelClick('line'));
 
 elem.evaluate.ignorePunct.addEventListener('change', () => {
   scribe.opt.ignorePunct = elem.evaluate.ignorePunct.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.evaluate.ignoreCap.addEventListener('change', () => {
   scribe.opt.ignoreCap = elem.evaluate.ignoreCap.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.evaluate.ignoreExtra.addEventListener('change', () => {
   scribe.opt.ignoreExtra = elem.evaluate.ignoreExtra.checked;
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 });
 
 elem.download.pdfPageMin.addEventListener('keyup', (event) => {
@@ -798,7 +930,7 @@ export const addColorModeUI = () => {
 };
 
 elem.recognize.updateConfOnly.addEventListener('change', () => {
-  optGUI.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.updateConfOnly.checked ? 'conf' : 'data');
+  ScribeCanvas.opt.combineMode = /** @type {"data" | "conf"}* */(elem.recognize.updateConfOnly.checked ? 'conf' : 'data');
 });
 
 ProgressBars.active = ProgressBars.import;
@@ -809,7 +941,7 @@ const importFilesGUI = async (files) => {
 
   await scribe.importFiles(files);
 
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 
   // Add fonts extracted from document to the UI
   if (scribe.inputData.pdfMode && scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
@@ -823,7 +955,7 @@ const importFilesGUI = async (files) => {
 
   // Start loading Tesseract if it was not already loaded.
   // Tesseract is not loaded on startup, however if the user uploads data, they presumably want to run something that requires Tesseract.
-  const ocrParams = { anyOk: true, vanillaMode: optGUI.vanillaMode, langs: optGUI.langs };
+  const ocrParams = { anyOk: true, vanillaMode: ScribeCanvas.opt.vanillaMode, langs: ScribeCanvas.opt.langs };
   scribe.init({ ocr: true, ocrParams });
 
   elem.nav.pageNum.value = '1';
@@ -891,26 +1023,26 @@ async function importFilesSuppGUI() {
 }
 
 function prevMatchClick() {
-  if (stateGUI.cp.n === 0) return;
-  const lastPage = search.matches.slice(0, stateGUI.cp.n)?.findLastIndex((x) => x > 0);
+  if (ScribeCanvas.state.cp.n === 0) return;
+  const lastPage = ScribeCanvas.search.matches.slice(0, ScribeCanvas.state.cp.n)?.findLastIndex((x) => x > 0);
   if (lastPage > -1) ScribeCanvas.displayPage(lastPage, true);
 }
 
 function nextMatchClick() {
-  const nextPageOffset = search.matches.slice(stateGUI.cp.n + 1)?.findIndex((x) => x > 0);
-  if (nextPageOffset > -1) ScribeCanvas.displayPage(stateGUI.cp.n + nextPageOffset + 1, true);
+  const nextPageOffset = ScribeCanvas.search.matches.slice(ScribeCanvas.state.cp.n + 1)?.findIndex((x) => x > 0);
+  if (nextPageOffset > -1) ScribeCanvas.displayPage(ScribeCanvas.state.cp.n + nextPageOffset + 1, true);
 }
 
 elem.nav.editFindCollapse.addEventListener('show.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'editFindCollapse') {
-    stateGUI.searchMode = true;
-    highlightcp(search.search);
+    ScribeCanvas.state.searchMode = true;
+    ScribeCanvas.search.highlightcp(ScribeCanvas.search.search);
   }
 });
 
 elem.nav.editFindCollapse.addEventListener('hide.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'editFindCollapse') {
-    stateGUI.searchMode = false;
+    ScribeCanvas.state.searchMode = false;
     const words = ScribeCanvas.getKonvaWords();
     words.forEach((word) => word.fillBox = false);
     ScribeCanvas.layerText.batchDraw();
@@ -922,7 +1054,7 @@ elem.nav.editFind.addEventListener('keyup', (event) => {
     const val = elem.nav.editFind.value.trim();
     if (!val) return;
 
-    if (val === search.search) {
+    if (val === ScribeCanvas.search.search) {
       if (event.shiftKey) {
         prevMatchClick();
       } else {
@@ -935,19 +1067,19 @@ elem.nav.editFind.addEventListener('keyup', (event) => {
 });
 
 function findTextClick(text) {
-  findText(text);
-  elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
-  elem.nav.matchCount.textContent = String(search.total);
+  ScribeCanvas.search.findText(text);
+  elem.nav.matchCurrent.textContent = calcMatchNumber(ScribeCanvas.state.cp.n);
+  elem.nav.matchCount.textContent = String(ScribeCanvas.search.total);
 }
 
 // Returns string showing index of match(es) found on current page.
 function calcMatchNumber(n) {
-  const matchN = search.matches?.[n];
+  const matchN = ScribeCanvas.search.matches?.[n];
   if (!matchN) {
     return '-';
   }
   // Sum of matches on all previous pages
-  const matchPrev = search.matches.slice(0, n).reduce((a, b) => a + b, 0);
+  const matchPrev = ScribeCanvas.search.matches.slice(0, n).reduce((a, b) => a + b, 0);
 
   if (matchN === 1) {
     return String(matchPrev + 1);
@@ -967,7 +1099,7 @@ export function setCurrentHOCR(x) {
     scribe.data.ocr.active = scribe.data.ocr[x];
   }
 
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 }
 
 /**
@@ -981,13 +1113,13 @@ export const updateOcrVersionGUI = () => {
   const versionsSkip = [];
   for (let i = 0; i < labelElems.length; i++) {
     versionsSkip.push(labelElems[i].innerHTML);
-    if (!optGUI.showInternalOCRVersions && versionsInt.includes(labelElems[i].innerHTML)) {
+    if (!ScribeCanvas.opt.showInternalOCRVersions && versionsInt.includes(labelElems[i].innerHTML)) {
       labelElems[i].remove();
       i--;
     }
   }
 
-  if (!optGUI.showInternalOCRVersions) {
+  if (!ScribeCanvas.opt.showInternalOCRVersions) {
     for (const version of versionsInt) {
       versionsSkip.push(version);
     }
@@ -1035,30 +1167,30 @@ elem.download.download.addEventListener('hidden.bs.collapse', (e) => {
 
 elem.nav.navLayout.addEventListener('show.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
-    stateGUI.layoutMode = true;
+    ScribeCanvas.state.layoutMode = true;
     // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
-    Konva.autoDrawEnabled = true;
-    if (!scribe.data.layoutRegions.pages[stateGUI.cp.n]) return;
+    ScribeCanvas.Konva.autoDrawEnabled = true;
+    if (!scribe.data.layoutRegions.pages[ScribeCanvas.state.cp.n]) return;
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
     if (!scribe.opt.autoRotate) {
-      ScribeCanvas.displayPage(stateGUI.cp.n);
+      ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
     } else {
       toggleSelectableWords(false);
       ScribeCanvas.destroyControls();
-      renderLayoutBoxes(stateGUI.cp.n);
+      ScribeCanvas.layout.renderLayoutBoxes(ScribeCanvas.state.cp.n);
     }
   }
 });
 
 elem.nav.navLayout.addEventListener('hide.bs.collapse', (e) => {
   if (e.target instanceof HTMLElement && e.target.id === 'nav-layout') {
-    stateGUI.layoutMode = false;
-    Konva.autoDrawEnabled = false;
+    ScribeCanvas.state.layoutMode = false;
+    ScribeCanvas.Konva.autoDrawEnabled = false;
 
     ScribeCanvas.destroyOverlay(false);
     ScribeCanvas.layerOverlay.batchDraw();
-    setWordColorOpacity();
+    ScribeCanvas.setWordColorOpacity();
     ScribeCanvas.layerText.batchDraw();
     toggleSelectableWords(true);
   }
@@ -1071,7 +1203,7 @@ async function clearFiles() {
 }
 
 async function clearUI() {
-  stateGUI.cp.n = 0;
+  ScribeCanvas.state.cp.n = 0;
 
   if (ScribeCanvas.stage) ScribeCanvas.stage.clear();
   elem.nav.pageCount.textContent = '';
@@ -1131,7 +1263,7 @@ ScribeCanvas.KonvaOcrWord.updateUI = () => {
   }
 };
 
-KonvaLayout.updateUI = () => {
+ScribeCanvas.KonvaLayout.updateUI = () => {
   const { inclusionRuleArr, inclusionLevelArr } = ScribeCanvas.CanvasSelection.getLayoutBoxProperties();
 
   if (inclusionRuleArr.length === 1) {
@@ -1163,7 +1295,7 @@ const renderDebugVis = (n) => {
     const pageDims = scribe.data.pageMetrics[n].dims;
 
     const image = scribe.data.vis[n][elem.info.selectDebugVis.value].canvas;
-    const overlayImageKonva = new Konva.Image({
+    const overlayImageKonva = new ScribeCanvas.Konva.Image({
       image,
       scaleX: pageDims.width / image.width,
       scaleY: pageDims.height / image.height,
@@ -1208,16 +1340,16 @@ const renderConflictVis = () => {
 };
 
 ScribeCanvas.displayPageCallback = () => {
-  elem.nav.pageNum.value = (stateGUI.cp.n + 1).toString();
+  elem.nav.pageNum.value = (ScribeCanvas.state.cp.n + 1).toString();
 
-  elem.nav.matchCurrent.textContent = calcMatchNumber(stateGUI.cp.n);
-  elem.nav.matchCount.textContent = String(search.total);
+  elem.nav.matchCurrent.textContent = calcMatchNumber(ScribeCanvas.state.cp.n);
+  elem.nav.matchCount.textContent = String(ScribeCanvas.search.total);
 
-  renderDebugVis(stateGUI.cp.n);
+  renderDebugVis(ScribeCanvas.state.cp.n);
 
   if (elem.info.showConflicts.checked) showDebugImages();
 
-  updateEvalStatsGUI(stateGUI.cp.n);
+  updateEvalStatsGUI(ScribeCanvas.state.cp.n);
 
   renderConflictVis();
 };
@@ -1230,7 +1362,7 @@ ScribeCanvas.displayPageCallback = () => {
 async function optimizeFontClick(enable, force) {
   await scribe.enableFontOpt(enable, force);
 
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 }
 
 elem.info.downloadSourcePDF.addEventListener('click', async () => {
@@ -1360,11 +1492,11 @@ async function handleDownloadGUI() {
   elem.download.download.disabled = true;
 
   // If recognition is currently running, wait for it to finish.
-  await stateGUI.recognizeAllPromise;
+  await ScribeCanvas.state.recognizeAllPromise;
 
   updatePdfPagesLabel();
 
-  const downloadType = (/** @type {string} */ (elem.download.formatLabelText.textContent)).toLowerCase();
+  const downloadType = /** @type {("pdf" | "hocr" | "docx" | "xlsx" | "txt" | "text")} */ (/** @type {string} */ (elem.download.formatLabelText.textContent).toLowerCase());
 
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.pdf`;
 
@@ -1381,4 +1513,254 @@ async function handleDownloadGUI() {
 
   elem.download.download.disabled = false;
   elem.download.download.addEventListener('click', handleDownloadGUI);
+}
+
+async function updateEvalStatsGUI(n) {
+  if (!ScribeCanvas.evalStats || ScribeCanvas.evalStats.length === 0) return;
+
+  const metricTotalWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsPage'));
+  const metricCorrectWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectWordsPage'));
+  const metricIncorrectWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectWordsPage'));
+  const metricMissedWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricMissedWordsPage'));
+  const metricExtraWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricExtraWordsPage'));
+  const metricCorrectLowConfWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectLowConfWordsPage'));
+  const metricIncorrectHighConfWordsPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectHighConfWordsPage'));
+
+  const metricWERPageElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERPage'));
+
+  // Display metrics for current page
+  metricTotalWordsPageElem.innerHTML = String(ScribeCanvas.evalStats[n].total);
+  metricCorrectWordsPageElem.innerHTML = String(ScribeCanvas.evalStats[n].correct);
+  metricIncorrectWordsPageElem.innerHTML = String(ScribeCanvas.evalStats[n].incorrect);
+  metricMissedWordsPageElem.innerHTML = String(ScribeCanvas.evalStats[n].missed);
+  metricExtraWordsPageElem.innerHTML = String(ScribeCanvas.evalStats[n].extra);
+  metricCorrectLowConfWordsPageElem.innerHTML = String(ScribeCanvas.evalStats[n].correctLowConf);
+  metricIncorrectHighConfWordsPageElem.innerHTML = String(ScribeCanvas.evalStats[n].incorrectHighConf);
+
+  if (scribe.opt.ignoreExtra) {
+    metricWERPageElem.innerHTML = ((ScribeCanvas.evalStats[n].incorrect + ScribeCanvas.evalStats[n].missed) / ScribeCanvas.evalStats[n].total).toFixed(2);
+  } else {
+    metricWERPageElem.innerHTML = ((ScribeCanvas.evalStats[n].incorrect + ScribeCanvas.evalStats[n].missed + ScribeCanvas.evalStats[n].extra) / ScribeCanvas.evalStats[n].total).toFixed(2);
+  }
+
+  const metricTotalWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricTotalWordsDoc'));
+  const metricCorrectWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectWordsDoc'));
+  const metricIncorrectWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectWordsDoc'));
+  const metricMissedWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricMissedWordsDoc'));
+  const metricExtraWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricExtraWordsDoc'));
+  const metricCorrectLowConfWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricCorrectLowConfWordsDoc'));
+  const metricIncorrectHighConfWordsDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricIncorrectHighConfWordsDoc'));
+  const metricWERDocElem = /** @type {HTMLInputElement} */(document.getElementById('metricWERDoc'));
+
+  // Calculate and display metrics for full document
+  const evalStatsDoc = scribe.utils.calcEvalStatsDoc(ScribeCanvas.evalStats);
+
+  metricTotalWordsDocElem.innerHTML = evalStatsDoc.total.toString();
+  metricCorrectWordsDocElem.innerHTML = evalStatsDoc.correct.toString();
+  metricIncorrectWordsDocElem.innerHTML = evalStatsDoc.incorrect.toString();
+  metricMissedWordsDocElem.innerHTML = evalStatsDoc.missed.toString();
+  metricExtraWordsDocElem.innerHTML = evalStatsDoc.extra.toString();
+  metricCorrectLowConfWordsDocElem.innerHTML = evalStatsDoc.correctLowConf.toString();
+  metricIncorrectHighConfWordsDocElem.innerHTML = evalStatsDoc.incorrectHighConf.toString();
+
+  if (scribe.opt.ignoreExtra) {
+    metricWERDocElem.innerHTML = ((evalStatsDoc.incorrect + evalStatsDoc.missed) / evalStatsDoc.total).toFixed(2);
+  } else {
+    metricWERDocElem.innerHTML = ((evalStatsDoc.incorrect + evalStatsDoc.missed + evalStatsDoc.extra) / evalStatsDoc.total).toFixed(2);
+  }
+}
+
+async function createGroundTruthClick() {
+  if (!scribe.data.ocr['Ground Truth']) {
+    scribe.data.ocr['Ground Truth'] = Array(scribe.data.ocr.active.length);
+  }
+
+  // Use whatever the current HOCR is as a starting point
+  for (let i = 0; i < scribe.data.ocr.active.length; i++) {
+    scribe.data.ocr['Ground Truth'][i] = structuredClone(scribe.data.ocr.active[i]);
+  }
+
+  updateOcrVersionGUI();
+  setCurrentHOCR('Ground Truth');
+
+  const option = document.createElement('option');
+  option.text = 'Evaluate Mode (Compare with Ground Truth)';
+  option.value = 'eval';
+  elem.view.displayMode.add(option);
+
+  elem.evaluate.createGroundTruth.disabled = true;
+  // compareGroundTruthElem.disabled = false;
+
+  scribe.inputData.evalMode = true;
+
+  // Calculate statistics
+  await ScribeCanvas.compareGroundTruth();
+  updateEvalStatsGUI(ScribeCanvas.state.cp.n);
+}
+
+/**
+ * Print the code needed to access a specific OCR word.
+ * This is useful for generating automated tests.
+ * @param {OcrWord} word
+ */
+const printOcrWordCode = (word) => {
+  if (!scribe.data.ocr.active[ScribeCanvas.state.cp.n]) return;
+  let i = 0;
+  let j = 0;
+  for (i = 0; i < scribe.data.ocr.active[ScribeCanvas.state.cp.n].lines.length; i++) {
+    const line = scribe.data.ocr.active[ScribeCanvas.state.cp.n].lines[i];
+    for (j = 0; j < line.words.length; j++) {
+      if (line.words[j].id === word.id) {
+        console.log(`scribe.data.ocr.active[${ScribeCanvas.state.cp.n}].lines[${i}].words[${j}]`);
+        return;
+      }
+    }
+  }
+};
+
+export function printSelectedWords(printOCR = true) {
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
+  if (!selectedObjects) return;
+  for (let i = 0; i < selectedObjects.length; i++) {
+    if (printOCR) {
+      printOcrWordCode(selectedObjects[i].word);
+      console.log(selectedObjects[i].word);
+    } else {
+      console.log(selectedObjects[i]);
+    }
+  }
+}
+
+const ctxDebug = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('g')).getContext('2d'));
+
+export async function showDebugImages() {
+  /** @type {Array<Array<CompDebugBrowser>>} */
+  const compDebugArrArr = [];
+
+  const compDebugArr1 = scribe.data.debug.debugImg?.['Tesseract Combined']?.[ScribeCanvas.state.cp.n];
+  const compDebugArr2 = scribe.data.debug.debugImg?.Combined?.[ScribeCanvas.state.cp.n];
+  const compDebugArr3 = scribe.data.debug.debugImg?.recognizeArea?.[ScribeCanvas.state.cp.n];
+
+  if (compDebugArr1 && compDebugArr1.length > 0) compDebugArrArr.push(compDebugArr1);
+  if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);
+  if (compDebugArr3 && compDebugArr3.length > 0) compDebugArrArr.push(compDebugArr3);
+
+  if (compDebugArrArr.length > 0) await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr, context: 'browser' });
+}
+
+export async function evalSelectedLine() {
+  const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
+  if (!selectedObjects || selectedObjects.length === 0) return;
+
+  const word0 = selectedObjects[0].word;
+
+  const res = await scribe.evalOCRPage({ page: word0.line, view: true });
+
+  await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res.debug[0]]], context: 'browser' });
+}
+
+export async function downloadCanvas() {
+  const dims = scribe.data.pageMetrics[ScribeCanvas.state.cp.n].dims;
+
+  const startX = ScribeCanvas.layerText.x() > 0 ? Math.round(ScribeCanvas.layerText.x()) : 0;
+  const startY = ScribeCanvas.layerText.y() > 0 ? Math.round(ScribeCanvas.layerText.y()) : 0;
+  const width = dims.width * ScribeCanvas.layerText.scaleX();
+  const height = dims.height * ScribeCanvas.layerText.scaleY();
+
+  const canvasDataStr = ScribeCanvas.stage.toDataURL({
+    x: startX, y: startY, width, height,
+  });
+
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(ScribeCanvas.state.cp.n)}.png`;
+  const imgBlob = scribe.utils.imageStrToBlob(canvasDataStr);
+  saveAs(imgBlob, fileName);
+}
+
+export async function downloadImage(n) {
+  const image = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinary(n) : await scribe.data.image.getNative(n);
+  const filenameBase = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}`;
+
+  const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
+  const imgBlob = scribe.utils.imageStrToBlob(image.src);
+  saveAs(imgBlob, fileName);
+}
+
+export async function downloadCurrentImage() {
+  await downloadImage(ScribeCanvas.state.cp.n);
+}
+
+export async function downloadAllImages() {
+  const binary = scribe.opt.colorMode === 'binary';
+  for (let i = 0; i < scribe.data.image.pageCount; i++) {
+    await downloadImage(i);
+    // Not all files will be downloaded without a delay between downloads
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+elem.info.downloadStaticVis.addEventListener('click', async () => {
+  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.png`;
+  const pngBlob = await renderPageStatic(scribe.data.ocr.active[ScribeCanvas.state.cp.n]);
+  saveAs(pngBlob, fileName);
+});
+
+elem.info.downloadPDFFonts.addEventListener('click', async () => {
+  const muPDFScheduler = await scribe.data.image.muPDFScheduler;
+  if (!muPDFScheduler) return;
+  muPDFScheduler.extractAllFonts().then(async (x) => {
+    for (let i = 0; i < x.length; i++) {
+      saveAs(x[i], `font_${String(i).padStart(2, '0')}.ttf`);
+    }
+  });
+});
+
+export function getExcludedText() {
+  for (let i = 0; i <= scribe.data.ocr.active.length; i++) {
+    const textArr = getExcludedTextPage(scribe.data.ocr.active[i], scribe.data.layoutRegions.pages[i]);
+
+    if (textArr.length > 0) {
+      textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));
+    }
+  }
+}
+
+// Get array of text that will be excluded from exports due to "exclude" layout boxes.
+// This was largely copy/pasted from `reorderHOCR` for convenience, so should be rewritten at some point.
+
+/**
+ * @param {OcrPage} pageA
+ * @param {LayoutPage} layoutObj
+ * @param {boolean} [applyExclude=true]
+ */
+export function getExcludedTextPage(pageA, layoutObj, applyExclude = true) {
+  const excludedArr = [];
+
+  if (!layoutObj?.boxes || Object.keys(layoutObj?.boxes).length === 0) return excludedArr;
+
+  const orderArr = Array(pageA.lines.length);
+
+  // 10 assumed to be lowest priority for text included in the output and is assigned to any word that does not overlap with a "order" layout box
+  orderArr.fill(10);
+
+  for (let i = 0; i < pageA.lines.length; i++) {
+    const lineA = pageA.lines[i];
+
+    for (const [id, obj] of Object.entries(layoutObj.boxes)) {
+      const overlap = scribe.utils.calcBoxOverlap(lineA.bbox, obj.coords);
+      if (overlap > 0.5) {
+        if (obj.type === 'order') {
+          orderArr[i] = obj.order;
+        } else if (obj.type === 'exclude' && applyExclude) {
+          const { words } = lineA;
+          let text = '';
+          for (let j = 0; j < words.length; j++) {
+            text += `${words[j].text} `;
+          }
+          excludedArr.push(text);
+        }
+      }
+    }
+  }
+
+  return excludedArr;
 }

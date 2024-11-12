@@ -1,7 +1,6 @@
 import scribe from '../scribe.js/scribe.js';
 // eslint-disable-next-line import/no-cycle
-import { optGUI, ScribeCanvas, stateGUI } from './viewerCanvas.js';
-import { KonvaIText } from './viewerWordObjects.js';
+import { ScribeCanvas } from './viewerCanvas.js';
 
 export function deleteSelectedWord() {
   const selectedObjects = ScribeCanvas.CanvasSelection.getKonvaWords();
@@ -26,7 +25,7 @@ export function deleteSelectedWord() {
   ScribeCanvas.layerText.batchDraw();
 
   // Re-render the page if the user has selected the option to outline lines to update the line boxes.
-  if (optGUI.outlineLines) ScribeCanvas.displayPage(stateGUI.cp.n);
+  if (ScribeCanvas.opt.outlineLines) ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 }
 
 /**
@@ -43,7 +42,7 @@ export function modifySelectedWordBbox(side, amount) {
 
   selectedWord.word.bbox[side] += amount;
   if (side === 'left') selectedWord.x(selectedWord.x() + amount);
-  KonvaIText.updateWordCanvas(selectedWord);
+  ScribeCanvas.KonvaIText.updateWordCanvas(selectedWord);
 }
 
 /**
@@ -164,7 +163,7 @@ export function modifySelectedWordSuper(enable) {
     wordI.word.sup = enable;
   }
 
-  ScribeCanvas.displayPage(stateGUI.cp.n);
+  ScribeCanvas.displayPage(ScribeCanvas.state.cp.n);
 }
 
 /**

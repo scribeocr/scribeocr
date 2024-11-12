@@ -1,4 +1,3 @@
-import { Collapse } from '../lib/bootstrap.esm.bundle.min.js';
 import { sleep } from './utils.js';
 
 export class ProgressBar {
@@ -9,12 +8,14 @@ export class ProgressBar {
    * @param {boolean} alwaysUpdateUI - Always update the UI every time the value increments.
    */
   constructor(id, maxValue, initValue = 0, alwaysUpdateUI = false, progressCallback = null) {
-    this.progressCollapse = document.getElementById(id);
-    if (!this.progressCollapse) throw new Error(`Progress bar with ID ${id} not found.`);
+    this.progressCollapseElem = document.getElementById(id);
+    if (!this.progressCollapseElem) throw new Error(`Progress bar with ID ${id} not found.`);
 
-    this.progressCollapseObj = new Collapse(this.progressCollapse, { toggle: false });
+    this.visible = false;
 
-    this.progressBar = /** @type {HTMLDivElement} */ (this.progressCollapse.getElementsByClassName('progress-bar')[0]);
+    this.progressCollapseElem.style.transition = 'max-height 0.2s ease-in-out';
+
+    this.progressBar = /** @type {HTMLDivElement} */ (this.progressCollapseElem.getElementsByClassName('progress-bar')[0]);
 
     this.showN = 0;
 
@@ -23,8 +24,6 @@ export class ProgressBar {
     this.alwaysUpdateUI = alwaysUpdateUI;
 
     this.progressCallback = progressCallback;
-
-    this.progressCollapseObj.hide();
   }
 
   /**
@@ -39,7 +38,10 @@ export class ProgressBar {
     this.progressBar.setAttribute('aria-valuenow', initValue.toString());
     this.progressBar.setAttribute('style', `width: ${Math.max(initValue / this.maxValue * 100, 1)}%`);
     this.progressBar.setAttribute('aria-valuemax', String(this.maxValue));
-    this.progressCollapseObj.show();
+
+    this.progressCollapseElem.style.maxHeight = '50px';
+    this.visible = true;
+
     // eslint-disable-next-line no-use-before-define
     ProgressBars.active = this;
     await sleep(0);
@@ -61,7 +63,7 @@ export class ProgressBar {
     if (this.value >= this.maxValue) {
       const showNI = this.showN;
       setTimeout(() => {
-        if (this.showN === showNI) this.progressCollapseObj.hide();
+        if (this.showN === showNI) this.hide();
       }, 1000);
       setTimeout(() => {
         if (this.showN === showNI) this.reset();
@@ -78,12 +80,12 @@ export class ProgressBar {
   }
 
   hide() {
-    const classStr = this.progressCollapse.getAttribute('class');
-    if (classStr && ['collapse show', 'collapsing'].includes(classStr)) {
+    if (this.visible) {
       const ariaValueNowStr = /** @type {string} */ (this.progressBar.getAttribute('aria-valuenow'));
       const ariaValueMaxStr = /** @type {string} */ (this.progressBar.getAttribute('aria-valuemax'));
       if (parseInt(ariaValueNowStr) >= parseInt(ariaValueMaxStr)) {
-        this.progressCollapse.setAttribute('class', 'collapse');
+        this.progressCollapseElem.style.maxHeight = '0';
+        this.visible = false;
         setTimeout(() => this.reset(), 1000);
       }
     }
