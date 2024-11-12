@@ -86,7 +86,10 @@ export class ProgressBar {
       if (parseInt(ariaValueNowStr) >= parseInt(ariaValueMaxStr)) {
         this.progressCollapseElem.style.maxHeight = '0';
         this.visible = false;
-        setTimeout(() => this.reset(), 1000);
+        const showNI = this.showN;
+        setTimeout(() => {
+          if (this.showN === showNI) this.reset();
+        }, 1000);
       }
     }
   }
