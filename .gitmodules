@@ -4,3 +4,6 @@
 [submodule "scribe.js"]
 	path = scribe.js
 	url = git@github.com:scribeocr/scribe.js.git
+[submodule "scribe-ui"]
+	path = scribe-ui
+	url = git@github.com:scribeocr/scribe-ui.git
