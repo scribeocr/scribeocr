@@ -3,14 +3,12 @@ import { Button, Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js
 
 import scribe from './scribe-ui/scribe.js/scribe.js';
 
-import { getAllFileEntries } from './app/utils/dragAndDrop.js';
 import { insertAlertMessage } from './app/utils/warningMessages.js';
 
 import { ScribeViewer } from './scribe-ui/viewer.js';
 
 import { elem } from './app/elems.js';
 import { ProgressBars } from './app/utils/progressBars.js';
-import { saveAs, showHideElem } from './app/utils/utils.js';
 
 ScribeViewer.enableCanvasSelection = true;
 ScribeViewer.KonvaIText.enableEditing = true;
@@ -134,7 +132,7 @@ elem.upload.openFileInput.addEventListener('change', () => {
 
   importFilesGUI(elem.upload.openFileInput.files);
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(/** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement), false);
+  /** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement).style.display = 'none';
 });
 
 let highlightActiveCt = 0;
@@ -162,7 +160,7 @@ elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
   event.preventDefault();
 
   if (!event.dataTransfer) return;
-  const items = await getAllFileEntries(event.dataTransfer.items);
+  const items = await ScribeViewer.getAllFileEntries(event.dataTransfer.items);
 
   const filesPromises = await Promise.allSettled(items.map((x) => new Promise((resolve, reject) => {
     if (x instanceof File) {
@@ -180,7 +178,7 @@ elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
   importFilesGUI(files);
 
   // This should run after importFiles so if that function fails the dropzone is not removed
-  showHideElem(/** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement), false);
+  /** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement).style.display = 'none';
 });
 
 /**
@@ -225,7 +223,7 @@ globalThis.fetchAndImportFiles = async (urls) => {
   elem.upload.uploadDropZone.setAttribute('style', 'display:none');
 };
 
-ScribeViewer.keyboardShortcutCallback = (event) => {
+ScribeViewer.interactionCallback = (event) => {
   // When a shortcut that interacts with canvas elements is triggered,
   // any focused UI element from the nav bar are unfocused.
   // If this does not occur, then the UI will remain focused,
@@ -321,9 +319,9 @@ elem.info.showDebugVis.addEventListener('change', () => {
 
 elem.info.showDebugLegend.addEventListener('input', () => {
   if (!elem.info.showDebugLegend.checked) {
-    showHideElem(elem.canvas.legendCanvasParentDiv, false);
+    elem.canvas.legendCanvasParentDiv.style.display = 'none';
   } else {
-    showHideElem(elem.canvas.legendCanvasParentDiv, true);
+    elem.canvas.legendCanvasParentDiv.style.display = '';
   }
 });
 
@@ -347,30 +345,34 @@ elem.info.selectDebugVis.addEventListener('change', () => { ScribeViewer.display
 
 elem.evaluate.createGroundTruth.addEventListener('click', createGroundTruthClick);
 
-elem.info.enableEval.addEventListener('click', () => showHideElem(elem.nav.navEvalTab, elem.info.enableEval.checked));
-
-elem.info.enableAdvancedRecognition.addEventListener('click', () => {
-  showHideElem(elem.recognize.advancedRecognitionOptions1, elem.info.enableAdvancedRecognition.checked);
-  showHideElem(elem.recognize.advancedRecognitionOptions2, elem.info.enableAdvancedRecognition.checked);
-  showHideElem(elem.recognize.advancedRecognitionOptions3, elem.info.enableAdvancedRecognition.checked);
-  showHideElem(elem.recognize.basicRecognitionOptions, !elem.info.enableAdvancedRecognition.checked);
+elem.info.enableEval.addEventListener('click', () => {
+  elem.nav.navEvalTab.style.display = elem.info.enableEval.checked ? '' : 'none';
 });
 
-export const enableRecognitionClick = () => showHideElem(elem.nav.navRecognizeTab, elem.info.enableRecognition.checked);
+elem.info.enableAdvancedRecognition.addEventListener('click', () => {
+  elem.recognize.advancedRecognitionOptions1.style.display = elem.info.enableAdvancedRecognition.checked ? '' : 'none';
+  elem.recognize.advancedRecognitionOptions2.style.display = elem.info.enableAdvancedRecognition.checked ? '' : 'none';
+  elem.recognize.advancedRecognitionOptions3.style.display = elem.info.enableAdvancedRecognition.checked ? '' : 'none';
+  elem.recognize.basicRecognitionOptions.style.display = !elem.info.enableAdvancedRecognition.checked ? '' : 'none';
+});
+
+export const enableRecognitionClick = () => {
+  elem.nav.navRecognizeTab.style.display = elem.info.enableRecognition.checked ? '' : 'none';
+};
 
 elem.info.enableRecognition.addEventListener('click', enableRecognitionClick);
 
 elem.info.enableLayout.addEventListener('click', () => {
   scribe.opt.enableLayout = elem.info.enableLayout.checked;
-  showHideElem(elem.nav.navLayoutTab, elem.info.enableLayout.checked);
+  elem.nav.navLayoutTab.style.display = elem.info.enableLayout.checked ? '' : 'none';
 });
 
 export const enableXlsxExportClick = () => {
   // Adding layouts is required for xlsx exports
   if (!elem.info.enableLayout.checked) elem.info.enableLayout.click();
 
-  showHideElem(elem.download.formatLabelOptionXlsx, elem.info.enableXlsxExport.checked);
-  showHideElem(elem.info.dataTableOptions, elem.info.enableXlsxExport.checked);
+  elem.download.formatLabelOptionXlsx.style.display = elem.info.enableXlsxExport.checked ? '' : 'none';
+  elem.info.dataTableOptions.style.display = elem.info.enableXlsxExport.checked ? '' : 'none';
 };
 
 elem.info.enableXlsxExport.addEventListener('click', enableXlsxExportClick);
@@ -1330,9 +1332,9 @@ const renderConflictVis = () => {
     elem.canvas.debugCanvasParentDiv.style.zIndex = '10';
     elem.canvas.debugCanvasParentDiv.style.position = 'absolute';
 
-    showHideElem(elem.canvas.debugCanvasParentDiv, true);
+    elem.canvas.debugCanvasParentDiv.style.display = '';
   } else {
-    showHideElem(elem.canvas.debugCanvasParentDiv, false);
+    elem.canvas.debugCanvasParentDiv.style.display = 'none';
   }
 };
 
@@ -1378,7 +1380,7 @@ elem.info.downloadSourcePDF.addEventListener('click', async () => {
   const pdfBlob = new Blob([content], { type: 'application/octet-stream' });
 
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.pdf`;
-  saveAs(pdfBlob, fileName);
+  scribe.utils.saveAs(pdfBlob, fileName);
 });
 
 elem.info.downloadDebugCsv.addEventListener('click', async () => {
@@ -1670,7 +1672,7 @@ export async function downloadCanvas() {
 
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}_canvas_${String(ScribeViewer.state.cp.n)}.png`;
   const imgBlob = scribe.utils.imageStrToBlob(canvasDataStr);
-  saveAs(imgBlob, fileName);
+  scribe.utils.saveAs(imgBlob, fileName);
 }
 
 export async function downloadImage(n) {
@@ -1679,7 +1681,7 @@ export async function downloadImage(n) {
 
   const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
   const imgBlob = scribe.utils.imageStrToBlob(image.src);
-  saveAs(imgBlob, fileName);
+  scribe.utils.saveAs(imgBlob, fileName);
 }
 
 export async function downloadCurrentImage() {
@@ -1698,7 +1700,7 @@ export async function downloadAllImages() {
 elem.info.downloadStaticVis.addEventListener('click', async () => {
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,4}$/, '')}.png`;
   const pngBlob = await scribe.utils.renderPageStatic(scribe.data.ocr.active[ScribeViewer.state.cp.n]);
-  saveAs(pngBlob, fileName);
+  scribe.utils.saveAs(pngBlob, fileName);
 });
 
 elem.info.downloadPDFFonts.addEventListener('click', async () => {
@@ -1706,7 +1708,7 @@ elem.info.downloadPDFFonts.addEventListener('click', async () => {
   if (!muPDFScheduler) return;
   muPDFScheduler.extractAllFonts().then(async (x) => {
     for (let i = 0; i < x.length; i++) {
-      saveAs(x[i], `font_${String(i).padStart(2, '0')}.ttf`);
+      scribe.utils.saveAs(x[i], `font_${String(i).padStart(2, '0')}.ttf`);
     }
   });
 });
