@@ -372,7 +372,6 @@ export const enableXlsxExportClick = () => {
   if (!elem.info.enableLayout.checked) elem.info.enableLayout.click();
 
   elem.download.formatLabelOptionXlsx.style.display = elem.info.enableXlsxExport.checked ? '' : 'none';
-  elem.info.dataTableOptions.style.display = elem.info.enableXlsxExport.checked ? '' : 'none';
 };
 
 elem.info.enableXlsxExport.addEventListener('click', enableXlsxExportClick);

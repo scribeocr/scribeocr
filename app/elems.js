@@ -287,8 +287,6 @@ class info {
 
   static enableXlsxExport = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
-  static dataTableOptions = /** @type {HTMLDivElement} */(document.getElementById('dataTableOptions'));
-
   // Advanced options.
   static usePDFTextMainCheckbox = /** @type {HTMLInputElement} */(document.getElementById('usePDFTextMainCheckbox'));
 
