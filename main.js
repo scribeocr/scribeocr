@@ -654,6 +654,7 @@ export const enableDisablelangAlertElem = () => {
 elem.recognize.collapseLang.addEventListener('click', enableDisablelangAlertElem);
 
 export function setLangOpt() {
+  /** @type {Array<string>} */
   const langArr = [];
   langChoices.forEach((x) => {
     const langCheckboxElem = /** @type {HTMLInputElement} */(document.getElementById(x));
@@ -714,6 +715,8 @@ export async function recognizeAllClick() {
     oemMode = 'legacy';
     setOemLabel('legacy');
   }
+
+  setLangOpt();
 
   ProgressBars.active = ProgressBars.recognize;
   const progressMax = oemMode === 'combined' ? scribe.data.image.pageCount * 2 + 1 : scribe.data.image.pageCount + 1;
