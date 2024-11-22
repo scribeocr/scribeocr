@@ -179,6 +179,8 @@ class edit {
   static smartQuotes = /** @type {HTMLInputElement} */(document.getElementById('smartQuotes'));
 
   static ligatures = /** @type {HTMLInputElement} */(document.getElementById('ligatures'));
+
+  static kerning = /** @type {HTMLInputElement} */(document.getElementById('kerning'));
 }
 
 class layout {
