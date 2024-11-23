@@ -1272,21 +1272,13 @@ ScribeViewer.KonvaOcrWord.updateUI = () => {
 ScribeViewer.KonvaLayout.updateUI = () => {
   const { inclusionRuleArr, inclusionLevelArr } = ScribeViewer.CanvasSelection.getLayoutBoxProperties();
 
-  if (inclusionRuleArr.length === 1) {
-    elem.layout.setLayoutBoxInclusionRuleMajority.checked = inclusionRuleArr[0] === 'majority';
-    elem.layout.setLayoutBoxInclusionRuleLeft.checked = inclusionRuleArr[0] === 'left';
-  } else {
-    elem.layout.setLayoutBoxInclusionRuleMajority.checked = false;
-    elem.layout.setLayoutBoxInclusionRuleLeft.checked = false;
-  }
+  if (inclusionRuleArr.length < 1 || inclusionLevelArr.length < 1) return;
 
-  if (inclusionLevelArr.length === 1) {
-    elem.layout.setLayoutBoxInclusionLevelWord.checked = inclusionLevelArr[0] === 'word';
-    elem.layout.setLayoutBoxInclusionLevelLine.checked = inclusionLevelArr[0] === 'line';
-  } else {
-    elem.layout.setLayoutBoxInclusionLevelWord.checked = false;
-    elem.layout.setLayoutBoxInclusionLevelLine.checked = false;
-  }
+  elem.layout.setLayoutBoxInclusionRuleMajority.checked = inclusionRuleArr[0] === 'majority';
+  elem.layout.setLayoutBoxInclusionRuleLeft.checked = inclusionRuleArr[0] === 'left';
+
+  elem.layout.setLayoutBoxInclusionLevelWord.checked = inclusionLevelArr[0] === 'word';
+  elem.layout.setLayoutBoxInclusionLevelLine.checked = inclusionLevelArr[0] === 'line';
 };
 
 const ctxLegend = /** @type {CanvasRenderingContext2D} */ (elem.canvas.legendCanvas.getContext('2d'));
