@@ -92,11 +92,11 @@ scribe.opt.usePDFText.native.main = elem.info.usePDFTextMainCheckbox.checked;
 scribe.opt.usePDFText.ocr.main = elem.info.usePDFTextMainCheckbox.checked;
 
 elem.info.usePDFTextSuppCheckbox.addEventListener('click', () => {
-  scribe.opt.usePDFText.native.supp = elem.info.usePDFTextMainCheckbox.checked;
-  scribe.opt.usePDFText.ocr.supp = elem.info.usePDFTextMainCheckbox.checked;
+  scribe.opt.usePDFText.native.supp = elem.info.usePDFTextSuppCheckbox.checked;
+  scribe.opt.usePDFText.ocr.supp = elem.info.usePDFTextSuppCheckbox.checked;
 });
-scribe.opt.usePDFText.native.supp = elem.info.usePDFTextMainCheckbox.checked;
-scribe.opt.usePDFText.ocr.supp = elem.info.usePDFTextMainCheckbox.checked;
+scribe.opt.usePDFText.native.supp = elem.info.usePDFTextSuppCheckbox.checked;
+scribe.opt.usePDFText.ocr.supp = elem.info.usePDFTextSuppCheckbox.checked;
 
 elem.download.addOverlayCheckbox.addEventListener('click', () => {
   scribe.opt.addOverlay = elem.download.addOverlayCheckbox.checked;
