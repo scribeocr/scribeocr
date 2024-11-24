@@ -600,6 +600,10 @@ const langChoiceElemArr = Array.from(elem.recognize.collapseLang.querySelectorAl
 
 const langChoices = langChoiceElemArr.map((element) => element.id);
 
+elem.recognize.oemLabelOptionLstm.addEventListener('click', () => { setOemLabel('lstm'); });
+elem.recognize.oemLabelOptionLegacy.addEventListener('click', () => { setOemLabel('legacy'); });
+elem.recognize.oemLabelOptionCombined.addEventListener('click', () => { setOemLabel('combined'); });
+
 elem.recognize.psmLabelOption3.addEventListener('click', () => { setPsmLabel('3'); });
 elem.recognize.psmLabelOption4.addEventListener('click', () => { setPsmLabel('4'); });
 
