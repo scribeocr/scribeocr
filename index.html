@@ -10,10 +10,15 @@
       --bs-blue: #287bb5;
     }
 
-    .prevent-select, div, label {
-      -webkit-user-select: none; /* Safari */
-      -ms-user-select: none; /* IE 10 and IE 11 */
-      user-select: none; /* Standard syntax */
+    .prevent-select,
+    div,
+    label {
+      -webkit-user-select: none;
+      /* Safari */
+      -ms-user-select: none;
+      /* IE 10 and IE 11 */
+      user-select: none;
+      /* Standard syntax */
     }
 
     /* The min-width should correspond to the "md" breakpoint in bootstrap. */
@@ -182,11 +187,11 @@
       outline-color: #0576bd;
       background-color: #c8dadf;
     }
-
   </style>
   <meta charset="utf-8" />
   <title>Scribe OCR</title>
-  <meta name="description" content="Web application for recognizing text from images and PDFs, proofreading OCR results, and creating fully-digitized documents. Free and open source.">
+  <meta name="description"
+    content="Web application for recognizing text from images and PDFs, proofreading OCR results, and creating fully-digitized documents. Free and open source.">
   <script src="./app/runFirst.js" defer></script>
   <script type="module" src="main.js"></script>
 
@@ -206,21 +211,23 @@
 
               <a class="nav-link collapsed prevent-select" id="nav-recognize-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-recognize" type="button" role="tab" aria-controls="nav-recognize">Recognize</a>
-              <a class="nav-link collapsed prevent-select" id="nav-eval-tab" data-bs-toggle="collapse" data-bs-target="#nav-eval"
-                type="button" role="tab" aria-controls="nav-eval" style="display:none">Evaluate</a>
+              <a class="nav-link collapsed prevent-select" id="nav-eval-tab" data-bs-toggle="collapse"
+                data-bs-target="#nav-eval" type="button" role="tab" aria-controls="nav-eval"
+                style="display:none">Evaluate</a>
 
-              <a class="nav-link collapsed prevent-select" id="nav-view-tab" data-bs-toggle="collapse" data-bs-target="#nav-view"
-                type="button" role="tab" aria-controls="nav-view">View</a>
-              <a class="nav-link collapsed prevent-select" id="nav-edit-tab" data-bs-toggle="collapse" data-bs-target="#nav-edit"
-                type="button" role="tab" aria-controls="nav-edit">Edit</a>
-              <a class="nav-link collapsed prevent-select" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout"
-                type="button" role="tab" aria-controls="nav-layout" style="display:none">Layout</a>
+              <a class="nav-link collapsed prevent-select" id="nav-view-tab" data-bs-toggle="collapse"
+                data-bs-target="#nav-view" type="button" role="tab" aria-controls="nav-view">View</a>
+              <a class="nav-link collapsed prevent-select" id="nav-edit-tab" data-bs-toggle="collapse"
+                data-bs-target="#nav-edit" type="button" role="tab" aria-controls="nav-edit">Edit</a>
+              <a class="nav-link collapsed prevent-select" id="nav-layout-tab" data-bs-toggle="collapse"
+                data-bs-target="#nav-layout" type="button" role="tab" aria-controls="nav-layout"
+                style="display:none">Layout</a>
 
               <!-- <a class="nav-link collapsed" id="nav-layout-tab" data-bs-toggle="collapse" data-bs-target="#nav-layout" type="button" role="tab" aria-controls="nav-layout">Layout</a> -->
               <a class="nav-link collapsed prevent-select" id="nav-download-tab" data-bs-toggle="collapse"
                 data-bs-target="#nav-download" type="button" role="tab" aria-controls="nav-download">Download</a>
-              <a class="nav-link collapsed prevent-select" id="nav-about-tab" data-bs-toggle="collapse" data-bs-target="#nav-about"
-                type="button" role="tab" aria-controls="nav-about">Info</a>
+              <a class="nav-link collapsed prevent-select" id="nav-about-tab" data-bs-toggle="collapse"
+                data-bs-target="#nav-about" type="button" role="tab" aria-controls="nav-about">Info</a>
 
             </div>
           </div>
@@ -315,10 +322,12 @@
                     </div>
                     <div class="btn-group" style="width:100%;">
                       <button type="button" id="addDataTable" class="btn btn-secondary btn-sm"
-                      style="width:100%;text-align:left">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-table" viewBox="0 0 16 16">
-                        <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm15 2h-4v3h4zm0 4h-4v3h4zm0 4h-4v3h3a1 1 0 0 0 1-1zm-5 3v-3H6v3zm-5 0v-3H1v2a1 1 0 0 0 1 1zm-4-4h4V8H1zm0-4h4V4H1zm5-3v3h4V4zm4 4H6v3h4z"/>
-                      </svg> Add Data Table</button>
+                        style="width:100%;text-align:left">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                          class="bi bi-table" viewBox="0 0 16 16">
+                          <path
+                            d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm15 2h-4v3h4zm0 4h-4v3h4zm0 4h-4v3h3a1 1 0 0 0 1-1zm-5 3v-3H6v3zm-5 0v-3H1v2a1 1 0 0 0 1 1zm-4-4h4V8H1zm0-4h4V4H1zm5-3v3h4V4zm4 4H6v3h4z" />
+                        </svg> Add Data Table</button>
                     </div>
                   </div>
                   <div class="col col-lg-2">
@@ -356,7 +365,7 @@
                         </div>
                       </div>
                     </div>
-                   </div>
+                  </div>
                   <div class="col col-lg-2">
                     <label>Defaults</label>
                     <div class="form-group mb-2">
@@ -431,8 +440,10 @@
                         <button type="button" id="styleBold" class="btn btn-secondary btn-sm styleButton"
                           style="text-align:left;width:100%;display:flex;align-items:center;height:31px"
                           data-bs-toggle="button" disabled>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-type-bold" viewBox="0 0 16 16">
-                            <path d="M8.21 13c2.106 0 3.412-1.087 3.412-2.823 0-1.306-.984-2.283-2.324-2.386v-.055a2.176 2.176 0 0 0 1.852-2.14c0-1.51-1.162-2.46-3.014-2.46H3.843V13zM5.908 4.674h1.696c.963 0 1.517.451 1.517 1.244 0 .834-.629 1.32-1.73 1.32H5.908V4.673zm0 6.788V8.598h1.73c1.217 0 1.88.492 1.88 1.415 0 .943-.643 1.449-1.832 1.449H5.907z"/>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-type-bold" viewBox="0 0 16 16">
+                            <path
+                              d="M8.21 13c2.106 0 3.412-1.087 3.412-2.823 0-1.306-.984-2.283-2.324-2.386v-.055a2.176 2.176 0 0 0 1.852-2.14c0-1.51-1.162-2.46-3.014-2.46H3.843V13zM5.908 4.674h1.696c.963 0 1.517.451 1.517 1.244 0 .834-.629 1.32-1.73 1.32H5.908V4.673zm0 6.788V8.598h1.73c1.217 0 1.88.492 1.88 1.415 0 .943-.643 1.449-1.832 1.449H5.907z" />
                           </svg><span class="d-none d-md-inline-block">Bold</span></button>
                       </div>
                       <div class="col-12 col-md-6 px-1 px-sm-2">
@@ -699,18 +710,18 @@
                             Upscale Images</label>
                           <label><input class="form-check-input" type="checkbox" id="updateConfOnly">
                             Update Conf Only</label>
-                            <a href="#" data-bs-custom-class="ttWide" class="d-inline-block" data-bs-toggle="tooltip" title=""
-                        data-bs-original-title="When enabled, the text in user-uploaded OCR data is not edited by running recognition.
+                          <a href="#" data-bs-custom-class="ttWide" class="d-inline-block" data-bs-toggle="tooltip"
+                            title="" data-bs-original-title="When enabled, the text in user-uploaded OCR data is not edited by running recognition.
                         Recognition will only modify confidence metrics.
                         When disabled, running recognition may modify user-uploaded OCR data."
-                        data-bs-placement="right">
+                            data-bs-placement="right">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)"
                               class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
                               <path
                                 d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                             </svg>
                           </a>
-                        </div>                      
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -819,7 +830,7 @@
                       </label>
                     </div>
                   </div>
-                  
+
                   <div class="col col-lg-2">
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" value="" id="por">
@@ -1167,16 +1178,16 @@
                           <div class="form-check form-switch">
                             <label><input class="form-check-input" type="checkbox" id="outlinePars"> Outline
                               Pars</label>
-                              <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
                               data-bs-original-title="Paragraphs are only relevant when exporting to `.txt` or `.docx` with the “Reflow Text” option enabled. There is currently no way to edit paragraphs manually."
                               data-bs-placement="right">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)"
-                                  class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
-                                  <path
-                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                </svg>
-                              </a>
-                            <br>    
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="var(--bs-body-color)"
+                                class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                                <path
+                                  d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                              </svg>
+                            </a>
+                            <br>
                           </div>
                         </div>
                       </div>
@@ -1188,8 +1199,10 @@
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
                           href="#collapseRangeOpacity" style="min-width:100%;text-align:left">
 
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-transparency" viewBox="0 0 16 16">
-                            <path d="M0 6.5a6.5 6.5 0 0 1 12.346-2.846 6.5 6.5 0 1 1-8.691 8.691A6.5 6.5 0 0 1 0 6.5m5.144 6.358a5.5 5.5 0 1 0 7.714-7.714 6.5 6.5 0 0 1-7.714 7.714m-.733-1.269q.546.226 1.144.33l-1.474-1.474q.104.597.33 1.144m2.614.386a5.5 5.5 0 0 0 1.173-.242L4.374 7.91a6 6 0 0 0-.296 1.118zm2.157-.672q.446-.25.838-.576L5.418 6.126a6 6 0 0 0-.587.826zm1.545-1.284q.325-.39.576-.837L6.953 4.83a6 6 0 0 0-.827.587l4.6 4.602Zm1.006-1.822q.183-.562.242-1.172L9.028 4.078q-.58.096-1.118.296l3.823 3.824Zm.186-2.642a5.5 5.5 0 0 0-.33-1.144 5.5 5.5 0 0 0-1.144-.33z"/>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-transparency" viewBox="0 0 16 16">
+                            <path
+                              d="M0 6.5a6.5 6.5 0 0 1 12.346-2.846 6.5 6.5 0 1 1-8.691 8.691A6.5 6.5 0 0 1 0 6.5m5.144 6.358a5.5 5.5 0 1 0 7.714-7.714 6.5 6.5 0 0 1-7.714 7.714m-.733-1.269q.546.226 1.144.33l-1.474-1.474q.104.597.33 1.144m2.614.386a5.5 5.5 0 0 0 1.173-.242L4.374 7.91a6 6 0 0 0-.296 1.118zm2.157-.672q.446-.25.838-.576L5.418 6.126a6 6 0 0 0-.587.826zm1.545-1.284q.325-.39.576-.837L6.953 4.83a6 6 0 0 0-.827.587l4.6 4.602Zm1.006-1.822q.183-.562.242-1.172L9.028 4.078q-.58.096-1.118.296l3.823 3.824Zm.186-2.642a5.5 5.5 0 0 0-.33-1.144 5.5 5.5 0 0 0-1.144-.33z" />
                           </svg>
                           <span class="d-inline-block d-sm-none">Opacity</span>
                           <span class="d-none d-sm-inline-block d-md-none">Opacity</span>
@@ -1258,8 +1271,8 @@
                             <li><a id="formatLabelOptionHOCR" class="dropdown-item" href="#">HOCR</a></li>
                             <li><a id="formatLabelOptionText" class="dropdown-item" href="#">Text</a></li>
                             <li><a id="formatLabelOptionDocx" class="dropdown-item" href="#">Docx</a></li>
-                            <li><a id="formatLabelOptionXlsx" class="dropdown-item" href="#"
-                                style="display:none">Xlsx [Tables]</a>
+                            <li><a id="formatLabelOptionXlsx" class="dropdown-item" href="#" style="display:none">Xlsx
+                                [Tables]</a>
                             </li>
                           </ul>
                         </div>
@@ -1282,11 +1295,13 @@
                         <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
                           <div class="row" style="--bs-gutter-x:0">
                             <div class="col-5">
-                              <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%" autocomplete="off">
+                              <input type="text" id="pdfPageMin" name="pageNum" size="2" style="width:100%"
+                                autocomplete="off">
                             </div>
                             <div class="col-2" style="text-align:center">-</div>
                             <div class="col-5">
-                              <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%" autocomplete="off">
+                              <input type="text" id="pdfPageMax" name="pageNum" size="2" style="width:100%"
+                                autocomplete="off">
                             </div>
                           </div>
                         </div>
@@ -1419,7 +1434,8 @@
                           <label><input class="form-check-input" type="checkbox" id="enableLayout"> Edit Layout</label>
                         </div>
                         <div class="form-check form-switch">
-                          <label><input class="form-check-input" type="checkbox" id="enableXlsxExport"> Extract Tables</label>
+                          <label><input class="form-check-input" type="checkbox" id="enableXlsxExport"> Extract
+                            Tables</label>
                         </div>
                       </div>
                     </div>
@@ -1466,9 +1482,12 @@
                         </div>
                         <label style="margin-top:0.4rem">Text from PDF</label>
                         <div class="form-check form-switch">
-                          <label><input class="form-check-input" type="checkbox" id="usePDFTextMainCheckbox" style="margin-top:0.4rem"> Use as Main Data</label><br>
-                          <label><input class="form-check-input" type="checkbox" id="usePDFTextSuppCheckbox" checked> Use as Supplemental Data</label><br>
-                          <label><input class="form-check-input" type="checkbox" id="omitNativeTextCheckbox"> Omit When Rendering</label><br>
+                          <label><input class="form-check-input" type="checkbox" id="usePDFTextMainCheckbox"
+                              style="margin-top:0.4rem"> Use as Main Data</label><br>
+                          <label><input class="form-check-input" type="checkbox" id="usePDFTextSuppCheckbox" checked>
+                            Use as Supplemental Data</label><br>
+                          <label><input class="form-check-input" type="checkbox" id="omitNativeTextCheckbox"> Omit When
+                            Rendering</label><br>
                         </div>
                       </div>
                     </div>
@@ -1499,8 +1518,8 @@
                             </a></label>
                           <label><input class="form-check-input" type="checkbox" id="showDebugLegend"> Show ScrollView
                             Legend</label>
-                            <br/>
-                            <label><input class="form-check-input" type="checkbox" id="debugHidePage"> Hide Page</label>
+                          <br />
+                          <label><input class="form-check-input" type="checkbox" id="debugHidePage"> Hide Page</label>
                         </div>
                         <div>ScrollView Visualization:</div>
                         <select id="selectDebugVis" class="form-select form-select-sm" size="1" disabled="">
@@ -1512,13 +1531,16 @@
 
 
                     <div class="form-group" style="margin-top:0.4rem">
-                      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugOutput"
-                        style="min-width:100%;text-align:left">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-camera" viewBox="0 0 16 16">
-                          <path d="M15 12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1.172a3 3 0 0 0 2.12-.879l.83-.828A1 1 0 0 1 6.827 3h2.344a1 1 0 0 1 .707.293l.828.828A3 3 0 0 0 12.828 5H14a1 1 0 0 1 1 1zM2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4z"/>
-                          <path d="M8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5m0 1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0"/>
-                        </svg>                        
-                         Debugging Output</button>
+                      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
+                        href="#debugOutput" style="min-width:100%;text-align:left">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                          class="bi bi-camera" viewBox="0 0 16 16">
+                          <path
+                            d="M15 12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1.172a3 3 0 0 0 2.12-.879l.83-.828A1 1 0 0 1 6.827 3h2.344a1 1 0 0 1 .707.293l.828.828A3 3 0 0 0 12.828 5H14a1 1 0 0 1 1 1zM2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4z" />
+                          <path
+                            d="M8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5m0 1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0" />
+                        </svg>
+                        Debugging Output</button>
                     </div>
                     <div class="collapse" id="debugOutput">
                       <div class="card card-body" style="padding:0.5rem;position:relative;top:5px">
@@ -1547,32 +1569,32 @@
                         <div class="row">
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadSourcePDF"
-                            style="width:100%;text-align:left">Source PDF</button>
+                              style="width:100%;text-align:left">Source PDF</button>
                           </div>
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadDebugCsv"
-                            style="width:100%;text-align:left">Debug CSV</button>
+                              style="width:100%;text-align:left">Debug CSV</button>
                           </div>
                         </div>
                         <div class="row">
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadStaticVis"
-                            style="width:100%;text-align:left">Static Vis</button>
+                              style="width:100%;text-align:left">Static Vis</button>
                           </div>
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="downloadPDFFonts"
-                            style="width:100%;text-align:left">PDF Fonts</button>
+                              style="width:100%;text-align:left">PDF Fonts</button>
                           </div>
                         </div>
                         <label>Misc</label>
                         <div class="row">
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugEvalLine"
-                            style="width:100%;text-align:left">Evaluate Line</button>
+                              style="width:100%;text-align:left">Evaluate Line</button>
                           </div>
                           <div class="col">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="debugPrintCoords"
-                            style="width:100%;text-align:left">Print Coords</button>  
+                              style="width:100%;text-align:left">Print Coords</button>
                           </div>
                         </div>
                       </div>
@@ -1580,8 +1602,8 @@
                   </div>
                   <div class="col col-lg-3">
                     <div class="form-group">
-                      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" href="#debugOptions"
-                        style="min-width:100%;text-align:left">
+                      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
+                        href="#debugOptions" style="min-width:100%;text-align:left">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                           class="bi bi-screwdriver" viewBox="0 0 16 16">
                           <path
@@ -1596,14 +1618,17 @@
                             Output</label>
                           <label><input class="form-check-input" type="checkbox" id="intermediatePDF"> Intermediate PDF
                             Output</label>
-                          <label><input class="form-check-input" type="checkbox" id="debugConflicts" checked> Generate Word
-                            Comparisons</label>  
+                          <label><input class="form-check-input" type="checkbox" id="debugConflicts" checked> Generate
+                            Word
+                            Comparisons</label>
                           <label><input class="form-check-input" type="checkbox" id="showConflicts"> Show Word
                             Comparisons</label>
                           <label><input class="form-check-input" type="checkbox" id="optimizeFontDebug"> Enable Initial
                             Optimized Fonts</label>
-                          <label><input class="form-check-input" type="checkbox" id="showIntermediateOCR"> Show Intermediate OCR Versions</label>
-                          <label><input class="form-check-input" type="checkbox" id="extractPDFFonts"> Extract Fonts from PDFs</label>
+                          <label><input class="form-check-input" type="checkbox" id="showIntermediateOCR"> Show
+                            Intermediate OCR Versions</label>
+                          <label><input class="form-check-input" type="checkbox" id="extractPDFFonts"> Extract Fonts
+                            from PDFs</label>
                         </div>
                       </div>
                     </div>
@@ -1638,11 +1663,11 @@
   <div style="height:100vh">
     <div class="container">
       <div class="container" style="position:absolute;top:100px;height:80vh">
-  
+
         <fieldset class="upload_dropZone text-center p-4" id="uploadDropZone"
           style="height:100%;z-index:10;position:relative;width:90%">
           <legend class="visually-hidden">Image uploader</legend>
-  
+
           <div style="position:relative;top:35%">
             <p class="small">Drag &amp; drop files inside dashed region<br><i>or</i></p>
             <input type="file" class="position-absolute invisible" id="openFileInput" multiple="">
@@ -1656,7 +1681,7 @@
           </div>
         </fieldset>
       </div>
-  
+
     </div>
     <div class="container" id="legendCanvasParentDiv"
       style="position:absolute;right:0;height:80vh;width:20vw;top:20vh;z-index:10;display:none;pointer-events:none;display:flex;flex-direction:column;">
@@ -1664,18 +1689,18 @@
       <canvas id="legendCanvas"></canvas>
       <div style="flex:1"></div>
     </div>
-  
-  
+
+
     <div id="c"></div>
     <canvas id="d" style="display:none"></canvas>
     <div id="debugCanvasParentDiv" style="display:none;background-color: white;">
       <canvas id="g"></canvas>
     </div>
     <img id="imgInvis" style="display:none;" />
-  
+
     <!-- Do not delete -->
     <div id="exTest" style="display:none;width:1ex;font-family:'Times New Roman';font-size:100px"></div>
-  
+
   </div>
 
 
