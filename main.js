@@ -712,6 +712,28 @@ async function addVisInstructionsUI() {
   });
 }
 
+/**
+ * Converts a multi-line string into an object, where each line consists of a key
+ * followed by a value separated by a space.
+ *
+ * @param {string} input - The input string, where each line contains a key and a value.
+ */
+const parseStringToObject = (input) => {
+  /** @type {Object<string, string>} */
+  const result = {};
+  const lines = input.split('\n');
+
+  lines.forEach((line) => {
+    const [key, ...valueParts] = line.trim().split(' ');
+    if (key) {
+      const value = valueParts.join(' '); // Handle potential spaces in the value
+      result[key] = value;
+    }
+  });
+
+  return result;
+};
+
 export async function recognizeAllClick() {
   // User can select engine directly using advanced options, or indirectly using basic options.
   /** @type {"legacy" | "lstm" | "combined"} */
@@ -736,6 +758,7 @@ export async function recognizeAllClick() {
     langs: ScribeViewer.opt.langs,
     combineMode: ScribeViewer.opt.combineMode,
     vanillaMode: ScribeViewer.opt.vanillaMode,
+    config: parseStringToObject(elem.recognize.tessParameters.value),
   });
 
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);

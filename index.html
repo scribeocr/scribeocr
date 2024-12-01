@@ -645,7 +645,7 @@
                   </div>
                   <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions1">
                     <div>
-                      <label>Engine</label>
+                      <label>Models</label>
                     </div>
                     <div class="row">
                       <div class="form-group">
@@ -666,6 +666,25 @@
                     </div>
                     <div class="row" style="padding-top:0.4rem;">
                       <div class="form-group">
+                        <div class="dropdown">
+                          <button class="btn btn-secondary dropdown btn-sm" type="button" id="build"
+                            data-bs-toggle="dropdown" style="width:100%;text-align:left">
+                            <div style="display:inline"> Build: </div>
+                            <div id="buildLabelText" style="display:inline">Scribe</div>
+                          </button>
+                          <ul class="dropdown-menu">
+                            <li><a id="buildLabelOptionDefault" class="dropdown-item" href="#">Scribe Tesseract</a></li>
+                            <li><a id="buildLabelOptionVanilla" class="dropdown-item" href="#">Vanilla Tesseract</a>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions2">
+                    <label>Parameters</label>
+                    <div class="row">
+                      <div class="form-group">
                         <div class="form-group">
                           <div class="dropdown">
                             <button class="btn btn-secondary dropdown btn-sm" type="button" id="psm"
@@ -681,23 +700,15 @@
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div class="col col-lg-2" style="display:none" id="advancedRecognitionOptions2">
-                    <label>Alternative Builds</label>
-                    <div class="row">
-                      <div class="form-group">
-                        <div class="dropdown">
-                          <button class="btn btn-secondary dropdown btn-sm" type="button" id="build"
-                            data-bs-toggle="dropdown" style="width:100%;text-align:left">
-                            <div style="display:inline"> Build: </div>
-                            <div id="buildLabelText" style="display:inline">Scribe</div>
-                          </button>
-                          <ul class="dropdown-menu">
-                            <li><a id="buildLabelOptionDefault" class="dropdown-item" href="#">Scribe Tesseract</a></li>
-                            <li><a id="buildLabelOptionVanilla" class="dropdown-item" href="#">Vanilla Tesseract</a>
-                            </li>
-                          </ul>
-                        </div>
+                    <div class="form-group" style="margin-top:0.4rem">
+                      <button type="button" id="tessParametersCollapseButton" class="btn btn-secondary btn-sm"
+                        data-bs-toggle="collapse" href="#tessParametersCollapse" style="min-width:100%;text-align:left"
+                        aria-expanded="true">Additional Parameters</button>
+                    </div>
+                    <div class="collapse" id="tessParametersCollapse">
+                      <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
+                        <textarea class="form-control btn-sm" id="tessParameters" name="tessParameters" size="3"
+                          autocomplete="off"></textarea>
                       </div>
                     </div>
                   </div>

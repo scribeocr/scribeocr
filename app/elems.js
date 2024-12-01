@@ -100,6 +100,8 @@ class recognize {
   static updateConfOnly = /** @type {HTMLInputElement} */(document.getElementById('updateConfOnly'));
 
   static enableUpscale = /** @type {HTMLInputElement} */(document.getElementById('enableUpscale'));
+
+  static tessParameters = /** @type {HTMLTextAreaElement} */(document.getElementById('tessParameters'));
 }
 
 class evaluate {
