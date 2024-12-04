@@ -142,7 +142,7 @@ class view {
 
 class edit {
   // Font size and style.
-  static wordFont = /** @type {HTMLInputElement} */(document.getElementById('wordFont'));
+  static wordFont = /** @type {HTMLSelectElement} */(document.getElementById('wordFont'));
 
   static fontMinus = /** @type {HTMLInputElement} */(document.getElementById('fontMinus'));
 
@@ -183,6 +183,8 @@ class edit {
   static ligatures = /** @type {HTMLInputElement} */(document.getElementById('ligatures'));
 
   static kerning = /** @type {HTMLInputElement} */(document.getElementById('kerning'));
+
+  static fontImport = /** @type {HTMLInputElement} */(document.getElementById('fontImport'));
 }
 
 class layout {

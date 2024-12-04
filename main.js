@@ -135,6 +135,11 @@ elem.upload.openFileInput.addEventListener('change', () => {
   /** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement).style.display = 'none';
 });
 
+elem.edit.fontImport.addEventListener('change', () => {
+  if (!elem.edit.fontImport.files || elem.edit.fontImport.files.length === 0) return;
+  importFontsGUI(elem.edit.fontImport.files);
+});
+
 let highlightActiveCt = 0;
 elem.upload.uploadDropZone.addEventListener('dragover', (event) => {
   event.preventDefault();
@@ -965,6 +970,35 @@ elem.recognize.updateConfOnly.addEventListener('change', () => {
 
 ProgressBars.active = ProgressBars.import;
 
+/**
+ *
+ * @param {Array<File> | FileList} files
+ */
+const importFontsGUI = async (files) => {
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const src = await file.arrayBuffer();
+    await scribe.data.font.addFontFromFile(src);
+  }
+
+  const existingFontsUI = Array.from(elem.edit.wordFont.options).map((x) => x.value);
+
+  // Add fonts extracted to UI
+  if (scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
+    Object.keys(scribe.data.font.doc).forEach((label) => {
+      if (existingFontsUI.includes(label)) return;
+      const option = document.createElement('option');
+      option.value = label;
+      option.text = label;
+      elem.edit.wordFont.appendChild(option);
+    });
+  }
+};
+
+/**
+ *
+ * @param {Array<File> | FileList} files
+ */
 const importFilesGUI = async (files) => {
   ProgressBars.active = ProgressBars.import;
   ProgressBars.active.show(files.length, 0);
