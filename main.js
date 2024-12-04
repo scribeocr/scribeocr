@@ -263,9 +263,6 @@ function handleKeyboardEventGUI(event) {
     if (elem.nav.editFindCollapse.classList.contains('show')) new Collapse(elem.nav.editFindCollapse, { toggle: true });
   }
 
-  // If the user is typing in an input in the nav bar, do not trigger shortcuts.
-  if (activeElem && elem.nav.navBar.contains(activeElem) && (activeElem instanceof HTMLInputElement || activeElem instanceof HTMLSelectElement)) return;
-
   if (event.ctrlKey && ['f'].includes(event.key)) {
     // eslint-disable-next-line no-new
     if (!elem.nav.editFindCollapse.classList.contains('show')) new Collapse(elem.nav.editFindCollapse, { toggle: true });
