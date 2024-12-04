@@ -1007,9 +1007,12 @@ const importFilesGUI = async (files) => {
 
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
 
+  const existingFontsUI = Array.from(elem.edit.wordFont.options).map((x) => x.value);
+
   // Add fonts extracted from document to the UI
   if (scribe.inputData.pdfMode && scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
     Object.keys(scribe.data.font.doc).forEach((label) => {
+      if (existingFontsUI.includes(label)) return;
       const option = document.createElement('option');
       option.value = label;
       option.text = label;
