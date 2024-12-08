@@ -817,9 +817,23 @@ function setDefaultLayoutClick() {
 
 function revertLayoutClick() {
   scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n].default = true;
-  scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n].boxes = structuredClone(scribe.data.layoutRegions.defaultRegions);
+
+  const boxes = structuredClone(scribe.data.layoutRegions.defaultRegions);
+  for (const [key, value] of Object.entries(boxes)) {
+    value.id = scribe.utils.getRandomAlphanum(10);
+    value.page = scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n];
+  }
+
+  scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n].boxes = boxes;
   scribe.data.layoutDataTables.pages[ScribeViewer.state.cp.n].default = true;
-  scribe.data.layoutDataTables.pages[ScribeViewer.state.cp.n].tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
+
+  const tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
+  tables.forEach((x) => {
+    x.id = scribe.utils.getRandomAlphanum(10);
+    x.page = scribe.data.layoutDataTables.pages[ScribeViewer.state.cp.n];
+  });
+
+  scribe.data.layoutDataTables.pages[ScribeViewer.state.cp.n].tables = tables;
 
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
 }
