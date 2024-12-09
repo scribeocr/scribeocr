@@ -810,39 +810,52 @@ function toggleSelectableWords(selectable = true) {
   });
 }
 
-function setDefaultLayoutClick() {
-  ScribeViewer.layout.setDefaultLayout(ScribeViewer.state.cp.n);
-  ScribeViewer.layout.setDefaultLayoutDataTable(ScribeViewer.state.cp.n);
-}
+elem.layout.layoutApplyPages.addEventListener('click', () => {
+  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value);
+  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value);
+  layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
+  layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
-function revertLayoutClick() {
-  scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n].default = true;
-
-  const boxes = structuredClone(scribe.data.layoutRegions.defaultRegions);
-  for (const [key, value] of Object.entries(boxes)) {
-    value.id = scribe.utils.getRandomAlphanum(10);
-    value.page = scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n];
+  if (!layoutApplyPagesMin || !layoutApplyPagesMax || layoutApplyPagesMin > layoutApplyPagesMax) {
+    console.warn(`Invalid layout apply pages: ${layoutApplyPagesMin} ${layoutApplyPagesMax}`);
+    return;
   }
+  ScribeViewer.layout.applyLayoutRegions(ScribeViewer.state.cp.n, layoutApplyPagesMin, layoutApplyPagesMax);
+  ScribeViewer.layout.applyLayoutDataTables(ScribeViewer.state.cp.n, layoutApplyPagesMin, layoutApplyPagesMax);
+});
 
-  scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n].boxes = boxes;
-  scribe.data.layoutDataTables.pages[ScribeViewer.state.cp.n].default = true;
+elem.layout.layoutApplyPagesMin.addEventListener('keyup', () => {
+  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value);
+  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value);
+  layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
+  layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
-  const tables = structuredClone(scribe.data.layoutDataTables.defaultTables);
-  tables.forEach((x) => {
-    x.id = scribe.utils.getRandomAlphanum(10);
-    x.page = scribe.data.layoutDataTables.pages[ScribeViewer.state.cp.n];
-  });
+  if (!layoutApplyPagesMin || !layoutApplyPagesMax || layoutApplyPagesMin > layoutApplyPagesMax) {
+    elem.layout.layoutApplyPages.disabled = true;
+  } else {
+    elem.layout.layoutApplyPages.disabled = false;
+  }
+});
 
-  scribe.data.layoutDataTables.pages[ScribeViewer.state.cp.n].tables = tables;
+elem.layout.layoutApplyPagesMax.addEventListener('keyup', () => {
+  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value);
+  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value);
+  layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
+  layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
-  ScribeViewer.displayPage(ScribeViewer.state.cp.n);
-}
+  if (!layoutApplyPagesMin || !layoutApplyPagesMax || layoutApplyPagesMin > layoutApplyPagesMax) {
+    elem.layout.layoutApplyPages.disabled = true;
+  } else {
+    elem.layout.layoutApplyPages.disabled = false;
+  }
+});
 
 elem.layout.addDataTable.addEventListener('click', () => (ScribeViewer.mode = 'addLayoutBoxDataTable'));
 
-elem.layout.setDefaultLayout.addEventListener('click', () => setDefaultLayoutClick());
-
-elem.layout.revertLayout.addEventListener('click', () => revertLayoutClick());
+elem.layout.deleteLayout.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.deleteSelectedLayoutDataTable();
+  ScribeViewer.CanvasSelection.deleteSelectedLayoutRegion();
+});
 
 elem.layout.setLayoutBoxInclusionRuleMajority.addEventListener('click', () => ScribeViewer.layout.setLayoutBoxInclusionRuleClick('majority'));
 elem.layout.setLayoutBoxInclusionRuleLeft.addEventListener('click', () => ScribeViewer.layout.setLayoutBoxInclusionRuleClick('left'));
@@ -927,8 +940,7 @@ elem.nav.nextMatch.addEventListener('click', () => nextMatchClick());
 export function toggleLayoutButtons(disable = true) {
   elem.layout.addLayoutBox.disabled = disable;
   elem.layout.addDataTable.disabled = disable;
-  elem.layout.setDefaultLayout.disabled = disable;
-  elem.layout.revertLayout.disabled = disable;
+  elem.layout.deleteLayout.disabled = disable;
 }
 
 export function toggleEditConfUI(disable = true) {

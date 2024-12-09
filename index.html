@@ -331,8 +331,21 @@
                     </div>
                   </div>
                   <div class="col col-lg-2">
-                    <label>General</label>
+                    <label></label>
                     <div class="btn-group" style="width:100%;">
+                      <button type="button" id="deleteLayout" class="btn btn-secondary btn-sm"
+                        style="width:100%;text-align:left;display:flex;white-space:nowrap" disabled>
+                        <div>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-trash3" viewBox="0 0 16 16" style="margin-right:4px">
+                            <path
+                              d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z" />
+                          </svg><span class="d-md-none d-inline-block">Delete</span><span
+                            class="d-none d-md-inline-block">Delete Region/Table</span>
+                        </div>
+                      </button>
+                    </div>
+                    <div class="btn-group" style="width:100%;padding-top:0.4rem;">
                       <div class="form-group" style="width:100%;">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse"
                           href="#setLayoutBoxInclusionRulesDropdown" style="min-width:100%;text-align:left">
@@ -367,26 +380,40 @@
                     </div>
                   </div>
                   <div class="col col-lg-2">
-                    <label>Defaults</label>
-                    <div class="form-group mb-2">
-                      <button type="button" id="setDefaultLayout" class="btn btn-secondary btn-sm"
-                        style="width:100%;text-align:left" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-diagram-3-fill" viewBox="0 0 16 16">
-                          <path fill-rule="evenodd"
-                            d="M6 3.5A1.5 1.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5v1A1.5 1.5 0 0 1 8.5 6v1H14a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V8h-5v.5a.5.5 0 0 1-1 0V8h-5v.5a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 2 7h5.5V6A1.5 1.5 0 0 1 6 4.5v-1zm-6 8A1.5 1.5 0 0 1 1.5 10h1A1.5 1.5 0 0 1 4 11.5v1A1.5 1.5 0 0 1 2.5 14h-1A1.5 1.5 0 0 1 0 12.5v-1zm6 0A1.5 1.5 0 0 1 7.5 10h1a1.5 1.5 0 0 1 1.5 1.5v1A1.5 1.5 0 0 1 8.5 14h-1A1.5 1.5 0 0 1 6 12.5v-1zm6 0a1.5 1.5 0 0 1 1.5-1.5h1a1.5 1.5 0 0 1 1.5 1.5v1a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5v-1z" />
-                        </svg> Save As Default</button>
-                    </div>
-                    <div class="form-group">
-                      <button type="button" id="revertLayout" class="btn btn-secondary btn-sm"
-                        style="width:100%;text-align:left" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
-                          <path fill-rule="evenodd"
-                            d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z" />
-                          <path
-                            d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z" />
-                        </svg> Revert To Default</button>
+                    <label>Current Layout</label>
+                    <div class="row">
+                      <div class="form-group">
+                        <button data-bs-toggle="collapse" data-bs-target="#collapseLayoutApplyPages" type="button"
+                          class="btn btn-secondary btn-sm" style="min-width:100%;text-align:left" aria-expanded="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-files" viewBox="0 0 16 16">
+                            <path
+                              d="M13 0H6a2 2 0 0 0-2 2 2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2 2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm0 13V4a2 2 0 0 0-2-2H5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1zM3 4a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4z">
+                            </path>
+                          </svg>
+                          <div style="display:inline"> Apply to Pages</div>
+                        </button>
+                      </div>
+                      <div class="collapse" id="collapseLayoutApplyPages">
+                        <div class="card card-body" style="padding:0.5rem;position:relative;top:5px;">
+                          <div class="row" style="--bs-gutter-x:0">
+                            <div class="col-3">
+                              <input type="text" id="layoutApplyPagesMin" name="pageNum" size="2"
+                                style="width:100%;padding-bottom:0.25rem" autocomplete="off">
+                            </div>
+                            <div class="col-1" style="text-align:center">-</div>
+                            <div class="col-3">
+                              <input type="text" id="layoutApplyPagesMax" name="pageNum" size="2"
+                                style="width:100%;padding-bottom:0.25rem" autocomplete="off">
+                            </div>
+                            <div class="col-1" style="text-align:center"> </div>
+                            <div class="col-4">
+                              <button type="button" id="layoutApplyPages" class="btn btn-info btn-sm" style="width:100%"
+                                disabled>Apply</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

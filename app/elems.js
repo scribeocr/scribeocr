@@ -206,9 +206,13 @@ class layout {
 
   static addDataTable = /** @type {HTMLInputElement} */(document.getElementById('addDataTable'));
 
-  static setDefaultLayout = /** @type {HTMLInputElement} */(document.getElementById('setDefaultLayout'));
+  static deleteLayout = /** @type {HTMLInputElement} */(document.getElementById('deleteLayout'));
 
-  static revertLayout = /** @type {HTMLInputElement} */(document.getElementById('revertLayout'));
+  static layoutApplyPagesMin = /** @type {HTMLInputElement} */(document.getElementById('layoutApplyPagesMin'));
+
+  static layoutApplyPagesMax = /** @type {HTMLInputElement} */(document.getElementById('layoutApplyPagesMax'));
+
+  static layoutApplyPages = /** @type {HTMLButtonElement} */(document.getElementById('layoutApplyPages'));
 }
 
 class download {
