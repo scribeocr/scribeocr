@@ -1716,7 +1716,7 @@ export function printSelectedWords(printOCR = true) {
   }
 }
 
-const ctxDebug = /** @type {CanvasRenderingContext2D} */ (/** @type {HTMLCanvasElement} */ (document.getElementById('g')).getContext('2d'));
+const canvasDebug = /** @type {HTMLCanvasElement} */ (document.getElementById('g'));
 
 export async function showDebugImages() {
   /** @type {Array<Array<CompDebugBrowser>>} */
@@ -1730,7 +1730,7 @@ export async function showDebugImages() {
   if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);
   if (compDebugArr3 && compDebugArr3.length > 0) compDebugArrArr.push(compDebugArr3);
 
-  if (compDebugArrArr.length > 0) await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr, context: 'browser' });
+  if (compDebugArrArr.length > 0) await scribe.utils.drawDebugImages({ canvas: canvasDebug, compDebugArrArr, context: 'browser' });
 }
 
 export async function evalSelectedLine() {
@@ -1741,7 +1741,7 @@ export async function evalSelectedLine() {
 
   const res = await scribe.evalOCRPage({ page: word0.line, view: true });
 
-  await scribe.utils.drawDebugImages({ ctx: ctxDebug, compDebugArrArr: [[res.debug[0]]], context: 'browser' });
+  await scribe.utils.drawDebugImages({ canvas: canvasDebug, compDebugArrArr: [[res.debug[0]]], context: 'browser' });
 }
 
 export async function downloadCanvas() {

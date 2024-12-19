@@ -272,20 +272,6 @@ class download {
 }
 
 class info {
-  static confThreshHigh = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
-
-  static confThreshMed = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
-
-  static debugDownloadCanvas = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
-
-  static debugDownloadImage = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadImage'));
-
-  static debugPrintWordsCanvas = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
-
-  static debugPrintWordsOCR = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsOCR'));
-
-  static debugEvalLine = /** @type {HTMLInputElement} */(document.getElementById('debugEvalLine'));
-
   // Optional features.
   static enableRecognition = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
 
@@ -304,8 +290,18 @@ class info {
 
   static omitNativeTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
 
+  static confThreshHigh = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
+
+  static confThreshMed = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
+
   // Debug visualizations
   static showDebugVis = /** @type {HTMLInputElement} */(document.getElementById('showDebugVis'));
+
+  static selectDebugVis = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
+
+  static showDebugLegend = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
+
+  static debugHidePage = /** @type {HTMLInputElement} */(document.getElementById('debugHidePage'));
 
   // Debug output.
   static downloadDebugCsv = /** @type {HTMLDivElement} */(document.getElementById('downloadDebugCsv'));
@@ -316,21 +312,17 @@ class info {
 
   static downloadPDFFonts = /** @type {HTMLDivElement} */(document.getElementById('downloadPDFFonts'));
 
-  static humanReadablePDF = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
-
-  static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
-
-  static selectDebugVis = /** @type {HTMLSelectElement} */(document.getElementById('selectDebugVis'));
-
-  static showConflicts = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
-
-  static debugConflicts = /** @type {HTMLInputElement} */(document.getElementById('debugConflicts'));
-
-  static showDebugLegend = /** @type {HTMLInputElement} */(document.getElementById('showDebugLegend'));
-
-  static debugHidePage = /** @type {HTMLInputElement} */(document.getElementById('debugHidePage'));
-
   static debugPrintCoords = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
+
+  static debugDownloadCanvas = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadCanvas'));
+
+  static debugDownloadImage = /** @type {HTMLInputElement} */(document.getElementById('debugDownloadImage'));
+
+  static debugPrintWordsCanvas = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsCanvas'));
+
+  static debugPrintWordsOCR = /** @type {HTMLInputElement} */(document.getElementById('debugPrintWordsOCR'));
+
+  static debugEvalLine = /** @type {HTMLInputElement} */(document.getElementById('debugEvalLine'));
 
   // Debug options
   static optimizeFontDebug = /** @type {HTMLInputElement} */(document.getElementById('optimizeFontDebug'));
@@ -338,6 +330,14 @@ class info {
   static showIntermediateOCR = /** @type {HTMLInputElement} */(document.getElementById('showIntermediateOCR'));
 
   static extractPDFFonts = /** @type {HTMLInputElement} */(document.getElementById('extractPDFFonts'));
+
+  static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
+
+  static humanReadablePDF = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
+
+  static showConflicts = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
+
+  static debugConflicts = /** @type {HTMLInputElement} */(document.getElementById('debugConflicts'));
 }
 
 class canvas {
