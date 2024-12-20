@@ -811,8 +811,8 @@ function toggleSelectableWords(selectable = true) {
 }
 
 elem.layout.layoutApplyPages.addEventListener('click', () => {
-  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value);
-  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value);
+  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value) - 1;
+  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value) - 1;
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
   layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
@@ -825,8 +825,8 @@ elem.layout.layoutApplyPages.addEventListener('click', () => {
 });
 
 elem.layout.layoutApplyPagesMin.addEventListener('keyup', () => {
-  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value);
-  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value);
+  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value) - 1;
+  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value) - 1;
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
   layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
@@ -838,8 +838,8 @@ elem.layout.layoutApplyPagesMin.addEventListener('keyup', () => {
 });
 
 elem.layout.layoutApplyPagesMax.addEventListener('keyup', () => {
-  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value);
-  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value);
+  let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value) - 1;
+  let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value) - 1;
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
   layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
