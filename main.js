@@ -1592,7 +1592,12 @@ async function handleDownloadGUI() {
   const progressMax = downloadType === 'pdf' ? (maxValue - minValue + 1) * 3 + 1 : (maxValue - minValue + 1) + 1;
   ProgressBars.active.show(progressMax, 0);
 
-  await scribe.download(downloadType, fileName, minValue, maxValue);
+  try {
+    await scribe.download(downloadType, fileName, minValue, maxValue);
+  } catch (e) {
+    insertAlertMessage('Failed to download file. Download .hocr file to save any progress, and report if the issue persists.');
+    console.error(e);
+  }
 
   ProgressBars.active.fill();
 
