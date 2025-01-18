@@ -11,6 +11,9 @@
         "ecmaVersion": "latest",
         "sourceType": "module"
     },
+    "plugins": [
+        "jsdoc"
+    ],
     // "globals": {
     //     "fabric": "writable"
     // },
@@ -20,6 +23,9 @@
             200,
             { "ignoreRegExpLiterals": true, "ignoreTemplateLiterals": true }
         ],
+
+        "jsdoc/check-alignment": 1,
+
         // This rule results in code being deleted. 
         "no-unreachable": "off",
         // This edit allows for .js files (but not packages) to have an extension.
