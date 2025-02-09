@@ -245,6 +245,9 @@ class download {
   // Word export options
   static docxReflowCheckbox = /** @type {HTMLInputElement} */(document.getElementById('docxReflowCheckbox'));
 
+  // HTML export options
+  static htmlRemoveMarginsCheckbox = /** @type {HTMLInputElement} */(document.getElementById('htmlRemoveMarginsCheckbox'));
+
   // static docxPageBreaksCheckbox = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
 
   // Format labels/options
@@ -258,11 +261,15 @@ class download {
 
   static docxOptions = /** @type {HTMLElement} */(document.getElementById('docxOptions'));
 
+  static htmlOptions = /** @type {HTMLElement} */(document.getElementById('htmlOptions'));
+
   static xlsxOptions = /** @type {HTMLElement} */(document.getElementById('xlsxOptions'));
 
   static formatLabelOptionPDF = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPDF'));
 
   static formatLabelOptionHOCR = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHOCR'));
+
+  static formatLabelOptionHtml = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHtml'));
 
   static formatLabelOptionText = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionText'));
 
