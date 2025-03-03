@@ -158,6 +158,8 @@ class edit {
 
   static styleSuper = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
+  static styleUnderline = /** @type {HTMLInputElement} */(document.getElementById('styleUnderline'));
+
   // Add/remove words
   static addWord = /** @type {HTMLInputElement} */(document.getElementById('addWord'));
 

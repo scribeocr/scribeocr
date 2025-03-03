@@ -450,33 +450,35 @@
                         disabled>+</button>
                     </div>
                   </div>
-                  <div class="col-1 col-md-3 col-lg-2" style="padding-right:0.25rem;">
+                  <div class="col-1 col-md-3 col-lg-3" style="padding-right:0.25rem;">
                     <label><span class="d-none d-md-inline-block">Style</span></label>
                     <div class="row">
-                      <div class="col-12 col-md-6 px-1 px-sm-2 pb-2">
-                        <button type="button" id="styleItalic" class="btn btn-secondary btn-sm styleButton"
-                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px"
-                          data-bs-toggle="button" disabled>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                            class="bi bi-type-italic" style="margin-right:4px" viewBox="0 0 16 16">
+                      <div class="col-12 col-md-4 px-1 px-sm-2 pb-2">
+                        <input type="checkbox" class="btn-check" id="styleItalic" autocomplete="off">
+                        <label class="btn btn-secondary btn-sm styleButton" for="styleItalic"
+                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-type-italic"
+                            style="margin-right:4px" viewBox="0 0 16 16">
                             <path
                               d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z" />
-                          </svg><span class="d-none d-md-inline-block">Italic</span></button>
+                          </svg><span class="d-none d-md-inline-block">Italic</span>
+                        </label>
                       </div>
-                      <div class="col-12 col-md-6 px-1 px-sm-2 pb-2">
-                        <button type="button" id="styleBold" class="btn btn-secondary btn-sm styleButton"
-                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px"
-                          data-bs-toggle="button" disabled>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      <div class="col-12 col-md-4 px-1 px-sm-2 pb-2">
+                          <input type="checkbox" class="btn-check" id="styleBold" autocomplete="off">
+                          <label class="btn btn-secondary btn-sm styleButton" for="styleBold"
+                            style="text-align:left;width:100%;display:flex;align-items:center;height:31px">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                             class="bi bi-type-bold" viewBox="0 0 16 16">
                             <path
                               d="M8.21 13c2.106 0 3.412-1.087 3.412-2.823 0-1.306-.984-2.283-2.324-2.386v-.055a2.176 2.176 0 0 0 1.852-2.14c0-1.51-1.162-2.46-3.014-2.46H3.843V13zM5.908 4.674h1.696c.963 0 1.517.451 1.517 1.244 0 .834-.629 1.32-1.73 1.32H5.908V4.673zm0 6.788V8.598h1.73c1.217 0 1.88.492 1.88 1.415 0 .943-.643 1.449-1.832 1.449H5.907z" />
-                          </svg><span class="d-none d-md-inline-block">Bold</span></button>
+                          </svg><span class="d-none d-md-inline-block">Bold</span>
+                          </label>
                       </div>
-                      <div class="col-12 col-md-6 px-1 px-sm-2">
-                        <button type="button" id="styleSmallCaps" class="btn btn-secondary btn-sm styleButton"
-                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px"
-                          data-bs-toggle="button" disabled>
+                      <div class="col-12 col-md-4 px-1 px-sm-2">
+                        <input type="checkbox" class="btn-check" id="styleSmallCaps" autocomplete="off">
+                        <label class="btn btn-secondary btn-sm styleButton" for="styleSmallCaps"
+                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px">
                           <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type"
                             style="margin-right:4px" fill="currentColor">
                             <g>
@@ -487,12 +489,13 @@
                               <path stroke="null"
                                 d="m10.10862,13.081l0.77225,-2.29546l2.84414,0l0.77307,2.29546l1.02857,0l-2.71884,-7.64143l-0.99746,0l-2.72048,7.64143l1.01875,0zm2.21111,-6.48837l1.14322,3.40347l-2.31757,0l1.1465,-3.40347l0.02784,0z" />
                             </g>
-                          </svg><span class="d-none d-md-inline-block">Caps</span></button>
+                          </svg><span class="d-none d-md-inline-block">Caps</span>
+                        </label>
                       </div>
-                      <div class="col-12 col-md-6 px-1 px-sm-2">
-                        <button type="button" id="styleSuper" class="btn btn-secondary btn-sm styleButton"
-                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px"
-                          data-bs-toggle="button">
+                      <div class="col-12 col-md-4 px-1 px-sm-2">
+                        <input type="checkbox" class="btn-check" id="styleSuper" autocomplete="off">
+                        <label class="btn btn-secondary btn-sm styleButton" for="styleSuper"
+                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px">
                           <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" class="bi bi-type"
                             style="margin-right:4px" fill="currentColor">
                             <g>
@@ -501,7 +504,18 @@
                               <path stroke="null"
                                 d="m7.45353,2.52791zm2.89854,1.8629l0,-0.05684c0,-0.55752 0.39693,-1.05459 1.07894,-1.05459c0.60984,0 1.0591,0.39694 1.0591,0.99776c0,0.56292 -0.3789,0.99324 -0.72802,1.37664l-2.39875,2.65767l0,0.67118l4.31217,0l0,-0.89311l-2.82095,0l0,-0.06224l1.59406,-1.79162c0.58638,-0.65314 1.11593,-1.20164 1.11593,-2.04783c-0.0009,-1.02211 -0.83356,-1.78802 -2.11008,-1.78802c-1.41905,0 -2.12902,0.95987 -2.12902,1.93957l0,0.05143l1.02662,0z" />
                             </g>
-                          </svg><span class="d-none d-md-inline-block">Super</span></button>
+                          </svg><span class="d-none d-md-inline-block">Super</span>
+                        </label>
+                      </div>
+                      <div class="col-12 col-md-4 px-1 px-sm-2">
+                        <input type="checkbox" class="btn-check" id="styleUnderline" autocomplete="off">
+                        <label class="btn btn-secondary btn-sm styleButton" for="styleUnderline"
+                          style="text-align:left;width:100%;display:flex;align-items:center;height:31px">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-type-underline" viewBox="0 0 16 16">
+                            <path d="M5.313 3.136h-1.23V9.54c0 2.105 1.47 3.623 3.917 3.623s3.917-1.518 3.917-3.623V3.136h-1.23v6.323c0 1.49-.978 2.57-2.687 2.57s-2.687-1.08-2.687-2.57zM12.5 15h-9v-1h9z"/>
+                          </svg>
+                          <span class="d-none d-md-inline-block">Underline</span>
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -600,7 +614,7 @@
                             </label>
                           </div>
                           <div class="form-check form-switch">
-                            <label><input class="form-check-input" type="checkbox" id="ligatures" checked> Ligatures
+                            <label><input class="form-check-input" type="checkbox" id="ligatures"> Ligatures
                               <a href="#" class="d-inline-block" data-bs-toggle="tooltip" title=""
                                 data-bs-original-title="Use ligatures for common letter pairs like 'fi' and 'fl'."
                                 data-bs-placement="right">

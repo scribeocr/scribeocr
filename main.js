@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import { Button, Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js';
+import { Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js';
 
 import scribe from './scribe-ui/scribe.js/scribe.js';
 
@@ -386,16 +386,59 @@ elem.evaluate.uploadOCRData.addEventListener('show.bs.collapse', () => {
   }
 });
 
-elem.edit.styleItalic.addEventListener('click', () => { ScribeViewer.CanvasSelection.modifySelectedWordStyle('italic'); });
-elem.edit.styleBold.addEventListener('click', () => { ScribeViewer.CanvasSelection.modifySelectedWordStyle('bold'); });
+elem.edit.styleItalic.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    italic: elem.edit.styleItalic.checked,
+  });
+});
 
-elem.edit.fontMinus.addEventListener('click', () => { ScribeViewer.CanvasSelection.modifySelectedWordFontSize('minus'); });
-elem.edit.fontPlus.addEventListener('click', () => { ScribeViewer.CanvasSelection.modifySelectedWordFontSize('plus'); });
-elem.edit.fontSize.addEventListener('change', () => { ScribeViewer.CanvasSelection.modifySelectedWordFontSize(elem.edit.fontSize.value); });
-elem.edit.wordFont.addEventListener('change', () => { ScribeViewer.CanvasSelection.modifySelectedWordFontFamily(elem.edit.wordFont.value); });
+elem.edit.styleBold.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    bold: elem.edit.styleBold.checked,
+  });
+});
 
-elem.edit.styleSmallCaps.addEventListener('click', () => ScribeViewer.CanvasSelection.modifySelectedWordSmallCaps(elem.edit.styleSmallCaps.classList.contains('active')));
-elem.edit.styleSuper.addEventListener('click', () => ScribeViewer.CanvasSelection.modifySelectedWordSuper(elem.edit.styleSuper.classList.contains('active')));
+elem.edit.styleSmallCaps.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    smallCaps: elem.edit.styleSmallCaps.checked,
+  });
+});
+
+elem.edit.styleSuper.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    sup: elem.edit.styleSuper.checked,
+  });
+});
+
+elem.edit.styleUnderline.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    underline: elem.edit.styleUnderline.checked,
+  });
+});
+
+elem.edit.wordFont.addEventListener('change', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    font: elem.edit.wordFont.value,
+  });
+});
+
+elem.edit.fontSize.addEventListener('change', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    size: parseFloat(elem.edit.fontSize.value),
+  });
+});
+
+elem.edit.fontMinus.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    size: parseFloat(elem.edit.fontSize.value) - 1,
+  });
+});
+
+elem.edit.fontPlus.addEventListener('click', () => {
+  ScribeViewer.CanvasSelection.modifySelectedWordStyle({
+    size: parseFloat(elem.edit.fontSize.value) + 1,
+  });
+});
 
 elem.edit.ligatures.addEventListener('change', () => {
   scribe.opt.ligatures = elem.edit.ligatures.checked;
@@ -450,7 +493,7 @@ export function adjustBaselineRange(value) {
   // This allows the properties to be accurate if the user ever switches the word to non-superscripted.
   objectsLine.forEach((objectI) => {
     objectI.topBaseline = objectI.topBaselineOrig + (valueNum - baselineRange);
-    if (!objectI.word.sup) {
+    if (!objectI.word.style.sup) {
       objectI.yActual = objectI.topBaseline;
     }
   });
@@ -492,6 +535,7 @@ export function toggleEditButtons(disable = true) {
   elem.edit.styleBold.disabled = disable;
   elem.edit.styleSmallCaps.disabled = disable;
   elem.edit.styleSuper.disabled = disable;
+  elem.edit.styleUnderline.disabled = disable;
 
   elem.edit.deleteWord.disabled = disable;
   elem.edit.recognizeWord.disabled = disable;
@@ -1321,11 +1365,6 @@ async function clearUI() {
 
 clearFiles();
 
-const styleItalicButton = new Button(elem.edit.styleItalic);
-const styleBoldButton = new Button(elem.edit.styleBold);
-const styleSmallCapsButton = new Button(elem.edit.styleSmallCaps);
-const styleSuperButton = new Button(elem.edit.styleSuper);
-
 ScribeViewer.KonvaOcrWord.updateUI = () => {
   const wordFirst = ScribeViewer.CanvasSelection.getKonvaWords()[0];
 
@@ -1345,20 +1384,11 @@ ScribeViewer.KonvaOcrWord.updateUI = () => {
     elem.edit.fontSize.value = '';
   }
 
-  if (wordFirst.word.sup !== elem.edit.styleSuper.classList.contains('active')) {
-    styleSuperButton.toggle();
-  }
-  if (wordFirst.word.smallCaps !== elem.edit.styleSmallCaps.classList.contains('active')) {
-    styleSmallCapsButton.toggle();
-  }
-  const italic = wordFirst.word.style === 'italic';
-  if (italic !== elem.edit.styleItalic.classList.contains('active')) {
-    styleItalicButton.toggle();
-  }
-  const bold = wordFirst.word.style === 'bold';
-  if (bold !== elem.edit.styleBold.classList.contains('active')) {
-    styleBoldButton.toggle();
-  }
+  elem.edit.styleSuper.checked = wordFirst.word.style.sup;
+  elem.edit.styleSmallCaps.checked = wordFirst.word.style.smallCaps;
+  elem.edit.styleUnderline.checked = wordFirst.word.style.underline;
+  elem.edit.styleItalic.checked = wordFirst.word.style.italic;
+  elem.edit.styleBold.checked = wordFirst.word.style.bold;
 };
 
 ScribeViewer.KonvaLayout.updateUI = () => {
@@ -1464,7 +1494,7 @@ elem.info.downloadSourcePDF.addEventListener('click', async () => {
     return;
   }
 
-  const content = await w.write({
+  const content = await w.save({
     doc1: w.pdfDoc, humanReadable: elem.info.humanReadablePDF.checked,
   });
 
