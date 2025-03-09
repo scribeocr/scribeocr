@@ -118,8 +118,8 @@ class CustomSeleniumActions {
       }
     };
 
-    await downloadFormat('PDF');
-    await downloadFormat('HOCR');
+    await downloadFormat('Pdf');
+    await downloadFormat('Hocr');
     await downloadFormat('Docx');
     await downloadFormat('Text');
   }

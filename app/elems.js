@@ -267,9 +267,9 @@ class download {
 
   static xlsxOptions = /** @type {HTMLElement} */(document.getElementById('xlsxOptions'));
 
-  static formatLabelOptionPDF = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPDF'));
+  static formatLabelOptionPdf = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPdf'));
 
-  static formatLabelOptionHOCR = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHOCR'));
+  static formatLabelOptionHocr = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHocr'));
 
   static formatLabelOptionHtml = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHtml'));
 
@@ -278,6 +278,8 @@ class download {
   static formatLabelOptionDocx = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionDocx'));
 
   static formatLabelOptionXlsx = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionXlsx'));
+
+  static formatLabelOptionScribe = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionScribe'));
 }
 
 class info {
