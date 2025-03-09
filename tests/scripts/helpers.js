@@ -112,7 +112,7 @@ class CustomSeleniumActions {
 
       // Firefox opens .pdf downloads in a new tab, so we need to switch back to the original.
       const browser = (await this.driver.getCapabilities()).getBrowserName();
-      if (browser === 'firefox' && format === 'PDF') {
+      if (browser === 'firefox' && format === 'Pdf') {
         await this.driver.sleep(500);
         this.driver.switchTo().window(currentTab);
       }
