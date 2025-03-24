@@ -815,7 +815,7 @@ export async function recognizeAllClick() {
 
   ProgressBars.active.increment();
 
-  if (scribe.data.font.enableOpt) {
+  if (scribe.data.font.state.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
@@ -954,6 +954,10 @@ elem.download.xlsxPageNumberColumn.addEventListener('click', () => {
 
 elem.download.htmlRemoveMarginsCheckbox.addEventListener('click', () => {
   scribe.opt.removeMargins = elem.download.htmlRemoveMarginsCheckbox.checked;
+});
+
+elem.download.htmlIncludeImagesCheckbox.addEventListener('click', () => {
+  scribe.opt.includeImages = elem.download.htmlIncludeImagesCheckbox.checked;
 });
 
 /**
@@ -1128,7 +1132,7 @@ const importFilesGUI = async (files) => {
     toggleLayoutButtons(false);
   }
 
-  if (scribe.data.font.enableOpt) {
+  if (scribe.data.font.state.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }

@@ -87,7 +87,7 @@ describe('Use delete and recognize word buttons', function () {
 
   afterEach(async function () {
     if (this.currentTest.state === 'failed') {
-      const fs = await import('fs');
+      const fs = await import('node:fs');
       const screenshotsDir = path.join(__dirname, 'screenshots');
       if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
       const screenshotPath = path.join(screenshotsDir, `${this.currentTest.title}.png`);

@@ -50,7 +50,7 @@ describe('Generate output files using images and built-in OCR', function () {
 
   afterEach(async function () {
     if (this.currentTest.state === 'failed') {
-      const fs = await import('fs');
+      const fs = await import('node:fs');
       const screenshotsDir = path.join(__dirname, 'screenshots');
       if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
       const screenshotPath = path.join(screenshotsDir, `${this.currentTest.title}.png`);
@@ -102,7 +102,7 @@ describe('Generate output files using images only', function () {
 
   afterEach(async function () {
     if (this.currentTest.state === 'failed') {
-      const fs = await import('fs');
+      const fs = await import('node:fs');
       const screenshotsDir = path.join(__dirname, 'screenshots');
       if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
       const screenshotPath = path.join(screenshotsDir, `${this.currentTest.title}.png`);
@@ -142,7 +142,7 @@ describe('Generate output files using ABBYY XML only', function () {
 
   afterEach(async function () {
     if (this.currentTest.state === 'failed') {
-      const fs = await import('fs');
+      const fs = await import('node:fs');
       const screenshotsDir = path.join(__dirname, 'screenshots');
       if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
       const screenshotPath = path.join(screenshotsDir, `${this.currentTest.title}.png`);
@@ -198,7 +198,7 @@ describe('Generate output files using images and uploaded ABBYY XML', function (
 
   afterEach(async function () {
     if (this.currentTest.state === 'failed') {
-      const fs = await import('fs');
+      const fs = await import('node:fs');
       const screenshotsDir = path.join(__dirname, 'screenshots');
       if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
       const screenshotPath = path.join(screenshotsDir, `${this.currentTest.title}.png`);
@@ -267,7 +267,7 @@ describe('Generate output files using images and uploaded Tesseract XML', functi
 
   afterEach(async function () {
     if (this.currentTest.state === 'failed') {
-      const fs = await import('fs');
+      const fs = await import('node:fs');
       const screenshotsDir = path.join(__dirname, 'screenshots');
       if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
       const screenshotPath = path.join(screenshotsDir, `${this.currentTest.title}.png`);
@@ -311,7 +311,7 @@ describe('Generate output files using PDF and existing text layer', function () 
 
   afterEach(async function () {
     if (this.currentTest.state === 'failed') {
-      const fs = await import('fs');
+      const fs = await import('node:fs');
       const screenshotsDir = path.join(__dirname, 'screenshots');
       if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
       const screenshotPath = path.join(screenshotsDir, `${this.currentTest.title}.png`);

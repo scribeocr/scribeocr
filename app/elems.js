@@ -250,6 +250,8 @@ class download {
   // HTML export options
   static htmlRemoveMarginsCheckbox = /** @type {HTMLInputElement} */(document.getElementById('htmlRemoveMarginsCheckbox'));
 
+  static htmlIncludeImagesCheckbox = /** @type {HTMLInputElement} */(document.getElementById('htmlIncludeImagesCheckbox'));
+
   // static docxPageBreaksCheckbox = /** @type {HTMLInputElement} */(document.getElementById('docxPageBreaksCheckbox'));
 
   // Format labels/options
