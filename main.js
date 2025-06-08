@@ -862,7 +862,7 @@ elem.layout.layoutApplyPages.addEventListener('click', () => {
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
   layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
-  if (!layoutApplyPagesMin || !layoutApplyPagesMax || layoutApplyPagesMin > layoutApplyPagesMax) {
+  if (!Number.isFinite(layoutApplyPagesMin) || !Number.isFinite(layoutApplyPagesMax) || layoutApplyPagesMin > layoutApplyPagesMax) {
     console.warn(`Invalid layout apply pages: ${layoutApplyPagesMin} ${layoutApplyPagesMax}`);
     return;
   }
@@ -876,7 +876,7 @@ elem.layout.layoutApplyPagesMin.addEventListener('keyup', () => {
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
   layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
-  if (!layoutApplyPagesMin || !layoutApplyPagesMax || layoutApplyPagesMin > layoutApplyPagesMax) {
+  if (!Number.isFinite(layoutApplyPagesMin) || !Number.isFinite(layoutApplyPagesMax) || layoutApplyPagesMin > layoutApplyPagesMax) {
     elem.layout.layoutApplyPages.disabled = true;
   } else {
     elem.layout.layoutApplyPages.disabled = false;
@@ -889,7 +889,7 @@ elem.layout.layoutApplyPagesMax.addEventListener('keyup', () => {
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
   layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
 
-  if (!layoutApplyPagesMin || !layoutApplyPagesMax || layoutApplyPagesMin > layoutApplyPagesMax) {
+  if (!Number.isFinite(layoutApplyPagesMin) || !Number.isFinite(layoutApplyPagesMax) || layoutApplyPagesMin > layoutApplyPagesMax) {
     elem.layout.layoutApplyPages.disabled = true;
   } else {
     elem.layout.layoutApplyPages.disabled = false;
