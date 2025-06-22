@@ -8,7 +8,7 @@ import { insertAlertMessage } from './app/utils/warningMessages.js';
 import { ScribeViewer } from './scribe-ui/viewer.js';
 
 import { elem } from './app/elems.js';
-import { ProgressBars } from './app/utils/progressBars.js';
+import { ProgressBar, ProgressBarCollapse, ProgressBars } from './app/utils/progressBars.js';
 
 ScribeViewer.enableCanvasSelection = true;
 ScribeViewer.KonvaIText.enableEditing = true;
@@ -127,12 +127,84 @@ scribe.opt.errorHandler = insertAlertMessage;
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 tooltipTriggerList.forEach((tooltipTriggerEl) => new Tooltip(tooltipTriggerEl));
 
+
+elem.batch.openFileInputBatch.addEventListener('change', () => {
+  if (!elem.batch.openFileInputBatch.files || elem.batch.openFileInputBatch.files.length === 0) return;
+
+  const batchMode = elem.info.enableBatchMode.checked;
+
+  if (batchMode) {
+    importFilesGUIBatch(elem.batch.openFileInputBatch.files);
+  } else {
+    importFilesGUI(elem.batch.openFileInputBatch.files);
+  }
+
+  // This should run after importFiles so if that function fails the dropzone is not removed
+  /** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement).style.display = 'none';
+});
+
+
 elem.upload.openFileInput.addEventListener('change', () => {
   if (!elem.upload.openFileInput.files || elem.upload.openFileInput.files.length === 0) return;
 
-  importFilesGUI(elem.upload.openFileInput.files);
+  const batchMode = elem.info.enableBatchMode.checked;
+
+  if (batchMode) {
+    importFilesGUIBatch(elem.upload.openFileInput.files);
+  } else {
+    importFilesGUI(elem.upload.openFileInput.files);
+  }
+
   // This should run after importFiles so if that function fails the dropzone is not removed
   /** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement).style.display = 'none';
+});
+
+elem.batch.batchRun.addEventListener('click', async () => {
+  if (!globalThis.batchFiles || globalThis.batchFiles.length === 0) return;
+  for (let i=0; i < globalThis.batchFiles.length; i++) {
+    const file = globalThis.batchFiles[i];
+    const progressBar = globalThis.progressBarsBatch[i];
+    await progressBar.increment();
+
+
+    await scribe.importFiles([file]);
+
+    await scribe.recognize({
+      // modeAdv: oemMode,
+      langs: ScribeViewer.opt.langs,
+      combineMode: ScribeViewer.opt.combineMode,
+      vanillaMode: ScribeViewer.opt.vanillaMode,
+      config: parseStringToObject(elem.recognize.tessParameters.value),
+    });
+  
+    elem.download.download.removeEventListener('click', handleDownloadGUI);
+    elem.download.download.disabled = true;
+  
+  
+    const downloadType = /** @type {("pdf" | "hocr" | "docx" | "xlsx" | "txt" | "text"| "scribe")} */ (/** @type {string} */ (elem.download.formatLabelText.textContent).replace(/^\./, '').toLowerCase());
+  
+    const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.pdf`;
+  
+    const minValue = parseInt(elem.download.pdfPageMin.value) - 1;
+    const maxValue = parseInt(elem.download.pdfPageMax.value) - 1;
+  
+    ProgressBars.active = progressBar;
+    const progressMax = downloadType === 'pdf' ? (maxValue - minValue + 1) * 3 + 1 : (maxValue - minValue + 1) + 1;
+    // ProgressBars.active.show(progressMax, 0);
+  
+    try {
+      await scribe.download(downloadType, fileName, minValue, maxValue);
+    } catch (e) {
+      insertAlertMessage('Failed to download file. Download .hocr file to save any progress, and report if the issue persists.');
+      console.error(e);
+    }
+  
+    progressBar.fill();
+  
+    // elem.download.download.disabled = false;
+    // elem.download.download.addEventListener('click', handleDownloadGUI);
+  
+  }
 });
 
 elem.edit.fontImport.addEventListener('change', () => {
@@ -180,7 +252,15 @@ elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
 
   elem.upload.uploadDropZone.classList.remove('highlight');
 
-  importFilesGUI(files);
+  // importFilesGUI(files);
+
+  const batchMode = elem.info.enableBatchMode.checked;
+
+  if (batchMode) {
+    importFilesGUIBatch(files);
+  } else {
+    importFilesGUI(files);
+  }
 
   // This should run after importFiles so if that function fails the dropzone is not removed
   /** @type {HTMLElement} */ (elem.upload.uploadDropZone.parentElement).style.display = 'none';
@@ -356,6 +436,48 @@ elem.info.enableAdvancedRecognition.addEventListener('click', () => {
   elem.recognize.advancedRecognitionOptions2.style.display = elem.info.enableAdvancedRecognition.checked ? '' : 'none';
   elem.recognize.advancedRecognitionOptions3.style.display = elem.info.enableAdvancedRecognition.checked ? '' : 'none';
   elem.recognize.basicRecognitionOptions.style.display = !elem.info.enableAdvancedRecognition.checked ? '' : 'none';
+});
+
+/**
+ * Procedure that makes all optional UI elements either visible or invisible depending on settings.
+ */
+const setUIVisibility = () => {
+  const batchMode = elem.info.enableBatchMode.checked;
+  if (batchMode) {
+    elem.nav.navRecognizeTab.style.display = 'none';
+    elem.nav.navEditTab.style.display = 'none';
+    elem.nav.navEvalTab.style.display = 'none';
+    elem.nav.navLayoutTab.style.display = 'none';
+    elem.nav.navViewTab.style.display = 'none';
+    elem.nav.navDownloadTab.style.display = 'none';
+    elem.nav.navInfoTab.style.display = 'none';
+    elem.nav.navBatchTab.style.display = '';
+
+    elem.canvas.canvasContainer.style.display = 'none';
+
+    return;
+  }
+
+  elem.nav.navRecognizeTab.style.display = elem.info.enableRecognition.checked ? '' : 'none';
+  elem.nav.navEditTab.style.display = '';
+  elem.nav.navEvalTab.style.display = elem.info.enableEval.checked ? '' : 'none';
+  elem.nav.navLayoutTab.style.display = elem.info.enableLayout.checked ? '' : 'none';
+  elem.nav.navViewTab.style.display = '';
+  elem.nav.navDownloadTab.style.display = '';
+  elem.nav.navInfoTab.style.display = '';
+  elem.nav.navBatchTab.style.display = 'none';
+
+  elem.canvas.canvasContainer.style.display = '';
+
+};
+
+elem.info.enableBatchMode.addEventListener('click', () => {
+  setUIVisibility();
+});
+
+elem.batch.batchExit.addEventListener('click', () => {
+  elem.info.enableBatchMode.checked = false;
+  setUIVisibility();
 });
 
 export const enableRecognitionClick = () => {
@@ -633,6 +755,15 @@ elem.download.formatLabelOptionText.addEventListener('click', () => { setFormatL
 elem.download.formatLabelOptionDocx.addEventListener('click', () => { setFormatLabel('docx'); });
 elem.download.formatLabelOptionXlsx.addEventListener('click', () => { setFormatLabel('xlsx'); });
 elem.download.formatLabelOptionScribe.addEventListener('click', () => { setFormatLabel('scribe'); });
+
+elem.batch.formatLabelOptionPdf.addEventListener('click', () => { setFormatLabel('pdf', true); });
+elem.batch.formatLabelOptionHocr.addEventListener('click', () => { setFormatLabel('hocr', true); });
+elem.batch.formatLabelOptionHtml.addEventListener('click', () => { setFormatLabel('html', true); });
+elem.batch.formatLabelOptionText.addEventListener('click', () => { setFormatLabel('text', true); });
+elem.batch.formatLabelOptionDocx.addEventListener('click', () => { setFormatLabel('docx', true); });
+elem.batch.formatLabelOptionXlsx.addEventListener('click', () => { setFormatLabel('xlsx', true); });
+elem.batch.formatLabelOptionScribe.addEventListener('click', () => { setFormatLabel('scribe', true); });
+
 
 elem.info.debugConflicts.addEventListener('click', () => {
   scribe.opt.debugVis = elem.info.debugConflicts.checked;
@@ -1075,6 +1206,73 @@ const importFontsGUI = async (files) => {
   }
 };
 
+globalThis.batchFiles = /** @type {Array<File> | FileList} */ ([]);
+globalThis.progressBarsBatch = /** @type {Array<ProgressBar>} */ ([]);
+
+/**
+ *
+ * @param {Array<File> | FileList} files
+ */
+const importFilesGUIBatch = async (files) => {
+
+  if (!files || files.length === 0) return;
+  elem.batch.batchRun.disabled = false;
+
+  globalThis.progressBarsBatch.length = 0;
+
+  // const progressItems = [];
+  const elemArr = [];
+  for (let i=0;i<files.length;i++){
+      const li = document.createElement("li");
+      li.innerHTML = files[i].name;
+      li.setAttribute("class", "list-group-item");
+
+      const progressBarBatchFileDiv = document.createElement("div");
+      progressBarBatchFileDiv.setAttribute("id", `import-progress-collapse-${i}`);
+      progressBarBatchFileDiv.style.position = 'absolute';
+      progressBarBatchFileDiv.style.left = '0';
+      progressBarBatchFileDiv.style.bottom = '0';
+      // progressBarBatchFileDiv.style.width = '100%';
+      progressBarBatchFileDiv.style.height = '4px';
+      // progressBarBatchFileDiv.style.backgroundColor = '#ffc107';
+      li.appendChild(progressBarBatchFileDiv);
+
+
+      elemArr.push(li);
+      elem.batch.batchFileList.appendChild(li);
+
+
+      const progressBarBatchFile = new ProgressBar(`import-progress-collapse-${i}`, 100, 0, false);
+
+      // For reasons that are unclear, changing the color does not work inside the `ProgressBar` constructor,
+      // but does work here.
+      progressBarBatchFile.progressBar.style.backgroundColor = '#ffc107';
+      globalThis.progressBarsBatch.push(progressBarBatchFile);
+
+
+  
+  }
+
+
+  globalThis.batchFiles = files;
+
+  // // For PDF inputs, enable "Add Text to Import PDF" option
+  // if (scribe.inputData.pdfMode) {
+  //   elem.download.addOverlayCheckbox.checked = true;
+  //   elem.download.addOverlayCheckbox.disabled = false;
+  //   elem.batch.addOverlayCheckbox.checked = true;
+  //   elem.batch.addOverlayCheckbox.disabled = false;
+  // } else {
+  //   elem.download.addOverlayCheckbox.checked = false;
+  //   elem.download.addOverlayCheckbox.disabled = true;
+  //   elem.batch.addOverlayCheckbox.checked = false;
+  //   elem.batch.addOverlayCheckbox.disabled = true;
+  // }
+
+
+
+};
+
 /**
  *
  * @param {Array<File> | FileList} files
@@ -1120,9 +1318,13 @@ const importFilesGUI = async (files) => {
     if (scribe.inputData.pdfMode) {
       elem.download.addOverlayCheckbox.checked = true;
       elem.download.addOverlayCheckbox.disabled = false;
+      elem.batch.addOverlayCheckbox.checked = true;
+      elem.batch.addOverlayCheckbox.disabled = false;
     } else {
       elem.download.addOverlayCheckbox.checked = false;
       elem.download.addOverlayCheckbox.disabled = true;
+      elem.batch.addOverlayCheckbox.checked = false;
+      elem.batch.addOverlayCheckbox.disabled = true;
     }
   }
 
@@ -1296,6 +1498,19 @@ export const updateOcrVersionGUI = () => {
 elem.nav.navBar.addEventListener('click', (e) => {
   ScribeViewer.mode = 'select';
 }, true);
+
+
+// Prevent nav bar from collapsing when using batch mode.
+// Batch mode disables the viewer and replaces it with a file list,
+// and the file list assumes constant spacing.
+// Allowing the navbar to collapse produces a blank space.
+elem.nav.navBatch.addEventListener('hide.bs.collapse', (e) => {
+  const batchMode = elem.info.enableBatchMode.checked;
+  const open = elem.nav.navBatch.classList.contains('show');
+  if (batchMode && open) {
+    e.preventDefault();
+  }
+});
 
 // Various operations display loading bars, which are removed from the screen when both:
 // (1) the user closes the tab and (2) the loading bar is full.
@@ -1529,87 +1744,90 @@ const enableDisableDownloadPDFAlert = () => {
   }
 };
 
-function setFormatLabel(x) {
-  if (x.toLowerCase() === 'pdf') {
-    elem.download.textOptions.setAttribute('style', 'display:none');
-    elem.download.pdfOptions.setAttribute('style', '');
-    elem.download.docxOptions.setAttribute('style', 'display:none');
-    elem.download.xlsxOptions.setAttribute('style', 'display:none');
-    elem.download.htmlOptions.setAttribute('style', 'display:none');
+function setFormatLabel(x, batch = false) {
 
-    elem.download.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+  const dlElems = batch ? elem.batch : elem.download;
+
+  if (x.toLowerCase() === 'pdf') {
+    dlElems.textOptions.setAttribute('style', 'display:none');
+    dlElems.pdfOptions.setAttribute('style', '');
+    dlElems.docxOptions.setAttribute('style', 'display:none');
+    dlElems.xlsxOptions.setAttribute('style', 'display:none');
+    dlElems.htmlOptions.setAttribute('style', 'display:none');
+
+    dlElems.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
   <path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.266.266 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.71 12.71 0 0 1 1.01-.193 11.744 11.744 0 0 1-.51-.858 20.801 20.801 0 0 1-.5 1.05zm2.446.45c.15.163.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.876 3.876 0 0 0-.612-.053zM8.078 7.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>`;
 
-    elem.download.formatLabelText.innerHTML = '.pdf';
-    elem.download.downloadFileName.value = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.pdf`;
+    dlElems.formatLabelText.innerHTML = '.pdf';
+    dlElems.downloadFileName.value = `${dlElems.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.pdf`;
   } else if (x.toLowerCase() === 'hocr') {
-    elem.download.textOptions.setAttribute('style', 'display:none');
-    elem.download.pdfOptions.setAttribute('style', 'display:none');
-    elem.download.docxOptions.setAttribute('style', 'display:none');
-    elem.download.xlsxOptions.setAttribute('style', 'display:none');
-    elem.download.htmlOptions.setAttribute('style', 'display:none');
+    dlElems.textOptions.setAttribute('style', 'display:none');
+    dlElems.pdfOptions.setAttribute('style', 'display:none');
+    dlElems.docxOptions.setAttribute('style', 'display:none');
+    dlElems.xlsxOptions.setAttribute('style', 'display:none');
+    dlElems.htmlOptions.setAttribute('style', 'display:none');
 
-    elem.download.formatLabelSVG.innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`;
+    dlElems.formatLabelSVG.innerHTML = String.raw`  <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2v-1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.527 11.85h-.893l-.823 1.439h-.036L.943 11.85H.012l1.227 1.983L0 15.85h.861l.853-1.415h.035l.85 1.415h.908l-1.254-1.992 1.274-2.007Zm.954 3.999v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596h-.025L4.58 11.85h-.806v3.999h.706Zm4.71-.674h1.696v.674H8.4V11.85h.791v3.325Z"/>`;
 
-    elem.download.formatLabelText.innerHTML = '.hocr';
-    elem.download.downloadFileName.value = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.hocr`;
+    dlElems.formatLabelText.innerHTML = '.hocr';
+    dlElems.downloadFileName.value = `${dlElems.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.hocr`;
   } else if (x.toLowerCase() === 'text') {
-    elem.download.textOptions.setAttribute('style', '');
-    elem.download.pdfOptions.setAttribute('style', 'display:none');
-    elem.download.docxOptions.setAttribute('style', 'display:none');
-    elem.download.xlsxOptions.setAttribute('style', 'display:none');
-    elem.download.htmlOptions.setAttribute('style', 'display:none');
+    dlElems.textOptions.setAttribute('style', '');
+    dlElems.pdfOptions.setAttribute('style', 'display:none');
+    dlElems.docxOptions.setAttribute('style', 'display:none');
+    dlElems.xlsxOptions.setAttribute('style', 'display:none');
+    dlElems.htmlOptions.setAttribute('style', 'display:none');
 
-    elem.download.formatLabelSVG.innerHTML = String.raw`  <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
+    dlElems.formatLabelSVG.innerHTML = String.raw`  <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
   <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>`;
 
-    elem.download.formatLabelText.innerHTML = '.txt';
-    elem.download.downloadFileName.value = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.txt`;
+    dlElems.formatLabelText.innerHTML = '.txt';
+    dlElems.downloadFileName.value = `${dlElems.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.txt`;
   } else if (x.toLowerCase() === 'docx') {
-    elem.download.textOptions.setAttribute('style', 'display:none');
-    elem.download.pdfOptions.setAttribute('style', 'display:none');
-    elem.download.docxOptions.setAttribute('style', '');
-    elem.download.xlsxOptions.setAttribute('style', 'display:none');
-    elem.download.htmlOptions.setAttribute('style', 'display:none');
+    dlElems.textOptions.setAttribute('style', 'display:none');
+    dlElems.pdfOptions.setAttribute('style', 'display:none');
+    dlElems.docxOptions.setAttribute('style', '');
+    dlElems.xlsxOptions.setAttribute('style', 'display:none');
+    dlElems.htmlOptions.setAttribute('style', 'display:none');
 
-    elem.download.formatLabelSVG.innerHTML = String.raw`  <path d="M5.485 6.879a.5.5 0 1 0-.97.242l1.5 6a.5.5 0 0 0 .967.01L8 9.402l1.018 3.73a.5.5 0 0 0 .967-.01l1.5-6a.5.5 0 0 0-.97-.242l-1.036 4.144-.997-3.655a.5.5 0 0 0-.964 0l-.997 3.655L5.485 6.88z"/>
+    dlElems.formatLabelSVG.innerHTML = String.raw`  <path d="M5.485 6.879a.5.5 0 1 0-.97.242l1.5 6a.5.5 0 0 0 .967.01L8 9.402l1.018 3.73a.5.5 0 0 0 .967-.01l1.5-6a.5.5 0 0 0-.97-.242l-1.036 4.144-.997-3.655a.5.5 0 0 0-.964 0l-.997 3.655L5.485 6.88z"/>
     <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>`;
 
-    elem.download.formatLabelText.innerHTML = '.docx';
-    elem.download.downloadFileName.value = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.docx`;
+    dlElems.formatLabelText.innerHTML = '.docx';
+    dlElems.downloadFileName.value = `${dlElems.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.docx`;
   } else if (x.toLowerCase() === 'xlsx') {
-    elem.download.textOptions.setAttribute('style', 'display:none');
-    elem.download.pdfOptions.setAttribute('style', 'display:none');
-    elem.download.docxOptions.setAttribute('style', 'display:none');
-    elem.download.xlsxOptions.setAttribute('style', '');
-    elem.download.htmlOptions.setAttribute('style', 'display:none');
+    dlElems.textOptions.setAttribute('style', 'display:none');
+    dlElems.pdfOptions.setAttribute('style', 'display:none');
+    dlElems.docxOptions.setAttribute('style', 'display:none');
+    dlElems.xlsxOptions.setAttribute('style', '');
+    dlElems.htmlOptions.setAttribute('style', 'display:none');
 
-    elem.download.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`;
+    dlElems.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`;
 
-    elem.download.formatLabelText.innerHTML = '.xlsx';
-    elem.download.downloadFileName.value = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.xlsx`;
+    dlElems.formatLabelText.innerHTML = '.xlsx';
+    dlElems.downloadFileName.value = `${dlElems.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.xlsx`;
   } else if (x.toLowerCase() === 'html') {
-    elem.download.textOptions.setAttribute('style', 'display:none');
-    elem.download.pdfOptions.setAttribute('style', 'display:none');
-    elem.download.docxOptions.setAttribute('style', 'display:none');
-    elem.download.xlsxOptions.setAttribute('style', 'display:none');
-    elem.download.htmlOptions.setAttribute('style', '');
+    dlElems.textOptions.setAttribute('style', 'display:none');
+    dlElems.pdfOptions.setAttribute('style', 'display:none');
+    dlElems.docxOptions.setAttribute('style', 'display:none');
+    dlElems.xlsxOptions.setAttribute('style', 'display:none');
+    dlElems.htmlOptions.setAttribute('style', '');
 
-    elem.download.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`;
+    dlElems.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`;
 
-    elem.download.formatLabelText.innerHTML = '.html';
-    elem.download.downloadFileName.value = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.html`;
+    dlElems.formatLabelText.innerHTML = '.html';
+    dlElems.downloadFileName.value = `${dlElems.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.html`;
   } else if (x.toLowerCase() === 'scribe') {
-    elem.download.textOptions.setAttribute('style', 'display:none');
-    elem.download.pdfOptions.setAttribute('style', 'display:none');
-    elem.download.docxOptions.setAttribute('style', 'display:none');
-    elem.download.xlsxOptions.setAttribute('style', 'display:none');
-    elem.download.htmlOptions.setAttribute('style', 'display:none');
+    dlElems.textOptions.setAttribute('style', 'display:none');
+    dlElems.pdfOptions.setAttribute('style', 'display:none');
+    dlElems.docxOptions.setAttribute('style', 'display:none');
+    dlElems.xlsxOptions.setAttribute('style', 'display:none');
+    dlElems.htmlOptions.setAttribute('style', 'display:none');
 
-    elem.download.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`;
+    dlElems.formatLabelSVG.innerHTML = String.raw`  <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>`;
 
-    elem.download.formatLabelText.innerHTML = '.scribe';
-    elem.download.downloadFileName.value = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.scribe`;
+    dlElems.formatLabelText.innerHTML = '.scribe';
+    dlElems.downloadFileName.value = `${dlElems.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.scribe`;
   }
   enableDisableDownloadPDFAlert();
 }

@@ -44,13 +44,25 @@ class nav {
 
   static navRecognizeTab = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize-tab'));
 
+  static navEditTab = /** @type {HTMLDivElement} */(document.getElementById('nav-edit-tab'));
+
   static navEvalTab = /** @type {HTMLDivElement} */(document.getElementById('nav-eval-tab'));
+
+  static navViewTab = /** @type {HTMLDivElement} */(document.getElementById('nav-view-tab'));
 
   static navLayoutTab = /** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab'));
 
   static navLayout = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
 
   static navRecognize = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
+
+  static navBatch = /** @type {HTMLDivElement} */(document.getElementById('nav-batch'));
+
+  static navBatchTab = /** @type {HTMLDivElement} */(document.getElementById('nav-batch-tab'));
+
+  static navDownloadTab = /** @type {HTMLDivElement} */(document.getElementById('nav-download-tab'));
+
+  static navInfoTab = /** @type {HTMLDivElement} */(document.getElementById('nav-about-tab'));
 }
 
 class recognize {
@@ -284,6 +296,56 @@ class download {
   static formatLabelOptionScribe = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionScribe'));
 }
 
+class batch {
+
+  static batch = /** @type {HTMLInputElement} */(document.getElementById('batch'));
+
+  static batchFileList = /** @type {HTMLInputElement} */(document.getElementById('batchFileList'));
+
+  static openFileInputBatch = /** @type {HTMLInputElement} */(document.getElementById('openFileInputBatch'));
+
+  static batchRun = /** @type {HTMLInputElement} */(document.getElementById('batchRun'));
+
+  static batchExit = /** @type {HTMLInputElement} */(document.getElementById('batchExit'));
+
+  static downloadFileName = /** @type {HTMLInputElement} */(document.getElementById('batchDownloadFileName'));
+
+  static addOverlayCheckbox = /** @type {HTMLInputElement} */(document.getElementById('batchAddOverlayCheckbox'));
+
+  static downloadFormat = /** @type {HTMLInputElement} */(document.getElementById('batchDownloadFormat'));
+
+  static formatLabelSVG = /** @type {HTMLInputElement} */(document.getElementById('batchFormatLabelSVG'));
+
+  static formatLabelText = /** @type {HTMLInputElement} */(document.getElementById('batchFormatLabelText'));  
+
+  static textOptions = /** @type {HTMLDivElement} */(document.getElementById('batchTextOptions'));
+
+  static pdfOptions = /** @type {HTMLDivElement} */(document.getElementById('batchPdfOptions'));
+
+  static docxOptions = /** @type {HTMLDivElement} */(document.getElementById('batchDocxOptions'));
+
+  static htmlOptions = /** @type {HTMLDivElement} */(document.getElementById('batchHtmlOptions'));
+
+  static xlsxOptions = /** @type {HTMLDivElement} */(document.getElementById('batchXlsxOptions'));
+
+  static formatLabelOptionPdf = /** @type {HTMLLinkElement} */(document.getElementById('batchFormatLabelOptionPdf'));
+
+  static formatLabelOptionHocr = /** @type {HTMLLinkElement} */(document.getElementById('batchFormatLabelOptionHocr'));
+
+  static formatLabelOptionHtml = /** @type {HTMLLinkElement} */(document.getElementById('batchFormatLabelOptionHtml'));
+
+  static formatLabelOptionText = /** @type {HTMLLinkElement} */(document.getElementById('batchFormatLabelOptionText'));
+
+  static formatLabelOptionDocx = /** @type {HTMLLinkElement} */(document.getElementById('batchFormatLabelOptionDocx'));
+
+  static formatLabelOptionXlsx = /** @type {HTMLLinkElement} */(document.getElementById('batchFormatLabelOptionXlsx'));
+
+  static formatLabelOptionScribe = /** @type {HTMLLinkElement} */(document.getElementById('batchFormatLabelOptionScribe'));
+
+
+
+}
+
 class info {
   // Optional features.
   static enableRecognition = /** @type {HTMLInputElement} */(document.getElementById('enableRecognition'));
@@ -297,6 +359,8 @@ class info {
   static enableXlsxExport = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
   // Advanced options.
+  static enableBatchMode = /** @type {HTMLInputElement} */(document.getElementById('enableBatchMode'));
+
   static usePDFTextMainCheckbox = /** @type {HTMLInputElement} */(document.getElementById('usePDFTextMainCheckbox'));
 
   static usePDFTextSuppCheckbox = /** @type {HTMLInputElement} */(document.getElementById('usePDFTextSuppCheckbox'));
@@ -383,4 +447,6 @@ export class elem {
   static download = download;
 
   static info = info;
+
+  static batch = batch;
 }
