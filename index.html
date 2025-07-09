@@ -11,14 +11,10 @@
     }
 
     .prevent-select,
-    div,
     label {
       -webkit-user-select: none;
-      /* Safari */
       -ms-user-select: none;
-      /* IE 10 and IE 11 */
       user-select: none;
-      /* Standard syntax */
     }
 
     /* The min-width should correspond to the "md" breakpoint in bootstrap. */
@@ -676,10 +672,10 @@
                       disabled>Recognize Text</button>
                   </div>
                   <div class="col-5 col-sm-3 col-lg-2" id="basicRecognitionOptions">
-                    <div style="display:inline-block">
+                    <div class="prevent-select" style="display:inline-block">
                       <t>Speed</t>
                     </div>
-                    <div style="float:right;">
+                    <div class="prevent-select" style="float:right;">
                       <t>Quality</t>
                     </div>
                     <div class="row">
