@@ -6,7 +6,7 @@ There are 3 primary uses cases for Scribe OCR.
 	1. Scribe OCR can be used as an alternative to applications like Adobe Acrobat for recognizing text and creating searchable PDFs.
 	2. Unlike other tools, Scribe OCR makes it easy to correct errors in the recognized text.
 2. Proofreading existing OCR data.
-	1. Scribe OCR can be used to edit and correct existing OCR data created with other applications, such as Tesseract and Abbyy.
+	1. Scribe OCR can be used to edit and correct existing OCR data created with other applications, including Tesseract HOCR files.
 	2. By accurately positioning text over the input image, OCR data can be proofread significantly faster than with other methods.
 3. Creating fully digital versions of documents and books.
 	1. Other OCR programs do not truly digitize documents, but rather add roughly-positioned invisible text over the original image.
