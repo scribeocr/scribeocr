@@ -1817,6 +1817,11 @@ export async function evalSelectedLine() {
 }
 
 export async function downloadCanvas() {
+  if (!scribe.data.pageMetrics) {
+    console.warn('Canvas has not been initialized yet.');
+    return;
+  }
+
   const dims = scribe.data.pageMetrics[ScribeViewer.state.cp.n].dims;
 
   const startX = ScribeViewer.layerText.x() > 0 ? Math.round(ScribeViewer.layerText.x()) : 0;
@@ -1843,6 +1848,10 @@ export async function downloadImage(n) {
 }
 
 export async function downloadCurrentImage() {
+  if (!scribe.inputData.imageMode && !scribe.inputData.pdfMode) {
+    console.warn('No raw image exists.');
+    return;
+  }
   await downloadImage(ScribeViewer.state.cp.n);
 }
 
