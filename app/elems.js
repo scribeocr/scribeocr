@@ -344,6 +344,8 @@ class info {
 
   static extractPDFFonts = /** @type {HTMLInputElement} */(document.getElementById('extractPDFFonts'));
 
+  static keepPDFTextAlways = /** @type {HTMLInputElement} */(document.getElementById('keepPDFTextAlways'));
+
   static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
 
   static humanReadablePDF = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));

@@ -577,6 +577,10 @@ elem.info.extractPDFFonts.addEventListener('click', () => {
   scribe.opt.extractPDFFonts = elem.info.extractPDFFonts.checked;
 });
 
+elem.info.keepPDFTextAlways.addEventListener('click', () => {
+  scribe.opt.keepPDFTextAlways = elem.info.keepPDFTextAlways.checked;
+});
+
 elem.info.confThreshHigh.addEventListener('change', () => {
   scribe.opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
