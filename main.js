@@ -526,6 +526,8 @@ export function adjustBaselineRangeChange(value) {
 }
 
 export function toggleEditButtons(disable = true) {
+  if (!disable && !scribe.data.ocr.active[0]) return;
+
   elem.edit.wordFont.disabled = disable;
   elem.edit.fontMinus.disabled = disable;
   elem.edit.fontPlus.disabled = disable;
@@ -996,6 +998,8 @@ elem.nav.prevMatch.addEventListener('click', () => prevMatchClick());
 elem.nav.nextMatch.addEventListener('click', () => nextMatchClick());
 
 export function toggleLayoutButtons(disable = true) {
+  if (!disable && !scribe.data.ocr.active[0]) return;
+
   elem.layout.addLayoutBox.disabled = disable;
   elem.layout.addDataTable.disabled = disable;
   elem.layout.deleteLayout.disabled = disable;
