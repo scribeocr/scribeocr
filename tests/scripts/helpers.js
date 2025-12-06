@@ -66,8 +66,11 @@ class CustomSeleniumActions {
     // Click on the 'Recognize' tab
     await this.driver.findElement(By.id('nav-recognize-tab')).click();
 
-    const recognizeAllElem = await this.driver.findElement(By.id('recognizeAll'));
-    await this.driver.wait(until.elementIsEnabled(recognizeAllElem), 10000);
+    // Wait for the 'Recognize All' button to be located and enabled, then click it.
+    const recognizeAllLocator = By.id('recognizeAll');
+    await this.driver.wait(until.elementLocated(recognizeAllLocator), 1000, 'Recognize All button not found');
+    const recognizeAllElem = await this.driver.findElement(recognizeAllLocator);
+    await this.driver.wait(until.elementIsEnabled(recognizeAllElem), 1000, 'Recognize All button was not enabled in time');
     await recognizeAllElem.click();
 
     // Wait for recognize progress bar to fill up
