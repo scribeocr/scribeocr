@@ -973,6 +973,11 @@ elem.download.compressScribeCheckbox.addEventListener('click', () => {
 });
 scribe.opt.compressScribe = elem.download.compressScribeCheckbox.checked;
 
+elem.download.includeExtraTextScribeCheckbox.addEventListener('click', () => {
+  scribe.opt.includeExtraTextScribe = elem.download.includeExtraTextScribeCheckbox.checked;
+});
+scribe.opt.includeExtraTextScribe = elem.download.includeExtraTextScribeCheckbox.checked;
+
 /**
  * @param {boolean} value
  */

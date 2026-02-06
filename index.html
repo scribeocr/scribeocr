@@ -1344,8 +1344,14 @@
                             <li><a id="formatLabelOptionPdf" class="dropdown-item" href="#">.pdf</a></li>
                             <li><a id="formatLabelOptionScribe" class="dropdown-item" href="#">.scribe</a></li>
                             <li><a id="formatLabelOptionHocr" class="dropdown-item" href="#">.hocr</a></li>
-                            <li><a id="formatLabelOptionAlto" class="dropdown-item" href="#" style="display:none">.xml
-                                (ALTO)</a></li>
+                            <li><a id="formatLabelOptionAlto"
+                                class="dropdown-item d-flex justify-content-between align-items-center" href="#">.xml
+                                (ALTO) <svg xmlns="http://www.w3.org/2000/svg" width="36" height="16"
+                                  viewBox="0 0 36 16">
+                                  <rect width="36" height="16" rx="3" fill="#6c757d" /><text x="18" y="11.5"
+                                    font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#fff"
+                                    text-anchor="middle">Beta</text>
+                                </svg></a></li>
                             <li><a id="formatLabelOptionText" class="dropdown-item" href="#">.txt</a></li>
                             <li><a id="formatLabelOptionDocx" class="dropdown-item" href="#">.docx</a></li>
                             <li><a id="formatLabelOptionHtml" class="dropdown-item" href="#">.html</a></li>
@@ -1449,6 +1455,10 @@
                       <div class="form-check form-switch">
                         <label><input class="form-check-input" type="checkbox" id="compressScribeCheckbox" checked>
                           Compress</label>
+                      </div>
+                      <div class="form-check form-switch">
+                        <label><input class="form-check-input" type="checkbox" id="includeExtraTextScribeCheckbox">
+                          Include Extra Text</label>
                       </div>
                     </div>
                   </div>

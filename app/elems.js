@@ -273,6 +273,8 @@ class download {
 
   static compressScribeCheckbox = /** @type {HTMLInputElement} */(document.getElementById('compressScribeCheckbox'));
 
+  static includeExtraTextScribeCheckbox = /** @type {HTMLInputElement} */(document.getElementById('includeExtraTextScribeCheckbox'));
+
   static formatLabelOptionPdf = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPdf'));
 
   static formatLabelOptionHocr = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHocr'));
