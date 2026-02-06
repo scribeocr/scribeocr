@@ -269,11 +269,19 @@ class download {
 
   static xlsxOptions = /** @type {HTMLElement} */(document.getElementById('xlsxOptions'));
 
+  static scribeOptions = /** @type {HTMLElement} */(document.getElementById('scribeOptions'));
+
+  static compressScribeCheckbox = /** @type {HTMLInputElement} */(document.getElementById('compressScribeCheckbox'));
+
   static formatLabelOptionPdf = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionPdf'));
 
   static formatLabelOptionHocr = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHocr'));
 
+  static formatLabelOptionAlto = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionAlto'));
+
   static formatLabelOptionHtml = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionHtml'));
+
+  static formatLabelOptionMd = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionMd'));
 
   static formatLabelOptionText = /** @type {HTMLLinkElement} */(document.getElementById('formatLabelOptionText'));
 
