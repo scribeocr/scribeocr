@@ -15,7 +15,22 @@ module.exports = function (config) {
     files: [
       { pattern: 'tests/module/*spec.js', type: 'module' },
       // Non-test files are not served by default, even if referenced in the test files.
-      { pattern: '**/*', included: false, served: true },
+      // Using '**/*' or 'scribe-ui/**' causes OOM, so list patterns explicitly.
+      { pattern: 'node_modules/chai/*', included: false, served: true },
+      { pattern: 'tests/**', included: false, served: true },
+      { pattern: 'app/**', included: false, served: true },
+      // scribe-ui viewer and supporting JS
+      { pattern: 'scribe-ui/*.js', included: false, served: true },
+      { pattern: 'scribe-ui/js/**', included: false, served: true },
+      // scribe.js core
+      { pattern: 'scribe-ui/scribe.js/scribe.js', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/js/**', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/lib/**', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/fonts/**', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/mupdf/**', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/tests/assets/**', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/tesseract.js/src/**', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/tesseract.js/package.json', included: false, served: true },
     ],
 
     // list of files / patterns to exclude

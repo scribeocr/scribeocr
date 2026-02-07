@@ -1718,7 +1718,7 @@ async function handleDownloadGUI() {
   try {
     await scribe.download(downloadType, fileName, minValue, maxValue);
   } catch (e) {
-    insertAlertMessage('Failed to download file. Download .hocr file to save any progress, and report if the issue persists.');
+    insertAlertMessage('Failed to download file. Download .scribe file to save any progress, and report if the issue persists.');
     console.error(e);
   }
 

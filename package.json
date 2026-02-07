@@ -31,7 +31,8 @@
   "scripts": {
     "start": "node tests/scripts/server.js",
     "stop": "curl http://localhost:3031/shutdown",
-    "test": "npm-run-all test:gui",
+    "test": "npm-run-all test:module test:gui",
+    "test:module": "karma start karma.conf.cjs",
     "test:guispecs": "mocha tests/gui",
     "test:gui1": "run-s wait test:guispecs stop",
     "test:gui": "npm-run-all -p start test:gui1",
