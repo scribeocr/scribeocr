@@ -29,8 +29,7 @@ module.exports = function (config) {
       { pattern: 'scribe-ui/scribe.js/fonts/**', included: false, served: true },
       { pattern: 'scribe-ui/scribe.js/mupdf/**', included: false, served: true },
       { pattern: 'scribe-ui/scribe.js/tests/assets/**', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/tesseract.js/src/**', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/tesseract.js/package.json', included: false, served: true },
+      { pattern: 'scribe-ui/scribe.js/tess/**', included: false, served: true },
     ],
 
     // list of files / patterns to exclude
