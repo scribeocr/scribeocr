@@ -14,11 +14,16 @@ ScribeViewer.enableCanvasSelection = true;
 ScribeViewer.KonvaIText.enableEditing = true;
 ScribeViewer.init(elem.canvas.canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
 
+let batchProcessingActive = false;
+
 /**
  *
  * @param {ProgressMessage} message
  */
 const progressHandler = (message) => {
+  // During batch processing, skip all viewer rendering and progress bar updates.
+  if (batchProcessingActive) return;
+
   if (message.type === 'convert') {
     ProgressBars.active.increment();
 
@@ -127,8 +132,166 @@ scribe.opt.errorHandler = insertAlertMessage;
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 tooltipTriggerList.forEach((tooltipTriggerEl) => new Tooltip(tooltipTriggerEl));
 
+elem.batch.batchModeToggle.addEventListener('change', () => {
+  elem.batch.batchConfigPanel.style.display = elem.batch.batchModeToggle.checked ? '' : 'none';
+});
+
+elem.batch.batchReturnButton.addEventListener('click', () => {
+  elem.batch.batchProgressPanel.style.display = 'none';
+  elem.batch.uploadOuterContainer.style.display = '';
+  elem.batch.uploadContentDiv.style.display = '';
+  elem.upload.uploadDropZone.disabled = false;
+  elem.upload.openFileInput.value = '';
+  elem.canvas.canvasContainer.style.display = '';
+});
+
+/**
+ * Process multiple files in batch mode.
+ * Each file is treated as a separate document: clear → import → recognize → export.
+ * Results are collected into a zip file and downloaded.
+ * @param {Array<File>|FileList} files
+ */
+async function batchProcessFiles(files) {
+  const fileArr = Array.from(files);
+  const totalFiles = fileArr.length;
+  if (totalFiles === 0) return;
+
+  const outputFormat = /** @type {string} */ (elem.batch.batchOutputFormat.value);
+  const runRecognition = elem.batch.batchRunRecognition.checked;
+  const useZip = elem.batch.batchDownloadZip.checked;
+
+  // Activate batch mode: hide the entire upload area and canvas, show the batch panel
+  batchProcessingActive = true;
+  elem.batch.uploadOuterContainer.style.display = 'none';
+  elem.canvas.canvasContainer.style.display = 'none';
+  elem.upload.uploadDropZone.disabled = true;
+  elem.batch.batchProgressPanel.style.display = '';
+  elem.batch.batchCompleteMessage.style.display = 'none';
+  elem.batch.batchErrorSummary.style.display = 'none';
+  elem.batch.batchFileList.innerHTML = '';
+  elem.batch.batchOverallProgressBar.style.width = '0%';
+  elem.batch.batchOverallPercent.textContent = '0%';
+  elem.batch.batchOverallLabel.textContent = `File 0 of ${totalFiles}`;
+
+  fileArr.forEach((file, i) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td style="width:80px"><span class="badge bg-secondary" id="batchStatus_${i}">Pending</span></td>`
+      + `<td class="text-start text-truncate" style="max-width:350px">${file.name}</td>`;
+    elem.batch.batchFileList.appendChild(row);
+  });
+
+  const zipModule = useZip ? await import('./scribe-ui/scribe.js/lib/zip.js/index.js') : null;
+  const zipBlobWriter = zipModule ? new zipModule.BlobWriter('application/zip') : null;
+  const zipWriter = zipModule && zipBlobWriter ? new zipModule.ZipWriter(zipBlobWriter) : null;
+
+  let ext = outputFormat;
+  if (outputFormat === 'alto') {
+    ext = 'xml';
+  } else if (outputFormat === 'scribe' && !scribe.opt.compressScribe) {
+    ext = 'scribe.json';
+  }
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  if (runRecognition) {
+    const ocrParams = { anyOk: true, vanillaMode: ScribeViewer.opt.vanillaMode, langs: ScribeViewer.opt.langs };
+    scribe.init({ ocr: true, ocrParams });
+  }
+
+  for (let i = 0; i < totalFiles; i++) {
+    const file = fileArr[i];
+    const statusElem = /** @type {HTMLSpanElement} */ (document.getElementById(`batchStatus_${i}`));
+
+    elem.batch.batchOverallLabel.textContent = `File ${i + 1} of ${totalFiles}`;
+    const pct = Math.round((i / totalFiles) * 100);
+    elem.batch.batchOverallPercent.textContent = `${pct}%`;
+    elem.batch.batchOverallProgressBar.style.width = `${pct}%`;
+
+    statusElem.textContent = 'Processing';
+    statusElem.className = 'badge bg-info';
+
+    try {
+      await scribe.clear();
+
+      await scribe.importFiles([file]);
+
+      if (runRecognition) {
+        const skipRecOCR = scribe.inputData.xmlMode[0] && !scribe.inputData.imageMode && !scribe.inputData.pdfMode;
+        const skipRecPDF = scribe.inputData.pdfMode && scribe.inputData.pdfType === 'text';
+
+        if (!skipRecOCR && !skipRecPDF) {
+          await scribe.recognize({ langs: ScribeViewer.opt.langs });
+        }
+      }
+
+      const content = await scribe.exportData(/** @type {"pdf"|"hocr"|"alto"|"docx"|"html"|"xlsx"|"txt"|"md"|"scribe"} */ (outputFormat));
+
+      const baseName = file.name.replace(/\.\w{1,6}$/, '');
+      const outputFileName = `${baseName}.${ext}`;
+
+      if (useZip && zipWriter && zipModule) {
+        const contentArray = content instanceof ArrayBuffer
+          ? new Uint8Array(content)
+          : new TextEncoder().encode(/** @type {string} */ (content));
+        await zipWriter.add(outputFileName, new zipModule.Uint8ArrayReader(contentArray));
+      } else {
+        // Download individually with a delay between files to avoid browser blocking
+        await scribe.utils.saveAs(content, outputFileName);
+        if (i < totalFiles - 1) {
+          await new Promise((resolve) => { setTimeout(resolve, 1000); });
+        }
+      }
+
+      successCount++;
+      statusElem.textContent = 'Done';
+      statusElem.className = 'badge bg-success';
+    } catch (e) {
+      console.error(`Batch processing failed for ${file.name}:`, e);
+      errorCount++;
+      statusElem.textContent = 'Error';
+      statusElem.className = 'badge bg-danger';
+    }
+  }
+
+  if (useZip && zipWriter && zipBlobWriter) {
+    await zipWriter.close();
+    if (successCount > 0) {
+      const zipBlob = await zipBlobWriter.getData();
+      const a = document.createElement('a');
+      a.download = 'scribe_batch_output.zip';
+      a.href = URL.createObjectURL(zipBlob);
+      a.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+      }));
+    }
+  }
+
+  elem.batch.batchOverallLabel.textContent = `${successCount} of ${totalFiles} files processed`;
+  elem.batch.batchOverallPercent.textContent = '100%';
+  elem.batch.batchOverallProgressBar.style.width = '100%';
+
+  elem.batch.batchCompleteMessage.style.display = '';
+
+  if (errorCount > 0) {
+    elem.batch.batchErrorSummary.style.display = '';
+    elem.batch.batchErrorCount.textContent = String(errorCount);
+  }
+
+  await scribe.clear();
+  batchProcessingActive = false;
+}
+
 elem.upload.openFileInput.addEventListener('change', () => {
+  if (batchProcessingActive) return;
   if (!elem.upload.openFileInput.files || elem.upload.openFileInput.files.length === 0) return;
+
+  if (elem.batch.batchModeToggle.checked) {
+    batchProcessFiles(elem.upload.openFileInput.files);
+    return;
+  }
 
   importFilesGUI(elem.upload.openFileInput.files);
   // This should run after importFiles so if that function fails the dropzone is not removed
@@ -164,6 +327,7 @@ elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
   // Prevent navigation.
   event.preventDefault();
 
+  if (batchProcessingActive) return;
   if (!event.dataTransfer) return;
   const items = await ScribeViewer.getAllFileEntries(event.dataTransfer.items);
 
@@ -180,6 +344,11 @@ elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
 
   elem.upload.uploadDropZone.classList.remove('highlight');
 
+  if (elem.batch.batchModeToggle.checked) {
+    batchProcessFiles(files);
+    return;
+  }
+
   importFilesGUI(files);
 
   // This should run after importFiles so if that function fails the dropzone is not removed
@@ -192,6 +361,7 @@ elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
  */
 const handlePaste = async (event) => {
   // The event listner is on the `window` so is not deleted when the dropzone is hidden.
+  if (batchProcessingActive) return;
   if (scribe.data.pageMetrics.length > 0) return;
   const clipboardData = event.clipboardData;
   if (!clipboardData) return;
@@ -206,6 +376,10 @@ const handlePaste = async (event) => {
   }
 
   if (imageArr.length > 0) {
+    if (elem.batch.batchModeToggle.checked) {
+      batchProcessFiles(imageArr);
+      return;
+    }
     await importFilesGUI(imageArr);
     elem.upload.uploadDropZone.setAttribute('style', 'display:none');
   }

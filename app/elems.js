@@ -367,6 +367,40 @@ class info {
   static debugConflicts = /** @type {HTMLInputElement} */(document.getElementById('debugConflicts'));
 }
 
+class batch {
+  static batchModeToggle = /** @type {HTMLInputElement} */(document.getElementById('batchModeToggle'));
+
+  static batchConfigPanel = /** @type {HTMLDivElement} */(document.getElementById('batchConfigPanel'));
+
+  static batchOutputFormat = /** @type {HTMLSelectElement} */(document.getElementById('batchOutputFormat'));
+
+  static batchRunRecognition = /** @type {HTMLInputElement} */(document.getElementById('batchRunRecognition'));
+
+  static batchDownloadZip = /** @type {HTMLInputElement} */(document.getElementById('batchDownloadZip'));
+
+  static batchProgressPanel = /** @type {HTMLDivElement} */(document.getElementById('batchProgressPanel'));
+
+  static batchOverallLabel = /** @type {HTMLSpanElement} */(document.getElementById('batchOverallLabel'));
+
+  static batchOverallPercent = /** @type {HTMLSpanElement} */(document.getElementById('batchOverallPercent'));
+
+  static batchOverallProgressBar = /** @type {HTMLDivElement} */(document.getElementById('batchOverallProgressBar'));
+
+  static batchFileList = /** @type {HTMLTableSectionElement} */(document.getElementById('batchFileList'));
+
+  static batchCompleteMessage = /** @type {HTMLDivElement} */(document.getElementById('batchCompleteMessage'));
+
+  static batchReturnButton = /** @type {HTMLButtonElement} */(document.getElementById('batchReturnButton'));
+
+  static batchErrorSummary = /** @type {HTMLDivElement} */(document.getElementById('batchErrorSummary'));
+
+  static batchErrorCount = /** @type {HTMLSpanElement} */(document.getElementById('batchErrorCount'));
+
+  static uploadContentDiv = /** @type {HTMLDivElement} */(document.getElementById('uploadContentDiv'));
+
+  static uploadOuterContainer = /** @type {HTMLDivElement} */(document.getElementById('uploadOuterContainer'));
+}
+
 class canvas {
   static legendCanvasParentDiv = /** @type {HTMLDivElement} */(document.getElementById('legendCanvasParentDiv'));
 
@@ -379,6 +413,8 @@ class canvas {
 
 export class elem {
   static upload = upload;
+
+  static batch = batch;
 
   static canvas = canvas;
 

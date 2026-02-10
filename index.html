@@ -183,6 +183,10 @@
       outline-color: #0576bd;
       background-color: #c8dadf;
     }
+
+    .tooltip-wide .tooltip-inner {
+      max-width: 350px;
+    }
   </style>
   <meta charset="utf-8" />
   <title>Scribe OCR</title>
@@ -1771,14 +1775,14 @@
     </div>
   </div>
   <div style="height:100vh">
-    <div class="container">
+    <div class="container" id="uploadOuterContainer">
       <div class="container" style="position:absolute;top:100px;height:80vh">
 
         <fieldset class="upload_dropZone text-center p-4" id="uploadDropZone"
           style="height:100%;z-index:10;position:relative;width:90%">
           <legend class="visually-hidden">Image uploader</legend>
 
-          <div style="position:relative;top:35%">
+          <div id="uploadContentDiv" style="position:relative;top:35%">
             <p class="small">Drag &amp; drop files inside dashed region<br><i>or</i></p>
             <input type="file" class="position-absolute invisible" id="openFileInput" multiple="">
             <label class="btn btn-info mb-3" for="openFileInput" id="openFileInputLabel" style="min-width:8rem">Select
@@ -1787,11 +1791,105 @@
               style="display:inline!important">
             </div>
             <div class="upload_gallery d-flex flex-wrap justify-content-center gap-3 mb-0"></div>
-            <p class="small">Need help? View the <a href="https://docs.scribeocr.com">docs</a>.<br></p>
+
+            <div id="batchModeContainer" class="mt-2">
+              <div class="form-check form-switch d-inline-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" id="batchModeToggle" role="switch">
+                <label class="form-check-label" for="batchModeToggle" style="font-size:0.9rem;font-weight:500">Batch
+                  Mode</label>
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="16" viewBox="0 0 36 16">
+                  <rect width="36" height="16" rx="3" fill="#6c757d" /><text x="18" y="11.5"
+                    font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#fff"
+                    text-anchor="middle">Beta</text>
+                </svg>
+                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-custom-class="tooltip-wide"
+                  title=""
+                  data-bs-original-title="Automatically process multiple documents in sequence and download the results. The interactive viewer is disabled during batch processing."
+                  data-bs-placement="right">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="var(--bs-body-color)"
+                    class="bi bi-question-circle-fill" viewBox="0 0 16 16" style="vertical-align:baseline">
+                    <path
+                      d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                  </svg>
+                </a>
+              </div>
+
+              <div id="batchConfigPanel" style="display:none;max-width:380px;margin:0.6rem auto 0">
+                <div class="card" style="border-color:#c1ddef">
+                  <div class="card-body py-2 px-3">
+                    <div class="row g-2 align-items-center">
+                      <div class="col-auto">
+                        <label for="batchOutputFormat" class="col-form-label col-form-label-sm">Output Format</label>
+                      </div>
+                      <div class="col-auto">
+                        <select class="form-select form-select-sm" id="batchOutputFormat" style="width:auto">
+                          <option value="pdf">.pdf</option>
+                          <option value="scribe" selected>.scribe</option>
+                          <option value="hocr">.hocr</option>
+                          <option value="alto">.xml (ALTO)</option>
+                          <option value="txt">.txt</option>
+                          <option value="docx">.docx</option>
+                          <option value="html">.html</option>
+                          <option value="md">.md</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-check mt-2">
+                      <input class="form-check-input" type="checkbox" id="batchRunRecognition" checked>
+                      <label class="form-check-label small" for="batchRunRecognition">Run OCR Recognition</label>
+                    </div>
+                    <div class="form-check mt-1">
+                      <input class="form-check-input" type="checkbox" id="batchDownloadZip" checked>
+                      <label class="form-check-label small" for="batchDownloadZip">Download as .zip</label>
+                    </div>
+                  </div>
+                </div>
+                <p class="small text-muted mt-1 mb-0">Each file processed separately.</p>
+              </div>
+            </div>
+
+            <p class="small mt-2">Need help? View the <a href="https://docs.scribeocr.com">docs</a>.<br></p>
           </div>
+
         </fieldset>
       </div>
 
+    </div>
+
+    <div id="batchProgressPanel"
+      style="display:none;position:absolute;top:100px;left:0;right:0;bottom:0;z-index:15;background:#fff">
+      <div style="max-width:550px;margin:0 auto;padding:2rem 1rem">
+        <h5 class="mb-3" style="color:#287bb5">Batch Processing</h5>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small mb-1">
+            <span id="batchOverallLabel">File 0 of 0</span>
+            <span id="batchOverallPercent">0%</span>
+          </div>
+          <div class="progress" style="height:8px">
+            <div class="progress-bar bg-info" id="batchOverallProgressBar" role="progressbar" style="width:0%">
+            </div>
+          </div>
+        </div>
+        <div id="batchFileListContainer"
+          style="max-height:50vh;overflow-y:auto;border:1px solid #dee2e6;border-radius:0.25rem">
+          <table class="table table-sm table-borderless mb-0" style="font-size:0.85rem">
+            <tbody id="batchFileList">
+            </tbody>
+          </table>
+        </div>
+        <div id="batchCompleteMessage" style="display:none" class="mt-3">
+          <div class="alert alert-success py-2 mb-2">
+            Batch processing complete. Your download should begin automatically.
+          </div>
+          <button class="btn btn-info btn-sm" id="batchReturnButton">Process More Files</button>
+        </div>
+        <div id="batchErrorSummary" style="display:none" class="mt-2">
+          <div class="alert alert-warning py-2 mb-0">
+            <span id="batchErrorCount">0</span> file(s) failed to process. Successfully processed files are
+            included in the download.
+          </div>
+        </div>
+      </div>
     </div>
     <div class="container" id="legendCanvasParentDiv"
       style="position:absolute;right:0;height:80vh;width:20vw;top:20vh;z-index:10;display:none;pointer-events:none;display:flex;flex-direction:column;">
