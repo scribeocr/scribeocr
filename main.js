@@ -583,6 +583,10 @@ elem.info.keepPDFTextAlways.addEventListener('click', () => {
   scribe.opt.keepPDFTextAlways = elem.info.keepPDFTextAlways.checked;
 });
 
+elem.info.docxLineSplitSentence.addEventListener('click', () => {
+  scribe.opt.docxLineSplitMode = elem.info.docxLineSplitSentence.checked ? 'sentence' : 'width';
+});
+
 elem.info.confThreshHigh.addEventListener('change', () => {
   scribe.opt.confThreshHigh = parseInt(elem.info.confThreshHigh.value);
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);

@@ -362,6 +362,8 @@ class info {
 
   static showConflicts = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 
+  static docxLineSplitSentence = /** @type {HTMLInputElement} */(document.getElementById('docxLineSplitSentence'));
+
   static debugConflicts = /** @type {HTMLInputElement} */(document.getElementById('debugConflicts'));
 }
 
