@@ -207,6 +207,14 @@ class edit {
 
   static highlightComment = /** @type {HTMLTextAreaElement} */(document.getElementById('highlightComment'));
 
+  static prevAnnotation = /** @type {HTMLButtonElement} */(document.getElementById('prevAnnotation'));
+
+  static nextAnnotation = /** @type {HTMLButtonElement} */(document.getElementById('nextAnnotation'));
+
+  static annotationCurrent = /** @type {HTMLSpanElement} */(document.getElementById('annotationCurrent'));
+
+  static annotationCount = /** @type {HTMLSpanElement} */(document.getElementById('annotationCount'));
+
   // Add/remove words
   static addWord = /** @type {HTMLInputElement} */(document.getElementById('addWord'));
 

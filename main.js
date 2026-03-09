@@ -654,7 +654,8 @@ elem.edit.highlightColorPresets.addEventListener('click', (e) => {
   if (!color) return;
   setActiveSwatch(color);
   const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
-  const n = ScribeViewer.state.cp.n;
+  if (!selectedWords || selectedWords.length === 0) return;
+  const n = selectedWords[0].word.line.page.n;
   if (color === 'none') {
     ScribeViewer.CanvasSelection.removeHighlight(selectedWords, n);
   } else {
@@ -668,7 +669,8 @@ elem.edit.highlightColor.addEventListener('input', () => {
   const color = elem.edit.highlightColor.value;
   setActiveSwatch(color);
   const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
-  const n = ScribeViewer.state.cp.n;
+  if (!selectedWords || selectedWords.length === 0) return;
+  const n = selectedWords[0].word.line.page.n;
   const opacity = parseInt(elem.edit.highlightOpacity.value) / 100;
   ScribeViewer.CanvasSelection.applyHighlight(selectedWords, n, color, opacity);
 });
@@ -676,7 +678,7 @@ elem.edit.highlightColor.addEventListener('input', () => {
 elem.edit.highlightOpacity.addEventListener('input', () => {
   const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
   if (!selectedWords || selectedWords.length === 0) return;
-  const n = ScribeViewer.state.cp.n;
+  const n = selectedWords[0].word.line.page.n;
   const color = elem.edit.highlightColor.value;
   const opacity = parseInt(elem.edit.highlightOpacity.value) / 100;
   ScribeViewer.CanvasSelection.applyHighlight(selectedWords, n, color, opacity);
@@ -685,9 +687,94 @@ elem.edit.highlightOpacity.addEventListener('input', () => {
 elem.edit.highlightComment.addEventListener('input', () => {
   const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
   if (!selectedWords || selectedWords.length === 0) return;
-  const n = ScribeViewer.state.cp.n;
+  const n = selectedWords[0].word.line.page.n;
   const comment = elem.edit.highlightComment.value;
   ScribeViewer.CanvasSelection.modifyHighlightComment(selectedWords, n, comment);
+});
+
+/**
+ * Collects all unique annotation groups across all pages, sorted by page then vertical position.
+ * Each entry has { page, groupId, top }.
+ */
+function getAnnotationGroups() {
+  const groups = [];
+  const seen = new Set();
+  const pages = scribe.data.annotations.pages;
+  for (let i = 0; i < pages.length; i++) {
+    if (!pages[i]) continue;
+    for (const annot of pages[i]) {
+      if (!annot.groupId || seen.has(annot.groupId)) continue;
+      seen.add(annot.groupId);
+      groups.push({ page: i, groupId: annot.groupId, top: annot.bbox.top });
+    }
+  }
+  groups.sort((a, b) => a.page - b.page || a.top - b.top);
+  return groups;
+}
+
+function updateAnnotationCounter() {
+  const groups = getAnnotationGroups();
+  elem.edit.annotationCount.textContent = String(groups.length);
+  const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
+  if (selectedWords && selectedWords.length > 0 && selectedWords[0].highlightGroupId) {
+    const idx = groups.findIndex((g) => g.groupId === selectedWords[0].highlightGroupId);
+    elem.edit.annotationCurrent.textContent = idx >= 0 ? String(idx + 1) : '0';
+  } else {
+    // Show the index of the first annotation on the current page, or 0
+    const n = ScribeViewer.state.cp.n;
+    const idx = groups.findIndex((g) => g.page === n);
+    elem.edit.annotationCurrent.textContent = idx >= 0 ? String(idx + 1) : '0';
+  }
+}
+
+/**
+ * Navigates to the annotation group at the given index, selects its words, and updates UI.
+ * @param {{ page: number, groupId: string }[]} groups
+ * @param {number} targetIdx
+ */
+async function navigateToAnnotation(groups, targetIdx) {
+  const target = groups[targetIdx];
+  ScribeViewer.CanvasSelection.deselectAll();
+  await ScribeViewer.displayPage(target.page, true);
+  const pageWords = ScribeViewer.getKonvaWords();
+  const firstGroupWord = pageWords.find((kw) => kw.highlightGroupId === target.groupId);
+  if (firstGroupWord) {
+    ScribeViewer.CanvasSelection.addWords([firstGroupWord]);
+    firstGroupWord.select();
+    ScribeViewer.KonvaOcrWord.updateUI();
+    ScribeViewer.CanvasSelection.updateHighlightGroupOutline();
+    ScribeViewer.layerText.batchDraw();
+  }
+}
+
+elem.edit.prevAnnotation.addEventListener('click', () => {
+  const groups = getAnnotationGroups();
+  if (groups.length === 0) return;
+  const n = ScribeViewer.state.cp.n;
+  const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
+  const currentGroupId = selectedWords?.[0]?.highlightGroupId;
+  let currentIdx = currentGroupId ? groups.findIndex((g) => g.groupId === currentGroupId) : -1;
+  if (currentIdx === -1) {
+    currentIdx = groups.findLastIndex((g) => g.page <= n);
+    if (currentIdx === -1) currentIdx = 0;
+  }
+  const targetIdx = currentIdx > 0 ? currentIdx - 1 : groups.length - 1;
+  navigateToAnnotation(groups, targetIdx);
+});
+
+elem.edit.nextAnnotation.addEventListener('click', () => {
+  const groups = getAnnotationGroups();
+  if (groups.length === 0) return;
+  const n = ScribeViewer.state.cp.n;
+  const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
+  const currentGroupId = selectedWords?.[0]?.highlightGroupId;
+  let currentIdx = currentGroupId ? groups.findIndex((g) => g.groupId === currentGroupId) : -1;
+  if (currentIdx === -1) {
+    currentIdx = groups.findIndex((g) => g.page >= n);
+    if (currentIdx === -1) currentIdx = groups.length - 1;
+  }
+  const targetIdx = currentIdx < groups.length - 1 ? currentIdx + 1 : 0;
+  navigateToAnnotation(groups, targetIdx);
 });
 
 elem.edit.wordFont.addEventListener('change', () => {
@@ -1826,6 +1913,8 @@ ScribeViewer.KonvaOcrWord.updateUI = () => {
     elem.edit.highlightComment.value = '';
     elem.edit.highlightComment.disabled = true;
   }
+
+  updateAnnotationCounter();
 };
 
 ScribeViewer.KonvaLayout.updateUI = () => {
@@ -1901,6 +1990,8 @@ ScribeViewer.displayPageCallback = () => {
 
   elem.nav.matchCurrent.textContent = calcMatchNumber(ScribeViewer.state.cp.n);
   elem.nav.matchCount.textContent = String(ScribeViewer.search.total);
+
+  updateAnnotationCounter();
 
   renderDebugVis(ScribeViewer.state.cp.n);
 
