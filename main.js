@@ -123,7 +123,7 @@ elem.info.intermediatePDF.addEventListener('click', () => {
 });
 
 elem.view.displayMode.addEventListener('change', () => {
-  scribe.opt.displayMode = /** @type {"invis" | "ebook" | "eval" | "proof"} */(elem.view.displayMode.value);
+  scribe.opt.displayMode = /** @type {'invis' | 'ebook' | 'eval' | 'proof' | 'annot'} */(elem.view.displayMode.value);
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
   enableDisableDownloadPDFAlert();
 });
@@ -571,6 +571,16 @@ elem.info.enableLayout.addEventListener('click', () => {
   elem.nav.navLayoutTab.style.display = elem.info.enableLayout.checked ? '' : 'none';
 });
 
+elem.info.enableAnnotate.addEventListener('click', () => {
+  const enabled = elem.info.enableAnnotate.checked;
+  elem.nav.navAnnotateTab.style.display = enabled ? '' : 'none';
+  elem.view.displayModeAnnot.style.display = enabled ? '' : 'none';
+  if (!enabled && elem.view.displayMode.value === 'annot') {
+    elem.view.displayMode.value = 'proof';
+    elem.view.displayMode.dispatchEvent(new Event('change'));
+  }
+});
+
 export const enableXlsxExportClick = () => {
   // Adding layouts is required for xlsx exports
   if (!elem.info.enableLayout.checked) elem.info.enableLayout.click();
@@ -616,6 +626,68 @@ elem.edit.styleUnderline.addEventListener('click', () => {
   ScribeViewer.CanvasSelection.modifySelectedWordStyle({
     underline: elem.edit.styleUnderline.checked,
   });
+});
+
+/** Sets the active swatch to the one matching the given color, or the custom swatch if none match. */
+function setActiveSwatch(color) {
+  const swatches = /** @type {NodeListOf<HTMLElement>} */(elem.edit.highlightColorPresets.querySelectorAll('.highlightSwatch'));
+  let matched = false;
+  swatches.forEach((sw) => {
+    if (sw.dataset.color === color) {
+      sw.classList.add('active');
+      matched = true;
+    } else {
+      sw.classList.remove('active');
+    }
+  });
+  const customSwatch = /** @type {HTMLElement|null} */(elem.edit.highlightColorPresets.querySelector('.highlightSwatchCustom'));
+  if (!matched && customSwatch) {
+    customSwatch.classList.add('active');
+    customSwatch.style.background = color;
+  }
+}
+
+elem.edit.highlightColorPresets.addEventListener('click', (e) => {
+  const swatch = /** @type {HTMLElement} */(/** @type {HTMLElement} */(e.target).closest('.highlightSwatch'));
+  if (!swatch) return;
+  const color = swatch.dataset.color;
+  if (!color) return;
+  setActiveSwatch(color);
+  const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
+  const n = ScribeViewer.state.cp.n;
+  if (color === 'none') {
+    ScribeViewer.CanvasSelection.removeHighlight(selectedWords, n);
+  } else {
+    elem.edit.highlightColor.value = color;
+    const opacity = parseInt(elem.edit.highlightOpacity.value) / 100;
+    ScribeViewer.CanvasSelection.applyHighlight(selectedWords, n, color, opacity);
+  }
+});
+
+elem.edit.highlightColor.addEventListener('input', () => {
+  const color = elem.edit.highlightColor.value;
+  setActiveSwatch(color);
+  const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
+  const n = ScribeViewer.state.cp.n;
+  const opacity = parseInt(elem.edit.highlightOpacity.value) / 100;
+  ScribeViewer.CanvasSelection.applyHighlight(selectedWords, n, color, opacity);
+});
+
+elem.edit.highlightOpacity.addEventListener('input', () => {
+  const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
+  if (!selectedWords || selectedWords.length === 0) return;
+  const n = ScribeViewer.state.cp.n;
+  const color = elem.edit.highlightColor.value;
+  const opacity = parseInt(elem.edit.highlightOpacity.value) / 100;
+  ScribeViewer.CanvasSelection.applyHighlight(selectedWords, n, color, opacity);
+});
+
+elem.edit.highlightComment.addEventListener('input', () => {
+  const selectedWords = ScribeViewer.CanvasSelection.getKonvaWords();
+  if (!selectedWords || selectedWords.length === 0) return;
+  const n = ScribeViewer.state.cp.n;
+  const comment = elem.edit.highlightComment.value;
+  ScribeViewer.CanvasSelection.modifyHighlightComment(selectedWords, n, comment);
 });
 
 elem.edit.wordFont.addEventListener('change', () => {
@@ -1715,7 +1787,11 @@ clearFiles();
 ScribeViewer.KonvaOcrWord.updateUI = () => {
   const wordFirst = ScribeViewer.CanvasSelection.getKonvaWords()[0];
 
-  if (!wordFirst) return;
+  if (!wordFirst) {
+    elem.edit.highlightComment.value = '';
+    elem.edit.highlightComment.disabled = true;
+    return;
+  }
 
   const { fontFamilyArr, fontSizeArr } = ScribeViewer.CanvasSelection.getWordProperties();
 
@@ -1736,6 +1812,20 @@ ScribeViewer.KonvaOcrWord.updateUI = () => {
   elem.edit.styleUnderline.checked = wordFirst.word.style.underline;
   elem.edit.styleItalic.checked = wordFirst.word.style.italic;
   elem.edit.styleBold.checked = wordFirst.word.style.bold;
+
+  const hasHighlight = !!wordFirst.highlightColor;
+  elem.edit.styleHighlight.checked = hasHighlight;
+  if (hasHighlight) {
+    elem.edit.highlightColor.value = /** @type {string} */ (wordFirst.highlightColor);
+    elem.edit.highlightOpacity.value = String(Math.round(wordFirst.highlightOpacity * 100));
+    setActiveSwatch(wordFirst.highlightColor);
+    elem.edit.highlightComment.value = wordFirst.highlightComment || '';
+    elem.edit.highlightComment.disabled = false;
+  } else {
+    setActiveSwatch('none');
+    elem.edit.highlightComment.value = '';
+    elem.edit.highlightComment.disabled = true;
+  }
 };
 
 ScribeViewer.KonvaLayout.updateUI = () => {

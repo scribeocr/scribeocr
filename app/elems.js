@@ -48,6 +48,10 @@ class nav {
 
   static navLayoutTab = /** @type {HTMLDivElement} */(document.getElementById('nav-layout-tab'));
 
+  static navAnnotateTab = /** @type {HTMLDivElement} */(document.getElementById('nav-annotate-tab'));
+
+  static navAnnotate = /** @type {HTMLDivElement} */(document.getElementById('nav-annotate'));
+
   static navLayout = /** @type {HTMLDivElement} */(document.getElementById('nav-layout'));
 
   static navRecognize = /** @type {HTMLDivElement} */(document.getElementById('nav-recognize'));
@@ -154,6 +158,8 @@ class evaluate {
 class view {
   static displayMode = /** @type {HTMLSelectElement} */(document.getElementById('displayMode'));
 
+  static displayModeAnnot = /** @type {HTMLOptionElement} */(document.getElementById('displayModeAnnot'));
+
   static colorMode = /** @type {HTMLSelectElement} */(document.getElementById('colorMode'));
 
   static autoRotate = /** @type {HTMLInputElement} */(document.getElementById('autoRotate'));
@@ -188,6 +194,18 @@ class edit {
   static styleSuper = /** @type {HTMLInputElement} */(document.getElementById('styleSuper'));
 
   static styleUnderline = /** @type {HTMLInputElement} */(document.getElementById('styleUnderline'));
+
+  static styleHighlight = /** @type {HTMLInputElement} */(document.getElementById('styleHighlight'));
+
+  static highlightColor = /** @type {HTMLInputElement} */(document.getElementById('highlightColor'));
+
+  static highlightColorPresets = /** @type {HTMLDivElement} */(document.getElementById('highlightColorPresets'));
+
+  static highlightOpacity = /** @type {HTMLInputElement} */(document.getElementById('highlightOpacity'));
+
+  static highlightOptions = /** @type {HTMLDivElement} */(document.getElementById('highlightOptions'));
+
+  static highlightComment = /** @type {HTMLTextAreaElement} */(document.getElementById('highlightComment'));
 
   // Add/remove words
   static addWord = /** @type {HTMLInputElement} */(document.getElementById('addWord'));
@@ -332,6 +350,8 @@ class info {
   static enableEval = /** @type {HTMLInputElement} */(document.getElementById('enableEval'));
 
   static enableLayout = /** @type {HTMLInputElement} */(document.getElementById('enableLayout'));
+
+  static enableAnnotate = /** @type {HTMLInputElement} */(document.getElementById('enableAnnotate'));
 
   static enableXlsxExport = /** @type {HTMLInputElement} */(document.getElementById('enableXlsxExport'));
 
