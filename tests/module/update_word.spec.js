@@ -10,7 +10,7 @@ import { ASSETS_PATH_KARMA, BASE_URL_KARMA } from '../constants.js';
 
 config.truncateThreshold = 0;
 
-const SCRIBE_JS_ASSETS = `${BASE_URL_KARMA}/scribe-ui/scribe.js/tests/assets`;
+const SCRIBE_JS_ASSETS = `${BASE_URL_KARMA}/scribe-ui/scribe.js/tests/test-assets`;
 
 /**
  * Capture rendering-relevant state from a KonvaOcrWord.
