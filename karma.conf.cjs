@@ -15,21 +15,21 @@ module.exports = function (config) {
     files: [
       { pattern: 'tests/module/*spec.js', type: 'module' },
       // Non-test files are not served by default, even if referenced in the test files.
-      // Using '**/*' or 'scribe-ui/**' causes OOM, so list patterns explicitly.
+      // Using '**/*' or 'scribe.js/**' causes OOM, so list patterns explicitly.
       { pattern: 'node_modules/chai/*', included: false, served: true },
       { pattern: 'tests/**', included: false, served: true },
       { pattern: 'app/**', included: false, served: true },
       // scribe-ui viewer and supporting JS
-      { pattern: 'scribe-ui/*.js', included: false, served: true },
-      { pattern: 'scribe-ui/js/**', included: false, served: true },
+      { pattern: 'scribe.js/scribe-ui/*.js', included: false, served: true },
+      { pattern: 'scribe.js/scribe-ui/js/**', included: false, served: true },
       // scribe.js core
-      { pattern: 'scribe-ui/scribe.js/scribe.js', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/js/**', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/lib/**', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/fonts/**', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/mupdf/**', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/tests/assets/**', included: false, served: true },
-      { pattern: 'scribe-ui/scribe.js/tess/**', included: false, served: true },
+      { pattern: 'scribe.js/scribe.js', included: false, served: true },
+      { pattern: 'scribe.js/js/**', included: false, served: true },
+      { pattern: 'scribe.js/lib/**', included: false, served: true },
+      { pattern: 'scribe.js/fonts/**', included: false, served: true },
+      { pattern: 'scribe.js/mupdf/**', included: false, served: true },
+      { pattern: 'scribe.js/tests/test-assets/**', included: false, served: true },
+      { pattern: 'scribe.js/tess/**', included: false, served: true },
     ],
 
     // list of files / patterns to exclude

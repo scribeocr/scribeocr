@@ -4,13 +4,13 @@
 /* eslint-disable func-names */
 
 import { assert, config } from '../../node_modules/chai/chai.js';
-import scribe from '../../scribe-ui/scribe.js/scribe.js';
-import { ScribeViewer } from '../../scribe-ui/viewer.js';
+import scribe from '../../scribe.js/scribe.js';
+import { ScribeViewer } from '../../scribe.js/scribe-ui/viewer.js';
 import { ASSETS_PATH_KARMA, BASE_URL_KARMA } from '../constants.js';
 
 config.truncateThreshold = 0;
 
-const SCRIBE_JS_ASSETS = `${BASE_URL_KARMA}/scribe-ui/scribe.js/tests/test-assets`;
+const SCRIBE_JS_ASSETS = `${BASE_URL_KARMA}/scribe.js/tests/test-assets`;
 
 /**
  * Capture rendering-relevant state from a KonvaOcrWord.

@@ -1,14 +1,14 @@
 /* eslint-disable import/no-cycle */
 import { Collapse, Tooltip } from './app/lib/bootstrap.esm.bundle.min.js';
 
-import scribe from './scribe-ui/scribe.js/scribe.js';
+import scribe from './scribe.js/scribe.js';
 
 import { insertAlertMessage } from './app/utils/warningMessages.js';
 
-import { ScribeViewer } from './scribe-ui/viewer.js';
+import { ScribeViewer } from './scribe.js/scribe-ui/viewer.js';
 
 import { elem } from './app/elems.js';
-import { RecognitionModelTextractBrowser } from './scribe-ui/scribe.js/cloud-adapters/aws-textract/RecognitionModelAwsTextractBrowser.js';
+import { RecognitionModelTextractBrowser } from './scribe.js/cloud-adapters/aws-textract/RecognitionModelAwsTextractBrowser.js';
 import { ProgressBars } from './app/utils/progressBars.js';
 
 ScribeViewer.enableCanvasSelection = true;
@@ -184,7 +184,7 @@ async function batchProcessFiles(files) {
     elem.batch.batchFileList.appendChild(row);
   });
 
-  const zipModule = useZip ? await import('./scribe-ui/scribe.js/lib/zip.js/index.js') : null;
+  const zipModule = useZip ? await import('./scribe.js/lib/zip.js/index.js') : null;
   const zipBlobWriter = zipModule ? new zipModule.BlobWriter('application/zip') : null;
   const zipWriter = zipModule && zipBlobWriter ? new zipModule.ZipWriter(zipBlobWriter) : null;
 
@@ -1155,7 +1155,7 @@ export function setLangOpt() {
 // TODO: Visualizations are added to the dropdown menu, even when they do not exist for every page.
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
 async function addVisInstructionsUI() {
-  const { combineOrderedArrays } = await import('./scribe-ui/scribe.js/scrollview-web/util/combine.js');
+  const { combineOrderedArrays } = await import('./scribe.js/scrollview-web/util/combine.js');
   if (!scribe.data.vis || scribe.data.vis.length === 0) return;
   const visNamesAll = scribe.data.vis.map((x) => Object.keys(x));
   if (visNamesAll.length === 0) return;

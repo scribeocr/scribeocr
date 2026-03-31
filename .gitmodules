@@ -1,9 +1,3 @@
-[submodule "scrollview-web"]
-	path = scrollview-web
-	url = https://github.com/scribeocr/scrollview-web.git
 [submodule "scribe.js"]
 	path = scribe.js
 	url = https://github.com/scribeocr/scribe.js.git
-[submodule "scribe-ui"]
-	path = scribe-ui
-	url = https://github.com/scribeocr/scribe-ui.git
