@@ -421,6 +421,8 @@ class info {
 
   static docxLineSplitSentence = /** @type {HTMLInputElement} */(document.getElementById('docxLineSplitSentence'));
 
+  static printRecognitionTime = /** @type {HTMLInputElement} */(document.getElementById('printRecognitionTime'));
+
   static debugConflicts = /** @type {HTMLInputElement} */(document.getElementById('debugConflicts'));
 }
 

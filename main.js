@@ -489,6 +489,7 @@ elem.recognize.enableUpscale.addEventListener('click', () => {
 
 elem.info.showDebugVis.addEventListener('change', () => {
   scribe.opt.debugVis = elem.info.showDebugVis.checked;
+  if (scribe.data.pageMetrics.length === 0) return;
   if (scribe.opt.debugVis) {
     ScribeViewer.displayPage(ScribeViewer.state.cp.n);
   } else {
@@ -946,6 +947,10 @@ elem.info.keepPDFTextAlways.addEventListener('click', () => {
 
 elem.info.docxLineSplitSentence.addEventListener('click', () => {
   scribe.opt.docxLineSplitMode = elem.info.docxLineSplitSentence.checked ? 'sentence' : 'width';
+});
+
+elem.info.printRecognitionTime.addEventListener('click', () => {
+  scribe.opt.printRecognitionTime = elem.info.printRecognitionTime.checked;
 });
 
 elem.info.confThreshHigh.addEventListener('change', () => {
@@ -1963,6 +1968,11 @@ const renderDebugVis = (n) => {
     }
 
     ScribeViewer.layerOverlay.batchDraw();
+  } else {
+    const group = ScribeViewer.getOverlayGroup(n);
+    group.destroyChildren();
+    ScribeViewer.layerOverlay.batchDraw();
+    ctxLegend.clearRect(0, 0, ctxLegend.canvas.width, ctxLegend.canvas.height);
   }
 };
 
