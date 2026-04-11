@@ -123,7 +123,24 @@ elem.info.intermediatePDF.addEventListener('click', () => {
 });
 
 elem.view.displayMode.addEventListener('change', () => {
+  // If currently editing a word, finish the edit before switching modes.
+  if (ScribeViewer.KonvaIText.inputRemove) {
+    ScribeViewer.KonvaIText.inputRemove();
+  }
+
   scribe.opt.displayMode = /** @type {'invis' | 'ebook' | 'eval' | 'proof' | 'annot'} */(elem.view.displayMode.value);
+
+  if (scribe.opt.displayMode === 'invis') {
+    ScribeViewer.enableHTMLOverlay = true;
+    ScribeViewer.KonvaIText.enableEditing = false;
+    ScribeViewer.enableCanvasSelection = false;
+  } else {
+    ScribeViewer.enableHTMLOverlay = false;
+    ScribeViewer.deleteHTMLOverlay();
+    ScribeViewer.KonvaIText.enableEditing = true;
+    ScribeViewer.enableCanvasSelection = true;
+  }
+
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
   enableDisableDownloadPDFAlert();
 });
