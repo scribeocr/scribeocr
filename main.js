@@ -1986,9 +1986,6 @@ const renderDebugVis = (n) => {
 
     ScribeViewer.layerOverlay.batchDraw();
   } else {
-    const group = ScribeViewer.getOverlayGroup(n);
-    group.destroyChildren();
-    ScribeViewer.layerOverlay.batchDraw();
     ctxLegend.clearRect(0, 0, ctxLegend.canvas.width, ctxLegend.canvas.height);
   }
 };
