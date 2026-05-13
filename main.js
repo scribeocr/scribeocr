@@ -15,6 +15,15 @@ ScribeViewer.enableCanvasSelection = true;
 ScribeViewer.KonvaIText.enableEditing = true;
 ScribeViewer.init(elem.canvas.canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
 
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  if (resizeTimer) clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    resizeTimer = null;
+    ScribeViewer.resize(document.documentElement.clientWidth, document.documentElement.clientHeight);
+  }, 150);
+});
+
 let batchProcessingActive = false;
 
 /**
