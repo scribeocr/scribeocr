@@ -368,8 +368,6 @@ class info {
 
   static usePDFTextSuppCheckbox = /** @type {HTMLInputElement} */(document.getElementById('usePDFTextSuppCheckbox'));
 
-  static omitNativeTextCheckbox = /** @type {HTMLInputElement} */(document.getElementById('omitNativeTextCheckbox'));
-
   static confThreshHigh = /** @type {HTMLInputElement} */(document.getElementById('confThreshHigh'));
 
   static confThreshMed = /** @type {HTMLInputElement} */(document.getElementById('confThreshMed'));
@@ -386,11 +384,7 @@ class info {
   // Debug output.
   static downloadDebugCsv = /** @type {HTMLDivElement} */(document.getElementById('downloadDebugCsv'));
 
-  static downloadSourcePDF = /** @type {HTMLDivElement} */(document.getElementById('downloadSourcePDF'));
-
   static downloadStaticVis = /** @type {HTMLDivElement} */(document.getElementById('downloadStaticVis'));
-
-  static downloadPDFFonts = /** @type {HTMLDivElement} */(document.getElementById('downloadPDFFonts'));
 
   static debugPrintCoords = /** @type {HTMLInputElement} */(document.getElementById('debugPrintCoords'));
 

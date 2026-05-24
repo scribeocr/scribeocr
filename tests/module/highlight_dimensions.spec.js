@@ -22,7 +22,7 @@ describe('highlight dimensions: canvas vs HTML overlay', function () {
     await scribe.init({ ocr: true, font: true });
     ScribeViewer.init(container, 800, 600);
 
-    await scribe.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
+    await ScribeViewer.doc.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
     await ScribeViewer.displayPage(0);
   });
 

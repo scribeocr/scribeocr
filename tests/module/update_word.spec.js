@@ -53,7 +53,7 @@ function registerStyleTests() {
       word.word.style[prop] = !word.word.style[prop];
 
       // Update font info (mirrors modifySelectedWordStyle)
-      const fontI = scribe.data.font.getFont(word.word.style, word.word.lang);
+      const fontI = ScribeViewer.doc.fonts.getFont(word.word.style, word.word.lang);
       word.fontFaceName = fontI.fontFaceName;
       word.fontFaceStyle = fontI.fontFaceStyle;
       word.fontFaceWeight = fontI.fontFaceWeight;
@@ -106,7 +106,7 @@ describe('updateWordCanvas matches fresh render (visualCoords=true)', function (
     await scribe.init({ ocr: true, font: true });
     ScribeViewer.init(container, 800, 600);
 
-    await scribe.importFiles([
+    await ScribeViewer.doc.importFiles([
       `${ASSETS_PATH_KARMA}/academic_article_2.pdf`,
       `${SCRIBE_JS_ASSETS}/academic_article_2_analyzeDocResponse.json`,
     ]);
@@ -132,7 +132,7 @@ describe('updateWordCanvas matches fresh render (visualCoords=false)', function 
     await scribe.init({ ocr: true, font: true });
     ScribeViewer.init(container, 800, 600);
 
-    await scribe.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
+    await ScribeViewer.doc.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
     await ScribeViewer.displayPage(0);
   });
 

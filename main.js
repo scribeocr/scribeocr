@@ -11,6 +11,8 @@ import { elem } from './app/elems.js';
 import { RecognitionModelTextractBrowser } from './scribe.js/cloud-adapters/aws-textract/RecognitionModelAwsTextractBrowser.js';
 import { ProgressBars } from './app/utils/progressBars.js';
 
+const doc = ScribeViewer.doc;
+
 ScribeViewer.enableCanvasSelection = true;
 ScribeViewer.KonvaIText.enableEditing = true;
 ScribeViewer.init(elem.canvas.canvasContainer, document.documentElement.clientWidth, document.documentElement.clientHeight);
@@ -41,7 +43,7 @@ const progressHandler = (message) => {
     const engineName = message.info.engineName;
     // Display the page if either (1) this is the currently active OCR or (2) this is Tesseract Legacy and Tesseract LSTM is active, but does not exist yet.
     // The latter condition occurs briefly whenever recognition is run in "Quality" mode.
-    const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
+    const oemActive = Object.keys(doc.ocr).find((key) => doc.ocr[key] === doc.ocr.active && key !== 'active');
     const displayOCR = engineName === oemActive || ['Tesseract Legacy', 'Tesseract LSTM'].includes(engineName) && oemActive === 'Tesseract Latest';
 
     if (displayOCR && ScribeViewer.state.cp.n === n) ScribeViewer.displayPage(n);
@@ -75,8 +77,6 @@ scribe.opt.progressHandler = progressHandler;
 
 scribe.opt.saveDebugImages = true;
 
-scribe.opt.calcSuppFontInfo = true;
-
 scribe.init({ font: true });
 
 // Disable mouse wheel + control to zoom by the browser.
@@ -96,10 +96,6 @@ elem.info.debugDownloadCanvas.addEventListener('click', downloadCanvas);
 elem.info.debugDownloadImage.addEventListener('click', downloadCurrentImage);
 
 elem.info.debugEvalLine.addEventListener('click', evalSelectedLine);
-
-elem.info.omitNativeTextCheckbox.addEventListener('click', () => {
-  scribe.opt.omitNativeText = elem.info.omitNativeTextCheckbox.checked;
-});
 
 elem.info.usePDFTextMainCheckbox.addEventListener('click', () => {
   scribe.opt.usePDFText.native.main = elem.info.usePDFTextMainCheckbox.checked;
@@ -242,20 +238,20 @@ async function batchProcessFiles(files) {
     statusElem.className = 'badge bg-info';
 
     try {
-      await scribe.clear();
+      doc.clear();
 
-      await scribe.importFiles([file]);
+      await doc.importFiles([file]);
 
       if (runRecognition) {
-        const skipRecOCR = scribe.inputData.xmlMode[0] && !scribe.inputData.imageMode && !scribe.inputData.pdfMode;
-        const skipRecPDF = scribe.inputData.pdfMode && scribe.inputData.pdfType === 'text';
+        const skipRecOCR = doc.inputData.xmlMode[0] && !doc.inputData.imageMode && !doc.inputData.pdfMode;
+        const skipRecPDF = doc.inputData.pdfMode && doc.inputData.pdfType === 'text';
 
         if (!skipRecOCR && !skipRecPDF) {
-          await scribe.recognize({ langs: ScribeViewer.opt.langs });
+          await doc.recognize({ langs: ScribeViewer.opt.langs });
         }
       }
 
-      const content = await scribe.exportData(/** @type {"pdf"|"hocr"|"alto"|"docx"|"html"|"xlsx"|"txt"|"md"|"scribe"} */ (outputFormat));
+      const content = await doc.exportData(/** @type {"pdf"|"hocr"|"alto"|"docx"|"html"|"xlsx"|"txt"|"md"|"scribe"} */ (outputFormat));
 
       const baseName = file.name.replace(/\.\w{1,6}$/, '');
       const outputFileName = `${baseName}.${ext}`;
@@ -310,7 +306,7 @@ async function batchProcessFiles(files) {
     elem.batch.batchErrorCount.textContent = String(errorCount);
   }
 
-  await scribe.clear();
+  doc.clear();
   batchProcessingActive = false;
 }
 
@@ -392,7 +388,7 @@ elem.upload.uploadDropZone.addEventListener('drop', async (event) => {
 const handlePaste = async (event) => {
   // The event listner is on the `window` so is not deleted when the dropzone is hidden.
   if (batchProcessingActive) return;
-  if (scribe.data.pageMetrics.length > 0) return;
+  if (doc.pageMetrics.length > 0) return;
   const clipboardData = event.clipboardData;
   if (!clipboardData) return;
   const items = clipboardData.items;
@@ -515,7 +511,7 @@ elem.recognize.enableUpscale.addEventListener('click', () => {
 
 elem.info.showDebugVis.addEventListener('change', () => {
   scribe.opt.debugVis = elem.info.showDebugVis.checked;
-  if (scribe.data.pageMetrics.length === 0) return;
+  if (doc.pageMetrics.length === 0) return;
   if (scribe.opt.debugVis) {
     ScribeViewer.displayPage(ScribeViewer.state.cp.n);
   } else {
@@ -726,7 +722,7 @@ elem.edit.highlightComment.addEventListener('input', () => {
 function getAnnotationGroups() {
   const groups = [];
   const seen = new Set();
-  const pages = scribe.data.annotations.pages;
+  const pages = doc.annotations.pages;
   for (let i = 0; i < pages.length; i++) {
     if (!pages[i]) continue;
     for (const annot of pages[i]) {
@@ -914,7 +910,7 @@ export function adjustBaselineRangeChange(value) {
 }
 
 export function toggleEditButtons(disable = true) {
-  if (!disable && !scribe.data.ocr.active[0]) return;
+  if (!disable && !doc.ocr.active[0]) return;
 
   elem.edit.wordFont.disabled = disable;
   elem.edit.fontMinus.disabled = disable;
@@ -1187,8 +1183,8 @@ export function setLangOpt() {
 // While this is the appropriate behavior, the user should be notified that the visualization does not exist for the current page.
 async function addVisInstructionsUI() {
   const { combineOrderedArrays } = await import('./scribe.js/scrollview-web/util/combine.js');
-  if (!scribe.data.vis || scribe.data.vis.length === 0) return;
-  const visNamesAll = scribe.data.vis.map((x) => Object.keys(x));
+  if (!doc.vis || doc.vis.length === 0) return;
+  const visNamesAll = doc.vis.map((x) => Object.keys(x));
   if (visNamesAll.length === 0) return;
   const visNames = visNamesAll.reduce(combineOrderedArrays);
 
@@ -1241,15 +1237,15 @@ async function recognizeTextractClick() {
   elem.recognize.recognizeAll.disabled = true;
 
   ProgressBars.active = ProgressBars.recognize;
-  ProgressBars.active.show(scribe.data.image.pageCount + 1, 0);
+  ProgressBars.active.show(doc.images.pageCount + 1, 0);
 
   const engineName = RecognitionModelTextractBrowser.config.name;
-  if (!scribe.data.ocr[engineName]) scribe.data.ocr[engineName] = Array(scribe.data.image.pageCount);
-  scribe.data.ocr.active = scribe.data.ocr[engineName];
+  if (!doc.ocr[engineName]) doc.ocr[engineName] = Array(doc.images.pageCount);
+  doc.ocr.active = doc.ocr[engineName];
   updateOcrVersionGUI();
 
   try {
-    await scribe.recognize({
+    await doc.recognize({
       model: RecognitionModelTextractBrowser,
       modelOptions: {
         credentials: { accessKeyId, secretAccessKey, sessionToken },
@@ -1268,7 +1264,7 @@ async function recognizeTextractClick() {
 
   ProgressBars.active.fill();
 
-  if (scribe.data.font.state.enableOpt) {
+  if (doc.fonts.state.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
@@ -1305,11 +1301,11 @@ export async function recognizeAllClick() {
   elem.recognize.recognizeAll.disabled = true;
 
   ProgressBars.active = ProgressBars.recognize;
-  const progressMax = oemMode === 'combined' ? scribe.data.image.pageCount * 4 + 2 : scribe.data.image.pageCount + 1;
+  const progressMax = oemMode === 'combined' ? doc.images.pageCount * 4 + 2 : doc.images.pageCount + 1;
   ProgressBars.active.show(progressMax, 0);
 
   try {
-    await scribe.recognize({
+    await doc.recognize({
       modeAdv: oemMode,
       langs: ScribeViewer.opt.langs,
       combineMode: ScribeViewer.opt.combineMode,
@@ -1326,7 +1322,7 @@ export async function recognizeAllClick() {
 
   ProgressBars.active.fill();
 
-  if (scribe.data.font.state.enableOpt) {
+  if (doc.fonts.state.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
@@ -1371,7 +1367,7 @@ elem.layout.layoutApplyPages.addEventListener('click', () => {
   let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value) - 1;
   let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value) - 1;
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
-  layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
+  layoutApplyPagesMax = Math.min(doc.pageMetrics.length - 1, layoutApplyPagesMax);
 
   if (!Number.isFinite(layoutApplyPagesMin) || !Number.isFinite(layoutApplyPagesMax) || layoutApplyPagesMin > layoutApplyPagesMax) {
     console.warn(`Invalid layout apply pages: ${layoutApplyPagesMin} ${layoutApplyPagesMax}`);
@@ -1385,7 +1381,7 @@ elem.layout.layoutApplyPagesMin.addEventListener('keyup', () => {
   let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value) - 1;
   let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value) - 1;
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
-  layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
+  layoutApplyPagesMax = Math.min(doc.pageMetrics.length - 1, layoutApplyPagesMax);
 
   if (!Number.isFinite(layoutApplyPagesMin) || !Number.isFinite(layoutApplyPagesMax) || layoutApplyPagesMin > layoutApplyPagesMax) {
     elem.layout.layoutApplyPages.disabled = true;
@@ -1398,7 +1394,7 @@ elem.layout.layoutApplyPagesMax.addEventListener('keyup', () => {
   let layoutApplyPagesMin = parseInt(elem.layout.layoutApplyPagesMin.value) - 1;
   let layoutApplyPagesMax = parseInt(elem.layout.layoutApplyPagesMax.value) - 1;
   layoutApplyPagesMin = Math.max(0, layoutApplyPagesMin);
-  layoutApplyPagesMax = Math.min(scribe.data.pageMetrics.length - 1, layoutApplyPagesMax);
+  layoutApplyPagesMax = Math.min(doc.pageMetrics.length - 1, layoutApplyPagesMax);
 
   if (!Number.isFinite(layoutApplyPagesMin) || !Number.isFinite(layoutApplyPagesMax) || layoutApplyPagesMin > layoutApplyPagesMax) {
     elem.layout.layoutApplyPages.disabled = true;
@@ -1513,7 +1509,7 @@ elem.nav.prevMatch.addEventListener('click', () => prevMatchClick());
 elem.nav.nextMatch.addEventListener('click', () => nextMatchClick());
 
 export function toggleLayoutButtons(disable = true) {
-  if (!disable && !scribe.data.ocr.active[0]) return;
+  if (!disable && !doc.ocr.active[0]) return;
 
   elem.layout.addLayoutBox.disabled = disable;
   elem.layout.addDataTable.disabled = disable;
@@ -1549,7 +1545,7 @@ export const addColorModeUI = () => {
   while (colorModeOptions.length > 0) {
     colorModeOptions[0].remove();
   }
-  if (scribe.inputData.imageMode) {
+  if (doc.inputData.imageMode) {
     const option = document.createElement('option');
     option.text = 'Native';
     option.value = 'color';
@@ -1586,14 +1582,14 @@ const importFontsGUI = async (files) => {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const src = await file.arrayBuffer();
-    await scribe.data.font.addFontFromFile(src);
+    await doc.fonts.addFontFromFile(src);
   }
 
   const existingFontsUI = Array.from(elem.edit.wordFont.options).map((x) => x.value);
 
   // Add fonts extracted to UI
-  if (scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
-    Object.keys(scribe.data.font.doc).forEach((label) => {
+  if (doc.fonts.doc && Object.keys(doc.fonts.doc).length > 0) {
+    Object.keys(doc.fonts.doc).forEach((label) => {
       if (existingFontsUI.includes(label)) return;
       const option = document.createElement('option');
       option.value = label;
@@ -1611,15 +1607,15 @@ const importFilesGUI = async (files) => {
   ProgressBars.active = ProgressBars.import;
   ProgressBars.active.show(files.length, 0);
 
-  await scribe.importFiles(files);
+  await doc.importFiles(files);
 
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
 
   const existingFontsUI = Array.from(elem.edit.wordFont.options).map((x) => x.value);
 
   // Add fonts extracted from document to the UI
-  if (scribe.inputData.pdfMode && scribe.data.font.doc && Object.keys(scribe.data.font.doc).length > 0) {
-    Object.keys(scribe.data.font.doc).forEach((label) => {
+  if (doc.inputData.pdfMode && doc.fonts.doc && Object.keys(doc.fonts.doc).length > 0) {
+    Object.keys(doc.fonts.doc).forEach((label) => {
       if (existingFontsUI.includes(label)) return;
       const option = document.createElement('option');
       option.value = label;
@@ -1634,18 +1630,18 @@ const importFilesGUI = async (files) => {
   scribe.init({ ocr: true, ocrParams });
 
   elem.nav.pageNum.value = '1';
-  elem.nav.pageCount.textContent = String(scribe.inputData.pageCount);
+  elem.nav.pageCount.textContent = String(doc.inputData.pageCount);
 
   // Allow for downloads.
-  elem.download.downloadFileName.value = scribe.inputData.defaultDownloadFileName;
+  elem.download.downloadFileName.value = doc.inputData.defaultDownloadFileName;
   elem.download.download.disabled = false;
 
-  if (scribe.inputData.imageMode || scribe.inputData.pdfMode) {
+  if (doc.inputData.imageMode || doc.inputData.pdfMode) {
     toggleRecognizeUI(false);
     addColorModeUI();
 
     // For PDF inputs, enable "Add Text to Import PDF" option
-    if (scribe.inputData.pdfMode) {
+    if (doc.inputData.pdfMode) {
       elem.download.addOverlayCheckbox.checked = true;
       elem.download.addOverlayCheckbox.disabled = false;
     } else {
@@ -1654,13 +1650,13 @@ const importFilesGUI = async (files) => {
     }
   }
 
-  if (scribe.inputData.xmlMode[0]) {
+  if (doc.inputData.xmlMode[0]) {
     updateOcrVersionGUI();
     toggleEditButtons(false);
     toggleLayoutButtons(false);
   }
 
-  if (scribe.data.font.state.enableOpt) {
+  if (doc.fonts.state.enableOpt) {
     elem.view.optimizeFont.disabled = false;
     elem.view.optimizeFont.checked = true;
   }
@@ -1678,7 +1674,7 @@ async function importFilesSuppGUI() {
   ProgressBars.active = ProgressBars.eval;
   ProgressBars.active.show(elem.upload.uploadOCRFile.files.length, 0);
 
-  await scribe.importFilesSupp(elem.upload.uploadOCRFile.files, ocrName);
+  await doc.importFilesSupp(elem.upload.uploadOCRFile.files, ocrName);
 
   elem.evaluate.displayLabelText.disabled = true;
 
@@ -1769,9 +1765,9 @@ export function setCurrentHOCR(x) {
   elem.evaluate.displayLabelText.innerHTML = x;
 
   if (x.toLowerCase() === 'none') {
-    scribe.data.ocr.active = [];
+    doc.ocr.active = [];
   } else {
-    scribe.data.ocr.active = scribe.data.ocr[x];
+    doc.ocr.active = doc.ocr[x];
   }
 
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
@@ -1802,7 +1798,7 @@ export const updateOcrVersionGUI = () => {
 
   versionsSkip.push('active');
 
-  const ocrVersionsNew = Object.keys(scribe.data.ocr).filter((x) => !versionsSkip.includes(x));
+  const ocrVersionsNew = Object.keys(doc.ocr).filter((x) => !versionsSkip.includes(x));
 
   ocrVersionsNew.forEach((label) => {
     const option = document.createElement('a');
@@ -1811,7 +1807,7 @@ export const updateOcrVersionGUI = () => {
     elem.evaluate.displayLabelOptions.appendChild(option);
   });
 
-  const oemActive = Object.keys(scribe.data.ocr).find((key) => scribe.data.ocr[key] === scribe.data.ocr.active && key !== 'active');
+  const oemActive = Object.keys(doc.ocr).find((key) => doc.ocr[key] === doc.ocr.active && key !== 'active');
   if (oemActive) {
     elem.evaluate.displayLabelText.innerHTML = oemActive;
   } else {
@@ -1849,7 +1845,7 @@ elem.nav.navLayout.addEventListener('show.bs.collapse', (e) => {
     ScribeViewer.state.layoutMode = true;
     // Generally we handle drawing manually, however `autoDrawEnabled` is needed for the user to drag layout boxes.
     ScribeViewer.Konva.autoDrawEnabled = true;
-    if (!scribe.data.layoutRegions.pages[ScribeViewer.state.cp.n]) return;
+    if (!doc.layoutRegions.pages[ScribeViewer.state.cp.n]) return;
 
     // Auto-rotate is always enabled for layout mode, so re-render the page if it is not already rotated.
     if (!scribe.opt.autoRotate) {
@@ -1877,7 +1873,7 @@ elem.nav.navLayout.addEventListener('hide.bs.collapse', (e) => {
 
 // Resets the environment.
 async function clearFiles() {
-  scribe.clear();
+  doc.clear();
   clearUI();
 }
 
@@ -1963,15 +1959,15 @@ ScribeViewer.KonvaLayout.updateUI = () => {
 const ctxLegend = /** @type {CanvasRenderingContext2D} */ (elem.canvas.legendCanvas.getContext('2d'));
 
 const renderDebugVis = (n) => {
-  if (scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && scribe.data.vis[n][elem.info.selectDebugVis.value]) {
+  if (scribe.opt.debugVis && elem.info.selectDebugVis.value !== 'None' && doc.vis[n][elem.info.selectDebugVis.value]) {
     const group = ScribeViewer.getOverlayGroup(n);
     group.destroyChildren();
 
     if (!ScribeViewer.overlayGroupsRenderIndices.includes(n)) ScribeViewer.overlayGroupsRenderIndices.push(n);
 
-    const pageDims = scribe.data.pageMetrics[n].dims;
+    const pageDims = doc.pageMetrics[n].dims;
 
-    const image = scribe.data.vis[n][elem.info.selectDebugVis.value].canvas;
+    const image = doc.vis[n][elem.info.selectDebugVis.value].canvas;
     const overlayImageKonva = new ScribeViewer.Konva.Image({
       image,
       scaleX: pageDims.width / image.width,
@@ -1984,7 +1980,7 @@ const renderDebugVis = (n) => {
 
     group.add(overlayImageKonva);
 
-    const offscreenCanvasLegend = scribe.data.vis[n][elem.info.selectDebugVis.value].canvasLegend;
+    const offscreenCanvasLegend = doc.vis[n][elem.info.selectDebugVis.value].canvasLegend;
     if (offscreenCanvasLegend) {
       ctxLegend.canvas.width = offscreenCanvasLegend.width;
       ctxLegend.canvas.height = offscreenCanvasLegend.height;
@@ -2041,33 +2037,14 @@ ScribeViewer.displayPageCallback = () => {
  * @param {boolean} [force]
  */
 async function optimizeFontClick(enable, force) {
-  await scribe.enableFontOpt(enable, force);
+  await doc.enableFontOpt(enable, force);
 
   ScribeViewer.displayPage(ScribeViewer.state.cp.n);
 }
 
-elem.info.downloadSourcePDF.addEventListener('click', async () => {
-  const muPDFScheduler = await scribe.data.image.getMuPDFScheduler(1);
-  const w = muPDFScheduler.workers[0];
-
-  if (!w.pdfDoc) {
-    console.log('No PDF document is open.');
-    return;
-  }
-
-  const content = await w.save({
-    doc1: w.pdfDoc, humanReadable: elem.info.humanReadablePDF.checked,
-  });
-
-  const pdfBlob = new Blob([content], { type: 'application/octet-stream' });
-
-  const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.pdf`;
-  scribe.utils.saveAs(pdfBlob, fileName);
-});
-
 elem.info.downloadDebugCsv.addEventListener('click', async () => {
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.csv`;
-  scribe.utils.writeDebugCsv(scribe.data.ocr.active, fileName);
+  scribe.utils.writeDebugCsv({ pages: doc.ocr.active, fileName });
 });
 
 // Once per session, if the user opens the "Download" tab and proofreading mode is still enabled,
@@ -2205,7 +2182,7 @@ function setFormatLabel(x) {
 }
 
 function updatePdfPagesLabel() {
-  const pageCount = scribe.inputData.pageCount;
+  const pageCount = doc.inputData.pageCount;
 
   let minValue = parseInt(elem.download.pdfPageMin.value);
   let maxValue = parseInt(elem.download.pdfPageMax.value);
@@ -2252,7 +2229,7 @@ async function handleDownloadGUI() {
   ProgressBars.active.show(progressMax, 0);
 
   try {
-    await scribe.download(downloadType, fileName, minValue, maxValue);
+    await doc.download(downloadType, fileName, { minPage: minValue, maxPage: maxValue });
   } catch (e) {
     insertAlertMessage('Failed to download file. Download .scribe file to save any progress, and report if the issue persists.');
     console.error(e);
@@ -2320,13 +2297,13 @@ async function updateEvalStatsGUI(n) {
 }
 
 async function createGroundTruthClick() {
-  if (!scribe.data.ocr['Ground Truth']) {
-    scribe.data.ocr['Ground Truth'] = Array(scribe.data.ocr.active.length);
+  if (!doc.ocr['Ground Truth']) {
+    doc.ocr['Ground Truth'] = Array(doc.ocr.active.length);
   }
 
   // Use whatever the current HOCR is as a starting point
-  for (let i = 0; i < scribe.data.ocr.active.length; i++) {
-    scribe.data.ocr['Ground Truth'][i] = structuredClone(scribe.data.ocr.active[i]);
+  for (let i = 0; i < doc.ocr.active.length; i++) {
+    doc.ocr['Ground Truth'][i] = structuredClone(doc.ocr.active[i]);
   }
 
   updateOcrVersionGUI();
@@ -2340,7 +2317,7 @@ async function createGroundTruthClick() {
   elem.evaluate.createGroundTruth.disabled = true;
   // compareGroundTruthElem.disabled = false;
 
-  scribe.inputData.evalMode = true;
+  doc.inputData.evalMode = true;
 
   // Calculate statistics
   await ScribeViewer.compareGroundTruth();
@@ -2353,14 +2330,14 @@ async function createGroundTruthClick() {
  * @param {OcrWord} word
  */
 const printOcrWordCode = (word) => {
-  if (!scribe.data.ocr.active[ScribeViewer.state.cp.n]) return;
+  if (!doc.ocr.active[ScribeViewer.state.cp.n]) return;
   let i = 0;
   let j = 0;
-  for (i = 0; i < scribe.data.ocr.active[ScribeViewer.state.cp.n].lines.length; i++) {
-    const line = scribe.data.ocr.active[ScribeViewer.state.cp.n].lines[i];
+  for (i = 0; i < doc.ocr.active[ScribeViewer.state.cp.n].lines.length; i++) {
+    const line = doc.ocr.active[ScribeViewer.state.cp.n].lines[i];
     for (j = 0; j < line.words.length; j++) {
       if (line.words[j].id === word.id) {
-        console.log(`scribe.data.ocr.active[${ScribeViewer.state.cp.n}].lines[${i}].words[${j}]`);
+        console.log(`doc.ocr.active[${ScribeViewer.state.cp.n}].lines[${i}].words[${j}]`);
         return;
       }
     }
@@ -2386,9 +2363,9 @@ export async function showDebugImages() {
   /** @type {Array<Array<CompDebugBrowser>>} */
   const compDebugArrArr = [];
 
-  const compDebugArr1 = scribe.data.debug.debugImg?.['Tesseract Combined']?.[ScribeViewer.state.cp.n];
-  const compDebugArr2 = scribe.data.debug.debugImg?.Combined?.[ScribeViewer.state.cp.n];
-  const compDebugArr3 = scribe.data.debug.debugImg?.recognizeArea?.[ScribeViewer.state.cp.n];
+  const compDebugArr1 = doc.debug.debugImg?.['Tesseract Combined']?.[ScribeViewer.state.cp.n];
+  const compDebugArr2 = doc.debug.debugImg?.Combined?.[ScribeViewer.state.cp.n];
+  const compDebugArr3 = doc.debug.debugImg?.recognizeArea?.[ScribeViewer.state.cp.n];
 
   if (compDebugArr1 && compDebugArr1.length > 0) compDebugArrArr.push(compDebugArr1);
   if (compDebugArr2 && compDebugArr2.length > 0) compDebugArrArr.push(compDebugArr2);
@@ -2403,18 +2380,18 @@ export async function evalSelectedLine() {
 
   const word0 = selectedObjects[0].word;
 
-  const res = await scribe.evalOCRPage({ page: word0.line, view: true });
+  const res = await doc.evalOCRPage({ page: word0.line, view: true });
 
   await scribe.utils.drawDebugImages({ canvas: canvasDebug, compDebugArrArr: [[res.debug[0]]], context: 'browser' });
 }
 
 export async function downloadCanvas() {
-  if (!scribe.data.pageMetrics) {
+  if (!doc.pageMetrics) {
     console.warn('Canvas has not been initialized yet.');
     return;
   }
 
-  const dims = scribe.data.pageMetrics[ScribeViewer.state.cp.n].dims;
+  const dims = doc.pageMetrics[ScribeViewer.state.cp.n].dims;
 
   const startX = ScribeViewer.layerText.x() > 0 ? Math.round(ScribeViewer.layerText.x()) : 0;
   const startY = ScribeViewer.layerText.y() > 0 ? Math.round(ScribeViewer.layerText.y()) : 0;
@@ -2431,7 +2408,8 @@ export async function downloadCanvas() {
 }
 
 export async function downloadImage(n) {
-  const image = scribe.opt.colorMode === 'binary' ? await scribe.data.image.getBinary(n) : await scribe.data.image.getNative(n);
+  const image = scribe.opt.colorMode === 'binary' ? await doc.images.getBinary(n) : await doc.images.getNative(n);
+  if (!image) return;
   const filenameBase = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}`;
 
   const fileName = `${filenameBase}_${String(n).padStart(3, '0')}.${image.format}`;
@@ -2440,7 +2418,7 @@ export async function downloadImage(n) {
 }
 
 export async function downloadCurrentImage() {
-  if (!scribe.inputData.imageMode && !scribe.inputData.pdfMode) {
+  if (!doc.inputData.imageMode && !doc.inputData.pdfMode) {
     console.warn('No raw image exists.');
     return;
   }
@@ -2449,7 +2427,7 @@ export async function downloadCurrentImage() {
 
 export async function downloadAllImages() {
   const binary = scribe.opt.colorMode === 'binary';
-  for (let i = 0; i < scribe.data.image.pageCount; i++) {
+  for (let i = 0; i < doc.images.pageCount; i++) {
     await downloadImage(i);
     // Not all files will be downloaded without a delay between downloads
     await new Promise((r) => setTimeout(r, 200));
@@ -2458,23 +2436,13 @@ export async function downloadAllImages() {
 
 elem.info.downloadStaticVis.addEventListener('click', async () => {
   const fileName = `${elem.download.downloadFileName.value.replace(/\.\w{1,6}$/, '')}.png`;
-  const pngBlob = await scribe.utils.renderPageStatic(scribe.data.ocr.active[ScribeViewer.state.cp.n]);
+  const pngBlob = await doc.renderPageStatic(doc.ocr.active[ScribeViewer.state.cp.n]);
   scribe.utils.saveAs(pngBlob, fileName);
 });
 
-elem.info.downloadPDFFonts.addEventListener('click', async () => {
-  const muPDFScheduler = await scribe.data.image.muPDFScheduler;
-  if (!muPDFScheduler) return;
-  muPDFScheduler.extractAllFonts().then(async (x) => {
-    for (let i = 0; i < x.length; i++) {
-      scribe.utils.saveAs(x[i], `font_${String(i).padStart(2, '0')}.ttf`);
-    }
-  });
-});
-
 export function getExcludedText() {
-  for (let i = 0; i <= scribe.data.ocr.active.length; i++) {
-    const textArr = getExcludedTextPage(scribe.data.ocr.active[i], scribe.data.layoutRegions.pages[i]);
+  for (let i = 0; i <= doc.ocr.active.length; i++) {
+    const textArr = getExcludedTextPage(doc.ocr.active[i], doc.layoutRegions.pages[i]);
 
     if (textArr.length > 0) {
       textArr.map((x) => console.log(`${x} [Page ${String(i)}]`));

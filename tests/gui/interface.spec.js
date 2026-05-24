@@ -51,7 +51,7 @@ describe('Use delete and recognize word buttons', function () {
     // After recognition completes, the button should be re-enabled
     await driver.wait(until.elementIsEnabled(recognizeBtn), 5000, 'Recognize button was not re-enabled after recognition completed');
 
-    const text = await driver.executeScript('return df.scribe.exportData("text")');
+    const text = await driver.executeScript('return df.ScribeCanvas.doc.exportData("text")');
 
     assert.strictEqual(text, 'Tesseract');
   });
@@ -64,7 +64,7 @@ describe('Use delete and recognize word buttons', function () {
     const deleteWordElem = await driver.findElement(By.id('deleteWord'));
     await deleteWordElem.click();
 
-    const text = await driver.executeScript('return df.scribe.exportData("text")');
+    const text = await driver.executeScript('return df.ScribeCanvas.doc.exportData("text")');
 
     assert.strictEqual(text, '');
   });
@@ -78,7 +78,7 @@ describe('Use delete and recognize word buttons', function () {
     // TODO: Make this dynamic
     await driver.sleep(5000);
 
-    const text = await driver.executeScript('return df.scribe.exportData("text")');
+    const text = await driver.executeScript('return df.ScribeCanvas.doc.exportData("text")');
 
     assert.strictEqual(text, 'Tesseract');
   });
@@ -100,7 +100,7 @@ describe('Use delete and recognize word buttons', function () {
     // TODO: Make this dynamic
     await driver.sleep(5000);
 
-    const text = await driver.executeScript('return df.scribe.exportData("text")');
+    const text = await driver.executeScript('return df.ScribeCanvas.doc.exportData("text")');
 
     assert.strictEqual(text, 'Tesseract');
   });
