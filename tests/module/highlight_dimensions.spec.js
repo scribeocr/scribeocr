@@ -13,6 +13,8 @@ config.truncateThreshold = 0;
 describe('highlight dimensions: canvas vs HTML overlay', function () {
   this.timeout(60000);
 
+  const viewer = ScribeViewer.getDefault();
+
   before(async function () {
     const container = document.createElement('div');
     container.style.width = '800px';
@@ -20,24 +22,27 @@ describe('highlight dimensions: canvas vs HTML overlay', function () {
     document.body.appendChild(container);
 
     await scribe.init({ ocr: true, font: true });
-    ScribeViewer.init(container, 800, 600);
+    viewer.init(container, 800, 600);
 
-    await ScribeViewer.doc.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
-    await ScribeViewer.displayPage(0);
+    viewer.state.displayMode = 'proof';
+
+    await viewer.doc.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
+    await viewer.displayPage(0);
   });
 
   it('HTML overlay highlight should match canvas highlight dimensions', async function () {
     this.timeout(10000);
 
-    const words = ScribeViewer.getKonvaWords();
+    const words = viewer.getKonvaWords();
     const word = words.find((w) => w.word.text.length > 3);
-    assert.isOk(word, 'No suitable word found');
+    if (!word) throw new Error('No suitable word found');
 
     // Set highlight properties on the word
     word.highlightColor = '#ffe93b';
     word.highlightOpacity = 0.5;
 
     const layer = word.getLayer();
+    if (!layer) throw new Error('Word has no Konva layer');
     const scale = layer.getAbsoluteScale().y;
     const absPos = word.getAbsolutePosition();
 

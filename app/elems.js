@@ -403,19 +403,13 @@ class info {
 
   static showIntermediateOCR = /** @type {HTMLInputElement} */(document.getElementById('showIntermediateOCR'));
 
-  static extractPDFFonts = /** @type {HTMLInputElement} */(document.getElementById('extractPDFFonts'));
-
   static keepPDFTextAlways = /** @type {HTMLInputElement} */(document.getElementById('keepPDFTextAlways'));
-
-  static intermediatePDF = /** @type {HTMLInputElement} */(document.getElementById('intermediatePDF'));
 
   static humanReadablePDF = /** @type {HTMLInputElement} */(document.getElementById('humanReadablePDF'));
 
   static showConflicts = /** @type {HTMLInputElement} */(document.getElementById('showConflicts'));
 
   static docxLineSplitSentence = /** @type {HTMLInputElement} */(document.getElementById('docxLineSplitSentence'));
-
-  static printRecognitionTime = /** @type {HTMLInputElement} */(document.getElementById('printRecognitionTime'));
 
   static debugConflicts = /** @type {HTMLInputElement} */(document.getElementById('debugConflicts'));
 }

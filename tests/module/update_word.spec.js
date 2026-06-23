@@ -12,6 +12,8 @@ config.truncateThreshold = 0;
 
 const SCRIBE_JS_ASSETS = `${BASE_URL_KARMA}/scribe.js/tests/test-assets`;
 
+const viewer = ScribeViewer.getDefault();
+
 /**
  * Capture rendering-relevant state from a KonvaOcrWord.
  * @param {Object} w - KonvaOcrWord instance
@@ -43,9 +45,9 @@ function registerStyleTests() {
     it(`toggling '${prop}' produces same state as fresh render`, async function () {
       this.timeout(10000);
 
-      const words = ScribeViewer.getKonvaWords();
+      const words = viewer.getKonvaWords();
       const word = words.find((w) => w.word.text.length > 2);
-      assert.isOk(word, 'No suitable word found');
+      if (!word) throw new Error('No suitable word found');
 
       const wordId = word.word.id;
 
@@ -53,7 +55,7 @@ function registerStyleTests() {
       word.word.style[prop] = !word.word.style[prop];
 
       // Update font info (mirrors modifySelectedWordStyle)
-      const fontI = ScribeViewer.doc.fonts.getFont(word.word.style, word.word.lang);
+      const fontI = viewer.doc.fonts.getFont(word.word.style, word.word.lang);
       word.fontFaceName = fontI.fontFaceName;
       word.fontFaceStyle = fontI.fontFaceStyle;
       word.fontFaceWeight = fontI.fontFaceWeight;
@@ -65,11 +67,11 @@ function registerStyleTests() {
       const stateAfterUpdate = captureState(word);
 
       // Re-render the page from scratch (the fresh-creation path)
-      await ScribeViewer.displayPage(ScribeViewer.state.cp.n);
+      await viewer.displayPage(viewer.state.cp.n);
 
       // Find the same word in the freshly created canvas objects
-      const freshWord = ScribeViewer.getKonvaWords().find((w) => w.word.id === wordId);
-      assert.isOk(freshWord, 'Could not find word after re-render');
+      const freshWord = viewer.getKonvaWords().find((w) => w.word.id === wordId);
+      if (!freshWord) throw new Error('Could not find word after re-render');
       const stateAfterFresh = captureState(freshWord);
 
       // Compare Konva transform attributes
@@ -104,13 +106,13 @@ describe('updateWordCanvas matches fresh render (visualCoords=true)', function (
     document.body.appendChild(container);
 
     await scribe.init({ ocr: true, font: true });
-    ScribeViewer.init(container, 800, 600);
+    viewer.init(container, 800, 600);
 
-    await ScribeViewer.doc.importFiles([
+    await viewer.doc.importFiles([
       `${ASSETS_PATH_KARMA}/academic_article_2.pdf`,
       `${SCRIBE_JS_ASSETS}/academic_article_2_analyzeDocResponse.json`,
     ]);
-    await ScribeViewer.displayPage(0);
+    await viewer.displayPage(0);
   });
 
   registerStyleTests();
@@ -130,10 +132,10 @@ describe('updateWordCanvas matches fresh render (visualCoords=false)', function 
     document.body.appendChild(container);
 
     await scribe.init({ ocr: true, font: true });
-    ScribeViewer.init(container, 800, 600);
+    viewer.init(container, 800, 600);
 
-    await ScribeViewer.doc.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
-    await ScribeViewer.displayPage(0);
+    await viewer.doc.importFiles([`${ASSETS_PATH_KARMA}/academic_article_2.pdf`]);
+    await viewer.displayPage(0);
   });
 
   registerStyleTests();
