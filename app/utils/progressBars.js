@@ -61,13 +61,10 @@ export class ProgressBar {
     }
 
     if (this.value >= this.maxValue) {
-      const showNI = this.showN;
+      this.hide();
       setTimeout(() => {
-        if (this.showN === showNI) this.hide();
+        this.reset();
       }, 1000);
-      setTimeout(() => {
-        if (this.showN === showNI) this.reset();
-      }, 2000);
     }
   }
 
@@ -81,22 +78,18 @@ export class ProgressBar {
 
   hide() {
     if (this.visible) {
-      const ariaValueNowStr = /** @type {string} */ (this.progressBar.getAttribute('aria-valuenow'));
-      const ariaValueMaxStr = /** @type {string} */ (this.progressBar.getAttribute('aria-valuemax'));
-      if (parseInt(ariaValueNowStr) >= parseInt(ariaValueMaxStr)) {
-        this.progressCollapseElem.style.maxHeight = '0';
-        this.visible = false;
-        const showNI = this.showN;
-        setTimeout(() => {
-          if (this.showN === showNI) this.reset();
-        }, 1000);
-      }
+      this.progressCollapseElem.style.maxHeight = '0';
+      this.visible = false;
     }
   }
 
   async reset() {
     this.progressBar.setAttribute('aria-valuenow', '0');
     this.progressBar.setAttribute('style', 'width: 0%');
+    if (this.visible) {
+      this.visible = false;
+      this.progressCollapseElem.style.maxHeight = '0';
+    }
   }
 }
 
